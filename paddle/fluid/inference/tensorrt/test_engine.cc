@@ -80,20 +80,28 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   //                        1.0, 0, 0, 4.4,
   //                        1.0, 0, 0, 4.4,
   //                        1.0, 0, 0, 4.4};
-  float raw_weight[256];
-  for (int i=0; i<64; i++) {
+  float raw_weight[512];
+  for (int i=0; i<128; i++) {
     raw_weight[4*i] = 1.0;
     raw_weight[4*i+1] = 0.0;
     raw_weight[4*i+2] = 0.0;
-    raw_weight[4*i+3] = 4.4;
+    raw_weight[4*i+3] = 4.0;
   }
+  
+  float raw_weight_transpose[512];
+  for (int i=0; i<32; i++) {
+    for (int j=0; j<16; j++) {
+      raw_weight_transpose[j*32+i] = raw_weight[i*16+j];
+    }
+  }
+  
   float raw_bias[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   std::vector<void *> buffers(2);  // TRT binded inputs
-  // builder->setMaxBatchSize(1)
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 256);
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight_transpose, 512);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 16);
+  std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape() << std::endl;
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims4{16, 1, 16, 1});
+                                  nvinfer1::Dims4{16, 32, 1, 1});
 
   plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kNone;
 
@@ -116,8 +124,8 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   //                           1.0, 2.0, 3.0, 4.0,
   //                           1.0, 2.0, 3.0, 4.0,
   //                           1.0, 2.0, 3.0, 4.0};
-  std::vector<float> x_v(256);
-  for (int i=0; i<64; i++) {
+  std::vector<float> x_v(512);
+  for (int i=0; i<128; i++) {
     x_v[4*i] = 1.0;
     x_v[4*i+1] = 2.0;
     x_v[4*i+2] = 3.0;
@@ -139,10 +147,13 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   GetOutput(&y_cpu);
 
   auto dims = engine_->GetITensor("y")->getDimensions();
-  ASSERT_EQ(dims.nbDims, 2);
-  ASSERT_EQ(dims.d[0], 16);
+  ASSERT_EQ(dims.nbDims, 4);
+  ASSERT_EQ(dims.d[1], 16);
 
-  ASSERT_EQ(y_cpu[0], 18.6);
+  ASSERT_EQ(y_cpu[0], 80); 
+  ASSERT_EQ(y_cpu[1], 0);
+  ASSERT_EQ(y_cpu[2], 0);
+  ASSERT_EQ(y_cpu[3], 352);
 }
 
 }  // namespace tensorrt

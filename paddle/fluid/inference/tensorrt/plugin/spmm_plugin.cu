@@ -229,9 +229,10 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
 
   paddle::platform::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB,
                                                             compressed_size);
+  std::cout << "compressed size: " << *compressed_size << std::endl;
   cudaMalloc(dest, *compressed_size);
   paddle::platform::dynload::cusparseLtSpMMACompress2(
-      &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
+      &handle, &matB, 0, CUSPARSE_OPERATION_NON_TRANSPOSE, src, *dest, nullptr);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
@@ -310,13 +311,23 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
     cudaMemcpy(weight_dev, weight_host.data(), precision_size_ * weight.count,
                cudaMemcpyHostToDevice);
   }
-
+  std::cout << "preicisioin_size: " << precision_size_ << " weight_count: " << weight.count << " out_dim: " << out_dim_ << " k_: " << k_ << std::endl;
+  std::cout << "original weights:";
+  for (int i=0; i<weight.count; i++) {
+    std::cout << " " << static_cast<float>(reinterpret_cast<const float*>(weight_host.data())[i]);
+  }
+  std::cout << std::endl;
   spmm_context_.compressMatB(out_dim_, k_, convertTrtType(precision_),
                              weight_dev, &weight_compressed_dev_,
                              &compressed_size_);
   weight_compressed_ = new char[compressed_size_];
-  cudaMemcpy(weight_compressed_, weight_compressed_dev_, compressed_size_,
-             cudaMemcpyDeviceToHost);
+  cudaMemcpy(weight_compressed_, weight_compressed_dev_, compressed_size_, cudaMemcpyDeviceToHost);
+
+  std::cout << "compressed weights:";
+  for (int i=0; i<256; i++) {
+    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+  }
+  std::cout << std::endl;
 
   has_bias_ = (bias.count != 0);
   if (has_bias_) {
@@ -548,6 +559,7 @@ void SpmmPluginDynamic::configurePlugin(
                       platform::errors::InvalidArgument(
                           "precision_ should be equal to inputs[0].desc.type"));
     const auto& inDims0 = inputs[0].desc.dims;
+    if (inDims0.nbDims==5) {
     PADDLE_ENFORCE_EQ(inDims0.nbDims, 5, platform::errors::InvalidArgument(
                                              "inDims0.nbDims should be 5"));
     PADDLE_ENFORCE_EQ(k_, inDims0.d[2],
@@ -559,13 +571,26 @@ void SpmmPluginDynamic::configurePlugin(
                                            "inDims0.d[4] should be 1"));
     const int BS = inputs->max.d[0];
     const int Seq = inputs->max.d[1];
+    m_max_ = BS * Seq;
+    } else if (inDims0.nbDims==4) {
+    PADDLE_ENFORCE_EQ(inDims0.nbDims, 4, platform::errors::InvalidArgument(
+                                             "inDims0.nbDims should be 4"));
+    PADDLE_ENFORCE_EQ(k_, inDims0.d[1],
+                      platform::errors::InvalidArgument(
+                          "inDims0.d[1] should be equals to k"));
+    PADDLE_ENFORCE_EQ(inDims0.d[2], 1, platform::errors::InvalidArgument(
+                                           "inDims0.d[2] should be 1"));
+    PADDLE_ENFORCE_EQ(inDims0.d[3], 1, platform::errors::InvalidArgument(
+                                           "inDims0.d[3] should be 1"));
+    const int BS = inputs->max.d[0];
+    m_max_ = BS; 
+    }
     // The optimal algorighm id is for m = m_max_
     // To Do: configurePlugin takes time when m is changed
     if (is_configured_) {
       return;
     }
 
-    m_max_ = BS * Seq;
     if (has_bias_) {
       if (inputs->desc.type == nvinfer1::DataType::kINT8) {
         for (int i = 0; i < out_dim_; ++i) {
@@ -624,9 +649,15 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     PADDLE_ENFORCE_EQ(is_configured_, true,
                       platform::errors::InvalidArgument(
                           "The plugin is not configured before enqueue"));
+    if (inputDesc->dims.nbDims==5){
     PADDLE_ENFORCE_EQ(
         k_, inputDesc->dims.d[2],
         platform::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
+    } else if (inputDesc->dims.nbDims==4) {
+    PADDLE_ENFORCE_EQ(
+        k_, inputDesc->dims.d[1],
+        platform::errors::InvalidArgument("k_ == inputDesc->dims.d[1]"));
+    } 
     float alpha = 1.0f;
     float beta = 0.0f;
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
@@ -639,9 +670,47 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
+
+      size_t in_size = 1;
+      size_t out_size = 1;
+      for (int i=0; i<inputDesc->dims.nbDims; i++) {
+        in_size = in_size * inputDesc->dims.d[i];
+      }
+      void* in_host = new char[in_size * 2];
+      for (int i=0; i<outputDesc->dims.nbDims; i++) {
+        out_size = out_size * outputDesc->dims.d[i];
+      }
+      void* out_host = new char[out_size * 2];
+
+      cudaMemcpy(in_host, input, in_size * 2, cudaMemcpyDeviceToHost);
+      cudaMemcpy(out_host, output, out_size * 2, cudaMemcpyDeviceToHost);
+      bool flag_i=true;
+      bool flag_o=true;
+
+      std::cout << "inputs:";
+      for (int i=0; i<in_size; i++) {
+        // std::cout << " " << static_cast<float>(static_cast<__half*>(in_host)[i]);
+        if (isnan(static_cast<float>(static_cast<__half*>(in_host)[i]))) {
+          flag_i = false;
+        }
+      }
+      if (!flag_i) 
+        std::cout << "nan is detected in inputs." << std::endl;
+        
+      // cudaDeviceSynchronize();
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
+      cudaDeviceSynchronize();
+      std::cout << "outputs:";
+      for (int i=0; i<out_size; i++) {
+        // std::cout << " " << static_cast<float>(static_cast<__half*>(out_host)[i]);
+        if (isnan(static_cast<float>(static_cast<__half*>(out_host)[i]))) {
+          flag_o=false; 
+        }
+      }
+      if (!flag_o)
+        std::cout << "nan is detected in outputs." << std::endl;
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
