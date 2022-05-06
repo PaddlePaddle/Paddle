@@ -97,59 +97,59 @@ def check_negative_elements_distribution_of_rrelu_output_in_training(input: np.n
     return True
 
 
-# class TestRReluOpInference(OpTest):
-#     """
-#     test the inference mode of rrelu op,
-#     you can subclass this class and modify "setUp" method
-#     as you want
-#     """
-#     def setUp(self):
-#         self.op_type = "rrelu"
-#         self.lower = 0.1
-#         self.upper = 0.3
-#         self.fix_seed = True
-#         self.seed = 1
-#         self.dtype = "float64"
-#         self.x_shape = [2, 3, 4, 5]
-#         self.x_low = -1
-#         self.x_high = 1
-#         self.init()
+class TestRReluOpInference(OpTest):
+    """
+    test the inference mode of rrelu op,
+    you can subclass this class and modify "setUp" method
+    as you want
+    """
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.lower = 0.1
+        self.upper = 0.3
+        # self.fix_seed = True
+        # self.seed = 1
+        self.dtype = "float64"
+        self.x_shape = [2, 3, 4, 5]
+        self.x_low = -1
+        self.x_high = 1
+        self.init()
 
-#     def init(self):
-#         x_np = np.random.uniform(self.x_low, self.x_high, self.x_shape).astype(self.dtype)
-#         out_np = rrelu_inference(x_np, self.lower, self.upper)
-#         mask_np = np.ones(self.x_shape).astype(self.dtype)
-#         mask_np[x_np < 0] = (self.lower + self.upper) / 2.0
+    def init(self):
+        x_np = np.random.uniform(self.x_low, self.x_high, self.x_shape).astype(self.dtype)
+        out_np = rrelu_inference(x_np, self.lower, self.upper)
+        mask_np = np.ones(self.x_shape).astype(self.dtype)
+        mask_np[x_np < 0] = (self.lower + self.upper) / 2.0
 
-#         self.inputs = {'X': x_np}
-#         self.outputs = {'Out': out_np, 'Mask': mask_np}
-#         self.attrs = {
-#             'lower': self.lower,
-#             "upper": self.upper,
-#             "is_test": True,
-#             "fix_seed": self.fix_seed,
-#             "seed": self.seed
-#         }
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np, 'Mask': mask_np}
+        self.attrs = {
+            'lower': self.lower,
+            "upper": self.upper,
+            "is_test": True,
+            # "fix_seed": self.fix_seed,
+            # "seed": self.seed
+        }
 
-#     def test_check_output(self):
-#         self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
-#     def test_check_grad(self):
-#         self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
-# class TestRReluOpInference2(TestRReluOpInference):
-#     def setUp(self):
-#         self.op_type = "rrelu"
-#         self.lower = 0.3
-#         self.upper = 0.99
-#         self.fix_seed = True
-#         self.seed = 198
-#         self.dtype = "float64"
-#         self.x_shape = [20, 10]
-#         self.x_low = -9
-#         self.x_high = -1
-#         self.init()
+class TestRReluOpInference2(TestRReluOpInference):
+    def setUp(self):
+        self.op_type = "rrelu"
+        self.lower = 0.3
+        self.upper = 0.99
+        # self.fix_seed = True
+        # self.seed = 198
+        self.dtype = "float64"
+        self.x_shape = [20, 10]
+        self.x_low = -9
+        self.x_high = -1
+        self.init()
 
 
 # class TestRReluOpInference3(TestRReluOpInference):
@@ -356,33 +356,33 @@ class TestFP16RReluOp2(TestFP16RReluOp):
         self.upper = 0.127
 
 
-class TestBF16RReluOp(OpTest):
-    def setUp(self):
-        self.op_type = "rrelu"
-        self.dtype = np.uint16
-        self.lower = self.upper = 0.78
+# class TestBF16RReluOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.dtype = np.uint16
+#         self.lower = self.upper = 0.78
 
-        x_shape = (32, 64)
-        x_np = np.random.uniform(-2, 3, x_shape).astype("float32")
-        out_np = rrelu_inference(x_np, self.lower, self.upper)
-        mask_np = np.ones(x_shape).astype("float32")
-        mask_np[x_np < 0] = self.lower 
-        self.inputs = {'X': convert_float_to_uint16(x_np)}
-        self.attrs = {
-            'lower': self.lower, 
-            'upper': self.upper, 
-            'is_test': False
-        }
-        self.outputs = {
-            'Out': convert_float_to_uint16(out_np),
-            'Mask': convert_float_to_uint16(mask_np)
-        }
+#         x_shape = (32, 64)
+#         x_np = np.random.uniform(-2, 3, x_shape).astype("float32")
+#         out_np = rrelu_inference(x_np, self.lower, self.upper)
+#         mask_np = np.ones(x_shape).astype("float32")
+#         mask_np[x_np < 0] = self.lower 
+#         self.inputs = {'X': convert_float_to_uint16(x_np)}
+#         self.attrs = {
+#             'lower': self.lower, 
+#             'upper': self.upper, 
+#             'is_test': False
+#         }
+#         self.outputs = {
+#             'Out': convert_float_to_uint16(out_np),
+#             'Mask': convert_float_to_uint16(mask_np)
+#         }
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+#     def test_check_grad_normal(self):
+#         self.check_grad(['X'], 'Out')
 
 
 class TestRReluFAPI(unittest.TestCase):
