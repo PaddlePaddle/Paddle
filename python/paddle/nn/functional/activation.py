@@ -611,34 +611,21 @@ def rrelu(x, lower=1./8., upper=1./3., training=True, name=None):
             format(lower, upper))
 
     is_test = not training
-    seed = None
 
     if _in_legacy_dygraph():
-        if default_main_program().random_seed != 0:
-            seed = default_main_program().random_seed
-        out, mask = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
-                                  is_test, 'fix_seed', seed is not None, 'seed',
-                                  seed if seed is not None else 0)
+        out, mask = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test', is_test)
         return out
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
 
-    def get_attrs(prog, lower, upper, is_test, seed):
-        if (seed is None or seed == 0) and prog.random_seed != 0:
-            seed = prog.random_seed
-        attrs = {
-            'lower': lower,
-            'upper': upper,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
-        }
-        return attrs
-
     helper = LayerHelper('rrelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     mask = helper.create_variable_for_type_inference(dtype=x.dtype)
-    attrs = get_attrs(helper.main_program, lower, upper, is_test, seed)
+    attrs = {
+        'lower': lower,
+        'upper': upper,
+        'is_test': is_test
+    }
 
     helper.append_op(
         type='rrelu',
