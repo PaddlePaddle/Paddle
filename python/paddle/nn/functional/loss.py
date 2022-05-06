@@ -2237,48 +2237,59 @@ def triplet_margin_loss(input,
                         margin=1.0,
                         reduction='mean',
                         name=None):
-    """
-    Measures the triplet loss given an input
-    tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
-    This is used for measuring a relative similarity between samples. A triplet
-    is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
-    examples` respectively). The shapes of all input tensors should be
-    :math:`(N, *)`.
+    r"""
+        Measures the triplet loss given an input
+        tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
+        This is used for measuring a relative similarity between samples. A triplet
+        is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
+        examples` respectively). The shapes of all input tensors should be
+        :math:`(N, *)`.
 
-    The loss function for each sample in the mini-batch is:
+        The loss function for each sample in the mini-batch is:
 
-    .. math::
-        L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
+        .. math::
+            L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
 
 
-    where
+        where
 
-    .. math::
-        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
+        .. math::
+            d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
-    :param input:Input tensor, the data type is float32 or float64.
+    Parameters:
+        input: Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
-    :param positive:Positive tensor, the data type is float32 or float64.
+
+        positive: Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param negative:Negative tensor, the data type is float32 or float64.
+
+        negative: Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param swap:The distance swap change the negative distance to the distance between
+
+        swap: The distance swap change the negative distance to the distance between
             positive sample and negative sample. Default: ``False``.
-    :param p:The norm degree for pairwise distance. Default: :math:`2`.
-    :param eps:Add small value to avoid division by zero,
+
+        p: The norm degree for pairwise distance. Default: :math:`2`.
+
+        eps: Add small value to avoid division by zero,
             default value is 1e-6.
-    :param margin:Default: :math:`1`.
-    :param reduction:Indicate how to average the loss by batch_size.
+
+        margin: Default: :math:`1`.
+
+        reduction:Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-    :param name: Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-    :return:Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
 
-     Examples:
+        name: Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Output: Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+
+    Examples:
         .. code-block:: python
 
             import paddle

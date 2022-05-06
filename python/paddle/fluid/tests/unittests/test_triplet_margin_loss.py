@@ -24,7 +24,7 @@ def call_TripletMarginLoss_layer(input,
                     swap=False,
                     eps = 1e-6,
                     reduction='mean',):
-    triplet_margin_loss = paddle.nn.loss.TripletMarginLoss(p=p,
+    triplet_margin_loss = paddle.nn.TripletMarginLoss(p=p,
                                                       eps=eps,
                                                       margin=margin,
                                                       swap=swap,

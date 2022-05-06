@@ -1305,7 +1305,7 @@ class HingeEmbeddingLoss(Layer):
 
 
 class TripletMarginLoss(Layer):
-    """
+    r"""
     Creates a criterion that measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
     This is used for measuring a relative similarity between samples. A triplet
@@ -1343,6 +1343,7 @@ class TripletMarginLoss(Layer):
                 Default: ``'mean'``
         name: Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
+
     Call Parameters:
         input:Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
@@ -1350,6 +1351,7 @@ class TripletMarginLoss(Layer):
                 The shape of label is the same as the shape of input.
         negative:Negative tensor, the data type is float32 or float64.
                 The shape of label is the same as the shape of input.
+
     Returns:
         Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
 
