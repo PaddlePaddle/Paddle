@@ -1259,8 +1259,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     // TODO(DannyIsFunny): add InferShape method
     // this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
     (*pt_kernel_)(impl_->getKernelContext());
-
-    LOG(INFO) << "done";
   } else if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
