@@ -234,8 +234,10 @@ class EagerUtils {
     * Fill Zero
     * **/
   static void FillZeroForEmptyGradInputs(
-      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads,
-      const std::vector<std::vector<GradSlotMeta>>& grad_out_metas);
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>* out_grads,
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& grad_out_metas);
 };
 
 }  // namespace egr

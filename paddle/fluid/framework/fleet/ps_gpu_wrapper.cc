@@ -630,7 +630,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
-    auto& task_ptrs = device_task_ptrs[dev];
+    auto& task_ptrs = device_task_ptrs[shard_id];
 #endif
 
     int len = prefix_sum[dev][shard_id + 1] - prefix_sum[dev][shard_id];
