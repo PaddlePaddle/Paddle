@@ -1254,18 +1254,17 @@ class TestBf16(unittest.TestCase):
 
     def test_bf16(self):
         def func_isinstance():
-            if fluid.core.is_compiled_with_cuda():
-                cudnn_version = paddle.device.get_cudnn_version()
-                if cudnn_version is not None and cudnn_version >= 8100:
-                    out_fp32 = self.train(enable_amp=False)
-                    out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
-                    out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
-                    self.assertTrue(
-                        np.allclose(
-                            out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
-                    self.assertTrue(
-                        np.allclose(
-                            out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+            if fluid.core.is_compiled_with_cuda(
+            ) and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0)):
+                out_fp32 = self.train(enable_amp=False)
+                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
 
         with _test_eager_guard():
             func_isinstance()
