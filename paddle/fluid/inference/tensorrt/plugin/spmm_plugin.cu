@@ -232,7 +232,7 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
   std::cout << "compressed size: " << *compressed_size << std::endl;
   cudaMalloc(dest, *compressed_size);
   paddle::platform::dynload::cusparseLtSpMMACompress2(
-      &handle, &matB, 0, CUSPARSE_OPERATION_NON_TRANSPOSE, src, *dest, nullptr);
+      &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
@@ -582,8 +582,8 @@ void SpmmPluginDynamic::configurePlugin(
                                            "inDims0.d[2] should be 1"));
     PADDLE_ENFORCE_EQ(inDims0.d[3], 1, platform::errors::InvalidArgument(
                                            "inDims0.d[3] should be 1"));
-    const int BS = inputs->max.d[0];
-    m_max_ = BS; 
+    const int BS_Seq = inputs->max.d[0];
+    m_max_ = BS_Seq; 
     }
     // The optimal algorighm id is for m = m_max_
     // To Do: configurePlugin takes time when m is changed
@@ -663,9 +663,31 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
       const auto* const input = static_cast<const float*>(inputs[0]);
       auto* output = static_cast<float*>(outputs[0]);
+      size_t in_size = 1;
+      size_t out_size = 1;
+      for (int i=0; i<inputDesc->dims.nbDims; i++) {
+        in_size = in_size * inputDesc->dims.d[i];
+      }
+      for (int i=0; i<outputDesc->dims.nbDims; i++) {
+        out_size = out_size * outputDesc->dims.d[i];
+      }
+      void* out_host = new char[out_size * 4];
+      void* in_host = new char[in_size * 4];
+      cudaMemcpy(in_host, input, in_size * 4, cudaMemcpyDeviceToHost);
+      std::cout << "inputs:";
+      for (int i=0; i<in_size; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<float*>(in_host)[i]);
+      }
+      std::cout << std::endl;
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
+      cudaMemcpy(out_host, output, out_size * 4, cudaMemcpyDeviceToHost);
+      std::cout << "outputs:";
+      for (int i=0; i<out_size; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<float*>(out_host)[i]);
+      }
+      std::cout << std::endl;
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);

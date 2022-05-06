@@ -82,22 +82,30 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   //                        1.0, 0, 0, 4.4};
   float raw_weight[512];
   for (int i=0; i<128; i++) {
+    if (i % 16 <= 7) {
     raw_weight[4*i] = 1.0;
     raw_weight[4*i+1] = 0.0;
     raw_weight[4*i+2] = 0.0;
     raw_weight[4*i+3] = 4.0;
+    }
+    else {
+    raw_weight[4*i] = 0.0;
+    raw_weight[4*i+1] = 2.0;
+    raw_weight[4*i+2] = 3.0;
+    raw_weight[4*i+3] = 0.0;
+    }
   }
-  
+  /*  
   float raw_weight_transpose[512];
   for (int i=0; i<32; i++) {
     for (int j=0; j<16; j++) {
       raw_weight_transpose[j*32+i] = raw_weight[i*16+j];
     }
   }
-  
+  */
   float raw_bias[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   std::vector<void *> buffers(2);  // TRT binded inputs
-  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight_transpose, 512);
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 512);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 16);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape() << std::endl;
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
@@ -150,10 +158,16 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   ASSERT_EQ(dims.nbDims, 4);
   ASSERT_EQ(dims.d[1], 16);
 
-  ASSERT_EQ(y_cpu[0], 80); 
-  ASSERT_EQ(y_cpu[1], 0);
-  ASSERT_EQ(y_cpu[2], 0);
-  ASSERT_EQ(y_cpu[3], 352);
+  std::cout << "output: ";
+  for (int i=0; i<256; i++) {
+    std::cout << " " << y_cpu[i];
+  }
+
+  ASSERT_EQ(y_cpu[0], 136);
+  ASSERT_EQ(y_cpu[1], 104);
+  ASSERT_EQ(y_cpu[32], 136);
+  ASSERT_EQ(y_cpu[64], 136);
+  ASSERT_EQ(y_cpu[96], 136);
 }
 
 }  // namespace tensorrt

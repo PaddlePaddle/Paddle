@@ -225,15 +225,15 @@ class SparseFcOpConverter : public OpConverter {
     if (op_desc.HasAttr("transpose_Y")) {
       transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
     }
-    transpose_y = true;
+    // transpose_y = true;
     int weight_w, weight_h;
     if (!transpose_y) {
       std::vector<float> weight_data_tmp;
       weight_data_tmp.reserve(Y_t->numel());
       memcpy(weight_data_tmp.data(), weight_data, Y_t->numel() * sizeof(float));
       tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
-      weight_w = n;
-      weight_h = m;
+      weight_w = m;
+      weight_h = n;
     } else {
       weight_w = m;
       weight_h = n;
