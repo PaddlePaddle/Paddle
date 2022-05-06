@@ -63,7 +63,7 @@ g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda:
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
-    Determines whether dtype of output tensor is as expected.
+    Determines whether is dtype of output tensor is as expected.
 
     Args:
         api_fn(callable):  paddle api function
@@ -1300,7 +1300,7 @@ class OpTest(unittest.TestCase):
         if hasattr(self, 'attrs') and bool(self.attrs.get('use_xpu', False)):
             return
         for op_desc, father_op_desc in reversed(need_run_ops):
-            # The first one is the forward op
+            # The first ones is the forward op
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
             if op_desc.type() == self.op_type:
                 if has_infer_inplace:
@@ -1559,7 +1559,7 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "eager checker"
 
             def calculate_output(self):
-                # we only check end2end api when check_eager=True
+                # we only check end2end api when check_eager=False
                 with _test_eager_guard():
                     self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
