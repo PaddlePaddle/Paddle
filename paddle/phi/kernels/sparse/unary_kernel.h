@@ -19,13 +19,31 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/utils.h"
+
+#define DECLARE_SPARSE_UNARY_KERNEL(name)                                      \
+  template <typename T, typename Context>                                      \
+  void SparseCoo##name##Kernel(                                                \
+      const Context& dev_ctx, const SparseCooTensor& x, SparseCooTensor* out); \
+                                                                               \
+  template <typename T, typename Context>                                      \
+  void SparseCsr##name##Kernel(                                                \
+      const Context& dev_ctx, const SparseCsrTensor& x, SparseCsrTensor* out);
 
 namespace phi {
 namespace sparse {
 
+DECLARE_SPARSE_UNARY_KERNEL(Relu)
 DECLARE_SPARSE_UNARY_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_KERNEL(Sin)
+
+template <typename T, typename Context>
+SparseCooTensor SparseRelu(const Context& dev_ctx, const SparseCooTensor& x) {
+  DenseTensor indices, values;
+  SparseCooTensor coo(indices, values, x.dims());
+  SparseCooReluKernel<T, Context>(dev_ctx, x, &coo);
+  return coo;
+}
+
 
 }  // namespace sparse
 }  // namespace phi
