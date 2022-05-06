@@ -55,58 +55,49 @@ def ParseArguments():
 ## Code Gen Templates ##
 ########################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = \
-"""
-   void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{
-     {} = egr::TensorWrapper({}, full_reserved, {});
-   }}
+"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{
+    {} = egr::TensorWrapper({}, full_reserved, {});
+  }}
 """
 
 PLAIN_TENSOR_MEMBER_TEMPLATE = \
-"""
-       egr::TensorWrapper {};
+"""  egr::TensorWrapper {};
 """
 
 CLEAR_TENSOR_WRAPPER_TEMPLATE = \
-"""
-       {}.clear();
+"""    {}.clear();
 """
 
 SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = \
-"""
-       void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
-         for(const auto& eager_tensor : {}) {{
-            {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
-         }};
-       }}
+"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
+    for(const auto& eager_tensor : {}) {{
+      {}.emplace_back(egr::TensorWrapper(eager_tensor, full_reserved, {}));
+    }};
+  }}
 """
 
 VECTOR_TENSOR_MEMBER_TEMPLATE = \
-"""
-       std::vector<egr::TensorWrapper> {};
+"""  std::vector<egr::TensorWrapper> {};
 """
 
 CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE = \
-"""
-       for (auto& tw : {}) {{
-         tw.clear();
-       }}
+"""    for (auto& tw : {}) {{
+      tw.clear();
+    }}
 """
 
 SET_ATTR_METHOD_TEMPLATE = \
-"""
-       void SetAttribute{}({} {}) {{
-         {} = {};
-       }}
+"""  void SetAttribute{}({} {}) {{
+    {} = {};
+  }}
 """
 
 ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE = \
-"""
-       {} {} = {};
+"""  {} {} = {};
 """
 
 ATTRIBUTE_MEMBER_TEMPLATE = \
-"""
-       {} {};
+"""  {} {};
 """
 
 NODE_DECLARATION_TEMPLATE = \
@@ -114,122 +105,114 @@ NODE_DECLARATION_TEMPLATE = \
 class {} : public egr::GradNodeBase {{
  public:
   {}() : egr::GradNodeBase() {{}}
-  {}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : 
+  {}(size_t bwd_in_slot_num, size_t bwd_out_slot_num) :
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
   ~{}() override = default;
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> operator()(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
   std::string name() override {{ return \"{}\"; }}
-  
+
   void ClearTensorWrappers() override {{
-      {}
-      SetIsTensorWrappersCleared(true);
+{}
+    SetIsTensorWrappersCleared(true);
   }}
 
   std::shared_ptr<GradNodeBase> Copy() const override {{
-      auto copied_node = std::shared_ptr<{}>(new {}(*this));
-      
-      return copied_node;
+    auto copied_node = std::shared_ptr<{}>(new {}(*this));
+    return copied_node;
   }}
-  
-  // SetTensorWrapperX, SetTensorWrapperY, ...
-  {}
-  // SetAttributes
-  {}
 
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+{}
+  // SetAttributes
+{}
  private:
   // TensorWrappers
-  {}
-
+{}
   // Attributes
-  {}
-}};
+{}}};
 """
 
 GRAD_FUNCTION_TEMPLATE = \
 """
 paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
-    // Fill Zero For GradIn Tensors
+  // Fill Zero For GradIn Tensors
 {}
-    // Apply Gradient Hooks
-    auto hooked_grads = ApplyGradientHooks(grads);
+  // Apply Gradient Hooks
+  auto hooked_grads = ApplyGradientHooks(grads);
 
-    // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-{}
-
-    // Call grad_api function
-    VLOG(3) << \"Final State Running: \" << \"{}\";
+  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
 {}
 
-    // Get Output
+  // Call grad_api function
+  VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
 
-    // Get GradIn autograd_meta
+  // Get Output
 {}
-
-    // Get GradOut autograd_meta
+  // Get GradIn autograd_meta
 {}
-    // Compute Require Grad
+  // Get GradOut autograd_meta
 {}
-    // Create Grad Node
+  // Compute Require Grad
 {}
-
-    // Return
+  // Create Grad Node
 {}
-
+  // Return
+{}
 }}
 """
 
 FORWARD_FUNCTION_TEMPLATE = \
 """
 {} {}({}) {{
-    // Dygraph Record Event
+  // Dygraph Record Event
 {}
-    // AMP Logic
+  // AMP Logic
 {}
-    // Get Input AutoGradMeta
+  // Get Input AutoGradMeta
 {}
-    // Forward API Call
-    VLOG(3) << \"Final State Running: \" << \"{}\";
+  // Forward API Call
+  VLOG(3) << \"Final State Running: \" << \"{}\";
 {}
-    // Get Outputs
+  // Get Outputs
 {}
-    // Get Output AutoGradMeta
+  // Get Output AutoGradMeta
 {}
-    bool trace_backward = egr::Controller::Instance().HasGrad();
-    bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
 
-    // Check Inplace if needed
+  // Check Inplace if needed
 {}{}
-    // Node Creation
+  // Node Creation
 {}
-    // Returns
-    return {};
+  // Returns
+  return {};
 }}
 """
 
 FORWARD_BODY_TEMPLATE = \
-"""    if(require_any_grad) {{
+"""  if(require_any_grad) {{
 {}
-        egr::EagerUtils::PassStopGradient({});
+    egr::EagerUtils::PassStopGradient({});
 
-        // Node Construction
+    // Node Construction
 {}
-        // SetAttributes if needed
+    // SetAttributes if needed
 {}
-        // Set TensorWrappers for Forward Inputs if needed
+    // Set TensorWrappers for Forward Inputs if needed
 {}
-        // SetGradOutMeta & SetEdges
+    // SetGradOutMeta & SetEdges
 {}
-        // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-{}
-{}
+    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
 {}
 {}
-        // Set TensorWrappers for Forward Outputs if needed
 {}
-    }}
+{}
+    // Set TensorWrappers for Forward Outputs if needed
+{}
+  }}
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = \
@@ -322,29 +305,29 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_
 
 CHECK_INPLACE_TEMPLATE = \
 """
-    egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
+  egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
 """
 
 BUMP_INPLACE_VERSION_TEMPLATE = \
 """
-    // Bump Inplace Version
-    {}.bump_inplace_version();
-    VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
+  // Bump Inplace Version
+  {}.bump_inplace_version();
+  VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
 
 AMP_LOGIC_TEMPLATE = \
-"""    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
-        VLOG(5) << "Check and Prepare For AMP";
-        {}
-        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
-        {}
-        {}
-        {}
-        {{
-            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentTracer(), paddle::imperative::AmpLevel::O0);
-            {}
-        }}
+"""  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+    VLOG(5) << "Check and Prepare For AMP";
+    {}
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+    {}
+    {}
+    {}
+    {{
+      paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentTracer(), paddle::imperative::AmpLevel::O0);
+      {}
     }}
+  }}
 """
 
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
@@ -1036,8 +1019,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list_str = "".join(
             amp_tensors_vector_optional_list)
         amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
-        amp_autocast_list_str = "        ".join(
-            amp_autocast_list) + "        " + "        ".join(
+        amp_autocast_list_str = "    ".join(
+            amp_autocast_list) + "    " + "    ".join(
                 amp_autocast_optional_list)
         amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
         amp_call_str = f"return {forward_function_name}({amp_inputs_call_args_str});"

@@ -178,7 +178,7 @@ def GetForwardFunctionName(string):
 
 
 def GetIndent(num):
-    tab = "    "
+    tab = "  "
     return "".join([tab for i in range(num)])
 
 
