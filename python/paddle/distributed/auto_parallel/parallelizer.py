@@ -230,7 +230,7 @@ class AutoParallelizer:
             g_process_group_map = copy.deepcopy(_g_process_group_map)
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
-            for process_mesh in dist_context._process_meshes:
+            for process_mesh in self._dist_context._process_meshes:
                 _g_process_group_map[0].add_ranks(process_mesh.processes)
         return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map
 
@@ -296,6 +296,7 @@ class AutoParallelizer:
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )
 
+            print("dist_context", dist_context)
             for rank in world_process_group.ranks:
                 dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map = self._get_dist_program(
                     rank, dist_context)

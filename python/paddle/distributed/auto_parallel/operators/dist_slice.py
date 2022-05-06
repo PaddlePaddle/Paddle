@@ -135,11 +135,6 @@ class DistributedSliceImpl(DistributedOperatorImpl):
             for i in range(len(out_dims_mapping)):
                 compatible_dim_mapping = compute_compatible_dim_mapping(
                     [out_dims_mapping[i], ref_dims_mapping[i]])
-                print(
-                    compatible_dim_mapping,
-                    out_dims_mapping[i],
-                    ref_dims_mapping[i],
-                    flush=True)
                 if compatible_dim_mapping is None:
                     continue
                 if ref_dims_mapping[i] != compatible_dim_mapping:

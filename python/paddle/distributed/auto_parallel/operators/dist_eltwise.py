@@ -152,7 +152,7 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
         compatible_dims_mapping = compute_compatible_dims_mapping(
             dims_mapping_list)
-        if compatible_dims_mapping:
+        if compatible_dims_mapping is None:
             return False
 
         for arg_name in input_arg_names:

@@ -194,10 +194,10 @@ class DistributedContext:
 
     def initialize(self):
         if not self._is_initialized:
-            # self._serial_main_program = self._original_serial_main_program.clone(
-            # )
-            # self._serial_startup_program = self._original_serial_startup_program.clone(
-            # )
+            self._serial_main_program = self._original_serial_main_program.clone(
+            )
+            self._serial_startup_program = self._original_serial_startup_program.clone(
+            )
             self._serial_main_program = self._original_serial_main_program
             self._serial_startup_program = self._original_serial_startup_program
             self._serial_loss = self._original_serial_loss
