@@ -29,6 +29,7 @@ from paddle import _C_ops
 
 
 def rrelu_inference(x, lower, upper):
+    # use copy of input to avoid changing the value of input in the following calculation
     x_t = x.copy()
     alpha = (lower + upper) / 2.0
     return np.where(x_t < 0, alpha * x_t, x_t)
@@ -45,6 +46,8 @@ def check_element_range_of_rrelu_output_in_training(input: np.ndarray, op_output
     return: True: the test is passed;
             False: the test is not passed
     """
+    # use copy of input to avoid changing the value of input in the following calculation
+    input, op_output = input.copy(), op_output.copy()
     passed_1 = np.allclose(input[input >= 0], op_output[input >= 0])
     if passed_1 == False:
         return False
@@ -74,6 +77,8 @@ def check_negative_elements_distribution_of_rrelu_output_in_training(input: np.n
     out = np.where(x < 0, 
             np.random.uniform(lower, upper, x.shape) * x, x)
     """
+    # use copy of input to avoid changing the value of input in the following calculation
+    input, op_output = input.copy(), op_output.copy()
     num_negative_elements = np.sum(input < 0)   
     one_part_length = (upper - lower) / num_segments
     special_alphas = []
@@ -92,6 +97,224 @@ def check_negative_elements_distribution_of_rrelu_output_in_training(input: np.n
     return True
 
 
+# class TestRReluOpInference(OpTest):
+#     """
+#     test the inference mode of rrelu op,
+#     you can subclass this class and modify "setUp" method
+#     as you want
+#     """
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.1
+#         self.upper = 0.3
+#         self.fix_seed = True
+#         self.seed = 1
+#         self.dtype = "float64"
+#         self.x_shape = [2, 3, 4, 5]
+#         self.x_low = -1
+#         self.x_high = 1
+#         self.init()
+
+#     def init(self):
+#         x_np = np.random.uniform(self.x_low, self.x_high, self.x_shape).astype(self.dtype)
+#         out_np = rrelu_inference(x_np, self.lower, self.upper)
+#         mask_np = np.ones(self.x_shape).astype(self.dtype)
+#         mask_np[x_np < 0] = (self.lower + self.upper) / 2.0
+
+#         self.inputs = {'X': x_np}
+#         self.outputs = {'Out': out_np, 'Mask': mask_np}
+#         self.attrs = {
+#             'lower': self.lower,
+#             "upper": self.upper,
+#             "is_test": True,
+#             "fix_seed": self.fix_seed,
+#             "seed": self.seed
+#         }
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
+
+
+# class TestRReluOpInference2(TestRReluOpInference):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.3
+#         self.upper = 0.99
+#         self.fix_seed = True
+#         self.seed = 198
+#         self.dtype = "float64"
+#         self.x_shape = [20, 10]
+#         self.x_low = -9
+#         self.x_high = -1
+#         self.init()
+
+
+# class TestRReluOpInference3(TestRReluOpInference):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.8
+#         self.upper = 0.99
+#         self.fix_seed = False
+#         self.seed = 198
+#         self.dtype = "float32"
+#         self.x_shape = [2, 100]
+#         self.x_low = -9
+#         self.x_high = 10
+#         self.init()
+
+#     def test_check_output(self):
+#         self.check_output(atol=1e-3)
+
+
+# class TestRReluOpTraining(OpTest):
+#     """
+#     test the training mode of rrelu op, but 
+#     set lower to be equal to upper,
+#     you can subclass this class and modify "setUp" method
+#     as you want
+#     """
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.1
+#         self.fix_seed = True
+#         self.seed = 1
+#         self.dtype = "float64"
+#         self.x_shape = [2, 3, 4, 5]
+#         self.x_low = -1
+#         self.x_high = 1
+#         self.init()
+
+#     def init(self):
+#         x_np = np.random.uniform(self.x_low, self.x_high, self.x_shape).astype(self.dtype)
+#         out_np = rrelu_inference(x_np, self.lower, self.lower)
+#         mask_np = np.ones(self.x_shape).astype(self.dtype)
+#         mask_np[x_np < 0] = self.lower 
+
+#         self.inputs = {'X': x_np}
+#         self.outputs = {'Out': out_np, 'Mask': mask_np}
+#         self.attrs = {
+#             'lower': self.lower,
+#             "upper": self.lower,
+#             "is_test": False,
+#             "fix_seed": self.fix_seed,
+#             "seed": self.seed
+#         }
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def test_check_grad(self):
+#         self.check_grad(['X'], 'Out')
+
+
+# class TestRReluOpTraining2(TestRReluOpTraining):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.897
+#         self.fix_seed = True
+#         self.seed = 123
+#         self.dtype = "float64"
+#         self.x_shape = [11, 4, 5]
+#         self.x_low = -10
+#         self.x_high = 10
+#         self.init()
+
+
+# class TestRReluOpTraining3(TestRReluOpTraining):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.lower = 0.0786
+#         self.fix_seed = False
+#         self.seed = 123
+#         self.dtype = "float64"
+#         self.x_shape = [2, 3, 4, 5]
+#         self.x_low = -100
+#         self.x_high = 10
+#         self.init()
+
+
+# class TestRReluOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.inputs = {'X': np.random.random((32, 64)).astype("float64")}
+#         self.attrs = {
+#             'lower': 0.0, 'upper': 0.8, 
+#             'fix_seed': False, 'is_test': False}
+#         self.outputs = {
+#             'Out': self.inputs['X'],
+#             'Mask': np.ones((32, 64)).astype("float64")
+#         }    
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def test_check_grad_normal(self):
+#         self.check_grad(['X'], 'Out')
+
+
+# class TestRReluOpInput1d(OpTest):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.inputs = {'X': np.random.random((2000, )).astype("float64")}
+#         self.attrs = {
+#             'lower': 0.2, 'upper': 0.7,
+#             'fix_seed': True, 'is_test': False}
+#         self.outputs = {
+#             'Out': self.inputs['X'],
+#             'Mask': np.ones((2000)).astype('float64')
+#         }
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def test_check_grad_normal(self):
+#         self.check_grad(['X'], 'Out')
+
+
+# class TestRReluOp2(TestRReluOp):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.inputs = {'X': np.random.uniform(-100, -10, [19, 3, 4]).astype('float64')}
+#         self.attrs = {
+#             'lower': 0, 'upper': 0,
+#             'fix_seed': True, 'is_test': False}
+#         self.outputs = {
+#             'Out': np.zeros([19, 3, 4]).astype('float64'),
+#             'Mask': np.zeros([19, 3, 4]).astype('float64')
+#         }
+
+
+# class TestRReluOp3(TestRReluOp):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.inputs = {'X': np.random.uniform(-10, 10, [2, 30, 4]).astype('float64')}
+#         self.attrs = {
+#             'lower': 1, 'upper': 1,
+#             'fix_seed': False, 'is_test': False}
+#         self.outputs = {
+#             'Out': self.inputs['X'],
+#             'Mask': np.ones([2, 30, 4]).astype('float64')
+#         }
+
+
+# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
+# class TestRReluOp9(OpTest):
+#     def setUp(self):
+#         self.op_type = "rrelu"
+#         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+#         self.attrs = {
+#             'is_test': False
+#         }
+#         self.outputs = {'Out': self.inputs['X']}
+
+#     def test_check_output(self):
+#         self.check_output()
+
+##################################################################3333
+#The following tests are passed 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or not core.op_support_gpu("rrelu"),
     "core is not compiled with CUDA or core is not support rrelu")
@@ -109,7 +332,6 @@ class TestFP16RReluOp(OpTest):
         self.attrs = {
             'lower': self.lower,
             'upper': self.upper,
-            'fix_seed': self.fix_seed,
             'is_test': True
         }
         self.outputs = {'Out': out_np, 'Mask': mask_np}
@@ -118,7 +340,6 @@ class TestFP16RReluOp(OpTest):
         self.x_shape = [32, 64]
         self.lower = 0.17
         self.upper = 0.89
-        self.fix_seed = True
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
@@ -133,7 +354,6 @@ class TestFP16RReluOp2(TestFP16RReluOp):
         self.x_shape = [21, 3, 7]
         self.lower = 0.1
         self.upper = 0.127
-        self.fix_seed = False
 
 
 class TestBF16RReluOp(OpTest):
@@ -149,8 +369,9 @@ class TestBF16RReluOp(OpTest):
         mask_np[x_np < 0] = self.lower 
         self.inputs = {'X': convert_float_to_uint16(x_np)}
         self.attrs = {
-            'lower': self.lower, 'upper': self.upper, 
-            'fix_seed': False, 'is_test': False
+            'lower': self.lower, 
+            'upper': self.upper, 
+            'is_test': False
         }
         self.outputs = {
             'Out': convert_float_to_uint16(out_np),
@@ -330,4 +551,5 @@ class TestRReluCAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
