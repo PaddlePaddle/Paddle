@@ -24,6 +24,8 @@ import os
 
 from github import Github
 
+token = os.getenv('GITHUB_API_TOKEN')
+
 
 def get_pull(pull_id):
     """
@@ -33,7 +35,7 @@ def get_pull(pull_id):
     Returns:
         github.PullRequest.PullRequest
     """
-    github = Github(timeout=60)
+    github = Github(token, timeout=60)
     repo = github.get_repo('PaddlePaddle/Paddle')
     pull = repo.get_pull(pull_id)
 

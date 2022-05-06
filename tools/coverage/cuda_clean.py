@@ -30,7 +30,8 @@ def get_pull(pull_id):
     Returns:
         github.PullRequest.PullRequest: The pull request.
     """
-    github = Github(timeout=60)
+    token = os.getenv('GITHUB_API_TOKEN')
+    github = Github(token, timeout=60)
     repo = github.get_repo('PaddlePaddle/Paddle')
     pull = repo.get_pull(pull_id)
 
