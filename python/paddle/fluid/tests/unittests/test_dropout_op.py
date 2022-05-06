@@ -22,7 +22,7 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
 import os
 
 from paddle import _C_ops
@@ -951,6 +951,7 @@ class TestDropoutBackward(unittest.TestCase):
         return mask.astype("float32")
 
     def test_backward_downscale_in_infer(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
@@ -977,6 +978,7 @@ class TestDropoutBackward(unittest.TestCase):
                         ), self.cal_grad_downscale_in_infer(mask.numpy())))
 
     def test_backward_upscale_train(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
@@ -1008,6 +1010,7 @@ class TestDropoutBackward(unittest.TestCase):
                         ), self.cal_grad_upscale_train(mask.numpy(), prob)))
 
     def test_backward_upscale_train_2(self):
+        _enable_legacy_dygraph()
         for place in self.places:
             with fluid.dygraph.guard(place):
 
@@ -1022,6 +1025,23 @@ class TestDropoutBackward(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(input.gradient(
                     ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+    def test_backward_upscale_train_2_eager(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                with _test_eager_guard():
+
+                    prob = 0.3
+                    input = paddle.uniform([40, 40], dtype="float32")
+                    input.stop_gradient = False
+                    out, mask = _C_ops.final_state_dropout(
+                        input, None, 0.3, False, "upscale_in_train", 0, False)
+
+                    out.backward()
+
+                    self.assertTrue(
+                        np.allclose(input.gradient(
+                        ), self.cal_grad_upscale_train(mask.numpy(), prob)))
 
 
 class TestRandomValue(unittest.TestCase):

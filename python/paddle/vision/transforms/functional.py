@@ -370,13 +370,13 @@ def adjust_brightness(img, brightness_factor):
     """Adjusts brightness of an Image.
 
     Args:
-        img (PIL.Image|np.array): Image to be adjusted.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be adjusted.
         brightness_factor (float): How much to adjust the brightness. Can be
             any non negative number. 0 gives a black image, 1 gives the
             original image while 2 increases the brightness by a factor of 2.
 
     Returns:
-        PIL.Image or np.array: Brightness adjusted image.
+        PIL.Image|np.array|paddle.Tensor: Brightness adjusted image.
 
     Examples:
         .. code-block:: python
@@ -392,28 +392,31 @@ def adjust_brightness(img, brightness_factor):
             converted_img = F.adjust_brightness(fake_img, 0.4)
             print(converted_img.size)
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.adjust_brightness(img, brightness_factor)
-    else:
+    elif _is_numpy_image(img):
         return F_cv2.adjust_brightness(img, brightness_factor)
+    else:
+        return F_t.adjust_brightness(img, brightness_factor)
 
 
 def adjust_contrast(img, contrast_factor):
     """Adjusts contrast of an Image.
 
     Args:
-        img (PIL.Image|np.array): Image to be adjusted.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be adjusted.
         contrast_factor (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives a solid gray image, 1 gives the
             original image while 2 increases the contrast by a factor of 2.
 
     Returns:
-        PIL.Image or np.array: Contrast adjusted image.
+        PIL.Image|np.array|paddle.Tensor: Contrast adjusted image.
 
     Examples:
         .. code-block:: python
@@ -429,28 +432,31 @@ def adjust_contrast(img, contrast_factor):
             converted_img = F.adjust_contrast(fake_img, 0.4)
             print(converted_img.size)
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.adjust_contrast(img, contrast_factor)
-    else:
+    elif _is_numpy_image(img):
         return F_cv2.adjust_contrast(img, contrast_factor)
+    else:
+        return F_t.adjust_contrast(img, contrast_factor)
 
 
 def adjust_saturation(img, saturation_factor):
     """Adjusts color saturation of an image.
 
     Args:
-        img (PIL.Image|np.array): Image to be adjusted.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be adjusted.
         saturation_factor (float):  How much to adjust the saturation. 0 will
             give a black and white image, 1 will give the original image while
             2 will enhance the saturation by a factor of 2.
 
     Returns:
-        PIL.Image or np.array: Saturation adjusted image.
+        PIL.Image|np.array|paddle.Tensor: Saturation adjusted image.
 
     Examples:
         .. code-block:: python
@@ -467,15 +473,18 @@ def adjust_saturation(img, saturation_factor):
             print(converted_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.adjust_saturation(img, saturation_factor)
-    else:
+    elif _is_numpy_image(img):
         return F_cv2.adjust_saturation(img, saturation_factor)
+    else:
+        return F_t.adjust_saturation(img, saturation_factor)
 
 
 def adjust_hue(img, hue_factor):
@@ -489,7 +498,7 @@ def adjust_hue(img, hue_factor):
     interval `[-0.5, 0.5]`.
 
     Args:
-        img (PIL.Image|np.array): Image to be adjusted.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be adjusted.
         hue_factor (float):  How much to shift the hue channel. Should be in
             [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
             HSV space in positive and negative direction respectively.
@@ -497,7 +506,7 @@ def adjust_hue(img, hue_factor):
             with complementary colors while 0 gives the original image.
 
     Returns:
-        PIL.Image or np.array: Hue adjusted image.
+        PIL.Image|np.array|paddle.Tensor: Hue adjusted image.
 
     Examples:
         .. code-block:: python
@@ -514,15 +523,18 @@ def adjust_hue(img, hue_factor):
             print(converted_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.adjust_hue(img, hue_factor)
-    else:
+    elif _is_numpy_image(img):
         return F_cv2.adjust_hue(img, hue_factor)
+    else:
+        return F_t.adjust_hue(img, hue_factor)
 
 
 def rotate(img,
@@ -677,3 +689,39 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             img = np.array(img).astype(np.float32)
 
         return F_cv2.normalize(img, mean, std, data_format, to_rgb)
+
+
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image with given value.
+    
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): input Tensor image. 
+                 For Tensor input, the shape should be (C, H, W). For np.array input, 
+                 the shape should be (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor | np.array): value used to replace the pixels in erased region. It 
+                should be np.array when img is np.array or PIL.Image.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor | np.array | PIL.Image: Erased image. The type is same with input image.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                
+                fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
+                values = paddle.zeros((1,1,1), dtype=paddle.float32)
+                result = paddle.vision.transforms.erase(fake_img, 4, 4, 3, 3, values)
+
+    """
+    if _is_tensor_image(img):
+        return F_t.erase(img, i, j, h, w, v, inplace=inplace)
+    elif _is_pil_image(img):
+        return F_pil.erase(img, i, j, h, w, v, inplace=inplace)
+    else:
+        return F_cv2.erase(img, i, j, h, w, v, inplace=inplace)

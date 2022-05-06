@@ -21,6 +21,10 @@ void WorkQueueOptions::Validate() const {
       name.find('_'), std::string::npos,
       platform::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
+  PADDLE_ENFORCE_EQ(
+      allow_spinning == false && always_spinning == true, false,
+      platform::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
+                                        "be true when always_spinning is set"));
 }
 
 namespace {
@@ -40,7 +44,8 @@ class WorkQueueImpl : public WorkQueue {
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
-                                       options_.allow_spinning);
+                                       options_.allow_spinning,
+                                       options_.always_spinning);
   }
 
   virtual ~WorkQueueImpl() {
@@ -127,8 +132,9 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queues_[idx] = new (&queues_storage_[idx]) NonblockingThreadPool(
-        options.name, options.num_threads, options.allow_spinning);
+    queues_[idx] = new (&queues_storage_[idx])
+        NonblockingThreadPool(options.name, options.num_threads,
+                              options.allow_spinning, options.always_spinning);
   }
 }
 
