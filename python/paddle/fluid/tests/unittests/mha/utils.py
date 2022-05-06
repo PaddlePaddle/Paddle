@@ -15,7 +15,17 @@
 
 from __future__ import print_function
 
+import paddle
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.nn import Linear
 import numpy as np
+
+
+def skip_unit_test():
+    cudnn_version = paddle.device.get_cudnn_version()
+    if ((cudnn_version >= 8300) and paddle.device.is_compiled_with_cuda()):
+        return False
+    return True
 
 
 def get_dtype_str(dtype):
@@ -126,3 +136,96 @@ def generate_varlen_data(seqlens, embed_dim, dtype, low=-0.5, high=0.5):
     value = np.concatenate(values, axis=1)
 
     return query, key, value
+
+
+class MultiHeadAttentionRef(paddle.nn.Layer):
+    def __init__(self,
+                 embed_dim,
+                 num_heads,
+                 dropout=0.,
+                 kdim=None,
+                 vdim=None,
+                 weight_attr=None,
+                 bias_attr=None):
+        super(MultiHeadAttentionRef, self).__init__()
+
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but recieved {}".format(embed_dim))
+        assert num_heads > 0, ("Expected num_heads to be greater than 0, "
+                               "but recieved {}".format(num_heads))
+
+        self.embed_dim = embed_dim
+        self.kdim = kdim if kdim is not None else embed_dim
+        self.vdim = vdim if vdim is not None else embed_dim
+        self.num_heads = num_heads
+        self.dropout = dropout
+
+        self.head_dim = embed_dim // num_heads
+        assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
+
+        self.q_proj = Linear(
+            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+        self.k_proj = Linear(
+            self.kdim, embed_dim, weight_attr, bias_attr=bias_attr)
+        self.v_proj = Linear(
+            self.vdim, embed_dim, weight_attr, bias_attr=bias_attr)
+        self.out_proj = Linear(
+            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+
+    def _convert_attention_mask(self, attn_mask, dtype):
+        if attn_mask is not None and attn_mask.dtype != dtype:
+            attn_mask_dtype = convert_dtype(attn_mask.dtype)
+            if attn_mask_dtype == 'bool' or 'int' in attn_mask_dtype:
+                attn_mask = (paddle.cast(attn_mask, dtype) - 1.0) * 1e9
+            else:
+                attn_mask = paddle.cast(attn_mask, dtype)
+        return attn_mask
+
+    def _prepare_qkv(self, query, key, value):
+        q = self.q_proj(query)
+        q = paddle.tensor.reshape(
+            x=q, shape=[0, 0, self.num_heads, self.head_dim])
+        q = paddle.tensor.transpose(x=q, perm=[0, 2, 1, 3])
+
+        k, v = self.compute_kv(key, value)
+
+        return (q, k, v)
+
+    def compute_kv(self, key, value):
+        k = self.k_proj(key)
+        v = self.v_proj(value)
+        k = paddle.tensor.reshape(
+            x=k, shape=[0, 0, self.num_heads, self.head_dim])
+        k = paddle.tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = paddle.tensor.reshape(
+            x=v, shape=[0, 0, self.num_heads, self.head_dim])
+        v = paddle.tensor.transpose(x=v, perm=[0, 2, 1, 3])
+        return k, v
+
+    def forward(self, query, key=None, value=None, attn_mask=None):
+        key = query if key is None else key
+        value = query if value is None else value
+
+        q, k, v = self._prepare_qkv(query, key, value)
+
+        product = paddle.matmul(
+            x=q * (self.head_dim**-0.5), y=k, transpose_y=True)
+        if attn_mask is not None:
+            attn_mask = self._convert_attention_mask(attn_mask, product.dtype)
+            product = product + attn_mask
+        weights = paddle.nn.functional.softmax(product)
+        if self.dropout:
+            weights = F.dropout(
+                weights,
+                self.dropout,
+                training=self.training,
+                mode="upscale_in_train")
+
+        out = paddle.tensor.matmul(weights, v)
+
+        out = paddle.tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = paddle.tensor.reshape(
+            x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+        out = self.out_proj(out)
+
+        return out
