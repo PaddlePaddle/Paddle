@@ -267,7 +267,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Tensor.numpy() only support cpu tensor."));
-    Py_INCREF(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
 
@@ -335,7 +335,7 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "StringTensor.numpy() only support cpu tensor."));
-    Py_INCREF(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -405,7 +405,7 @@ static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
 
   VLOG(6) << "Finished Reconstructing Tensor from" << src_tensor.name()
           << " to " << self->tensor.name();
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -436,7 +436,7 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -453,7 +453,7 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -505,7 +505,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     }
   }
 
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -535,7 +535,7 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
     }
   }
 
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -559,7 +559,7 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
   dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -600,7 +600,7 @@ static PyObject* tensor__share_underline_tensor_to(TensorObject* self,
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
   src_ptr->set_impl(self->tensor.impl());
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -656,7 +656,7 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   if (self->tensor.is_dense_tensor()) {
@@ -665,7 +665,7 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
   } else {
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -676,7 +676,7 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
                                                            PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   if (self->tensor.is_selected_rows()) {
@@ -684,7 +684,7 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     return ToPyObject(selected_rows);
   } else {
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1110,7 +1110,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                            false);
     }
   }
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1202,7 +1202,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
   accumulation_grad_node->RegisterReduceHook(
       std::make_shared<PyTensorVoidHook>(hook_func));
 
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1218,7 +1218,7 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
     grad_tensor->set_impl(std::make_shared<phi::SelectedRows>());
   }
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1227,7 +1227,7 @@ static PyObject* tensor__clear(TensorObject* self, PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
   self->tensor.reset();
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1256,7 +1256,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                           "Tensor %s has not been initialized", src.name()));
     p_grad->set_impl(src.impl());
   }
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1448,7 +1448,7 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
       grad->initialized()) {
     grad->reset_inplace_version(set_to_zero);
   }
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1481,7 +1481,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Sharing memory in Windows OS is not supported currently"));
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
 #endif
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1524,7 +1524,7 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
                         "cleared the grad inside autograd_meta"));
 
   if (!grad->defined()) {
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   if (grad->is_dense_tensor()) {
@@ -1534,7 +1534,7 @@ static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "this method is only supported for DenseTensor"));
-    Py_IncRef(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1558,7 +1558,7 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
       static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
   tensor_uva(self_tensor, device_id);
 
-  Py_INCREF(Py_None);
+  RETURN_PY_NONE;
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

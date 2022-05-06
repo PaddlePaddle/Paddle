@@ -516,7 +516,7 @@ PyObject* ToPyObject(const std::string& value) {
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize) {
   if (return_py_none_if_not_initialize && !value.initialized()) {
-    Py_INCREF(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   PyObject* obj = nullptr;
@@ -628,7 +628,7 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {
-      Py_INCREF(Py_None);
+      RETURN_PY_NONE;
       PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), Py_None);
     } else {
       PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
@@ -679,7 +679,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value) {
 
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
-    Py_INCREF(Py_None);
+    RETURN_PY_NONE;
     return Py_None;
   }
   PADDLE_THROW(
