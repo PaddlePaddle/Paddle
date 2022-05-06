@@ -2235,6 +2235,7 @@ def soft_margin_loss(input, label,reduction='mean',
         Out = log(1 + exp((-label * input)))
 
     Parameters:
+
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``input``
             should always be the output of sigmod.  Available dtype is float32, float64.
@@ -2251,7 +2252,8 @@ def soft_margin_loss(input, label,reduction='mean',
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
 
     Examples:

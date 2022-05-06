@@ -1308,30 +1308,33 @@ class SoftMarginLoss(Layer):
     Creates a criterion that measures a two-class
     soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
+
     .. math::
         Out = log(1 + exp((-label * input)))
 
     Parameters:
+
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Call Parameters:
-        input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``logit``
+
+        Input (Tensor): The input tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``input``
             is usually the output of Linear layer. Available dtype is float32, float64.
-        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``logit``. The target labels which values should be numbers between 0 and 1.
+        Label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``input``. The target labels which values should be numbers between 0 and 1.
             Available dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``logit`` , else the shape of output is scalar.
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
 
     Returns:
+
         A callable object of SoftMarginLoss
 
     Examples:
