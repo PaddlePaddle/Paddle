@@ -14,8 +14,14 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
-#include "paddle/phi/kernels/sparse/utils.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 #define DEFINE_SPARSE_UNARY_KERNEL(DenseKernelFunc)                      \
   namespace phi {                                                        \
