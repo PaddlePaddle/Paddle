@@ -45,9 +45,27 @@ struct PYBIND11_HIDDEN paddle_variant_caster_visitor
   paddle_variant_caster_visitor(return_value_policy policy, handle parent)
       : policy(policy), parent(parent) {}
 
-  template <class T>
-  handle operator()(T const &src) const {
+  template <class T,
+            typename std::enable_if<!std::is_same<T, std::string>::value,
+                                    bool>::type* = nullptr>
+  handle operator()(T const& src) const {
     return make_caster<T>::cast(src, policy, parent);
+  }
+
+  template <class T,
+            typename std::enable_if<std::is_same<T, std::string>::value,
+                                    bool>::type* = nullptr>
+  handle operator()(T const& src) const {
+    try {
+      return make_caster<T>::cast(src, policy, parent);
+    } catch (std::exception& ex) {
+      VLOG(4) << ex.what();
+      VLOG(4) << src;
+      // UnicodeDecodeError, src is not utf-8 encoded
+      // see details:
+      // https://github.com/pybind/pybind11/blob/master/docs/advanced/cast/strings.rst
+      return PYBIND11_BYTES_FROM_STRING_AND_SIZE(src.data(), src.size());
+    }
   }
 };
 
@@ -105,7 +123,7 @@ struct paddle_variant_caster<V<Ts...>> {
     return load_success_;
   }
 
-  static handle cast(Type const &src, return_value_policy policy,
+  static handle cast(Type const& src, return_value_policy policy,
                      handle parent) {
     paddle_variant_caster_visitor visitor(policy, parent);
     return boost::apply_visitor(visitor, src);
