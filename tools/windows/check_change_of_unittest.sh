@@ -15,15 +15,16 @@
 set -e
 set +x
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
+GITHUB_API_TOKEN=$GITHUB_API_TOKEN
 GIT_PR_ID=$AGILE_PULL_ID
 BRANCH=$BRANCH
-if [ "${GIT_PR_ID}" == "" ];then
+if [ "${GITHUB_API_TOKEN}" == "" ] || [ "${GIT_PR_ID}" == "" ];then
     exit 0 
 fi
 
 unittest_spec_diff=$(cat $PADDLE_ROOT/deleted_ut | sed 's/^/ - /g')
 if [ "$unittest_spec_diff" != "" ]; then
-    approval_line=`curl https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
