@@ -52,17 +52,18 @@ class RReluOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
-                  "(bool, default false) A flag indicating whether to use a fixed "
-                  "seed to generate random mask. NOTE: DO NOT set this flag to true in "
-                  "training. Setting this flag to true is only useful in "
-                  "unittest or for debug that always the same random sampled "
-                  "values will be generated.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<int>("seed", "RReLU random seed.")
-        .SetDefault(0)
-        .AsExtra();
+    // AddAttr<bool>("fix_seed",
+    //               "(bool, default false) A flag indicating whether to use a fixed "
+    //               "seed to generate random mask. NOTE: DO NOT set this flag to true in "
+    //               "training. Setting this flag to true is only useful in "
+    //               "unittest or for debug that always the same random sampled "
+    //               "values will be generated.")
+    //     .SetDefault(false)
+    //     .AsExtra();
+
+    // AddAttr<int>("seed", "RReLU random seed.")
+    //     .SetDefault(0)
+    //     .AsExtra();
 
     AddAttr<float>("lower", "Lower bound of the uniform distribution.")
         .SetDefault(0.125f)
