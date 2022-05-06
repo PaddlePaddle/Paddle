@@ -103,7 +103,7 @@ PD_REGISTER_KERNEL(elementwise_pow,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 PD_REGISTER_KERNEL(maximum,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MaximumKernel,
                    float,
@@ -113,7 +113,7 @@ PD_REGISTER_KERNEL(maximum,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(minimum,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::MinimumKernel,
                    float,
@@ -125,9 +125,9 @@ PD_REGISTER_KERNEL(minimum,
 PD_REGISTER_KERNEL(
     modulo, GPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
 PD_REGISTER_KERNEL(
-    floor_divide, GPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+    floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow,
-                   GPU,
+                   KPS,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
                    float,

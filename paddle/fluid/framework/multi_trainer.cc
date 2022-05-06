@@ -34,7 +34,6 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
-
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
     need_merge_var_names_.push_back(
