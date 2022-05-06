@@ -175,6 +175,12 @@ class TestTransformsCV2(unittest.TestCase):
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
 
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(), transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
+
     def test_grayscale(self):
         trans = transforms.Compose([transforms.Grayscale()])
         self.do_transform(trans)
@@ -299,6 +305,24 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             transform = transforms.BrightnessTransform('0.1', keys='a')
 
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=0.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=0.8)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=(10, 0.4))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=(3.3, 0.3))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(prob=1.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(value="0")
+
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
         str(transforms.Compose([transforms.Resize((224, 224))]))
@@ -355,6 +379,10 @@ class TestTransformsTensor(TestTransformsCV2):
         trans = transforms.Compose([normalize])
         self.do_transform(trans)
 
+    def test_color_jitter(self):
+        trans = transforms.Compose([transforms.ColorJitter(1.1, 2.2, 0.8, 0.1)])
+        self.do_transform(trans)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -397,6 +425,13 @@ class TestTransformsTensor(TestTransformsCV2):
 
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
+
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(value=(0.5, )),
+            transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -562,6 +597,59 @@ class TestFunctional(unittest.TestCase):
             tensor_cropped_img.numpy().transpose((1, 2, 0)),
             decimal=4)
 
+    def test_color_jitter_sub_function(self):
+        np.random.seed(555)
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(np_img)
+        np_img = pil_img
+
+        np_img_gray = (np.random.rand(28, 28, 1) * 255).astype('uint8')
+        tensor_img_gray = F.to_tensor(np_img_gray)
+
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+
+        def test_adjust_brightness(np_img, tensor_img):
+            result_cv2 = np.array(F.adjust_brightness(np_img, 1.2))
+            result_tensor = F.adjust_brightness(tensor_img, 1.2).numpy()
+            result_tensor = np.transpose(result_tensor * 255,
+                                         (1, 2, 0)).astype('uint8')
+            np.testing.assert_equal(result_cv2, result_tensor)
+
+        # For adjust_contrast / adjust_saturation / adjust_hue the implement is kind
+        # of different between PIL and Tensor. So the results can not equal exactly.
+
+        def test_adjust_contrast(np_img, tensor_img):
+            result_pil = np.array(F.adjust_contrast(np_img, 0.36))
+            result_tensor = F.adjust_contrast(tensor_img, 0.36).numpy()
+            result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff < 1.1)
+
+        def test_adjust_saturation(np_img, tensor_img):
+            result_pil = np.array(F.adjust_saturation(np_img, 1.0))
+            result_tensor = F.adjust_saturation(tensor_img, 1.0).numpy()
+            result_tensor = np.transpose(result_tensor * 255., (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff < 1.1)
+
+        def test_adjust_hue(np_img, tensor_img):
+            result_pil = np.array(F.adjust_hue(np_img, 0.45))
+            result_tensor = F.adjust_hue(tensor_img, 0.45).numpy()
+            result_tensor = np.transpose(result_tensor * 255, (1, 2, 0))
+            diff = np.max(np.abs(result_tensor - result_pil))
+            self.assertTrue(diff <= 16.0)
+
+        for place in places:
+            paddle.set_device(place)
+
+            test_adjust_brightness(np_img, tensor_img)
+            test_adjust_contrast(np_img, tensor_img)
+            test_adjust_saturation(np_img, tensor_img)
+            test_adjust_hue(np_img, tensor_img)
+
     def test_pad(self):
         np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)
@@ -636,6 +724,47 @@ class TestFunctional(unittest.TestCase):
 
         pil_img = Image.fromarray(np_img).convert('YCbCr')
         pil_tensor = F.to_tensor(pil_img)
+
+    def test_erase(self):
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+
+        expected = np_img.copy()
+        expected[10:15, 10:15, :] = 0
+
+        F.erase(np_img, 10, 10, 5, 5, 0, inplace=True)
+        np.testing.assert_equal(np_img, expected)
+
+        pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
+        np.testing.assert_equal(np.array(pil_result), expected)
+
+        np_data = np.random.rand(3, 28, 28).astype('float32')
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            tensor_img = paddle.to_tensor(np_data)
+            expected_tensor = tensor_img.clone()
+            expected_tensor[:, 10:15, 10:15] = paddle.to_tensor([0.88])
+
+            tensor_result = F.erase(tensor_img, 10, 10, 5, 5,
+                                    paddle.to_tensor([0.88]))
+            np.testing.assert_equal(tensor_result.numpy(),
+                                    expected_tensor.numpy())
+
+    def test_erase_backward(self):
+        img = paddle.randn((3, 14, 14), dtype=np.float32)
+        img.stop_gradient = False
+        erased = F.erase(
+            img, 3, 3, 5, 5, paddle.ones(
+                (1, 1, 1), dtype='float32'))
+        loss = erased.sum()
+        loss.backward()
+
+        expected_grad = np.ones((3, 14, 14), dtype=np.float32)
+        expected_grad[:, 3:8, 3:8] = 0.
+        np.testing.assert_equal(img.grad.numpy(), expected_grad)
 
     def test_image_load(self):
         fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype(

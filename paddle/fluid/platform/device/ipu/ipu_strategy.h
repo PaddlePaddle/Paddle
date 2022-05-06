@@ -43,9 +43,6 @@ class IpuStrategy {
   // Flag for fp16, true for pure fp16
   bool enable_fp16 = false;
 
-  // Enable transfer cast Op target from fp32 to fp16 in fp16 mode
-  bool transfer_cast_op = true;
-
   // The mode of Adam/Lamb optimizer
   // false: The standard Adam/Lamb optimizer
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
@@ -125,6 +122,8 @@ class IpuStrategy {
                                           const std::vector<int> &values);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
                    const std::string &domain, int version);
+  void SetCompilationProgressLogger(
+      const std::function<void(int, int)> &logger);
 
   std::string GetOption(const std::string &);
   std::vector<std::string> GetVectorOption(const std::string &);
