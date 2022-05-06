@@ -88,9 +88,11 @@ def append_backward_new(loss_list,
     ad.erase_dots(param_dot)
 
     if len(parameter_list) == 1:
-        params_and_grads = [(paramteter_list, param_bar)]
+        params_and_grads = [(parameter_list, param_bar)]
     else:
-        params_and_grads = zip(parameter_list, param_bar)
+        params_and_grads = []
+        for i, param in enumerate(parameter_list):
+            params_and_grads.append((param, param_bar[i]))
     return params_and_grads
 
 
