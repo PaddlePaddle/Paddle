@@ -393,15 +393,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin::SplitPluginDynamic* slice = new plugin::SplitPluginDynamic(
           axis, output_lengths, with_fp16, true);
         auto* slice_layer = engine_->AddDynamicPlugin(&fc_out, 1, slice);
+        slice_layer->setName(("multihead_matmul_split(Output: " + output_name + ")").c_str());
         
-        
-        auto k_dims = slice_layer->getOutput(1)->getDimensions();
-        VLOG(4) << "k cache before reshape: ";
-        for (int i=0; i<k_dims.nbDims; i++) {
-          VLOG(4) << k_dims.d[i];
-        }
         // reshpe [B, seq, head_number*head_size, 1] to [B, head_number, seq, head_size]
-        
         int head_size = hidden_out / head_number;
         nvinfer1::Dims reshape_dim_0;
         reshape_dim_0.nbDims = 4;
@@ -410,40 +404,64 @@ class MultiheadMatMulOpConverter : public OpConverter {
         reshape_dim_0.d[2] = head_number;
         reshape_dim_0.d[3] = head_size;
 
-        auto k_cache = slice_layer->getOutput(1);
+        // create k cache
+        auto k_dims = slice_layer->getOutput(1)->getDimensions();
+        VLOG(4) << "k cache before reshape: ";
+        for (int i=0; i<k_dims.nbDims; i++) {
+          VLOG(4) << k_dims.d[i];
+        }     
+        auto* k_cache = slice_layer->getOutput(1);
         auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Shuffle, *k_cache);
+        reshape_transpose_layer->setName(("multihead_matmul_k_shuffle(Output: " + output_name + ")").c_str());
         reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
         reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
+        auto* decoder_k_cache =
+            engine_->GetITensor(op_desc.Input("KCache").front());
+        std::vector<nvinfer1::ITensor*> k_cache_inputs;
+        k_cache_inputs.push_back(reshape_transpose_layer->getOutput(0));
+        k_cache_inputs.push_back(decoder_k_cache);
+        auto* k_cache_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, k_cache_inputs.data(), k_cache_inputs.size());
+        k_cache_layer->setName(("multihead_matmul_k_cache_concat(Output: " + output_name + ")").c_str());
+        k_cache_layer->setAxis(2);
         auto out_name = op_desc.Output("KCache")[0];
-        reshape_transpose_layer->getOutput(0)->setName(out_name.c_str());
-        engine_->SetITensor(out_name, reshape_transpose_layer->getOutput(0));
+        k_cache_layer->getOutput(0)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, k_cache_layer->getOutput(0));
         VLOG(3) << "SetITensor for output: " << out_name;
  
-        k_dims = reshape_transpose_layer->getOutput(0)->getDimensions();
-        VLOG(4) << "k cache after reshape: ";
+        k_dims = k_cache_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "k cache after extend and reshape: ";
         for (int i=0; i<k_dims.nbDims; i++) {
           VLOG(4) << k_dims.d[i];
         }
 
+        // create v cache
         auto v_dims = slice_layer->getOutput(2)->getDimensions();
         VLOG(4) << "v cache before reshape: ";
         for (int i=0; i<v_dims.nbDims; i++) {
           VLOG(4) << v_dims.d[i];
         }
-
         auto v_cache = slice_layer->getOutput(2);
         reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Shuffle, *v_cache);
+        reshape_transpose_layer->setName(("multihead_matmul_v_shuffle(Output: " + output_name + ")").c_str());
         reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
         reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
+        auto* decoder_v_cache =
+            engine_->GetITensor(op_desc.Input("VCache").front());
+        std::vector<nvinfer1::ITensor*> v_cache_inputs;
+        v_cache_inputs.push_back(reshape_transpose_layer->getOutput(0));
+        v_cache_inputs.push_back(decoder_v_cache);
+        auto* v_cache_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, v_cache_inputs.data(), v_cache_inputs.size());
+        v_cache_layer->setName(("multihead_matmul_v_cache_concat(Output: " + output_name + ")").c_str());
+        v_cache_layer->setAxis(2);
         out_name = op_desc.Output("VCache")[0];
-        reshape_transpose_layer->getOutput(0)->setName(out_name.c_str());
-        engine_->SetITensor(out_name, reshape_transpose_layer->getOutput(0));
+        v_cache_layer->getOutput(0)->setName(out_name.c_str());
+        engine_->SetITensor(out_name, v_cache_layer->getOutput(0));
         VLOG(3) << "SetITensor for output: " << out_name;
         
-        v_dims = reshape_transpose_layer->getOutput(0)->getDimensions();
-        VLOG(4) << "v cache after reshape: ";
+        v_dims = v_cache_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "v cache after extend and reshape: ";
         for (int i=0; i<v_dims.nbDims; i++) {
           VLOG(4) << v_dims.d[i];
         }

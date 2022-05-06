@@ -191,10 +191,10 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
 
   nvinfer1::DimsExprs output_dims = inputs[0];
   output_dims.d[axis_] = expr_builder.constant(output_length_.at(output_index));
-  VLOG(3) << "output_index: " << output_index;
-  VLOG(3) << "output_dims nbDims: " << output_dims.nbDims;
-  VLOG(3) << "output_dims.d[axis_]: "
-          << output_dims.d[axis_]->getConstantValue() << "; axis_:" << axis_;
+  // VLOG(3) << "output_index: " << output_index;
+  // VLOG(3) << "output_dims nbDims: " << output_dims.nbDims;
+  // VLOG(3) << "output_dims.d[axis_]: "
+  //         << output_dims.d[axis_]->getConstantValue() << "; axis_:" << axis_;
   if (squeeze_ && output_length_.at(output_index) == 1) {
     output_dims.nbDims = output_dims.nbDims - 1;
     for (int i = axis_; i < output_dims.nbDims; i++) {

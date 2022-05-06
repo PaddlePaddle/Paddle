@@ -546,14 +546,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
         //   VLOG(3) << i;
         // }
         
-        if(x=="stack_2.tmp_0" || x=="stack_3.tmp_0" || x.rfind("fill_constant_batch", 0) == 0) {
+        if(x=="stack_2.tmp_0" || x=="stack_3.tmp_0") {
           // std::vector<int64_t> tmp_shape(max_input_shape[x].begin(),
           //                                       max_input_shape[x].end());
-          //t_shape = max_input_shape[x];
-          // VLOG(3) << "set bindings, x=" << x << "; shape:";
-          // for(auto i : t_shape) {
-          //   VLOG(3) << i;
-          // }
+          VLOG(3) << "set bindings, x=" << x << "; shape:";
+          for(auto i : max_input_shape[x]) {
+            VLOG(3) << i;
+          }
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(max_input_shape[x], x, true));
         } else {

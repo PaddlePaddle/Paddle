@@ -975,12 +975,12 @@ nvinfer1::DimsExprs TransformerDecoderPluginDynamic<T>::getOutputDimensions(
   auto in_dims = inputs[0];
   nvinfer1::DimsExprs ret;
   ret.nbDims = 3;
-  // ret.d[0] = in_dims.d[1];
-  // ret.d[1] = in_dims.d[2];
-  // ret.d[2] = in_dims.d[3];
-  ret.d[0] = in_dims.d[0];
-  ret.d[1] = in_dims.d[1];
-  ret.d[2] = expr_builder.constant(head_number_ * head_size_);
+  ret.d[0] = in_dims.d[1];
+  ret.d[1] = in_dims.d[2];
+  ret.d[2] = in_dims.d[3];
+  // ret.d[0] = in_dims.d[0];
+  // ret.d[1] = in_dims.d[1];
+  // ret.d[2] = expr_builder.constant(head_number_ * head_size_);
   return ret;
 }
 

@@ -829,7 +829,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
       Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk, Node* reshape2_qkv, Node* fill1_out, Node* fill2_out) {
+      Node* matmul_qk, Node* reshape2_qkv, Node* fill1_out, Node* fill2_out, 
+      Node* fill1, Node* fill2) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -915,6 +916,21 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto reshape_desc = reshape2->Op();
     int head_number =
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+    
+    std::vector<int> fill_shape = fill1->Op()->GetAttrIfExists<std::vector<int>>("shape");
+    fill_shape[2] = 20; // hard  code
+    fill1->Op()->SetAttr("shape", fill_shape);
+    fill2->Op()->SetAttr("shape", fill_shape);
+
+    auto block_id = mul0->Op()->Block()->ID();
+    VarDesc fill1_tmp_out_desc(*(fill1_out->Var()));
+    // fill1_tmp_out_desc.SetName(fill1_out->Name()+".tmp");
+    auto* fill1_tmp_out = graph->CreateVarNode(&fill1_tmp_out_desc, block_id);
+    VarDesc fill2_tmp_out_desc(*(fill2_out->Var()));
+    // fill2_tmp_out_desc.SetName(fill2_out->Name()+".tmp");
+    auto* fill2_tmp_out = graph->CreateVarNode(&fill2_tmp_out_desc, block_id);
+    fill1->Op()->SetOutput("Out", {fill1_tmp_out->Name()});
+    fill2->Op()->SetOutput("Out", {fill2_tmp_out->Name()});
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
@@ -923,13 +939,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetInput("W", {mul0_w->Name()});
     multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
+    multihead_op_desc.SetInput("KCache", {fill1_tmp_out->Name()});
+    multihead_op_desc.SetInput("VCache", {fill2_tmp_out->Name()});
     multihead_op_desc.SetOutput("KCache", {fill1_out->Name()});
     multihead_op_desc.SetOutput("VCache", {fill2_out->Name()});
     
-    VLOG(3) << "Set KCache to fill1_out: " << fill1_out->Name();
-    VLOG(3) << "Set VCache to fill2_out: " << fill2_out->Name();
-
-
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
@@ -972,10 +986,15 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     }
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
+     
     IR_NODE_LINK_TO(input0, multihead);
     IR_NODE_LINK_TO(mul0_w, multihead);
     IR_NODE_LINK_TO(eltadd0_b, multihead);
     IR_NODE_LINK_TO(eltadd_qk_b, multihead);
+    IR_NODE_LINK_TO(fill1_tmp_out, multihead);
+    IR_NODE_LINK_TO(fill2_tmp_out, multihead);
+    IR_NODE_LINK_TO(fill1, fill1_tmp_out);
+    IR_NODE_LINK_TO(fill2, fill2_tmp_out);
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
     IR_NODE_LINK_TO(multihead,fill1_out);
@@ -1087,7 +1106,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv, fill1_out, fill2_out);
+                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv, 
+                 fill1_out, fill2_out, fill1, fill2);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
@@ -1131,8 +1151,16 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                                                   scale,
                                                   //fill1_in,
                                                   //fill2_in,
-                                                  fill1, fill2, concat1, concat2, concat1_out, concat2_out, assign1, assign2,
-                                                  //fill2_out
+                                                  // fill1, 
+                                                  // fill2, 
+                                                  concat1, 
+                                                  concat2, 
+                                                  concat1_out, 
+                                                  concat2_out, 
+                                                  assign1, 
+                                                  assign2,
+                                                  //fill1_out,
+                                                  //fill2_out,
                                                   });
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_decoder_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -225,6 +226,17 @@ class TransformerDecoderOpConverter : public OpConverter {
             VLOG(4) << dims_.d[i];
           }
         }
+
+        // plugin::DynamicPluginTensorRT* id_plugin = 
+        //     new plugin::GeluPluginDynamic(with_fp16);
+        // auto* id_layer = engine_->AddDynamicPlugin(&k_cache, 1, id_plugin);
+        // k_cache = id_layer->getOutput(0);
+
+        // id_plugin = 
+        //     new plugin::GeluPluginDynamic(with_fp16);
+        // id_layer = engine_->AddDynamicPlugin(&v_cache, 1, id_plugin);
+        // v_cache = id_layer->getOutput(0);
+
         std::vector<nvinfer1::ITensor*> inputs;
         inputs.push_back(k_cache);
         inputs.push_back(v_cache);

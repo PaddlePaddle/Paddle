@@ -83,13 +83,15 @@ int FillConcatAssignFusePass::BuildFusion(Graph* graph, const std::string& name_
   patterns::FillConcatAssignPattern fill_pattern(pattern, name_scope);
   fill_pattern();
 
-  // Create New OpDesc
-  auto fuser = [&](Node* assign, Node* concat_in) {
-    auto* op_desc = assign->Op();
-    op_desc->SetInput("X", {concat_in->Name()});
-    IR_NODE_LINK_TO(concat_in, assign);
+  auto fuser = [&](Node* fill) {
+    std::vector<int> fill_shape = fill->Op()->GetAttrIfExists<std::vector<int>>("shape");
+    fill_shape[2] = 20; //hard code 
+    fill->Op()->SetAttr("shape", fill_shape);
+    // auto* op_desc = assign->Op();
+    // op_desc->SetInput("X", {concat_in->Name()});
+    // IR_NODE_LINK_TO(concat_in, assign);
 
-    return assign;
+    return fill;
   };
 
   int fusion_count=0;
@@ -99,20 +101,20 @@ int FillConcatAssignFusePass::BuildFusion(Graph* graph, const std::string& name_
     //   LOG(WARNING) << "Pass in op compat failed.";
     //   return;
     // }
-    GET_IR_NODE_FROM_SUBGRAPH(fill_in, fill_in, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fill, fill, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fill_out, fill_out, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_in, concat_in, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat, concat, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign, assign, fill_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(assign_out, assign_out, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(fill_in, fill_in, fill_pattern);
+     GET_IR_NODE_FROM_SUBGRAPH(fill, fill, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(fill_out, fill_out, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(concat_in, concat_in, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(concat, concat, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(assign, assign, fill_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(assign_out, assign_out, fill_pattern);
     
-    fuser(assign, concat_in);
+    fuser(fill);
       // Remove unneeded nodes.
-    std::unordered_set<const Node*> marked_nodes(
-          {fill, fill_out, concat, concat_out});
-    GraphSafeRemoveNodes(graph, marked_nodes);
+    // std::unordered_set<const Node*> marked_nodes(
+    //       {fill, fill_out, concat, concat_out});
+    // GraphSafeRemoveNodes(graph, marked_nodes);
     fusion_count++;
   };
 
