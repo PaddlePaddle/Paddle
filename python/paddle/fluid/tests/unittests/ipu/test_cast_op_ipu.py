@@ -85,23 +85,6 @@ class TestEnableFp16(TestBase):
         self.attrs['dtype'] = 'float32'
 
 
-class TestDisableTransferCast(TestEnableFp16):
-    def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 3, 3])
-        self.feed_fp32 = {'x': data.astype(np.float32)}
-        self.feed_fp16 = {'x': data.astype(np.float16)}
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['dtype'] = 'float32'
-
-    def run_model(self, exec_mode):
-        ipu_strategy = paddle.static.IpuStrategy()
-        ipu_strategy.set_graph_config(is_training=self.is_training)
-        ipu_strategy.set_options({"transfer_cast_op": False})
-        self.run_op_test(exec_mode)
-
-
 class TestCase2(TestBase):
     def set_data_feed(self):
         self.feed_fp32 = {
