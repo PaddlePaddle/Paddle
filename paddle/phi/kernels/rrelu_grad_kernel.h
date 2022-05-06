@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RReluGradKernel(const Context& dev_ctx,
+void RReluGradKernel(const Context& ctx,
                      const DenseTensor& mask,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad);

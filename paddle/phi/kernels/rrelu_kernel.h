@@ -19,13 +19,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RReluKernel(const Context& dev_ctx,
+void RReluKernel(const Context& ctx,
                  const DenseTensor& x,
                  const float lower,
                  const float upper,
                  bool is_test,
-                 bool fix_seed,
-                 int seed,
+                //  bool fix_seed,
+                //  int seed,
                  DenseTensor* out,
                  DenseTensor* mask);
 }  // namespace phi
