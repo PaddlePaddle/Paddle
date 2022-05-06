@@ -333,8 +333,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   // recv from switch
   HeterClient* client_ =
       HeterClient::GetInstance({switch_endpoint_}, {}, 0).get();
-  std::vector<int> recv_size;
-  recv_size.push_back(cpu_tensor.numel());
   std::string file_name = std::string("recv_") + std::to_string(gid_) +
                           std::string("_") + std::to_string(recv_count);
   auto id = src_rank_ * 10000 + dst_rank_;
