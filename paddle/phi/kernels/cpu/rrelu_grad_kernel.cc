@@ -20,17 +20,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RReluGradKernel(const Context& dev_ctx,
+void RReluGradKernel(const Context& ctx,
                      const DenseTensor& mask,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad) {
-  x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  x_grad->mutable_data<T>(ctx.GetPlace());
 
   auto dX = EigenVector<T>::Flatten(*x_grad);
   auto dY = EigenVector<T>::Flatten(out_grad);
   auto M = EigenVector<T>::Flatten(mask);
 
-  auto& place = *dev_ctx.eigen_device();
+  auto& place = *ctx.eigen_device();
 
   // Can the following be changed to :
   // dX.device(place) = dY * M ;
