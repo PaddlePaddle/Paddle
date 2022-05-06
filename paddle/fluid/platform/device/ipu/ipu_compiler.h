@@ -17,15 +17,14 @@
 #include <popart/builder.hpp>
 #include <popart/graphtransformer.hpp>
 #include <popart/optimizer.hpp>
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/ipu/ipu_names.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
+
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+class IpuStrategy;
 
 struct CompilerResources {
   // popart input tensor_ids
@@ -81,30 +80,6 @@ struct GraphHelper {
   std::vector<int> sorted_vars_id;
 };
 
-// Helper for adding namescope info
-struct NameScopeHelper {
-  NameScopeHelper(const OpDesc *op, popart::Builder *builder)
-      : builder_(builder) {
-    auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
-    if (op_namescope.empty() || op_namescope == "/") {
-      return;
-    }
-    op_namescope.pop_back();
-    op_namescope.erase(op_namescope.begin());
-    builder->pushNameScope(op_namescope);
-    pushed_ = true;
-  }
-
-  ~NameScopeHelper() {
-    if (pushed_) {
-      builder_->popNameScope();
-    }
-  }
-
-  bool pushed_ = false;
-  popart::Builder *builder_;
-};
-
 class Compiler {
  public:
   Compiler();
@@ -138,11 +113,6 @@ class Compiler {
   const std::vector<std::string> &GetOpOutputs(const OpDesc *op);
   const std::string GetNameScope(const OpDesc *op);
   popart::DebugContext BuildDebugContext(const OpDesc *op);
-
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::vector<std::string> &tensor_ids);
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::string &tensor_id);
   void PostLower(const std::vector<std::string> &, const OpDesc *);
   void PostLower(const std::string &, const OpDesc *);
   void PostLower(const std::string &, const OpDesc *, bool);
