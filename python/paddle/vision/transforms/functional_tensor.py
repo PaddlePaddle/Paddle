@@ -226,8 +226,8 @@ def _affine_grid(theta, w, h, ow, oh):
 
 def _grid_transform(img, grid, mode, fill):
     if img.shape[0] > 1:
-        grid = grid.expand(img.shape[0], grid.shape[1], grid.shape[2],
-                           grid.shape[3])
+        grid = grid.expand(
+            shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]])
 
     if fill is not None:
         dummy = paddle.ones(

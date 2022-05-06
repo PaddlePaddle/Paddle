@@ -137,6 +137,27 @@ class TestTransformsCV2(unittest.TestCase):
                 translate=[0.5, 0.3],
                 scale=[0.7, 1.3],
                 shear=[-10, 10, 20, 40]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear'),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114,
+                center=(60, 80)),
         ])
         self.do_transform(trans)
 
@@ -314,6 +335,15 @@ class TestTransformsCV2(unittest.TestCase):
                 translate=[0.5, 0.3],
                 scale=[0.7, 1.3],
                 shear=[-10, 10, 0, 20, 40])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                fill=114,
+                center=(1, 2, 3))
 
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
