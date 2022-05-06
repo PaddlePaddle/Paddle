@@ -1604,7 +1604,7 @@ class OneCycleLR(LRScheduler):
 
     Please note that the default behaviour of this scheduler follows the fastai implementation of one cycle,
     which claims that “unpublished work has shown even better results by using only two phases”.
-    Set ``three_phase=True`` , if you want the behaviour of this scheduler to be consistent with the paper.
+    If you want the behaviour of this scheduler to be consistent with the paper, please set ``three_phase=True`` .
 
     Also note that you should update learning rate each step.
 
@@ -1777,7 +1777,7 @@ class OneCycleLR(LRScheduler):
                 },
             ]
 
-        # Validate anneal_strategy
+        # Check anneal_strategy
         if anneal_strategy not in ['cos', 'linear']:
             raise ValueError(
                 "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".
