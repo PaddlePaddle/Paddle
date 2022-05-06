@@ -43,9 +43,6 @@ class IpuStrategy {
   // Flag for fp16, true for pure fp16
   bool enable_fp16 = false;
 
-  // Enable transfer cast Op target from fp32 to fp16 in fp16 mode
-  bool transfer_cast_op = true;
-
   // The mode of Adam/Lamb optimizer
   // false: The standard Adam/Lamb optimizer
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
