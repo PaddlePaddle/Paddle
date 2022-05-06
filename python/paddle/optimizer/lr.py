@@ -1604,7 +1604,7 @@ class OneCycleLR(LRScheduler):
 
     Please note that the default behaviour of this scheduler follows the fastai implementation of one cycle,
     which claims that “unpublished work has shown even better results by using only two phases”.
-    Set ``three_phase=True``, if you want the behaviour of this scheduler to be consistent with the paper.
+    Set ``three_phase=True`` , if you want the behaviour of this scheduler to be consistent with the paper.
 
     Also note that you should update learning rate each step.
 
@@ -1622,8 +1622,8 @@ class OneCycleLR(LRScheduler):
         pct_start (float): The percentage of total steps, which used to increasing learning rate. Default: 0.3.
         anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
             'linear' for linear annealing. Default: 'cos'.
-        divide_factor (float, optional): Initial learning rate will be determined by initial_lr = max_lr/div_factor. Default: 25.
-        final_divide_factor (float, optional): Minimum learning rate will be determined by minimum = max_lr/final_divide_factor. Default: 1e4.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_lr = max_learning_rate/divide_factor. Default: 25.
+        final_divide_factor (float, optional): Minimum learning rate will be determined by minimum = max_learning_rate/final_divide_factor. Default: 1e4.
         three_phase (bool, optional): Whether to use three phase.
             If ``True``:
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
@@ -1640,8 +1640,10 @@ class OneCycleLR(LRScheduler):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
+
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
@@ -1655,6 +1657,7 @@ class OneCycleLR(LRScheduler):
                     sgd.step()
                     sgd.clear_gradients()
                     scheduler.step()        # You should update learning rate each step
+
             # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
@@ -1667,6 +1670,7 @@ class OneCycleLR(LRScheduler):
                 scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
+
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(5):
