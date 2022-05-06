@@ -12,6 +12,10 @@ if(WITH_NCCL)
   endif()
 endif()
 
+if(WITH_ECCL)
+    cc_library(processgroup_eccl SRCS ProcessGroupECCL.cc ECCLTools.cc Common.cc DEPS place cuda_stream enforce collective_helper device_context phi_api eager_api)
+endif()
+
 if(WITH_ASCEND_CL)
   cc_library(processgroup_hccl SRCS ProcessGroupHCCL.cc HCCLTools.cc Common.cc DEPS place npu_stream enforce collective_helper device_context phi_api eager_api)
   if (WITH_DISTRIBUTE AND WITH_PSCORE)

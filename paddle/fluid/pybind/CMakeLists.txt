@@ -95,6 +95,11 @@ if(NOT ON_INFER)
       set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
     endif()
   endif()
+
+  if (WITH_ECCL)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_eccl)
+  endif()
+
   if (WITH_GLOO)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
