@@ -9,6 +9,7 @@ gather_srcs(infrt_src SRCS
     dense_tensor_kernels.cc
     context_kernels.cc
 )
+add_subdirectory(custom)
 
 set(infrt_register_phi_kernels_gen_source_file ${CMAKE_SOURCE_DIR}/paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc)
 set(infrt_register_phi_kernels_gen_file ${CMAKE_SOURCE_DIR}/tools/infrt/get_phi_kernel_function.sh)

@@ -30,7 +30,7 @@ tmp_dir=`mktemp -d`
 function update_pd_ops() {
    PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
    # compile and install paddle
-   rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
+   # rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
    cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
    make -j8 paddle_python print_pten_kernels kernel_signature_generator
@@ -89,7 +89,7 @@ function infrt_gen_and_build() {
 
     mkdir -p ${PADDLE_ROOT}/build
     # step1. reinstall paddle and generate pd_ops.td
-    update_pd_ops
+    # update_pd_ops
     # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt

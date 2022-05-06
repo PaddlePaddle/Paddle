@@ -150,6 +150,8 @@ def gen_include_headers():
     return """
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/phi/infershaped/phi_kernel_launcher.h"
+#include "paddle/infrt/kernel/phi/custom/cpu/kernel_launcher.h"
+#include "paddle/infrt/kernel/phi/custom/gpu/kernel_launcher.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/include/kernels.h"
 #include "paddle/phi/include/infermeta.h"
@@ -317,8 +319,9 @@ def gen_register_info(resources: List[List[str]],
     resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
     attr_data: {'phi_cpu.arg_min.float32.any': ['axisBool', 'keepdimsBool', 'flatten', 'dtype']}
     """
-    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
+    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {\n"
 
+    res += "RegisterCpuKernelLaunchers(registry);"
     # register cpu kernels.
     for item in resources:
         # The output string is polluted by C++ macros, here the \ is removed
@@ -331,7 +334,8 @@ def gen_register_info(resources: List[List[str]],
         res += code
 
     # register gpu kernels.
-    res += "\n#ifdef INFRT_WITH_GPU"
+    res += "\n#ifdef INFRT_WITH_GPU\n"
+    res += "RegisterGpuKernelLaunchers(registry);"
     for item in resources:
         # The output string is polluted by C++ macros, here the \ is removed
         update_item = [v.strip('\\') for v in item]
