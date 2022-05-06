@@ -513,7 +513,7 @@ def launch_ipu(args):
             format(idx, idx, cur_endpoint, rank_in_node))
 
     # executor
-    poprun_args.append("python3.7")
+    poprun_args.append(sys.executable)
     # script and script args
     poprun_args.append(args.training_script)
     for arg in args.training_script_args:
