@@ -402,10 +402,7 @@ def perspective(img,
 
     """
 
-    batch_size = img.shape[0] if len(img.shape) > 3 else 1
-
-    if batch_size == 1:
-        img = img.unsqueeze(0)
+    img = img.unsqueeze(0)
 
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
     ow, oh = img.shape[-1], img.shape[-2]
@@ -417,10 +414,7 @@ def perspective(img,
 
     out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
 
-    if batch_size == 1:
-        return out.squeeze(0)
-
-    return out
+    return out.squeeze(0)
 
 
 def vflip(img, data_format='CHW'):
