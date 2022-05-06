@@ -175,6 +175,12 @@ class TestTransformsCV2(unittest.TestCase):
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
 
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(), transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
+
     def test_grayscale(self):
         trans = transforms.Compose([transforms.Grayscale()])
         self.do_transform(trans)
@@ -299,6 +305,24 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             transform = transforms.BrightnessTransform('0.1', keys='a')
 
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=0.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=0.8)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(scale=(10, 0.4))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(ratio=(3.3, 0.3))
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(prob=1.5)
+
+        with self.assertRaises(Exception):
+            transform = transforms.RandomErasing(value="0")
+
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
         str(transforms.Compose([transforms.Resize((224, 224))]))
@@ -401,6 +425,13 @@ class TestTransformsTensor(TestTransformsCV2):
 
         trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
         img = trans_random_crop_pad(img)
+
+    def test_erase(self):
+        trans = transforms.Compose([
+            transforms.RandomErasing(value=(0.5, )),
+            transforms.RandomErasing(value="random")
+        ])
+        self.do_transform(trans)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -693,6 +724,47 @@ class TestFunctional(unittest.TestCase):
 
         pil_img = Image.fromarray(np_img).convert('YCbCr')
         pil_tensor = F.to_tensor(pil_img)
+
+    def test_erase(self):
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+
+        expected = np_img.copy()
+        expected[10:15, 10:15, :] = 0
+
+        F.erase(np_img, 10, 10, 5, 5, 0, inplace=True)
+        np.testing.assert_equal(np_img, expected)
+
+        pil_result = F.erase(pil_img, 10, 10, 5, 5, 0)
+        np.testing.assert_equal(np.array(pil_result), expected)
+
+        np_data = np.random.rand(3, 28, 28).astype('float32')
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            tensor_img = paddle.to_tensor(np_data)
+            expected_tensor = tensor_img.clone()
+            expected_tensor[:, 10:15, 10:15] = paddle.to_tensor([0.88])
+
+            tensor_result = F.erase(tensor_img, 10, 10, 5, 5,
+                                    paddle.to_tensor([0.88]))
+            np.testing.assert_equal(tensor_result.numpy(),
+                                    expected_tensor.numpy())
+
+    def test_erase_backward(self):
+        img = paddle.randn((3, 14, 14), dtype=np.float32)
+        img.stop_gradient = False
+        erased = F.erase(
+            img, 3, 3, 5, 5, paddle.ones(
+                (1, 1, 1), dtype='float32'))
+        loss = erased.sum()
+        loss.backward()
+
+        expected_grad = np.ones((3, 14, 14), dtype=np.float32)
+        expected_grad[:, 3:8, 3:8] = 0.
+        np.testing.assert_equal(img.grad.numpy(), expected_grad)
 
     def test_image_load(self):
         fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype(
