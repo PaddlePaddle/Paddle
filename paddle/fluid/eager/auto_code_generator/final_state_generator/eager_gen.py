@@ -162,10 +162,6 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vecto
     // Call grad_api function
     VLOG(3) << \"Final State Running: \" << \"{}\"; 
 {}
-
-    // Get Output
-{}
-
     // Get GradIn autograd_meta
 {}
 
@@ -1350,28 +1346,40 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(get_attr_str)
 
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
-        grad_api_args_str = ", ".join(grad_api_args)
 
-        # Grad Function Call String
-        grad_api_namespace = f"paddle::experimental::{namespace}"
-        grad_function_call_str = f"{indent}auto grad_api_result = {grad_api_namespace}{backward_api_name}({grad_api_args_str});"
-
-        # Get Grad Outputs
-        get_outputs_str = ""
-        num_outputs = len(backward_grad_outputs_map.keys())
+        # Grad Outputs
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
-
-            if num_outputs == 1:
-                get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result;"
+            if IsPlainTensorType(ttype):
+                grad_api_args.append(f"api_output[{grad_api_position}][0]")
             else:
-                if IsPlainTensorType(ttype):
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}][0];"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}];"
-            get_outputs_str += get_tensor_str + "\n"
+                assert IsVectorTensorType(ttype)
+                get_tensor_str = f"{indent}auto& {transformed_tensor_name} = returns[{grad_api_position}];"
+                grad_api_args.append(f"api_output[{grad_api_position}]")
+
+        grad_api_args_str = ", ".join(grad_api_args)
+
+        # Grad Function Call String
+        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
+        grad_api_namespace = f"paddle::experimental::{namespace}"
+        grad_function_call_str = f"""
+  std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});
+  const auto& out_metas = OutputMeta();
+  std::vector<std::vector<paddle::experimental::Tensor*>> api_output({slot_num_bwd_outputs});
+  for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
+    api_output[i].reserve(returns.size());
+    for (size_t j = 0; j < returns[i].size(); ++j) {{
+      if (out_metas[i][j].IsStopGradient()) {{
+        api_output[i].push_back(nullptr);
+      }} else {{
+        api_output[i].push_back(&returns[i][j]);
+      }}
+    }}
+  }}
+"""
+
+        grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
 
         # Prepare for Node Creation if Necessary
         inputs_autograd_meta_str = ""
@@ -1423,28 +1431,26 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             # 3. Get Output AutoGradMeta
             outputs_autograd_meta_list = []
             num_fwd_outputs = len(backward_grad_outputs_map.keys())
-            for name, (rtype, pos, _) in backward_grad_outputs_map.items():
+            for name, (rtype, pos,
+                       grad_api_position) in backward_grad_outputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
 
                 output_autograd_meta_name = GetAutoGradMetaName(
                     transformed_tensor_name)
                 output_autograd_meta_vec_name = GetAutoGradMetaVectorName(
                     transformed_tensor_name)
-                if num_fwd_outputs == 1:
-                    if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"
-                    else:
-                        assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});\n"
-                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                if IsPlainTensorType(rtype):
+                    output_autograd_meta = f"""
+  auto& {transformed_tensor_name} = returns[{grad_api_position}][0];
+  egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"""
+
                 else:
-                    # Tuple api_result
-                    if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"
-                    else:
-                        assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});\n"
-                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                    assert IsVectorTensorType(rtype)
+                    output_autograd_meta = f"""
+  auto& {transformed_tensor_name} = returns[{grad_api_position}];
+  std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});
+  std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};
+"""
 
                 outputs_autograd_meta_list.append(output_autograd_meta)
             outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
@@ -1452,28 +1458,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
             compute_require_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});"
 
-        # Construct grad_api returns
-        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
-        returns_str = f"{indent}std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
-        for name, (ttype, fwd_position,
-                   grad_api_position) in backward_grad_outputs_map.items():
-            transformed_tensor_name = self.TransformToNextGradName(name)
-
-            # Rearrange output order accordingly
-            if IsPlainTensorType(ttype):
-                returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
-            else:
-                assert IsVectorTensorType(ttype)
-                returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
-
-        returns_str += f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
+        returns_str = f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
-            grad_function_call_str, get_outputs_str, inputs_autograd_meta_str,
+            grad_function_call_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
 

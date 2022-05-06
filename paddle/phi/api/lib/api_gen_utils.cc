@@ -133,6 +133,18 @@ std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
   return results;
 }
 
+std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out) {
+  std::vector<phi::DenseTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    if (out->at(i)) {
+      auto tensor_ptr = std::make_shared<phi::DenseTensor>();
+      results[i] = tensor_ptr.get();
+      (*out)[i]->set_impl(tensor_ptr);
+    }
+  }
+  return results;
+}
+
 phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
     auto select_rows = std::make_shared<phi::SelectedRows>();
