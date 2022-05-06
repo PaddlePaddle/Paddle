@@ -82,7 +82,6 @@ class TestDistSlice(unittest.TestCase):
 
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
-            print_program_with_dist_attr(dist_main_prog, dist_context)
             ops = dist_main_prog.global_block().ops
             for op in ops:
                 axes = op.desc.attr('axes')

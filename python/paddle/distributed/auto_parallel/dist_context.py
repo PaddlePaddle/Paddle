@@ -192,6 +192,11 @@ class DistributedContext:
     def dist_startup_programs(self):
         return self._dist_startup_programs
 
+    @property
+    def has_annotation(self):
+        return len(self._dist_tensors_for_program) or len(
+            self._dist_ops_for_program)
+
     def initialize(self):
         if not self._is_initialized:
             self._serial_main_program = self._original_serial_main_program.clone(
@@ -555,7 +560,6 @@ class DistributedContext:
                 assert dist_op is not None, \
                     "Operator must have a distributed operator after the initialization for program."
                 serial_op_node_id = _node_id(node)
-                # print("reset_copy", dist_op.serial_op.type, dist_op.serial_op.desc.original_id(), flush=True)
                 new_dist_op = DistributedOperator(dist_op.serial_op,
                                                   dist_op.dist_attr)
                 self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
@@ -611,7 +615,6 @@ class DistributedContext:
             process_mesh_shape = dist_attr.process_mesh.topology
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
-            # print(serial_tensor.name, tensor_shape, dims_mapping, dist_attr.process_mesh, flush=True)
             for i in range(len(tensor_shape)):
                 if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
                     and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
@@ -634,7 +637,6 @@ class DistributedContext:
                 process_mesh_shape = dist_attr.process_mesh.topology
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
-                # print(serial_op.type, arg_name, tensor_shape, dims_mapping, dist_attr.process_mesh, flush=True)
                 for i in range(len(tensor_shape)):
                     if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
                         and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
@@ -648,7 +650,6 @@ class DistributedContext:
                     tensor_shape = dist_op.get_serial_output(arg_name).shape
                 dims_mapping = dist_attr.get_output_dims_mapping(arg_name)
                 process_mesh_shape = dist_attr.process_mesh.topology
-                # print(serial_op.type, arg_name, tensor_shape, dims_mapping, dist_attr.process_mesh, flush=True)
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
@@ -662,9 +663,7 @@ class DistributedContext:
                 "Program must be initialized before validating its distributed attributes"
         for block in self.serial_main_program.blocks:
             for tensor in block.vars.values():
-                # print(tensor.name, flush=True)
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
-                # print(dist_tensor.serial_tensor.name, dist_tensor.dist_attr, flush=True)
                 assert dist_tensor is not None, \
                     "Tensor {} does not have a distributed attribute.".format(
                         dist_tensor.serial_tensor.name)
@@ -677,7 +676,6 @@ class DistributedContext:
                 assert dist_op is not None, \
                     "Operator {} does not have a distributed attribute.".format(
                         dist_op.serial_op.type)
-                # print(dist_op.serial_op.type, dist_op.dist_attr, flush=True)
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     assert False, "Operator {} has a wrong distributed attributes {}.".format(
                         dist_op.serial_op.type, dist_tensor.dist_attr)
@@ -718,6 +716,7 @@ class DistributedOperatorContext:
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
+        self.grad_var_to_var = defaultdict(dict)
         self._work_block = None
         self.already_init_sync_vars = set()
         self.varname_mapping = None

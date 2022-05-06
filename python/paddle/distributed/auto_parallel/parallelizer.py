@@ -296,7 +296,6 @@ class AutoParallelizer:
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )
 
-            print("dist_context", dist_context)
             for rank in world_process_group.ranks:
                 dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map = self._get_dist_program(
                     rank, dist_context)

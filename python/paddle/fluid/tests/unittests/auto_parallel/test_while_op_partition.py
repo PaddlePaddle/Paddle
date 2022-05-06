@@ -444,7 +444,6 @@ class TestMLP(unittest.TestCase):
         train_program, start_program = completion(train_program, start_program,
                                                   dist_context)
         dist_context.block_state.parse_forward_blocks(train_program)
-        print_program_with_dist_attr(train_program, dist_context)
 
         dist_main_prog, dist_startup_prog = partition(
             train_program, start_program, dist_context)
