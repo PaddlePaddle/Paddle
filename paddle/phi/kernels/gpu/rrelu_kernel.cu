@@ -29,13 +29,16 @@ struct RReluTrainCudaFunctor {
   RReluTrainCudaFunctor(const T* in,
                         T* out,
                         T* mask)
-      : in_(in), out_(out), mask_(mask) {}
+      : in_(in), out_(out), mask_(mask) {
+         zero_ = static_cast<T>(0);
+         one_ = static_cast<T>(1);
+      }
 
   __device__ void operator()(int64_t idx) {
-   if (in_[idx] < 0.0) {
+   if (in_[idx] < zero_) {
       out_[idx] = in_[idx] * mask_[idx];
    } else {
-      mask_[idx] = 1.0;
+      mask_[idx] = one_;
       out_[idx] = in_[idx];
    }
   }
@@ -44,6 +47,8 @@ struct RReluTrainCudaFunctor {
   const T* in_;
   T* out_;
   T* mask_;
+  T zero_;
+  T one_;
 };
 
 
@@ -54,14 +59,17 @@ struct RReluTestCudaFunctor {
                         T* out,
                         T* mask,
                         T mid_value)
-      : in_(in), out_(out), mask_(mask), mid_value_(mid_value) {}
+      : in_(in), out_(out), mask_(mask), mid_value_(mid_value) {
+         zero_ = static_cast<T>(0);
+         one_ = static_cast<T>(1);
+      }
 
   __device__ void operator()(int64_t idx) {
-   if (in_[idx] < 0.0) {
+   if (in_[idx] < zero_) {
       mask_[idx] = mid_value_;
       out_[idx] = in_[idx] * mid_value_;
    } else {
-      mask_[idx] = 1.0;
+      mask_[idx] = one_;
       out_[idx] = in_[idx];
    }
   }
@@ -71,6 +79,8 @@ struct RReluTestCudaFunctor {
   T* out_;
   T* mask_;
   T mid_value_;
+  T zero_;
+  T one_;
 };
 
 
