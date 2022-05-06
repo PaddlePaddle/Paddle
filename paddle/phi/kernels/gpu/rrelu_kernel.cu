@@ -59,9 +59,11 @@ struct RReluCudaFunctor {
   RReluCudaFunctor(const T* in,
                    T* out,
                    T* mask,
+                   const float lower,
+                   const float upper,
                    unsigned int seed,
                    unsigned int offset)
-      : in_(in), out_(out), mask_(mask), seed_(seed), offset_(offset) {}
+      : in_(in), out_(out), mask_(mask), lower_(lower), upper_(upper), seed_(seed), offset_(offset) {}
 
   using MT = typename kps::details::MPTypeTrait<T>::Type;
 
@@ -81,7 +83,7 @@ struct RReluCudaFunctor {
       // random_sampled_value should be in [0, 1]
       float random_sampled_value = static_cast<float>(hiprand_uniform(&state));
 #endif
-      random_sampled_value = random_sampled_value * (upper - lower) + lower;
+      random_sampled_value = random_sampled_value * (upper_ - lower_) + lower_;
       mask_[idx] = static_cast<T>(random_sampled_value);
       out_[idx] = static_cast<T>(static_cast<MT>(in_[idx]) * static_cast<MT>(random_sampled_value));
    } else {
@@ -94,6 +96,8 @@ struct RReluCudaFunctor {
   const T* in_;
   T* out_;
   T* mask_;
+  const float lower_;
+  const float upper_;
   const unsigned int seed_;
   const unsigned int offset_;
 };
@@ -118,7 +122,7 @@ void RReluKernel(const Context& ctx,
 
   phi::funcs::ForRange<Context> for_range(ctx, size);
 
-  RReluCudaFunctor<T> functor(x_data, out_data, mask_data, seed, offset);
+  RReluCudaFunctor<T> functor(x_data, out_data, mask_data, lower, upper, seed, offset);
   for_range(functor);
 }
 
