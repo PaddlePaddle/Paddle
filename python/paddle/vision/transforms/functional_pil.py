@@ -453,7 +453,7 @@ def rotate(img,
         fillcolor=fill)
 
 
-def perspective(img, coeffs, interpolation="bicubic", fill=0):
+def perspective(img, coeffs, interpolation="nearest", fill=0):
     """Perspective the image.
 
     Args:

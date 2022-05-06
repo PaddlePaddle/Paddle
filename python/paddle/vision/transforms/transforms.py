@@ -44,7 +44,10 @@ def _get_image_size(img):
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
     elif F._is_tensor_image(img):
-        return img.shape[1:][::-1]  # chw
+        if len(img.shape) > 3:
+            return img.shape[2:][::-1]  # bchw -> w, h
+        else:
+            return img.shape[1:][::-1]  # chw -> w, h
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
@@ -1344,7 +1347,7 @@ class RandomPerspective(BaseTransform):
     def __init__(self,
                  prob=0.5,
                  distortion_scale=0.5,
-                 interpolation='bilinear',
+                 interpolation='nearest',
                  fill=0,
                  keys=None):
         super(RandomPerspective, self).__init__(keys)

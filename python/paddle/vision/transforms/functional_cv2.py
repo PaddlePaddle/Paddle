@@ -509,7 +509,7 @@ def rotate(img,
             borderValue=fill)
 
 
-def perspective(img, startpoints, endpoints, interpolation='bicubic', fill=0):
+def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     """Perspective the image.
 
     Args:

@@ -226,8 +226,8 @@ def _affine_grid(theta, w, h, ow, oh):
 
 def _grid_transform(img, grid, mode, fill):
     if img.shape[0] > 1:
-        grid = grid.expand(img.shape[0], grid.shape[1], grid.shape[2],
-                           grid.shape[3])
+        grid = grid.expand(
+            shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]])
 
     if fill is not None:
         dummy = paddle.ones(
@@ -354,20 +354,14 @@ def rotate(img,
     return out.squeeze(0)
 
 
-def _perspective_grid(img, coeffs, ow, oh):
-    # https://github.com/python-pillow/Pillow/blob/4634eafe3c695a014267eefdce830b4a825beed7/rc/libImaging/Geometry.c#L394
-    # x_out = (coeffs[0] * x + coeffs[1] * y + coeffs[2]) / (coeffs[6] * x + coeffs[7] * y + 1)
-    # y_out = (coeffs[3] * x + coeffs[4] * y + coeffs[5]) / (coeffs[6] * x + coeffs[7] * y + 1)
-    theta1 = paddle.to_tensor(
-        [[[coeffs[0], coeffs[1], coeffs[2]], [coeffs[3], coeffs[4], coeffs[5]]]
-         ],
-        place=img.place).astype(img.dtype)
-    theta2 = paddle.to_tensor(
-        [[[coeffs[6], coeffs[7], 1.0], [coeffs[6], coeffs[7], 1.0]]],
-        place=img.place).astype(img.dtype)
+def _perspective_grid(img, coeffs, ow, oh, dtype):
+    theta1 = coeffs[:6].reshape([1, 2, 3])
+    tmp = paddle.tile(coeffs[6:].reshape([1, 2]), repeat_times=[2, 1])
+    dummy = paddle.ones((2, 1), dtype=dtype)
+    theta2 = paddle.concat((tmp, dummy), axis=1).unsqueeze(0)
 
     d = 0.5
-    base_grid = paddle.ones((1, oh, ow, 3), dtype=img.dtype)
+    base_grid = paddle.ones((1, oh, ow, 3), dtype=dtype)
 
     x_grid = paddle.linspace(d, ow * 1.0 + d - 1.0, ow)
     base_grid[..., 0] = x_grid
@@ -386,7 +380,7 @@ def _perspective_grid(img, coeffs, ow, oh):
 
 def perspective(img,
                 coeffs,
-                interpolation="bicubic",
+                interpolation="nearest",
                 fill=None,
                 data_format='CHW'):
     """Perspective the image.
@@ -408,15 +402,25 @@ def perspective(img,
 
     """
 
-    img = img.unsqueeze(0)
+    batch_size = img.shape[0] if len(img.shape) > 3 else 1
+
+    if batch_size == 1:
+        img = img.unsqueeze(0)
+
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
     ow, oh = img.shape[-1], img.shape[-2]
+    dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
 
-    grid = _perspective_grid(img, coeffs, ow=ow, oh=oh)
+    coeffs = paddle.to_tensor(coeffs, place=img.place)
+    grid = _perspective_grid(img, coeffs, ow=ow, oh=oh, dtype=dtype)
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
     out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
-    return out.squeeze(0)
+
+    if batch_size == 1:
+        return out.squeeze(0)
+
+    return out
 
 
 def vflip(img, data_format='CHW'):

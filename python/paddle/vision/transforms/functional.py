@@ -638,7 +638,7 @@ def _get_perspective_coeffs(startpoints, endpoints):
     return output
 
 
-def perspective(img, startpoints, endpoints, interpolation='bilinear', fill=0):
+def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     """Perform perspective transform of the given image.
 
     Args:
