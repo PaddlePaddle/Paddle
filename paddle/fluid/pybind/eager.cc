@@ -83,10 +83,10 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                                ddims));
     } else {
       // TODO(dev): we need enhance check for ddims.
-      paddle::experimental::DefaultAllocator alloc(place);
       dense_tensor = std::make_shared<phi::DenseTensor>(
-          &alloc, phi::DenseTensorMeta(
-                      paddle::framework::TransToPhiDataType(dtype), ddims));
+          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                               ddims));
     }
     self->tensor.set_impl(dense_tensor);
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
