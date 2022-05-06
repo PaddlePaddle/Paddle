@@ -918,6 +918,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_distributed_fused_lamb_op_with_clip
         test_distributed_fused_lamb_op_without_clip
+        test_distributed_fused_lamb_op_with_gradient_merge
         test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
@@ -1051,6 +1052,7 @@ set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
@@ -1237,6 +1239,7 @@ set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_tensordot PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
+set_tests_properties(test_tensordot PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=False")
 set_tests_properties(test_cuda_memory_reserved PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth")
 if (WITH_GLOO)
     set_tests_properties(test_parallel_dygraph_dataparallel_cpuonly PROPERTIES TIMEOUT 30)

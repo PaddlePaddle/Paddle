@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.models.moe import utils
+from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):
@@ -68,11 +69,16 @@ class TestNumberCountAPI(unittest.TestCase):
             res = exe.run(feed={'x': self.x}, fetch_list=[out])
             assert np.allclose(res, self.out)
 
-    def test_api_dygraph(self):
+    def func_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         out = utils._number_count(x, self.upper_num)
         assert np.allclose(out.numpy(), self.out)
+
+    def test_api_dygraph(self):
+        with _test_eager_guard():
+            self.func_api_dygraph()
+        self.func_api_dygraph()
 
 
 if __name__ == '__main__':
