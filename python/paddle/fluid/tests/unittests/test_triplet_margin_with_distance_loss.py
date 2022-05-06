@@ -24,7 +24,7 @@ def call_TripletMarginDistanceLoss_layer(input,
                     margin=0.3,
                     swap=False,
                     reduction='mean',):
-    triplet_margin_with_distance_loss = paddle.nn.loss.TripletMarginWithDistanceLoss(distance_function=distance_function,
+    triplet_margin_with_distance_loss = paddle.nn.TripletMarginWithDistanceLoss(distance_function=distance_function,
                                                                                 margin=margin,
                                                                                 swap=swap,
                                                                                 reduction=reduction)

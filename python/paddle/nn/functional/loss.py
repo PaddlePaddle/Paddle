@@ -2230,8 +2230,8 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 def triplet_margin_with_distance_loss(input,positive,negative,distance_function = None,
                         swap=False, margin=1.0, reduction='mean',
                         name=None):
-    """
-    Creates a criterion that measures the triplet loss given an input
+    r"""
+    Measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
     This is used for measuring a relative similarity between samples. A triplet
     is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
@@ -2251,26 +2251,35 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
 
     or user can defined their own distance functions.
 
-    :param input:Input tensor, the data type is float32 or float64.
+    Parameters:
+
+        input:Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
-    :param positive:Positive tensor, the data type is float32 or float64.
+
+        positive:Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param negative:Negative tensor, the data type is float32 or float64.
+
+        negative:Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-    :param distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-    :param swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
+
+        distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+
+        swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
-    :param margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
+
+        margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0.
-    :param reduction:Indicate how to average the loss by batch_size.
+
+        reduction:Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-    :return:Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+    Returns:
+        Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
-     Examples:
+    Examples:
         .. code-block:: python
 
             import paddle

@@ -1305,7 +1305,7 @@ class HingeEmbeddingLoss(Layer):
 
 
 class TripletMarginWithDistanceLoss(Layer):
-    """
+    r"""
     Creates a criterion that measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
     This is used for measuring a relative similarity between samples. A triplet
