@@ -390,8 +390,7 @@ PyObject* pylayer_method_register_hook(PyObject* _self, PyObject* hook) {
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->container);
   return self->container;
@@ -412,8 +411,7 @@ PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
                                                    void* closure) {
   EAGER_TRY
   if (self->non_differentiable == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->non_differentiable);
   return self->non_differentiable;
@@ -434,8 +432,7 @@ PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
                                               void* closure) {
   EAGER_TRY
   if (self->dirty_tensors == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->dirty_tensors);
   return self->dirty_tensors;
