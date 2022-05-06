@@ -65,6 +65,8 @@ class InferShapeContext {
   virtual bool HasOutput(const std::string &name) const = 0;
   virtual bool HasAttr(const std::string &name) const = 0;
 
+  virtual proto::VarType::Type GetInputVarType(
+      const std::string &name) const = 0;
   virtual std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const = 0;
   virtual std::vector<proto::VarType::Type> GetOutputsVarType(
@@ -108,9 +110,9 @@ class InferShapeContext {
 
   virtual bool IsRunMKLDNNKernel() const = 0;
 
-  virtual paddle::SmallVector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  virtual paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string &name) const = 0;
-  virtual paddle::SmallVector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  virtual paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
   GetOutputVarPtrs(const std::string &name) const = 0;
 
   virtual const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const = 0;

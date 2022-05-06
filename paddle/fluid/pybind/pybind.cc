@@ -1921,7 +1921,7 @@ All parameter, weight, gradient are variables in Paddle.
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
               
-             Args:
+            Args:
                    program (ProgramDesc): The original program.
 
              Returns:
@@ -1930,6 +1930,17 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
+  m.def("get_readable_comile_key", [](const OpDesc &op_desc) {
+    auto compilation_key =
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("compilation_key"));
+    VLOG(4) << std::hash<std::string>{}(compilation_key) << " "
+            << compilation_key.size();
+    proto::ProgramDesc desc;
+    desc.ParseFromString(compilation_key);
+    auto s = desc.DebugString();
+    VLOG(4) << s;
+    return s;
+  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -2195,6 +2206,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CustomPlace>)
       .def("get_device_id",
            [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
@@ -3009,6 +3021,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetGPUComputeCapability(place.device) >= 53;
+  });
+  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 80 support bfloat16
+    return platform::GetGPUComputeCapability(place.device) >= 80;
   });
 #endif
 
@@ -4341,7 +4357,10 @@ All parameter, weight, gradient are variables in Paddle.
              for (auto element : opt) {
                auto option_name = element.first.cast<std::string>();
                VLOG(10) << "Set option: " << option_name;
-               if (py::isinstance<py::bool_>(element.second)) {
+               if (option_name == "compilation_progress_logger") {
+                 self.SetCompilationProgressLogger(
+                     element.second.cast<py::function>());
+               } else if (py::isinstance<py::bool_>(element.second)) {
                  self.AddBoolOption(option_name, element.second.cast<bool>());
                } else if (py::isinstance<py::float_>(element.second)) {
                  self.AddDoubleOption(option_name,
@@ -4567,6 +4586,8 @@ All parameter, weight, gradient are variables in Paddle.
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
 #ifdef PADDLE_WITH_HETERPS
+  BindNodeQueryResult(&m);
+  BindNeighborSampleQuery(&m);
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif
