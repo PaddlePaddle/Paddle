@@ -1565,36 +1565,9 @@ struct UnsupportedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
-struct LastBfloat16Ops : public PatternBase {
-  LastBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "last_bfloat16_ops") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op);
-  PATTERN_DECL_NODE(op_out);
-};
-
-struct FirstBfloat16Ops : public PatternBase {
-  FirstBfloat16Ops(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "first_bfloat16_ops") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op_in);
-  PATTERN_DECL_NODE(op);
-};
-
-struct DuplicatedInputs : public PatternBase {
-  DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "many_inputs_op") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(op);
-};
-
-struct DuplicatedOutputs : public PatternBase {
-  DuplicatedOutputs(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "many_outputs_op") {}
+struct Bloat16Ops : public PatternBase {
+  Bloat16Ops(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_bfloat16_ops") {}
 
   PDNode* operator()();
 
