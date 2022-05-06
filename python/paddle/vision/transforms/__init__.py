@@ -32,6 +32,7 @@ from .transforms import RandomRotation  # noqa: F401
 from .transforms import RandomPerspective  # noqa: F401
 from .transforms import Grayscale  # noqa: F401
 from .transforms import ToTensor  # noqa: F401
+from .transforms import RandomErasing  # noqa: F401
 from .functional import to_tensor  # noqa: F401
 from .functional import hflip  # noqa: F401
 from .functional import vflip  # noqa: F401
@@ -46,6 +47,7 @@ from .functional import adjust_brightness  # noqa: F401
 from .functional import adjust_contrast  # noqa: F401
 from .functional import adjust_hue  # noqa: F401
 from .functional import normalize  # noqa: F401
+from .functional import erase  # noqa: F401
 
 __all__ = [ #noqa
     'BaseTransform',
@@ -68,6 +70,7 @@ __all__ = [ #noqa
     'RandomPerspective',
     'Grayscale',
     'ToTensor',
+    'RandomErasing',
     'to_tensor',
     'hflip',
     'vflip',
@@ -81,5 +84,6 @@ __all__ = [ #noqa
     'adjust_brightness',
     'adjust_contrast',
     'adjust_hue',
-    'normalize'
+    'normalize',
+    'erase',
 ]

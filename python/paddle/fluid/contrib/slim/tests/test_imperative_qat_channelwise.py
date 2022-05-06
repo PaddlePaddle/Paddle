@@ -43,6 +43,7 @@ class TestImperativeQatChannelWise(TestImperativeQat):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.diff_threshold = 0.01
         self.onnx_format = False
+        self.fuse_conv_bn = False
         print('weight_quantize_type', self.weight_quantize_type)
 
 
@@ -52,6 +53,7 @@ class TestImperativeQatChannelWiseONNXFormat(TestImperativeQat):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
         self.diff_threshold = 0.025
+        self.fuse_conv_bn = False
         print('weight_quantize_type', self.weight_quantize_type)
 
 

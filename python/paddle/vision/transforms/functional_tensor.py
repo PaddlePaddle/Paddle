@@ -485,6 +485,30 @@ def crop(img, top, left, height, width, data_format='CHW'):
         return img[top:top + height, left:left + width, :]
 
 
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input Tensor image with given value.
+
+       Args:
+            img (paddle.Tensor): input Tensor image.
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor): value used to replace the pixels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor: Erased image.
+        
+    """
+    _assert_image_tensor(img, 'CHW')
+    if not inplace:
+        img = img.clone()
+
+    img[..., i:i + h, j:j + w] = v
+    return img
+
+
 def center_crop(img, output_size, data_format='CHW'):
     """Crops the given paddle.Tensor Image and resize it to desired size.
 
