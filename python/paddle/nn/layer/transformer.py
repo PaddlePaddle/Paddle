@@ -237,7 +237,7 @@ class MultiHeadAttention(Layer):
             self.legacy_forward = self.forward
 
             import types
-            fwd, state, set_state = self._cudnn_func_maker()
+            fwd, state, set_state = MultiHeadAttention._cudnn_func_maker()
             self.forward = types.MethodType(fwd, self)
             self.state_dict = types.MethodType(state, self)
             self.set_state_dict = types.MethodType(set_state, self)
@@ -368,7 +368,8 @@ class MultiHeadAttention(Layer):
         ])
         return weight
 
-    def _cudnn_func_maker(self):
+    @staticmethod
+    def _cudnn_func_maker():
         def fwd_cudnn_impl(self,
                            query,
                            key=None,
