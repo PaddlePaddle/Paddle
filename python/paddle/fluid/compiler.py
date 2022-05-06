@@ -1001,9 +1001,6 @@ class IpuCompiledProgram(object):
             a_pass.set('custom_ops', self._custom_op_names)
         a_pass.apply(self._graph)
 
-        a_pass = core.get_pass("transfer_cast_op_pass")
-        a_pass.apply(self._graph)
-
         passes = [
             'ipu_inplace_pass',
             'ipu_graph_builder_pass',
