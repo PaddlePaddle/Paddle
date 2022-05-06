@@ -1398,8 +1398,7 @@ static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* kwargs) {
   EAGER_TRY
   self->tensor.bump_inplace_version();
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

@@ -359,7 +359,7 @@ std::string GenerateOpFunctionsBody(
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
-    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
+    return_str = "RETURN_PY_NONE";
   } else if (outs_num == 1) {
     return_str = "return MakeReturnPyObject(" + return_str + ");";
   } else {
