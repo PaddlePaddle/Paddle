@@ -154,51 +154,6 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(set_value_1.shape, d.shape)
         self.assertEqual(set_value_1.dtype, d.dtype)
 
-    def test_vjp_set1(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
-            W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
-            T = concat([X, W], axis=0)
-            Z = reduce(T, [0, 1])
-            ad = Transform(X.block)
-            xs_dot, ys_dot = ad.linearize([X, W], [Z])
-            ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
-            assert xs_bar[0].shape == X.shape
-            assert xs_bar[1].shape == W.shape
-
-            print(f'-------test_vjp_set1-------')
-            for op in topo_path(ys_bar, xs_bar):
-                print(op)
-
-    def test_vjp_set2(self):
-        X = paddle.static.data('Input', shape=[100, 2], dtype='float32')
-        W = paddle.static.data('Weight', shape=[5, 2], dtype='float32')
-        act = tanh
-        W_ = broadcast(W, shape=[100, 5, 2])
-        X_ = reshape(X, shape=[100, 2, 1])
-        Z = tanh(matmul(W_, X_))
-        Y = reduce(Z, axis=[1, 2])
-
-        def loss(y, x):
-            ad = Transform(y.block)
-            xs_dot, ys_dot = ad.linearize([x], [y])
-            ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
-            # ad = Transform(y.block)
-            # xs_dot, ys_dot = ad.linearize([x], xs_bar)
-            # for op in topo_path(xs_dot, ys_dot):
-            # print(op)
-            # ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot)
-            return ys_bar, xs_bar
-
-        vs, grads = loss(Y, W)
-        assert grads[0].shape == W.shape
-
-        print(f'-------test_vjp_set2-------')
-        for op in topo_path(vs, grads):
-            print(op)
-
     def test_gradients_set1(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -218,12 +173,9 @@ class TestPyPrimOps(unittest.TestCase):
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data('X', shape=[3, 3], dtype='float32')
             y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
-            # z = prog2(x, y)
             t = paddle.matmul(x, x)
             z = paddle.norm(t, p=2)
             x_grad, y_grad = _gradients([z], [x, y])
-            # path, _, _ = topo_path([x, y], [x_grad, y_grad])
-            # print(f'-------test_gradients_set2-------')
             print(x.block)
 
     def test_gradients_set3(self):
@@ -264,29 +216,6 @@ class TestPyPrimOps(unittest.TestCase):
                 shape=[2], dtype='float32', is_bias=True)
             y = paddle.matmul(x, w) + bias
             jac, = _gradients([y], [x])
-            # hes_0, = _gradients([jac[:, 0]], [x])
-            # hes_1, = _gradients([jac[:, 1]], [x])
-
-    def test_lower(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('x', shape=[2, 20], dtype='float32')
-            w = paddle.static.data('w', shape=[20, 2], dtype='float32')
-            bias = paddle.static.data('bias', shape=[2], dtype='float32')
-            y = paddle.tanh(paddle.matmul(x, w) + bias)
-            print(f'-------test_orig2prim: orig-------')
-            print(x.block)
-
-            orig2prim(x.block)
-
-            print(f'-------test_orig2prim: prim-------')
-            print(x.block)
-
-            prim2orig(x.block)
-
-            print(f'-------test_orig2prim: orig-------')
-            print(x.block)
 
     def test_minimize(self):
         enable_prim()
@@ -307,13 +236,9 @@ class TestPyPrimOps(unittest.TestCase):
             loss = paddle.norm(y, p=2)
             opt = paddle.fluid.optimizer.AdamOptimizer(0.01)
             opt.minimize(loss)
-            # prim2orig(x.block, update_var_list=[loss])
 
             print(f'-------test_minimize: orig-------')
             print(x.block)
-        # exe.run(startup)
-        # for i in range(10):
-        #     y_d = exe.run(main, feed = {'x': np.rand((2, 20))}, fetch_list=[y.name])
 
 
 if __name__ == '__main__':
