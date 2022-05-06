@@ -316,8 +316,10 @@ IpuStrategy::IpuStrategy() {
   RegisterSetter(bool_options, "enable_half_partial", [&](bool value) {
     if (value) {
       popart_options.partialsTypeMatMuls = "half";
+      popart_options.convolutionOptions.insert({{"partialsType", "half"}});
     } else {
       popart_options.partialsTypeMatMuls = "float";
+      popart_options.convolutionOptions.insert({{"partialsType", "float"}});
     }
   });
 
