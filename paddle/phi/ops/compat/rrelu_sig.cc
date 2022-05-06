@@ -21,7 +21,7 @@ KernelSignature RReluOpArgumentMapping(
   return KernelSignature(
     "rrelu",
     {"X"},
-    {"lower", "upper", "is_test", "fix_seed", "seed"},
+    {"lower", "upper", "is_test"},
     {"Out", "Mask"});
 }
 
