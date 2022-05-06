@@ -182,21 +182,6 @@ static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-struct OperatorWithKernel::CacheImpl {
-  explicit CacheImpl(phi::KernelContext* kernel_ctx,
-                     RuntimeInferShapeContext* infer_shape_ctx)
-      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
-
-  phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
-  RuntimeInferShapeContext* getRuntimeInferShapeContext() {
-    return infer_shape_ctx_.get();
-  }
-
- private:
-  std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
-  std::unique_ptr<phi::KernelContext> kernel_ctx_;
-};
-
 RuntimeContext::RuntimeContext(const VariableNameMap& innames,
                                const VariableNameMap& outnames,
                                const Scope& scope) {
@@ -1131,6 +1116,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
+struct OperatorWithKernel::CacheImpl {
+  explicit CacheImpl(phi::KernelContext* kernel_ctx,
+                     RuntimeInferShapeContext* infer_shape_ctx)
+      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+
+  phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
+  RuntimeInferShapeContext* getRuntimeInferShapeContext() {
+    return infer_shape_ctx_.get();
+  }
+
+ private:
+  std::unique_ptr<phi::KernelContext> kernel_ctx_;
+  std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+};
+
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
                                 const framework::Tensor& tensor) {
@@ -1255,7 +1255,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
-  if (!enable_cache_runtime_context_) {
+  if (run_phi_kernel_ && impl_ != nullptr) {
+    // TODO(DannyIsFunny): add InferShape method
+    // this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    (*pt_kernel_)(impl_->getKernelContext());
+
+    LOG(INFO) << "done";
+  } else if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
@@ -1528,8 +1534,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (impl_ == nullptr) {
         PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_,
                        runtime_ctx);
-        impl_ = new CacheImpl(new phi::KernelContext(),
-                              new RuntimeInferShapeContext(*this, runtime_ctx));
+        impl_ =
+            new CacheImpl(new phi::KernelContext(),
+                          new RuntimeInferShapeContext(*this, *runtime_ctx));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
       }
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
