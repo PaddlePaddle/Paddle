@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activation import relu  # noqa: F401
-from .activation import tanh  # noqa: F401
-from .math import sqrt  # noqa: F401
-from .math import sin  # noqa: F401
+from .unary import relu  # noqa: F401
+from .unary import tanh  # noqa: F401
+from .unary import sqrt  # noqa: F401
+from .unary import sin  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
 from .pooling import max_pool3d  # noqa: F401
