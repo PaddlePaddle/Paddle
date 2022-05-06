@@ -1359,12 +1359,11 @@ class RandomAffine(BaseTransform):
         else:
             scale = 1.0
 
+        shear_x, shear_y = 0.0, 0.0
         if shears is not None:
             shear_x = random.uniform(shears[0], shears[1])
             if len(shears) == 4:
                 shear_y = random.uniform(shears[2], shears[3])
-        else:
-            shear_x = shear_y = 0.0
         shear = (shear_x, shear_y)
 
         return angle, translations, scale, shear
