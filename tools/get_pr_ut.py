@@ -35,7 +35,7 @@ class PRChecker(object):
     """ PR Checker. """
 
     def __init__(self):
-        self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
+        self.github = Github(timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         self.py_prog_oneline = re.compile('\d+\|\s*#.*')
         self.py_prog_multiline_a = re.compile('\d+\|\s*r?""".*?"""', re.DOTALL)
