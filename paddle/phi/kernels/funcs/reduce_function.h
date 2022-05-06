@@ -657,6 +657,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                 const Calculator left_index_calculator,
                                 const kps::DimConfig dim,
                                 bool is_mean) {
+/*
   int input_idx, left_idx, stride;
   int block_size = 0;
   bool need_store = true;
@@ -767,6 +768,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     kps::details::WriteData<Ty>(
         y + store_offset + i, &result, static_cast<int>(need_store));
   }
+*/
 }
 
 template <typename Tx,
@@ -785,6 +787,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                       const kps::DimConfig dim,
                                       int mean_div,
                                       bool is_mean) {
+/*
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
   auto block = ReduceIndexMapping<false>(dim);
@@ -854,6 +857,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     kps::WriteData<Ty, 1, 1, 1, true>(
         y + store_offset + idx, &result, dim.rem_x);
   }
+*/
 }
 
 template <typename Tx,

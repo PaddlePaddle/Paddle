@@ -734,6 +734,7 @@ __global__ void VectorizedElementwiseKernel(
     int size,
     int main_offset,
     Functor func) {
+/*
   int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
   for (; data_offset < main_offset; data_offset += stride) {
@@ -755,6 +756,7 @@ __global__ void VectorizedElementwiseKernel(
                                     VecSize,
                                     true>(ins, outs, num, data_offset, func);
   }
+*/
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>

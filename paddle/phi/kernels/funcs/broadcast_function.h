@@ -305,7 +305,7 @@ __global__ void VectorizedBroadcastKernel(
     Functor func) {
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-
+/*
 #ifdef PADDLE_WITH_XPU_KP
   for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<InT,
@@ -365,6 +365,7 @@ __global__ void VectorizedBroadcastKernel(
         ins, outs, use_broadcast, numel, configs, tail_tid, block_offset, func);
   }
 #endif
+*/
 }
 
 template <typename InT,
