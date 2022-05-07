@@ -354,6 +354,7 @@ set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
 set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
+set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 

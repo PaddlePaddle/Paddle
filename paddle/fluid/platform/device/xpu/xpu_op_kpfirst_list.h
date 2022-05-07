@@ -42,6 +42,8 @@ XPUOpMap& get_kp_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"elementwise_floordiv",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"elementwise_pow",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // activation op
       {"exp", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"hard_swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -107,6 +109,8 @@ XPUOpMap& get_kp_ops() {
       {"reduce_any", XPUKernelSet({pOpKernelType(vartype::BOOL, XPUPlace())})},
       {"pull_box_sparse",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_amax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_amin", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu_kp_kernels;

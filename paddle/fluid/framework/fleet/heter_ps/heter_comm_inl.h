@@ -586,7 +586,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
-    if (shard_len == 0) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     create_storage(num, i, shard_len * sizeof(KeyType),
@@ -632,6 +632,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   sync_stream(stream);
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(num, i);
   }
 }
@@ -749,6 +752,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
@@ -864,6 +870,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
