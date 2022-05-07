@@ -1337,9 +1337,6 @@ class SoftMarginLoss(Layer):
 	``input``. The target labels which values should be numbers -1 or 1.
 	Available dtype is int32, int64, float32, float64.
 
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
-
     Returns:
 
         A callable object of SoftMarginLoss
