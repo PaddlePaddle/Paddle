@@ -70,23 +70,23 @@ class TensorWrapper {
         }
       }
       return;
-    } else {
-      // shallow copy tensor_impl here
-      if (no_need_buffer) {
-        if (phi::DenseTensor::classof(tensor.impl().get())) {
-          // Only Copy Meta
-          phi::DenseTensor* dense_tensor =
-              static_cast<phi::DenseTensor*>(tensor.impl().get());
-          auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
-          tw_dense_tensor->set_meta(dense_tensor->meta());
-          intermidiate_tensor_.set_impl(tw_dense_tensor);
-        } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Unrecognized tensor type for no_need_buffer feature"));
-        }
+    }
+
+    // shallow copy tensor_impl here
+    if (no_need_buffer) {
+      if (phi::DenseTensor::classof(tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
+        tw_dense_tensor->set_meta(dense_tensor->meta());
+        intermidiate_tensor_.set_impl(tw_dense_tensor);
       } else {
-        intermidiate_tensor_.set_impl(tensor.impl());
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized tensor type for no_need_buffer feature"));
       }
+    } else {
+      intermidiate_tensor_.set_impl(tensor.impl());
     }
 
     // TODO(jiabin): This may has server performance issue

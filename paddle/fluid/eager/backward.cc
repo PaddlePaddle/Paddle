@@ -166,7 +166,7 @@ class GeneralGrad {
 
       // Check node is target_nodes or not, if node is not target_node,
       // all the next_node will be marked in potential_stop_nodes_
-      bool is_potential_stop_nodes_ =
+      bool is_potential_stop_nodes =
           input_target_nodes_inputmeta_map_.count(node);
 
       // Find and append next nodes
@@ -186,7 +186,7 @@ class GeneralGrad {
           // if node not in input_target_nodes,
           // all the next_nodes of current node will be inserted to
           // potential_stop_node
-          if (is_potential_stop_nodes_) {
+          if (is_potential_stop_nodes) {
             potential_stop_nodes_.emplace(next_node);
           }
 
