@@ -74,6 +74,10 @@ size_t YoloBoxHeadPlugin::getWorkspaceSize(int max_batch_size) const
   return 0;
 }
 
+inline __device__ float SigmoidGPU(const float& x) {
+  return 1.0f / (1.0f + __expf(-x));
+}
+
 __global__ void YoloBoxHeadKernel(const float* input, float* output,
                                   const uint grid_size_x,
                                   const uint grid_size_y, const uint class_num,
@@ -130,7 +134,7 @@ int YoloBoxHeadPlugin::enqueue(int batch_size, const void* const* inputs,
             (anchors_num / block.z) + 1);
   for (int n = 0; n < batch_size; n++) {
     YoloBoxHeadKernel<<<grid, block, 0, stream>>>(
-        input_data + batch * volume, output_data + batch * volume, grid_size_x,
+        input_data + n * volume, output_data + n * volume, grid_size_x,
         grid_size_y, class_num_, anchors_num);
   }
   return 0;
@@ -196,7 +200,9 @@ void YoloBoxHeadPlugin::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int max_batct_size) TRT_NOEXCEPT {}
+    int max_batct_size) TRT_NOEXCEPT {
+  input_dims_.assign(input_dims, input_dims + nb_inputs);
+}
 
 nvinfer1::IPluginV2Ext* YoloBoxHeadPlugin::clone() const TRT_NOEXCEPT {
   return new YoloBoxHeadPlugin(data_type_, anchors_, class_num_, conf_thresh_,

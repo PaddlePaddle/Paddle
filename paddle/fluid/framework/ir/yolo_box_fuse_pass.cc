@@ -88,7 +88,7 @@ struct YoloBoxPattern : public PatternBase {
             {yolo_box0_out_boxes, yolo_box1_out_boxes, yolo_box0_out_boxes})
         .LinksTo({concat0_out});
     // concat1 pattern
-    auto* concat1 = pattern->NewNode(concat0_repr())->assert_is_op("concat");
+    auto* concat1 = pattern->NewNode(concat1_repr())->assert_is_op("concat");
     auto* concat1_out = pattern->NewNode(concat1_out_repr())
                             ->assert_is_op_output("concat", "Out")
                             ->assert_is_op_input("multiclass_nms3", "Scores");
@@ -302,6 +302,7 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
                                  transpose2_out_xshape,
                                  concat1_out,
                                  nms_out_index});
+    found_subgraph_count++;
   };
 
   gpd(graph, handler);

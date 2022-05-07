@@ -45,7 +45,7 @@ class YoloBoxHeadOpConverter : public OpConverter {
     float scale_x_y = BOOST_GET_CONST(float, op_desc.GetAttr("scale_x_y"));
     int type_id = static_cast<int>(engine_->WithFp16());
 
-    auto* yolo_box_plugin = new plugin::YoloBoxPlugin(
+    auto* yolo_box_plugin = new plugin::YoloBoxHeadPlugin(
         type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
         anchors, class_num, conf_thresh, downsample_ratio, clip_bbox,
         scale_x_y);

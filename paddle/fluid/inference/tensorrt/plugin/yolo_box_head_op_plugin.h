@@ -74,6 +74,7 @@ class YoloBoxHeadPlugin : public nvinfer1::IPluginV2Ext {
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override;
 
  private:
+  std::vector<nvinfer1::Dims> input_dims_;
   nvinfer1::DataType data_type_;
   std::vector<int> anchors_;
   int* anchors_device_;

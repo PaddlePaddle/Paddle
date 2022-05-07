@@ -64,6 +64,9 @@ class YoloBoxPostOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("nms_threshold", "The threshold to be used in NMS.");
     AddOutput("Out", "The output tensor");
     AddOutput("NmsRoisNum", "The output RoIs tensor");
+    AddComment(R"DOC(
+yolo_box_post Operator.
+)DOC");
   }
 };
 

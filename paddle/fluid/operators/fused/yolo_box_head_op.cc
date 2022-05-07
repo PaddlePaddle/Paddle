@@ -51,6 +51,9 @@ class YoloBoxHeadOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Scale the center point of decoded bounding "
                    "box. Default 1.0");
     AddOutput("Out", "The output tensor");
+    AddComment(R"DOC(
+yolo_box_head Operator.
+)DOC");
   }
 };
 
