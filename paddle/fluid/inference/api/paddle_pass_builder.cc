@@ -108,6 +108,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_matmul_to_mul_pass",                   //
       "fc_fuse_pass",                                 //
       "conv_elementwise_add_fuse_pass",               //
+      "yolo_box_fuse_pass",                           //
       "tensorrt_subgraph_pass",                       //
       "conv_bn_fuse_pass",                            //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
