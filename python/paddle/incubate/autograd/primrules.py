@@ -410,7 +410,7 @@ def div_jvp(op, x_dot, y_dot):
     if y_dot is None:
         return div(x_dot, y)
     elif x_dot is None:
-        return div(mul(x, y_dot), mul(y, y))
+        return neg(div(mul(x, y_dot), mul(y, y)))
     else:
         t1 = div(x_dot, y)
         t2 = div(mul(x, y_dot), mul(y, y))
