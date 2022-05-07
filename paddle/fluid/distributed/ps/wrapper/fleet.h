@@ -166,13 +166,11 @@ class FleetWrapper {
       const std::vector<std::string>& input_names,
       std::vector<const LoDTensor*>* inputs,    // NOLINT
       std::vector<const LoDTensor*>* outputs);  // NOLINT
-  void PushSparseFromTensorAsync(const uint64_t table_id, int fea_dim,
-                                 uint64_t padding_id, platform::Place place,
-                                 std::vector<const LoDTensor*>* inputs,
-                                 const LoDTensor* shows,
-                                 const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs,
-                                 bool use_cvm_op = false);
+  void PushSparseFromTensorAsync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<const LoDTensor*>* inputs,
+      std::vector<int>& slots, const LoDTensor* shows, const LoDTensor* clicks,
+      std::vector<LoDTensor*>* outputs, bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status

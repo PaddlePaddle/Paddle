@@ -32,6 +32,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
     auto use_cvm_op = context.Attr<bool>("use_cvm_op");
+    auto slots = context.Attr<std::vector<int>>("slots");
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");
@@ -43,8 +44,8 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(context.GetPlace())) {
       fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
                                        static_cast<uint64_t>(padding_idx),
-                                       context.GetPlace(), &inputs, shows, clks,
-                                       &outputs, use_cvm_op);
+                                       context.GetPlace(), &inputs, slots,
+                                       shows, clks, &outputs, use_cvm_op);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -91,10 +92,11 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      fleet->PushSparseFromTensorAsync(
-          static_cast<uint64_t>(table_id), emb_dim,
-          static_cast<uint64_t>(padding_idx), context.GetPlace(),
-          &tmp_input_vec, tmp_shows_tensor, tmp_clicks_tensor, &tmp_output_vec);
+      fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
+                                       static_cast<uint64_t>(padding_idx),
+                                       context.GetPlace(), &tmp_input_vec,
+                                       slots, tmp_shows_tensor,
+                                       tmp_clicks_tensor, &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {

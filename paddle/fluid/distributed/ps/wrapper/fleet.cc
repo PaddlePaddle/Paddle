@@ -473,8 +473,9 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
 void FleetWrapper::PushSparseFromTensorAsync(
     const uint64_t table_id, int fea_dim, uint64_t padding_id,
     platform::Place place, std::vector<const LoDTensor*>* inputs,
-    const LoDTensor* shows, const LoDTensor* clks,
+    std::vector<int>& slots, const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs, bool use_cvm_op) {
+  CHECK(slots.size() == inputs->size());
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
@@ -545,15 +546,14 @@ void FleetWrapper::PushSparseFromTensorAsync(
           push_keys.emplace_back(real_id);
           if (use_cvm_op) {
             push_values.emplace_back(fea_dim + 1);
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            push_values.back()[0] = static_cast<float>(slots[index]);
             float* data = push_values.back().data() + 1;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           } else {
             push_values.emplace_back(fea_dim + 3);
             // slot show clk grad... consistent with CtrCommonPushValue defined
-            // in
-            // ctr_accessor.h
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            // in ctr_accessor.h
+            push_values.back()[0] = static_cast<float>(slots[index]);
             push_values.back()[1] =
                 (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
             push_values.back()[2] =
@@ -573,14 +573,14 @@ void FleetWrapper::PushSparseFromTensorAsync(
         push_keys.emplace_back(real_id);
         if (use_cvm_op) {
           push_values.emplace_back(fea_dim + 1);
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[0] = static_cast<float>(slots[index]);
           float* data = push_values.back().data() + 1;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         } else {
           push_values.emplace_back(fea_dim + 3);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[0] = static_cast<float>(slots[index]);
           push_values.back()[1] = (i >= show_size ? 1 : show_tensor[i]);
           push_values.back()[2] = (i >= clk_size ? 0 : clk_tensor[i]);
           float* data = push_values.back().data() + 3;
@@ -793,21 +793,21 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 }
 
 void FleetWrapper::Revert() {
-    auto ret = worker_ptr_->Revert();
-    ret.wait();
-    if (ret.get() == -1) {
-      LOG(ERROR) << "table revert failed";
-      exit(-1);
-    }
+  auto ret = worker_ptr_->Revert();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
 }
 
 void FleetWrapper::CheckSavePrePatchDone() {
-    auto ret = worker_ptr_->CheckSavePrePatchDone();
-    ret.wait();
-    if (ret.get() == -1) {
-      LOG(ERROR) << "table revert failed";
-      exit(-1);
-    }
+  auto ret = worker_ptr_->CheckSavePrePatchDone();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
