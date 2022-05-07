@@ -1324,9 +1324,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         grad_api_namespace = f"paddle::experimental::{namespace}"
         grad_function_call_str = f"""
-  std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
   const auto& out_metas = OutputMeta();
-  std::vector<std::vector<paddle::experimental::Tensor*>> api_output({slot_num_bwd_outputs});
+  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
     api_output[i].reserve(returns.size());
     for (size_t j = 0; j < returns[i].size(); ++j) {{
