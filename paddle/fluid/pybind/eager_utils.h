@@ -31,6 +31,10 @@ class Scope;
 }
 namespace pybind {
 
+#define RETURN_PY_NONE \
+  Py_INCREF(Py_None);  \
+  return Py_None;
+
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool IsEagerTensor(PyObject* obj);

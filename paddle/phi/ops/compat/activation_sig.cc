@@ -121,13 +121,13 @@ KernelSignature ReluDoubleGradOpArgumentMapping(
 KernelSignature TanhDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "tanh_double_grad", {"Out", "DDX", "DOut"}, {}, {"DOutNew", "DDOut"});
+      "tanh_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
 }
 
 KernelSignature TanhTripleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("tanh_triple_grad",
-                         {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
+                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
                          {},
                          {"D_OutNew", "D_DOut", "D_DDx"});
 }

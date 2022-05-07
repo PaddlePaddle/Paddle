@@ -12,6 +12,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     py_test_modules(test_while_op_completion MODULES test_while_op_completion ENVS ${dist_ENVS})
     py_test_modules(test_converter MODULES test_converter ENVS ${dist_ENVS})
     set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+    py_test_modules(test_high_order_grad MODULES test_high_order_grad ENVS ${dist_ENVS})
+    set_tests_properties(test_high_order_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
     py_test_modules(test_tunable_variable MODULES test_tunable_variable ENVS ${dist_ENVS})
     py_test_modules(test_tunable_space MODULES test_tunable_space ENVS ${dist_ENVS})
