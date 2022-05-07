@@ -1320,12 +1320,15 @@ class TripletMarginWithDistanceLoss(Layer):
 
     Parameters:
         distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+
         swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
+
         margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
                 between the positive and negative distances required for the loss to be 0. Larger
                 margins penalize cases where the negative examples are not distant enough from the
                 anchors, relative to the positives.
+
         reduction:Indicate how to average the loss by batch_size.
                 the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
                 If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -1336,8 +1339,10 @@ class TripletMarginWithDistanceLoss(Layer):
     Call Parameters:
         input:Input tensor, the data type is float32 or float64.
                 the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
         positive:Positive tensor, the data type is float32 or float64.
                 The shape of label is the same as the shape of input.
+
         negative:Negative tensor, the data type is float32 or float64.
                 The shape of label is the same as the shape of input.
 

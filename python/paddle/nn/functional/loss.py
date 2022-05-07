@@ -2276,6 +2276,7 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
+
     Returns:
         Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
