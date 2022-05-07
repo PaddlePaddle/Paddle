@@ -52,8 +52,7 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   } else if (self->tensor.is_selected_rows()) {
     return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
   } else {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -87,8 +86,7 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

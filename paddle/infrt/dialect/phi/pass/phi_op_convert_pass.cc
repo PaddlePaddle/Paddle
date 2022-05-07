@@ -193,7 +193,7 @@ void PhiOpConvertPass::convertStage() {
       op->replaceAllUsesWith(kernel_op.getResults());
     } else {
       ::phi::KernelSignature kernel_sign =
-          ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
+          (*::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name))(
               infrt::ProtoArgumentMappingContext(op));
       VLOG(3) << "IncompatiblePhiKernel: op(" << op_name << "), kernel("
               << kernel_sign.name << ")";
