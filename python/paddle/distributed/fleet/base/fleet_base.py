@@ -975,11 +975,14 @@ class Fleet(object):
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
+                import paddle
+                place = paddle.fluid.CPUPlace()
+                exe = paddle.fluid.Executor(place)
 
                 # build net
                 # fleet.distributed_optimizer(...)
 
-                fleet.save_dense_params(exe, "path", scope, program)
+                fleet.save_dense_params(exe, "path", scope=paddle.static.global_scope(), program=paddle.static.default_main_program())
 
         """
         self._runtime_handle._save_dense_params(executor, dirname, scope,
@@ -1900,13 +1903,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
