@@ -654,8 +654,8 @@ void conv2d_grad_impl(const Tensor& input,
 
   phi::GeneralBinaryGradInferMeta(MakeMetaTensor(*input_input),
                                   MakeMetaTensor(*input_filter),
-                                  &meta_out_0,
-                                  &meta_out_1);
+                                  kernel_out_0 ? &meta_out_0 : nullptr,
+                                  kernel_out_1 ? &meta_out_1 : nullptr);
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,
