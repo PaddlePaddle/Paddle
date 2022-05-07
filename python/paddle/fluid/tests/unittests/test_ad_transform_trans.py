@@ -17,6 +17,7 @@ import numpy as np
 
 import paddle
 from paddle.incubate.autograd.primx import Transform, orig2prim, prim2orig
+from paddle.incubate.autograd.utils import enable_prim, disable_prim
 from paddle.fluid.layers.utils import flatten
 
 paddle.enable_static()
@@ -307,6 +308,67 @@ class TestAutoGradTransform3(TestAutoGradTransform1):
             'elementwise_sub', 'split', 'fill_constant', 'fill_any_like',
             'elementwise_add', 'scatter', 'elementwise_add', 'elementwise_add'
         ]
+
+
+class TestGradients1(unittest.TestCase):
+    def setUp(self):
+        self.main_program = paddle.static.Program()
+        self.startup_program = paddle.static.Program()
+
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+            enable_prim()
+            self.init_program()
+            disable_prim()
+
+    def init_program(self):
+        x = paddle.static.data(name='x', shape=[1], dtype='float32')
+        x2 = paddle.multiply(x, x)
+        x3 = paddle.multiply(x2, x)
+        x4 = paddle.multiply(x3, x)
+
+        grad1, = paddle.static.gradients([x4], [x])
+        grad2, = paddle.static.gradients([grad1], [x])
+        grad3, = paddle.static.gradients([grad2], [x])
+
+        prim2orig(self.main_program.block(0))
+
+        self.feed = {x.name: np.array([2.]).astype('float32')}
+        self.fetch_list = [grad3.name]
+        self.result = [np.array([48.])]
+
+    def test_run(self):
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(self.startup_program)
+        outs = exe.run(self.main_program,
+                       feed=self.feed,
+                       fetch_list=self.fetch_list)
+        np.allclose(outs, self.result)
+
+
+class TestGradients2(TestGradients1):
+    def init_program(self):
+        x = paddle.static.data(name='x', shape=[1], dtype='float32')
+        x2 = paddle.multiply(x, x)
+        x3 = paddle.multiply(x2, x)
+        x4 = paddle.multiply(x3, x)
+        x5 = paddle.multiply(x4, x)
+        out = paddle.sqrt(x5 + x4)
+
+        grad1, = paddle.static.gradients([out], [x])
+        grad2, = paddle.static.gradients([grad1], [x])
+        grad3, = paddle.static.gradients([grad2], [x])
+        grad4, = paddle.static.gradients([grad3], [x])
+
+        prim2orig(self.main_program.block(0))
+
+        self.feed = {x.name: np.array([2.]).astype('float32'), }
+        self.fetch_list = [grad4.name]
+        # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
+        self.result = [np.array([-0.27263762711])]
 
 
 if __name__ == '__main__':
