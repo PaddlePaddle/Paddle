@@ -22,9 +22,9 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const {
-    OP_INOUT_CHECK(ctx->HasInput("Box0"), "Input", "Box0", "yolo_box_post");
-    OP_INOUT_CHECK(ctx->HasInput("Box1"), "Input", "Box1", "yolo_box_post");
-    OP_INOUT_CHECK(ctx->HasInput("Box2"), "Input", "Box2", "yolo_box_post");
+    OP_INOUT_CHECK(ctx->HasInput("Boxes0"), "Input", "Boxes0", "yolo_box_post");
+    OP_INOUT_CHECK(ctx->HasInput("Boxes1"), "Input", "Boxes1", "yolo_box_post");
+    OP_INOUT_CHECK(ctx->HasInput("Boxes2"), "Input", "Boxes2", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("ImageShape"), "Input", "ImageShape",
                    "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasInput("ImageScale"), "Input", "ImageScale",
@@ -39,22 +39,22 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
 class YoloBoxPostOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("Box0", "The Box0 tensor");
-    AddInput("Box1", "The Box1 tensor");
-    AddInput("Box2", "The Box2 tensor");
+    AddInput("Boxes0", "The Boxes0 tensor");
+    AddInput("Boxes1", "The Boxes1 tensor");
+    AddInput("Boxes2", "The Boxes2 tensor");
     AddInput("ImageShape", "The height and width of each input image.");
     AddInput("ImageScale", "The scale factor of ImageShape.");
-    AddAttr<std::vector<int>>("anchors0", "The anchors of Box0.");
-    AddAttr<std::vector<int>>("anchors1", "The anchors of Box1.");
-    AddAttr<std::vector<int>>("anchors2", "The anchors of Box2.");
+    AddAttr<std::vector<int>>("anchors0", "The anchors of Boxes0.");
+    AddAttr<std::vector<int>>("anchors1", "The anchors of Boxes1.");
+    AddAttr<std::vector<int>>("anchors2", "The anchors of Boxes2.");
     AddAttr<int>("class_num", "The number of classes to predict.");
     AddAttr<float>("conf_thresh",
                    "The confidence scores threshold of detection boxes. "
                    "Boxes with confidence scores under threshold should "
                    "be ignored.");
-    AddAttr<int>("downsample_ratio0", "The downsample ratio of Box0.");
-    AddAttr<int>("downsample_ratio1", "The downsample ratio of Box1.");
-    AddAttr<int>("downsample_ratio2", "The downsample ratio of Box2.");
+    AddAttr<int>("downsample_ratio0", "The downsample ratio of Boxes0.");
+    AddAttr<int>("downsample_ratio1", "The downsample ratio of Boxes1.");
+    AddAttr<int>("downsample_ratio2", "The downsample ratio of Boxes2.");
     AddAttr<bool>("clip_bbox",
                   "Whether clip output bonding box in Input(ImgSize) "
                   "boundary. Default true.");

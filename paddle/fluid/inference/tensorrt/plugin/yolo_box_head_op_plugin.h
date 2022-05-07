@@ -47,7 +47,6 @@ class YoloBoxHeadPlugin : public nvinfer1::IPluginV2Ext {
   int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
 #endif
               void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
-  template <typename T>
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
   size_t getSerializationSize() const TRT_NOEXCEPT override;

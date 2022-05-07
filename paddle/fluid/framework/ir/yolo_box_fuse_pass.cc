@@ -238,9 +238,9 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
     // create yolo_box_post
     framework::OpDesc yolo_box_post_op_desc;
     yolo_box_post_op_desc.SetType("yolo_box_post");
-    yolo_box_post_op_desc.SetInput("Box0", {yolo_box0_out_boxes->Name()});
-    yolo_box_post_op_desc.SetInput("Box1", {yolo_box1_out_boxes->Name()});
-    yolo_box_post_op_desc.SetInput("Box2", {yolo_box2_out_boxes->Name()});
+    yolo_box_post_op_desc.SetInput("Boxes0", {yolo_box0_out_boxes->Name()});
+    yolo_box_post_op_desc.SetInput("Boxes1", {yolo_box1_out_boxes->Name()});
+    yolo_box_post_op_desc.SetInput("Boxes2", {yolo_box2_out_boxes->Name()});
     yolo_box_post_op_desc.SetInput("ImageShape", {elt_div_in_x->Name()});
     yolo_box_post_op_desc.SetInput("ImageScale", {elt_div_in_y->Name()});
     yolo_box_post_op_desc.SetAttr("anchors0",

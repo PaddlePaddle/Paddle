@@ -74,11 +74,10 @@ size_t YoloBoxHeadPlugin::getWorkspaceSize(int max_batch_size) const
   return 0;
 }
 
-__global__ void YoloBoxHeadV3Kernel(const float* input, float* output,
-                                    const uint grid_size_x,
-                                    const uint grid_size_y,
-                                    const uint class_num,
-                                    const uint anchors_num) {
+__global__ void YoloBoxHeadKernel(const float* input, float* output,
+                                  const uint grid_size_x,
+                                  const uint grid_size_y, const uint class_num,
+                                  const uint anchors_num) {
   uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
   uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
   uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
@@ -130,7 +129,7 @@ int YoloBoxHeadPlugin::enqueue(int batch_size, const void* const* inputs,
   dim3 grid((grid_size_x / block.x) + 1, (grid_size_y / block.y) + 1,
             (anchors_num / block.z) + 1);
   for (int n = 0; n < batch_size; n++) {
-    YoloBoxHeadV3Kernel<<<grid, block, 0, stream>>>(
+    YoloBoxHeadKernel<<<grid, block, 0, stream>>>(
         input_data + batch * volume, output_data + batch * volume, grid_size_x,
         grid_size_y, class_num_, anchors_num);
   }
