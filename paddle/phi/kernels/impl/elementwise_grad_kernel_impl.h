@@ -722,4 +722,41 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 
+
+
+
+
+
+
+
+
+
+template <typename T>
+struct HeavisideGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(0);
+  }
+};
+
+template <typename T>
+struct HeavisideGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x == static_cast<T>(0));
+  }
+};
+
+template <typename T, typename Context>
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& dout,
+                                    int axis,
+                                    DenseTensor* dx,
+                                    DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, HeavisideGradDX<T>, HeavisideGradDY<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, HeavisideGradDX<T>(), HeavisideGradDY<T>());
+}
+
+
 }  // namespace phi
