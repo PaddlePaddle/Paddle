@@ -584,5 +584,14 @@ struct ElementwisePowFunctor {
     return std::pow(a, b);
   }
 };
+
+template <typename T>
+struct ElementwiseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return (a == static_cast<T>(0)) ?  b : 
+              static_cast<T>(a > static_cast<T>(0));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
