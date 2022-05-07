@@ -99,6 +99,19 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           DenseTensor* out);
 
 template <typename T, typename Context>
+void ElementwiseHeavisideRawKernel(const Context& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& y,
+                                   int axis,
+                                   DenseTensor* out);
+
+template <typename T, typename Context>
+void ElementwiseHeavisideKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& y,
+                                DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor Maximum(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y) {
@@ -150,6 +163,17 @@ DenseTensor ElementwisePow(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   ElementwisePowKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor ElementwiseHeaviside(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  ElementwiseHeavisideKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 
