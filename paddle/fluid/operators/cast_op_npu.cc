@@ -24,6 +24,7 @@ namespace operators {
 static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
+        {framework::proto::VarType::INT8, ACL_INT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
@@ -62,6 +63,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
       out->mutable_data<float>(place);
     } else if (dtype == framework::proto::VarType::FP16) {
       out->mutable_data<paddle::platform::float16>(place);
+    } else if (dtype == framework::proto::VarType::INT8) {
+      out->mutable_data<int8_t>(place);
     } else if (dtype == framework::proto::VarType::INT16) {
       out->mutable_data<int16_t>(place);
     } else if (dtype == framework::proto::VarType::INT32) {
@@ -89,7 +92,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,
