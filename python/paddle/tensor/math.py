@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -413,6 +413,87 @@ def pow(x, y, name=None):
         helper = LayerHelper('elementwise_pow', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
+    else:
+        raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
+
+
+def heaviside(x, y, name=None):
+    """
+    Compute the power of tensor elements. The equation is:
+
+    .. math::
+        out = x^{y} 
+
+    **Note**:
+    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            # example 1: y is a float or int
+            res = paddle.pow(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+            res = paddle.pow(x, 2.5)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1.         , 5.65685415 , 15.58845711])
+
+            # example 2: y is a Tensor
+            y = paddle.to_tensor([2], dtype='float32')
+            res = paddle.pow(x, y)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+
+    """
+    # in dynamic graph mode
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            # TODO: where is the implementation ???
+            return _C_ops.final_state_heaviside(x, y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_heaviside')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    if _in_legacy_dygraph():
+        if isinstance(y, (int, float)):
+            # TODO: where is the implementation ???
+            return _C_ops.heaviside(x, 'factor', y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_heaviside')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    # in static graph mode
+    if isinstance(y, (int, float)):
+        helper = LayerHelper('heaviside', **locals())
+        inputs = {'X': x}
+        attrs = {'factor': y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='heaviside', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        return out
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        helper = LayerHelper('elementwise_heaviside', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        return _elementwise_op(LayerHelper('elementwise_heaviside', **locals()))
     else:
         raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
