@@ -27,9 +27,7 @@ typedef struct {
 } TensorObject;
 
 typedef struct {
-  PyObject_HEAD
-
-      PyObject* container;
+  PyObject_HEAD PyObject* container;
   PyObject* non_differentiable;
   PyObject* dirty_tensors;
   bool materialize_grads;
