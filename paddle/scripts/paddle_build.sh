@@ -1306,7 +1306,7 @@ function card_test() {
     testcases=$1
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
-
+    echo "testcases: " $testcases
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
@@ -1678,6 +1678,100 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
+set -ex
+    fi
+}
+
+function parallel_test_base_gpu_test() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+
+set -x
+        # set trt_convert ut to run 15% cases.
+        export TEST_NUM_PERCENT_CASES=0.15
+        precison_cases=""
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            if [[ -f "ut_list" ]]; then
+                set +x
+                echo "PREC length: "`wc -l ut_list`
+                precision_cases=`cat ut_list`
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
+        fi
+set +x
+        EXIT_CODE=0;
+        mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
+        cp -r ${PADDLE_ROOT}/tools/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
+
+        test_cases=$(ctest -N -V) # get all test cases
+        single_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
+            card_test "$line" 1 $num
+        done < $PADDLE_ROOT/tools/single_txt
+
+        echo "EXIT_CODE:: "$EXIT_CODE
+        single_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        
+        multiple_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
+            #echo "num: " $num 
+            card_test "$line" 2 $num 
+
+        done < $PADDLE_ROOT/tools/multiple_txt
+
+        multiple_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" 
+
+        exclusive_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
+            #echo "num: " $num 
+            card_test "$line" -1 $num 
+
+        done < $PADDLE_ROOT/tools/exclusive_txt
+
+        exclusive_ut_endTime_s=`date +%s`
+        #echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" 
+        cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
 set -ex
     fi
 }
@@ -2422,7 +2516,7 @@ function parallel_test() {
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
-        parallel_test_base_gpu
+        parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
     elif [ "$WITH_ASCEND_CL" == "ON" ];then
