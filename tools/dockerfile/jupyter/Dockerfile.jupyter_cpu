@@ -5,6 +5,7 @@ USER root
 RUN pip install --no-cache-dir -i https://mirror.baidu.com/pypi/simple jupyterhub-dummyauthenticator
 RUN pip install --no-cache-dir -i https://mirror.baidu.com/pypi/simple <paddle_whl>
 RUN pip install --no-cache-dir -i https://mirror.baidu.com/pypi/simple visualdl
+RUN pip install --upgrade jinja2==3.0.3
 
 COPY jupyterhub_config.py /etc/jupyter
 COPY jupyter_notebook_config.py /etc/jupyter
