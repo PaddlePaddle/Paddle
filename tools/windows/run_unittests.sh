@@ -348,6 +348,7 @@ function show_ut_retry_result() {
 set +e
 
 export FLAGS_call_stack_level=2
+export FLAGS_enable_eager_mode="1"
 
 if nvcc --version | grep 11.2; then
     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
