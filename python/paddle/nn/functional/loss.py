@@ -2226,28 +2226,33 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     elif reduction == 'none':
         return loss
 
+
 def soft_margin_loss(input, label,reduction='mean',
                          name=None):
     """
     This APIs measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
+
     .. math::
         Out = log(1 + exp((-label * input)))
 
     Parameters:
 
-        input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``input``
-            should always be the output of sigmod.  Available dtype is float32, float64.
-        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``input``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
+        input (Tensor): The input predications tensor with shape: [N, *],
+            N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
+             Available dtype is float32, float64.
+
+        label (Tensor): The target labels tensor with the same shape as
+            ``input``. The target labels which values should be numbers -1 or 1.
+            Available dtype is int32, int64, float32, float64.
+
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
+
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2261,7 +2266,7 @@ def soft_margin_loss(input, label,reduction='mean',
 
             import paddle
             input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
-            label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
+            label = paddle.to_tensor([1.0, -1.0, 1.0], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
     """
     if reduction not in ['sum', 'mean', 'none']:

@@ -94,7 +94,7 @@ class SoftMarginLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "computed by the previous operator. ");
     AddInput("Label",
              "(Tensor, default Tensor<float>), have same shape with input"
-             "label should between in 0 and 1.");
+             "label should be -1 or 1.");
     AddOutput("Out",
               "(Tensor, default Tensor<float>), have same shape with"
               "input");
@@ -124,10 +124,6 @@ class SoftMarginLossGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-//DECLARE_INPLACE_OP_INFERER(SoftMarginLossInplaceInferer, {"X", "Out"});
-/*DECLARE_INPLACE_OP_INFERER(SoftMarginLossGradInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});*/
 
 }  // namespace operators
 }  // namespace paddle

@@ -1320,16 +1320,19 @@ class SoftMarginLoss(Layer):
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
+
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Call Parameters:
 
-        Input (Tensor): The input tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``input``
-            is usually the output of Linear layer. Available dtype is float32, float64.
-        Label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``input``. The target labels which values should be numbers between 0 and 1.
+        Input (Tensor): The input tensor with shape: [N, *],
+            N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
             Available dtype is float32, float64.
+
+        Label (Tensor): The target labels tensor with the same shape as
+            ``input``. The target labels which values should be numbers -1 or 1.
+            Available dtype is int32, int64, float32, float64.
+
         Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
 
@@ -1342,7 +1345,7 @@ class SoftMarginLoss(Layer):
 
             import paddle
             input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
-            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            label = paddle.to_tensor([1, -1, 1], dtype="float32")
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
     """
