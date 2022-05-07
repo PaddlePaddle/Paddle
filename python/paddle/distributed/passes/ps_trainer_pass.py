@@ -147,7 +147,7 @@ class DistributedOpsPass(PassBase):
             print('ShowClickEntry not configured, will not use')
             show = _program.global_block().create_var(
                 name="show",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(
@@ -163,7 +163,7 @@ class DistributedOpsPass(PassBase):
 
             clk = _program.global_block().create_var(
                 name="clk",
-                dtype=core.VarDesc.VarType.INT64,
+                dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
                 stop_gradient=True)
             _program.global_block()._insert_op(
