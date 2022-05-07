@@ -2087,7 +2087,6 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
     (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
-  VLOG(0) << "yxf so loaded";
   CHECK(parser != nullptr);
   // get slotrecord object
   auto pull_record_func = [this](std::vector<SlotRecord>& record_vec,
@@ -2122,7 +2121,6 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
     do {
       if (ps_gpu_ptr->UseAfsApi()) {
         auto afs_reader = ps_gpu_ptr->OpenReader(filename);
-        VLOG(0) << "yxf::start pases";
         is_ok = parser->ParseFileInstance(
             [this, afs_reader](char* buf, int len) {
               return afs_reader->read(buf, len);

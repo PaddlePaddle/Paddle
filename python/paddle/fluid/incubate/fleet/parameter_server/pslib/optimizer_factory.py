@@ -612,7 +612,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
             st = self._check_config_fleet_with_program_op(strategy, tn,
                                                           emb_to_size)
             if st.get(tn) is not None:
-                print("yxf add sparse table: {}".format(st[tn]))
                 server.add_sparse_table(sparse_table_index, st[tn])
             else:
                 server.add_sparse_table(sparse_table_index, None)

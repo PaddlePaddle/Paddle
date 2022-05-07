@@ -67,7 +67,6 @@ void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 void FleetWrapper::InitWorker(const std::string& dist_desc,
                               const std::vector<uint64_t>& host_sign_list,
                               int node_num, int index) {
-  VLOG(0) << "yxf:::Going to init worker";
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
     VLOG(0) << "Going to init worker";

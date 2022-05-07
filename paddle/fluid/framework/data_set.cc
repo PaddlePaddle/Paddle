@@ -131,7 +131,7 @@ std::vector<std::string> DatasetImpl<T>::GetSlots() {
 
     
   }
-  std::cout << "yxf dataset use slots: ";
+  std::cout << "dataset use slots: ";
   for (auto s : use_slots_) {
     std::cout << s << " | ";
   }
@@ -1793,7 +1793,6 @@ void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
 }
 
 std::vector<std::string> SlotRecordDataset::GetSlots() {
-  VLOG(0) << "yxf in slot get slots";
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   use_slots_.clear();
   for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
@@ -1803,7 +1802,7 @@ std::vector<std::string> SlotRecordDataset::GetSlots() {
       use_slots_.push_back(slot.name());
     }
   }
-  std::cout << "yxf dataset use slots: ";
+  std::cout << "dataset use slots: ";
   for (auto s : use_slots_) {
     std::cout << s << " | ";
   }

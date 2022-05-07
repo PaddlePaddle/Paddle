@@ -205,7 +205,7 @@ void PSGPUWorker::PrepareCudaGraph() {
 }
 
 void PSGPUWorker::TrainFiles() {
-  VLOG(0) << "Begin to train files";
+  VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
@@ -331,7 +331,7 @@ void PSGPUWorker::TrainFiles() {
 
 void PSGPUWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
-  VLOG(0) << "Begin to train files with profiler";
+  VLOG(3) << "Begin to train files with profiler";
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;

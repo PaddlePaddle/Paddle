@@ -318,11 +318,6 @@ class PSGPUWrapper {
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
-    std::cout << "yxf set: ";
-    for (auto s : slot_offset_vector_) {
-      std::cout << s << " | ";
-    }
-    std::cout << " end " <<std::endl;
   }
 
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
@@ -345,7 +340,7 @@ class PSGPUWrapper {
         slots_vec_test.push_back(slot.name());
       }
     }
-    std::cout << "yxf wrapper use slots: ";
+    std::cout << "wrapper use slots: ";
     for (auto s : slots_vec_test) {
       std::cout << s << " | ";
     }

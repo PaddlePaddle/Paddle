@@ -159,7 +159,6 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
         8, 1, (unsigned int)-1, (size_t)-1, false, false));
     if (!multi_mf_dim_) {
-      VLOG(0) << "yxf:: using table";
       auto table = new Table(capacity / load_factor_);
       tables_.push_back(table);
     } else {

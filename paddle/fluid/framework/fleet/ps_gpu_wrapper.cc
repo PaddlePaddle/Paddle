@@ -140,16 +140,14 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   std::string data_set_name = std::string(typeid(*dataset_).name());
 
   if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
-    VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
     SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
     auto input_channel = dataset->GetInputChannel();
-    VLOG(0) << "yxf::buildtask::inputslotchannle size: "
+    VLOG(3) << "buildtask::inputslotchannle size: "
             << input_channel->Size();
     const std::deque<SlotRecord>& vec_data = input_channel->GetData();
     total_len = vec_data.size();
     len_per_thread = total_len / thread_keys_thread_num_;
     remain = total_len % thread_keys_thread_num_;
-    VLOG(0) << "total len: " << total_len;
     auto gen_func = [this](const std::deque<SlotRecord>& total_data,
                            int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
@@ -206,7 +204,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
             std::thread(gen_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
       } else {
-        VLOG(0) << "yxf::psgpu wrapper genfunc with dynamic mf";
+        VLOG(3) << "psgpu wrapper genfunc with dynamic mf";
         threads.push_back(
             std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
@@ -483,7 +481,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       sleep(300);
       exit(-1);
     } else {
-      VLOG(0) << "FleetWrapper Pull sparse to local done with table size: "
+      VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
               << local_dim_keys[i][j].size();
     }
 #endif
@@ -806,7 +804,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   auto build_dynamic_mf_func = [this, &gpu_task](int i, int j) {
     this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
     int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim;
+    VLOG(3) << "building table: " << i << "with mf dim: " << mf_dim;
     size_t feature_value_size =
         TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
     auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
@@ -923,7 +921,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     // }
 
     if (device_dim_keys.size() > 0) {
-      VLOG(0) << "yxf show table: " << i << " table kv size: " << device_dim_keys.size() << "dim: " << mf_dim << " len: " << len;
+      VLOG(3) << "show table: " << i << " table kv size: " << device_dim_keys.size() << "dim: " << mf_dim << " len: " << len;
       HeterPs_->show_one_table(i);
     }
     delete mem_pool;
@@ -1074,7 +1072,7 @@ void PSGPUWrapper::EndPass() {
     //VLOG(0) << "yxf::3: size: " << device_keys.size();
     
     int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim;
+    VLOG(3) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim;
     size_t feature_value_size =
         TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
     
