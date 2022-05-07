@@ -148,6 +148,7 @@ from .math import increment  # noqa: F401
 from .math import log  # noqa: F401
 from .math import multiplex  # noqa: F401
 from .math import pow  # noqa: F401
+from .math import heaviside  # noqa: F401
 from .math import reciprocal  # noqa: F401
 from .math import reciprocal_  # noqa: F401
 from .math import round  # noqa: F401
@@ -318,6 +319,7 @@ tensor_method_func  = [ #noqa
            'logsumexp',
            'multiplex',
            'pow',
+           'heaviside',
            'prod',
            'reciprocal',
            'reciprocal_',
