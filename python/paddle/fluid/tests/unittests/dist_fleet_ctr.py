@@ -341,10 +341,27 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dirname = os.getenv("SAVE_DIRNAME", None)
         if dirname:
             fleet.save_persistables(exe, dirname=dirname)
+            fleet.load_model(dirname, mode=0)
 
         cache_dirname = os.getenv("SAVE_CACHE_DIRNAME", None)
         if cache_dirname:
             fleet.save_cache_model(cache_dirname)
+
+        dense_param_dirname = os.getenv("SAVE_DENSE_PARAM_DIRNAME", None)
+        if dense_param_dirname:
+            fleet.save_dense_params(exe, dense_param_dirname,
+                                    fluid.global_scope(),
+                                    fluid.default_main_program())
+
+        save_one_table_dirname = os.getenv("SAVE_ONE_TABLE_DIRNAME", None)
+        if save_one_table_dirname:
+            fleet.save_one_table(0, save_one_table_dirname, 0)
+            fleet.load_one_table(0, save_one_table_dirname, 0)
+
+        patch_dirname = os.getenv("SAVE_PATCH_DIRNAME", None)
+        if patch_dirname:
+            fleet.save_persistables(exe, patch_dirname, None, 5)
+            fleet.check_save_pre_patch_done()
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)
