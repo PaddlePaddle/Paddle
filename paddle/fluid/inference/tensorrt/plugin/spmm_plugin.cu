@@ -227,12 +227,18 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
       &handle, &matB, n, k, k, alignment, type, CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
 
-  paddle::platform::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB,
-                                                            compressed_size);
-  std::cout << "compressed size: " << *compressed_size << std::endl;
+  // paddle::platform::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB,
+  //                                                           compressed_size);
+  paddle::platform::dynload::cusparseLtSpMMACompressedSize(&handle, &plan,
+                                                compressed_size);
   cudaMalloc(dest, *compressed_size);
-  paddle::platform::dynload::cusparseLtSpMMACompress2(
-      &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
+  std::cout << "compressed size: " << *compressed_size << std::endl;
+  paddle::platform::dynload::cusparseLtSpMMACompress(&handle, &plan, src,
+                                          *dest, nullptr);
+  std::cout << "compressed size: " << *compressed_size << std::endl;
+  // cudaMalloc(dest, *compressed_size);
+  // paddle::platform::dynload::cusparseLtSpMMACompress2(
+  //     &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
@@ -682,12 +688,13 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
+      cudaDeviceSynchronize();
       cudaMemcpy(out_host, output, out_size * 4, cudaMemcpyDeviceToHost);
-      std::cout << "outputs:";
-      for (int i=0; i<out_size; i++) {
-        std::cout << " " << static_cast<float>(reinterpret_cast<float*>(out_host)[i]);
-      }
-      std::cout << std::endl;
+      // std::cout << "outputs:";
+      // for (int i=0; i<out_size; i++) {
+      //   std::cout << " " << static_cast<float>(reinterpret_cast<float*>(out_host)[i]);
+      // }
+      // std::cout << std::endl;
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
