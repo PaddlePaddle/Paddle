@@ -197,6 +197,13 @@ class OpConverter {
         float input_scale =
             BOOST_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
         engine->SetTensorDynamicRange(input_itensor, input_scale);
+        VLOG(3) << "name:  " << input_tensor_name << "; type: ";
+        switch(input_itensor->getType())
+            {
+            case nvinfer1::DataType::kFLOAT: VLOG(3) << "kFLOAT"; break;
+            case nvinfer1::DataType::kHALF: VLOG(3) << "kHALF"; break;
+            default: break;
+            }
         VLOG(1) << "Set input tensor scale = " << input_scale
                 << " for tensor: " << input_tensor_name << ".";
       }
@@ -280,10 +287,23 @@ class OpConverter {
                                   "optim_input_shape should be same."));
           }
         }
+
+        nvinfer1::DataType dtype = FluidDataType2TRT(var->Proto()->type().lod_tensor().tensor().data_type());
+        if(input.rfind("fill_constant_batch_size", 0) == 0) {
+            dtype = nvinfer1::DataType::kHALF;
+        }
         engine->DeclareInput(
-            input, FluidDataType2TRT(
-                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            input, dtype,
             Vec2TRT_Dims(input_shape, input, true));
+        
+        VLOG(3) << "name:  " << input << "; type: ";
+        switch(dtype)
+            {
+            case nvinfer1::DataType::kFLOAT: VLOG(3) << "kFLOAT"; break;
+            case nvinfer1::DataType::kHALF: VLOG(3) << "kHALF"; break;
+            default: break;
+            }
+
 #endif
       } else {
         engine->DeclareInput(

@@ -114,7 +114,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_matmul_to_mul_pass",      //
       "fc_fuse_pass",                    //
       "conv_elementwise_add_fuse_pass",  //
-      //"graph_viz_pass",
+      "graph_viz_pass",
 //      "add_support_int8_pass",
       "fill_concat_assign_fuse_pass", //
       "graph_viz_pass",                  //

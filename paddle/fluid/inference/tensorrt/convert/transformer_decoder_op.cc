@@ -237,18 +237,18 @@ class TransformerDecoderOpConverter : public OpConverter {
         // id_layer = engine_->AddDynamicPlugin(&v_cache, 1, id_plugin);
         // v_cache = id_layer->getOutput(0);
 
-        std::vector<nvinfer1::ITensor*> inputs;
-        inputs.push_back(k_cache);
-        inputs.push_back(v_cache);
-        auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(), inputs.size());
-  //      layer->setName(("transformer_decoder_concat_kv_cache(Output: " + output_name + ")").c_str());
-        layer->setAxis(0);
-        auto* kv_cache = layer->getOutput(0); // [2*B, N, S', H]
-        auto dims_ = kv_cache->getDimensions();
-        VLOG(4) << "Before reshape, kv_cache dims: ";
-        for (int i=0; i<dims_.nbDims; i++) {
-          VLOG(4) << dims_.d[i];
-        }
+  //       std::vector<nvinfer1::ITensor*> inputs;
+  //       inputs.push_back(k_cache);
+  //       inputs.push_back(v_cache);
+  //       auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(), inputs.size());
+  // //      layer->setName(("transformer_decoder_concat_kv_cache(Output: " + output_name + ")").c_str());
+  //       layer->setAxis(0);
+  //       auto* kv_cache = layer->getOutput(0); // [2*B, N, S', H]
+  //       auto dims_ = kv_cache->getDimensions();
+  //       VLOG(4) << "Before reshape, kv_cache dims: ";
+  //       for (int i=0; i<dims_.nbDims; i++) {
+  //         VLOG(4) << dims_.d[i];
+  //       }
         // reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
         //       engine_, Shuffle, *k_cache);
         // reshape_dim.nbDims = 5;
@@ -275,7 +275,8 @@ class TransformerDecoderOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_out); // [3, B, S, N * H]
         plugin_inputs.push_back(bias_qk);// [bsz, 1, 1, time_step(cache_seq_length)+1] 
-        plugin_inputs.push_back(kv_cache); // [2, B, num_head, cache_seq_len(padding max_seq_len), dim_head]
+        plugin_inputs.push_back(k_cache); // [B, num_head, cache_seq_len(padding max_seq_len), dim_head]
+        plugin_inputs.push_back(v_cache); // [B, num_head, cache_seq_len(padding max_seq_len), dim_head]
         plugin_inputs.push_back(time_step); //[]
         // qkv bias: [3, num_head, dim_head]
         
@@ -286,7 +287,7 @@ class TransformerDecoderOpConverter : public OpConverter {
 
         plugin::DynamicPluginTensorRT* decoder_plugin = new plugin::TransformerDecoderPluginDynamic<half>(half_bias_data, bias_t->numel(), head_number,
                                                   head_size, scale, with_fp16);
-        auto* decoder_layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, decoder_plugin);
+        auto* decoder_layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 5, decoder_plugin);
 
         // decoder_layer->setName(("transformer_decoder_mma(Output: " + output_name + ")").c_str());
 

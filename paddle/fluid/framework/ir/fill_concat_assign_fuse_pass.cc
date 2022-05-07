@@ -102,8 +102,8 @@ int FillConcatAssignFusePass::BuildFusion(Graph* graph, const std::string& name_
     //   return;
     // }
     // GET_IR_NODE_FROM_SUBGRAPH(fill_in, fill_in, fill_pattern);
-     GET_IR_NODE_FROM_SUBGRAPH(fill, fill, fill_pattern);
-    // GET_IR_NODE_FROM_SUBGRAPH(fill_out, fill_out, fill_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fill, fill, fill_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fill_out, fill_out, fill_pattern);
     // GET_IR_NODE_FROM_SUBGRAPH(concat_in, concat_in, fill_pattern);
     // GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, fill_pattern);
     // GET_IR_NODE_FROM_SUBGRAPH(concat, concat, fill_pattern);
@@ -111,6 +111,11 @@ int FillConcatAssignFusePass::BuildFusion(Graph* graph, const std::string& name_
     // GET_IR_NODE_FROM_SUBGRAPH(assign_out, assign_out, fill_pattern);
     
     fuser(fill);
+
+    
+    fill->Op()->SetAttr("dtype", framework::proto::VarType::FP16);
+    fill_out->Var()->SetDataType(framework::proto::VarType::FP16);
+    fill->Op()->Block()->FindVar(fill_out->Name())->SetDataType(framework::proto::VarType::FP16);
       // Remove unneeded nodes.
     // std::unordered_set<const Node*> marked_nodes(
     //       {fill, fill_out, concat, concat_out});

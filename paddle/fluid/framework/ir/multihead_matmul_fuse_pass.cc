@@ -931,6 +931,16 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* fill2_tmp_out = graph->CreateVarNode(&fill2_tmp_out_desc, block_id);
     fill1->Op()->SetOutput("Out", {fill1_tmp_out->Name()});
     fill2->Op()->SetOutput("Out", {fill2_tmp_out->Name()});
+    fill1->Op()->SetAttr("dtype", framework::proto::VarType::FP16);
+    fill2->Op()->SetAttr("dtype", framework::proto::VarType::FP16);
+    fill1_out->Var()->SetDataType(framework::proto::VarType::FP16);
+    fill2_out->Var()->SetDataType(framework::proto::VarType::FP16);
+    fill1_tmp_out->Var()->SetDataType(framework::proto::VarType::FP16);
+    fill2_tmp_out->Var()->SetDataType(framework::proto::VarType::FP16);
+    auto* block = mul0->Op()->Block();
+    for (auto _node : {fill1_out, fill2_out, fill1_tmp_out, fill2_tmp_out}) {
+        block->FindVar(_node->Name())->SetDataType(framework::proto::VarType::FP16);
+    }
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");

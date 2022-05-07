@@ -563,6 +563,14 @@ int TransformerDecoderV2FusePass::BuildFusionV2(Graph* graph,
     int head_number =
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
+    auto* block = mul0->Op()->Block();
+    for (auto _node : {k_cache, v_cache}) {
+        auto* var_ = block->FindVar(_node->Name());
+        if (var_ != nullptr) {
+          var_->SetDataType(framework::proto::VarType::FP16);
+        }
+    }
+
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("transformer_decoder");
 

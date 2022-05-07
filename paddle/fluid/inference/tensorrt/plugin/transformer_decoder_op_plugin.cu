@@ -40,8 +40,9 @@ namespace plugin {
     // [bsz, 1, 1, time_step(cache_seq_length)+1]
     const T *attn_mask;
   
-    // [2, B, num_head, cache_seq_len(padding max_seq_len), dim_head]
-    T *cache_kv;
+    // [B, num_head, cache_seq_len(padding max_seq_len), dim_head]
+    T *cache_k;
+    T *cache_v;
   
     int batch_size;
     int num_head;
@@ -621,7 +622,7 @@ namespace plugin {
       int offset = bhi * params.max_seq_length * Dh +
                    co * params.max_seq_length * QK_ELTS_IN_16B +
                    timestep * QK_ELTS_IN_16B + ci;
-      *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      *reinterpret_cast<Qk_vec *>(&params.cache_k[offset]) = k;
   
       float qk = dot<Qk_vec, Qk_vec>(q, k);
   #pragma unroll
@@ -669,7 +670,7 @@ namespace plugin {
     constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
     constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
   
-    T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
+    T *k_cache = &params.cache_k[bhi * params.max_seq_length * Dh + ki];
     int ti_end = div_up(timestep, K_PER_WARP) * K_PER_WARP;
   
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
@@ -750,9 +751,7 @@ namespace plugin {
     int vo = tid / THREADS_PER_VALUE;
     int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
   
-    T *v_cache = &params.cache_kv[params.batch_size * params.num_head *
-                                      params.max_seq_length * Dh +
-                                  bhi * params.max_seq_length * Dh + vi];
+    T *v_cache = &params.cache_v[bhi * params.max_seq_length * Dh + vi];
   
   #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     using V_vec_acum = typename V_vec_acum_fp32_<V_vec>::Type;
@@ -888,7 +887,7 @@ namespace plugin {
   template <typename T>
   void fmha(cudaStream_t stream, const T *qkv_tensor,
             const T *qkv_bias_tensor, const T *src_mask_tensor,
-            T *cache_kv_tensor, T *out_tensor, int batch_size,
+            T *cache_k_tensor, T *cache_v_tensor, T *out_tensor, int batch_size,
             int max_seq_length, int num_head, int dim_head, const int64_t* timestep,
             float inv_sqrt_dh) {
     Masked_multihead_attention_params<T> params;
@@ -896,7 +895,8 @@ namespace plugin {
     params.qkv = qkv_tensor;
     params.qkv_bias = qkv_bias_tensor;
     params.attn_mask = src_mask_tensor;
-    params.cache_kv = cache_kv_tensor;
+    params.cache_k = cache_k_tensor;
+    params.cache_v = cache_v_tensor;
   
     params.batch_size = batch_size;
     params.num_head = num_head;
@@ -1007,10 +1007,10 @@ bool TransformerDecoderPluginDynamic<T>::supportsFormatCombination(
       return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
           (in_out[pos].format == nvinfer1::PluginFormat::kLINEAR);
     }
-  } else if (pos == 1 || pos == 2) {
+  } else if (pos == 1 || pos == 2 || pos == 3) {
     const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
     return in.type == prev.type && in.format == prev.format;
-  } else if(pos == 3) {
+  } else if(pos == 4) {
     return (in.type == nvinfer1::DataType::kINT32) &&
             (in.format == nvinfer1::PluginFormat::kLINEAR);
   } else { // output
@@ -1053,13 +1053,14 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
     VLOG(1) << "TRT Plugin DataType selected. TransformerDecoderPluginDynamic-->fp16";
 
     int64_t time_step = 0;
-    const int64_t* d_time_step = static_cast<const int64_t *>(inputs[3]);
+    const int64_t* d_time_step = static_cast<const int64_t *>(inputs[4]);
     // cudaMemcpy(&time_step, d_time_step, sizeof(int64_t), cudaMemcpyDeviceToHost);
     // VLOG(3) << "bsz: " << bsz << "; max_seq_len: " << max_seq_len << "; time_step: " << time_step;
 
     const half *qkv_tensor = static_cast<const half *>(inputs[0]);
     const half *bias_qk = static_cast<const half *>(inputs[1]);
-    const half *kv_cache = static_cast<const half *>(inputs[2]);
+    const half *k_cache = static_cast<const half *>(inputs[2]);
+    const half *v_cache = static_cast<const half *>(inputs[3]);
     half *output = static_cast<half *>(outputs[0]);
 
     // void fmha(cudaStream_t stream, const T *qkv_tensor,
@@ -1070,7 +1071,7 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
 
     fmha<half>(stream, qkv_tensor, 
       const_cast<const half*>(p_gpu_bias_), bias_qk, 
-      const_cast<half*>(kv_cache), output, bsz, 
+      const_cast<half*>(k_cache),const_cast<half*>(v_cache), output, bsz, 
       max_seq_len, head_number_, head_size_, d_time_step,
       scale_);
   }
