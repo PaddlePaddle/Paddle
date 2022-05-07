@@ -64,7 +64,7 @@ class RecordEvent(ContextDecorator):
 
     def __init__(self,
                  name: str,
-                 event_type: TracerEventType=TracerEventType.UserDefined):
+                 event_type: TracerEventType=TracerEventType.PythonUserDefined):
         self.name = name
         self.event_type = event_type
         self.event = None
@@ -102,7 +102,7 @@ class RecordEvent(ContextDecorator):
             self.event = None
         else:
             if self.event_type == TracerEventType.UserDefined:
-                self.event_type == TracerEventType.PythonUserDefined
+                self.event_type = TracerEventType.PythonUserDefined
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
