@@ -23,12 +23,13 @@ import paddle.nn.functional as F
 import paddle.distributed.auto_parallel as auto
 
 from paddle.distributed import fleet
-
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.operators import find_best_compatible_distributed_operator_impl
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
@@ -283,139 +284,143 @@ def get_program():
 
 
 def completion(train_program, start_program, dist_context):
-    blocks = train_program.blocks
-    # completion tensors
-    for block in blocks:
-        for op in block.ops:
-            if op.type == "layer_norm":
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    if tensor_dist_attr:
-                        continue
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    tensor_dist_attr.dims_mapping = [-1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
+    # blocks = train_program.blocks
+    # # completion tensors
+    # for block in blocks:
+    #     for op in block.ops:
+    #         if op.type == "layer_norm":
+    #             for out_name in op.output_arg_names:
+    #                 out_var = block.vars[out_name]
+    #                 tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     out_var)
+    #                 if tensor_dist_attr:
+    #                     continue
+    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr.process_mesh = _g_process_mesh
+    #                 tensor_dist_attr.dims_mapping = [-1]
+    #                 dist_context.set_tensor_dist_attr_for_program(
+    #                     out_var, tensor_dist_attr)
 
-            elif op.type == "elementwise_sub":
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    tensor_dist_attr.dims_mapping = [-1, -1, -1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
+    #         elif op.type == "elementwise_sub":
+    #             for out_name in op.output_arg_names:
+    #                 out_var = block.vars[out_name]
+    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr.process_mesh = _g_process_mesh
+    #                 tensor_dist_attr.dims_mapping = [-1, -1, -1]
+    #                 dist_context.set_tensor_dist_attr_for_program(
+    #                     out_var, tensor_dist_attr)
 
-            elif op.type == "matmul_v2":
-                col = False
-                for in_name in op.input_arg_names:
-                    if ".w_" not in in_name:
-                        continue
-                    if in_name not in block.vars:
-                        in_var = blocks[0].vars[in_name]
-                    else:
-                        in_var = block.vars[in_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    assert tensor_dist_attr is not None
-                    if tensor_dist_attr.dims_mapping == [-1, 0]:
-                        col = True
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    if tensor_dist_attr:
-                        continue
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    if col:
-                        tensor_dist_attr.dims_mapping = [-1, -1, 0]
-                    else:
-                        tensor_dist_attr.dims_mapping = [-1, -1, -1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
-            elif op.type == "while":
-                out_name = op.desc.output("StepScopes")[0]
-                out_var = block.vars[out_name]
-                tensor_dist_attr = TensorDistributedAttribute()
-                tensor_dist_attr.process_mesh = _g_process_mesh
-                tensor_dist_attr.dims_mapping = [-1]
-                dist_context.set_tensor_dist_attr_for_program(out_var,
-                                                              tensor_dist_attr)
+    #         elif op.type == "matmul_v2":
+    #             col = False
+    #             for in_name in op.input_arg_names:
+    #                 if ".w_" not in in_name:
+    #                     continue
+    #                 if in_name not in block.vars:
+    #                     in_var = blocks[0].vars[in_name]
+    #                 else:
+    #                     in_var = block.vars[in_name]
+    #                 tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     in_var)
+    #                 assert tensor_dist_attr is not None
+    #                 if tensor_dist_attr.dims_mapping == [-1, 0]:
+    #                     col = True
+    #             for out_name in op.output_arg_names:
+    #                 out_var = block.vars[out_name]
+    #                 tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     out_var)
+    #                 if tensor_dist_attr:
+    #                     continue
+    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr.process_mesh = _g_process_mesh
+    #                 if col:
+    #                     tensor_dist_attr.dims_mapping = [-1, -1, 0]
+    #                 else:
+    #                     tensor_dist_attr.dims_mapping = [-1, -1, -1]
+    #                 dist_context.set_tensor_dist_attr_for_program(
+    #                     out_var, tensor_dist_attr)
+    #         elif op.type == "while":
+    #             out_name = op.desc.output("StepScopes")[0]
+    #             out_var = block.vars[out_name]
+    #             tensor_dist_attr = TensorDistributedAttribute()
+    #             tensor_dist_attr.process_mesh = _g_process_mesh
+    #             tensor_dist_attr.dims_mapping = [-1]
+    #             dist_context.set_tensor_dist_attr_for_program(out_var,
+    #                                                           tensor_dist_attr)
 
-    # completion ops
-    for block in blocks:
-        for op in block.ops:
-            op_dist_attr = OperatorDistributedAttribute()
-            op_dist_attr.process_mesh = _g_process_mesh
-            if op.type == "create_by_read" or op.type == "create_double_buffer_reader":
-                for in_name in op.input_arg_names:
-                    op_dist_attr.set_input_dims_mapping(in_name, [])
-                for out_name in op.output_arg_names:
-                    op_dist_attr.set_output_dims_mapping(out_name, [])
-            elif op.type == "read":
-                for in_name in op.input_arg_names:
-                    op_dist_attr.set_output_dims_mapping(in_name, [])
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
-            elif op.type == "while":
-                for in_name in op.input_arg_names:
-                    in_var = block.vars[in_name]
-                    in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
-                for out_name in op.output_arg_names:
-                    if out_name == op.desc.output("StepScopes")[0]:
-                        op_dist_attr.set_output_dims_mapping(out_name, [])
-                    else:
-                        out_var = block.vars[out_name]
-                        out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                            out_var)
-                        op_dist_attr.set_output_dist_attr(out_name,
-                                                          out_dist_attr)
-            else:
-                for in_name in op.input_arg_names:
-                    if in_name == "lod_tensor_blocking_queue_0":
-                        continue
-                    if in_name not in block.vars:
-                        in_var = blocks[0].vars[in_name]
-                    else:
-                        in_var = block.vars[in_name]
-                    in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
-                for out_name in op.output_arg_names:
-                    if out_name not in block.vars:
-                        out_var = blocks[0].vars[out_name]
-                    else:
-                        out_var = block.vars[out_name]
-                    out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
+    # # completion ops
+    # for block in blocks:
+    #     for op in block.ops:
+    #         op_dist_attr = OperatorDistributedAttribute()
+    #         op_dist_attr.process_mesh = _g_process_mesh
+    #         if op.type == "create_by_read" or op.type == "create_double_buffer_reader":
+    #             for in_name in op.input_arg_names:
+    #                 op_dist_attr.set_input_dims_mapping(in_name, [])
+    #             for out_name in op.output_arg_names:
+    #                 op_dist_attr.set_output_dims_mapping(out_name, [])
+    #         elif op.type == "read":
+    #             for in_name in op.input_arg_names:
+    #                 op_dist_attr.set_output_dims_mapping(in_name, [])
+    #             for out_name in op.output_arg_names:
+    #                 out_var = block.vars[out_name]
+    #                 out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     out_var)
+    #                 op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
+    #         elif op.type == "while":
+    #             for in_name in op.input_arg_names:
+    #                 in_var = block.vars[in_name]
+    #                 in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     in_var)
+    #                 op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
+    #             for out_name in op.output_arg_names:
+    #                 if out_name == op.desc.output("StepScopes")[0]:
+    #                     op_dist_attr.set_output_dims_mapping(out_name, [])
+    #                 else:
+    #                     out_var = block.vars[out_name]
+    #                     out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                         out_var)
+    #                     op_dist_attr.set_output_dist_attr(out_name,
+    #                                                       out_dist_attr)
+    #         else:
+    #             for in_name in op.input_arg_names:
+    #                 if in_name == "lod_tensor_blocking_queue_0":
+    #                     continue
+    #                 if in_name not in block.vars:
+    #                     in_var = blocks[0].vars[in_name]
+    #                 else:
+    #                     in_var = block.vars[in_name]
+    #                 in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     in_var)
+    #                 op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
+    #             for out_name in op.output_arg_names:
+    #                 if out_name not in block.vars:
+    #                     out_var = blocks[0].vars[out_name]
+    #                 else:
+    #                     out_var = block.vars[out_name]
+    #                 out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+    #                     out_var)
+    #                 op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
 
-            if op.type == "matmul_v2":
-                op_dist_attr.impl_type = "matmul_v2"
-                for in_name in op_dist_attr.inputs_dist_attrs.keys():
-                    in_dist_attr = op_dist_attr.inputs_dist_attrs[in_name]
-                    if ".w_" in in_name and in_dist_attr.dims_mapping[-1] == 0:
-                        op_dist_attr.impl_idx = 0
-                    else:
-                        op_dist_attr.impl_idx = 1
-            elif op.type == "fill_constant_batch_size_like":
-                op_dist_attr.impl_type = "fill_constant_batch_size_like"
-                op_dist_attr.impl_idx = 0
-            else:
-                op_dist_attr.impl_type = "default"
-                op_dist_attr.impl_idx = 0
+    #         if op.type == "matmul_v2":
+    #             op_dist_attr.impl_type = "matmul_v2"
+    #             for in_name in op_dist_attr.inputs_dist_attrs.keys():
+    #                 in_dist_attr = op_dist_attr.inputs_dist_attrs[in_name]
+    #                 if ".w_" in in_name and in_dist_attr.dims_mapping[-1] == 0:
+    #                     op_dist_attr.impl_idx = 0
+    #                 else:
+    #                     op_dist_attr.impl_idx = 1
+    #         elif op.type == "fill_constant_batch_size_like":
+    #             op_dist_attr.impl_type = "fill_constant_batch_size_like"
+    #             op_dist_attr.impl_idx = 0
+    #         else:
+    #             op_dist_attr.impl_type = "default"
+    #             op_dist_attr.impl_idx = 0
 
-            dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
-            make_data_unshard(train_program, start_program, dist_context)
+    #         dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
+    #         make_data_unshard(train_program, start_program, dist_context)
+
+    completer = Completer(dist_context)
+    train_program = completer.complete_forward_annotation(train_program)
+    make_data_unshard(train_program, start_program, dist_context)
 
     return train_program, start_program
 
