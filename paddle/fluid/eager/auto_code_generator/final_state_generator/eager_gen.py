@@ -146,7 +146,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 {}
 
   // Call grad_api function
-  VLOG(3) << \"Final State Running: \" << \"{}\";
+  VLOG(3) << \"Final State Running: {}\";
 {}
   // Get GradIn autograd_meta
 {}
@@ -1312,11 +1312,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
             if IsPlainTensorType(ttype):
-                grad_api_args.append(f"api_output[{grad_api_position}][0]")
+                grad_api_args.append(f"api_output[{fwd_position}][0]")
             else:
                 assert IsVectorTensorType(ttype)
-                get_tensor_str = f"{indent}auto& {transformed_tensor_name} = returns[{grad_api_position}];"
-                grad_api_args.append(f"api_output[{grad_api_position}]")
+                grad_api_args.append(f"api_output[{fwd_position}]")
 
         grad_api_args_str = ", ".join(grad_api_args)
 
@@ -1329,7 +1328,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
     returns[i].resize(out_metas[i].size());
-    api_output[i].reserve(out_metas[i].size());
+    if(returns[i].size() == 0) {{
+      api_output[i].reserve(1);
+      api_output[i].push_back(nullptr);
+      continue;
+    }}
+    api_output[i].reserve(returns[i].size());
     for (size_t j = 0; j < returns[i].size(); ++j) {{
       if (out_metas[i][j].IsStopGradient()) {{
         api_output[i].push_back(nullptr);
