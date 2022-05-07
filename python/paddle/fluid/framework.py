@@ -72,7 +72,7 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
-print("os.environ.get('FLAGS_enable_eager_mode'):", os.environ.get('FLAGS_enable_eager_mode'))
+# print("os.environ.get('FLAGS_enable_eager_mode'):", os.environ.get('FLAGS_enable_eager_mode'))
 _dygraph_tracer_ = None
 _in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
 _global_expected_place_ = None
