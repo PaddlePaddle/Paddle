@@ -1346,9 +1346,11 @@ class TripletMarginLoss(Layer):
 
     Call Parameters:
         input:Input tensor, the data type is float32 or float64.
-            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+                the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+
         positive:Positive tensor, the data type is float32 or float64.
                 The shape of label is the same as the shape of input.
+
         negative:Negative tensor, the data type is float32 or float64.
                 The shape of label is the same as the shape of input.
 
