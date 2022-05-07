@@ -53,7 +53,7 @@ class ForwardAPI(BaseAPI):
         else:
             return_out_list = []
             for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
+                if name.split('@')[0] not in self.intermediate_outs:
                     return_out_list.append(self.outputs['types'][i])
             return return_out_list[0] if len(
                 return_out_list) == 1 else "std::tuple<" + ",".join(
@@ -65,7 +65,7 @@ class ForwardAPI(BaseAPI):
         else:
             return_out_list = []
             for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
+                if name.split('@')[0] not in self.intermediate_outs:
                     return_out_list.append(i)
             if len(return_out_list) == 1:
                 return f"return std::get<{return_out_list[0]}>(api_output);"

@@ -25,10 +25,9 @@ class SparseAPI(ForwardAPI):
         super(SparseAPI, self).__init__(api_item_yaml)
 
     def gene_api_declaration(self):
-        return f"""
-// {", ".join(self.outputs['names'])}
-PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.get_declare_args()});
-"""
+        api_declaration = "// " + ', '.join(self.outputs['names'])
+        return api_declaration + super(SparseAPI,
+                                       self).gene_api_declaration() + '\n'
 
     def get_kernel_tensor_out_type(self, output_name):
         sparse_type = 'TensorType::DENSE_TENSOR'
@@ -152,9 +151,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.get_de
 {return_code}"""
 
     def gene_base_api_code(self, inplace_flag=False):
-        api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.outputs['return_type']} {api_func_name}({self.get_define_args()}) {{
+PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.get_define_args()}) {{
 {self.gene_kernel_select()}
 {self.gen_sparse_kernel_code(inplace_flag)}
 }}

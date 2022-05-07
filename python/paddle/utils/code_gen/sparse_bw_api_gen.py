@@ -34,6 +34,9 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_return_type(self, out_type_list):
         return BackwardAPI.get_return_type(self, out_type_list)
 
+    def gene_return_type_code(self):
+        return self.outputs['return_type']
+
     def gene_return_code(self):
         return ""
 
