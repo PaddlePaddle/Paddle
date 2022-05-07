@@ -64,6 +64,15 @@ void ElementwisePowKernel(const Context& dev_ctx,
   ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void ElementwiseHeavisideKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& y,
+                                DenseTensor* out) {
+  int axis = -1;
+  ElementwiseHeavisideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -99,6 +108,14 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -130,6 +147,14 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideKernel,
                    float,
                    double,
                    int,
