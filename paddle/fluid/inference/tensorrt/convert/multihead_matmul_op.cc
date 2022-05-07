@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -373,6 +374,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
           with_fp16 = true;
         }
+        int head_size = hidden_out / head_number;
 
         // no need to add shuffle after fc, just change it in
         // QkvToContextPluginDynamic
@@ -386,40 +388,53 @@ class MultiheadMatMulOpConverter : public OpConverter {
         for (int i=0; i<fc_out_dims.nbDims; i++) {
           VLOG(4) << fc_out_dims.d[i];
         }
-        
-        int n_h = fc_out_dims.d[2] / 3;
-        int axis = 2;
-        std::vector<int> output_lengths= {n_h, n_h, n_h};
-        plugin::SplitPluginDynamic* slice = new plugin::SplitPluginDynamic(
-          axis, output_lengths, with_fp16, true);
-        auto* slice_layer = engine_->AddDynamicPlugin(&fc_out, 1, slice);
-        slice_layer->setName(("multihead_matmul_split(Output: " + output_name + ")").c_str());
-        
-        // reshpe [B, seq, head_number*head_size, 1] to [B, head_number, seq, head_size]
-        int head_size = hidden_out / head_number;
-        nvinfer1::Dims reshape_dim_0;
-        reshape_dim_0.nbDims = 4;
-        reshape_dim_0.d[0] = 0;
-        reshape_dim_0.d[1] = 0;
-        reshape_dim_0.d[2] = head_number;
-        reshape_dim_0.d[3] = head_size;
 
-        // create k cache
-        auto k_dims = slice_layer->getOutput(1)->getDimensions();
-        VLOG(4) << "k cache before reshape: ";
-        for (int i=0; i<k_dims.nbDims; i++) {
-          VLOG(4) << k_dims.d[i];
-        }     
-        auto* k_cache = slice_layer->getOutput(1);
+        nvinfer1::Dims reshape_dim;
+        reshape_dim.nbDims = 5;
+        reshape_dim.d[0] = 0;
+        reshape_dim.d[1] = 0;
+        reshape_dim.d[2] = 3;
+        reshape_dim.d[3] = head_number;
+        reshape_dim.d[4] = head_size;
         auto* reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle, *k_cache);
-        reshape_transpose_layer->setName(("multihead_matmul_k_shuffle(Output: " + output_name + ")").c_str());
-        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
-        reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
-        auto* decoder_k_cache =
+              engine_, Shuffle, *fc_out);
+        reshape_transpose_layer->setName(("multihead_matmul_fc_shuffle(Output: " + output_name + ")").c_str());
+        reshape_transpose_layer->setReshapeDimensions(reshape_dim); // [B, S, 3, head_number, head_size]
+        reshape_transpose_layer->setSecondTranspose({2,0,3,1,4}); // [3, B, head_number, S, head_size]
+        auto* fc_reshape_out = reshape_transpose_layer->getOutput(0);
+
+        auto after_reshape_dims = fc_reshape_out->getDimensions();
+        VLOG(4) << "fc after_reshape_dims: ";
+        for (int i=0; i<after_reshape_dims.nbDims; i++) {
+          VLOG(4) << after_reshape_dims.d[i];
+        }
+
+         // write key cache
+         std::vector<int> axes = {0};
+         std::vector<int> starts = {1};
+         std::vector<int> ends = {2};
+         plugin::SlicePluginDynamic* slice_plugin =
+            new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
+         auto* k_slice_layer = engine_->AddDynamicPlugin(&fc_reshape_out, 1, slice_plugin);
+         k_slice_layer->setName(("multihead_matmul_slice_k(Output: " + output_name + ")").c_str());
+         auto* k_slice_out = k_slice_layer->getOutput(0);
+         auto k_slice_out_dims = k_slice_out->getDimensions();
+         VLOG(4) << "slice out dims: ";
+         for (int i=0; i<k_slice_out_dims.nbDims; i++) {
+           VLOG(4) << k_slice_out_dims.d[i];
+         }
+         reshape_dim.nbDims = 4;
+         reshape_dim.d[0] = k_slice_out_dims.d[1];
+         reshape_dim.d[1] = k_slice_out_dims.d[2];
+         reshape_dim.d[2] = k_slice_out_dims.d[3];
+         reshape_dim.d[3] = k_slice_out_dims.d[4];
+         auto* k_reshape_layer = TRT_ENGINE_ADD_LAYER(
+                       engine_, Shuffle, *(k_slice_out));
+         k_reshape_layer->setReshapeDimensions(reshape_dim); // [B, head_number, S, head_size]
+         auto* decoder_k_cache =
             engine_->GetITensor(op_desc.Input("KCache").front());
         std::vector<nvinfer1::ITensor*> k_cache_inputs;
-        k_cache_inputs.push_back(reshape_transpose_layer->getOutput(0));
+        k_cache_inputs.push_back(k_reshape_layer->getOutput(0));
         k_cache_inputs.push_back(decoder_k_cache);
         auto* k_cache_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, k_cache_inputs.data(), k_cache_inputs.size());
         k_cache_layer->setName(("multihead_matmul_k_cache_concat(Output: " + output_name + ")").c_str());
@@ -428,29 +443,34 @@ class MultiheadMatMulOpConverter : public OpConverter {
         k_cache_layer->getOutput(0)->setName(out_name.c_str());
         engine_->SetITensor(out_name, k_cache_layer->getOutput(0));
         VLOG(3) << "SetITensor for output: " << out_name;
- 
-        k_dims = k_cache_layer->getOutput(0)->getDimensions();
-        VLOG(4) << "k cache after extend and reshape: ";
-        for (int i=0; i<k_dims.nbDims; i++) {
-          VLOG(4) << k_dims.d[i];
-        }
 
-        // create v cache
-        auto v_dims = slice_layer->getOutput(2)->getDimensions();
-        VLOG(4) << "v cache before reshape: ";
-        for (int i=0; i<v_dims.nbDims; i++) {
-          VLOG(4) << v_dims.d[i];
-        }
-        auto v_cache = slice_layer->getOutput(2);
-        reshape_transpose_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle, *v_cache);
-        reshape_transpose_layer->setName(("multihead_matmul_v_shuffle(Output: " + output_name + ")").c_str());
-        reshape_transpose_layer->setReshapeDimensions(reshape_dim_0); // [B, seq, head_number, head_size]
-        reshape_transpose_layer->setSecondTranspose({0,2,1,3}); // [B, head_number, seq, head_size]
+        auto k_cache_dims = k_cache_layer->getOutput(0)->getDimensions();
+        VLOG(4) << "concat out dims: ";
+         for (int i=0; i<k_cache_dims.nbDims; i++) {
+           VLOG(4) << k_cache_dims.d[i];
+         }
+
+        // write value cache
+        starts = {2};
+        ends = {3};
+        slice_plugin =
+            new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
+        auto* v_slice_layer = engine_->AddDynamicPlugin(&fc_reshape_out, 1, slice_plugin);
+        v_slice_layer->setName(("multihead_matmul_slice_v(Output: " + output_name + ")").c_str());
+        auto* v_slice_out = v_slice_layer->getOutput(0);
+        auto v_slice_out_dims = v_slice_out->getDimensions();
+        reshape_dim.nbDims = 4;
+        reshape_dim.d[0] = v_slice_out_dims.d[1];
+        reshape_dim.d[1] = v_slice_out_dims.d[2];
+        reshape_dim.d[2] = v_slice_out_dims.d[3];
+        reshape_dim.d[3] = v_slice_out_dims.d[4];
+        auto* v_reshape_layer = TRT_ENGINE_ADD_LAYER(
+                       engine_, Shuffle, *(v_slice_out));
+        v_reshape_layer->setReshapeDimensions(reshape_dim); // [B, head_number, S, head_size]
         auto* decoder_v_cache =
             engine_->GetITensor(op_desc.Input("VCache").front());
         std::vector<nvinfer1::ITensor*> v_cache_inputs;
-        v_cache_inputs.push_back(reshape_transpose_layer->getOutput(0));
+        v_cache_inputs.push_back(v_reshape_layer->getOutput(0));
         v_cache_inputs.push_back(decoder_v_cache);
         auto* v_cache_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, v_cache_inputs.data(), v_cache_inputs.size());
         v_cache_layer->setName(("multihead_matmul_v_cache_concat(Output: " + output_name + ")").c_str());
@@ -459,13 +479,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         v_cache_layer->getOutput(0)->setName(out_name.c_str());
         engine_->SetITensor(out_name, v_cache_layer->getOutput(0));
         VLOG(3) << "SetITensor for output: " << out_name;
-        
-        v_dims = v_cache_layer->getOutput(0)->getDimensions();
-        VLOG(4) << "v cache after extend and reshape: ";
-        for (int i=0; i<v_dims.nbDims; i++) {
-          VLOG(4) << v_dims.d[i];
-        }
-        
+
         // ##############write kv cache end ########################     
 
         // add qkv to context
