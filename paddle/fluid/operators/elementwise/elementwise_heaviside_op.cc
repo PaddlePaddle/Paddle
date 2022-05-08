@@ -13,17 +13,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
-// namespace paddle {
-// namespace framework {
-// class OpDesc;
-// }  // namespace framework
-// namespace imperative {
-// class OpBase;
-// }  // namespace imperative
-// namespace platform {
-// class CPUDeviceContext;
-// }  // namespace platform
-// }  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -50,14 +39,21 @@ class ElementwiseHeavisideOpMaker : public ElementwiseOpMaker {
   std::string GetName() const override { return "Heaviside"; }
   std::string GetEquation() const override { return "Out = Heaviside(X, Y)"; }
 
-  void AddInputX() override { AddInput("X", "(Variable), ??????."); }
+  void AddInputX() override { 
+      AddInput("X", 
+               "(Tensor), The input tensor of Heaviside step function. "
+               "Its dtype can be int32, int64, float32 and float64");
+  }
 
-  void AddInputY() override { AddInput("Y", "(Variable), ??????."); }
+  void AddInputY() override { 
+      AddInput("Y", 
+                "(Tensor), The tensor determining a Heaviside step function, "
+               "which is the value when X = 0. Its dtype should be same as X.");
+    }
 
   std::string GetOpFuntionality() const override {
-    // return "First tensor elements raised to powers from the second tensor, "
-    //        "element-wise.";
-    return "??????";
+    return "Computes the Heaviside step function determined by Y "
+           "for each element in X.";
   }
 };
 }  // namespace operators
@@ -71,11 +67,4 @@ REGISTER_OPERATOR(elementwise_heaviside, ops::ElementwiseOp,
                   ops::ElementwiseHeavisideGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_heaviside_grad, ops::ElementwiseOpGrad);
 
-// REGISTER_OP_VERSION(elementwise_pow)
-//     .AddCheckpoint(
-//         R"ROC(Register elementwise_pow for adding the attribute of Scale_y)ROC",
-//         paddle::framework::compatible::OpVersionDesc().NewAttr(
-//             "Scale_y",
-//             "In order to support the function of scaling the input Y when "
-//             "using the operator of elementwise_pow.",
-//             1.0f));
+
