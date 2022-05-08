@@ -1160,9 +1160,9 @@ class TheOnePSRuntime(RuntimeBase):
         save_var_names = dense_var_names if var_names is None else var_names
         print("save_var_names:", save_var_names)
 
+        import paddle
         for var in save_var_names:
             tensor = scope.find_var(var).get_tensor()
-            import paddle
             paddle.save(
                 tensor, os.path.join(dirname, var), use_binary_format=True)
 
@@ -1326,11 +1326,11 @@ class TheOnePSRuntime(RuntimeBase):
         return feasign_num
 
     ### no use?
-    def _revert(self):
-        fleet.util.barrier()
-        if self.role_maker._is_first_worker():
-            self._worker.revert()
-        fleet.util.barrier()
+    #    def _revert(self):
+    #        fleet.util.barrier()
+    #        if self.role_maker._is_first_worker():
+    #            self._worker.revert()
+    #        fleet.util.barrier()
 
     def _check_save_pre_patch_done(self):
         fleet.util.barrier()

@@ -39,6 +39,7 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "http_proxy": "",
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
+            "SAVE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/model",
             "SAVE_CACHE_DIRNAME":
             "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
             "SAVE_DENSE_PARAM_DIRNAME":
