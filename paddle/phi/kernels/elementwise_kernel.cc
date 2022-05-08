@@ -152,7 +152,7 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_heaviside,
-                   KPS,
+                   GPU,
                    ALL_LAYOUT,
                    phi::ElementwiseHeavisideKernel,
                    float,
