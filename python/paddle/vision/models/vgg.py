@@ -39,7 +39,9 @@ class VGG(nn.Layer):
 
     Examples:
         .. code-block:: python
+          :name: code-example
 
+            import paddle
             from paddle.vision.models import VGG
             from paddle.vision.models.vgg import make_layers
 
@@ -48,6 +50,12 @@ class VGG(nn.Layer):
             features = make_layers(vgg11_cfg)
 
             vgg11 = VGG(features)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = vgg11(x)
+
+            print(out.shape)
+            # [1, 1000]
 
     """
 
