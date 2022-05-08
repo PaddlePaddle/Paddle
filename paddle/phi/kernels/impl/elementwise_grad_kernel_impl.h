@@ -722,15 +722,6 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 
-
-
-
-
-
-
-
-
-
 template <typename T>
 struct HeavisideGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
@@ -757,6 +748,5 @@ void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
   phi::funcs::ElemwiseGradCompute<Context, T, HeavisideGradDX<T>, HeavisideGradDY<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, HeavisideGradDX<T>(), HeavisideGradDY<T>());
 }
-
 
 }  // namespace phi
