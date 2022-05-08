@@ -71,8 +71,10 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx906)
+list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx908)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx906)
+list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx908)
 
 
 if(HIP_COMPILER STREQUAL clang)

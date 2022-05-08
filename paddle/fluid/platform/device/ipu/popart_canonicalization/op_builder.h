@@ -17,8 +17,8 @@
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
-using paddle::framework::AttributeMap;
-using paddle::framework::Attribute;
+using AttributeMap = paddle::framework::AttributeMap;
+using Attribute = paddle::framework::Attribute;
 
 namespace paddle {
 namespace platform {
