@@ -1527,8 +1527,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
+// Do data transform before building KernelContext
+// TODO(zhiqiu): support TransferInplaceVarsBack
+#if PADDLE_WITH_TENSORRT
+      phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
+      PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
+      BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
+      (*pt_kernel_)(&pt_kernel_context);
+#else
       if (impl_ == nullptr) {
         PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_,
                        runtime_ctx);
@@ -1539,6 +1547,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
       (*pt_kernel_)(impl_->getKernelContext());
+#endif
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
