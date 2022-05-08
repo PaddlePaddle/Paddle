@@ -419,84 +419,45 @@ def pow(x, y, name=None):
 
 def heaviside(x, y, name=None):
     """
-    Compute the power of tensor elements. The equation is:
-
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
     .. math::
-        out = x^{y} 
-
-    **Note**:
-    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
-
-
+        heaviside(x, y)=
+            \left\{
+                \\begin{array}{lcl}
+                0,& &\\text{if} \ x < 0, \\\\
+                y,& &\\text{if} \ x = 0, \\\\
+                1,& &\\text{if} \ x > 0.
+                \end{array}
+            \\right.
+    Notes:
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
-
+        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
     Examples:
-
-        ..  code-block:: python
-
+        .. code-block:: python
+            :name: heaviside-example
             import paddle
-
-            x = paddle.to_tensor([1, 2, 3], dtype='float32')
-
-            # example 1: y is a float or int
-            res = paddle.pow(x, 2)
-            print(res)
-            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [1., 4., 9.])
-            res = paddle.pow(x, 2.5)
-            print(res)
-            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [1.         , 5.65685415 , 15.58845711])
-
-            # example 2: y is a Tensor
-            y = paddle.to_tensor([2], dtype='float32')
-            res = paddle.pow(x, y)
-            print(res)
-            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [1., 4., 9.])
-
-    """
-    # in dynamic graph mode
-    if in_dygraph_mode():
-        if isinstance(y, (int, float)):
-            # TODO: where is the implementation ???
-            return _C_ops.final_state_heaviside(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_heaviside')
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
-    if _in_legacy_dygraph():
-        if isinstance(y, (int, float)):
-            # TODO: where is the implementation ???
-            return _C_ops.heaviside(x, 'factor', y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_heaviside')
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
-    # in static graph mode
-    if isinstance(y, (int, float)):
-        helper = LayerHelper('heaviside', **locals())
-        inputs = {'X': x}
-        attrs = {'factor': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='heaviside', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-        return out
-    elif isinstance(y, (paddle.Tensor, Variable)):
-        helper = LayerHelper('elementwise_heaviside', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        return _elementwise_op(LayerHelper('elementwise_heaviside', **locals()))
-    else:
-        raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
-
+            x = paddle.to_tensor([-0.5, 0, 0.5])
+            y = paddle.to_tensor([0.1])
+            paddle.heaviside(x, y)
+            #    [0.        , 0.10000000, 1.        ]
+            x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
+            y = paddle.to_tensor([0.1, 0.2, 0.3])
+            paddle.heaviside(x, y)
+            #    [[0.        , 0.20000000, 1.        ],
+            #     [0.        , 1.        , 0.30000001]]
+     """
+    op_type = 'elementwise_heaviside'
+    axis = -1
+    act = None
+    if _non_static_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
 
 OP_NAMEMAPPING = {
     'elementwise_max': 'final_state_maximum',
