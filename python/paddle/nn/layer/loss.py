@@ -1325,7 +1325,7 @@ class TripletMarginLoss(Layer):
         d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
     Parameters:
-    	margin (int, Optional):Default: :math:`1`.
+    	margin (float, Optional):Default: :math:`1`.
 	
     	p (int, Optional):The norm degree for pairwise distance. Default: :math:`2`.
 	
