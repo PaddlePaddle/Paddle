@@ -56,7 +56,7 @@ class TestMultinomialOp(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(2)
+        self.place = paddle.NPUPlace(0)
 
     def init_data(self):
         # input probability is a vector, and replacement is True
@@ -110,7 +110,7 @@ class TestMultinomialOp3(TestMultinomialOp):
 class TestMultinomialApi(unittest.TestCase):
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         paddle.disable_static()
         x_numpy = np.random.rand(4)
         x = paddle.to_tensor(x_numpy)
@@ -126,7 +126,7 @@ class TestMultinomialApi(unittest.TestCase):
 
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         paddle.disable_static()
         x_numpy = np.random.rand(3, 4)
         x = paddle.to_tensor(x_numpy)
@@ -142,7 +142,7 @@ class TestMultinomialApi(unittest.TestCase):
 
     def test_dygraph3(self):
         # replacement is False. number of samples must be less than number of categories.
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         paddle.disable_static()
         x_numpy = np.random.rand(1000)
         x = paddle.to_tensor(x_numpy)
@@ -155,7 +155,7 @@ class TestMultinomialApi(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph4(self):
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         paddle.disable_static()
         logits = -1 * paddle.ones([2800])
         # Categorical.sample API will call multinomial op with replacement=True
@@ -164,14 +164,14 @@ class TestMultinomialApi(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             x = fluid.data('x', shape=[4], dtype='float32')
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
-            place = fluid.NPUPlace(2)
+            place = fluid.NPUPlace(0)
             exe = fluid.Executor(place)
 
         exe.run(startup_program)
@@ -188,7 +188,7 @@ class TestMultinomialApi(unittest.TestCase):
 
 class TestMultinomialAlias(unittest.TestCase):
     def test_alias(self):
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         x = paddle.rand([4])
         out1 = paddle.multinomial(x, num_samples=10, replacement=True)
         out2 = paddle.tensor.multinomial(x, num_samples=10, replacement=True)
@@ -198,7 +198,7 @@ class TestMultinomialAlias(unittest.TestCase):
 
 class TestMultinomialError(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('npu:2')
+        paddle.set_device('npu:0')
         paddle.disable_static()
 
     def tearDown(self):
