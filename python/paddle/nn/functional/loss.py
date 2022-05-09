@@ -2233,6 +2233,7 @@ def multi_label_soft_margin_loss(
     reduction = "mean",
     name = None):
     r"""
+    
         Parameters:
             input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
             label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
@@ -2247,15 +2248,19 @@ def multi_label_soft_margin_loss(
                     Default: ``'mean'``
             name (str, optional): Name for the operation (optional, default is None).
                     For more information, please refer to :ref:`api_guide_Name`.
-        Shape:
+        
+	Shape:
             input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
             label: N-D Tensor, same shape as the input.
             weight:N-D Tensor, the shape is [N,1]
             output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
-        Returns:
+        
+	Returns:
             Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
-        Examples:
+        
+	Examples:
             .. code-block:: python
+	    
                 import paddle
                 import paddle.nn.functional as F
                 input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
