@@ -31,6 +31,7 @@ class YoloBoxHeadOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a yolo_box_head op to tensorrt plugin";
+    LOG(INFO) << "convert a yolo_box_head op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* x_tensor = engine_->GetITensor(op_desc.Input("X").front());

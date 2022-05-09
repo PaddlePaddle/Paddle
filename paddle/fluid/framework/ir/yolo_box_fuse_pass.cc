@@ -32,8 +32,10 @@ struct YoloBoxPattern : public PatternBase {
       : PatternBase(pattern, name_scope, name_scope) {
     // elementwise_div pattern
     auto* elt_div_in_x = pattern->NewNode(elt_div_in_x_repr())
+                             ->AsInput()
                              ->assert_is_op_input("elementwise_div", "X");
     auto* elt_div_in_y = pattern->NewNode(elt_div_in_y_repr())
+                             ->AsInput()
                              ->assert_is_op_input("elementwise_div", "Y");
     auto* elt_div =
         pattern->NewNode(elt_div_repr())->assert_is_op("elementwise_div");
@@ -47,9 +49,11 @@ struct YoloBoxPattern : public PatternBase {
                          ->assert_is_op_output("cast", "Out")
                          ->assert_is_op_input("yolo_box", "ImgSize");
     cast->LinksFrom({elt_div_out}).LinksTo({cast_out});
+// return;
 // 3 * (yolo_box + transpose) pattern
 #define YOLO_BOX_TRANSPOSE_PATTERN(idx_)                                       \
   auto* yolo_box##idx_##_in_x = pattern->NewNode(yolo_box##idx_##_in_x_repr()) \
+                                    ->AsInput()                                \
                                     ->assert_is_op_input("yolo_box", "X");     \
   auto* yolo_box##idx_ =                                                       \
       pattern->NewNode(yolo_box##idx_##_repr())->assert_is_op("yolo_box");     \
@@ -71,12 +75,14 @@ struct YoloBoxPattern : public PatternBase {
           ->assert_is_op_nth_input("concat", "X", idx_);                       \
   auto* transpose##idx_##_out_xshape =                                         \
       pattern->NewNode(transpose##idx_##_out_xshape_repr())                    \
+          ->AsOutput()                                                         \
           ->assert_is_op_output("transpose2", "XShape");                       \
   transpose##idx_->LinksFrom({yolo_box##idx_##_out_scores})                    \
       .LinksTo({transpose##idx_##_out, transpose##idx_##_out_xshape});
     YOLO_BOX_TRANSPOSE_PATTERN(0);
     YOLO_BOX_TRANSPOSE_PATTERN(1);
     YOLO_BOX_TRANSPOSE_PATTERN(2);
+    return;
 #undef YOLO_BOX_TRANSPOSE_PATTERN
     // concat0 pattern
     auto* concat0 = pattern->NewNode(concat0_repr())->assert_is_op("concat");
@@ -99,11 +105,14 @@ struct YoloBoxPattern : public PatternBase {
     // nms pattern
     auto* nms = pattern->NewNode(nms_repr())->assert_is_op("multiclass_nms3");
     auto* nms_out = pattern->NewNode(nms_out_repr())
+                        ->AsOutput()
                         ->assert_is_op_output("multiclass_nms3", "Out");
     auto* nms_out_index = pattern->NewNode(nms_out_index_repr())
+                              ->AsOutput()
                               ->assert_is_op_output("multiclass_nms3", "Index");
     auto* nms_out_rois_num =
         pattern->NewNode(nms_out_rois_num_repr())
+            ->AsOutput()
             ->assert_is_op_output("multiclass_nms3", "NmsRoisNum");
     nms->LinksFrom({concat0, concat1})
         .LinksTo({nms_out, nms_out_index, nms_out_rois_num});
@@ -162,6 +171,9 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     VLOG(4) << "handle YoloBoxFusePass fuse";
+    LOG(INFO) << "handle YoloBoxFusePass fuse";
+    found_subgraph_count++;
+    return;
 #define GET_IR_NODE(node_) \
   GET_IR_NODE_FROM_SUBGRAPH(node_, node_, yolo_box_pattern)
     GET_IR_NODE(elt_div);
