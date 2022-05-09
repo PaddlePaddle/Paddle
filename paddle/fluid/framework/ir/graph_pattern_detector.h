@@ -276,27 +276,32 @@ class PDPattern {
  *    // Execute the detector.
  *    detector(&graph, handler);
  */
-struct NodeIdCompare {
-  bool operator()(Node* node1, Node* node2) const {
-    return node1->id() < node2->id();
-  }
-};
-
-struct PDNodeCompare {
-  bool operator()(const PDNode* node1, const PDNode* node2) const {
-    if (node1->pdpattern()->nodes().size() !=
-        node2->pdpattern()->nodes().size()) {
-      return node1->pdpattern()->nodes().size() <
-             node2->pdpattern()->nodes().size();
-    } else {
-      return node1->name() < node2->name();
-    }
-  }
-};
-
 class GraphPatternDetector {
  public:
-  using subgraph_t = std::map<PDNode*, Node*>;
+  struct NodeIdCompare {
+    bool operator()(Node* node1, Node* node2) const {
+      return node1->id() < node2->id();
+    }
+  };
+
+  struct PDNodeCompare {
+    bool operator()(const PDNode* node1, const PDNode* node2) const {
+      auto& nodes1 = node1->pdpattern()->nodes();
+      auto& nodes2 = node2->pdpattern()->nodes();
+      if (nodes1.size() != nodes2.size()) {
+        return nodes1.size() < nodes2.size();
+      } else {
+        for (size_t i = 0; i < nodes1.size(); i++) {
+          if (nodes1[i].get()->name() != nodes2[i].get()->name()) {
+            return nodes1[i].get()->name() < nodes2[i].get()->name();
+          }
+        }
+      }
+      return false;
+    }
+  };
+
+  using subgraph_t = std::map<PDNode*, Node*, PDNodeCompare>;
 
   // Operate on the detected pattern.
   using handle_t =
