@@ -2275,7 +2275,7 @@ def triplet_margin_loss(input,
         eps (float, Optional): Add small value to avoid division by zero,
             default value is 1e-6.
 
-        margin (int, Optional): Default: :math:`1`.
+        margin (float, Optional): Default: :math:`1`.
 
         reduction:Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
