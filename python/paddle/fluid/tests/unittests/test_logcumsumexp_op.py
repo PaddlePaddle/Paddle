@@ -23,6 +23,11 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+from op_test import OpTest
+
+
+def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int]=None):
+    return np.log(np.cumsum(np.exp(x), axis=axis))
 
 
 def np_logcumsumexp(x: np.ndarray,
@@ -56,8 +61,8 @@ def np_logcumsumexp(x: np.ndarray,
     return x
 
 
-class TestLogcumsumexpOp(unittest.TestCase):
-    def run_cases(self):
+class TestLogcumsumexp(unittest.TestCase):
+    def run_imperative(self):
         data_np = np.arange(12, dtype=np.float32).reshape(3, 4)
         data = paddle.to_tensor(data_np)
 
@@ -85,6 +90,17 @@ class TestLogcumsumexpOp(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             y = paddle.logcumsumexp(data, axis=2)
+
+        data_np = np.arange(10000, 10024, dtype=np.float32)
+        data = paddle.to_tensor(data_np)
+        y = paddle.logcumsumexp(data)
+        z = np_naive_logcumsumexp(data_np)
+        # check that naive algorithm overflows
+        self.assertTrue(all(z == np.inf))
+        z = np_logcumsumexp(data_np)
+        # check that our algorithm doesn't overflow
+        self.assertTrue(all(z != np.inf))
+        self.assertTrue(np.allclose(z, y.numpy()))
 
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
@@ -120,7 +136,7 @@ class TestLogcumsumexpOp(unittest.TestCase):
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
-        self.run_cases()
+        self.run_imperative()
         paddle.enable_static()
 
         self.run_static()
@@ -129,7 +145,7 @@ class TestLogcumsumexpOp(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
         paddle.disable_static(paddle.fluid.CUDAPlace(0))
-        self.run_cases()
+        self.run_imperative()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
@@ -152,6 +168,39 @@ class TestLogcumsumexpOp(unittest.TestCase):
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
                 out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
+
+
+class BaseOpTest(OpTest):
+    def setUp(self):
+        self.op_type = "logcumsumexp"
+        input, attrs = self.input_and_attrs()
+        self.inputs = {'X': input}
+        self.attrs = attrs
+        self.outputs = {'Out': np_logcumsumexp(input)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def input_and_attrs(self):
+        raise NotImplementedError()
+
+
+def TestLogcumsumexpOp1(BaseOpTest):
+    def input_and_attrs(self):
+        return np.random.randn(20, 6), {'axis': 0, 'flatten': True, 'reverse': True}
+
+
+def TestLogcumsumexpOp2(BaseOpTest):
+    def input_and_attrs(self):
+        return np.random.randn(20, 6), {'axis': 1, 'flatten': False, 'reverse': True}
+
+
+def TestLogcumsumexpOp3(BaseOpTest):
+    def input_and_attrs(self):
+        return np.random.randn(20, 6), {'axis': 1, 'flatten': False, 'reverse': False}
 
 
 if __name__ == '__main__':

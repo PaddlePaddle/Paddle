@@ -241,6 +241,37 @@ void ScanKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   const T* in_data = x.data<T>();
 
+  // Use thrust for parallel acceleration when the input size is equal to the
+  // length of the ‘axis’ dimension.
+  if (std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
+#ifdef __HIPCC__
+    const auto& policy = thrust::hip::par.on(dev_ctx.stream());
+#else
+    const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
+#endif
+    if (reverse) {
+      thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
+          thrust::device_pointer_cast(in_data) + size);
+      thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
+          thrust::device_pointer_cast(out_data) + size);
+      if (exclusive) {
+        thrust::exclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
+      } else {
+        thrust::inclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
+      }
+    } else {
+      if (exclusive) {
+        thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
+      } else {
+        thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
+      }
+    }
+    return;
+  }
+
+
   size_t height = 1;
   size_t width = 1;
   for (size_t i = 0; i <= axis; i++) {

@@ -146,8 +146,6 @@ void CumsumKernel(const Context& dev_ctx,
       dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
 }
 
-// Copied from
-// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/scan_ops.h
 template <typename T>
 struct LogSumExp {
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T operator()(const T& a,
