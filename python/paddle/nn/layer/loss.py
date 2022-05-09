@@ -1309,8 +1309,10 @@ class MultiLabelSoftMarginLoss(Layer):
         hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
         and output :math:`y` (which is a 2D `Tensor` of target class indices).
         For each sample in the mini-batch:
+	
         .. math::
             \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+	    
         where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
         :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
         :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
@@ -1318,6 +1320,9 @@ class MultiLabelSoftMarginLoss(Layer):
         :math:`y` and :math:`x` must have the same size.
 
         Parameters:
+	    weight (Tensor,optional): a manual rescaling weight given to each class.
+                    If given, has to be a Tensor of size C and the data type is float32, float64.
+                    Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
                     the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -1337,7 +1342,7 @@ class MultiLabelSoftMarginLoss(Layer):
             output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
         Returns:
-            Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
+            A callable object of MultiLabelSoftMarginLoss.
 
         Examples:
             .. code-block:: python
@@ -1372,7 +1377,7 @@ class MultiLabelSoftMarginLoss(Layer):
         return F.multi_label_soft_margin_loss(
             input,
             label,
+	    weight=self.weight,
             reduction=self.reduction,
-            weight=self.weight,
             name=self.name)
 
