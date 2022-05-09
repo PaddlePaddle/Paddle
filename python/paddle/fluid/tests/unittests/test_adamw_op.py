@@ -321,9 +321,9 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         linear1 = paddle.nn.Linear(
-            13, 8, bias_attr=paddle.fluid.initializer.Constant(value=1.0))
+            13, 8, bias_attr=paddle.nn.initializer.Constant(value=1.0))
         linear2 = paddle.nn.Linear(
-            8, 5, bias_attr=paddle.fluid.initializer.Constant(value=1.0))
+            8, 5, bias_attr=paddle.nn.initializer.Constant(value=1.0))
 
         # fix the linear name, simple_lr_setting function will use the name
         linear1.weight.name = "linear_1.w_0"
@@ -435,14 +435,18 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 x = fluid.data(name='x', shape=[None, 10], dtype='float32')
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
 
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0))
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0))
                 linear1 = paddle.nn.Linear(
-                    10,
-                    32,
-                    bias_attr=paddle.fluid.initializer.Constant(value=1.0))
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1)
                 linear2 = paddle.nn.Linear(
-                    32,
-                    1,
-                    bias_attr=paddle.fluid.initializer.Constant(value=1.0))
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2)
 
                 out = linear1(x)
                 out = linear2(out)
