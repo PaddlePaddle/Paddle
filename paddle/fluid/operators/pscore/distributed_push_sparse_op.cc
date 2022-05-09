@@ -111,7 +111,8 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int>>("slots",
                               "[slot_id1, slot_id2] Slots array of Ids.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
