@@ -654,6 +654,7 @@ class OperatorWithKernel : public OperatorBase {
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;
+
   /**
    * Transfer data from scope to a transferred scope. If there is no data need
    * to
@@ -694,7 +695,6 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
-
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
