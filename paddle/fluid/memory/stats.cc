@@ -116,11 +116,66 @@ UNUSED static int regiester_all_stats = RegisterAllStats();
 
 class PrintMem {
  public:
+  PrintMem() {
+    MEMORY_STAT_UPDATE(Reserved, 0, 0);
+    MEMORY_STAT_UPDATE(Reserved, 1, 0);
+    MEMORY_STAT_UPDATE(Reserved, 2, 0);
+    MEMORY_STAT_UPDATE(Reserved, 3, 0);
+    MEMORY_STAT_UPDATE(Reserved, 4, 0);
+    MEMORY_STAT_UPDATE(Reserved, 5, 0);
+    MEMORY_STAT_UPDATE(Reserved, 6, 0);
+    MEMORY_STAT_UPDATE(Reserved, 7, 0);
+
+    MEMORY_STAT_UPDATE(Allocated, 0, 0);
+    MEMORY_STAT_UPDATE(Allocated, 1, 0);
+    MEMORY_STAT_UPDATE(Allocated, 2, 0);
+    MEMORY_STAT_UPDATE(Allocated, 3, 0);
+    MEMORY_STAT_UPDATE(Allocated, 4, 0);
+    MEMORY_STAT_UPDATE(Allocated, 5, 0);
+    MEMORY_STAT_UPDATE(Allocated, 6, 0);
+    MEMORY_STAT_UPDATE(Allocated, 7, 0);
+  }
   ~PrintMem() {
-    auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
-    auto reserved = paddle::memory::StatGetCurrentValue("Reserved", 0);
-    std::cout << "Memory Info:allocated = " << allocated
-              << ", reserved = " << reserved << std::endl;
+    std::cout << "GPU 0: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 0) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 0) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 1: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 1) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 1) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 2: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 2) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 2) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 3: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 3) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 3) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 4: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 4) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 4) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 5: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 5) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 5) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 6: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 6) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 6) / 1048576.0 << "MB"
+              << std::endl;
+    std::cout << "GPU 7: allocated = "
+              << MEMORY_STAT_PEAK_VALUE(Allocated, 7) / 1048576.0
+              << "MB, reserved = "
+              << MEMORY_STAT_PEAK_VALUE(Reserved, 7) / 1048576.0 << "MB"
+              << std::endl;
   }
 };
 
