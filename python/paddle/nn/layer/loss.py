@@ -1313,7 +1313,11 @@ class SoftMarginLoss(Layer):
         Out = log(1 + exp((-label * input)))
 
     Parameters:
-
+        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
+            to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
+            it treated as if having all ones. the data type is
+            float32, float64, Default is ``'None'``.
+	    
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -1323,15 +1327,15 @@ class SoftMarginLoss(Layer):
 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Call Parameters:
+    Shapes:
 
         Input (Tensor): The input tensor with shape: [N, *],
-            N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
-            Available dtype is float32, float64.
+	N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
+	Available dtype is float32, float64.
 
         Label (Tensor): The target labels tensor with the same shape as
-            ``input``. The target labels which values should be numbers -1 or 1.
-            Available dtype is int32, int64, float32, float64.
+	``input``. The target labels which values should be numbers -1 or 1.
+	Available dtype is int32, int64, float32, float64.
 
         Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
