@@ -1335,7 +1335,9 @@ class TripletMarginWithDistanceLoss(Layer):
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
                 Default: ``'mean'``
-
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+	    
     Call Parameters:
         input:Input tensor, the data type is float32 or float64.
                 the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
