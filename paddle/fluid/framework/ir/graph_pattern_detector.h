@@ -291,11 +291,25 @@ class GraphPatternDetector {
       if (nodes1.size() != nodes2.size()) {
         return nodes1.size() < nodes2.size();
       } else {
-        for (size_t i = 0; i < nodes1.size(); i++) {
-          if (nodes1[i].get()->name() != nodes2[i].get()->name()) {
-            return nodes1[i].get()->name() < nodes2[i].get()->name();
-          }
+        std::string pdnode_hash_key1 = "";
+        std::string pdnode_hash_key2 = "";
+        for (auto& node : nodes1) {
+          pdnode_hash_key1 += node.get()->name();
+          pdnode_hash_key1 += "#";
         }
+        pdnode_hash_key1 += node1->name();
+        for (auto& node : nodes2) {
+          pdnode_hash_key2 += node.get()->name();
+          pdnode_hash_key2 += "#";
+        }
+        pdnode_hash_key2 += node2->name();
+
+        auto pdnode_key1 =
+            std::to_string(std::hash<std::string>()(pdnode_hash_key1));
+        auto pdnode_key2 =
+            std::to_string(std::hash<std::string>()(pdnode_hash_key2));
+
+        return pdnode_key1 < pdnode_key2;
       }
       return false;
     }
