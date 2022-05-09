@@ -135,6 +135,11 @@ class SparseAccessor : public ValueAccessor {
   // param = 1, save delta feature
   // param = 2, save xbox base feature
   bool Save(float* value, int param) override;
+
+  bool SaveCache(float* value, int param, double global_cache_threshold) {
+    return false;
+  }
+  bool SaveSSD(float* value) { return false; }
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值

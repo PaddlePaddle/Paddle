@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -117,7 +118,7 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestMnist(unittest.TestCase):
-    def test_mnist_fp16(self):
+    def func_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
         x = np.random.randn(1, 3, 224, 224).astype("float16")
@@ -128,6 +129,11 @@ class TestMnist(unittest.TestCase):
             y = fluid.dygraph.to_variable(y)
             loss = model(x, y)
             print(loss.numpy())
+
+    def test_mnist_fp16(self):
+        with _test_eager_guard():
+            self.func_mnist_fp16()
+        self.func_mnist_fp16()
 
 
 if __name__ == "__main__":
