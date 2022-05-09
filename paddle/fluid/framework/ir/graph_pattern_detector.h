@@ -81,6 +81,7 @@ struct PDNode {
   bool IsVar() const { return type_ == Type::kVar; }
 
   const std::string& name() const { return name_; }
+  const PDPattern* pdpattern() const { return pattern_; }
 
   PDNode& operator=(const PDNode&) = delete;
   PDNode(const PDNode&) = delete;
@@ -275,6 +276,24 @@ class PDPattern {
  *    // Execute the detector.
  *    detector(&graph, handler);
  */
+struct NodeIdCompare {
+  bool operator()(Node* node1, Node* node2) const {
+    return node1->id() < node2->id();
+  }
+};
+
+struct PDNodeCompare {
+  bool operator()(const PDNode* node1, const PDNode* node2) const {
+    if (node1->pdpattern()->nodes().size() !=
+        node2->pdpattern()->nodes().size()) {
+      return node1->pdpattern()->nodes().size() <
+             node2->pdpattern()->nodes().size();
+    } else {
+      return node1->name() < node2->name();
+    }
+  }
+};
+
 class GraphPatternDetector {
  public:
   using subgraph_t = std::map<PDNode*, Node*>;
@@ -321,7 +340,8 @@ class GraphPatternDetector {
   using hit_rcd_t =
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
   PDPattern pattern_;
-  std::map<const PDNode*, std::set<Node*>> pdnodes2nodes_;
+  std::map<const PDNode*, std::set<Node*, NodeIdCompare>, PDNodeCompare>
+      pdnodes2nodes_;
 };
 
 // some helper methods.
