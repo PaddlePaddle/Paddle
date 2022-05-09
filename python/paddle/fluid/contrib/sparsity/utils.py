@@ -94,7 +94,7 @@ def calculate_density(x):
         float: The density of :attr:`x`.
     Examples:
         .. code-block:: python
-
+          import paddle
           import numpy as np
 
           x = np.array([[0, 1, 3, 0],
