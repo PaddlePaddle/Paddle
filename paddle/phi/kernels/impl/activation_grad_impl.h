@@ -152,8 +152,8 @@ void LeakyReluDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
+                          const DenseTensor& ddx,
                           DenseTensor* dout_new,
                           DenseTensor* ddout) {
   if (dout_new) {
@@ -171,10 +171,10 @@ void TanhDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
-                          const DenseTensor& ddx,
                           const DenseTensor& dout,
-                          const DenseTensor& d_ddout,
+                          const DenseTensor& ddx,
                           const DenseTensor& d_dout_new,
+                          const DenseTensor& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
