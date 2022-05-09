@@ -145,10 +145,10 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
-    if (!IsCompat(subgraph, graph)) {
-      LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
-      return;
-    }
+    // if (!IsCompat(subgraph, graph)) {
+    //   LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
+    //   return;
+    // }
 
     VLOG(4) << "handle PrelnResidualBias fuse";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_bias, elementwise_bias, fused_pattern);
