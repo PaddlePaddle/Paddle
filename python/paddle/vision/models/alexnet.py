@@ -182,9 +182,6 @@ def alexnet(pretrained=False, **kwargs):
     Returns:
         the model of alexnet
     
-    Return Type:
-        Layer
-    
     Examples:
         .. code-block:: python
           :name: code-example
