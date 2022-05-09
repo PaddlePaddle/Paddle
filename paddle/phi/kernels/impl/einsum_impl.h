@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include <set>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -55,7 +56,8 @@ inline static void ValidationCheck(const std::string& equation) {
 enum LabelType {
   ALL_TYPE = 0,
   Batch = 1,    // ABO
-  Free,         // AO, BO
+  AO,           // AO --  free label
+  BO,           // BO --  free label
   Contraction,  // AB
   Reduction,    // A, B
 };
@@ -125,18 +127,32 @@ inline std::vector<char> union_labels(const std::vector<char>& a,
   return res;
 }
 
+// Apply transforms to all_labels and get another all_labels
+inline std::vector<char> TransformLabelsOrder(
+    const std::vector<char>& all_labels,
+    const LabelMap& type,
+    std::vector<LabelType> new_order) {
+  std::vector<char> ret;
+  for (auto cnt_type : new_order) {
+    std::vector<char> tmp;
+    for (int c : all_labels) {
+      if (type[c] == cnt_type) tmp.push_back(c);
+      std::sort(tmp.begin(), tmp.end());
+    }
+    ret.insert(ret.end(), tmp.begin(), tmp.end());
+  }
+  return ret;
+}
+
 inline static void GlobalInfo(const std::vector<std::string>& op_labels,
                               const std::string& right,
                               LabelMap* label2type,
                               std::vector<char>* sorted_labels) {
-  // sorted_labels: ['.', <right>, <left only label>]
-  VLOG(5) << "GlobalInfo: "
-          << paddle::string::join_strings(*sorted_labels, ",");
   std::vector<char> all;
   LabelMap counter(0);
   for (auto& ch : right) {  // char
     int c = ch;
-    (*label2type)[c] = LabelType::Free;
+    (*label2type)[c] = LabelType::BO;
   }
 
   for (auto& op : op_labels) {
@@ -146,39 +162,36 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
         all.push_back(ch);
       }
       counter[c] += 1;
-      if ((*label2type)[c] != LabelType::Free && counter[c] == 2)
+      if ((*label2type)[c] != LabelType::BO && counter[c] == 2)
         (*label2type)[c] = LabelType::Contraction;
       else if (counter[c] == 2)
         (*label2type)[c] = LabelType::Batch;
     }
   }
+
+  // BO is represent Free, so we need find the AO.
+  for (int c : op_labels[0]) {
+    if ((*label2type)[c] == LabelType::BO) (*label2type)[c] = LabelType::AO;
+  }
+
   (*label2type)['.'] = LabelType::Batch;
-  std::for_each(all.begin(), all.end(), [sorted_labels, label2type](int c) {
-    if ((*label2type)[c] == LabelType::Batch)
-      sorted_labels->push_back(static_cast<char>(c));
-  });
-  std::for_each(all.begin(), all.end(), [sorted_labels, label2type](int c) {
-    if ((*label2type)[c] == LabelType::Free)
-      sorted_labels->push_back(static_cast<char>(c));
-  });
-  std::for_each(all.begin(), all.end(), [sorted_labels, label2type](int c) {
-    if ((*label2type)[c] == LabelType::Contraction)
-      sorted_labels->push_back(static_cast<char>(c));
-  });
-  std::for_each(all.begin(), all.end(), [&sorted_labels, label2type](int c) {
-    if ((*label2type)[c] == LabelType::Reduction)
-      sorted_labels->push_back(static_cast<char>(c));
-  });
-  VLOG(5) << "GlobalInfo: sorted_labels before: "
-          << paddle::string::join_strings(*sorted_labels, ",");
+
+  *sorted_labels = TransformLabelsOrder(all,
+                                        *label2type,
+                                        {LabelType::Batch,
+                                         LabelType::AO,
+                                         LabelType::BO,
+                                         LabelType::Contraction,
+                                         LabelType::Reduction});
+
   if (counter[static_cast<int>('.')] > 0) {
     std::vector<char> tmp;
     tmp.push_back('.');
     // push '.' in the front
     *sorted_labels = union_labels(tmp, *sorted_labels);
-    VLOG(5) << "GlobalInfo: sorted_labels after: "
-            << paddle::string::join_strings(*sorted_labels, ",");
   }
+  VLOG(5) << "GlobalInfo: sorted_labels after: "
+          << paddle::string::join_strings(*sorted_labels, ",");
 }
 
 inline static void InferLabelShape(const std::vector<std::string>& op_labels,
@@ -327,10 +340,12 @@ std::vector<T> GetShapeByType(const std::vector<char>& all_labels,
                               const LabelMap& perm,
                               const LabelMap& label2shape,
                               const std::vector<int>& ellipsis,
-                              LabelType filter) {
+                              std::set<LabelType> filter) {
   std::vector<T> res;
   for (T c : all_labels) {
-    if ((filter == LabelType::ALL_TYPE || type[c] == filter) && perm[c] != -1) {
+    if ((filter.count(LabelType::ALL_TYPE) ||
+         filter.count(LabelType(type[c]))) &&
+        perm[c] != -1) {
       if (c == '.')
         res.insert(res.end(), ellipsis.begin(), ellipsis.end());
       else
@@ -398,36 +413,62 @@ DenseTensor PerformContraction(
                                          all_valid,
                                          label2shape,
                                          broadcast_dims,
-                                         LabelType::Batch);
+                                         {LabelType::Batch});
   auto preprocess = [&](const DenseTensor& t,
                         const LabelMap& perm,
-                        const std::vector<int>& ellipsis) -> DenseTensor {
-    auto frees = GetShapeByType<int>(
-        all_labels, label2type, perm, label2shape, ellipsis, LabelType::Free);
+                        const std::vector<int>& ellipsis,
+                        int operand_idx) -> DenseTensor {
+    auto frees = GetShapeByType<int>(all_labels,
+                                     label2type,
+                                     perm,
+                                     label2shape,
+                                     ellipsis,
+                                     {LabelType::AO, LabelType::BO});
     auto conts = GetShapeByType<int>(all_labels,
                                      label2type,
                                      perm,
                                      label2shape,
                                      ellipsis,
-                                     LabelType::Contraction);
+                                     {LabelType::Contraction});
+    std::vector<char> reordered_all_labels = all_labels;
+    if (operand_idx == 1) {
+      reordered_all_labels = TransformLabelsOrder(all_labels,
+                                                  label2type,
+                                                  {LabelType::Batch,
+                                                   LabelType::Contraction,
+                                                   LabelType::AO,
+                                                   LabelType::BO,
+                                                   LabelType::Reduction});
+    }
     auto trans_t = PerformTranspose<T, Context>(
-        dev_ctx, t, perm, all_labels, ellipsis, label2type);
-    auto mul_dims = GetShapeByType<int>(
-        all_labels, label2type, perm, label2shape, ellipsis, LabelType::Batch);
+        dev_ctx, t, perm, reordered_all_labels, ellipsis, label2type);
+    auto mul_dims = GetShapeByType<int>(all_labels,
+                                        label2type,
+                                        perm,
+                                        label2shape,
+                                        ellipsis,
+                                        {LabelType::Batch});
     recover_dim.insert(recover_dim.end(), frees.begin(), frees.end());
-    mul_dims.push_back(
-        std::accumulate(frees.begin(), frees.end(), 1, std::multiplies<int>()));
-    mul_dims.push_back(
-        std::accumulate(conts.begin(), conts.end(), 1, std::multiplies<int>()));
+    if (operand_idx == 0) {
+      mul_dims.push_back(std::accumulate(
+          frees.begin(), frees.end(), 1, std::multiplies<int>()));
+      mul_dims.push_back(std::accumulate(
+          conts.begin(), conts.end(), 1, std::multiplies<int>()));
+    } else {
+      mul_dims.push_back(std::accumulate(
+          conts.begin(), conts.end(), 1, std::multiplies<int>()));
+      mul_dims.push_back(std::accumulate(
+          frees.begin(), frees.end(), 1, std::multiplies<int>()));
+    }
     VLOG(5) << "PerformContraction: mul_dims: "
             << paddle::string::join_strings(mul_dims, ",");
     trans_t.Resize(make_ddim(mul_dims));
     return trans_t;
   };
-  auto trans_a = preprocess(A, label2perm[0], ellipsis_dims[0]);
-  auto trans_b = preprocess(B, label2perm[1], ellipsis_dims[1]);
+  auto trans_a = preprocess(A, label2perm[0], ellipsis_dims[0], 0);
+  auto trans_b = preprocess(B, label2perm[1], ellipsis_dims[1], 1);
   auto after_contraction =
-      Matmul<T, Context>(dev_ctx, trans_a, trans_b, false, true);
+      Matmul<T, Context>(dev_ctx, trans_a, trans_b, false, false);
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
   after_contraction.Resize(make_ddim(recover_dim));
