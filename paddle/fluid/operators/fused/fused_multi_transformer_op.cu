@@ -86,8 +86,7 @@ struct Masked_multihead_attention_params {
   const T *qkv_bias;
   // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
-  // const T *attn_mask;
-  const bool *attn_mask;
+  const T *attn_mask;
 
   // [2, B, num_head, max_seq_len(valid cache_seq_len), dim_head]
   // k [B, num_head, dim_head/x, max_seq_len, x], that is `seq_len` first
@@ -671,9 +670,7 @@ __global__ void masked_multihead_attention_kernel(
     // bool is_mask = false;
     if (ti < params.timestep && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
-      // T mask = params.attn_mask[bi * (params.timestep + 1) + ti];
-      float mask =
-          params.attn_mask[bi * (params.timestep + 1) + ti] ? 0.0f : -10000.0f;
+      T mask = params.attn_mask[bi * (params.timestep + 1) + ti];
       qk += static_cast<float>(mask);
       qk_max = fmaxf(qk_max, qk);
 
@@ -883,8 +880,7 @@ void fmha(const platform::CUDADeviceContext &dev_ctx, const Tensor &qkv_tensor,
   params.out = out_tensor->data<T>();
   params.qkv = qkv_tensor.data<T>();
   params.qkv_bias = qkv_bias_tensor.data<T>();
-  // params.attn_mask = src_mask_tensor.data<T>();
-  params.attn_mask = src_mask_tensor.data<bool>();
+  params.attn_mask = src_mask_tensor.data<T>();
   params.cache_kv = cache_kv_tensor->data<T>();
 
   params.batch_size = batch_size;
@@ -1088,11 +1084,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *qk_out_data =
         qk_out.mutable_data<T>({bsz, num_head, seq_len, out_seq_len}, place);
 
-    Tensor src_mask_out, softmax_out;
+    Tensor softmax_out;
     Tensor attn_dropout_mask_out, attn_dropout_out;
     Tensor qktv_out, fmha_out;
-    auto *src_mask_out_data = src_mask_out.mutable_data<T>(
-        {bsz, num_head, seq_len, out_seq_len}, place);
     auto *softmax_out_data = softmax_out.mutable_data<T>(
         {bsz, num_head, seq_len, out_seq_len}, place);
 
@@ -1223,17 +1217,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
-        if (src_mask->dtype() == paddle::DataType::BOOL) {
-          fmha_compute.ComputeForward(
-              qkv_out, nullptr, src_mask, &transpose_out_2, nullptr, &qk_out,
-              nullptr, &softmax_out, &attn_dropout_mask_out, &attn_dropout_out,
-              &qktv_out, &fmha_out);
-        } else {
-          fmha_compute.ComputeForward(
-              qkv_out, nullptr, src_mask, &transpose_out_2, nullptr, &qk_out,
-              &src_mask_out, &softmax_out, &attn_dropout_mask_out,
-              &attn_dropout_out, &qktv_out, &fmha_out);
-        }
+        fmha_compute.ComputeForward(qkv_out, nullptr, src_mask,
+                                    &transpose_out_2, nullptr, &qk_out, nullptr,
+                                    &softmax_out, &attn_dropout_mask_out,
+                                    &attn_dropout_out, &qktv_out, &fmha_out);
         // [3, bsz, num_head, seq_len, head_dim]
         T *qkv_data = transpose_out_2_data;
         int64_t q_size = bsz * seq_len * num_head * dim_head;
@@ -1254,17 +1241,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           num_head, seq_len, max_seq_len, dim_head);
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
-        if (src_mask->dtype() == paddle::DataType::BOOL) {
-          fmha_compute.ComputeForward(
-              qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
-              &qk_out, nullptr, &softmax_out, &attn_dropout_mask_out,
-              &attn_dropout_out, &qktv_out, &fmha_out);
-        } else {
-          fmha_compute.ComputeForward(
-              qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
-              &qk_out, &src_mask_out, &softmax_out, &attn_dropout_mask_out,
-              &attn_dropout_out, &qktv_out, &fmha_out);
-        }
+        fmha_compute.ComputeForward(
+            qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
+            &qk_out, nullptr, &softmax_out, &attn_dropout_mask_out,
+            &attn_dropout_out, &qktv_out, &fmha_out);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step3";

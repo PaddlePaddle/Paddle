@@ -108,8 +108,8 @@ class TestFusedMultiTransformerOp(OpTest):
         self.debug = False
 
         self.x_type = np.float32
-        #self.attn_mask_type = np.float64
-        self.attn_mask_type = np.bool
+        self.attn_mask_type = np.float64
+        #self.attn_mask_type = np.bool
         self.pre_layer_norm = True
         self.has_attn_mask = True
 
@@ -400,9 +400,8 @@ class TestFusedMultiTransformerOp(OpTest):
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
-        #if attn_mask is not None:
-        #    attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-        #print(attn_mask)
+        if attn_mask is not None and self.attn_mask_type != np.bool:
+            attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
         qkv_weights, qkv_biases = [], []
         out_weights, out_biases = [], []

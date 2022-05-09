@@ -150,7 +150,7 @@ class FMHARef {
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        fused_softmax_mask<T>(qk_out_data, src_mask_tensor->data<bool>(),
+        fused_softmax_mask<T>(qk_out_data, src_mask_tensor->data<T>(),
                               softmax_out_data, batch_size_, num_head_,
                               seq_len_, dev_ctx_.stream());
       } else {
