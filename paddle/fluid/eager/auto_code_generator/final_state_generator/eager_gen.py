@@ -1226,6 +1226,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         indent = GetIndent(1)
 
+        print("########## backward_api_name: ", backward_api_name)
+        print("########## backward_forward_inputs_map: ",
+              backward_forward_inputs_map)
+        print("########## backward_grad_inputs_map: ", backward_grad_inputs_map)
+        print("########## grad_node_out_list: ", grad_node_out_list)
+
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
         grad_api_args_len = len(backward_forward_inputs_map.keys()) + len(
@@ -1343,42 +1349,41 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             for name, (ttype, pos,
                        grad_api_position) in backward_grad_inputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
-
-                input_autograd_meta_name = GetAutoGradMetaName(
-                    transformed_tensor_name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                if transformed_tensor_name in grad_node_out_list:
+                    input_autograd_meta_name = GetAutoGradMetaName(
                         transformed_tensor_name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            transformed_tensor_name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
 
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                if name in grad_node_out_list:
+                    inputs_autograd_meta_list.append(input_autograd_meta)
                     compute_require_grad_args_list.append(
                         input_autograd_meta_name)
 
             # 2. Get TensorWrapper AutoGradMeta
             for name, (ttype, _, pos), in backward_forward_inputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
-
-                input_autograd_meta_name = GetAutoGradMetaName(
-                    transformed_tensor_name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                if transformed_tensor_name in grad_node_out_list:
+                    input_autograd_meta_name = GetAutoGradMetaName(
                         transformed_tensor_name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            transformed_tensor_name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
 
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                if name in grad_node_out_list:
+                    inputs_autograd_meta_list.append(input_autograd_meta)
                     compute_require_grad_args_list.append(
                         input_autograd_meta_name)
+
             inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
             compute_require_grad_args_str = ",".join(
                 compute_require_grad_args_list)
