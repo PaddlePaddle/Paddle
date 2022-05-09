@@ -37,6 +37,9 @@ extern PyTypeObject* p_tensor_type;
 
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
+  if (self->tensor.name().empty()) {
+    self->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+  }
   return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
