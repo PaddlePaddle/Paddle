@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/logcumsumexp_grad_kernel.h"
+
 #include <limits>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"

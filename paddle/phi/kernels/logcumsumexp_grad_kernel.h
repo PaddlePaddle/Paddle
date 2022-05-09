@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/logcumsumexp_grad_kernel.h"
+#pragma once
 
-#include <limits>
+#include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/logcumsumexp_grad_impl.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(logcumsumexp_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LogcumsumexpGradKernel,
-                   float,
-                   double) {}
+template <typename T, typename Context>
+void LogcumsumexpGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& out,
+                            const DenseTensor& d_out,
+                            int axis,
+                            bool flatten,
+                            bool exclusive,
+                            bool reverse,
+                            DenseTensor* d_x);
+
+}
+

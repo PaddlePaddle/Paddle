@@ -52,23 +52,23 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   reverse = !reverse;
   dev_ctx.template Alloc<T>(d_x);
 
-  auto eigen_x = EigenMatrix<T>::From(x);
-  auto eigen_out = EigenMatrix<T>::From(out);
-  auto eigen_d_out = EigenMatrix<T>::From(d_out);
+  auto eigen_x = EigenVector<T>::Flatten(x);
+  auto eigen_out = EigenVector<T>::Flatten(out);
+  auto eigen_d_out = EigenVector<T>::Flatten(d_out);
   auto& place = *dev_ctx.eigen_device();
 
   DenseTensor output_pos;
   output_pos.Resize(d_out.dims());
   dev_ctx.template Alloc<T>(&output_pos);
-  auto eigen_output_pos = EigenMatrix<T>::From(output_pos);
+  auto eigen_output_pos = EigenVector<T>::Flatten(output_pos);
   DenseTensor output_neg;
   output_neg.Resize(d_out.dims());
   dev_ctx.template Alloc<T>(&output_neg);
-  auto eigen_output_neg = EigenMatrix<T>::From(output_neg);
+  auto eigen_output_neg = EigenVector<T>::Flatten(output_neg);
   DenseTensor tmp;
   tmp.Resize(d_out.dims());
   dev_ctx.template Alloc<T>(&tmp);
-  auto eigen_tmp = EigenMatrix<T>::From(tmp);
+  auto eigen_tmp = EigenVector<T>::Flatten(tmp);
 
   eigen_tmp.device(place) =
       eigen_d_out.unaryExpr(LogGradPositiveFunctor<T>()) - eigen_out;
@@ -82,7 +82,7 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
       dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_neg);
   eigen_output_neg.device(place) = (eigen_output_neg + eigen_x).exp();
 
-  auto eigen_d_x = EigenMatrix<T>::From(*d_x);
+  auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
   eigen_d_x.device(place) = eigen_output_pos - eigen_output_neg;
 }
 }  // namespace phi

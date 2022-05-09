@@ -195,7 +195,7 @@ struct LogSumExpReducer {
   }
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T initialize() const {
-    return -Eigen::NumTraits<T>::infinity();
+    return Eigen::NumTraits<T>::lowest();
   }
 
   template <typename Packet>

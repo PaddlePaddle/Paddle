@@ -32,8 +32,14 @@ def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int]=None):
 
 def np_logcumsumexp(x: np.ndarray,
                     axis: Optional[int]=None,
+                    flatten: Optional[bool]=None,
                     reverse: bool=False,
                     exclusive: bool=False):
+    # `flatten` aligns with c++ op
+    if flatten:
+        assert axis in [0, None]
+        axis = None
+
     x = np.copy(x)
 
     if axis is None:
@@ -170,37 +176,43 @@ class TestLogcumsumexp(unittest.TestCase):
                 out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
 
 
-class BaseOpTest(OpTest):
-    def setUp(self):
-        self.op_type = "logcumsumexp"
-        input, attrs = self.input_and_attrs()
-        self.inputs = {'X': input}
-        self.attrs = attrs
-        self.outputs = {'Out': np_logcumsumexp(input)}
+class BaseTestCases:
+    class BaseOpTest(OpTest):
+        def setUp(self):
+            self.op_type = "logcumsumexp"
+            input, attrs = self.input_and_attrs()
+            self.inputs = {'X': input}
+            self.attrs = attrs
+            self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
-    def test_check_output(self):
-        self.check_output()
+        def test_check_output(self):
+            self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out')
 
+        def input_and_attrs(self):
+            raise NotImplementedError()
+
+
+class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        raise NotImplementedError()
+        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 0, 'flatten': True, 'reverse': True}
 
 
-def TestLogcumsumexpOp1(BaseOpTest):
+class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.random.randn(20, 6), {'axis': 0, 'flatten': True, 'reverse': True}
+        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 1, 'reverse': True}
 
 
-def TestLogcumsumexpOp2(BaseOpTest):
+class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.random.randn(20, 6), {'axis': 1, 'flatten': False, 'reverse': True}
+        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 1}
 
 
-def TestLogcumsumexpOp3(BaseOpTest):
+class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.random.randn(20, 6), {'axis': 1, 'flatten': False, 'reverse': False}
+        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 0, 'flatten': True, 'reverse': True, 'exclusive': True}
 
 
 if __name__ == '__main__':

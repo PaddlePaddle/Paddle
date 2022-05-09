@@ -123,15 +123,17 @@ class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("logcumsumexp_grad");
-    grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
                      BOOST_GET_CONST(bool, this->GetAttr("flatten")));
-    grad_op->SetAttr("reverse",
-                     BOOST_GET_CONST(bool, this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive",
                      BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
+    grad_op->SetAttr("reverse",
+                     BOOST_GET_CONST(bool, this->GetAttr("reverse")));
   }
 };
 
