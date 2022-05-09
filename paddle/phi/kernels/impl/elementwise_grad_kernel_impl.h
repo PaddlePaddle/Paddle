@@ -360,6 +360,14 @@ struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
 };
 
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDX<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && y;
+  }
+};
+
 template <typename T>
 struct MulGradDX<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
@@ -381,6 +389,14 @@ struct MulGradDX<phi::dtype::complex<T>> {
 template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+};
+
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDY<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && x;
+  }
 };
 
 template <typename T>

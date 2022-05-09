@@ -73,9 +73,14 @@ class TestIpuStrategy(unittest.TestCase):
             'autoReport.directory': 'path',
             'autoReport.all': 'true'
         }
+        options['random_seed'] = 1234
         for k, v in options.items():
             ipu_strategy.set_options({k: v})
             assert v == ipu_strategy.get_option(k), f"set {k} to {v} failed "
+
+        # The custom logger need 2 int as inputs
+        logger = lambda progress, total: print(f"compile progrss: {progress}/{total}")
+        ipu_strategy.set_options({'compilation_progress_logger': logger})
 
 
 if __name__ == "__main__":
