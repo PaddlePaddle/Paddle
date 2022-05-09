@@ -1749,15 +1749,15 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
     and below the diagonal.
     
     Args:
-        rows (int): The input x which is a int number describe the number of row of the matrix.
-        cols (int): The input x which is a int number describe the number of col of the matrix.
-        offset (int,optional): The offset to consider, default value is 0.
+        - rows (int): The input x which is a int number describe the number of row of the matrix.
+        - cols (int): The input x which is a int number describe the number of col of the matrix.
+        - offset (int, optional): The offset to consider, default value is 0.
 
             - If offset = 0, all elements on and below the main diagonal are retained.  
             - If offset > 0, include just as many diagonals above the main diagonal.  
             - If offset < 0, excludes just as many diagonals below the main diagonal.  
  
-        dtype (int,optional): the data type of the output tensor, can be int32, int64.
+        - dtype (int, optional): the data type of the output tensor, can be int32, int64.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a rows * cols matrix,
