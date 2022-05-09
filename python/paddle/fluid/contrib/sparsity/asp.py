@@ -867,7 +867,7 @@ class ASPHelper(object):
                     attrs={
                         'axis': -1,
                         'use_mkldnn': False,
-                        OP_ROLE_KEY: OpRole.Optimize
+                        OP_ROLE_KEY: int(OpRole.Optimize)
                     })
 
 
