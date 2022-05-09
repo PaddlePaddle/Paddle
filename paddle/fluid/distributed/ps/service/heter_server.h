@@ -228,6 +228,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
     // blocking queue handles multi thread
+    VLOG(0) << "Handle in HeterServer: " << message_name << ", "
+            << microbatch_index;
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
 
@@ -241,6 +243,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name, response_var_names, empty_var_names, *dev_ctx_,
         &local_scope, response, &response_io_buffer);
+    VLOG(0) << "Handle over";
     return 0;
   }
 
@@ -576,8 +579,11 @@ class HeterServer {
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new HeterServer());
+    if (s_instance_ == nullptr) {
+      std::unique_lock<std::mutex> lock(mtx_);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new HeterServer());
+      }
     }
     return s_instance_;
   }
@@ -587,6 +593,7 @@ class HeterServer {
  private:
   static std::shared_ptr<HeterServer> s_instance_;
   mutable std::mutex mutex_;
+  static std::mutex mtx_;
   std::condition_variable cv_;
   std::condition_variable condition_ready_;
   bool stoped_ = true;

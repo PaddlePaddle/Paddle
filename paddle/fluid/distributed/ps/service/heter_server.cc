@@ -20,8 +20,9 @@ namespace paddle {
 namespace distributed {
 // DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
 // DEFINE_string(key_path, "./key.pem", "key.pem path");
-
+// 初始化静态成员变量
 std::shared_ptr<HeterServer> HeterServer::s_instance_ = nullptr;
+std::mutex HeterServer::mtx_;
 
 void HeterServer::RegisterServiceHandler(std::string message_name,
                                          HeterServiceHandler func) {
@@ -52,6 +53,8 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   } else {
     VLOG(0) << "heter server start success! listen on " << endpoint_;
   }
+  VLOG(0) << "server: mutex: " << &(this->mutex_ready_)
+          << " ready: " << &ready_;
 
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
@@ -94,7 +97,6 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
     VLOG(4) << "switch inter server server start success! listen on "
             << endpoint_inter_;
   }
-
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
     stoped_ = false;
@@ -113,11 +115,11 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
 void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
 
 void HeterServer::WaitServerReady() {
+  VLOG(0) << "entering HeterServer::WaitServerReady()";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
+
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  while (!this->ready_) {
-    sleep(1);
-  }
+  VLOG(3) << "WaitServerReady done";
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithShard(

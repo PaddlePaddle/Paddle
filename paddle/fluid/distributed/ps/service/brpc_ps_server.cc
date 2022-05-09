@@ -84,6 +84,7 @@ uint64_t BrpcPsServer::Start(const std::string &ip, uint32_t port) {
   }
 
   _environment->RegistePsServer(ip, port, _rank);
+  VLOG(4) << "RegistePsServer done";
   cv_.wait(lock, [&] { return stoped_; });
 
   PSHost host;
@@ -226,6 +227,7 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
+  VLOG(0) << "entering BrpcPsService::PushDenseParam";
   platform::RecordEvent record_event(
       "PsService->PushDenseParam", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)

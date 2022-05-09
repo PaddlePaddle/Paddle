@@ -78,6 +78,10 @@ if(WITH_ARM_BRPC)
     add_definitions(-DPADDLE_WITH_ARM_BRPC)
 endif()
 
+if(WITH_FLPS) 
+    add_definitions(-DPADDLE_WITH_FLPS)
+endif()
+
 if(WITH_GLOO)
     add_definitions(-DPADDLE_WITH_GLOO)
 endif()
