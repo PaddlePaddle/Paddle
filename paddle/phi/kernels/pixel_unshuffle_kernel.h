@@ -14,17 +14,16 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/pass.h"
+#include <string>
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace phi {
 
-class TransferCastOpPass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+template <typename T, typename Context>
+void PixelUnshuffleKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          int downscale_factor,
+                          const std::string& data_format,
+                          DenseTensor* out);
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace phi

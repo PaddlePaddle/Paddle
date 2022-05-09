@@ -416,7 +416,7 @@ function(version version_file)
     endif()
     if(WITH_ROCM)
         file(APPEND ${version_file}
-                "HIP version: ${HIP_VERSION}\n"
+                "HIP version: v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     if(WITH_ASCEND_CL)

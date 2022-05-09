@@ -564,3 +564,26 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
     img = (img - mean) / std
     return img
+
+
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image array with given value.
+
+       Args:
+            img (np.array): input image array, which shape is (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (np.array): value used to replace the pixels in erased region.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            np.array: Erased image.
+        
+    """
+    if not inplace:
+        img = img.copy()
+
+    img[i:i + h, j:j + w, ...] = v
+    return img

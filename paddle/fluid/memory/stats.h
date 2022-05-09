@@ -107,7 +107,7 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
     break
 
 #define MEMORY_STAT_FUNC(item, id, func, ...)                         \
-  do {                                                                \
+  [&] {                                                               \
     paddle::memory::StatBase* stat = nullptr;                         \
     switch (id) {                                                     \
       MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                         \
@@ -133,8 +133,8 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
             id));                                                     \
         break;                                                        \
     }                                                                 \
-    stat->func(__VA_ARGS__);                                          \
-  } while (0)
+    return stat->func(__VA_ARGS__);                                   \
+  }()
 
 #define MEMORY_STAT_CURRENT_VALUE(item, id) \
   MEMORY_STAT_FUNC(item, id, GetCurrentValue)
