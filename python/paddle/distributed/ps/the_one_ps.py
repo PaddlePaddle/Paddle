@@ -1156,6 +1156,8 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.is_heter_ps_mode,
             use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
+        if program is None or len(self.origin_main_programs) == 1:
+            program = self.origin_main_programs[0]
         dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
         save_var_names = dense_var_names if var_names is None else var_names
         print("save_var_names:", save_var_names)

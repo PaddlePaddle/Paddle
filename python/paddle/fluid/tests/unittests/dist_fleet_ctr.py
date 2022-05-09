@@ -334,6 +334,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
+            fleet.load_inference_model(model_dir, mode=0)
             if fleet.is_first_worker():
                 self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
