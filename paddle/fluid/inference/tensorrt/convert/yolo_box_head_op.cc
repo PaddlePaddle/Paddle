@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_head_op_plugin.h"
 
@@ -31,7 +30,6 @@ class YoloBoxHeadOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a yolo_box_head op to tensorrt plugin";
-    LOG(INFO) << "convert a yolo_box_head op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* x_tensor = engine_->GetITensor(op_desc.Input("X").front());
@@ -44,12 +42,10 @@ class YoloBoxHeadOpConverter : public OpConverter {
     float conf_thresh = BOOST_GET_CONST(float, op_desc.GetAttr("conf_thresh"));
     bool clip_bbox = BOOST_GET_CONST(bool, op_desc.GetAttr("clip_bbox"));
     float scale_x_y = BOOST_GET_CONST(float, op_desc.GetAttr("scale_x_y"));
-    int type_id = static_cast<int>(engine_->WithFp16());
 
-    auto* yolo_box_plugin = new plugin::YoloBoxHeadPlugin(
-        type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        anchors, class_num, conf_thresh, downsample_ratio, clip_bbox,
-        scale_x_y);
+    auto* yolo_box_plugin =
+        new plugin::YoloBoxHeadPlugin(anchors, class_num, conf_thresh,
+                                      downsample_ratio, clip_bbox, scale_x_y);
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;
     yolo_box_inputs.push_back(x_tensor);
     auto* yolo_box_head_layer = engine_->network()->addPluginV2(

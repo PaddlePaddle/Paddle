@@ -18,25 +18,117 @@
 namespace paddle {
 namespace operators {
 
-typedef struct { float x, y, w, h; } box;
+struct Box {
+  float x, y, w, h;
+};
 
-typedef struct detection {
-  box bbox;
+struct Detection {
+  Box bbox;
   int classes;
   float* prob;
   float* mask;
   float objectness;
   int sort_class;
   int max_prob_class_index;
-} detection;
+};
 
-typedef struct TensorInfo {
+struct TensorInfo {
   int bbox_count_host;  // record bbox numbers
   int bbox_count_max_alloc{50};
   float* bboxes_dev_ptr;
   float* bboxes_host_ptr;
-  int* bbox_count_device_ptr;  // box counter in gpu memory, used by atomicAdd
-} TensorInfo;
+  int* bbox_count_device_ptr;  // Box counter in gpu memory, used by atomicAdd
+};
+
+static int NMSComparator(const void* pa, const void* pb) {
+  const Detection a = *reinterpret_cast<const Detection*>(pa);
+  const Detection b = *reinterpret_cast<const Detection*>(pb);
+  if (a.max_prob_class_index > b.max_prob_class_index)
+    return 1;
+  else if (a.max_prob_class_index < b.max_prob_class_index)
+    return -1;
+
+  float diff = 0;
+  if (b.sort_class >= 0) {
+    diff = a.prob[b.sort_class] - b.prob[b.sort_class];
+  } else {
+    diff = a.objectness - b.objectness;
+  }
+
+  if (diff < 0)
+    return 1;
+  else if (diff > 0)
+    return -1;
+  return 0;
+}
+
+static float Overlap(float x1, float w1, float x2, float w2) {
+  float l1 = x1 - w1 / 2;
+  float l2 = x2 - w2 / 2;
+  float left = l1 > l2 ? l1 : l2;
+  float r1 = x1 + w1 / 2;
+  float r2 = x2 + w2 / 2;
+  float right = r1 < r2 ? r1 : r2;
+  return right - left;
+}
+
+static float BoxIntersection(Box a, Box b) {
+  float w = Overlap(a.x, a.w, b.x, b.w);
+  float h = Overlap(a.y, a.h, b.y, b.h);
+  if (w < 0 || h < 0) return 0;
+  float area = w * h;
+  return area;
+}
+
+static float BoxUnion(Box a, Box b) {
+  float i = BoxIntersection(a, b);
+  float u = a.w * a.h + b.w * b.h - i;
+  return u;
+}
+
+static float BoxIOU(Box a, Box b) {
+  return BoxIntersection(a, b) / BoxUnion(a, b);
+}
+
+static void PostNMS(std::vector<Detection>* det_bboxes, float thresh,
+                    int classes) {
+  int total = det_bboxes->size();
+  if (total <= 0) {
+    return;
+  }
+
+  Detection* dets = det_bboxes->data();
+  int i, j, k;
+  k = total - 1;
+  for (i = 0; i <= k; ++i) {
+    if (dets[i].objectness == 0) {
+      Detection swap = dets[i];
+      dets[i] = dets[k];
+      dets[k] = swap;
+      --k;
+      --i;
+    }
+  }
+  total = k + 1;
+
+  qsort(dets, total, sizeof(Detection), NMSComparator);
+
+  for (i = 0; i < total; ++i) {
+    if (dets[i].objectness == 0) continue;
+    Box a = dets[i].bbox;
+    for (j = i + 1; j < total; ++j) {
+      if (dets[j].objectness == 0) continue;
+      if (dets[j].max_prob_class_index != dets[i].max_prob_class_index) break;
+      Box b = dets[j].bbox;
+      if (BoxIOU(a, b) > thresh) {
+        dets[j].objectness = 0;
+        for (k = 0; k < classes; ++k) {
+          dets[j].prob[k] = 0;
+        }
+      }
+    }
+  }
+}
 
 __global__ void YoloBoxNum(const float* input, int* bbox_count,
                            const uint grid_size, const uint class_num,
@@ -50,7 +142,6 @@ __global__ void YoloBoxNum(const float* input, int* bbox_count,
 
   const int grids_num = grid_size * grid_size;
   const int bbindex = y_id * grid_size + x_id;
-  // objectness
   float objectness = input[bbindex + grids_num * (z_id * (5 + class_num) + 4)];
   if (objectness < prob_thresh) {
     return;
@@ -67,18 +158,14 @@ __global__ void YoloTensorParseKernel(
   uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
   uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
   uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
-
   if ((x_id >= grid_size) || (y_id >= grid_size) || (z_id >= anchors_num)) {
     return;
   }
 
   const float pic_h = im_shape_data[0] / im_scale_data[0];
   const float pic_w = im_shape_data[1] / im_scale_data[1];
-
   const int grids_num = grid_size * grid_size;
   const int bbindex = y_id * grid_size + x_id;
-
-  // objectness
   float objectness = input[bbindex + grids_num * (z_id * (5 + class_num) + 4)];
   if (objectness < prob_thresh) {
     return;
@@ -102,7 +189,6 @@ __global__ void YoloTensorParseKernel(
   float h = input[bbindex + grids_num * (z_id * (5 + class_num) + 3)];
   h = h * biases[2 * z_id + 1] * pic_h / neth;
 
-  // CorrectYoloBox(x, y, w, h, pic_w, pic_h, netw, neth);
   output[tensor_index] = objectness;
   output[tensor_index + 1] = x - w / 2;
   output[tensor_index + 2] = y - h / 2;
@@ -128,117 +214,17 @@ __global__ void YoloTensorParseKernel(
   }
 }
 
-static int nms_comparator(const void* pa, const void* pb) {
-  const detection a = *reinterpret_cast<const detection*>(pa);
-  const detection b = *reinterpret_cast<const detection*>(pb);
-  float diff = 0;
-
-  if (a.max_prob_class_index > b.max_prob_class_index)
-    return 1;
-  else if (a.max_prob_class_index < b.max_prob_class_index)
-    return -1;
-
-  if (b.sort_class >= 0) {
-    diff = a.prob[b.sort_class] - b.prob[b.sort_class];
-  } else {
-    diff = a.objectness - b.objectness;
-  }
-
-  if (diff < 0)
-    return 1;
-  else if (diff > 0)
-    return -1;
-  return 0;
-}
-
-static float overlap(float x1, float w1, float x2, float w2) {
-  float l1 = x1 - w1 / 2;
-  float l2 = x2 - w2 / 2;
-  float left = l1 > l2 ? l1 : l2;
-  float r1 = x1 + w1 / 2;
-  float r2 = x2 + w2 / 2;
-  float right = r1 < r2 ? r1 : r2;
-  return right - left;
-}
-
-static float box_intersection(box a, box b) {
-  float w = overlap(a.x, a.w, b.x, b.w);
-  float h = overlap(a.y, a.h, b.y, b.h);
-  if (w < 0 || h < 0) return 0;
-  float area = w * h;
-  return area;
-}
-
-static float box_union(box a, box b) {
-  float i = box_intersection(a, b);
-  float u = a.w * a.h + b.w * b.h - i;
-  return u;
-}
-
-static float box_iou(box a, box b) {
-  return box_intersection(a, b) / box_union(a, b);
-}
-
-static void post_nms(std::vector<detection>* det_bboxes, float thresh,
-                     int classes) {
-  int total = det_bboxes->size();
-  if (total <= 0) {
-    return;
-  }
-
-  detection* dets = det_bboxes->data();
-
-  int i, j, k;
-  k = total - 1;
-  for (i = 0; i <= k; ++i) {
-    if (dets[i].objectness == 0) {
-      detection swap = dets[i];
-      dets[i] = dets[k];
-      dets[k] = swap;
-      --k;
-      --i;
-    }
-  }
-  total = k + 1;
-
-  qsort(dets, total, sizeof(detection), nms_comparator);
-
-  for (i = 0; i < total; ++i) {
-    if (dets[i].objectness == 0) {
-      continue;
-    }
-
-    box a = dets[i].bbox;
-
-    for (j = i + 1; j < total; ++j) {
-      if (dets[j].objectness == 0) {
-        continue;
-      }
-      if (dets[j].max_prob_class_index != dets[i].max_prob_class_index) break;
-
-      box b = dets[j].bbox;
-
-      if (box_iou(a, b) > thresh) {
-        dets[j].objectness = 0;
-        for (k = 0; k < classes; ++k) {
-          dets[j].prob[k] = 0;
-        }
-      }
-    }
-  }
-}
-
 static void YoloTensorParseCuda(
     const float* input_data,  // [in] YOLO_BOX_HEAD layer output
     const float* image_shape_data, const float* image_scale_data,
     float** bboxes_tensor_ptr,  // [out] Bounding boxes output tensor
-    int* bbox_count_max_alloc,  // [in/out] maximum bounding box number
+    int* bbox_count_max_alloc,  // [in/out] maximum bounding Box number
                                 // allocated in dev
     int* bbox_count_host,  // [in/out] bounding boxes number recorded in host
     int* bbox_count_device_ptr,  // [in/out] bounding boxes number calculated
                                  // in
                                  // device side
-    int* bbox_index_device_ptr,  // [in] bounding box index for kernel threads
+    int* bbox_index_device_ptr,  // [in] bounding Box index for kernel threads
                                  // shared access
     int grid_size, int class_num, int anchors_num, int netw, int neth,
     int* biases_device, float prob_thresh) {
@@ -335,7 +321,7 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
     // clip_bbox and scale_x_y is not used now!
     float nms_threshold = context.Attr<float>("nms_threshold");
 
-    int batch = context.Input<framework::Tensor>("Boxes0")->dims()[0];
+    int batch = context.Input<framework::Tensor>("ImageShape")->dims()[0];
     TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
     for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
       cudaMalloc(
@@ -347,29 +333,29 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
                  sizeof(int));
     }
 
-    // box index counter in gpu memory
+    // Box index counter in gpu memory
     // *bbox_index_device_ptr used by atomicAdd
     int* bbox_index_device_ptr;
     cudaMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
 
     int total_bbox = 0;
     for (int batch_id = 0; batch_id < batch; batch_id++) {
-      for (int input_id = 0; input_id < static_cast<int>(boxes_input.size());
-           input_id++) {
+      for (int input_id = 0; input_id < boxes_input.size(); input_id++) {
         int c = boxes_input_dims[input_id][1];
         int h = boxes_input_dims[input_id][2];
         int w = boxes_input_dims[input_id][3];
-        int ts_id = batch_id * static_cast<int>(boxes_input.size()) + input_id;
+        int ts_id = batch_id * boxes_input.size() + input_id;
         int bbox_count_max_alloc = ts_info[ts_id].bbox_count_max_alloc;
 
         YoloTensorParseCuda(
             boxes_input[input_id] + batch_id * c * h * w,
             image_shape_data + batch_id * 2, image_scale_data + batch_id * 2,
-            // output in gpu,must use 2-level pointer, because we may re-malloc
-            &(ts_info[ts_id].bboxes_dev_ptr),
-            &bbox_count_max_alloc,              // bbox_count_alloc_ptr boxes we
-                                                // pre-allocate
-            &(ts_info[ts_id].bbox_count_host),  // record bbox numbers
+            &(ts_info[ts_id].bboxes_dev_ptr),  // output in gpu,must use 2-level
+                                               // pointer, because we may
+                                               // re-malloc
+            &bbox_count_max_alloc,             // bbox_count_alloc_ptr boxes we
+                                               // pre-allocate
+            &(ts_info[ts_id].bbox_count_host),     // record bbox numbers
             ts_info[ts_id].bbox_count_device_ptr,  // for atomicAdd
             bbox_index_device_ptr,                 // for atomicAdd
             h, class_num, anchors_num[input_id], downsample_ratio[input_id] * h,
@@ -403,19 +389,18 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
 
     // NMS
     for (int batch_id = 0; batch_id < batch; batch_id++) {
-      std::vector<detection> bbox_det_vec;
-
-      for (int input_id = 0; input_id < static_cast<int>(boxes_input.size());
-           input_id++) {
-        int ts_id = batch_id * static_cast<int>(boxes_input.size()) + input_id;
+      std::vector<Detection> bbox_det_vec;
+      for (int input_id = 0; input_id < boxes_input.size(); input_id++) {
+        int ts_id = batch_id * boxes_input.size() + input_id;
         int bbox_count = ts_info[ts_id].bbox_count_host;
         if (bbox_count <= 0) {
           continue;
         }
+
         float* bbox_host_ptr = ts_info[ts_id].bboxes_host_ptr;
         for (int bbox_index = 0; bbox_index < bbox_count; ++bbox_index) {
-          detection bbox_det;
-          memset(&bbox_det, 0, sizeof(detection));
+          Detection bbox_det;
+          memset(&bbox_det, 0, sizeof(Detection));
           bbox_det.objectness = bbox_host_ptr[bbox_index * (5 + class_num) + 0];
           bbox_det.bbox.x = bbox_host_ptr[bbox_index * (5 + class_num) + 1];
           bbox_det.bbox.y = bbox_host_ptr[bbox_index * (5 + class_num) + 2];
@@ -442,7 +427,7 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
           bbox_det_vec.push_back(bbox_det);
         }
       }
-      post_nms(&bbox_det_vec, nms_threshold, class_num);
+      PostNMS(&bbox_det_vec, nms_threshold, class_num);
       for (int i = 0; i < bbox_det_vec.size(); i++) {
         boxes_scores_data[boxes_scores_id++] =
             bbox_det_vec[i].max_prob_class_index;

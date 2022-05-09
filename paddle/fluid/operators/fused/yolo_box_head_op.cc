@@ -52,8 +52,8 @@ class YoloBoxHeadOpMaker : public framework::OpProtoAndCheckerMaker {
                    "box. Default 1.0");
     AddOutput("Out", "The output tensor");
     AddComment(R"DOC(
-yolo_box_head Operator.
-)DOC");
+              yolo_box_head Operator.
+              )DOC");
   }
 };
 

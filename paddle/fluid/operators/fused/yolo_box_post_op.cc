@@ -32,7 +32,6 @@ class YoloBoxPostOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "yolo_box_post");
     OP_INOUT_CHECK(ctx->HasOutput("NmsRoisNum"), "Output", "NmsRoisNum",
                    "yolo_box_post");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };
 
@@ -65,8 +64,8 @@ class YoloBoxPostOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor");
     AddOutput("NmsRoisNum", "The output RoIs tensor");
     AddComment(R"DOC(
-yolo_box_post Operator.
-)DOC");
+        yolo_box_post Operator.
+        )DOC");
   }
 };
 
