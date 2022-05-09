@@ -234,7 +234,7 @@ class TestPyPrimOps(unittest.TestCase):
                 shape=[2], dtype='float32', is_bias=True)
             y = paddle.tanh(paddle.matmul(x, w) + bias)
             loss = paddle.norm(y, p=2)
-            opt = paddle.fluid.optimizer.AdamOptimizer(0.01)
+            opt = paddle.optimizer.Adam(0.01)
             opt.minimize(loss)
 
             print(f'-------test_minimize: orig-------')
