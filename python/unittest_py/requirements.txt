@@ -1,5 +1,5 @@
 PyGithub
-coverage
+coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
 gym
@@ -11,4 +11,4 @@ paddle2onnx>=0.8.2
 scipy>=1.6
 prettytable
 distro
-numpy>=1.20
+numpy>=1.20,<1.22

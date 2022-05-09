@@ -76,7 +76,7 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
   // 2. get the address of each non-zero values
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
   DenseTensor values_indexs = phi::Empty(
       dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indexs_ptr = values_indexs.data<int>();

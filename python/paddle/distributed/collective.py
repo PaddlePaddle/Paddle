@@ -263,7 +263,7 @@ def _new_process_group_impl(backend,
             rank=global_rank,
             world_size=global_world_size,
             place=place,
-            gid=0,
+            gid=group_id,
             local_rank=rank,
             local_size=world_size,
             gloo_rank=cluster_id,
@@ -350,18 +350,19 @@ def new_group(ranks=None, backend=None):
         global _default_group_name
         gid = _new_ring_id()
         group_name = _default_group_name + str(gid)
-        global_group = _get_default_group()
-        global_rank = global_group.rank
-        global_ranks = global_group.ranks
-        backend = _default_backend if backend is None else backend
-        if ranks is None:
-            ranks = global_ranks
-        assert len(ranks) <= len(global_ranks), (
-            "Size of new group must be less than or "
-            "equal to that of the default global group.")
+        if ranks is None or len(ranks) > 1:
+            global_group = _get_default_group()
+            global_rank = global_group.rank
+            global_ranks = global_group.ranks
+            backend = _default_backend if backend is None else backend
+            if ranks is None:
+                ranks = global_ranks
+            assert len(ranks) <= len(global_ranks), (
+                "Size of new group must be less than or "
+                "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if global_rank in ranks and size > 1:
+        if size > 1 and global_rank in ranks:
             rank = ranks.index(global_rank)
             pg = _new_process_group_impl(
                 backend,
@@ -642,6 +643,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
@@ -744,6 +747,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group
@@ -860,9 +865,12 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        tensor_shape = list(tensor.shape)
-        tensor_shape[0] *= group.nranks
-        out = paddle.empty(tensor_shape, tensor.dtype)
+        if len(tensor_list) == 0:
+            tensor_shape = list(tensor.shape)
+            tensor_shape[0] *= group.nranks
+            out = paddle.empty(tensor_shape, tensor.dtype)
+        else:
+            out = paddle.concat(tensor_list, axis=0)
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
@@ -1783,7 +1791,12 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        out = paddle.concat(out_tensor_list, axis=0)
+        if len(out_tensor_list) == 0:
+            tensor_shape = list(in_tensor_list[0].shape)
+            tensor_shape[0] *= nranks
+            out = paddle.empty(tensor_shape, in_tensor_list[0].dtype)
+        else:
+            out = paddle.concat(out_tensor_list, axis=0)
         task = group.process_group.alltoall(temp, out)
         task.wait()
         out_tensor_list.clear()

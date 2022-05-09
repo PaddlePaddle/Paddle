@@ -611,18 +611,26 @@ class DistributedStrategy(object):
                                         "DownpourCtrAccessor")
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
-                    "support sparse_accessor_class: [''DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
+                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
                     % (accessor_class))
 
-            if configs.get("use_cvm", True):
-                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+            if accessor_class.find("Double") >= 0:
+                table_data.accessor.accessor_class = 'CtrDoubleAccessor'
             else:
+                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+
+            if not configs.get("use_cvm", True):
                 table_data.accessor.accessor_class = 'SparseAccessor'
 
             table_data.accessor.embedx_dim = config.get('sparse_embedx_dim', 8)
             table_data.accessor.fea_dim = table_data.accessor.embedx_dim + 3
             table_data.accessor.embedx_threshold = config.get(
                 'sparse_embedx_threshold', 10)
+
+            if accessor_class == 'DownpourUnitAccessor':
+                table_data.accessor.ctr_accessor_param.show_scale = False
+            else:
+                table_data.accessor.ctr_accessor_param.show_scale = True
 
             table_data.accessor.ctr_accessor_param.nonclk_coeff = config.get(
                 'sparse_nonclk_coeff', 0.1)
