@@ -329,14 +329,12 @@ __device__ __forceinline__ void Reduce(T* out,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
   if (Mode == details::kGlobalMode) {
+    if (reduce_last_dim) {
 #pragma unroll
-    for (int i = 0; i < NY; ++i) {
-#pragma unroll
-      for (int j = 0; j < NX; ++j) {
-        out[i] = reducer(out[i], in[i * NX + j]);
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], reducer);
       }
     }
-    details::BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
