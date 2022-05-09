@@ -204,6 +204,7 @@ int CAllReducePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
     void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+  return 0;
   auto input_dims = input_desc[0].dims;
   size_t numel = ProductDim(input_dims);
 
