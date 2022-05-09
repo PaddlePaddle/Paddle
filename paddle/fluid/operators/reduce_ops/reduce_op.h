@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
 #endif
@@ -613,7 +613,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetOpType() const = 0;
 };
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 template <typename T, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
@@ -626,9 +626,12 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto pt_out_dtype = paddle::framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
-
+#ifdef PADDLE_WITH_XPU_KP
+    auto& dev_ctx =
+        context.template device_context<paddle::platform::XPUDeviceContext>();
+#else
     auto& dev_ctx = context.cuda_device_context();
-
+#endif
     if (out_dtype >= 0) {
       output->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
     } else {
@@ -642,6 +645,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
   }
 };
 
+#ifndef PADDLE_WITH_XPU_KP
 template <typename T, template <typename, typename> class TransformOp>
 class ReduceCudaGradKernel : public framework::OpKernel<T> {
  public:
@@ -685,6 +689,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
         TransformOp<T, MPType>(reduce_num));
   }
 };
+#endif
 #endif
 
 }  // namespace operators
