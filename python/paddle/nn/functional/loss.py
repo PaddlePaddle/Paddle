@@ -2227,9 +2227,14 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def triplet_margin_with_distance_loss(input,positive,negative,distance_function = None,
-                        swap=False, margin=1.0, reduction='mean',
-                        name=None):
+def triplet_margin_with_distance_loss(input,
+				      positive,
+				      negative,
+				      distance_function = None,
+                        	      swap=False, 
+				      margin=1.0, 
+				      reduction='mean',
+                        	      name=None):
     r"""
     Measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
@@ -2276,7 +2281,9 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
-
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+	    
     Returns:
         Output: Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
