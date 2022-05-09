@@ -36,6 +36,31 @@
 **/
 namespace egr {
 
+static void CheckTensor(const paddle::experimental::Tensor& pre,
+                        const paddle::experimental::Tensor& post) {
+  if (!pre.initialized() && post.initialized()) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "The tensor in before and after hook are not consistent"));
+  }
+  if (pre.initialized() && post.initialized()) {
+    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+            << paddle::framework::DataType2String(post.dtype());
+    PADDLE_ENFORCE_EQ(
+        pre.dtype(), post.dtype(),
+        paddle::platform::errors::PermissionDenied(
+            "The dtype of tensor before(%s) and after(%s) hook are not "
+            "consistent",
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+    PADDLE_ENFORCE_EQ(
+        pre.place(), post.place(),
+        paddle::platform::errors::PermissionDenied(
+            "The place of tensor before(%s) and after(%s) "
+            "hook are not consistent",
+            pre.place().DebugString(), post.place().DebugString()));
+  }
+}
+
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
@@ -271,7 +296,7 @@ void GradNodeBase::SetGradOutMeta(
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        PADDLE_ENFORCE_NE(dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
+        PADDLE_ENFORCE_NE(dense_tensor->dtype(), phi::DataType::UNDEFINED,
                           paddle::platform::errors::Fatal(
                               "Attempting to copy DenseTensorMeta "
                               "with phi::DataType::UNDEFINED,"

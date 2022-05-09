@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
-from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
@@ -108,5 +107,4 @@ def test_sharding_stage2_offload():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        test_sharding_stage2_offload()
+    test_sharding_stage2_offload()

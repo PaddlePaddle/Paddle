@@ -548,12 +548,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.backward_inputs_list, self.backward_attrs_list, self.backward_returns_list = ParseYamlBackward(
             backward_args_str, backward_returns_str)
 
-        logging.info(
-            f"Parsed Backward Inputs List: {self.backward_inputs_list}")
-        logging.info(f"Prased Backward Attrs List: {self.backward_attrs_list}")
-        logging.info(
-            f"Parsed Backward Returns List: {self.backward_returns_list}")
-
     def CollectForwardInfoFromBackwardContents(self):
 
         backward_forward_str = self.backward_forward_str
@@ -625,15 +619,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 backward_output_type, matched_forward_input_pos,
                 backward_output_pos
             ]
-        logging.info(
-            f"Generated Backward Fwd Input Map: {self.backward_forward_inputs_map}"
-        )
-        logging.info(
-            f"Generated Backward Grad Input Map: {self.backward_grad_inputs_map}"
-        )
-        logging.info(
-            f"Generated Backward Grad Output Map: {self.backward_grad_outputs_map}"
-        )
 
     def GenerateNodeCreationCodes(self):
         forward_api_name = self.forward_api_name
@@ -864,7 +849,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name)) : {name};\n"
+                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::experimental::Tensor();\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
                     if is_inplaced and inplace_map and name in inplace_map.keys(
@@ -1039,11 +1027,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             check_inplace_str, bump_inplace_version_str, node_creation_str,
             returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
-
-        logging.info(
-            f"Generated Forward Definition: {self.forward_definition_str}")
-        logging.info(
-            f"Generated Forward Declaration: {self.forward_declaration_str}")
 
     def GenerateInplacedForwardDygraphFunctions(self):
         # Inplaced Version Dygraph Function Generation
@@ -1231,8 +1214,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_node_name, set_tensor_wrapper_methods_str,
             set_attribute_methods_str, tensor_wrapper_members_str,
             attribute_members_str)
-
-        logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
 
     def GenerateNodeDefinition(self, grad_node_creation_str,
                                grad_node_out_list):
@@ -1442,8 +1423,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_function_call_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
-
-        logging.info(f"Generated Node Definition: {self.node_definition_str}")
 
     def run(self):
         super().run()

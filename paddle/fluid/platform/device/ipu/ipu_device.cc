@@ -39,7 +39,8 @@ const bool GetBoolEnv(const std::string& str) {
 
 int GetNumDevices() {
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
-  if (ipu_model) {
+  bool compile_only = GetBoolEnv("IPU_COMPILE_ONLY");
+  if (ipu_model || compile_only) {
     return 1;
   }
   int num_devices =
@@ -52,7 +53,8 @@ int GetNumDevices() {
 
 std::vector<int> GetDeviceIds() {
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
-  if (ipu_model) {
+  bool compile_only = GetBoolEnv("IPU_COMPILE_ONLY");
+  if (ipu_model || compile_only) {
     return {0};
   }
   std::vector<int> device_ids;

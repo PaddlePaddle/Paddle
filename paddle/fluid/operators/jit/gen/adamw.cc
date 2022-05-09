@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/jit/gen/adam.h"
+#include "paddle/fluid/operators/jit/gen/adamw.h"
 
 #include <stddef.h>  // offsetof
 
@@ -24,7 +24,7 @@ namespace operators {
 namespace jit {
 namespace gen {
 
-void AdamJitCode::loadArgs() {
+void AdamWJitCode::loadArgs() {
   static constexpr int32_t one_as_float = 0x3f800000;
   static constexpr int32_t mask_all_ones = 0xFFFFFFFF;
   static constexpr int64_t mask_8_divisible = 0xFFFFFFFFFFFFFFF8;
@@ -40,6 +40,9 @@ void AdamJitCode::loadArgs() {
   vbroadcastss(ymm_beta2, xmm_beta2);             // beta2
   vbroadcastss(ymm_lr, xmm_lr);                   // -lr
   vbroadcastss(ymm_eps, xmm_eps);                 // eps
+  vbroadcastss(ymm_old_lr, xmm_old_lr);           // old lr
+  vbroadcastss(ymm_lr_ratio, xmm_lr_ratio);       // lr_ratio
+  vbroadcastss(ymm_coeff, xmm_coeff);             // coeff
   vsubps(ymm_one_sub_beta1, ymm_one, ymm_beta1);  // 1 - beta1
   vsubps(ymm_one_sub_beta2, ymm_one, ymm_beta2);  // 1 - beta2
 
@@ -55,7 +58,7 @@ void AdamJitCode::loadArgs() {
   xor_(reg_offset, reg_offset);
 }
 
-void AdamJitCode::setTailOpmask() {
+void AdamWJitCode::setTailOpmask() {
   mov(r13, rcx);
 
   mov(rcx, reg_numel);
@@ -69,36 +72,47 @@ void AdamJitCode::setTailOpmask() {
   mov(rcx, r13);
 }
 
-void AdamJitCode::mainCode() {
+void AdamWJitCode::mainCode() {
+  // load p
+  vmovups(ymm10 | k1, ptr[reg_param_ptr + reg_offset]);
+
+  // ((lr * lr_ratio) * coeff)
+  vmulps(ymm11 | k1, ymm_old_lr, ymm_lr_ratio);
+  vmulps(ymm11 | k1, ymm11, ymm_coeff);
+
+  // - (lr * lr_ratio) * coeff) * p + p
+  // p is stored in ymm11
+  vfnmadd132ps(ymm11 | k1, ymm10, ymm10);
+
   // load grad
-  vmovups(ymm7 | k1, ptr[reg_grad_ptr + reg_offset]);
+  vmovups(ymm10 | k1, ptr[reg_grad_ptr + reg_offset]);
 
   // beta1 * mom1 + (1 - beta1) * g
-  vmulps(ymm8 | k1, ymm_one_sub_beta1, ymm7);
-  vfmadd231ps(ymm8 | k1, ymm_beta1, ptr[reg_mom1_ptr + reg_offset]);
+  vmulps(ymm12 | k1, ymm_one_sub_beta1, ymm10);
+  vfmadd231ps(ymm12 | k1, ymm_beta1, ptr[reg_mom1_ptr + reg_offset]);
 
   // beta2 * mom2 + (1 - beta2) * g * g
-  vmulps(ymm7 | k1, ymm7, ymm7);
-  vmulps(ymm7 | k1, ymm_one_sub_beta2, ymm7);
-  vfmadd231ps(ymm7 | k1, ymm_beta2, ptr[reg_mom2_ptr + reg_offset]);
+  vmulps(ymm10 | k1, ymm10, ymm10);
+  vmulps(ymm10 | k1, ymm_one_sub_beta2, ymm10);
+  vfmadd231ps(ymm10 | k1, ymm_beta2, ptr[reg_mom2_ptr + reg_offset]);
 
   // store mom1 and mom2
-  vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm8);
-  vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm7);
+  vmovups(ptr[reg_mom1_out_ptr + reg_offset] | k1, ymm12);
+  vmovups(ptr[reg_mom2_out_ptr + reg_offset] | k1, ymm10);
 
   // sqrt(mom2) + eps
-  vsqrtps(ymm7 | k1, ymm7);
-  vaddps(ymm7 | k1, ymm7, ymm_eps);
+  vsqrtps(ymm10 | k1, ymm10);
+  vaddps(ymm10 | k1, ymm10, ymm_eps);
 
   // p + (-lr) * (mom1 / sqrt(mom2) + eps)
-  vdivps(ymm7 | k1, ymm8, ymm7);
-  vfmadd213ps(ymm7 | k1, ymm_lr, ptr[reg_param_ptr + reg_offset]);
+  vdivps(ymm10 | k1, ymm12, ymm10);
+  vfmadd213ps(ymm10 | k1, ymm_lr, ymm11);
 
   // store p
-  vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm7);
+  vmovups(ptr[reg_param_out_ptr + reg_offset] | k1, ymm10);
 }
 
-void AdamJitCode::genCode() {
+void AdamWJitCode::genCode() {
   static constexpr int64_t main_loop_elems_size =
       8 * sizeof(float);  // 8 floats in YMM
   static constexpr int64_t offset_increment = main_loop_elems_size;
@@ -117,7 +131,8 @@ void AdamJitCode::genCode() {
   }
 
   cmp(reg_numel, reg_offset);
-  je("end");
+  je("end", T_NEAR);  // size between jmp and label is larger than 127 byte,
+                      // T_NEAR allow long jump
 
   L("process_tail");
   {
@@ -129,17 +144,14 @@ void AdamJitCode::genCode() {
   postCode();
 }
 
-class AdamCreator : public JitCodeCreator<adam_attr_t> {
+class AdamWCreator : public JitCodeCreator<int> {
  public:
-  bool CanBeUsed(const adam_attr_t& attr) const override {
+  bool CanBeUsed(const int& attr) const override {
     return platform::MayIUse(platform::avx512f);
   }
-  size_t CodeSize(const adam_attr_t& attr) const override {
-    return 96 + 32 * 8;
-  }
-  std::unique_ptr<GenBase> CreateJitCode(
-      const adam_attr_t& attr) const override {
-    return make_unique<AdamJitCode>(attr, CodeSize(attr));
+  size_t CodeSize(const int& attr) const override { return 96 + 32 * 8; }
+  std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
+    return make_unique<AdamWJitCode>(attr, CodeSize(attr));
   }
 };
 
@@ -150,4 +162,4 @@ class AdamCreator : public JitCodeCreator<adam_attr_t> {
 
 namespace gen = paddle::operators::jit::gen;
 
-REGISTER_JITKERNEL_GEN(kAdam, gen::AdamCreator);
+REGISTER_JITKERNEL_GEN(kAdamW, gen::AdamWCreator);
