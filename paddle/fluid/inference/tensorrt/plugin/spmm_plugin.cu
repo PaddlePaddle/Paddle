@@ -227,18 +227,12 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
       &handle, &matB, n, k, k, alignment, type, CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
 
-  // paddle::platform::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB,
-  //                                                           compressed_size);
-  paddle::platform::dynload::cusparseLtSpMMACompressedSize(&handle, &plan,
-                                                compressed_size);
+  paddle::platform::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB,
+                                                            compressed_size);
   cudaMalloc(dest, *compressed_size);
   std::cout << "compressed size: " << *compressed_size << std::endl;
-  paddle::platform::dynload::cusparseLtSpMMACompress(&handle, &plan, src,
-                                          *dest, nullptr);
-  std::cout << "compressed size: " << *compressed_size << std::endl;
-  // cudaMalloc(dest, *compressed_size);
-  // paddle::platform::dynload::cusparseLtSpMMACompress2(
-  //     &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
+  paddle::platform::dynload::cusparseLtSpMMACompress2(
+      &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
   paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
@@ -389,7 +383,10 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   weight_compressed_ = new char[compressed_size];
   std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
               static_cast<char*>(weight_compressed_));
-
+  cudaMalloc((void**)&weight_compressed_dev_, compressed_size);
+  cudaMemcpy(weight_compressed_dev_, weight_compressed_,
+                        compressed_size, cudaMemcpyHostToDevice);
+ 
   has_bias_ = (bias != nullptr);
   if (has_bias_) {
     // Each plugin has a copy of bias
@@ -464,7 +461,6 @@ nvinfer1::IPluginV2DynamicExt* SpmmPluginDynamic::clone() const noexcept {
                               is_configured_, m_max_, optim_alg_, activation_);
     p->weight_scale_ = weight_scale_;
     p->setPluginNamespace(namespace_.c_str());
-    p->weight_compressed_dev_ = weight_compressed_dev_;
 
     return p;
   } catch (const std::exception& e) {
@@ -669,6 +665,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
       const auto* const input = static_cast<const float*>(inputs[0]);
       auto* output = static_cast<float*>(outputs[0]);
+
       size_t in_size = 1;
       size_t out_size = 1;
       for (int i=0; i<inputDesc->dims.nbDims; i++) {
@@ -685,61 +682,18 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         std::cout << " " << static_cast<float>(reinterpret_cast<float*>(in_host)[i]);
       }
       std::cout << std::endl;
+
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
-      cudaDeviceSynchronize();
-      cudaMemcpy(out_host, output, out_size * 4, cudaMemcpyDeviceToHost);
-      // std::cout << "outputs:";
-      // for (int i=0; i<out_size; i++) {
-      //   std::cout << " " << static_cast<float>(reinterpret_cast<float*>(out_host)[i]);
-      // }
-      // std::cout << std::endl;
+
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
-
-      size_t in_size = 1;
-      size_t out_size = 1;
-      for (int i=0; i<inputDesc->dims.nbDims; i++) {
-        in_size = in_size * inputDesc->dims.d[i];
-      }
-      void* in_host = new char[in_size * 2];
-      for (int i=0; i<outputDesc->dims.nbDims; i++) {
-        out_size = out_size * outputDesc->dims.d[i];
-      }
-      void* out_host = new char[out_size * 2];
-
-      cudaMemcpy(in_host, input, in_size * 2, cudaMemcpyDeviceToHost);
-      cudaMemcpy(out_host, output, out_size * 2, cudaMemcpyDeviceToHost);
-      bool flag_i=true;
-      bool flag_o=true;
-
-      std::cout << "inputs:";
-      for (int i=0; i<in_size; i++) {
-        // std::cout << " " << static_cast<float>(static_cast<__half*>(in_host)[i]);
-        if (isnan(static_cast<float>(static_cast<__half*>(in_host)[i]))) {
-          flag_i = false;
-        }
-      }
-      if (!flag_i) 
-        std::cout << "nan is detected in inputs." << std::endl;
-        
-      // cudaDeviceSynchronize();
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
-      cudaDeviceSynchronize();
-      std::cout << "outputs:";
-      for (int i=0; i<out_size; i++) {
-        // std::cout << " " << static_cast<float>(static_cast<__half*>(out_host)[i]);
-        if (isnan(static_cast<float>(static_cast<__half*>(out_host)[i]))) {
-          flag_o=false; 
-        }
-      }
-      if (!flag_o)
-        std::cout << "nan is detected in outputs." << std::endl;
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
@@ -823,10 +777,7 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
 
 void SpmmPluginDynamic::destroy() noexcept {
   delete[] reinterpret_cast<char*>(weight_compressed_);
-  if (weight_compressed_dev_) {
-    cudaFree(weight_compressed_dev_);
-    weight_compressed_dev_ = nullptr;
-  }
+  cudaFree(weight_compressed_dev_);
   if (has_bias_) {
     cudaFree(bias_dev_);
   }
