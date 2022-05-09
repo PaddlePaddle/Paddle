@@ -87,7 +87,7 @@ _global_flags_ = core.globals()
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
 # build a fast execution system for dynamic mode. But we can't just remove all legacy
 # code once we present the new system for some historical reason. That's why we have 
-# these flags.
+# these flags
 # 
 # 1. _non_static_mode():
 # _non_static_mode means  we are now running in legacy dygraph mode or dygraph mode. 
