@@ -114,5 +114,17 @@ int RegisterAllStats() {
 
 UNUSED static int regiester_all_stats = RegisterAllStats();
 
+class PrintMem {
+ public:
+  ~PrintMem() {
+    auto allocated = paddle::memory::StatGetCurrentValue("Allocated", 0);
+    auto reserved = paddle::memory::StatGetCurrentValue("Reserved", 0);
+    std::cout << "Memory Info:allocated = " << allocated
+              << ", reserved = " << reserved << std::endl;
+  }
+};
+
+UNUSED static PrintMem tmp;
+
 }  // namespace memory
 }  // namespace paddle
