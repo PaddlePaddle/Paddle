@@ -398,7 +398,7 @@ void EagerReducer::InitializeDenseGroups(
                           "GRAD is SelectedRows",
                           tensor_name));
 
-    PADDLE_ENFORCE_EQ(tensor.is_initialized(), true,
+    PADDLE_ENFORCE_EQ(tensor.initialized(), true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
@@ -447,10 +447,12 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   while (!queue.empty()) {
     egr::GradNodeBase *node = queue.front();
     queue.pop();
-    const std::vector<std::vector<egr::Edge>> &edges = node->GetEdges();
-    for (size_t i = 0; i < edges.size(); i++) {
-      for (size_t j = 0; j < edges[i].size(); j++) {
-        const egr::Edge &edge = edges[i][j];
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize> &metas =
+        node->OutputMeta();
+    for (size_t i = 0; i < metas.size(); i++) {
+      for (size_t j = 0; j < metas[i].size(); j++) {
+        const egr::Edge &edge = metas[i][j].GetEdge();
         auto next_node_shared = edge.GetMutableGradNode();
         if (!next_node_shared || !next_node_shared.get()) {
           continue;
@@ -710,7 +712,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
 
 bool EagerReducer::HasGrad(size_t var_index) {
   auto grad = egr::EagerUtils::mutable_grad(tensors_[var_index]);
-  if (grad && grad->is_initialized()) {
+  if (grad && grad->initialized()) {
     return true;
   } else {
     return false;

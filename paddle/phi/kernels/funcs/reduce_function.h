@@ -33,10 +33,14 @@
 namespace cub = hipcub;
 #endif
 
+#ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#endif
+
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/array.h"
@@ -183,7 +187,7 @@ struct IndexCalculator {
     strides = details::VectorToArray<int, kMaxRank>(full_strides);
     reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
 #ifndef PADDLE_WITH_XPU_KP
-    std::vector<kps::details::FastDivMod> cal_divmoders;  // namespace
+    std::vector<kps::details::FastDivMod> cal_divmoders;
     // fast divmod
     for (auto i : cal_strides) {
       cal_divmoders.push_back(kps::details::FastDivMod(i));
@@ -325,9 +329,10 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
-
+#ifndef PADDLE_WITH_XPU_KP
     // step5: limit the grid to prevent thead overflow
     paddle::platform::LimitGridDim(dev_ctx, &grid);
+#endif
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -468,7 +473,11 @@ struct ReduceConfig {
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif
     if (reduce_last_dim && (reduce_rank == 1)) {
+#ifdef PADDLE_WITH_XPU_KP
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+#else
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+#endif
     } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       if (rank == 3 && not_higher) {
@@ -583,7 +592,7 @@ struct ReduceConfig {
   void SetBlockDim() {
     // init
     should_reduce_again = false;
-    dim3 block_dim;
+    dim3 block_dim(1, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
 

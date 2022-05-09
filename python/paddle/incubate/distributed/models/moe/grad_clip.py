@@ -55,6 +55,11 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0. 
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
+    Reference:
+        https://github.com/laekov/fastmoe/blob/master/examples/megatron/clip-grad-v2.2.patch
+        Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+
+
     Args:
         clip_norm (float): The maximum norm value.
         is_expert_param_func (function): a function to decide whether a param should be put into moe_params_grads

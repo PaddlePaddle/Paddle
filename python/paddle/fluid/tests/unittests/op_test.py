@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import sys
 import unittest
 import warnings
 import numpy as np
@@ -37,22 +38,24 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
-from paddle.fluid.tests.unittests.testsuite import (
+from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+from testsuite import (
     create_op,
     set_input,
     append_input_output,
     append_loss_ops, )
-from paddle.fluid import unique_name
-from paddle.fluid.tests.unittests.white_list import (
+from white_list import (
     op_accuracy_white_list,
     check_shape_white_list,
     compile_vs_runtime_white_list,
     no_check_set_white_list,
     op_threshold_white_list,
     no_grad_set_white_list, )
-from paddle_bfloat import bfloat16
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle_bfloat import bfloat16
 
 # For switch new eager mode globally
 g_is_in_eager = _in_eager_without_dygraph_check()
@@ -333,6 +336,10 @@ class OpTest(unittest.TestCase):
         def is_mlu_op_test():
             return hasattr(cls, "use_mlu") and cls.use_mlu == True
 
+        def is_custom_device_op_test():
+            return hasattr(
+                cls, "use_custom_device") and cls.use_custom_device == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -356,7 +363,8 @@ class OpTest(unittest.TestCase):
                 and not is_mkldnn_op_test() \
                 and not is_rocm_op_test() \
                 and not is_npu_op_test() \
-                and not is_mlu_op_test():
+                and not is_mlu_op_test() \
+                and not is_custom_device_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -1503,6 +1511,12 @@ class OpTest(unittest.TestCase):
                     return imperative_actual, imperative_actual_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16 and expect_np.dtype in [
+                        np.float32, np.float64
+                ]:
+                    self.rtol = 1.e-2
+                else:
+                    self.rtol = 1.e-5
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16 or actual_np.dtype == bfloat16:
                         actual_np = convert_uint16_to_float(actual_np)

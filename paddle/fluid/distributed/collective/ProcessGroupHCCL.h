@@ -71,7 +71,7 @@ class ProcessGroupHCCL : public ProcessGroup {
   };
 
   ProcessGroupHCCL(const std::shared_ptr<Store>& store, int rank, int size,
-                   int gid);
+                   const platform::Place& place, int gid);
 
   const std::string GetBackendName() const override {
     return std::string(HCCL_BACKEND_NAME);

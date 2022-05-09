@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestFullOp(unittest.TestCase):
@@ -131,6 +132,20 @@ class TestFullLikeOp3(TestFullLikeOp1):
         self.fill_value = 8888
         self.shape = [5000, 5000]
         self.dtype = np.int64
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFullLikeOp4(unittest.TestCase):
+    def test_skip_data_transform(self):
+        paddle.disable_static()
+        with _test_eager_guard():
+            x = paddle.to_tensor(
+                [1., 2., 3., 4.], place=paddle.CUDAPinnedPlace())
+            out = paddle.full_like(x, 1.)
+            self.assertTrue(
+                (out.numpy() == np.ones([4]).astype(np.float32)).all(), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

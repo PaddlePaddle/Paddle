@@ -214,6 +214,13 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x.item(), 1 + 1j)
                 self.assertTrue(isinstance(x.item(), complex))
 
+                # empty tensor
+                x = paddle.to_tensor([])
+                self.assertEqual(x.shape, [0])
+                expected_result = np.array([], dtype='float32')
+                self.assertEqual(x.numpy().shape, expected_result.shape)
+                self.assertTrue(np.array_equal(x.numpy(), expected_result))
+
                 numpy_array = np.random.randn(3, 4)
                 # covert core.LoDTensor to paddle.Tensor
                 lod_tensor = paddle.fluid.core.LoDTensor()
@@ -1734,6 +1741,19 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
         with _test_eager_guard():
             self.func_test_copy_gradient_from()
         self.func_test_copy_gradient_from()
+
+
+class TestEagerTensorGradNameValue(unittest.TestCase):
+    def test_eager_tensor_grad_name_value(self):
+        with _test_eager_guard():
+            a_np = np.array([2, 3]).astype('float32')
+            a = paddle.to_tensor(a_np)
+            a.stop_gradient = False
+            b = a**2
+            self.assertEqual(a._grad_value(), None)
+            b.backward()
+            self.assertEqual('eager_tmp' in a._grad_name(), True)
+            self.assertNotEqual(a._grad_value(), None)
 
 
 if __name__ == '__main__':

@@ -34,7 +34,9 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
-  std::vector<std::vector<paddle::experimental::Tensor>> grads;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      grads;
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
@@ -51,28 +53,9 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(res[0][0].impl())
                ->data<float>()[0],
            6.0f);
-  VLOG(6) << "Test Add Edges";
-  egr::Edge tmp_edge0(grad_test_node1, 1, 2);
-  auto auto_grad0 = std::make_shared<egr::AutogradMeta>(tmp_edge0);
-  auto_grad0->SetStopGradient(false);
-
   egr::Edge tmp_edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(tmp_edge1);
   et1.set_autograd_meta(auto_grad1);
-  auto_grad1->SetStopGradient(false);
-  grad_test_node0->AddEdges(auto_grad0.get(), 0);
-
-  CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
-           size_t(1));
-  CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().second,
-           size_t(2));
-  std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-
-  grad_test_node0->AddEdges(&metas, 1);
-  CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().first,
-           size_t(3));
-  CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().second,
-           size_t(4));
 
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
