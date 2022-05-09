@@ -363,7 +363,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::SetXPUDeviceId(place_.device);
+      platform::XPUDeviceGuard gurad(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());
@@ -382,9 +382,9 @@ void BufferedReader::ReadAsync(size_t i) {
         // KL3
         if ((platform::is_xpu_place(cpu_place))) {
           memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
+          platform::XPUStreamSync(stream_.get());
         } else {
           memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
-          platform::XPUStreamSync(stream_.get());
         }
         xpu[i].set_lod(cpu[i].lod());
       }

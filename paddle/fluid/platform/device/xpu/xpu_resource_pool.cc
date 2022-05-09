@@ -23,14 +23,14 @@ XpuStreamResourcePool::XpuStreamResourcePool() {
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
-      platform::SetXPUDeviceId(dev_idx);
+      platform::XPUDeviceGuard gurad(dev_idx);
       xpuStream stream;
       xpu_stream_create(&stream);
       return stream;
     };
 
     auto deleter = [dev_idx](xpuStream stream) {
-      platform::SetXPUDeviceId(dev_idx);
+      platform::XPUDeviceGuard gurad(dev_idx);
       xpu_stream_destroy(stream);
     };
 
@@ -61,14 +61,14 @@ XpuEventResourcePool::XpuEventResourcePool() {
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
-      platform::SetXPUDeviceId(dev_idx);
+      platform::XPUDeviceGuard gurad(dev_idx);
       xpuEventHandle event;
       xpu_event_create(&event);
       return event;
     };
 
     auto deleter = [dev_idx](xpuEventHandle event) {
-      platform::SetXPUDeviceId(dev_idx);
+      platform::XPUDeviceGuard gurad(dev_idx);
       xpu_event_destroy(event);
     };
 
