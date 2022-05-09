@@ -135,11 +135,11 @@ int SendAndRecvVariableHandler::SaveInSwitchWithShard(
     const auto& var_name = request->send_var_names(idx);
     const auto& var_size = request->vars_len(idx);
     WaitForVarsConsumed(group_id, var_name);
+    std::unique_lock<std::mutex> lk(scope_mutex_);
     auto& value = local_shard[var_name];
     value.resize(var_size);
     io_buffer_itr.copy_and_forward(reinterpret_cast<void*>(value.data()),
                                    var_size);
-    std::unique_lock<std::mutex> lk(scope_mutex_);
     vars_ready_flag[group_id][var_name] = 1;
     VLOG(4) << "saved var_name: " << var_name << "is saved ready!";
   }
@@ -165,11 +165,11 @@ int SendAndRecvVariableHandler::QueryInSwitchWithShard(
     VLOG(4) << "req var name: " << req_var_name;
     response->add_send_var_names(req_var_name);
     WaitForVarsProduced(group_id, req_var_name);
+    std::unique_lock<std::mutex> lk(scope_mutex_);
     auto itr = local_shard.find(req_var_name);
     auto& value = itr.value();
     response_io_buffer.append(value.data(), value.size());
     value.resize(0);  // 清空内存
-    std::unique_lock<std::mutex> lk(scope_mutex_);
     vars_ready_flag[group_id][req_var_name] = 0;
     VLOG(4) << "query var_name: " << req_var_name << "is consumed ready!";
   }
