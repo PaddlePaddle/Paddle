@@ -44,6 +44,5 @@ SparseCooTensor SparseRelu(const Context& dev_ctx, const SparseCooTensor& x) {
   return coo;
 }
 
-
 }  // namespace sparse
 }  // namespace phi
