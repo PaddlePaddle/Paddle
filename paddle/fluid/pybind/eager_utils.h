@@ -10,6 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -25,6 +30,10 @@ namespace framework {
 class Scope;
 }
 namespace pybind {
+
+#define RETURN_PY_NONE \
+  Py_INCREF(Py_None);  \
+  return Py_None;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
@@ -158,17 +167,19 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
 
+paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos);
+
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-paddle::experimental::Place CastPyArg2Place(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos);
+paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
+                              ssize_t arg_pos);
 
-paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos);
+paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
+                                    ssize_t arg_pos);
 
 paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,

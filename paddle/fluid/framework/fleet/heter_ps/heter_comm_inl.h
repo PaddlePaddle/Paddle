@@ -161,8 +161,8 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                           nodes[i].key_storage);
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
                           nodes[i].val_storage);
-#endif
   }
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -193,6 +193,10 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     memory_copy(dst_place, node.key_storage, src_place,
                 reinterpret_cast<char*>(src_key + h_left[i]),
                 node.key_bytes_len, node.in_stream);
+#if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
+    cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
+#endif
+
     if (need_copy_val) {
       memory_copy(dst_place, node.val_storage, src_place,
                   reinterpret_cast<char*>(src_val + h_left[i]),
@@ -338,6 +342,24 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
   return resource_->get_index_by_devid(devid);
 }
 
+#if defined(PADDLE_WITH_XPU_KP)
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
+    const OptimizerConfig& optimizer_config) {
+  for (auto& table : tables_) {
+    table->set_sparse_sgd(optimizer_config);
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
+    const OptimizerConfig& optimizer_config) {
+  for (auto& table : tables_) {
+    table->set_embedx_sgd(optimizer_config);
+  }
+}
+#endif
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(
     int dev_num, KeyType* h_keys, ValType* h_vals, size_t len,
@@ -411,7 +433,6 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
   auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
@@ -565,7 +586,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
-    if (shard_len == 0) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     create_storage(num, i, shard_len * sizeof(KeyType),
@@ -611,6 +632,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   sync_stream(stream);
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(num, i);
   }
 }
@@ -728,6 +752,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
@@ -804,9 +831,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place, h_left, src_place, d_left_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
   memory_copy(dst_place, h_right, src_place, d_right_ptr,
-              total_device * sizeof(int));
+              total_device * sizeof(int), stream);
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
@@ -843,6 +870,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
@@ -1035,7 +1065,6 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(
   merge_grad(gpu_num, storage.local_keys, storage.local_grads, merge_num, ret);
   return ret;
 }
-
 #endif
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -1065,7 +1094,6 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
 //  platform::CUDADeviceGuard guard(dev_id);
 //  tables_[index]->dump_to_cpu(dev_id, stream);
 //}
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif

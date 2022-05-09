@@ -19,9 +19,12 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
-std::vector<std::vector<paddle::experimental::Tensor>> RunCustomOpNode::
-operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-           bool create_graph) {  // NOLINT
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+RunCustomOpNode::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,
+    bool create_graph, bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
@@ -30,8 +33,9 @@ operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads,
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
-  std::vector<std::vector<paddle::experimental::Tensor>> tmp_ins(
-      grad_inputs_name.size());
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      tmp_ins(grad_inputs_name.size());
   VLOG(7) << " Prepare Backward inputs of grads with size: " << grads.size()
           << ", whose grad_inputs_name size is: " << grad_inputs_name.size();
   for (size_t i = 0; i < grads.size(); i++) {
@@ -57,17 +61,19 @@ operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads,
   }
   VLOG(6) << "Prepare Grad attrs";
   ctx.EmplaceBackAttrs(attrs_);
-  std::vector<std::vector<paddle::experimental::Tensor>> outs(
-      GetEdges().size());
-  std::vector<std::vector<paddle::experimental::Tensor>> tmp_outs(
-      grad_outputs_names.size());
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      outs(OutputMeta().size());
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      tmp_outs(grad_outputs_names.size());
   VLOG(6) << "Prepare Grad outputs for size: " << grad_outputs_names.size();
-  for (size_t i = 0; i < GetEdges().size(); i++) {
+  for (size_t i = 0; i < OutputMeta().size(); i++) {
     if (map[0].find(i) != map[0].end()) {
       VLOG(7) << "Insert grad outputs: " << i
-              << " with size: " << GetEdges()[i].size()
+              << " with size: " << OutputMeta()[i].size()
               << " to tmp_outputs: " << map[0][i];
-      for (size_t j = 0; j < GetEdges()[i].size(); j++) {
+      for (size_t j = 0; j < OutputMeta()[i].size(); j++) {
         outs[i].emplace_back(/* init it incase of copy nullptr of shared_ptr */
                              std::make_shared<phi::DenseTensor>(
                                  phi::DataType::UNDEFINED),

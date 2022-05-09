@@ -22,9 +22,9 @@ KernelSignature LerpOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature LerpGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("lerp_grad",
-                         {"X", "Y", "Weight", "Out", GradVarName("Out")},
+                         {"X", "Y", "Weight", "Out", "Out@GRAD"},
                          {},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi
