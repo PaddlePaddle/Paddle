@@ -507,7 +507,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         exe.run(startup)
         test_prog = train_prog.clone(for_test=True)
 
-        for i in range(1):
+        for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
 
