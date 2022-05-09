@@ -2258,24 +2258,24 @@ def triplet_margin_with_distance_loss(input,
 
     Parameters:
 
-        input:Input tensor, the data type is float32 or float64.
+        input (Tensor):Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
-        positive:Positive tensor, the data type is float32 or float64.
+        positive (Tensor):Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
 
-        negative:Negative tensor, the data type is float32 or float64.
+        negative (Tensor):Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
 
-        distance_function: Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
+        distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 
-        swap:The distance swap changes the negative distance to the swap distance (distance between positive samples
+        swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
-        margin:Default: :math:`1`.A nonnegative margin representing the minimum difference
+        margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0.
 
-        reduction:Indicate how to average the loss by batch_size.
+        reduction (str, optional):Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -2317,11 +2317,11 @@ def triplet_margin_with_distance_loss(input,
         )
     if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'triplet_margin_loss')
+                                 'triplet_margin_with_distance_loss')
         check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
-                                 'triplet_margin_loss')
+                                 'triplet_margin_with_distance_loss')
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
-                                 'triplet_margin_loss')
+                                 'triplet_margin_with_distance_loss')
 
     if not(input.shape==positive.shape==negative.shape):
         raise ValueError(
