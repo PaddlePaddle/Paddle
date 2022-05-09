@@ -395,6 +395,11 @@ if(WITH_DISTRIBUTE)
         MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
         set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
     endif()
+    if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
+        # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
+        MESSAGE(WARNING "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496" FORCE)
+    endif()
 endif()
 
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
