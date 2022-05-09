@@ -116,11 +116,33 @@ class SliceOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(&input, 1, plugin);
       }
     } else {
-      bool with_fp16 =
+
+#if IS_TRT_VERSION_GE(7130)      
+      auto chw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = chw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * chw_input_dims.nbDims);
+      nvinfer1::Dims trt_out_dims = chw_input_dims;
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = chw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++)
+        trt_step_dims.d[i] = 1;
+
+      // input : [C,H,W]
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i] - 1;
+        trt_start_dims.d[trt_axis] = starts[i];
+        trt_out_dims.d[trt_axis] = ends[i] - starts[i];
+      }
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims, trt_out_dims, trt_step_dims);
+#else
+
+	    bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SlicePlugin* plugin =
           new plugin::SlicePlugin(starts, ends, axes, with_fp16);
       layer = engine_->AddPlugin(&input, 1, plugin);
+#endif
     }
     RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }
