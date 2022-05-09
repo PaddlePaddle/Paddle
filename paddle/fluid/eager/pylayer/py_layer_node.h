@@ -32,7 +32,7 @@ class GradNodePyLayer : public GradNodeBase {
     ctx_ = ctx;
   }
 
-  ~GradNodePyLayer() override { Py_DECREF(ctx_); };
+  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>

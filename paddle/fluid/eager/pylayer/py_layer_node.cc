@@ -164,6 +164,8 @@ GradNodePyLayer::operator()(
     Py_XDECREF(outputs_tuple);
   }
   Py_XDECREF(outputs);
+  Py_XDECREF(ctx_);
+  ctx_ = nullptr;
 
   return grad_out;
 }
