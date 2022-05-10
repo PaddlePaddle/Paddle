@@ -54,8 +54,8 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
       T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
-      int r = xpu::sgd(dev_ctx.x_context(), sz, grad_data, param_data, lr,
-                       out_data);
+      int r = xpu::sgd(dev_ctx.x_context(), grad_data, param_data, lr,
+                       out_data, sz);
       if (r == xpu::Error_t::INVALID_PARAM) {
         PADDLE_ENFORCE_EQ(
             r, xpu::Error_t::SUCCESS,

@@ -73,13 +73,13 @@ class LambOpXPUKernel : public framework::OpKernel<T> {
       int r = xpu::lamb(dev_ctx.x_context(), grad.template data<T>(),
                         mom1.template data<T>(), mom2.template data<T>(),
                         param.template data<T>(), beta1_pow.template data<T>(),
-                        beta2_pow.template data<T>(), beta1, beta2, epsilon,
-                        weight_decay, lr.template data<T>(),
+                        beta2_pow.template data<T>(),
                         mom1_out.template mutable_data<T>(ctx.GetPlace()),
                         mom2_out.template mutable_data<T>(ctx.GetPlace()),
                         param_out.template mutable_data<T>(ctx.GetPlace()),
                         beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
                         beta2_pow_out.template mutable_data<T>(ctx.GetPlace()),
+                        beta1, beta2, epsilon, weight_decay, lr.template data<T>(),
                         param.numel());
 
       if (r == xpu::Error_t::INVALID_PARAM) {

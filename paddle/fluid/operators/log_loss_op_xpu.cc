@@ -29,8 +29,8 @@ class LogLossXPUKernel : public framework::OpKernel<T> {
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r =
-        xpu::log_loss_fwd(dev_ctx.x_context(), n, epsilon, predict->data<T>(),
-                          labels->data<T>(), loss->data<T>());
+        xpu::log_loss(dev_ctx.x_context(), predict->data<T>(),
+                      labels->data<T>(), loss->data<T>(), n, epsilon);
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External(
@@ -54,9 +54,9 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
     dpred->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::log_loss_bwd(dev_ctx.x_context(), n, epsilon,
-                              predict->data<T>(), labels->data<T>(),
-                              dloss->data<T>(), dpred->data<T>());
+    int r = xpu::log_loss_grad(dev_ctx.x_context(), predict->data<T>(),
+                               labels->data<T>(), dloss->data<T>(),
+                               dpred->data<T>(), n, epsilon);
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External(

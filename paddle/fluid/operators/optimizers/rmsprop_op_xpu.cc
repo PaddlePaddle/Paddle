@@ -105,13 +105,12 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     /// const float* ms, const float* g, const float* mom,
     /// float epsilon, float rho, float momentum, float lr,
     /// float *ms_out, float *mom_out, float *p_out, int n)
-    int r = xpu::rmsprop(dev_ctx.x_context(), param.template data<T>(),
-                         meanSquare.template data<T>(), grad.template data<T>(),
-                         mom.template data<T>(), epsilon, decay, momentum, lr,
+    int r = xpu::rmsprop(dev_ctx.x_context(), grad.template data<T>(), param.template data<T>(),
+                         meanSquare.template data<T>(), mom.template data<T>(),
+                         param_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_sqrt_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_out.template mutable_data<T>(ctx.GetPlace()),
-                         param_out.template mutable_data<T>(ctx.GetPlace()),
-                         param.numel());
+                         epsilon, decay, momentum, lr, param.numel());
 
     if (r == xpu::Error_t::INVALID_PARAM) {
       PADDLE_ENFORCE_EQ(
