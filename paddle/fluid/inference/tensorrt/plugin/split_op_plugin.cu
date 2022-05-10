@@ -152,7 +152,6 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
       output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
       cudaMemcpyHostToDevice, stream));
-
   int outer_rows = outer_rows_ * batchSize;
   dim3 block(32, 16);
   dim3 grid(std::min((inner_cols_ - 1) / block.x + 1, 65535u),
