@@ -41,9 +41,7 @@ limitations under the License. */
 #include "xpu/kernel/simd.h"
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -132,10 +130,8 @@ class HashTable {
 
   void show();
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
-#endif
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
@@ -178,9 +174,10 @@ class HashTable {
   TableContainer<KeyType, ValType>* container_;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
-  OptimizerConfig* xpu_optimizer_config_;
-  OptimizerConfig cpu_optimizer_config_;
 #endif
+  OptimizerConfig* device_optimizer_config_;
+  OptimizerConfig host_optimizer_config_;
+
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
