@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/operators/assign_value_op.h"
 
-#include "paddle/fluid/framework/ir/pass.h"
+namespace ops = paddle::operators;
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class TransferCastOpPass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_MLU_KERNEL(assign_value, ops::AssignValueKernel<bool>,
+                       ops::AssignValueKernel<int>,
+                       ops::AssignValueKernel<int64_t>,
+                       ops::AssignValueKernel<float>);

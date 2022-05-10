@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_PSLIB
-#include <pslib.h>
+#include "proto/ps.pb.h"
 #endif
 
 namespace paddle {

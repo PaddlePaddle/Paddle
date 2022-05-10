@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import OP_COST_FACTORY
+from .base_cost import _g_op_cost_factory
 from .base_cost import Cost
 from .comm_op_cost import AllreduceSumCost
 from .comp_op_cost import MatmulV2OpCost

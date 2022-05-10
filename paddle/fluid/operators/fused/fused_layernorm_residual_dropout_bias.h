@@ -298,9 +298,15 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     for (int it = 0, col = c; it < LDGS; it++) {
       phi::Store<T, VecSize>(
           x[it], residual_out_ptr + row * ELTS_PER_ROW + col * VecSize);
-      phi::Store<MaskType, VecSize>(
-          mask_vec[it], mask_out_ptr + row * ELTS_PER_ROW + col * VecSize);
       col += THREADS_PER_ROW;
+    }
+    if (!is_test) {
+#pragma unroll
+      for (int it = 0, col = c; it < LDGS; it++) {
+        phi::Store<MaskType, VecSize>(
+            mask_vec[it], mask_out_ptr + row * ELTS_PER_ROW + col * VecSize);
+        col += THREADS_PER_ROW;
+      }
     }
 
     U mu_local = 0.f;

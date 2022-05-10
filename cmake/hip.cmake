@@ -18,6 +18,33 @@ include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
+macro(find_hip_version hip_header_file) 
+    file(READ ${hip_header_file} HIP_VERSION_FILE_CONTENTS)
+
+    string(REGEX MATCH "define HIP_VERSION_MAJOR +([0-9]+)" HIP_MAJOR_VERSION
+        "${HIP_VERSION_FILE_CONTENTS}")
+    string(REGEX REPLACE "define HIP_VERSION_MAJOR +([0-9]+)" "\\1"
+        HIP_MAJOR_VERSION "${HIP_MAJOR_VERSION}")
+    string(REGEX MATCH "define HIP_VERSION_MINOR +([0-9]+)" HIP_MINOR_VERSION
+        "${HIP_VERSION_FILE_CONTENTS}")
+    string(REGEX REPLACE "define HIP_VERSION_MINOR +([0-9]+)" "\\1"
+        HIP_MINOR_VERSION "${HIP_MINOR_VERSION}")
+    string(REGEX MATCH "define HIP_VERSION_PATCH +([0-9]+)" HIP_PATCH_VERSION
+        "${HIP_VERSION_FILE_CONTENTS}")
+    string(REGEX REPLACE "define HIP_VERSION_PATCH +([0-9]+)" "\\1"
+        HIP_PATCH_VERSION "${HIP_PATCH_VERSION}")
+
+    if(NOT HIP_MAJOR_VERSION)
+        set(HIP_VERSION "???")
+        message(WARNING "Cannot find HIP version in ${HIP_PATH}/include/hip/hip_version.h")
+    else()
+        math(EXPR HIP_VERSION "${HIP_MAJOR_VERSION} * 10000000 + ${HIP_MINOR_VERSION} * 100000   + ${HIP_PATCH_VERSION}")
+        message(STATUS "Current HIP header is ${HIP_PATH}/include/hip/hip_version.h "
+          "Current HIP version is v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}.${HIP_PATCH_VERSION}. ")
+    endif()
+endmacro()
+find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
   include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
@@ -71,8 +98,10 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx906)
+list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx908)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx906)
+list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx908)
 
 
 if(HIP_COMPILER STREQUAL clang)
