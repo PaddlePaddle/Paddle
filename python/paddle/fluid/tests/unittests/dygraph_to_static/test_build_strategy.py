@@ -68,7 +68,7 @@ class TestResnetWithPass(unittest.TestCase):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
             if paddle.fluid.core.is_compiled_with_mkldnn():
-                self.resnet_helper(True, self.build_strategy)
+                self.resnet_helper.train(True, self.build_strategy)
         finally:
             paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
 
