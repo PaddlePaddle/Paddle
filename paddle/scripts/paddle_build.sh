@@ -1738,7 +1738,7 @@ set +x
         mem0_ut_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" 1 10
+            card_test "$line" 1 8
         done < $PADDLE_ROOT/tools/mem0_test
         echo "EXIT_CODE:: "$EXIT_CODE
         mem0_ut_endTime_s=`date +%s`
