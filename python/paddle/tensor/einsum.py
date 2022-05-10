@@ -25,6 +25,7 @@ from paddle import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..common_ops_import import _varbase_creator
 import collections
 import string
 import opt_einsum
@@ -802,7 +803,8 @@ def gen_einsum_op(equation, *operands):
 
     if _in_legacy_dygraph():
         # dygraph
-        return _C_ops.einsum(operands, 'equation', equation)
+        #caches = [_varbase_creator() for n in range(len(operands))]
+        return _C_ops.einsum(operands, len(operands), 'equation', equation)[0]
     # static graph 
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
@@ -811,11 +813,16 @@ def gen_einsum_op(equation, *operands):
     out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
     attrs = dict()
     attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
     helper.append_op(
         type='einsum',
         inputs={'Operands': operands},
-        outputs={'Out': out},
-        attrs=attrs, )
+        outputs={'Out': out,
+                 "Cache": caches},
+        attrs=attrs)
     return out
 
 

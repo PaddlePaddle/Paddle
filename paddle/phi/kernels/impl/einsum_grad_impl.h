@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 #include "paddle/phi/kernels/tile_kernel.h"
@@ -55,7 +56,13 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   }
   t.Resize(make_ddim(resize_dims));
   DenseTensor after_tile;
-  TileKernel<T, Context>(dev_ctx, t, repeat_times, &after_tile);
+  if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int x) {
+        return x == 1;
+      })) {
+    after_tile = t;
+  } else {
+    TileKernel<T, Context>(dev_ctx, t, repeat_times, &after_tile);
+  }
   size_t n_ellipsis_idx = op_label.find(".", 0);
   if (n_ellipsis_idx != std::string::npos) {
     // may be we need reduce. broadcast_dims is not equal to ellipsis dims.
@@ -91,6 +98,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
 template <typename T, typename Context>
 void EinsumGradKernel(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& x,
+                      const std::vector<const DenseTensor*>& forward_cache,
                       const DenseTensor& out_grad,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
@@ -162,8 +170,23 @@ void EinsumGradKernel(const Context& dev_ctx,
     operands_for_B.push_back(x[0]);
 
     DenseTensor before_tile;
-    EinsumKernel<T, Context>(dev_ctx, operands_for_A, equation_for_A, &dA);
-    EinsumKernel<T, Context>(dev_ctx, operands_for_B, equation_for_B, &dB);
+
+    std::vector<DenseTensor> cache(3);  // set empty; TA, TB, TdC
+    cache[0].ShareBufferWith(*(forward_cache[0]));
+    cache[1].ShareBufferWith(*(forward_cache[1]));
+
+    EinsumKernelImpl<T, Context>(dev_ctx,
+                                 operands_for_A,
+                                 equation_for_A,
+                                 &dA,
+                                 {&cache[1], &cache[2]},
+                                 false);
+    EinsumKernelImpl<T, Context>(dev_ctx,
+                                 operands_for_B,
+                                 equation_for_B,
+                                 &dB,
+                                 {&cache[2], &cache[0]},
+                                 false);
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,

@@ -33,6 +33,10 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Operands", "(TensorList), The input tensor of einsum op.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor), The output tensor of einsum op.");
+    AddOutput(
+        "Cache",
+        "(Tensor), The cache of the forward transpose tensors: tA and tB.")
+        .AsDuplicable();
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
@@ -72,6 +76,7 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("einsum_grad");
     retv->SetInput("Operands", this->Input("Operands"));
+    retv->SetInput("Cache", this->Output("Cache"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("Operands"),

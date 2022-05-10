@@ -409,7 +409,8 @@ DenseTensor PerformContraction(
     const LabelMap& label2shape,
     const std::vector<std::vector<int>>& ellipsis_dims,
     const std::vector<int>& broadcast_dims,
-    std::vector<DenseTensor*> cache) {
+    std::vector<DenseTensor*> cache,
+    bool use_cache) {
   // Get All the Batches, so perm is
   auto all_valid = LabelMap(1);
   auto recover_dim = GetShapeByType<int>(all_labels,
@@ -447,8 +448,9 @@ DenseTensor PerformContraction(
     }
     // reduction
     DenseTensor trans_t;
-    if (cache[operand_idx]->IsInitialized()) {
+    if (use_cache && cache[operand_idx]->IsInitialized()) {
       trans_t.ShareBufferWith(*(cache[operand_idx]));
+      VLOG(5) << "Cache Used!";
     } else {
       auto reduct_t = PerformReduction<T, Context>(
           dev_ctx, t, perm, all_labels, ellipsis, label2type);
@@ -526,7 +528,8 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& inputs,
                       const std::string& equation,
                       DenseTensor* out,
-                      std::vector<DenseTensor*> cache) {
+                      std::vector<DenseTensor*> cache,
+                      bool is_forward = true) {
   ValidationCheck(equation);
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
@@ -567,7 +570,8 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                                             labelshape,
                                                             ellipsis_dims,
                                                             broadcast_dims,
-                                                            cache);
+                                                            cache,
+                                                            !is_forward);
     TransposeToOutput<T, Context>(dev_ctx,
                                   after_contraction,
                                   right,
@@ -600,6 +604,16 @@ void EinsumKernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void EinsumKernelRaw(const Context& dev_ctx,
+                     const std::vector<const DenseTensor*>& inputs,
+                     const std::string& equation,
+                     DenseTensor* out,
+                     std::vector<DenseTensor*> cache) {
+  EinsumKernelImpl<T, Context>(
+      dev_ctx, inputs, equation, out, cache, /*forward=*/true);
+}
+
+template <typename T, typename Context>
 void EinsumKernel(const Context& dev_ctx,
                   const std::vector<const DenseTensor*>& inputs,
                   const std::string& equation,
@@ -610,7 +624,8 @@ void EinsumKernel(const Context& dev_ctx,
   for (size_t i = 0; i < inputs.size(); ++i) {
     cache_tensor[i] = &cache[i];
   }
-  EinsumKernelImpl<T, Context>(dev_ctx, inputs, equation, out, cache_tensor);
+  EinsumKernelImpl<T, Context>(
+      dev_ctx, inputs, equation, out, cache_tensor, true);
 }
 
 }  // namespace phi

@@ -17,4 +17,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 
-PD_REGISTER_KERNEL(einsum, CPU, ALL_LAYOUT, phi::EinsumKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    einsum, CPU, ALL_LAYOUT, phi::EinsumKernelRaw, float, double) {}
