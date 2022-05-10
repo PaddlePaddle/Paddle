@@ -88,6 +88,7 @@ class TensorWrapper {
     } else {
       intermidiate_tensor_.set_impl(tensor.impl());
     }
+
     // TODO(jiabin): This may has server performance issue
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
 
@@ -140,6 +141,9 @@ class TensorWrapper {
     }
   }
 
+  void clear() { intermidiate_tensor_.reset(); }
+
+ private:
   void check_inplace_version() {
     if (no_need_buffer_) {
       VLOG(6) << "There's no need to check inplace_version because "
@@ -173,8 +177,6 @@ class TensorWrapper {
               << " ]";
     }
   }
-
-  void clear() { intermidiate_tensor_.reset(); }
 
  private:
   bool full_reserved_ = false;

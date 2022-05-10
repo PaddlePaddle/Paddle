@@ -138,9 +138,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         if pp_degree > 1:
             assert strategy.pipeline is True
 
-        assert global_world_size == mp_degree * sharding_degree * pp_degree * dp_degree, \
-            "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
-                global_world_size, mp_degree, sharding_degree, pp_degree, dp_degree)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            assert pp_degree == 2, ("For manually set pipeline, only "
+                                    "pp_degree = 2 is supported.")
+            assert global_world_size == mp_degree * sharding_degree * dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
+                    global_world_size, mp_degree, sharding_degree, dp_degree)
+        else:
+            assert global_world_size == mp_degree * sharding_degree * pp_degree * dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
+                    global_world_size, mp_degree, sharding_degree, pp_degree, dp_degree)
 
         # FIXME (JZ-LIANG) deprecated hybrid_dp
         if sharding_configs["hybrid_dp"]:
@@ -268,7 +275,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             startup_program = startup_program._pipeline_opt['startup_program']
             print("pp_rank:", self.pp_rank)
-            main_program = program_list[self.pp_rank]
+            if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+                main_program = program_list[int(
+                    os.getenv("PADDLE_MANUAL_PIPELINE_STAGE"))]
+            else:
+                main_program = program_list[self.pp_rank]
             with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
                 f.writelines(str(main_program))
             main_block = main_program.global_block()
@@ -633,14 +644,15 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.pp_group_endpoints[pair[1]],
         ]
         pp_rank = 0 if self.pp_rank == pair[0] else 1
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            pp_group_endpoints,
-            pp_rank,
-            ring_id,
-            False,
-            sync=False)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None) is None:
+            self._collective_helper._init_communicator(
+                self._startup_program,
+                self.current_endpoint,
+                pp_group_endpoints,
+                pp_rank,
+                ring_id,
+                False,
+                sync=False)
 
     def _init_npu_pipeline_comm(self, startup_block):
         # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
@@ -714,14 +726,15 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _init_pipeline_comm(self, startup_block):
         # TODO (JZ-LIANG) to unify pp_rank_ and pp_rank
-        self._collective_helper._init_communicator(
-            self._startup_program,
-            self.current_endpoint,
-            self.pp_group_endpoints,
-            self.pp_rank,
-            self.pp_ring_id,
-            False,
-            sync=False)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None) is None:
+            self._collective_helper._init_communicator(
+                self._startup_program,
+                self.current_endpoint,
+                self.pp_group_endpoints,
+                self.pp_rank,
+                self.pp_ring_id,
+                False,
+                sync=False)
 
         if core.is_compiled_with_npu():
             self._init_npu_pipeline_comm(startup_block)
@@ -1387,17 +1400,27 @@ class ShardingOptimizer(MetaOptimizerBase):
         # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
         # e.g. mp-sharding-pp-dp
         # sharding-hybrid-dp as one senario of outter-pure-dp 
-        assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
-            self.mp_degree, self.sharding_degree, self.pp_degree,
-            self.dp_degree, self.global_word_size)
+        local_pp_degree = self.pp_degree
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            assert self.pp_degree == 2, ("For manually set pipeline, only "
+                                         "pp_degree = 2 is supported.")
+            assert self.global_word_size == self.mp_degree * self.sharding_degree * self.dp_degree, \
+                "global work size [{}], mp_degree [{}], sharding_degree [{}], dp_degree [{}].".format(
+                    self.global_word_size, self.mp_degree, self.sharding_degree, self.dp_degree)
+            local_pp_degree = 1
+        else:
+            assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
+                self.mp_degree, self.sharding_degree, self.pp_degree,
+                self.dp_degree, self.global_word_size)
 
         if self.dp_degree > 1:
             self.dp_ring_id = 2
-            self.dp_rank = self.global_rank // (self.sharding_degree *
-                                                self.mp_degree * self.pp_degree)
+            self.dp_rank = self.global_rank // (
+                self.sharding_degree * self.mp_degree * local_pp_degree)
             dp_first_rank_idx = self.global_rank % (
-                self.sharding_degree * self.mp_degree * self.pp_degree)
-            dp_offset = (self.sharding_degree * self.mp_degree * self.pp_degree)
+                self.sharding_degree * self.mp_degree * local_pp_degree)
+            dp_offset = (self.sharding_degree * self.mp_degree *
+                         local_pp_degree)
             self.dp_group_endpoints = []
             for i in range(self.dp_degree):
                 self.dp_group_endpoints.append(self.global_endpoints[
