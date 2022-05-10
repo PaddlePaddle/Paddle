@@ -145,15 +145,13 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 #endif
   const int* d_segment_offsets_ptr =
       thrust::raw_pointer_cast(&d_segment_offsets_[0]);
-
   int outer_rows = outer_rows_ * batchSize;
-
   dim3 block(32, 16);
   dim3 grid(std::min((inner_cols_ - 1) / block.x + 1, 65535u),
             std::min((axis_shape_ - 1) / block.y + 1, 65535u),
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
-
   auto input_type = input_desc[0].type;
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
     float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
