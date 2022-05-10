@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/bin/sh
 CUR_ROOT=$(dirname "$0")/..
 start=$(date +%s.%N)
 duration=$("/usr/bin/time" -f "%C, %E elapsed, %U user, %S sys" "$@" 2>&1)
 end=$(date +%s.%N)
-echo ${duration}, 'start', $start, 'end', $end >> $CUR_ROOT/build/build-time
+
+echo ${duration}, 'start', $start, 'end', $end, 'process', $$ >> $CUR_ROOT/build/build-time
