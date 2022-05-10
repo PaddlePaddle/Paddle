@@ -1734,6 +1734,17 @@ set +x
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
 
         test_cases=$(ctest -N -V) # get all test cases
+
+        mem0_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
+            card_test "$line" 1 10
+        done < $PADDLE_ROOT/tools/mem0_test
+        echo "EXIT_CODE:: "$EXIT_CODE
+        mem0_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_mem0_TestCases_Total_Time: $[ $mem0_ut_endTime_s - $mem0_ut_startTime_s ]s"
+
         single_ut_startTime_s=`date +%s`
         while read line
         do
