@@ -77,6 +77,11 @@ execute_process(
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
 set(generated_op_path ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
 set(generated_argument_mapping_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
+message("parse api yamls: 
+- ${api_yaml_file}
+- ${new_api_yaml_file}
+- ${bw_api_yaml_file}
+- ${new_bw_api_yaml_file}")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
@@ -103,6 +108,9 @@ foreach(_result in ${_results})
 endforeach()
 
 # validation of api yamls
+message("validate api yaml:
+- ${parsed_api_dir}/new_api.parsed.yaml
+- ${parsed_api_dir}/new_backward_api.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${PYTHON_EXECUTABLE} cross_validate.py
@@ -115,17 +123,43 @@ if (${_result})
 endif()
 
 # code generation for op, op makers, and argument mapping functions
+message("create or remove auto-geneated operators: ${generated_op_path}.tmp
+create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
   COMMAND ${PYTHON_EXECUTABLE} generate_op.py
       --api_yaml_path ./parsed_apis/new_api.parsed.yaml
       --backward_api_yaml_path ./parsed_apis/new_backward_api.parsed.yaml
-      --output_op_path "${generated_op_path}"
-      --output_arg_map_path "${generated_argument_mapping_path}"
+      --output_op_path "${generated_op_path}.tmp"
+      --output_arg_map_path "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result
 )
 if (${_result})
     message(FATAL_ERROR "operator codegen failed, exiting." )
+endif()
+
+
+if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${generated_op_path}.tmp" "${generated_op_path}")
+  message("copy if different ${generated_op_path}.tmp ${generated_op_path}")
+elseif(EXISTS "${generated_op_path}.tmp")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_op_path}.tmp" "${generated_op_path}")
+  message("copy ${generated_op_path}.tmp ${generated_op_path}")
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f "${generated_op_path}")
+  message("remove ${generated_op_path}")
+endif()
+
+
+if(EXISTS "${generated_argument_mapping_path}.tmp" AND EXISTS "${generated_argument_mapping_path}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${generated_argument_mapping_path}.tmp" "${generated_argument_mapping_path}")
+  message("copy if different ${generated_argument_mapping_path}.tmp ${generated_argument_mapping_path}")
+elseif(EXISTS "${generated_argument_mapping_path}.tmp")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_argument_mapping_path}.tmp" "${generated_argument_mapping_path}")
+  message("copy ${generated_argument_mapping_path}.tmp ${generated_argument_mapping_path}")
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f "${generated_argument_mapping_path}")
+  message("remove ${generated_argument_mapping_path}")
 endif()
 
 # generate forward api

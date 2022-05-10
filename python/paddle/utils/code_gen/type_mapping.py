@@ -31,7 +31,6 @@ attr_types_map = {
     'Scalar(int)': 'const Scalar&',
     'Scalar(int64_t)': 'const Scalar&',
     'Scalar(float)': 'const Scalar&',
-    'Backend': 'Backend',
     'Place': 'Place',
     'DataLayout': 'DataLayout',
     'DataType': 'DataType',
@@ -59,7 +58,6 @@ opmaker_attr_types_map = {
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int64_t',
     'Scalar(float)': 'float',
-    'Backend': 'int',
     'Place': 'int',
     'DataLayout': 'int',
     'DataType': 'int',
@@ -84,7 +82,7 @@ output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
 #------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()
 phi_attr_types_map.update({
-    'ScalarArray': 'const phi::IntArray&',
+    'IntArray': 'const phi::IntArray&',
     'Scalar': 'const phi::Scalar&'
 })
 

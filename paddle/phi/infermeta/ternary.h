@@ -149,11 +149,4 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
-void LinearInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     const MetaTensor& b,
-                     bool trans_x,
-                     bool trans_y,
-                     MetaTensor* out,
-                     MetaTensor* mm);
 }  // namespace phi

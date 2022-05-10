@@ -95,7 +95,7 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = api["kernel"]["param"] %}
   {{get_input_list(api["inputs"], kernel_args)}};
-  paddle::SmallVector<std::string> attrs;
+  paddle::small_vector<const char*> attrs;
   {% for attr in api["attrs"]%}
   {% filter indent(2)%}
   {{get_an_attr(attr)}};
@@ -112,10 +112,10 @@ PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}
 {%- endmacro %}
 
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
-paddle::SmallVector<std::string> inputs {
+paddle::small_vector<const char*> inputs {
 {%- for input in inputs %}
 {%- if input["name"] in kernel_args %}
-{{input["name"] | to_opmaker_name}}{{", " if not loop.last}}
+{{input["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
 {%- endif %}
 {%- endfor %}
 }
@@ -144,9 +144,9 @@ attrs.emplace_back("{{name}}")
 {%- endmacro %}
 
 {% macro get_output_list(outputs, kernel_args) %}{# inline #}
-paddle::SmallVector<std::string> outputs {
+paddle::small_vector<const char*> outputs {
 {%- for output in outputs %}
-{{output["name"] | to_opmaker_name}}{{", " if not loop.last}}
+{{output["name"] | to_opmaker_name_cstr}}{{", " if not loop.last}}
 {%- endfor %}
 }
 {%- endmacro %}

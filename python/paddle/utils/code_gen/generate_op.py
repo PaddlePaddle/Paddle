@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import argparse
+import os
 from itertools import chain
 from pathlib import Path
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from filters import to_op_attr_type, to_opmaker_name, to_pascal_case
+from filters import to_op_attr_type, to_opmaker_name, to_opmaker_name_cstr, to_pascal_case
 from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
-from filters import to_input_name, to_grad_name
+from filters import to_input_name
 from parse_utils import to_named_dict
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
@@ -36,7 +37,7 @@ env.filters["to_op_attr_type"] = to_op_attr_type
 env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
 env.filters["to_input_name"] = to_input_name
-env.filters["to_grad_name"] = to_grad_name
+env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.tests["base_api"] = is_base_api
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
@@ -73,6 +74,10 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
     api_dict.update(backward_api_dict)
 
     if len(apis) == 0 and len(backward_apis) == 0:
+        if os.path.isfile(output_op_path):
+            os.remove(output_op_path)
+        if os.path.isfile(output_arg_map_path):
+            os.remove(output_arg_map_path)
         return
 
     op_template = env.get_template('op.c.j2')

@@ -80,6 +80,13 @@ def to_opmaker_name(s):
         return '"{}"'.format(to_pascal_case(s))
 
 
+def to_opmaker_name_cstr(s):
+    if s.endswith("_grad"):
+        return '"{}@GRAD"'.format(to_pascal_case(s.removesuffix("_grad")))
+    else:
+        return '"{}"'.format(to_pascal_case(s))
+
+
 def to_pascal_case(s):
     words = s.split("_")
     return "".join([word.capitalize() for word in words])
@@ -98,7 +105,3 @@ def to_input_name(s):
     match = re.match(r"(d\d*)(\w+)", s)
     assert (match.group(1) != ""), "it should be a grad style name."
     return match.group(2)
-
-
-def to_grad_name(s):
-    return 'GradVarName("{}")'.format(to_pascal_case(s))
