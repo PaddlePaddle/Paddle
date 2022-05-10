@@ -148,7 +148,7 @@ class Engine:
         self._dist_contexts[mode] = DistributedContext(
             self._serial_main_progs[mode], self._serial_startup_progs[mode],
             self._optimizer, losses, self._feed_vars[mode],
-            self._fetch_vars[mode])
+            self._fetch_vars[mode], self.strategy)
 
     def _initialize(self, mode):
         if self._nranks > 1:
