@@ -12,19 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
 namespace phi {
 namespace sparse {
 
-template <typename T>
+template <typename T, typename IntT = int>
 __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
-                                  const int* rulebook_ptr,
+                                  const IntT* rulebook_ptr,
                                   const int n,
                                   const int rulebook_len,
                                   const int channels,
@@ -33,8 +35,8 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
   CUDA_KERNEL_LOOP_TYPE(i, n * channels, int64_t) {
     int real_i = i / channels;
     int channel_i = i - real_i * channels;
-    int in_i = rulebook_ptr[real_i];
-    int out_i = rulebook_ptr[real_i + rulebook_len];
+    IntT in_i = rulebook_ptr[real_i];
+    IntT out_i = rulebook_ptr[real_i + rulebook_len];
     max_pool_functor.compute(in_features_ptr[in_i * channels + channel_i],
                              &out_features_ptr[out_i * channels + channel_i]);
   }
@@ -45,15 +47,15 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
 **/
-template <typename T, typename Context>
-void MaxPoolKernel(const Context& dev_ctx,
-                   const SparseCooTensor& x,
-                   const std::vector<int>& kernel_sizes,
-                   const std::vector<int>& paddings,
-                   const std::vector<int>& dilations,
-                   const std::vector<int>& strides,
-                   SparseCooTensor* out,
-                   DenseTensor* rulebook) {
+template <typename T, typename IntT = int>
+void MaxPoolGPUKernel(const GPUContext& dev_ctx,
+                      const SparseCooTensor& x,
+                      const std::vector<int>& kernel_sizes,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      const std::vector<int>& strides,
+                      SparseCooTensor* out,
+                      DenseTensor* rulebook) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
@@ -70,29 +72,27 @@ void MaxPoolKernel(const Context& dev_ctx,
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   // 1. product rulebook
-  int rulebook_len = ProductRuleBook<T, Context>(dev_ctx,
-                                                 x,
-                                                 real_kernel_sizes,
-                                                 paddings,
-                                                 dilations,
-                                                 strides,
-                                                 out_dims,
-                                                 false,
-                                                 rulebook,
-                                                 &counter_per_kernel,
-                                                 &offsets_per_kernel,
-                                                 &out_index,
-                                                 &unique_key,
-                                                 &unique_value,
-                                                 out,
-                                                 &counter,
-                                                 &offsets);
+  int rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
+                                                          x,
+                                                          real_kernel_sizes,
+                                                          paddings,
+                                                          dilations,
+                                                          strides,
+                                                          out_dims,
+                                                          false,
+                                                          rulebook,
+                                                          &counter_per_kernel,
+                                                          &offsets_per_kernel,
+                                                          &out_index,
+                                                          &unique_value,
+                                                          out,
+                                                          &counter,
+                                                          &offsets);
 
-  const int* rulebook_ptr = rulebook->data<int>();
+  const IntT* rulebook_ptr = rulebook->data<IntT>();
 
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
   const T* in_features_ptr = x.non_zero_elements().data<T>();
@@ -104,7 +104,7 @@ void MaxPoolKernel(const Context& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               static_cast<T>(-FLT_MAX));
+               static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
@@ -113,10 +113,10 @@ void MaxPoolKernel(const Context& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolCudaKernel<T><<<config.block_per_grid.x,
-                           config.thread_per_block.x,
-                           0,
-                           dev_ctx.stream()>>>(
+    MaxPoolCudaKernel<T, IntT><<<config.block_per_grid.x,
+                                 config.thread_per_block.x,
+                                 0,
+                                 dev_ctx.stream()>>>(
         in_features_ptr,
         rulebook_ptr + offsets[i] + rulebook_len,
         counter[i],
@@ -124,6 +124,28 @@ void MaxPoolKernel(const Context& dev_ctx,
         in_channels,
         out_features_ptr);
   }
+}
+
+template <typename T, typename Context>
+void MaxPoolKernel(const Context& dev_ctx,
+                   const SparseCooTensor& x,
+                   const std::vector<int>& kernel_sizes,
+                   const std::vector<int>& paddings,
+                   const std::vector<int>& dilations,
+                   const std::vector<int>& strides,
+                   SparseCooTensor* out,
+                   DenseTensor* rulebook) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "MaxPoolGPUKernel", ([&] {
+        MaxPoolGPUKernel<T, data_t>(dev_ctx,
+                                    x,
+                                    kernel_sizes,
+                                    paddings,
+                                    dilations,
+                                    strides,
+                                    out,
+                                    rulebook);
+      }));
 }
 
 }  // namespace sparse

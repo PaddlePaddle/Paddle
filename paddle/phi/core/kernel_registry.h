@@ -82,6 +82,13 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(
+                                 paddle::optional<
+                                     const std::vector<const DenseTensor*>>))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
                                  paddle::optional<const SelectedRows&>))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
@@ -94,6 +101,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(const StringTensor&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
@@ -146,11 +158,56 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
+      } else if (arg_type == std::type_index(typeid(StringTensor*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(bool))) {
+        args_def->AppendAttribute(AttributeType::BOOL);
+      } else if (arg_type == std::type_index(typeid(int))) {
+        args_def->AppendAttribute(AttributeType::INT32);
+      } else if (arg_type == std::type_index(typeid(int64_t))) {
+        args_def->AppendAttribute(AttributeType::INT64);
+      } else if (arg_type == std::type_index(typeid(float))) {
+        args_def->AppendAttribute(AttributeType::FLOAT32);
+      } else if (arg_type == std::type_index(typeid(double))) {
+        args_def->AppendAttribute(AttributeType::FLOAT64);
+      } else if (arg_type == std::type_index(typeid(std::string))) {
+        args_def->AppendAttribute(AttributeType::STRING);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<bool>&))) {
+        args_def->AppendAttribute(AttributeType::BOOLS);
+      } else if (arg_type == std::type_index(typeid(const std::vector<int>&))) {
+        args_def->AppendAttribute(AttributeType::INT32S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<int64_t>&))) {
+        args_def->AppendAttribute(AttributeType::INT64S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<float>&))) {
+        args_def->AppendAttribute(AttributeType::FLOAT32S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<double>&))) {
+        args_def->AppendAttribute(AttributeType::FLOAT64S);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<std::string>&))) {
+        args_def->AppendAttribute(AttributeType::STRINGS);
+      } else if (arg_type == std::type_index(typeid(const Scalar&))) {
+        args_def->AppendAttribute(AttributeType::SCALAR);
+      } else if (arg_type ==
+                 std::type_index(typeid(const std::vector<Scalar>&))) {
+        args_def->AppendAttribute(AttributeType::SCALARS);
+      } else if (arg_type == std::type_index(typeid(const IntArray&))) {
+        args_def->AppendAttribute(AttributeType::INT_ARRAY);
+      } else if (arg_type == std::type_index(typeid(DataType))) {
+        args_def->AppendAttribute(AttributeType::DATA_TYPE);
+      } else if (arg_type == std::type_index(typeid(DataLayout))) {
+        args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
+      } else if (arg_type == std::type_index(typeid(Place))) {
+        args_def->AppendAttribute(AttributeType::PLACE);
       } else {
-        // Attribute deal with
-        // TODO(chenweihang): now here allow any types of attribute, maybe
-        // should add limits here
-        args_def->AppendAttribute(arg_type);
+        PADDLE_THROW(phi::errors::Unavailable(
+            "Unsupported kernel argument type `%s`.", arg_type.name()));
       }
     }
   }

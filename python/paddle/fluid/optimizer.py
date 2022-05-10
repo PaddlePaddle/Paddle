@@ -44,6 +44,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 import warnings
 from paddle import _C_ops
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -1370,7 +1371,11 @@ class SGDOptimizer(Optimizer):
                          if find_master else None)
 
         lr = self._create_param_lr(param_and_grad)
-        if framework._non_static_mode():
+        if in_dygraph_mode():
+            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
+                                   master_weight, find_master)
+            return None
+        if _in_legacy_dygraph():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
                        param_and_grad[0], master_weight)
             return None
@@ -2843,7 +2848,11 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 if framework._non_static_mode():
-                    tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
+                    if framework.in_dygraph_mode():
+                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
+                                                       self._beta1, 0.0, True)
+                    else:
+                        tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(
@@ -5996,7 +6005,14 @@ class PipelineOptimizer(object):
         for p in program_list:
             self._create_vars(p.global_block(), main_block)
 
-        self.local_rank %= len(device_list)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            self.local_rank = int(os.getenv("PADDLE_MANUAL_PIPELINE_STAGE"))
+            assert self.local_rank < len(device_list), (
+                "Manually specified "
+                "pipeline stage must be less than total number of pipeline "
+                "stages.")
+        else:
+            self.local_rank %= len(device_list)
         # Step3.5: optimize forward send sync_comm to overlap send and recv
         self._optimize_forward_send_sync(program_list[self.local_rank])
 
@@ -7098,13 +7114,8 @@ class GradientMergeOptimizer(object):
             persistable=True,
             force_cpu=True)
 
-        cond_var = layers.create_global_var(
-            name="gradient_merge_cond",
-            shape=[1],
-            value=bool(0),
-            dtype='bool',
-            persistable=False,
-            force_cpu=True)
+        cond_var = main_block.create_var(
+            name="gradient_merge_cond", shape=[1], dtype='bool')
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step

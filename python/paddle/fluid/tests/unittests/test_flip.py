@@ -67,6 +67,7 @@ class TestFlipOp_API(unittest.TestCase):
 class TestFlipOp(OpTest):
     def setUp(self):
         self.op_type = 'flip'
+        self.python_api = paddle.tensor.flip
         self.init_test_case()
         self.inputs = {'X': np.random.random(self.in_shape).astype('float64')}
         self.init_attrs()
@@ -76,10 +77,10 @@ class TestFlipOp(OpTest):
         self.attrs = {"axis": self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
@@ -131,4 +132,5 @@ class TestFlipOpNegAxis(TestFlipOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -31,6 +31,7 @@ import queue
 
 import paddle
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 from .. import core, layers
 from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
@@ -229,7 +230,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
                 for slot in batch:
-                    if isinstance(slot, paddle.Tensor):
+                    if isinstance(slot, (paddle.Tensor, core.eager.Tensor)):
                         slot = slot.value().get_tensor()
                     elif not isinstance(slot, core.LoDTensor):
                         tmp = core.LoDTensor()
@@ -252,10 +253,11 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
-        trace_event = profiler.RecordEvent(
-            name="_DataLoaderIterSingleProcess",
-            event_type=profiler.TracerEventType.Dataloader)
-        trace_event.begin()
+        if in_profiler_mode():
+            trace_event = profiler.RecordEvent(
+                name="_DataLoaderIterSingleProcess",
+                event_type=profiler.TracerEventType.Dataloader)
+            trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
@@ -294,7 +296,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.end()
+            if in_profiler_mode():
+                trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -543,7 +546,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
                             for slot in batch:
-                                if isinstance(slot, paddle.Tensor):
+                                if isinstance(slot, (paddle.Tensor,
+                                                     core.eager.Tensor)):
                                     slot = slot.value().get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
@@ -707,10 +711,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
-        trace_event = profiler.RecordEvent(
-            name="_DataLoaderIterMultiProcess",
-            event_type=profiler.TracerEventType.Dataloader)
-        trace_event.begin()
+        if in_profiler_mode():
+            trace_event = profiler.RecordEvent(
+                name="_DataLoaderIterMultiProcess",
+                event_type=profiler.TracerEventType.Dataloader)
+            trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
@@ -764,7 +769,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.end()
+            if in_profiler_mode():
+                trace_event.end()
 
     # python2 compatibility
     def next(self):

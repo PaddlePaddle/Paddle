@@ -41,6 +41,7 @@ class TestKthvalueOp(OpTest):
 
     def setUp(self):
         self.op_type = "kthvalue"
+        self.python_api = paddle.kthvalue
         self.dtype = np.float64
         self.input_data = np.random.random((2, 1, 2, 4, 10))
         self.init_args()
@@ -52,11 +53,11 @@ class TestKthvalueOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestKthvalueOpWithKeepdim(OpTest):
@@ -67,6 +68,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
     def setUp(self):
         self.init_args()
         self.op_type = "kthvalue"
+        self.python_api = paddle.kthvalue
         self.dtype = np.float64
         self.input_data = np.random.random((1, 3, 2, 4, 10))
         self.inputs = {'X': self.input_data}
@@ -77,11 +79,11 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestKthvalueOpKernels(unittest.TestCase):

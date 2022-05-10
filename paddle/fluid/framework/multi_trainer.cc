@@ -34,7 +34,6 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
-
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
     need_merge_var_names_.push_back(
@@ -276,7 +275,7 @@ void MultiTrainer::Finalize() {
   if (communicator == nullptr) {
     VLOG(0) << "MultiTrainer::Finalize communicator is null!";
   } else {
-    communicator->_worker_ptr->flush();
+    communicator->_worker_ptr->Flush();
     VLOG(1) << "MultiTrainer::Finalize ps client flush done";
   }
 #endif

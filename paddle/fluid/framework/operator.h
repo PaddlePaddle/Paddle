@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
@@ -54,6 +53,10 @@ class Scope;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
+
+namespace phi {
+class KernelContext;
+}
 
 DECLARE_int32(inner_op_parallelism);
 
@@ -330,12 +333,12 @@ class ExecutionContext {
     return it->second;
   }
 
-  virtual std::vector<std::string> InNameList() const {
-    std::vector<std::string> vec_temp;
+  virtual paddle::small_vector<const std::string*> InNameList() const {
+    paddle::small_vector<const std::string*> vec_temp;
     vec_temp.reserve(ctx_.inputs.size());
 
     for (auto& input : ctx_.inputs) {
-      vec_temp.push_back(input.first);
+      vec_temp.push_back(&input.first);
     }
 
     return vec_temp;
@@ -476,6 +479,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::DenseTensor>();
+  }
+
+  bool IsDenseTensorInputs(const std::string& name) const override {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<phi::DenseTensor>();
@@ -483,10 +491,8 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    auto vars = ctx_.MultiInputVar(name);
-    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<phi::SelectedRows>();
-    });
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SelectedRows>();
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
@@ -560,39 +566,10 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool SupportGPU() const override {
-    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-        phi::TransToPhiKernelName(type_));
-    auto has_phi_kernel =
-        std::any_of(phi_kernels.begin(), phi_kernels.end(),
-                    [](phi::KernelKeyMap::const_reference kern_pair) {
-                      return kern_pair.first.backend() == phi::Backend::GPU;
-                    });
-    if (has_phi_kernel) {
-      return true;
-    } else {
-      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-      if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-        return false;
-      } else {
-        auto& op_kernels = kernel_iter->second;
-        return std::any_of(
-            op_kernels.begin(), op_kernels.end(),
-            [](OpKernelMap::const_reference kern_pair) {
-              return platform::is_gpu_place(kern_pair.first.place_);
-            });
-      }
-    }
-  }
+  bool SupportGPU() const override;
 
-  bool SupportNPU() const override {
-    // TODO(zhiqiu): support phi if needed?
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_npu_place(kern_pair.first.place_);
-                       });
-  }
+  bool SupportNPU() const override;
+
   bool SupportMLU() const override {
     // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
@@ -658,7 +635,7 @@ class OperatorWithKernel : public OperatorBase {
                              phi::KernelContext* pt_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
-    return pt_kernel_signature_.get();
+    return kernel_signature_.get();
   }
 
   phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
@@ -706,9 +683,11 @@ class OperatorWithKernel : public OperatorBase {
   // By default all input data must be same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   // used for IndicateDataType
-  void ParseInputDataType(const std::vector<Variable*>& vars,
-                          const std::string& name,
+  void ParseInputDataType(const Variable* vars, const std::string& name,
                           proto::VarType::Type* data_type) const;
+  void ParseMultiInputDataType(const std::vector<Variable*>& vars,
+                               const std::string& name,
+                               proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
@@ -728,8 +707,9 @@ class OperatorWithKernel : public OperatorBase {
   // we may polish the implementation here
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
-  mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;
+  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

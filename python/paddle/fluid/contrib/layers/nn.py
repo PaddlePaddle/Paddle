@@ -530,21 +530,44 @@ def fused_seqpool_cvm(input,
                       use_cvm=True,
                       cvm_offset=2):
     """
-    **Embedding Sequence pool**
+    :api_attr: Static Graph
 
-    This layer is the fusion of sequence_pool and continuous_value_model.
+    This OP is the fusion of sequence_pool and continuous_value_model op.
 
-    **Notes: The Op only receives List of LoDTensor as input, only support SUM pooling now.
+    **Note:** The Op only receives List of LoDTensor as input, only support SUM pooling now.
 
     Args:
         input(Variable|list of Variable): Input is List of LoDTensor.
         pool_type(str): pooling type, only support SUM pooling now.
         cvm(Variable): cvm Variable.
-        pad_value(float): padding value of sequence pool.
-        use_cvm(bool): use cvm or not.
+        pad_value(float, optional): padding value of sequence pool. Default: 0.0.
+        use_cvm(bool, optional): use cvm or not. Default: True.
+        cvm_offset(int, optional): cvm offset. Default: 2, which means cvm contains show, click.
+
     Returns:
         Variable|list of Variable: The tensor variable storing sequence pool and cvm
         of input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            paddle.enable_static()
+
+            data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
+            data2 = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
+            inputs = [data, data2]
+            embs = fluid.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
+
+            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
+            ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+            show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+            show_clk.stop_gradient = True
+
+            cvms = fluid.contrib.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
+
+
     """
     helper = LayerHelper('fused_seqpool_cvm', **locals())
 

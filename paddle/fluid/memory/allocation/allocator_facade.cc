@@ -85,7 +85,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory, false,
@@ -354,8 +354,7 @@ class AllocatorFacadePrivate {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  bool HasCUDAAllocator(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream) {
+  bool HasCUDAAllocator(const platform::CUDAPlace& place, gpuStream_t stream) {
     auto it = cuda_allocators_.find(place);
     if (it == cuda_allocators_.end()) {
       return false;
@@ -366,7 +365,7 @@ class AllocatorFacadePrivate {
   }
 
   const std::shared_ptr<Allocator>& GetAllocator(
-      const platform::CUDAPlace& place, const gpuStream_t& stream,
+      const platform::CUDAPlace& place, gpuStream_t stream,
       bool create_if_not_found = false) {
     if (LIKELY(!IsCUDAGraphCapturing())) {
       if (stream == GetDefaultStream(place)) {
@@ -407,16 +406,32 @@ class AllocatorFacadePrivate {
     return iter->second;
   }
 
-  const gpuStream_t& GetDefaultStream(const platform::CUDAPlace& place) const {
+  gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) const {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
     return allocator->GetDefaultStream();
   }
 
-  void SetDefaultStream(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream) {
+  void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
+
+    // NOTE(Ruibiao): The default stream will be set when the CUDADeviceContext
+    // created. Normally, the DeviceContextPool is a global singleton and one
+    // Place only correspond to one DeviceContext. However, to support
+    // multi-stream scheduling, standalone executor creates two extra
+    // DeviceContextPools for H2D and D2H stream in StreamAnalyzer, which make
+    // one Place correspond to multiple DeviceContext and unexpectedly reset the
+    // default stream in runtime. To avoid this behavior, we do not allow
+    // changing default stream after initially setting.
+    if (allocator->GetDefaultStream() != nullptr) {
+      VLOG(5) << "The default stream for StreamSafeCUDAAllocator("
+              << allocator.get() << ") in " << place << " has been set to "
+              << allocator->GetDefaultStream()
+              << " before, not allow to change now.";
+      return;
+    }
+
     allocator->SetDefaultStream(stream);
     VLOG(8) << "Set default stream to " << stream
             << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
@@ -424,7 +439,7 @@ class AllocatorFacadePrivate {
   }
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
-                    const gpuStream_t& stream) {
+                    gpuStream_t stream) {
     std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
         std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
     if (stream_safe_cuda_allocation != nullptr) {
@@ -434,7 +449,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  const gpuStream_t GetStream(
+  gpuStream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
     const std::shared_ptr<StreamSafeCUDAAllocation>
         stream_safe_cuda_allocation =
@@ -821,6 +836,16 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
+        platform::CustomPlace p(dev_type, dev_id);
+        system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      }
+    }
+#endif
   }
 
   void InitZeroSizeAllocators() {
@@ -1044,7 +1069,7 @@ bool AllocatorFacade::IsStreamSafeCUDAAllocatorUsed() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
-                                  const gpuStream_t& stream) {
+                                  gpuStream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
@@ -1055,12 +1080,12 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
 }
 
 void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
-                                   const gpuStream_t& stream) {
+                                   gpuStream_t stream) {
   GetPrivate()->RecordStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const platform::Place& place, const gpuStream_t& stream) {
+    const platform::Place& place, gpuStream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
@@ -1075,13 +1100,13 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
-const gpuStream_t AllocatorFacade::GetStream(
+gpuStream_t AllocatorFacade::GetStream(
     const std::shared_ptr<phi::Allocation>& allocation) const {
   return GetPrivate()->GetStream(allocation);
 }
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
-                                       const gpuStream_t& stream) {
+                                       gpuStream_t stream) {
   if (m_->IsStreamSafeCUDAAllocatorUsed()) {
     m_->SetDefaultStream(place, stream);
   }

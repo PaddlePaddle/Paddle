@@ -25,7 +25,6 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
-#include "paddle/fluid/distributed/ps/wrapper/ps_wrapper.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/io/shell.h"
@@ -55,7 +54,7 @@ using framework::Variable;
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;
 
-class FleetWrapper : public PSWrapper {
+class FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
   FleetWrapper() {
@@ -69,7 +68,6 @@ class FleetWrapper : public PSWrapper {
     // pserver request max retry
     client2client_max_retry_ = 3;
   }
-  virtual int32_t Initialize(InitContext& context) { return 0; }
 
   // TODO(zhaocaibei123: later)
   int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
@@ -80,12 +78,6 @@ class FleetWrapper : public PSWrapper {
 
   typedef std::function<void(int, int)> HeterCallBackFunc;
   int RegisterHeterCallback(HeterCallBackFunc handler);
-
-  virtual void Stop() override;
-
-  virtual void Load(WrapperContext& context) override;
-
-  virtual void Save(WrapperContext& context) override;
 
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
@@ -267,6 +259,11 @@ class FleetWrapper : public PSWrapper {
   // for init worker
   void InitGFlag(const std::string& gflags);
 
+  double GetCacheThreshold(int table_id);
+  void CacheShuffle(int table_id, const std::string& path, const int mode,
+                    const double cache_threshold);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
   static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 
@@ -278,7 +275,7 @@ class FleetWrapper : public PSWrapper {
 
  protected:
   static bool is_initialized_;
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> _regions;
+  std::map<uint64_t, std::vector<paddle::distributed::Region>> regions_;
   bool scale_sparse_gradient_with_batch_size_;
   int32_t sleep_seconds_before_fail_exit_;
   int client2client_request_timeout_ms_;

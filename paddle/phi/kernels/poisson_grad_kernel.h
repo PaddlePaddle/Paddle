@@ -20,6 +20,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PoissonGradKernel(const Context& ctx, DenseTensor* x_grad);
+void PoissonGradKernel(const Context& ctx,
+                       const DenseTensor& out_grad,
+                       DenseTensor* x_grad);
 
 }  // namespace phi

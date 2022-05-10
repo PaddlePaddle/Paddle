@@ -356,9 +356,7 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
 }
 
 float *TensorRTEngine::GetWeightCPUData(const std::string &name,
-                                        framework::Tensor *weight_tensor,
-                                        bool enable_int8,
-                                        const std::vector<float> &scale) {
+                                        framework::Tensor *weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";

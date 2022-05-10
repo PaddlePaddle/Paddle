@@ -20,16 +20,17 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase, in_dygraph_mode
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops
 
 _grad_scalar = None
@@ -99,7 +100,7 @@ def monkey_patch_varbase():
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
-        attr_not_need_keys = ['grad', 'T']
+        attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
         else:
@@ -247,9 +248,10 @@ def monkey_patch_varbase():
 
         """
         if framework._non_static_mode():
-            record_event = profiler.RecordEvent(
-                "Gradient Backward", profiler.TracerEventType.Backward)
-            record_event.begin()
+            if in_profiler_mode():
+                record_event = profiler.RecordEvent(
+                    "Gradient Backward", profiler.TracerEventType.Backward)
+                record_event.begin()
             if grad_tensor is not None:
                 if framework._in_eager_mode_:
                     assert isinstance(
@@ -271,7 +273,8 @@ def monkey_patch_varbase():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
+            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu(
+            ) or paddle.is_compiled_with_mlu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 if framework._in_eager_mode_:
@@ -288,7 +291,8 @@ def monkey_patch_varbase():
                     core.dygraph_run_backward([self], [grad_tensor],
                                               retain_graph,
                                               framework._dygraph_tracer())
-            record_event.end()
+            if in_profiler_mode():
+                record_event.end()
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -798,7 +802,14 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops.assign(self)
+        if in_dygraph_mode():
+            return _C_ops.final_state_assign(self)
+
+        if _in_legacy_dygraph():
+            output = core.VarBase()
+        else:
+            output = core.eager.Tensor()
+        return _C_ops.assign(self, output)
 
     @framework.dygraph_only
     def value(self):
@@ -813,6 +824,29 @@ def monkey_patch_varbase():
         return self.get_tensor()._numel()
 
     @framework.dygraph_only
+    def _clear_data(self):
+        self.get_tensor()._clear()
+
+    @framework.dygraph_only
+    def _uva(self, device_id=0):
+        '''
+        Returns self tensor with the UVA(unified virtual addressing).
+
+        Args:
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+
+        Examples:
+            .. code-block:: python
+
+              # required: gpu
+              import paddle
+              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+              x._uva()
+              print(x)
+        '''
+        self._tensor_uva(device_id)
+
+    @framework.dygraph_only
     def cpu(self):
         if self.place.is_cpu_place():
             return self
@@ -823,7 +857,11 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id, blocking):
+    def cuda(self, device_id=0, blocking=True):
+        if device_id is None:
+            device_id = 0
+        if not isinstance(device_id, int):
+            raise ValueError("\'device_id\' must be a positive integer")
         if self.place.is_gpu_place():
             return self
         else:
@@ -831,6 +869,116 @@ def monkey_patch_varbase():
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
+
+    @framework.dygraph_only
+    def pin_memory(self):
+        if self.place.is_cuda_pinned_place():
+            return self
+        else:
+            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
+    @framework.dygraph_only
+    def values(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Get the values of current SparseTensor(COO or CSR).
+
+        Returns:
+            Tensor: A DenseTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+                with _test_eager_guard():
+                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                    values = [1, 2, 3, 4, 5]
+                    dense_shape = [3, 4]
+                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    print(sparse_x.values())
+                    #[1, 2, 3, 4, 5]
+        """
+
+        if self.is_sparse_coo():
+            return _C_ops.final_state_sparse_coo_values(self)
+        elif self.is_sparse_csr():
+            return _C_ops.final_state_sparse_csr_values(self)
+        else:
+            raise ValueError(
+                "only SparseCooTensor and SparseCsrTensor have method values")
+
+    @framework.dygraph_only
+    def to_dense(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Convert the current SparseTensor(COO or CSR) to DenseTensor.
+
+        Returns:
+            Tensor: A DenseTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+                with _test_eager_guard():
+                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                    values = [1, 2, 3, 4, 5]
+                    dense_shape = [3, 4]
+                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    dense_x = sparse_x.to_dense()
+                    #[[0., 1., 0., 2.],
+                    # [0., 0., 3., 0.],
+                    # [4., 5., 0., 0.]]
+        """
+
+        if self.is_sparse_coo():
+            return _C_ops.final_state_sparse_coo_to_dense(self)
+        elif self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_dense(self)
+        else:
+            return self
+
+    @framework.dygraph_only
+    def to_sparse_coo(self, sparse_dim):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Convert the current DenseTensor to SparseTensor in COO format.
+
+        Returns:
+            Tensor: A SparseCooTensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.fluid.framework import _test_eager_guard
+                with _test_eager_guard():
+                    dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                    dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                    sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                    #indices=[[0, 0, 1, 1],
+                    #         [1, 3, 2, 3]],
+                    #values=[1., 2., 3., 4.]
+        """
+
+        if self.is_sparse_csr():
+            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
+        elif self.is_sparse_coo():
+            return self
+        elif self.is_selected_rows():
+            raise ValueError(
+                "SelectedRows does not support to_sparse_coo method")
+        else:
+            #is dense tensor
+            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
@@ -844,7 +992,8 @@ def monkey_patch_varbase():
         ("__repr__", __str__), ("__deepcopy__", __deepcopy__),
         ("__module__", "paddle"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
-        ("__setitem__", __setitem__), ("_to", _to)):
+        ("__setitem__", __setitem__), ("_to", _to), ("values", values),
+        ("to_dense", to_dense), ("to_sparse_coo", to_sparse_coo)):
         if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:
@@ -857,8 +1006,11 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)
+        setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
+        setattr(core.eager.Tensor, "_uva", _uva)
+        setattr(core.eager.Tensor, "_clear_data", _clear_data)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

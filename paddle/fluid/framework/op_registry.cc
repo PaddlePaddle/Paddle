@@ -21,13 +21,17 @@ namespace framework {
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
-    const VariableNameMap& outputs, AttributeMap attrs, bool attr_check) {
+    const VariableNameMap& outputs, const AttributeMap& attrs,
+    bool attr_check) {
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs);
+    auto tmp_attrs = attrs;
+    info.Checker()->Check(&tmp_attrs);
+    return std::unique_ptr<OperatorBase>(
+        info.Creator()(type, inputs, outputs, tmp_attrs));
   }
-  auto op = info.Creator()(type, inputs, outputs, attrs);
-  return std::unique_ptr<OperatorBase>(op);
+  return std::unique_ptr<OperatorBase>(
+      info.Creator()(type, inputs, outputs, attrs));
 }
 
 static VariableNameMap ConvertOpDescVarsToVarNameMap(

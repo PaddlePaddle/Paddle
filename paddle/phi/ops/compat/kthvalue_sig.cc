@@ -20,9 +20,9 @@ namespace phi {
 KernelSignature KthvalueGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("kthvalue_grad",
-                         {GradVarName("Out"), "X", "Indices"},
+                         {"X", "Indices", "Out@GRAD"},
                          {"k", "axis", "keepdim"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

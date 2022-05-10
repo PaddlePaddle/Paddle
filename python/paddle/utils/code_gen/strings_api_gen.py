@@ -144,9 +144,9 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
                 # set attr for kernel_context
-                if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const phi::ScalarArray&')
-                    param = 'phi::ScalarArray(' + param + ')'
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append('const phi::IntArray&')
+                    param = 'phi::IntArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
@@ -225,7 +225,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 assert len(
                     vars_list
                 ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'const Place&'), \
                     f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
                 kernel_select_code = kernel_select_code + f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
@@ -277,7 +277,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
