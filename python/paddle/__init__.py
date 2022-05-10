@@ -640,5 +640,5 @@ __all__ = [  # noqa
            'put_along_axis',
            'index_add',
            'index_add_',
-           'heaviside',
+
 ]

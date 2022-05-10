@@ -54,7 +54,10 @@ std::vector<int> GetXPUSelectedDevices() {
 
 void MemcpySyncH2D(void* dst, const void* src, size_t count,
                    const platform::XPUPlace& dst_place) {
-  phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.GetByPlace(dst_place);
+  dev_ctx->Wait();
+  phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
 
 void MemcpySyncD2H(void* dst, const void* src, size_t count,

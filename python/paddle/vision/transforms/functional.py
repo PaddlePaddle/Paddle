@@ -689,3 +689,63 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             img = np.array(img).astype(np.float32)
 
         return F_cv2.normalize(img, mean, std, data_format, to_rgb)
+
+
+def erase(img, i, j, h, w, v, inplace=False):
+    """Erase the pixels of selected area in input image with given value.
+    
+        Args:
+            img (paddle.Tensor | np.array | PIL.Image): input Tensor image. 
+                 For Tensor input, the shape should be (C, H, W). For np.array input, 
+                 the shape should be (H, W, C).
+            i (int): y coordinate of the top-left point of erased region.
+            j (int): x coordinate of the top-left point of erased region.
+            h (int): Height of the erased region.
+            w (int): Width of the erased region.
+            v (paddle.Tensor | np.array): value used to replace the pixels in erased region. It 
+                should be np.array when img is np.array or PIL.Image.
+            inplace (bool, optional): Whether this transform is inplace. Default: False.
+
+        Returns:
+            paddle.Tensor | np.array | PIL.Image: Erased image. The type is same with input image.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                
+                fake_img = paddle.randn((3, 2, 4)).astype(paddle.float32)
+                print(fake_img)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025, -0.97859967, -1.39175487, -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #        [[-0.14993843,  1.10793507, -0.40056887, -1.94395220],
+                #         [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #        [[-0.24998808, -1.47699273, -0.88838995,  0.42629015],
+                #         [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+
+                values = paddle.zeros((1,1,1), dtype=paddle.float32)
+                result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
+                
+                print(result)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025,  0.        ,  0.        , -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #         [[-0.14993843,  0.        ,  0.        , -1.94395220],
+                #           [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #         [[-0.24998808,  0.        ,  0.        ,  0.42629015],
+                #          [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+
+    """
+    if _is_tensor_image(img):
+        return F_t.erase(img, i, j, h, w, v, inplace=inplace)
+    elif _is_pil_image(img):
+        return F_pil.erase(img, i, j, h, w, v, inplace=inplace)
+    else:
+        return F_cv2.erase(img, i, j, h, w, v, inplace=inplace)
