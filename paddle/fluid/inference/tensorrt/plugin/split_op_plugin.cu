@@ -56,6 +56,18 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
   return output_dims;
 }
 
+bool SplitPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  }
+}
+
 void SplitPlugin::shareData(const SplitPlugin* another) {
   outer_rows_ = another->outer_rows_;
   inner_cols_ = another->inner_cols_;
@@ -133,12 +145,6 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 #endif
   const int* d_segment_offsets_ptr =
       thrust::raw_pointer_cast(&d_segment_offsets_[0]);
-  float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
-  float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
-  float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
-      cudaMemcpyHostToDevice, stream));
 
   int outer_rows = outer_rows_ * batchSize;
 
@@ -147,9 +153,30 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
             std::min((axis_shape_ - 1) / block.y + 1, 65535u),
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
 
-  split_kernel<<<grid, block, 0, stream>>>(
-      d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-      inner_cols_, axis_shape_, outer_rows);
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
+    float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
+    float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
+    float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
+      cudaMemcpyHostToDevice, stream));
+        split_kernel<<<grid, block, 0, stream>>>(
+        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+        inner_cols, axis_shape, outer_rows);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
+    half const* input_ptr = reinterpret_cast<half const*>(inputs[0]);
+    half* const* h_odatas = reinterpret_cast<half* const*>(outputs);
+    half** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(half*),
+      cudaMemcpyHostToDevice, stream));
+        split_kernel<<<grid, block, 0, stream>>>(
+        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+        inner_cols, axis_shape, outer_rows);
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 

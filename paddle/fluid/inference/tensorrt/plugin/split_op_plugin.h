@@ -61,7 +61,8 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* input_dims,
                                      int num_inputs) TRT_NOEXCEPT override;
-
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
