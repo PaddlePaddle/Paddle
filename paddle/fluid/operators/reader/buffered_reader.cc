@@ -351,7 +351,7 @@ void BufferedReader::ReadAsync(size_t i) {
             xpu.size(), cpu.size(),
             platform::errors::InvalidArgument(
                 "Input tensor number on XPU and CPU devices are not matched. "
-                "The number on MLU is %d, on CPU is %d",
+                "The number on XPU is %d, on CPU is %d",
                 xpu.size(), cpu.size()));
       }
 
