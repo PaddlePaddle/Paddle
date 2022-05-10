@@ -88,7 +88,6 @@ class TestTensordotAPI(unittest.TestCase):
     def set_input_data(self):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
-        self.all_axes = [2]
 
     def set_test_axes(self):
         self.all_axes = []
@@ -128,24 +127,22 @@ class TestTensordotAPI(unittest.TestCase):
                 np_res = tensordot_np(self.x, self.y, axes)
                 np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
-    def run_static(self, place):
+    def test_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            exe = paddle.static.Executor(place)
-
-            x = paddle.static.data(
-                name='x', shape=self.x_shape, dtype=self.dtype)
-            y = paddle.static.data(
-                name='y', shape=self.y_shape, dtype=self.dtype)
-
-            for place in self.places:
-                for axes in self.all_axes:
-                    z = paddle.tensordot(x, y, self.axes)
+        for place in self.places:
+            for axes in self.all_axes:
+                with paddle.static.program_guard(paddle.static.Program(),
+                                                 paddle.static.Program()):
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype=self.dtype)
+                    y = paddle.static.data(
+                        name='y', shape=self.y_shape, dtype=self.dtype)
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
                     paddle_res = exe.run(feed={'x': self.x,
                                                'y': self.y},
                                          fetch_list=[z])
-                    np_res = tensordot_np(self.x, self.y, self.axes)
+                    np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
 
