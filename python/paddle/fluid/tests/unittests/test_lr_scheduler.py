@@ -322,48 +322,44 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
 
 
 def one_cycle_lr(epoch_num,
-                 max_learning_rate,
-                 total_steps=None,
-                 epochs=None,
-                 steps_per_epoch=None,
-                 pct_start=0.3,
+                 learning_rate,
+                 total_steps,
+                 scale_factor=25,
+                 end_lr=0.0001,
+                 phase_pct=0.3,
                  anneal_strategy='cos',
-                 divide_factor=25.,
-                 final_divide_factor=1e4,
                  three_phase=False,
                  verbose=False):
-    total_steps = epochs * steps_per_epoch if total_steps is None else total_steps
-    initial_lr = max_learning_rate / divide_factor
-    min_lr = initial_lr / final_divide_factor
+    max_lr = learning_rate * scale_factor
     if three_phase:
         _end_steps = [
-            float(pct_start * total_steps) - 1,
-            float(2 * pct_start * total_steps) - 2, total_steps - 1
+            float(phase_pct * total_steps) - 1,
+            float(2 * phase_pct * total_steps) - 2, total_steps - 1
         ]
         _schedule_phases = [
             {
-                'start_lr': initial_lr,
-                'end_lr': max_learning_rate,
+                'start_lr': learning_rate,
+                'end_lr': max_lr,
             },
             {
-                'start_lr': max_learning_rate,
-                'end_lr': initial_lr,
+                'start_lr': max_lr,
+                'end_lr': learning_rate,
             },
             {
-                'start_lr': initial_lr,
-                'end_lr': min_lr,
+                'start_lr': learning_rate,
+                'end_lr': end_lr,
             },
         ]
     else:
-        _end_steps = [float(pct_start * total_steps) - 1, total_steps - 1]
+        _end_steps = [float(phase_pct * total_steps) - 1, total_steps - 1]
         _schedule_phases = [
             {
-                'start_lr': initial_lr,
-                'end_lr': max_learning_rate,
+                'start_lr': learning_rate,
+                'end_lr': max_lr,
             },
             {
-                'start_lr': max_learning_rate,
-                'end_lr': min_lr,
+                'start_lr': max_lr,
+                'end_lr': end_lr,
             },
         ]
 
@@ -536,24 +532,27 @@ class TestLRScheduler(unittest.TestCase):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
         with self.assertRaises(TypeError):
-            paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate='test', total_steps=20)
-        with self.assertRaises(ValueError):
-            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1)
+            paddle.optimizer.lr.OneCycleLR(learning_rate='test', total_steps=20)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, total_steps='test')
+                learning_rate=0.1, total_steps=20, end_lr='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, total_steps=-10)
-        with self.assertRaises(TypeError):
-            paddle.optimizer.lr.OneCycleLR(max_learning_rate=0.1, epochs='test')
+                learning_rate=0.1, total_steps=20, end_lr=-1)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, epochs=1, steps_per_epoch='t')
+                learning_rate=0.1, total_steps='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(learning_rate=0.1, total_steps=-10)
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, total_steps=20, anneal_strategy='test')
+                learning_rate=0.1, total_steps=20, anneal_strategy='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                learning_rate=0.1,
+                total_steps=20,
+                phase_pct=0.6,
+                three_phase=True)
 
         func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
             "d_model": 0.01,
@@ -615,37 +614,36 @@ class TestLRScheduler(unittest.TestCase):
             "T_max": 10,
             "verbose": False
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "max_learning_rate": 0.5,
+            "learning_rate": 0.1,
             "total_steps": 20,
-            "pct_start": 0.3,
+            "scale_factor": 5,
+            "end_lr": 0.0001,
             "anneal_strategy": 'cos',
-            "divide_factor": 25.,
-            "final_divide_factor": 1e4,
+            "phase_pct": 0.3,
             "three_phase": False,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "max_learning_rate": 0.5,
-            "epochs": 10,
-            "steps_per_epoch": 2,
-            "pct_start": 0.2,
+            "learning_rate": 0.5,
+            "total_steps": 20,
+            "scale_factor": 10,
+            "end_lr": 0.001,
             "anneal_strategy": 'linear',
-            "divide_factor": 20.,
-            "final_divide_factor": 1000,
+            "phase_pct": 0.4,
             "three_phase": False,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "max_learning_rate": 1,
+            "learning_rate": 0.1,
             "total_steps": 20,
-            "pct_start": 0.4,
+            "scale_factor": 9,
+            "end_lr": 0.0001,
             "anneal_strategy": 'cos',
-            "divide_factor": 15.,
-            "final_divide_factor": 100,
+            "phase_pct": 0.3,
             "three_phase": True,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "max_learning_rate": 0.5,
-            "total_steps": 40,
-            "pct_start": 0.5,
+            "learning_rate": 0.3,
+            "total_steps": 20,
+            "scale_factor": 25,
+            "end_lr": 0.0005,
             "anneal_strategy": 'linear',
-            "divide_factor": 5.,
-            "final_divide_factor": 50,
+            "phase_pct": 0.2,
             "three_phase": True,
         })]
 
