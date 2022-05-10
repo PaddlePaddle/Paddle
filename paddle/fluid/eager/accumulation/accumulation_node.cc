@@ -34,7 +34,42 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
     *tensor = t;
   } else {
     // Accumulation
-    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
+    PADDLE_ENFORCE_EQ(t.initialized(), true,
+                      paddle::platform::errors::Fatal(
+                          "We can only accumulate initialized tensor, but we "
+                          "got tensor: %s is empty please check you network "
+                          "and make sure it creates grads.",
+                          t.name()));
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor, paddle::platform::errors::Fatal(
+                    "We can only accumulate initialized tensor to non-nullptr "
+                    "tensor but we got nullptr please check you network "
+                    "and make sure it creates grads."));
+
+    if (t.is_dense_tensor()) {
+      if (tensor->is_dense_tensor()) {
+        paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
+
+      } else {
+        // TODO(jiabin): Support Other TensorBase later
+        // TODO(zhanlve): Replace SelectedRowsAddTensor with
+        // add_dygraph_function once it's supported
+        paddle::experimental::Tensor new_buffer(
+            std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+        paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
+        tensor->set_impl(new_buffer.impl());
+      }
+    } else {
+      // TODO(jiabin): Support Other TensorBase later
+      // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function
+      // once it's supported
+      if (tensor->is_dense_tensor()) {
+        paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+      } else {
+        *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
+                            paddle::experimental::Tensor>(t, *tensor));
+      }
+    }
   }
 }
 
