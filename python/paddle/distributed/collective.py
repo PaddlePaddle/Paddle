@@ -231,6 +231,10 @@ def _new_process_group_impl(backend,
                             dst_rank=None):
     pg = None
     genv = _get_global_env()
+    if backend != 'heter':
+        assert src_rank is None and dst_rank is None, (
+            "src_rank and dst_rank "
+            "can only be set for heter backend.")
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
         place = core.CPUPlace()
@@ -326,7 +330,17 @@ def barrier(group=None):
         attrs={'ring_id': ring_id})
 
 
-def new_group(ranks=None, backend=None, group_id=None):
+# _custom_gid provides a way for users to
+# set the group id, which is usually useful
+# to be compatible with the static mode.
+_custom_gid = None
+
+
+def _set_custom_gid(gid):
+    _custom_gid = gid
+
+
+def new_group(ranks=None, backend=None):
     """
 
     Creates a new distributed communication group.
@@ -352,9 +366,9 @@ def new_group(ranks=None, backend=None, group_id=None):
     global _group_map
     if in_dygraph_mode():
         global _default_group_name
-        gid = group_id if group_id else _new_ring_id()
+        gid = _custom_gid if _custom_gid else _new_ring_id()
         group_name = _default_group_name + str(gid)
-        if backend != "heter":
+        if backend != 'heter' and (ranks is None or len(ranks) > 1):
             global_group = _get_default_group()
             global_rank = global_group.rank
             global_ranks = global_group.ranks
@@ -366,21 +380,10 @@ def new_group(ranks=None, backend=None, group_id=None):
                 "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        print("****************here1")
-        if backend == "heter" or (global_rank in ranks and size > 1):
-            print("****************here2")
-            print("backend:", backend)
-            if backend == "heter":
-                rank = 0
-            else:
-                rank = ranks.index(global_rank)
-            src_rank = None
-            dst_rank = None
-            if backend == "heter":
-                src_rank = ranks[0]
-                dst_rank = ranks[1]
-                print("****************INFO: src_rank: {}, dst_rank: {}".format(
-                    src_rank, dst_rank))
+        if backend == 'heter' or (size > 1 and global_rank in ranks):
+            rank = 0 if backend == 'heter' else ranks.index(global_rank)
+            src_rank = ranks[0] if backend == 'heter' else None
+            dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(
                 backend,
                 _default_store,
@@ -662,6 +665,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
@@ -764,6 +769,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group

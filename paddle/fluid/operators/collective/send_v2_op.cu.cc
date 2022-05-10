@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -49,13 +51,10 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       distributed::ProcessGroup* pg = map->get(rid);
       std::vector<phi::DenseTensor> in_tensor;
       auto x = ctx.Input<framework::LoDTensor>("X");
-      // VLOG(0) << "send name:" << x->name() << ", send_ptr:" << x->data();
       in_tensor.push_back(*x);
       auto task = pg->Send(in_tensor, peer);
-      // task->Wait();
       return;
     }
-
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);

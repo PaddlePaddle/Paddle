@@ -273,13 +273,18 @@ class MLUCnnlPoolingDesc {
 
 class MLUCnnlRandomGeneratorDesc {
  public:
-  MLUCnnlRandomGeneratorDesc(const bool is_mlu200, const int seed);
+  MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
+  Tensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
+  Tensor mlu_state;
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
+
+const std::shared_ptr<MLUCnnlRandomGeneratorDesc>& GetMLURandomGenerator(
+    const ExecutionContext& ctx, const int64_t device_id, const int seed);
 
 class MLUCnnlReduceDesc {
  public:
@@ -537,7 +542,13 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            const float min, const float max, void* output);
+                            void* mlu_state, void* output);
+
+  static void FusedDropout(
+      const ExecutionContext& ctx, const cnnlRandGenerator_t generator,
+      const cnnlTensorDescriptor_t input_desc, const void* input, const float p,
+      void* state, const cnnlTensorDescriptor_t mask_desc, const void* mask,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -708,6 +719,10 @@ class MLUCnnl {
       const bool transpose_b, const cnnlTensorDescriptor_t in0_desc,
       const void* in0, const cnnlTensorDescriptor_t in1_desc, const void* in1,
       const cnnlTensorDescriptor_t output_desc, void* output);
+
+  static void MulAx(const ExecutionContext& ctx,
+                    const cnnlTensorDescriptor_t alpha_desc, const void* alpha,
+                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void OpTensor(const ExecutionContext& ctx,
                        const cnnlOpTensorDescriptor_t op_tensor_desc,

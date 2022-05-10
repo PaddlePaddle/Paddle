@@ -40,12 +40,10 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {
       // Use ProcessGroup
-      distributed::ProcessGroup *pg = map->get(ring_id);
+      distributed::ProcessGroup* pg = map->get(ring_id);
       std::vector<phi::DenseTensor> out_tensor;
       out_tensor.emplace_back(*out);
-      // VLOG(0) << "in_recv:" << out->data();
       auto task = pg->Recv(out_tensor, 0);
-      // task->Wait();
       return;
     }
     auto place = ctx.GetPlace();

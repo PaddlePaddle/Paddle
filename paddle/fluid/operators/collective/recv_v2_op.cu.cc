@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/api/include/tensor.h"
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
+
 namespace paddle {
 namespace operators {
 
@@ -55,9 +58,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(out_dims, place);
 
       out_tensor.emplace_back(*out);
-      // VLOG(0) << "in_recv:" << out->data();
       auto task = pg->Recv(out_tensor, peer);
-      // task->Wait();
       return;
     }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
