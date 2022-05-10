@@ -50,7 +50,7 @@ def minimize_lbfgs(objective_func,
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
 
     Args:
-        objective_func: the objective function to minimize. ``objective_func`` accepts a 1d Tensor and returns a scalar.
+        objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
         initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
         history_size (Scalar): the number of stored vector pairs {si,yi}. Default value: 100.
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.

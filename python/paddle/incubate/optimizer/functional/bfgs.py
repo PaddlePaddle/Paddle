@@ -49,7 +49,7 @@ def minimize_bfgs(objective_func,
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp140: Algorithm 6.1 (BFGS Method).
 
     Args:
-        objective_func: the objective function to minimize. ``objective_func`` accepts a 1d Tensor and returns a scalar.
+        objective_func: the objective function to minimize. ``objective_func`` accepts a 1D Tensor and returns a scalar.
         initial_position (Tensor): the starting point of the iterates, has the same shape with the input of ``objective_func`` . 
         max_iters (int, optional): the maximum number of minimization iterations. Default value: 50.
         tolerance_grad (float, optional): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm. Default value: 1e-7.
