@@ -179,9 +179,17 @@ void MultinomialInferMeta(const MetaTensor& x,
                           MetaTensor* out);
 
 void NanmedianInferMeta(const MetaTensor& x,
-                        bool ignore_nan,
+                        const IntArray& axes,
+                        bool keep_dim,
                         MetaTensor* out,
-                        MetaTensor* medians);
+                        MetaTensor* median_index);
+
+void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_index,
+                            const MetaTensor& out_grad,
+                            const IntArray& axes,
+                            bool keep_dim,
+                            MetaTensor* x_grad);
 
 void NormInferMeta(const MetaTensor& x,
                    int axis,

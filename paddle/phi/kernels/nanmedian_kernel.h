@@ -13,14 +13,62 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
 template <typename T, typename Context>
+void PreprocessMedianKernel(const Context& dev_ctx,
+                            const DenseTensor& input,
+                            const IntArray& raw_axes,
+                            DenseTensor* x) {
+  auto input_dim = input.dims();
+  auto rank = input_dim.size();
+  std::vector<int> perm;
+  std::vector<int64_t> reshape;
+
+  std::vector<int64_t> axes = raw_axes.GetData();
+  int64_t axes_size = static_cast<int>(axes.size());
+  for (int64_t i = 0; i < axes_size; i++) {
+    if (axes[i] < 0) {
+      axes[i] += rank;
+    }
+  }
+
+  for (int64_t i = 0; i < rank; i++) {
+    if (std::find(axes.begin(), axes.end(), i) == axes.end()) {
+      perm.push_back(i);
+      reshape.push_back(input_dim[i]);
+    }
+  }
+
+  int64_t post_numel = 1;
+  for (int64_t i = 0; i < rank; i++) {
+    if (std::find(axes.begin(), axes.end(), i) != axes.end()) {
+      perm.push_back(i);
+      post_numel *= input_dim[i];
+    }
+  }
+  reshape.push_back(post_numel);
+
+  DDim trans_dim(input_dim);
+  int ndims = perm.size();
+  for (int i = 0; i < ndims; i++) {
+    trans_dim[i] = input_dim[perm[i]];
+  }
+  x->mutable_data<T>(trans_dim, dev_ctx.GetPlace());
+  funcs::TransCompute<Context, T>(ndims, dev_ctx, input, x, perm);
+
+  x->Resize(make_ddim(reshape));
+}
+
+template <typename T, typename Context>
 void NanmedianKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     bool ignore_nan,
+                     const IntArray& axes,
+                     bool keep_dim,
                      DenseTensor* out,
                      DenseTensor* medians);
 }  // namespace phi

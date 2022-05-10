@@ -1,4 +1,4 @@
-/*Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/*Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -34,36 +34,42 @@ class NanmedianOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default Tensor<float>), "
+             "(Tensor), "
              "the input feature data of NanmedianOp, dtype should be"
-             "int32, int64, float16, float32, float64.");
-    AddAttr<bool>(
-        "ignore_nan",
-        "(bool, default true) Set to true if nan values should be ignored. "
-        "Set to false when no nan value in x were considered. ")
-        .SetDefault(true);
-    AddOutput("Medians",
-              "The calculation differs in the odd or even of the valid "
-              "elements amount."
-              "Along the axis, two elements contributed to the median value in "
-              "each row."
-              "If the amount of valid elements were even, both were the same.")
+             "int32, int64, float16, float32 or float64.");
+    AddOutput(
+        "MedianIndex",
+        "Store the index position of median values, The calculation differs "
+        "in the odd or even valid elements numbers."
+        "Along the axis, two elements contributed to the median value in "
+        "each row."
+        "If the amount of valid elements were even, both were the same.")
         .AsIntermediate()
         .AsExtra();
     AddOutput("Out",
-              "(Tensor, default Tensor<float>),"
+              "(Tensor),"
               " the output of  NanmedianOp, whose dtype is the same as X");
+    AddAttr<bool>("keepdim",
+                  "(bool, default true) "
+                  "If true, retain the reduced axis with length 1.")
+        .SetDefault(true);
+    AddAttr<std::vector<int>>("axes",
+                              "(std::vector<int>). List of integers,"
+                              " indicating the dimensions to calculate medians")
+        .SetDefault({});
     AddComment(R"DOC(
                 Nanmedian operator
 
                 This operator is considered as an extention of median operation,
-                which supports specifically the case of nan values in the input.
+                which supports specifically the case of NaN values in the input.
 
                 If all the elements in input are NaN it will also return NaN.
                 If no elements in input are Nan, this op is identical to thie median op.
 
-                This operator can also supports multiple axis,
-                and could be switched to median operator when `ignore_nan` were set to False.
+                If the valid count of elements is a even number, the average value of
+                the elements in the middle is calculated as the median.
+
+                This operator can also supports multiple axis.
         )DOC");
   }
 };
@@ -76,25 +82,16 @@ class NanmedianGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("nanmedian_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("Medians", this->Output("Medians"));
+    op->SetInput("MedianIndex", this->Output("MedianIndex"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
 class NanmedianGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "nanmedian");
-    OP_INOUT_CHECK(ctx->HasInput("Medians"), "Input", "Medians", "nanmedian");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "nanmedian");
-
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -117,4 +114,8 @@ REGISTER_OPERATOR(nanmedian, ops::NanmedianOp, ops::NanmedianOpMaker,
                   ops::NanmedianGradMaker<paddle::imperative::OpBase>,
                   NanmedianInferShapeFunctor);
 
-REGISTER_OPERATOR(nanmedian_grad, ops::NanmedianGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(nanmedian_grad, NanmedianGradInferShapeFunctor,
+                            PD_INFER_META(phi::NanmedianGradInferMeta));
+
+REGISTER_OPERATOR(nanmedian_grad, ops::NanmedianGradOp,
+                  NanmedianGradInferShapeFunctor);

@@ -253,9 +253,12 @@ def numel(x, name=None):
     return out
 
 
-def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
+def nanmedian(x, axis=None, keepdim=True, name=None):
     """
     Compute the median along the specified axis, while ignoring NaNs.
+
+    If the valid count of elements is a even number,
+    the average value of both elements in the middle is calculated as the median.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
@@ -264,9 +267,6 @@ def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
-        ignore_nan (bool, optional): Whether to ignore nan values when median was calculated.
-            If `ignore_nan` is False, the calculation process is the same as `median` operator.
-            Default is True.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -298,71 +298,37 @@ def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
 
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
+
     dims = len(x.shape)
-    out_shape = list(x.shape)
     if axis is None:
-        x = paddle.flatten(x)
-        axis = 0
-        out_shape = [1] * dims if keepdim else [1]
-    else:
-        if isinstance(axis, tuple):
-            axis = list(axis)
+        axis = []
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+    elif isinstance(axis, int):
+        axis = [axis]
 
-        if isinstance(axis, list):
-            for k in range(len(axis)):
-                if axis[k] < 0:
-                    axis[k] += dims
-            axis = list(set(axis))
-            if len(axis) <= 0:
-                raise ValueError("axis should not be empty")
+    if not isinstance(axis, list):
+        raise ValueError(
+            "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+        )
 
-            axis_src, axis_dst = [], []
-            for axis_single in axis:
-                if not isinstance(axis_single, int) or not (
-                        axis_single < dims and axis_single >= -dims):
-                    raise ValueError(
-                        "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-                    )
-                axis_src.append(axis_single)
-                out_shape[axis_single] = 1 if keepdim else 0
+    for i in range(len(axis)):
+        if not isinstance(axis[i], int) or not (axis[i] < dims and
+                                                axis[i] >= -dims):
+            raise ValueError(
+                "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+            )
+        if axis[i] < 0:
+            axis[i] += dims
 
-            axis_dst = list(range(-len(axis), 0))
-            x = paddle.moveaxis(x, axis_src, axis_dst)
-            x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
-            axis = axis_dst[0]
-        else:
-            if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-                raise ValueError(
-                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-                )
-            if axis < 0:
-                axis += dims
-            out_shape[axis] = 1 if keepdim else 0
-
-    trans_axis = []
-    last_axis = len(x.shape) - 1
-    if len(x.shape) > 1 and axis is not None and axis != last_axis:
-        for i in range(axis):
-            trans_axis.append(i)
-        trans_axis.append(last_axis)
-        for i in range(axis + 1, last_axis):
-            trans_axis.append(i)
-        trans_axis.append(axis)
-        x = paddle.transpose(x, perm=trans_axis)
-
-    if len(x.shape) == 1 and axis == 0:
-        axis = None
-    else:
-        axis = len(x.shape) - 1
-    res_shape = [x for x in out_shape if x > 0]
+    if len(axis) != len(set(axis)):
+        raise ValueError("Axis has duplicated elements.")
 
     if _in_legacy_dygraph():
-        medians, out = _C_ops.nanmedian(x, 'ignore_nan', ignore_nan)
-        if len(trans_axis) > 1:
-            out = paddle.transpose(out, perm=trans_axis)
-        if len(res_shape) > 0:
-            return paddle.reshape(out, res_shape)
-
+        median_index, out = _C_ops.nanmedian(x, 'axes', axis, 'keepdim',
+                                             keepdim)
         return out
 
     check_variable_and_dtype(
@@ -370,20 +336,15 @@ def nanmedian(x, axis=None, ignore_nan=True, keepdim=True, name=None):
         'nanmedian')
 
     helper = LayerHelper('nanmedian', **locals())
-    attrs = {'ignore_nan': ignore_nan}
+    attrs = {'axes': axis, 'keepdim': keepdim}
     out = helper.create_variable_for_type_inference(x.dtype)
     medians = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='nanmedian',
         inputs={'X': x},
         outputs={'Out': out,
-                 'Medians': medians},
+                 'MedianIndex': medians},
         attrs=attrs)
-
-    if len(trans_axis) > 1:
-        out = paddle.transpose(out, perm=trans_axis)
-    if len(res_shape) > 0:
-        return paddle.reshape(out, res_shape)
     return out
 
 

@@ -61,7 +61,7 @@ class TestNanmedian(unittest.TestCase):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         self.axis_candiate_list = [
-            None, 0, 2, -1, -2, (1, 2), [0, -1], [0, 1, 3], (1, 2, -3),
+            None, 0, 2, -1, -2, (1, 2), [0, -1], [0, 1, 3], (1, 2, 3),
             [0, 2, 1, 3]
         ]
 
@@ -97,7 +97,7 @@ class TestNanmedian(unittest.TestCase):
                 axis = set(axis)
             return axis
 
-        def test_data_case(data, ignore_nan=True):
+        def test_data_case(data):
             for keep_dim in [False, True]:
                 if np.isnan(data).all() and keep_dim:
                     np_ver = np.version.version.split('.')
@@ -109,19 +109,14 @@ class TestNanmedian(unittest.TestCase):
 
                 np_res = np.nanmedian(data, keepdims=keep_dim)
                 pd_res = paddle.nanmedian(
-                    paddle.to_tensor(data),
-                    ignore_nan=ignore_nan,
-                    keepdim=keep_dim)
+                    paddle.to_tensor(data), keepdim=keep_dim)
                 self.assertTrue(
                     np.allclose(
                         np_res, pd_res.numpy(), equal_nan=True))
 
-        def test_axis_case(data, axis, ignore_nan=True):
+        def test_axis_case(data, axis):
             pd_res = paddle.nanmedian(
-                paddle.to_tensor(data),
-                axis=axis,
-                ignore_nan=ignore_nan,
-                keepdim=False)
+                paddle.to_tensor(data), axis=axis, keepdim=False)
             axis = clean_axis_numpy(axis, len(data.shape))
             np_res = np.nanmedian(data, axis=axis, keepdims=False)
             self.assertTrue(np.allclose(np_res, pd_res.numpy(), equal_nan=True))
@@ -129,7 +124,7 @@ class TestNanmedian(unittest.TestCase):
         for name, data in self.fake_data.items():
             test_data_case(data)
             if "_normal" in name:
-                test_data_case(data, ignore_nan=False)
+                test_data_case(data)
 
         for axis in self.axis_candiate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
@@ -152,9 +147,13 @@ class TestNanmedian(unittest.TestCase):
             def test_axis_not_in_range():
                 paddle.nanmedian(x, axis=3, keepdim=True)
 
+            def test_duplicated_axis():
+                paddle.nanmedian(x, axis=[1, -1], keepdim=True)
+
             self.assertRaises(TypeError, test_dtype)
             self.assertRaises(ValueError, test_empty_axis)
             self.assertRaises(ValueError, test_axis_not_in_range)
+            self.assertRaises(ValueError, test_duplicated_axis)
 
     def test_dygraph(self):
         paddle.disable_static(place=self.place)

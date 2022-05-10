@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
 
 namespace phi {
 
@@ -29,46 +29,76 @@ inline int GET_BLOCKS(const int N) {
 
 template <typename T>
 __global__ void KernelNanmedianGrad(const T* x_ptr,
-                                    const T* medians_ptr,
+                                    const int64_t* medians_ptr,
                                     const T* out_grad_ptr,
                                     T* x_grad_ptr,
                                     int64_t stride,
-                                    int64_t numel) {
-  auto zero = static_cast<T>(0);
-  CUDA_KERNEL_LOOP(index, numel) {
-    int64_t row = static_cast<int64_t>(index / stride);
-    int64_t m_row = 2 * row;
-    if (isnan(static_cast<float>(x_ptr[index])) ||
-        isnan(static_cast<float>(medians_ptr[m_row])) ||
-        (x_ptr[index] != medians_ptr[m_row] &&
-         x_ptr[index] != medians_ptr[m_row + 1])) {
-      x_grad_ptr[index] = zero;
-    } else {
-      x_grad_ptr[index] = out_grad_ptr[row];
+                                    int64_t pre_dim) {
+  CUDA_KERNEL_LOOP(index, pre_dim) {
+    int64_t offset = index * stride;
+    if (medians_ptr[2 * index] >= 0) {
+      x_grad_ptr[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
+      x_grad_ptr[offset + medians_ptr[2 * index + 1]] = out_grad_ptr[index];
     }
   }
 }
 
 template <typename T, typename Context>
-void NanmedianGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& medians,
-                         const DenseTensor& out_grad,
-                         DenseTensor* x_grad) {
+void CalcMedianGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& median_index,
+                          const DenseTensor& out_grad,
+                          DenseTensor* x_grad,
+                          T* x_grad_ptr) {
+  phi::funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, x_grad, static_cast<T>(0));
+
   auto stream = dev_ctx.stream();
   const T* x_ptr = x.data<T>();
-  const T* m_ptr = medians.data<T>();
+  const int64_t* m_ptr = median_index.data<int64_t>();
   const T* out_grad_ptr = out_grad.data<T>();
-  T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
 
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
   int64_t stride = x_dim[x_rank - 1];
+  int64_t pre_dim = numel / stride;
 
   KernelNanmedianGrad<
-      T><<<GET_BLOCKS(numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-      x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, numel);
+      T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, pre_dim);
+}
+
+template <typename T, typename Context>
+void BaseMedianGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& median_index,
+                          const DenseTensor& out_grad,
+                          const IntArray& axes,
+                          DenseTensor* x_grad) {
+  auto rank = x.dims().size();
+  T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
+  if (axes.size() && (rank > 1)) {
+    DenseTensor tmp_x_grad(*x_grad);
+    CalcMedianGradKernel<T, Context>(
+        dev_ctx, x, median_index, out_grad, &tmp_x_grad, x_grad_ptr);
+    PostprocessMedianGradKernel<T, Context>(dev_ctx, &tmp_x_grad, axes, x_grad);
+  } else {
+    CalcMedianGradKernel<T, Context>(
+        dev_ctx, x, median_index, out_grad, x_grad, x_grad_ptr);
+  }
+}
+
+template <typename T, typename Context>
+void NanmedianGradKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& median_index,
+                         const DenseTensor& out_grad,
+                         const IntArray& axes,
+                         bool keep_dim,
+                         DenseTensor* x_grad) {
+  BaseMedianGradKernel<T, Context>(
+      dev_ctx, input, median_index, out_grad, axes, x_grad);
 }
 
 }  // namespace phi
