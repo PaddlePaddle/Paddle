@@ -1492,7 +1492,6 @@ class TestDistBase(unittest.TestCase):
                               log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
-        print("required_envs :", required_envs["FLAGS_enable_eager_mode"])
         if self._gloo_mode:
             local_losses \
                 = self._run_local_gloo(model_file, required_envs,
