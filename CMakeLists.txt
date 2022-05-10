@@ -393,7 +393,7 @@ if(WITH_DISTRIBUTE)
     if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
         # disable WITH_PSCORE for NPU before include third_party
         MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
-	# set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
     endif()
     if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
         # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496

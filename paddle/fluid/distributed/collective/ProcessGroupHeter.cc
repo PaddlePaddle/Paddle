@@ -28,8 +28,6 @@ using Place = paddle::platform::Place;
 int ProcessGroupHeter::send_count = 0;
 int ProcessGroupHeter::recv_count = 0;
 
-int ProcessGroupHeter::send_count = 0;
-int ProcessGroupHeter::recv_count = 0;
 std::shared_ptr<ProcessGroupHeter::HeterTask> ProcessGroupHeter::CreateTask(
     int rank, CommType comm_type, const std::vector<phi::DenseTensor>& inputs) {
   return std::make_shared<ProcessGroupHeter::HeterTask>(rank, comm_type,
