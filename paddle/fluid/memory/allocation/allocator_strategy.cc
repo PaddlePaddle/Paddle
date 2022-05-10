@@ -25,14 +25,17 @@ namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
   if (FLAGS_allocator_strategy == "naive_best_fit") {
+    std::cout << "\n\nyoki: naive_best_fit\n\n";
     return AllocatorStrategy::kNaiveBestFit;
   }
 
   if (FLAGS_allocator_strategy == "auto_growth") {
+    std::cout << "\n\nyoki: auto_growth\n\n";
     return AllocatorStrategy::kAutoGrowth;
   }
 
   if (FLAGS_allocator_strategy == "thread_local") {
+    std::cout << "\n\nyoki: thread_local\n\n";
     return AllocatorStrategy::kThreadLocal;
   }
 
