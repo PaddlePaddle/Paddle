@@ -16,12 +16,12 @@ import paddle
 from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
-from model_zoo import resnet_model
+from model_zoo import simple_net
 
 
 class TestBuildCINNPass(DistPassTestBase):
     def init(self):
-        self.atol = 1.0
+        self.atol = 0.0
         self.rtol = 0.0
 
     def apply_passes(self, main_prog, startup_prog):
@@ -29,18 +29,12 @@ class TestBuildCINNPass(DistPassTestBase):
             new_pass("build_cinn"),
             new_pass("fuse_elewise_add_act"),
         ])
-        rank = paddle.distributed.get_rank()
-        if rank == 0:
-            with open('main_program_{}_before.txt'.format(rank), 'w') as f:
-                f.write(str(main_prog))
         pass_manager.apply([main_prog], [startup_prog])
-        if rank == 0:
-            with open('main_program_{}.txt'.format(rank), 'w') as f:
-                f.write(str(main_prog))
-        print(pass_manager.names)
+        op_types = [op.type for op in main_prog.global_block().ops]
+        self.assertTrue('cinn_launch' in op_types)
 
     def test_bs_32(self):
-        self.check_main(resnet_model, batch_size=32)
+        self.check_main(simple_net, batch_size=32)
 
 
 if __name__ == "__main__":
