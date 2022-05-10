@@ -29,18 +29,10 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
                          const dnnl::engine engine, platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
-    if (!is_test) {
-      // TODO(grygielski) Delete forcing stats_md after DNNL 1.2 is introduced
-      auto stats_md = dnnl::memory::desc(
-          {begin(dims), end(dims) - 1}, platform::MKLDNNGetDataType<float>(),
-          platform::GetPlainMKLDNNFormat(dims.size() - 1));
-      this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              x->mem_desc(), stats_md, epsilon,
-                                              flags);
-    } else {
-      this->AcquireForwardPrimitiveDescriptor(
-          dnnl::prop_kind::forward_inference, x->mem_desc(), epsilon, flags);
-    }
+    const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
+                                       : dnnl::prop_kind::forward_training;
+    this->AcquireForwardPrimitiveDescriptor(fwd_prop_kind, x->mem_desc(),
+                                            epsilon, flags);
   }
 
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
