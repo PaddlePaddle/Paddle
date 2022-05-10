@@ -1,3 +1,15 @@
+- backward_api : abs_double_grad
+  forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : abs_double_grad
+  data_transform:
+    skip_transform : grad_x_grad
+
 - backward_api : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -9,6 +21,7 @@
     func : abs_grad
   data_transform:
     skip_transform : out_grad
+  backward : abs_double_grad
 
 - backward_api : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
@@ -1283,6 +1296,16 @@
   kernel :
     func : poisson_grad
 
+- backward_api : pool2d_double_grad
+  forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d_double_grad
+    use_gpudnn : true
+
 - backward_api : pool2d_grad
   forward : pool2d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1292,6 +1315,7 @@
   kernel :
     func : pool2d_grad
     use_gpudnn : true
+  backward : pool2d_double_grad
 
 - backward_api : pool2d_grad_gpudnn_unused
   forward : pool2d_gpudnn_unused(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
