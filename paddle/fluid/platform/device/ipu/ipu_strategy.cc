@@ -32,6 +32,20 @@ void RegisterGetter(
   options_type[name] = type_str;
 }
 
+struct DefaultCompilationProgressLogger {
+  void operator()(int progress, int total) {
+    if (progress != progress_ && progress % log_interval_ == 0) {
+      progress_ = progress;
+      VLOG(1) << "Graph compile progress: " << progress << "%";
+    }
+  }
+
+  int log_interval_ = 10;
+  int progress_ = 0;
+  // default total progress
+  int total_ = 100;
+};
+
 }  // namespace
 
 namespace paddle {
@@ -417,11 +431,7 @@ IpuStrategy::IpuStrategy() {
   // Default options
 
   // Can also be set as a custom logger in python, like using tqdm
-  popart_options.compilationProgressLogger = [](int progress, int total) {
-    if (progress % 10 == 0) {
-      VLOG(1) << "compile progress: " << progress << "%";
-    }
-  };
+  popart_options.compilationProgressLogger = DefaultCompilationProgressLogger();
 }
 
 void IpuStrategy::AddBoolOption(const std::string& option, bool value) {
