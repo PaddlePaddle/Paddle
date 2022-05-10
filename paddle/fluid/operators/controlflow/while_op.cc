@@ -17,6 +17,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace framework {
 class InferShapeContext;
