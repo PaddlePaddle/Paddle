@@ -1741,16 +1741,16 @@ def complex(real, imag, name=None):
     return out
 
 
-def tril_indices(rows, cols, offset=0, dtype='int64'):
+def tril_indices(row, col, offset=0, dtype='int64'):
     """
     Return the indices of the lower triangular part of the 2-D matrix 
-    whose rows and cols is knowed.Indices are ordered based on rows and then columns. 
+    whose row and col is knowed.Indices are ordered based on row and then columns. 
     The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
     
     Args:
-        rows (int): The input x which is a int number describe the number of row of the matrix.
-        cols (int): The input x which is a int number describe the number of col of the matrix.
+        row (int): The input x which is a int number describe the number of row of the matrix.
+        col (int): The input x which is a int number describe the number of col of the matrix.
         offset (int, optional): The offset to consider, default value is 0.
 
             - If offset = 0, all elements on and below the main diagonal are retained.  
@@ -1760,7 +1760,7 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
         dtype (int, optional): the data type of the output tensor, can be int32, int64.
 
     Returns:
-        Tensor: Results of the indices of lower triangular part of a rows * cols matrix,
+        Tensor: Results of the indices of lower triangular part of a row * col matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
 
     Examples:
@@ -1787,14 +1787,14 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
             # [[ 1, 2, 2, 3, 3, 3],
             #  [ 0, 0, 1, 0, 1, 2]]
     """
-    if not isinstance(rows, int) or rows < 0:
-        raise TypeError("rows should be a non-negative int")
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
 
-    if cols is not None:
-        if not isinstance(cols, int) or cols < 0:
-            raise TypeError("cols should be a non-negative int")
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
     else:
-        cols = rows
+        col = row
 
     if not isinstance(offset, int):
         raise TypeError("offset should be a  int")
@@ -1803,12 +1803,12 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_tril_indices(rows, cols, offset, dtype,
+        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
                                               _current_expected_place())
         return out
 
     if _in_legacy_dygraph():
-        out = _C_ops.tril_indices('rows', rows, 'cols', cols, 'offset', offset,
+        out = _C_ops.tril_indices('rows', row, 'cols', col, 'offset', offset,
                                   "dtype", dtype)
         return out
 
@@ -1821,10 +1821,8 @@ def tril_indices(rows, cols, offset=0, dtype='int64'):
             type='tril_indices',
             inputs={},
             outputs={'out': [out]},
-            attrs={
-                'rows': rows,
-                'cols': cols,
-                'offset': offset,
-                'dtype': dtype
-            })
+            attrs={'rows': row,
+                   'cols': col,
+                   'offset': offset,
+                   'dtype': dtype})
     return out
