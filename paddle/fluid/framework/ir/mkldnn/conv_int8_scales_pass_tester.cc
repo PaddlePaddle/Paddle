@@ -21,23 +21,20 @@ namespace ir {
 
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
+           const std::vector<std::string>& outputs,
+           std::vector<float> scale_weights = {1.5f}) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
   if (type == "conv2d") {
-    const std::vector<int> strides({1, 1});
-    const std::vector<int> paddings({0, 0});
-    const std::vector<int> dilations({1, 1});
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("name", name);
-    op->SetAttr("strides", strides);
+    op->SetAttr("strides", std::vector<int>({1, 1}));
     op->SetAttr("groups", 1);
-    op->SetAttr("paddings", paddings);
+    op->SetAttr("paddings", std::vector<int>({0, 0}));
     op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
-    op->SetAttr("dilations", dilations);
+    op->SetAttr("dilations", std::vector<int>({1, 1}));
     op->SetAttr("data_format", std::string("NCHW"));
-
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2)
@@ -48,7 +45,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetOutput("Output", outputs);
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-    op->SetAttr("Scale_weights", std::vector<float>{1.5f});
+    op->SetAttr("Scale_weights", scale_weights);
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("mkldnn_data_type", std::string("int8"));
   } else {
@@ -56,7 +53,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   }
 }
 
-ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
+ProgramDesc BuildProgramDesc(bool convWithExistingBias,
+                             std::vector<float> scale_weights = {1.5}) {
   ProgramDesc prog;
   std::vector<std::string> nodes{"c", "weights", "f"};
   if (convWithExistingBias) nodes.push_back("conv_bias");
@@ -65,13 +63,18 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
     var->SetType(proto::VarType::LOD_TENSOR);
     if (v == "weights") {
       var->SetPersistable(true);
+      var->SetShape({1, static_cast<int>(scale_weights.size()), 1, 1});
     }
   }
 
   if (convWithExistingBias) {
     SetOp(&prog, "conv2d", "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
-          std::vector<std::string>({"f"}));
+          std::vector<std::string>({"f"}), scale_weights);
+  } else if (scale_weights.size() > 1) {
+    SetOp(&prog, "conv2d", "conv",
+          std::vector<std::string>({"c", "weights", "conv_bias"}),
+          std::vector<std::string>({"f"}), scale_weights);
   } else {
     SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
           std::vector<std::string>({"f"}));
@@ -81,8 +84,8 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
 }
 
 void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
-              float scale_weight) {
-  auto prog = BuildProgramDesc(convWithExistingBias);
+              std::vector<float> scale_weights = {1.5f}) {
+  auto prog = BuildProgramDesc(convWithExistingBias, scale_weights);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   auto pass = PassRegistry::Instance().Get("conv_int8_scales_pass");
   int original_nodes_num = graph->Nodes().size();
@@ -96,20 +99,20 @@ void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
 
-      EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
-                scale_weight);
+      EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights"),
+                scale_weights);
       EXPECT_EQ(op->GetAttrIfExists<float>("Scale_in"), scale);
       EXPECT_EQ(op->GetAttrIfExists<float>("Scale_out"), scale);
 
       EXPECT_EQ(op->GetAttrIfExists<float>("Sum_scale"), scale);
       EXPECT_EQ(
           op->GetAttrIfExists<std::vector<float>>("Output_shift_scale")[0],
-          scale / scale_weight);
+          scale / scale_weights[0]);
       EXPECT_EQ(op->GetAttrIfExists<float>("Activation_scale"), scale);
 
       if (convWithExistingBias) {
         EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Bias_scales")[0],
-                  scale * scale_weight);
+                  scale * scale_weights[0]);
       }
     }
   }
@@ -119,15 +122,22 @@ void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
 TEST(ConvInt8ScalesPass, conv_int8_with_no_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
-  auto scale_weight = 1.5;
-  MainTest(false, removed_nodes_count, scale, scale_weight);
+  auto scale_weights = {1.5f};
+  MainTest(false, removed_nodes_count, scale, scale_weights);
 }
 
 TEST(ConvInt8ScalesPass, conv_int8_with_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
-  auto scale_weight = 1.5f;
-  MainTest(true, removed_nodes_count, scale, scale_weight);
+  auto scale_weights = {1.5f};
+  MainTest(true, removed_nodes_count, scale, scale_weights);
+}
+
+TEST(ConvInt8ScalesPass, conv_int8_with_bias_scale_weights) {
+  auto scale = 1.0f;
+  int removed_nodes_count = 0;
+  std::vector<float> scale_weights = {1.5f, 2.3f};
+  MainTest(true, removed_nodes_count, scale, scale_weights);
 }
 
 }  // namespace ir
