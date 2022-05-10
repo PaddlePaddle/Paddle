@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 
 #ifdef PADDLE_WITH_PSLIB
-#include <pslib.h>
+#include "proto/ps.pb.h"
 #endif
 
 namespace paddle {
@@ -248,7 +248,8 @@ class HeterXpuTrainer : public TrainerBase {
 
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUTrainer : public TrainerBase {
  public:

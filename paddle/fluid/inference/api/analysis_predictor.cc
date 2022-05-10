@@ -48,6 +48,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -331,6 +332,15 @@ bool AnalysisPredictor::CreateExecutor() {
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use IPU forward propagation, but Paddle was not compiled "
         "with WITH_IPU."));
+#endif
+  } else if (config_.use_custom_device()) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    place_ = paddle::platform::CustomPlace(config_.custom_device_type());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use CustomDevice forward propagation, but Paddle was not "
+        "compiled "
+        "with WITH_CUSTOM_DEVICE."));
 #endif
   } else {
     place_ = paddle::platform::CPUPlace();
@@ -1240,6 +1250,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_custom_place(place_)) {
+    auto custom_place = place_;
+    auto paddleplace = static_cast<PaddlePlace>(
+        static_cast<size_t>(PaddlePlace::kCUSTOM) +
+        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1289,6 +1305,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_custom_place(place_)) {
+    auto custom_place = place_;
+    auto paddleplace = static_cast<PaddlePlace>(
+        static_cast<size_t>(PaddlePlace::kCUSTOM) +
+        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1641,7 +1663,9 @@ AnalysisPredictor::~AnalysisPredictor() {
     StatisticShapeRangeInfo();
   }
 
-  memory::Release(place_);
+  if (place_.GetType() != phi::AllocationType::UNDEFINED) {
+    memory::Release(place_);
+  }
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -1931,11 +1955,29 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
 #endif
   return false;
 }
+
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
 #ifdef PADDLE_WITH_CUDA
   c->trt_with_interleaved_ = with_interleaved;
 #endif
 }
+
+void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
+#ifdef PADDLE_WITH_CUDA
+  auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
+      pool.Get(pred->place_));
+  cudaStreamSynchronize(dev_ctx->stream());
+#endif
+}
+void InternalUtils::SyncStream(cudaStream_t stream) {
+#ifdef PADDLE_WITH_CUDA
+  cudaStreamSynchronize(stream);
+#endif
+}
+
 }  // namespace experimental
 }  // namespace paddle_infer
