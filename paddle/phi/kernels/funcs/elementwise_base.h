@@ -838,14 +838,14 @@ void ElementwiseKernel(const KPDevice &ctx,
       ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
           ctx, ins, outs, func);
       break;
-    case 2:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
-          ctx, ins, outs, func);
-      break;
-    case 1:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
-          ctx, ins, outs, func);
-      break;
+    // case 2:
+    //   ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+    //       ctx, ins, outs, func);
+    //   break;
+    // case 1:
+    //   ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+    //       ctx, ins, outs, func);
+    //   break;
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));

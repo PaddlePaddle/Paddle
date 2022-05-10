@@ -466,13 +466,13 @@ void BroadcastKernelForDifferentDimSize(
 
   switch (merge_dims.dim_size) {
     CALL_BROADCAST_FOR_DIM_SIZE(1);
-    CALL_BROADCAST_FOR_DIM_SIZE(2);
-    CALL_BROADCAST_FOR_DIM_SIZE(3);
-    CALL_BROADCAST_FOR_DIM_SIZE(4);
-    CALL_BROADCAST_FOR_DIM_SIZE(5);
-    CALL_BROADCAST_FOR_DIM_SIZE(6);
-    CALL_BROADCAST_FOR_DIM_SIZE(7);
-    CALL_BROADCAST_FOR_DIM_SIZE(8);
+    // CALL_BROADCAST_FOR_DIM_SIZE(2);
+    // CALL_BROADCAST_FOR_DIM_SIZE(3);
+    // CALL_BROADCAST_FOR_DIM_SIZE(4);
+    // CALL_BROADCAST_FOR_DIM_SIZE(5);
+    // CALL_BROADCAST_FOR_DIM_SIZE(6);
+    // CALL_BROADCAST_FOR_DIM_SIZE(7);
+    // CALL_BROADCAST_FOR_DIM_SIZE(8);
     default: {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The maximum dimension of input tensor is expected to be less than "
@@ -555,24 +555,24 @@ void BroadcastKernelForDifferentVecSize(
                                          4>(ctx, ins, outs, axis, func);
       break;
     }
-    case 2: {
-      BroadcastKernelForDifferentDimSize<InT,
-                                         OutT,
-                                         Functor,
-                                         kArity,
-                                         NumOuts,
-                                         2>(ctx, ins, outs, axis, func);
-      break;
-    }
-    case 1: {
-      BroadcastKernelForDifferentDimSize<InT,
-                                         OutT,
-                                         Functor,
-                                         kArity,
-                                         NumOuts,
-                                         1>(ctx, ins, outs, axis, func);
-      break;
-    }
+    // case 2: {
+    //   BroadcastKernelForDifferentDimSize<InT,
+    //                                      OutT,
+    //                                      Functor,
+    //                                      kArity,
+    //                                      NumOuts,
+    //                                      2>(ctx, ins, outs, axis, func);
+    //   break;
+    // }
+    // case 1: {
+    //   BroadcastKernelForDifferentDimSize<InT,
+    //                                      OutT,
+    //                                      Functor,
+    //                                      kArity,
+    //                                      NumOuts,
+    //                                      1>(ctx, ins, outs, axis, func);
+    //   break;
+    // }
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d!", vec_size));
@@ -605,6 +605,7 @@ void BroadcastKernel(const KPDevice &ctx,
 
   if (no_broadcast_flag) {
     phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, ins, outs, func);
+
   } else {
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -

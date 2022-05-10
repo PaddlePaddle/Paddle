@@ -36,11 +36,14 @@ void ReduceGrad(const GPUContext& dev_ctx,
                 Functor functor) {
   std::vector<const DenseTensor*> inputs = {d_out};
   std::vector<DenseTensor*> outputs = {d_x};
-  PD_VISIT_ALL_TYPES(
-      out_dtype, "BroadcastKernel", ([&] {
-        funcs::BroadcastKernel<phi::ElementwiseType::kUnary, InT, data_t>(
-            dev_ctx, inputs, &outputs, 0, functor);
-      }));
+  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, InT, InT>(
+      dev_ctx, inputs, &outputs, 0, functor);
+
+  // PD_VISIT_ALL_TYPES(
+  //     out_dtype, "BroadcastKernel", ([&] {
+  //       funcs::BroadcastKernel<phi::ElementwiseType::kUnary, InT, data_t>(
+  //           dev_ctx, inputs, &outputs, 0, functor);
+  //     }));
 }
 
 template <typename T,
