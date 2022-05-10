@@ -1261,7 +1261,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr) {
     // TODO(DannyIsFunny): add InferShape method
-    // this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    if (!all_kernels_must_compute_runtime_shape_)
+      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
     (*pt_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
