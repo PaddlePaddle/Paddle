@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
+#include "paddle/phi/backends/all_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -38,7 +39,10 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
-void NaiveExecutor::Run() {
+void NaiveExecutor::Run(
+    const std::map<phi::Place,
+                   std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+        *device_contexts) {
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
@@ -48,6 +52,7 @@ void NaiveExecutor::Run() {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
+    op->SetDeviceContexts(device_contexts);
     op->Run(*scope_, place_);
   }
 }

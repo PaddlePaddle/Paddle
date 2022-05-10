@@ -38,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -161,6 +163,12 @@ class OperatorBase {
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
 
+  void SetDeviceContexts(
+      const std::map<phi::Place,
+                     std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+          device_contexts);
+  phi::DeviceContext* GetDeviceContext(const phi::Place& place) const;
+
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
 
@@ -248,6 +256,11 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  // not owned
+  const std::map<phi::Place,
+                 std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+      device_contexts_{nullptr};
 
  private:
   void GenerateTemporaryNames();

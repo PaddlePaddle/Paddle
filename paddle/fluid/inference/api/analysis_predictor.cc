@@ -20,6 +20,7 @@
 #include <fstream>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,16 +28,20 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/infer_context.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -48,7 +53,12 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -178,6 +188,56 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
   return true;
 }
 
+std::set<std::string> GetNotSupportedGpuPhiOps(
+    framework::ProgramDesc *program) {
+  std::set<std::string> not_ready_phi;
+  for (size_t block_idx = 0; block_idx < program->Size(); ++block_idx) {
+    auto &block = program->Block(block_idx);
+    for (size_t op_idx = 0; op_idx < block.OpSize(); ++op_idx) {
+      auto *op_desc = block.Op(op_idx);
+      auto fluid_op_name = op_desc->Type();
+      if (fluid_op_name == "feed" || fluid_op_name == "fetch") continue;
+
+      // The logic of selecting kernel is as follows:
+      //  1. phi gpu kernel
+      //  2. operator gpu kernel
+      //  3. phi cpu kernel
+      //  4. operator cpu kernel
+      // If choose operator gpu kernel, we should return the list.
+      bool has_gpu_phi_kernel{false};
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+              fluid_op_name)) {
+        auto phi_kernel_name = phi::TransToPhiKernelName(fluid_op_name);
+        auto phi_kernels =
+            phi::KernelFactory::Instance().SelectKernelMap(phi_kernel_name);
+        for (auto &kernel : phi_kernels) {
+          if (platform::is_gpu_place(
+                  phi::TransToPhiPlace(kernel.first.backend()))) {
+            has_gpu_phi_kernel = true;
+          }
+        }
+      }
+      if (!has_gpu_phi_kernel) {
+        auto &all_operator_kernels =
+            framework::OperatorWithKernel::AllOpKernels();
+        auto it = all_operator_kernels.find(fluid_op_name);
+        if (it != all_operator_kernels.end()) {
+          for (auto &kern_pair : it->second) {
+            if (platform::is_gpu_place(kern_pair.first.place_)) {
+              not_ready_phi.emplace(fluid_op_name);
+            }
+          }
+        } else {
+          // All control operator must support GPU
+          not_ready_phi.emplace(fluid_op_name);
+        }
+      }
+    }
+  }
+
+  return not_ready_phi;
+}
+
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
@@ -198,6 +258,9 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
+
+  InitPlace();
+
   if (!CreateExecutor()) {
     return false;
   }
@@ -211,6 +274,45 @@ bool AnalysisPredictor::Init(
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
     return true;
+  }
+
+  // TODO(inference): Now only GPU support private context.
+  if (config_.use_gpu_) {
+    private_context_ = true;
+    // TODO(inference): If not all gpu op runs on phi, then fallback to original
+    // process(one global context). When the phi operator is migrated, modify
+    // the logic here.
+    std::set<std::string> not_ready_phi =
+        GetNotSupportedGpuPhiOps(inference_program_.get());
+    if (!not_ready_phi.empty()) {
+      private_context_ = false;
+      std::ostringstream os;
+      for (auto x : not_ready_phi) os << x << " ";
+      LOG(WARNING) << "Some operators are not migrated to phi and fall back to "
+                      "global context mode. The operators that have not been "
+                      "migrated include: "
+                   << os.str();
+    }
+  } else {
+    private_context_ = false;
+  }
+
+  if (private_context_) {
+    if (!status_is_cloned_) {
+      if (config_.use_external_stream_) {
+        InitResourceManager(config_.GetExecStream());
+      } else {
+        InitResourceManager(nullptr);
+      }
+    } else {
+      // clone case.
+      if (config_.use_external_stream_) {
+        InitResourceManager(clone_stream_);
+      } else {
+        InitResourceManager(nullptr);
+      }
+    }
+    InitDeviceContexts();
   }
 
   return true;
@@ -262,7 +364,13 @@ bool AnalysisPredictor::PrepareProgram(
 
   return true;
 }
+
 bool AnalysisPredictor::CreateExecutor() {
+  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  return true;
+}
+
+void AnalysisPredictor::InitPlace() {
   if (config_.use_gpu()) {
     PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
                       platform::errors::InvalidArgument(
@@ -336,8 +444,106 @@ bool AnalysisPredictor::CreateExecutor() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
-  return true;
+}
+
+void AnalysisPredictor::InitResourceManager(void *stream) {
+  resource_.reset(new ResourceManager(place_, stream));
+}
+
+std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+    *AnalysisPredictor::GetGlobalDeviceContexts() {
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto &dev_ctxs = pool.device_contexts();
+  return &const_cast<std::map<
+      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> &>(
+      dev_ctxs);
+}
+
+std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+    *AnalysisPredictor::GetDeviceContexts() {
+  if (private_context_) {
+    return &device_contexts_;
+  } else {
+    return GetGlobalDeviceContexts();
+  }
+}
+
+void AnalysisPredictor::InitDeviceContexts() {
+  // Init CPUContext.
+  phi::CPUPlace cpu_place;
+  device_contexts_.emplace(
+      cpu_place, std::async(std::launch::deferred, [=] {
+        auto *cpu_context = new InferCPUContext();
+        cpu_context->SetAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(cpu_place)
+                .get());
+        cpu_context->SetHostAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(cpu_place)
+                .get());
+        cpu_context->SetZeroAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetZeroAllocator(cpu_place)
+                .get());
+        cpu_context->SetGenerator(framework::DefaultCPUGenerator().get());
+        cpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+
+        cpu_context->SetEigenDevice(resource_->GetCpuEigenDevice());
+        return std::unique_ptr<phi::DeviceContext>(cpu_context);
+      }));
+
+// Init GPUContext.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (place_.GetType() == phi::AllocationType::GPU) {
+    device_contexts_.emplace(
+        place_, std::async(std::launch::deferred, [=] {
+          auto *gpu_context = new InferGPUContext();
+          gpu_context->SetAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(place_)
+                  .get());
+          gpu_context->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+          gpu_context->SetHostAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(cpu_place)
+                  .get());
+          gpu_context->SetZeroAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetZeroAllocator(place_)
+                  .get());
+          gpu_context->SetGenerator(
+              framework::GetDefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+
+          gpu_context->SetStream(resource_->GetStream());
+          gpu_context->SetBlasHandle(resource_->GetBlasHandle());
+          gpu_context->SetBlasTensorCoreHandle(
+              resource_->GetBlasTensorCoreHandle());
+          gpu_context->SetBlasTF32Handle(resource_->GetBlasTF32Handle());
+          gpu_context->SetDnnHandle(resource_->GetDnnHandle());
+          gpu_context->SetSolverHandle(resource_->GetSolverDnHandle());
+          gpu_context->SetSparseHandle(resource_->GetSparseHandle());
+          gpu_context->SetEigenDevice(resource_->GetGpuEigenDevice());
+          gpu_context->SetComputeCapability(
+              resource_->GetGpuComputeCapability());
+          gpu_context->SetMaxThreadsPerBlock(
+              resource_->GetGpuMaxThreadsPerBlock());
+          gpu_context->SetMaxThreadsPerMultiProcessor(
+              resource_->GetGpuMaxThreadsPerMp());
+          gpu_context->SetMaxGridDimSize(resource_->GetGpuMaxGridDimSize());
+          gpu_context->SetMultiProcessors(resource_->GetGPUMultiProcessors());
+          gpu_context->SetDriverVersion(resource_->GetGpuDriverVersion());
+          gpu_context->SetRuntimeVersion(resource_->GetGpuRuntimeVersion());
+          return std::unique_ptr<phi::DeviceContext>(gpu_context);
+        }));
+  }
+#endif
+  // TODO(Inference): Support other backends.
 }
 
 static bool IsPrepareDataOptTargetOp(framework::OpDesc *op) {
@@ -696,7 +902,8 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
   // Run the inference program
   // if share variables, we need not create variables
-  executor_->Run();
+  auto *dev_ctxs = GetDeviceContexts();
+  executor_->Run(dev_ctxs);
 
   // get fetch variable
   if (!GetFetch(output_data, scope)) {
@@ -1216,8 +1423,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       platform::errors::PreconditionNotMet(
           "The variable named %s is not found in the scope of the executor.",
           name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope)));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
+      static_cast<void *>(scope), static_cast<void *>(this)));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1265,8 +1472,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       platform::errors::PreconditionNotMet(
           "The variable named %s is not found in the scope of the executor.",
           name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope)));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
+      static_cast<void *>(scope), static_cast<void *>(this)));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1321,7 +1528,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
-  executor_->Run();
+  auto *dev_ctxs = GetDeviceContexts();
+  executor_->Run(dev_ctxs);
 
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
@@ -1531,7 +1739,8 @@ bool AnalysisPredictor::LoadParameters() {
   // Use NaiveExecutor to Load parameters.
   framework::NaiveExecutor e(place_);
   e.Prepare(scope_.get(), *load_program, 0, false);
-  e.Run();
+  auto *dev_ctxs = GetGlobalDeviceContexts();
+  e.Run(dev_ctxs);
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
 
   return true;
@@ -1647,9 +1856,16 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 }
 
-std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
+std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
+  x->status_is_cloned_ = true;
+  if (config_.use_external_stream_ && stream == nullptr) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "config has been configured to use external stream, but the Clone "
+        "function has not received a valid stream parameter."));
+  }
+  x->clone_stream_ = stream;
   x->Init(scope_, inference_program_);
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);

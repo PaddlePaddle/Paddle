@@ -57,7 +57,9 @@ class NaiveExecutor {
                        Scope* scope);
 
   // Run all the operators.
-  void Run();
+  void Run(const std::map<
+           phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+               device_contexts);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);

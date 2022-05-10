@@ -18,6 +18,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/api/paddle_tensor.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -28,6 +31,7 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/string/printf.h"
@@ -235,7 +239,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
   ///
   /// \brief Get the scope used by predictor
   ///
@@ -397,6 +401,14 @@ class AnalysisPredictor : public PaddlePredictor {
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
 
+  void InitPlace();
+  void InitDeviceContexts();
+  void InitResourceManager(void *stream);
+  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      *GetGlobalDeviceContexts();
+  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      *GetDeviceContexts();
+
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
 
@@ -488,7 +500,13 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   static int clone_num_;
+  void *clone_stream_{nullptr};
 
+  bool private_context_{true};
+  std::unique_ptr<ResourceManager> resource_;
+  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      device_contexts_;
+  friend class paddle_infer::Tensor;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet executor related
   distributed::FleetExecutorDesc executor_desc_;

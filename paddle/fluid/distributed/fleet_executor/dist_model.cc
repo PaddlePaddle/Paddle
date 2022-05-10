@@ -222,7 +222,9 @@ bool DistModel::CommInit() {
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
   e.Prepare(scope_.get(), *comm_init_program, 0, false);
-  e.Run();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto device_contexts = pool.device_contexts();
+  e.Run(&device_contexts);
   VLOG(3) << "Comm init successful.";
   return true;
 }
@@ -362,7 +364,9 @@ bool DistModel::LoadParameters() {
   // managed by fleet executor.
   e.CreateVariables(*program_, 0, true, scope_.get());
   e.Prepare(scope_.get(), *load_program, 0, false);
-  e.Run();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto device_contexts = pool.device_contexts();
+  e.Run(&device_contexts);
   VLOG(3) << "After loading there are " << scope_->LocalVarNames().size()
           << " vars.";
 

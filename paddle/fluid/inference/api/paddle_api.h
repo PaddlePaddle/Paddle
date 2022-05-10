@@ -194,7 +194,8 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
-  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+  explicit ZeroCopyTensor(void* scope, void* predictor)
+      : paddle_infer::Tensor{scope, predictor} {}
 };
 
 /// \brief A Predictor for executing inference on a model.
@@ -285,7 +286,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
   /// \return unique_ptr which contains the pointer of predictor
-  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
+  virtual std::unique_ptr<PaddlePredictor> Clone(void* stream = nullptr) = 0;
 
   /// \brief Destroy the Predictor.
   virtual ~PaddlePredictor() = default;

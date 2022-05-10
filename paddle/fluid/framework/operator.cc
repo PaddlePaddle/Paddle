@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/int_array.h"
@@ -199,6 +200,35 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
       output_vars.push_back(scope.FindVar(var_name));
     }
   }
+}
+
+void OperatorBase::SetDeviceContexts(
+    const std::map<phi::Place,
+                   std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+        device_contexts) {
+  PADDLE_ENFORCE_NOT_NULL(device_contexts,
+                          paddle::platform::errors::InvalidArgument(
+                              "device_contexts should not be nullptr."));
+  device_contexts_ = device_contexts;
+}
+
+phi::DeviceContext* OperatorBase::GetDeviceContext(
+    const phi::Place& place) const {
+  if (device_contexts_ == nullptr) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    return pool.Get(place);
+  }
+
+  auto it = device_contexts_->find(place);
+  if (it == device_contexts_->end()) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Place %s is not supported. Please check that your paddle compiles "
+        "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
+        "or check that your train process set the correct device id if you use "
+        "Executor.",
+        place));
+  }
+  return device_contexts_->at(place).get().get();
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
@@ -1259,8 +1289,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
+  auto* dev_ctx = this->GetDeviceContext(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
@@ -1275,7 +1304,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
-    dev_ctx = pool.Get(kernel_type_->place_);
+    dev_ctx = this->GetDeviceContext(kernel_type_->place_);
   }
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
@@ -1299,7 +1328,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
-      dev_ctx = pool.Get(kernel_type_->place_);
+      dev_ctx = this->GetDeviceContext(kernel_type_->place_);
 
       pt_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
@@ -1456,7 +1485,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 pt_kernel_name, pt_cpu_kernel_key)));
 
-        dev_ctx = pool.Get(platform::CPUPlace());
+        dev_ctx = this->GetDeviceContext(platform::CPUPlace());
         if (pt_kernel_->IsValid()) {
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
@@ -1469,7 +1498,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!run_phi_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
-      dev_ctx = pool.Get(kernel_type_->place_);
+      dev_ctx = this->GetDeviceContext(kernel_type_->place_);
     }
   }
 
