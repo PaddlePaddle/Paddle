@@ -576,29 +576,29 @@ def affine(img,
            interpolation="nearest",
            fill=0,
            center=None):
-    """Apply affine transformation on the image keeping image center invariant.
+    """Apply affine transformation on the image.
 
     Args:
-        img (PIL.Image|np.array|paddle.Tensor): Image to be transform.
-        angle (float or int): In degrees degrees counter clockwise order.
-        translate (sequence or int): horizontal and vertical translations
-        scale (float): overall scale ratio
-        shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
-            If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
-            the second value corresponds to a shear parallel to the y axis.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be affined.
+        angle (int|float): The angle of the random rotation in clockwise order.
+        translate (list[float]): Maximum absolute fraction for horizontal and vertical translations.
+        scale (float): Scale factor for the image, scale should be positive.
+        shear (list[float]): Shear angle values which are parallel to the x-axis and y-axis in clockwise order.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend. when use pil backend, support method are as following: 
+            according the backend. 
+            When use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
             - "bilinear": Image.BILINEAR, 
             - "bicubic": Image.BICUBIC
-            when use cv2 backend, support method are as following: 
+            When use cv2 backend, support method are as following: 
             - "nearest": cv2.INTER_NEAREST, 
             - "bilinear": cv2.INTER_LINEAR, 
             - "bicubic": cv2.INTER_CUBIC
-        fill (sequence or number, optional): Pixel fill value for the area outside the transformed
+        fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
             image. If given a number, the value is used for all bands respectively.
-        center (sequence, optional): Optional center of rotation. Origin is the upper left corner.
+        center (2-tuple, optional): Optional center of rotation, (x, y).
+            Origin is the upper left corner.
             Default is the center of the image.
 
     Returns:
@@ -607,17 +607,13 @@ def affine(img,
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
+            import paddle
             from paddle.vision.transforms import functional as F
 
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
 
-            fake_img = Image.fromarray(fake_img)
-
-            affined_img = F.affine(fake_img, [-90, 90], translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
-            print(affined_img.size)
-
+            affined_img = F.affine(fake_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+            print(affined_img.shape)
     """
 
     if not (_is_pil_image(img) or _is_numpy_image(img) or

@@ -1230,36 +1230,34 @@ class RandomAffine(BaseTransform):
     """Random affine transformation of the image.
 
     Args:
-        degrees (sequence or float or int): Range of degrees to select from.
-            If degrees is a number instead of sequence like (min, max), the range of degrees
-            will be (-degrees, +degrees) clockwise order.
-        translate (tuple, optional): maximum absolute fraction for horizontal
-            and vertical translations. For example translate=(a, b), then horizontal shift
-            is randomly sampled in the range -img_width * a < dx < img_width * a and vertical shift is
-            randomly sampled in the range -img_height * b < dy < img_height * b. 
-            Will not translate by default.
-        scale (tuple, optional): scaling factor interval, e.g (a, b), then scale is
-            randomly sampled from the range a <= scale <= b. 
-            Will keep original scale by default.
-        shear (sequence or number, optional): Range of degrees to select from.
+        degrees (int|float|tuple): The angle interval of the random rotation.
+            If set as a number instead of sequence like (min, max), the range of degrees
+            will be (-degrees, +degrees) in clockwise order. If set 0, will not rotate.
+        translate (tuple, optional): Maximum absolute fraction for horizontal and vertical translations.
+            For example translate=(a, b), then horizontal shift is randomly sampled in the range -img_width * a < dx < img_width * a
+            and vertical shift is randomly sampled in the range -img_height * b < dy < img_height * b. 
+            Default is None, will not translate.
+        scale (tuple, optional): Scaling factor interval, e.g (a, b), then scale is randomly sampled from the range a <= scale <= b. 
+            Default is None, will keep original scale and not scale.
+        shear (sequence or number, optional): Range of degrees to shear, ranges from -180 to 180 in clockwise order.
             If set as a number, a shear parallel to the x axis in the range (-shear, +shear) will be applied. 
             Else if set as a sequence of 2 values a shear parallel to the x axis in the range (shear[0], shear[1]) will be applied. 
             Else if set as a sequence of 4 values, a x-axis shear in (shear[0], shear[1]) and y-axis shear in (shear[2], shear[3]) will be applied.
-            Will not apply shear by default.
+            Default is None, will not apply shear.
         interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend. when use pil backend, support method are as following: 
+            according the backend. 
+            When use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
             - "bilinear": Image.BILINEAR, 
             - "bicubic": Image.BICUBIC
-            when use cv2 backend, support method are as following: 
+            When use cv2 backend, support method are as following: 
             - "nearest": cv2.INTER_NEAREST, 
             - "bilinear": cv2.INTER_LINEAR, 
             - "bicubic": cv2.INTER_CUBIC
-        fill (int|list|tuple): Pixel fill value for constant fill. Default is 0. If a list/tuple of
-            length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant
-        center (sequence, optional): Optional center of rotation, (x, y).
+        fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
+        center (2-tuple, optional): Optional center of rotation, (x, y).
             Origin is the upper left corner.
             Default is the center of the image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
@@ -1275,16 +1273,15 @@ class RandomAffine(BaseTransform):
     
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
+            import paddle
             from paddle.vision.transforms import RandomAffine
 
             transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
 
-            fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
+            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
 
             fake_img = transform(fake_img)
-            print(fake_img.size)
+            print(fake_img.shape)
     """
 
     def __init__(self,
