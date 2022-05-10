@@ -63,6 +63,8 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             label = fluid.layers.data(name="label", shape=[-1, 1], dtype="int32")
             ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[-1, 1], dtype="float32")
