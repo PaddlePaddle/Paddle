@@ -66,12 +66,13 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = \
 
 
 PARSE_PYTHON_C_ARGS_TEMPLATE = \
-"""    PyObject* {}_obj = PyTuple_GET_ITEM(args, {});\n
-     {} {} = {}({}_obj, \"{}\", {});\n"""
+"""    PyObject* {}_obj = PyTuple_GET_ITEM(args, {});
+    {} {} = {}({}_obj, \"{}\", {});
+"""
 
 
 RECORD_EVENT_TEMPLATE = \
-"    paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
+"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
@@ -84,33 +85,27 @@ RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 
 PYTHON_C_FUNCTION_TEMPLATE = \
 """
-static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
-{{
+static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
 
   PyThreadState *tstate = nullptr;
-  try
-  {{
+  try {{
     VLOG(6) << "Running Eager Final State API: {}";
 
     // Get EagerTensors from args
 {}
-
-    // Parse Attributes
+    // Parse Attributes if needed
 {}
-
     tstate = PyEval_SaveThread();
 
     // Set Device ID
 {}
-    
     auto out = {}({});
-    
+
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
 {}
-  }}
-  catch(...) {{
+  }} catch(...) {{
     if (tstate) {{
       PyEval_RestoreThread(tstate);
     }}
@@ -118,13 +113,10 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
     return nullptr;
   }}
 }}
-
 """
 
 FUNCTION_SET_DEVICE_TEMPLATE = \
-"""
-    {}
-    if (paddle::platform::is_gpu_place(place)) {{
+"""{}    if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(1) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
@@ -309,7 +301,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         "false")
 
         parse_attributes_str = ""
-        expected_place_str = "auto place = egr::Controller::Instance().GetExpectedPlace();\n"
+        expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
 
         # Generate Python-C Attributes Parsing Logic
         for name, atype, _, pos in orig_forward_attrs_list:
@@ -407,35 +399,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-        logging.info(
-            f"Parsed Original Forward Inputs List: \n{self.orig_forward_inputs_list}"
-        )
-        logging.info(
-            f"Prased Original Forward Attrs List: \n{self.orig_forward_attrs_list}"
-        )
-        logging.info(
-            f"Parsed Original Forward Returns List: \n{self.orig_forward_returns_list}"
-        )
 
         if SkipAPIGeneration(self.forward_api_name): return False
 
         # Initialized forward_inputs_position_map, forward_outputs_position_map
         self.DetermineForwardPositionMap(self.orig_forward_inputs_list,
                                          self.orig_forward_returns_list)
-        logging.info(
-            f"Generated Forward Input Position Map: {self.forward_inputs_position_map}"
-        )
-        logging.info(
-            f"Generated Forward Output Position Map: {self.forward_outputs_position_map}"
-        )
 
         # Code Generation
         self.GeneratePythonCFunction()
-        logging.info(
-            f"Generated Python-C Function: {self.python_c_function_str}")
-        logging.info(
-            f"Generated Python-C Function Declaration: {self.python_c_function_reg_str}"
-        )
 
         return True
 
@@ -543,8 +515,6 @@ if __name__ == "__main__":
 
     python_c_str = GeneratePythonCWrappers(generated_python_c_functions,
                                            generated_python_c_registration)
-
-    logging.info(f"Generated Python-C Codes: \n{python_c_str}")
 
     output_path = args.output_path
     for path in [output_path]:
