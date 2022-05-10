@@ -826,6 +826,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
+  bool IsNextCacheClearingBlocked() { return block_next_cache_clearing_} const;
 
   // Get the ShapeBlob size in cur_mkldnn_session_id.
   size_t GetShapeBlobSize() const;
