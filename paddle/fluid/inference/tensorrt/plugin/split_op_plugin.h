@@ -94,6 +94,7 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   std::vector<int> output_length_;
   std::vector<int> segment_offsets_;
   thrust::device_vector<int> d_segment_offsets_;
+  thrust::device_vector<float*> d_output_ptrs_;
 
  private:
   void shareData(const SplitPlugin* another);

@@ -75,6 +75,7 @@ void SplitPlugin::shareData(const SplitPlugin* another) {
   axis_shape_ = another->axis_shape_;
   d_segment_offsets_ = another->d_segment_offsets_;
   segment_offsets_ = another->segment_offsets_;
+  d_output_ptrs_.resize(another->d_output_ptrs_.size(), nullptr);
 }
 
 int SplitPlugin::initialize() TRT_NOEXCEPT {
@@ -104,6 +105,7 @@ int SplitPlugin::initialize() TRT_NOEXCEPT {
   axis_shape_ = dims.d[axis_];
   d_segment_offsets_ = segment_offsets;
   segment_offsets_ = std::move(segment_offsets);
+  d_output_ptrs_.resize(this->getNbOutputs(), nullptr);
   return 0;
 }
 
@@ -150,31 +152,22 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
   auto input_type = getDataType();
 
+  float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
+  float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
+  float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
+      cudaMemcpyHostToDevice, stream));
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
-    thrust::device_vector<float*> d_output_ptrs;
-    d_output_ptrs.resize(this->getNbOutputs(), nullptr);
-    float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
-    float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
-    float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(float*),
-      cudaMemcpyHostToDevice, stream));
         split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
         inner_cols_, axis_shape_, outer_rows);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
-    thrust::device_vector<half*> d_output_ptrs;
-    d_output_ptrs.resize(this->getNbOutputs(), nullptr);
-    half const* input_ptr = reinterpret_cast<half const*>(inputs[0]);
-    half* const* h_odatas = reinterpret_cast<half* const*>(outputs);
-    half** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(half*),
-      cudaMemcpyHostToDevice, stream));
         split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+        d_segment_offsets_.size(), d_segment_offsets_ptr, (half const*)input_ptr, (half**)output_ptrs,
         inner_cols_, axis_shape_, outer_rows);
   }
   return cudaGetLastError() != cudaSuccess;
