@@ -161,8 +161,8 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
       output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
       cudaMemcpyHostToDevice, stream));
         split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-        inner_cols, axis_shape, outer_rows);
+        d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+        inner_cols_, axis_shape_, outer_rows);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
     half const* input_ptr = reinterpret_cast<half const*>(inputs[0]);
@@ -172,8 +172,8 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
       output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(half*),
       cudaMemcpyHostToDevice, stream));
         split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
-        inner_cols, axis_shape, outer_rows);
+        d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+        inner_cols_, axis_shape_, outer_rows);
   }
   return cudaGetLastError() != cudaSuccess;
 }
