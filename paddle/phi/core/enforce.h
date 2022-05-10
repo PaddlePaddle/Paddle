@@ -42,7 +42,6 @@ limitations under the License. */
 #endif
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/printf.h"
@@ -55,7 +54,6 @@ namespace phi {
 class ErrorSummary;
 }  // namespace phi
 
-DECLARE_int32(call_stack_level);
 namespace phi {
 namespace enforce {
 /** HELPER MACROS AND FUNCTIONS **/
@@ -251,29 +249,12 @@ inline std::string GetCurrentTraceBackString(bool for_signal = false) {
 template <typename StrType>
 inline std::string GetErrorSumaryString(StrType&& what,
                                         const char* file,
-                                        int line) {
-  std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
-    sout << "\n----------------------\nError Message "
-            "Summary:\n----------------------\n";
-  }
-  sout << paddle::string::Sprintf(
-              "%s (at %s:%d)", std::forward<StrType>(what), file, line)
-       << std::endl;
-  return sout.str();
-}
+                                        int line);
 
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what,
                                       const char* file,
-                                      int line) {
-  if (FLAGS_call_stack_level > 1) {
-    // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
-  } else {
-    return GetErrorSumaryString(what, file, line);
-  }
-}
+                                      int line);
 
 inline std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
@@ -326,13 +307,7 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  const char* what() const noexcept override {
-    if (FLAGS_call_stack_level > 1) {
-      return err_str_.c_str();
-    } else {
-      return simple_err_str_.c_str();
-    }
-  }
+  const char* what() const noexcept override;
 
   phi::ErrorCode code() const { return code_; }
 
@@ -340,13 +315,7 @@ struct EnforceNotMet : public std::exception {
 
   const std::string& simple_error_str() const { return simple_err_str_; }
 
-  void set_error_str(std::string str) {
-    if (FLAGS_call_stack_level > 1) {
-      err_str_ = str;
-    } else {
-      simple_err_str_ = str;
-    }
-  }
+  void set_error_str(std::string str);
 
  private:
   // Used to determine the final type of exception thrown
