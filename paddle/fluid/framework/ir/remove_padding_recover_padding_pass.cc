@@ -85,14 +85,20 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init(name_scope_, graph);
+  auto* scope = param_scope();
   int found_subgraph_count = 0;
 
   // Create an remove_padding op node
   auto insert_remove_padding_op = [&](Node* input_node, Node* op_node) {
+    // create op, var in graph
     OpDesc remove_padding;
     std::string remove_padding_out_name =
         input_node->Name() + ".remove_padding";
+
     VarDesc remove_padding_out(remove_padding_out_name);
+    remove_padding_out.SetDataType(input_node->Var()->GetDataType());
+    remove_padding_out.SetShape(input_node->Var()->GetShape());
+    remove_padding_out.SetPersistable(false);
 
     // remove_padding_op
     remove_padding.SetType("remove_padding");
@@ -125,17 +131,27 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
+    // create variable in scope
+    scope->Var(remove_padding_out_name);
+    auto* remove_padding_out_tensor =
+        scope->FindVar(remove_padding_out_name)->GetMutable<LoDTensor>();
+    remove_padding_out_tensor->mutable_data<float>(platform::CUDAPlace());
+
     // rename
     op_node->Op()->RenameInput(input_node->Name(),
                                remove_padding_out_node->Name());
   };
 
-  // Create an remove_padding op node
+  // create an remove_padding op node
   auto insert_recover_padding_op = [&](Node* op_node, Node* out_node) {
+    // create op, var in graph
     OpDesc recover_padding;
     std::string recover_padding_input_name =
         out_node->Name() + ".recover_padding";
     VarDesc recover_padding_input(recover_padding_input_name);
+    recover_padding_input.SetDataType(out_node->Var()->GetDataType());
+    recover_padding_input.SetShape(out_node->Var()->GetShape());
+    recover_padding_input.SetPersistable(false);
 
     // recover_padding_op
     recover_padding.SetType("recover_padding");
@@ -168,6 +184,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
         recover_padding_op_node->outputs.push_back(out_node);
       }
     }
+
+    // create variable in scope
+    scope->Var(recover_padding_input_name);
+    auto* recover_padding_input_tensor =
+        scope->FindVar(recover_padding_input_name)->GetMutable<LoDTensor>();
+    recover_padding_input_tensor->mutable_data<float>(platform::CUDAPlace());
 
     // rename
     op_node->Op()->RenameOutput(out_node->Name(), recover_padding_input_name);

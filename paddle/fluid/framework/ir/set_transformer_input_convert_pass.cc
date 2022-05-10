@@ -103,7 +103,8 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
     VLOG(3) << "transformer_input_convert_pass for pos_id, max_seqlen";
 
     GET_IR_NODE_FROM_SUBGRAPH(lookup_table2_x, lookup_table2_x, fused_pattern);
-    // Create an transformer_input_convert op node
+
+    // create op, var in graph
     OpDesc new_desc;
     new_desc.SetType("transformer_input_convert");
 
@@ -116,8 +117,28 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetOutput("PosId", output_0);
     new_desc.SetOutput("MaxSeqlen", output_1);
 
+    std::string transformer_input_convert_out0_name = "pos_id_tensor";
+    std::string transformer_input_convert_out1_name = "max_seqlen_tensor";
+    VarDesc transformer_input_convert_out0(transformer_input_convert_out0_name);
+    VarDesc transformer_input_convert_out1(transformer_input_convert_out1_name);
+    transformer_input_convert_out0.SetDataType(proto::VarType::INT32);
+    transformer_input_convert_out1.SetDataType(proto::VarType::INT32);
+    transformer_input_convert_out0.SetShape({-1});
+    transformer_input_convert_out1.SetShape({-1});
+    transformer_input_convert_out0.SetPersistable(false);
+    transformer_input_convert_out1.SetPersistable(false);
+
     auto new_op_node = graph->CreateOpNode(&new_desc);
+    auto transformer_input_convert_out0_node =
+        graph->CreateVarNode(&transformer_input_convert_out0);
+    auto transformer_input_convert_out1_node =
+        graph->CreateVarNode(&transformer_input_convert_out1);
+
+    // needn't create variable in scope
+
     IR_NODE_LINK_TO(lookup_table2_x, new_op_node);
+    IR_NODE_LINK_TO(new_op_node, transformer_input_convert_out0_node);
+    IR_NODE_LINK_TO(new_op_node, transformer_input_convert_out1_node);
 
     found_subgraph_count++;
   };
