@@ -1194,13 +1194,14 @@ void IndexAddInferMeta(const MetaTensor& x,
       true,
       phi::errors::OutOfRange(
           "Attr(axis) is out of range, It's expected "
-          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          "to be in range of [-%d, %d). But received Attr(axis) = %d.",
           input_dim.size(),
-          input_dim.size() - 1,
+          input_dim.size(),
           axis));
 
   PADDLE_ENFORCE_EQ(
-      index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
+      // index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
+      index_dim.size() == 1 && index_dim[0] > 0,
       true,
       phi::errors::InvalidArgument(
           "The 'shape' of Input(Index) must be 1-D tensor. "
@@ -1208,11 +1209,6 @@ void IndexAddInferMeta(const MetaTensor& x,
           "the dimension of Input(Index) is [%d].",
           index_dim,
           index_dim.size()));
-
-  PADDLE_ENFORCE_EQ(
-      index_dim[0] != 0,
-      true,
-      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
 
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
