@@ -65,10 +65,8 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
-#endif
 
   int log2i(int x);
 
