@@ -1751,6 +1751,7 @@ set +x
             num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
             card_test "$line" 1 $num
         done < $PADDLE_ROOT/tools/single_txt
+        cp -f $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
         echo "EXIT_CODE:: "$EXIT_CODE
         single_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
