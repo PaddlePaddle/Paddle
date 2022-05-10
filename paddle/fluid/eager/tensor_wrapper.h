@@ -122,16 +122,20 @@ class TensorWrapper {
         VLOG(3) << "Recovered TensorWrapper with GradNode "
                 << new_grad_node->name() << " addr: " << new_grad_node.get();
       } else {
-        VLOG(3) << "Recovered TensorWrapper with Empth GradNode";
+        VLOG(3) << "Recovered TensorWrapper with Empty GradNode";
       }
       auto* intermediate_autograd_meta =
-          EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
-      auto p_ab_autograd_meta =
-          std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
-      if (new_grad_node) {
-        p_ab_autograd_meta->SetGradNode(new_grad_node);
+          EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+
+      if (intermediate_autograd_meta) {
+        auto p_ab_autograd_meta =
+            std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
+        if (new_grad_node) {
+          p_ab_autograd_meta->SetGradNode(new_grad_node);
+        }
+        recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
       }
-      recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
+
       return recovered_tensor;
     }
   }
