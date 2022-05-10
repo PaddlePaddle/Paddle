@@ -1259,8 +1259,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
-  } else if (run_phi_kernel_ && impl_ != nullptr) {
-    // TODO(DannyIsFunny): add InferShape method
+  } else if (run_phi_kernel_ && impl_ != nullptr &&
+             !need_transform_data_format_ && !need_transform_data_place_) {
     if (!all_kernels_must_compute_runtime_shape_)
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
     (*pt_kernel_)(impl_->getKernelContext());
@@ -1500,9 +1500,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("prepare_data",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
-    if (need_prepare_data_) {
-      transfer_scope = PrepareData(scope, *kernel_type_,
-                                   &transfered_inplace_vars, runtime_ctx);
+    if (need_transform_data_format_) {
+      transfer_scope = TransformDataFormat(
+          scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
     }
   }
   // exec scope is the scope that kernel actually executed on.
@@ -1528,7 +1528,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
-      PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
+      TransformDataPlace(exec_scope, *pt_kernel_, *kernel_signature_,
+                         runtime_ctx);
       if (enable_cache_runtime_context_) {
         impl_ =
             new CacheImpl(new phi::KernelContext(),
@@ -1890,7 +1891,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
   }
 }
 
-Scope* OperatorWithKernel::PrepareData(
+Scope* OperatorWithKernel::TransformDataFormat(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
@@ -2051,7 +2052,7 @@ Scope* OperatorWithKernel::PrepareData(
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
   if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
-    need_prepare_data_ = false;
+    need_transform_data_format_ = false;
   }
 
   return new_scope;
@@ -2262,7 +2263,7 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
-Scope* OperatorWithKernel::PreparePhiData(
+Scope* OperatorWithKernel::TransformDataPlace(
     const Scope& scope, const phi::Kernel& pt_kernel,
     const phi::KernelSignature& pt_kernel_signature,
     RuntimeContext* ctx) const {
@@ -2352,6 +2353,8 @@ Scope* OperatorWithKernel::PreparePhiData(
       Tensor out;
       framework::TensorCopySync(*tensor_in, expected_place, &out);
       SetTensorToVariable(*var, out, trans_var);
+
+      need_transform_data_place_ = true;
     }
   }
 
