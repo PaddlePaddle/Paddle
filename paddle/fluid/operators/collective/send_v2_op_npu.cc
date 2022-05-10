@@ -21,9 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/api/include/tensor.h"
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/phi/api/include/tensor.h"
-
 namespace paddle {
 namespace operators {
 

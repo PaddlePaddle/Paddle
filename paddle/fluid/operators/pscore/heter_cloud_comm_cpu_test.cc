@@ -133,7 +133,7 @@ void PressTestSendRecv(
   int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
-  file.read(reinterpret_cast<char*>(data_ptr), 9437184);
+  file.read((char*)data_ptr, 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
   int loopCnt = 10000;
@@ -168,7 +168,7 @@ void PressTestSendRecv(
   delete[] values;
 
   std::ofstream recv("/recv_20_34", std::ios::out | std::ios::binary);
-  recv.write(reinterpret_cast<char*>(values), data_size);
+  recv.write((char*)values, data_size);
   recv.close();
   t.join();
 }

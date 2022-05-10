@@ -21,9 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/api/include/tensor.h"
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/phi/api/include/tensor.h"
-
 namespace paddle {
 namespace operators {
 
@@ -34,7 +31,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
-    auto* x_var = ctx.InputVar("X");
     PADDLE_ENFORCE_GE(
         rid, 0,
         platform::errors::InvalidArgument(

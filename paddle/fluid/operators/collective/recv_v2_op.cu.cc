@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/api/include/tensor.h"
