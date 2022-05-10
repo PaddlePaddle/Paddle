@@ -66,6 +66,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
 
+    auto* x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensorArray>()) {
       auto& x_array = x_var->Get<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < x_array.size(); idx++) {
