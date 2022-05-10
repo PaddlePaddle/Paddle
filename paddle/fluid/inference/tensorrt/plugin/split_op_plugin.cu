@@ -150,7 +150,7 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   dim3 grid(std::min((inner_cols_ - 1) / block.x + 1, 65535u),
             std::min((axis_shape_ - 1) / block.y + 1, 65535u),
             std::min((outer_rows_ - 1) / block.z + 1, 65535u));
-  auto input_type = input_desc[0].type;
+  auto input_type = getDataType();
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
