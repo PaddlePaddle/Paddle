@@ -383,60 +383,75 @@ struct TernaryAddFunctor {
 template <typename T>
 class FMHAGateRef {
  public:
-  FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, int64_t batch_size,
-              int64_t seq_len_m, int64_t seq_len_r, int64_t num_head,
-              int64_t head_dim)
+  FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, bool is_merge,
+              int64_t batch_size, int64_t seq_len_m, int64_t seq_len_r,
+              int64_t m_size, int64_t num_head, int64_t key_dim)
       : dev_ctx_(dev_ctx),
+        is_merge_(is_merge),
         batch_size_(batch_size),
         seq_len_m_(seq_len_m),
         seq_len_r_(seq_len_r),
+        m_size_(m_size),
         num_head_(num_head),
-        head_dim_(head_dim) {}
+        key_dim_(key_dim) {}
 
-  void ComputeForward(const Tensor* nonbatched_bias, const Tensor& qkv_out,
-                      const Tensor* src_mask, Tensor* qkv_transpose_out,
+  void ComputeForward(const Tensor* nonbatched_bias, const Tensor& q_out,
+                      const Tensor& key_out, const Tensor& value_out,
+                      const Tensor& qkv_out, const Tensor* src_mask,
+                      Tensor* q_tranpose_out, Tensor* k_transpose_out,
+                      Tensor* v_transpose_out, Tensor* qkv_transpose_out,
                       Tensor* softmax_out, Tensor* qktv_out, Tensor* fmha_out) {
-    ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
-
+    T* q_ptr = nullptr;
+    T* k_ptr = nullptr;
+    T* v_ptr = nullptr;
+    if (is_merge_) {
+      ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
+      T* qkv_data = qkv_transpose_out->data<T>();
+      int64_t q_size =
+          batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * key_dim_;
+      int64_t k_size = q_size;
+      q_ptr = qkv_data;
+      k_ptr = q_ptr + q_size;
+      v_ptr = k_ptr + k_size;
+    } else {
+      ComputeQKVTransposeForward(q_out, key_out, value_out, q_tranpose_out,
+                                 k_transpose_out, v_transpose_out);
+      q_ptr = q_tranpose_out->data<T>();
+      k_ptr = k_transpose_out->data<T>();
+      v_ptr = v_transpose_out->data<T>();
+    }
     Tensor qk_out;
-    qk_out.Resize({batch_size_, seq_len_m_, num_head_, seq_len_r_, seq_len_r_});
+    qk_out.Resize({batch_size_, seq_len_m_, num_head_, seq_len_r_, m_size_});
     T* qk_out_data = qk_out.mutable_data<T>(dev_ctx_.GetPlace());
 
-    T* qkv_data = qkv_transpose_out->data<T>();
     T* qktv_out_data = qktv_out->data<T>();
     T* fmha_out_data = fmha_out->data<T>();
 
-    int64_t q_size =
-        batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
-    int64_t k_size = q_size;
-    T* q_ptr = qkv_data;
-    T* k_ptr = q_ptr + q_size;
-    T* v_ptr = k_ptr + k_size;
-
     // q*k^t, batched_gemm
+    // [bs, s_m, s_r, num_head, key_dim] * [bs, s_m, num_head, m_size, key_dim]
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * seq_len_m_ * num_head_;
     int gemm_m = seq_len_r_;
-    int gemm_n = seq_len_r_;
-    int gemm_k = head_dim_;
+    int gemm_n = m_size_;
+    int gemm_k = key_dim_;
 
-    T alpha = static_cast<T>(1.0 / sqrt(head_dim_));
+    T alpha = static_cast<T>(1.0 / sqrt(key_dim_));
     T beta = static_cast<T>(0.0);
     int64_t stride_a = gemm_m * gemm_k;
     int64_t stride_b = gemm_k * gemm_n;
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha, q_ptr,
                      k_ptr, beta, qk_out_data, gemm_batch_size, stride_a,
                      stride_b);
-
     ComputeBiasMaskSoftmaxForward(&qk_out, nonbatched_bias, src_mask,
                                   softmax_out);
-
+    // qk * v
+    // [bs, s_m, num_head, s_r, m_size] * [bs, s_m, num_head, m_size, key_dim]
     transB = CblasNoTrans;
     gemm_m = seq_len_r_;
-    gemm_n = head_dim_;
-    gemm_k = seq_len_r_;
+    gemm_n = key_dim_;
+    gemm_k = m_size_;
     alpha = static_cast<T>(1.0);
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
@@ -445,31 +460,54 @@ class FMHAGateRef {
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                      softmax_out_data, v_ptr, beta, qktv_out_data,
                      gemm_batch_size, stride_a, stride_b);
-
     ComputeQKTVTransposeForward(*qktv_out, fmha_out);
   }
 
-  void ComputeBackward(const Tensor& qkv_transpose_out, const Tensor* src_mask,
+  void ComputeBackward(const Tensor& q_transpose_out,
+                       const Tensor& k_transpose_out,
+                       const Tensor& v_transpose_out,
+                       const Tensor& qkv_transpose_out, const Tensor* src_mask,
                        const Tensor& softmax_out, const Tensor& fmha_out_grad,
                        const Tensor* nonbatched_bias,
                        Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
                        Tensor* softmax_out_grad, Tensor* src_mask_grad,
+                       Tensor* q_transpose_out_grad,
+                       Tensor* k_transpose_out_grad,
+                       Tensor* v_transpose_out_grad, Tensor* q_out_grad,
+                       Tensor* k_out_grad, Tensor* v_out_grad,
                        Tensor* qkv_transpose_out_grad, Tensor* qkv_out_grad) {
     ComputeQKTVTransposeBackward(fmha_out_grad, qktv_out_grad);
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
-    int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * head_dim_;
-    int k_size = q_size;
+    const T* q_ptr = nullptr;
+    const T* k_ptr = nullptr;
+    const T* v_ptr = nullptr;
+    T* q_grad_ptr = nullptr;
+    T* k_grad_ptr = nullptr;
+    T* v_grad_ptr = nullptr;
 
-    T* qkv_grad_ptr = qkv_transpose_out_grad->data<T>();
-    T* q_grad_ptr = qkv_grad_ptr;
-    T* k_grad_ptr = q_grad_ptr + q_size;
-    T* v_grad_ptr = k_grad_ptr + k_size;
+    if (is_merge_) {
+      int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * key_dim_;
+      int k_size = q_size;
 
-    const T* qkv_data = qkv_transpose_out.data<T>();
-    const T* q_ptr = qkv_data;
-    const T* k_ptr = q_ptr + q_size;
-    const T* v_ptr = k_ptr + k_size;
+      T* qkv_grad_ptr = qkv_transpose_out_grad->data<T>();
+      q_grad_ptr = qkv_grad_ptr;
+      k_grad_ptr = q_grad_ptr + q_size;
+      v_grad_ptr = k_grad_ptr + k_size;
+
+      const T* qkv_data = qkv_transpose_out.data<T>();
+      q_ptr = qkv_data;
+      k_ptr = q_ptr + q_size;
+      v_ptr = k_ptr + k_size;
+    } else {
+      q_grad_ptr = q_transpose_out_grad->data<T>();
+      k_grad_ptr = k_transpose_out_grad->data<T>();
+      v_grad_ptr = v_transpose_out_grad->data<T>();
+
+      q_ptr = q_transpose_out.data<T>();
+      k_ptr = k_transpose_out.data<T>();
+      v_ptr = v_transpose_out.data<T>();
+    }
 
     const T* softmax_out_data = softmax_out.data<T>();
     T* softmax_out_grad_data = softmax_out_grad->data<T>();
@@ -479,8 +517,8 @@ class FMHAGateRef {
     CBLAS_TRANSPOSE transA = CblasTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
     int gemm_batch_size = batch_size_ * seq_len_m_ * num_head_;
-    int gemm_m = seq_len_r_;
-    int gemm_n = head_dim_;
+    int gemm_m = m_size_;
+    int gemm_n = key_dim_;
     int gemm_k = seq_len_r_;
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
@@ -496,8 +534,8 @@ class FMHAGateRef {
     transA = CblasNoTrans;
     transB = CblasTrans;
     gemm_m = seq_len_r_;
-    gemm_n = seq_len_r_;
-    gemm_k = head_dim_;
+    gemm_n = m_size_;
+    gemm_k = key_dim_;
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
 
@@ -507,20 +545,20 @@ class FMHAGateRef {
 
     Tensor qk_out_grad;
     qk_out_grad.Resize(
-        {batch_size_, seq_len_m_, num_head_, seq_len_r_, seq_len_r_});
+        {batch_size_, seq_len_m_, num_head_, seq_len_r_, m_size_});
     T* qk_out_grad_data = qk_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
 
     ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out, src_mask,
                                    src_mask_grad, &qk_out_grad,
                                    nonbatched_bias_grad);
 
-    alpha = static_cast<T>(1.0 / sqrt(head_dim_));
+    alpha = static_cast<T>(1.0 / sqrt(key_dim_));
     // recall batchedgemm(nt) fw:  q_ptr * (k_ptr)^t = qk_out
     // bw: dy (seq_len * head_dim) = (dout)^t * x
     transA = CblasTrans;
     transB = CblasNoTrans;
-    gemm_m = seq_len_r_;
-    gemm_n = head_dim_;
+    gemm_m = m_size_;
+    gemm_n = key_dim_;
     gemm_k = seq_len_r_;
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
@@ -532,15 +570,46 @@ class FMHAGateRef {
     transA = CblasNoTrans;
     transB = CblasNoTrans;
     gemm_m = seq_len_r_;
-    gemm_n = head_dim_;
-    gemm_k = seq_len_r_;
+    gemm_n = key_dim_;
+    gemm_k = m_size_;
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                      qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
                      stride_a, stride_b);
+    if (is_merge_) {
+      ComputeQKVTransposeBackward(*qkv_transpose_out_grad, qkv_out_grad);
+    } else {
+      ComputeQKVTransposeBackward(*q_transpose_out_grad, *k_transpose_out_grad,
+                                  *v_transpose_out_grad, q_out_grad, k_out_grad,
+                                  v_out_grad);
+    }
+  }
 
-    ComputeQKVTransposeBackward(*qkv_transpose_out_grad, qkv_out_grad);
+  void ComputeQKVTransposeForward(const Tensor& q_out, const Tensor& k_out,
+                                  const Tensor& v_out, Tensor* q_transpose_out,
+                                  Tensor* k_transpose_out,
+                                  Tensor* v_transpose_out) {
+    int ndims = 5;
+    std::vector<int> perm = {0, 1, 3, 2, 4};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, q_out, perm, q_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, k_out, perm, k_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, v_out, perm, v_transpose_out);
+  }
+
+  void ComputeQKVTransposeBackward(const Tensor& q_transpose_out_grad,
+                                   const Tensor& k_transpose_out_grad,
+                                   const Tensor& v_transpose_out_grad,
+                                   Tensor* q_out_grad, Tensor* k_out_grad,
+                                   Tensor* v_out_grad) {
+    int ndims = 5;
+    std::vector<int> perm = {0, 1, 3, 2, 4};
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, q_transpose_out_grad, perm,
+                                q_out_grad);
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, k_transpose_out_grad, perm,
+                                k_out_grad);
+    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, v_transpose_out_grad, perm,
+                                v_out_grad);
   }
 
   // [batch_size, seq_len_m, seq_len_r, 3, num_head, c] ->
@@ -660,12 +729,13 @@ class FMHAGateRef {
 
  private:
   const platform::CUDADeviceContext& dev_ctx_;
-
+  bool is_merge_;
   int64_t batch_size_;
   int64_t seq_len_m_;
   int64_t seq_len_r_;
   int64_t num_head_;
-  int64_t head_dim_;
+  int64_t key_dim_;
+  int64_t m_size_;
 };
 
 }  // namespace operators
