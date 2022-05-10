@@ -159,6 +159,7 @@ inline void ClearMKLDNNCache(const platform::Place& place,
 inline void DontClearMKLDNNCache(const platform::Place& place) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
+    VLOG(4) << "Blocking next cache clearing";
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
