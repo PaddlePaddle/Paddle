@@ -503,14 +503,14 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t mom_desc, void* mom);
 
   static void ApplyAdam(const ExecutionContext& ctx,
+                        const cnnlTensorDescriptor_t var_desc, void* var,
+                        const cnnlTensorDescriptor_t m_desc, void* m,
+                        const cnnlTensorDescriptor_t v_desc, void* v,
                         const cnnlTensorDescriptor_t grad_desc,
                         const void* grad, const void* lr, const void* beta1,
                         const void* beta2, const void* beta1_power,
                         const void* beta2_power, const void* epsilon,
-                        const bool use_nesterov,
-                        const cnnlTensorDescriptor_t var_desc, void* var,
-                        const cnnlTensorDescriptor_t m_desc, void* m,
-                        const cnnlTensorDescriptor_t v_desc, void* v);
+                        const bool use_nesterov);
 
   static void ApplyAdaMax(const ExecutionContext& ctx,
                           const cnnlTensorDescriptor_t grad_desc,
