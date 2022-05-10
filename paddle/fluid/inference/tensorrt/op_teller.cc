@@ -120,7 +120,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "transformer_input_convert"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -184,7 +185,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
-      "multiclass_nms3"};
+      "multiclass_nms3",
+      "transformer_input_convert"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -1730,6 +1732,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "tensorrt";
           return false;
         }
+      }
+    }
+
+    if (op_type == "transformer_input_convert") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "transformer_input_convert_op: If you want to use "
+                   "transformer, must be with dynamic shape.";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
       }
     }
 
