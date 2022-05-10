@@ -56,7 +56,11 @@ class SwishPlugin : public PluginTensorRTV2Ext {
   int initialize() TRT_NOEXCEPT override;
 
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override {
-    return new SwishPlugin(beta_, with_fp16_);
+    auto* plugin = new SwishPlugin(beta_, with_fp16_);
+    plugin->data_format_ = data_format_;
+    plugin->data_type_ = data_type_;
+    plugin->input_dims_ = input_dims_;
+    return plugin;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
