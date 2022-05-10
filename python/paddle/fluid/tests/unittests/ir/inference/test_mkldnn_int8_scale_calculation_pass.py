@@ -19,10 +19,10 @@ import unittest
 import hypothesis.strategies as st
 
 
-class TestConvInt8ScalesMNkldnnPass(PassAutoScanTest):
+class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
-        config.pass_builder().append_pass("conv_int8_scales_pass")
+        config.pass_builder().append_pass("int8_scale_calculation_mkldnn_pass")
         yield config, ["conv2d"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
@@ -137,7 +137,9 @@ class TestConvInt8ScalesMNkldnnPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=100, passes=["conv_int8_scales_pass"])
+            quant=False,
+            max_examples=100,
+            passes=["int8_scale_calculation_mkldnn_pass"])
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_int8_scales_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 #include <gtest/gtest.h>
 
 namespace paddle {
@@ -87,7 +87,8 @@ void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
               std::vector<float> scale_weights = {1.5f}) {
   auto prog = BuildProgramDesc(convWithExistingBias, scale_weights);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  auto pass = PassRegistry::Instance().Get("conv_int8_scales_pass");
+  auto pass =
+      PassRegistry::Instance().Get("int8_scale_calculation_mkldnn_pass");
   int original_nodes_num = graph->Nodes().size();
   graph.reset(pass->Apply(graph.release()));
   int current_nodes_num = graph->Nodes().size();
@@ -119,21 +120,22 @@ void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
   EXPECT_EQ(original_nodes_num - removed_nodes_count, current_nodes_num);
 }
 
-TEST(ConvInt8ScalesPass, conv_int8_with_no_bias) {
+TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_no_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(false, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(ConvInt8ScalesPass, conv_int8_with_bias) {
+TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(true, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(ConvInt8ScalesPass, conv_int8_with_bias_scale_weights) {
+TEST(Int8ScaleCalculationMkldnnPass,
+     int8_scale_calculation_with_bias_scale_weights) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   std::vector<float> scale_weights = {1.5f, 2.3f};
@@ -144,4 +146,4 @@ TEST(ConvInt8ScalesPass, conv_int8_with_bias_scale_weights) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(conv_int8_scales_pass);
+USE_PASS(int8_scale_calculation_mkldnn_pass);

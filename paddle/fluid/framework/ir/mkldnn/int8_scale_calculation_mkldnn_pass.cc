@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_int8_scales_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -22,7 +22,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ConvInt8ScalesPass::ConvInt8ScalesPass() {
+Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -62,16 +62,17 @@ ConvInt8ScalesPass::ConvInt8ScalesPass() {
       .End();
 }
 
-void ConvInt8ScalesPass::ApplyImpl(ir::Graph* graph) const {
+void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
-  FusePassBase::Init("conv_int8_scales_pass", graph);
+  FusePassBase::Init("int8_scale_calculation_mkldnn_pass", graph);
   GraphPatternDetector gpd;
-  patterns::Conv conv_pattern(gpd.mutable_pattern(), "conv_int8_scales_pass");
+  patterns::Conv conv_pattern(gpd.mutable_pattern(),
+                              "int8_scale_calculation_mkldnn_pass");
   conv_pattern();
 
-  int found_conv_int8_scales_count = 0;
+  int found_int8_scales_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
@@ -160,18 +161,19 @@ void ConvInt8ScalesPass::ApplyImpl(ir::Graph* graph) const {
     conv_op->Op()->SetAttr("Sum_scale", sum_scale);
     conv_op->Op()->SetAttr("Output_shift_scale", output_shift_scale);
     conv_op->Op()->SetAttr("Activation_scale", activation_scale);
-    found_conv_int8_scales_count++;
+    found_int8_scales_count++;
   };
   gpd(graph, handler);
-  AddStatis(found_conv_int8_scales_count);
+  AddStatis(found_int8_scales_count);
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv_int8_scales_pass, paddle::framework::ir::ConvInt8ScalesPass);
-REGISTER_PASS_CAPABILITY(conv_int8_scales_pass)
+REGISTER_PASS(int8_scale_calculation_mkldnn_pass,
+              paddle::framework::ir::Int8ScaleCalculationMkldnnPass);
+REGISTER_PASS_CAPABILITY(int8_scale_calculation_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().LE(
             "conv2d", 1));
