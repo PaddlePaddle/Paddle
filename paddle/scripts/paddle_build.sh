@@ -1730,6 +1730,7 @@ set -x
         fi
 set +x
         EXIT_CODE=0;
+        cp -f ${PADDLE_ROOT}/tools/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
 
