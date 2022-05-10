@@ -37,6 +37,13 @@ extern PyTypeObject* p_tensor_type;
 
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
+  // NOTE(dev): [why not use egr::Controller::Instance::GernerateUniqueName()?]
+  // Beacause Controller must holder a tracer, but 'tensor.name' maybe called
+  // everywhere such as static mode in @to_static, which means tracer is None.
+  static egr::UniqueNameGenerator name_generator;
+  if (self->tensor.name().empty()) {
+    self->tensor.set_name(name_generator.Generate());
+  }
   return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
