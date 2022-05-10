@@ -552,18 +552,38 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
     """
     rrelu activation.
 
-    `Empirical Evaluation of Rectified Activations in Convolutional Network`: https://arxiv.org/abs/1505.00853
+    Applies the randomized leaky rectified liner unit function, as described in the paper:
+    `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`
+
+    During training, randomly samples the negative slope for activation values as described below:
 
     .. math::
 
-        \text{RReLU}(x) =
-                \begin{cases}
-                x & \text{if } x \geq 0 \\
-                ax & \text{ otherwise }
-                \end{cases}
+        rrelu(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    a * x, & & otherwise \\
+                \end{array}
+            \right.
 
     where :math:`x` is the input tensor,
     :math:`a` is randomly sampled from uniform distribution in range (:math:`lower`, :math:`upper`),
+
+    In the test phase, the negative slope will take the average value of :math:`lower` and :math:`upper`:
+
+    .. math::
+
+        rrelu(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    (lower + upper) * 0.5 * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`lower` and :math:`upper` are the bounds of uniform distribution.
 
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, float64.
