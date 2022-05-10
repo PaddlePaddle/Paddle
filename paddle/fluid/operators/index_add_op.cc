@@ -50,11 +50,12 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.0f);
     AddOutput("Out",
               "(Tensor, default Tensor<float>),"
-              " the output of  IndexAddOp, whose dtype is the same as X.");
+              " the output of  IndexAddOp, whose dtype and shape is the same as X.");
     AddComment(R"DOC(
 index_add operator.
 Add the elements of the input tensor with value
-by selecting the indices in the order given in index.
+by selecting the indices in the order given in 'index'
+on the axis 'axis'.
 
 This operator also supports inplace modification.
         )DOC");
@@ -91,7 +92,7 @@ DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
+// DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -110,5 +111,5 @@ DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,
 
 REGISTER_OPERATOR(index_add_grad, ops::IndexAddGradOp,
                   ops::IndexAddGradInplaceInferer,
-                  ops::IndexAddGradNoNeedBufferVarsInferer,
+                  // ops::IndexAddGradNoNeedBufferVarsInferer,
                   IndexAddGradInferShapeFunctor);
