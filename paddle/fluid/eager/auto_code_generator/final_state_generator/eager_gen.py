@@ -1226,12 +1226,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         indent = GetIndent(1)
 
-        print("########## backward_api_name: ", backward_api_name)
-        print("########## backward_forward_inputs_map: ",
-              backward_forward_inputs_map)
-        print("########## backward_grad_inputs_map: ", backward_grad_inputs_map)
-        print("########## grad_node_out_list: ", grad_node_out_list)
-
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
         grad_api_args_len = len(backward_forward_inputs_map.keys()) + len(
