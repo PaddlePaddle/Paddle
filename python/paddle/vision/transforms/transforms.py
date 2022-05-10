@@ -1302,21 +1302,23 @@ class RandomPerspective(BaseTransform):
     """Random perspective transformation with a given probability.
 
     Args:
-        prob (float): Probability of using transformed. Default is 0.5.
-        distortion_scale (float): argument to control the degree of distortion and ranges from 0 to 1.
-            Default is 0.5.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend. when use pil backend, support method are as following: 
+        prob (float, optional): Probability of using transformation, ranges from
+            0 to 1, default is 0.5.
+        distortion_scale (float, optional): Degree of distortion, ranges from
+            0 to 1, default is 0.5.
+        interpolation (str, optional): Interpolation method. If omitted, or if
+            the image has only one channel, it is set to PIL.Image.NEAREST or
+            cv2.INTER_NEAREST.
+            When use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
             - "bilinear": Image.BILINEAR, 
             - "bicubic": Image.BICUBIC
-            when use cv2 backend, support method are as following: 
+            When use cv2 backend, support method are as following: 
             - "nearest": cv2.INTER_NEAREST, 
             - "bilinear": cv2.INTER_LINEAR, 
             - "bicubic": cv2.INTER_CUBIC
-        fill (sequence or number): Pixel fill value for the area outside the transformed
-            image. Default is ``0``. If given a number, the value is used for all bands respectively.
+        fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -1330,16 +1332,15 @@ class RandomPerspective(BaseTransform):
     
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
+            import paddle
             from paddle.vision.transforms import RandomPerspective
 
             transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
 
-            fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
+            fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
 
             fake_img = transform(fake_img)
-            print(fake_img.size)
+            print(fake_img.shape)
     """
 
     def __init__(self,
