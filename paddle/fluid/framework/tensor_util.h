@@ -180,6 +180,11 @@ void TensorFromArray(const T* src, const size_t& array_size,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  }
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
@@ -247,9 +252,7 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -448,9 +451,7 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #ifdef PADDLE_WITH_MLU
   else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

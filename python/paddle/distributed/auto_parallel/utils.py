@@ -159,11 +159,11 @@ def print_program_with_dist_attr(program, dist_context=None):
     from .dist_context import set_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
-        print(program)
+        print(program, flush=True)
     else:
         original_default_context = get_default_distributed_context()
         set_default_distributed_context(dist_context)
-        print(program)
+        print(program, flush=True)
         set_default_distributed_context(original_default_context)
     lock.release()
 

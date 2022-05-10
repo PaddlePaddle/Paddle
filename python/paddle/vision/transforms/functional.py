@@ -714,9 +714,33 @@ def erase(img, i, j, h, w, v, inplace=False):
 
                 import paddle
                 
-                fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
+                fake_img = paddle.randn((3, 2, 4)).astype(paddle.float32)
+                print(fake_img)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025, -0.97859967, -1.39175487, -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #        [[-0.14993843,  1.10793507, -0.40056887, -1.94395220],
+                #         [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #        [[-0.24998808, -1.47699273, -0.88838995,  0.42629015],
+                #         [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+
                 values = paddle.zeros((1,1,1), dtype=paddle.float32)
-                result = paddle.vision.transforms.erase(fake_img, 4, 4, 3, 3, values)
+                result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
+                
+                print(result)
+
+                #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                #       [[[ 0.02169025,  0.        ,  0.        , -1.07478464],
+                #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
+                #
+                #         [[-0.14993843,  0.        ,  0.        , -1.94395220],
+                #           [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
+                #
+                #         [[-0.24998808,  0.        ,  0.        ,  0.42629015],
+                #          [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
 
     """
     if _is_tensor_image(img):
