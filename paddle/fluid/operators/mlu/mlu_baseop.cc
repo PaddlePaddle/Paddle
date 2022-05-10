@@ -2077,6 +2077,45 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   }
 }
 
+/* static */ void MLUCnnl::LayerNormForward(
+    const ExecutionContext& ctx, int axis, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t weight_bias_desc,
+    const void* weight, const void* bias, float eps,
+    const cnnlTensorDescriptor_t y_desc, void* y,
+    const cnnlTensorDescriptor_t mean_rstd_desc, void* saved_mean,
+    void* saved_rstd) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlGetLayerNormOpWorkspaceSize(handle, axis, x_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlLayerNormForward(handle, x_desc, x, axis, weight_bias_desc, weight,
+                           bias, eps, workspace_ptr, workspace_size, y_desc, y,
+                           mean_rstd_desc, saved_mean, saved_rstd));
+}
+
+/* static */ void MLUCnnl::LayerNormBackward(
+    const ExecutionContext& ctx, int axis, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t diff_z_desc, const void* diff_z,
+    const cnnlTensorDescriptor_t weight_bias_desc, const void* weight,
+    const cnnlTensorDescriptor_t mean_rstd_desc, const void* saved_mean,
+    const void* saved_rstd, const cnnlTensorDescriptor_t diff_x_desc,
+    void* diff_x, void* diff_weight, void* diff_bias) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlLayerNormBackward(
+      handle, x_desc, x, axis, diff_z_desc, diff_z, weight_bias_desc, weight,
+      mean_rstd_desc, saved_mean, saved_rstd, diff_x_desc, diff_x, diff_weight,
+      diff_bias));
+}
+
 /* static */ void MLUCnnl::QuantizeParam(
     const ExecutionContext& ctx, const cnnlQuantizeMode_t mode,
     const int bitwidth, const cnnlTensorDescriptor_t input_desc,
