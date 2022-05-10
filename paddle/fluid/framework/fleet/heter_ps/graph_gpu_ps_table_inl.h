@@ -474,6 +474,27 @@ void GpuPsGraphTable::build_graph_on_single_gpu(GpuPsCommGraph& g, int i) {
     gpu_graph_list[i].neighbor_size = 0;
   }
 }
+
+void GpuPsGraphTable::init_sample_status() {
+  for (int i = 0; i < gpu_num; i++) {
+    if (gpu_graph_list[i].neighbor_size) {
+      platform::CUDADeviceGuard guard(resource_->dev_id(i));
+      int* addr;
+      cudaMalloc((void**)&addr, gpu_graph_list[i].neighbor_size * sizeof(int));
+      cudaMemset(addr, 0, gpu_graph_list[i].neighbor_size * sizeof(int));
+      sample_status[i] = addr;
+    }
+  }
+}
+
+void GpuPsGraphTable::free_sample_status() {
+  for (int i = 0; i < gpu_num; i++) {
+    if (sample_status[i] != NULL) {
+      platform::CUDADeviceGuard guard(resource_->dev_id(i));
+      cudaFree(sample_status[i]);
+    }
+  }
+}
 void GpuPsGraphTable::build_graph_from_cpu(
     std::vector<GpuPsCommGraph>& cpu_graph_list) {
   VLOG(0) << "in build_graph_from_cpu cpu_graph_list size = "

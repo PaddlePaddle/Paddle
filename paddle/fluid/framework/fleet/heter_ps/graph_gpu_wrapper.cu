@@ -18,6 +18,7 @@
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS
+/*
 std::string nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
@@ -52,7 +53,7 @@ void prepare_file(char file_name[]) {
   }
   ofile.close();
 }
-
+*/
 void GraphGpuWrapper::set_device(std::vector<int> ids) {
   for (auto device_id : ids) {
     device_id_mapping.push_back(device_id);
@@ -205,6 +206,7 @@ void GraphGpuWrapper::upload_batch(int idx,
   // g->build_graph_from_cpu(vec);
 }
 
+/*
 void GraphGpuWrapper::initialize() {
   std::vector<int> device_id_mapping;
   for (int i = 0; i < 2; i++) device_id_mapping.push_back(i);
@@ -267,6 +269,7 @@ void GraphGpuWrapper::initialize() {
   vec[1].display_on_cpu();
   g->build_graph_from_cpu(vec);
 }
+*/
 void GraphGpuWrapper::test() {
   int64_t cpu_key[3] = {0, 1, 2};
   void *key;
@@ -311,10 +314,11 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
 
+  std::cerr << "start to call sample\n";
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
-
+  std::cerr << "calling sample done\n";
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),
@@ -323,7 +327,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   for (int i = 0; i < key.size(); i++) {
     cumsum += actual_sample_size[i];
   }
-  /* VLOG(0) << "cumsum " << cumsum; */
+  VLOG(0) << "cumsum " << cumsum;
 
   std::vector<int64_t> cpu_key, res;
   cpu_key.resize(key.size() * sample_size);
@@ -340,11 +344,18 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   /* for(int i = 0;i < res.size();i ++) { */
   /*     VLOG(0) << i << " " << res[i]; */
   /* } */
-
+  delete[] actual_sample_size;
   cudaFree(cuda_key);
   return res;
 }
 
+void GraphGpuWrapper::init_sample_status() {
+  ((GpuPsGraphTable *)graph_table)->init_sample_status();
+}
+
+void GraphGpuWrapper::free_sample_status() {
+  ((GpuPsGraphTable *)graph_table)->free_sample_status();
+}
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int start,
                                                  int query_size) {
   return ((GpuPsGraphTable *)graph_table)

@@ -454,6 +454,7 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
       buffer.push_back(x);
       if (buffer.size() >= fixed_size) {
         int64_t res = load_graph_to_memory_from_ssd(idx, buffer);
+        buffer.clear();
         byte_size -= res;
       }
       if (byte_size <= 0) break;
