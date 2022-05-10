@@ -805,17 +805,17 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::ApplyAdam(
-    const ExecutionContext& ctx, const cnnlTensorDescriptor_t grad_desc,
-    const void* grad, const void* lr, const void* beta1, const void* beta2,
-    const void* beta1_power, const void* beta2_power, const void* epsilon,
-    const bool use_nesterov, const cnnlTensorDescriptor_t var_desc, void* var,
-    const cnnlTensorDescriptor_t m_desc, void* m,
-    const cnnlTensorDescriptor_t v_desc, void* v) {
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t var_desc,
+    void* var, const cnnlTensorDescriptor_t m_desc, void* m,
+    const cnnlTensorDescriptor_t v_desc, void* v,
+    const cnnlTensorDescriptor_t grad_desc, const void* grad, const void* lr,
+    const void* beta1, const void* beta2, const void* beta1_power,
+    const void* beta2_power, const void* epsilon, const bool use_nesterov) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlApplyAdam(
-      handle, grad_desc, var, grad_desc, m, grad_desc, v, grad_desc, grad, lr,
-      beta1, beta2, beta1_power, beta2_power, epsilon, use_nesterov));
+      handle, var_desc, var, m_desc, m, v_desc, v, grad_desc, grad, lr, beta1,
+      beta2, beta1_power, beta2_power, epsilon, use_nesterov));
 }
 
 /* static */ void MLUCnnl::ApplyAdaMax(
