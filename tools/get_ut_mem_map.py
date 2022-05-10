@@ -31,7 +31,7 @@ def get_ut_mem(rootPath):
             mem_nvidia1 = -1
             caseTime = -1
             for line in lines:
-                if '[Memory Usage (MB)] gpu' in line:
+                if '[Memory Usage (Byte)] gpu' in line:
                     mem_reserved = round(
                         float(
                             line.split(' : Reserved = ')[1].split(

@@ -53,6 +53,9 @@ DECLARE_uint64(gpu_memory_limit_mb);
 PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log, false,
                             "Whether to print the message of gpu memory usage "
                             "at exit, mainly used for UT and CI.");
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb, true,
+                            "Whether to print the message of gpu memory usage "
+                            "MB as a unit of measurement.");
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -156,11 +159,18 @@ class RecordedGpuMallocHelper {
  public:
   ~RecordedGpuMallocHelper() {
     if (FLAGS_enable_gpu_memory_usage_log) {
-      std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
-                << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) / 1048576.0
-                << ", Allocated = "
-                << MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) / 1048576.0
-                << std::endl;
+      if (FLAGS_enable_gpu_memory_usage_log_mb) {
+        std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
+                  << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) / 1048576.0
+                  << ", Allocated = "
+                  << MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) / 1048576.0
+                  << std::endl;
+      } else {
+        std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : Reserved = "
+                  << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
+                  << ", Allocated = "
+                  << MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) << std::endl;
+      }
     }
   }
 
