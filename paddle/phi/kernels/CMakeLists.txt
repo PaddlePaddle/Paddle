@@ -10,6 +10,15 @@ file(
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
 
+set(file_name ${CMAKE_CURRENT_BINARY_DIR}/pch_dummy.cpp)
+generate_dummy_static_lib(LIB_NAME "pch" GENERATOR "phi.cmake" FILE_PATH ${file_name})
+set_target_properties(pch PROPERTIES LINKER_LANGUAGE CXX)
+target_precompile_headers(pch PUBLIC 
+    ${PADDLE_SOURCE_DIR}/paddle/phi/backends/cpu/cpu_context.h 
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/dense_tensor.h 
+    ${PADDLE_SOURCE_DIR}/paddle/phi/core/kernel_registry.h 
+    ${PADDLE_SOURCE_DIR}/paddle/phi/common/scalar.h)
+
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
 
@@ -39,6 +48,7 @@ set(COMMON_KERNEL_DEPS
     vol2col
     concat_and_split_functor
     selected_rows_functor)
+
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils)
