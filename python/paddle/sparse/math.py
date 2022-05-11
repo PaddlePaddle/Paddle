@@ -16,7 +16,28 @@ sparse math functions
 """
 from __future__ import print_function
 
-from paddle import _C_ops, in_dynamic_mode, device
+from paddle import _C_ops, in_dynamic_mode, device, int32, int64
+import paddle
+from paddle.sparse import sparse_coo_tensor, sparse_csr_tensor
+
+
+def _cast_coo(x, dtype, name=None):
+    indices = x.indices()
+    values = paddle.cast(x.values(), dtype)
+    return sparse_coo_tensor(indices, values, x.shape)
+
+
+def _cast_csr(x, dtype, name=None):
+    crows = x.crows()
+    cols = x.cols()
+    values = paddle.cast(x.values(), dtype)
+    return sparse_csr_tensor(crows, cols, values, x.shape)
+
+
+def _cast(x, dtype, name=None):
+    if x.is_sparse_coo():
+        return _cast_coo(x, dtype, name)
+    return _cast_csr(x, dtype, name)
 
 
 def add(x, y, name=None):
@@ -213,7 +234,14 @@ def divide(x, y, name=None):
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
     assert x.is_sparse_csr() == y.is_sparse_csr(
     ), f"Expect sparse tensor type to be same"
-    if x.is_sparse_coo() and y.is_sparse_coo():
-        return _C_ops.final_state_sparse_div_coo(x, y)
 
-    return _C_ops.final_state_sparse_div_csr(x, y)
+    if x.dtype in [int32, int64]:
+        cx = _cast(x, 'float32')
+        cy = _cast(y, 'float32')
+        if x.is_sparse_coo() and y.is_sparse_coo():
+            return _C_ops.final_state_sparse_div_coo(cx, cy)
+        return _C_ops.final_state_sparse_div_csr(cx, cy)
+    else:
+        if x.is_sparse_coo() and y.is_sparse_coo():
+            return _C_ops.final_state_sparse_div_coo(x, y)
+        return _C_ops.final_state_sparse_div_csr(x, y)
