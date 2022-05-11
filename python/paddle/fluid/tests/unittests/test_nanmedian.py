@@ -123,8 +123,6 @@ class TestNanmedian(unittest.TestCase):
 
         for name, data in self.fake_data.items():
             test_data_case(data)
-            if "_normal" in name:
-                test_data_case(data)
 
         for axis in self.axis_candiate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
@@ -181,11 +179,12 @@ class TestNanmedian(unittest.TestCase):
 
             mid = int(valid_cnts / 2)
             targets = [x_np_sorted[i, mid]]
-            if valid_cnts % 2 == 0 and mid > 0:
+            is_odd = valid_cnts % 2
+            if not is_odd and mid > 0:
                 targets.append(x_np_sorted[i, mid - 1])
             for j in range(shape[1]):
                 if x_np[i, j] in targets:
-                    np_grad[i, j] = 1
+                    np_grad[i, j] = 1 if is_odd else 0.5
 
         x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
         y = paddle.nanmedian(x_tensor, axis=1, keepdim=True)

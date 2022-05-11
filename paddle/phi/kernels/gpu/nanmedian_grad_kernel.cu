@@ -33,12 +33,19 @@ __global__ void KernelNanmedianGrad(const T* x_ptr,
                                     const T* out_grad_ptr,
                                     T* x_grad_ptr,
                                     int64_t stride,
-                                    int64_t pre_dim) {
+                                    int64_t pre_dim,
+                                    T div_factor) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
     if (medians_ptr[2 * index] >= 0) {
-      x_grad_ptr[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
-      x_grad_ptr[offset + medians_ptr[2 * index + 1]] = out_grad_ptr[index];
+      if (medians_ptr[2 * index] == medians_ptr[2 * index + 1]) {
+        x_grad_ptr[offset + medians_ptr[2 * index]] = out_grad_ptr[index];
+      } else {
+        x_grad_ptr[offset + medians_ptr[2 * index]] =
+            out_grad_ptr[index] / div_factor;
+        x_grad_ptr[offset + medians_ptr[2 * index + 1]] =
+            out_grad_ptr[index] / div_factor;
+      }
     }
   }
 }
@@ -64,9 +71,10 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
 
+  T div_factor = static_cast<T>(2.0);
   KernelNanmedianGrad<
       T><<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-      x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, pre_dim);
+      x_ptr, m_ptr, out_grad_ptr, x_grad_ptr, stride, pre_dim, div_factor);
 }
 
 template <typename T, typename Context>

@@ -47,49 +47,50 @@ void CalcMedianFunc(const Context& dev_ctx,
       dev_ctx, x, Scalar(sort_k), -1, false, true, &sort_out, &sort_indices);
 
   T div_factor = static_cast<T>(2.0);
-  int64_t pos = 0;
+  int64_t offset = 0;
   int64_t i = 0;
   bool is_ori_odd = stride & 1;
   if (should_ignore_nan) {
     for (i = 0; i < pre_dim; i++) {
+      offset = i * pre_dim;
       if (nan_counts[i] == stride) {
         m_ptr[i * 2] = -1;
         m_ptr[i * 2 + 1] = -1;
-        o_ptr[i] = sort_out_ptr[pos];
+        o_ptr[i] = sort_out_ptr[offset];
       } else {
         int64_t nan_k = nan_counts[i] > 0
                             ? static_cast<int64_t>(stride - nan_counts[i])
                             : sort_k;
         int64_t row_pos = static_cast<int64_t>(nan_k >> 1);
-        int64_t off_set = pos + row_pos;
+        int64_t pos = offset + row_pos;
         if (nan_k & 1) {
-          m_ptr[2 * i] = sort_indices_ptr[off_set];
-          m_ptr[2 * i + 1] = sort_indices_ptr[off_set];
-          o_ptr[i] = sort_out_ptr[off_set];
+          m_ptr[2 * i] = sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+          o_ptr[i] = sort_out_ptr[pos];
         } else {
-          m_ptr[2 * i] = row_pos > 0 ? sort_indices_ptr[off_set - 1]
-                                     : sort_indices_ptr[off_set];
-          m_ptr[2 * i + 1] = sort_indices_ptr[off_set];
+          m_ptr[2 * i] =
+              row_pos > 0 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
           T m_val_left =
-              row_pos > 0 ? sort_out_ptr[off_set - 1] : sort_out_ptr[off_set];
-          T m_val_right = sort_out_ptr[off_set];
+              row_pos > 0 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
+          T m_val_right = sort_out_ptr[pos];
           o_ptr[i] = (m_val_left + m_val_right) / div_factor;
         }
       }
-      pos += sort_k;
     }
   } else {
-    pos = -1;
     if (is_ori_odd) {
       for (i = 0; i < pre_dim; i++) {
-        pos += sort_k;
+        offset = i * sort_k;
+        int64_t pos = offset + sort_k - 1;
         o_ptr[i] = sort_out_ptr[pos];
         m_ptr[2 * i] = sort_indices_ptr[pos];
         m_ptr[2 * i + 1] = sort_indices_ptr[pos];
       }
     } else {
       for (i = 0; i < pre_dim; i++) {
-        pos += sort_k;
+        offset = i * sort_k;
+        int64_t pos = offset + sort_k - 1;
         m_ptr[2 * i] =
             sort_k > 1 ? sort_indices_ptr[pos - 1] : sort_indices_ptr[pos];
         m_ptr[2 * i + 1] = sort_indices_ptr[pos];
@@ -172,10 +173,10 @@ void BaseMedianKernel(const Context& dev_ctx,
                       bool ignore_nan) {
   DenseTensor x;
   auto rank = input.dims().size();
-  if (axes.size() == 0) {
+  if ((axes.size() == 0) || rank <= 1) {
     x = input;
     x.Resize({input.numel()});
-  } else if (rank > 1) {
+  } else {
     PreprocessMedianKernel<T, Context>(dev_ctx, input, axes, &x);
   }
 

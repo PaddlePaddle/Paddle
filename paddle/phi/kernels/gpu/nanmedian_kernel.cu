@@ -254,10 +254,10 @@ void BaseMedianKernel(const Context& dev_ctx,
                       DenseTensor* median_index) {
   DenseTensor x;
   auto rank = input.dims().size();
-  if (axes.size() == 0) {
+  if ((axes.size() == 0) || rank <= 1) {
     x = input;
     x.Resize({input.numel()});
-  } else if (rank > 1) {
+  } else {
     PreprocessMedianKernel<T, Context>(dev_ctx, input, axes, &x);
   }
 

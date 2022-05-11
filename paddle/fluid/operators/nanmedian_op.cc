@@ -53,7 +53,7 @@ class NanmedianOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default true) "
                   "If true, retain the reduced axis with length 1.")
         .SetDefault(true);
-    AddAttr<std::vector<int>>("axes",
+    AddAttr<std::vector<int>>("axis",
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to calculate medians")
         .SetDefault({});

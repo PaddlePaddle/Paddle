@@ -327,7 +327,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         raise ValueError("Axis has duplicated elements.")
 
     if _in_legacy_dygraph():
-        median_index, out = _C_ops.nanmedian(x, 'axes', axis, 'keepdim',
+        median_index, out = _C_ops.nanmedian(x, 'axis', axis, 'keepdim',
                                              keepdim)
         return out
 
@@ -336,7 +336,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         'nanmedian')
 
     helper = LayerHelper('nanmedian', **locals())
-    attrs = {'axes': axis, 'keepdim': keepdim}
+    attrs = {'axis': axis, 'keepdim': keepdim}
     out = helper.create_variable_for_type_inference(x.dtype)
     medians = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
