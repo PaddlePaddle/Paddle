@@ -71,7 +71,7 @@
   forward : add_n (Tensor[] x) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad)
   output : Tensor[](x_grad){x.size()}
-  invoke : add_n_grad_impl(x, out_grad)
+  invoke : add_n_grad_impl(x, out_grad, x_grad)
   no_need_buffer : x
 
 - backward_api : add_triple_grad
@@ -286,7 +286,7 @@
   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
   output : Tensor(input_grad), Tensor(filter_grad)
-  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  invoke : conv2d_grad_impl(input, filter, out_grad,  strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, input_grad, filter_grad)
   backward : conv2d_grad_grad
 
 - backward_api : conv2d_grad_grad
@@ -766,7 +766,7 @@
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  invoke : imag_grad_impl(out_grad)
+  invoke : imag_grad_impl(out_grad, x_grad)
 
 - backward_api : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
@@ -1395,7 +1395,7 @@
   forward : real (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  invoke : real_grad_impl(out_grad)
+  invoke : real_grad_impl(out_grad, x_grad)
 
 - backward_api : reciprocal_grad
   forward : reciprocal (Tensor x) -> Tensor(out)
@@ -1796,7 +1796,7 @@
   forward : sum_double_grad (Tensor grad_grad_x, int64_t[] dims={}, bool keep_dim=false) -> Tensor(grad_grad_out)
   args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(grad_grad_x_grad)
-  invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all)
+  invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
   no_need_buffer : x
 
 - backward_api : swish_grad
