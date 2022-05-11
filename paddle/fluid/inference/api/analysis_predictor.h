@@ -189,6 +189,14 @@ class AnalysisPredictor : public PaddlePredictor {
 #endif
 
   ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  void *GetExecStream() const override;
+
+  ///
   /// \brief Create feed fetch variables
   ///
   /// \param[in] scope Scope needed to create variables
@@ -397,6 +405,9 @@ class AnalysisPredictor : public PaddlePredictor {
   FRIEND_TEST(AnalysisPredictor, with_gpu);
 #endif
 
+ protected:
+  const void *GetDeviceContexts() const override;
+
  private:
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
@@ -404,10 +415,9 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
-  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
-      *GetGlobalDeviceContexts();
-  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
-      *GetDeviceContexts();
+  const std::map<phi::Place,
+                 std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      *GetGlobalDeviceContexts() const;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related

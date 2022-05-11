@@ -174,7 +174,10 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
+
+ protected:
+  const void *GetDeviceContexts() const override;
 
  private:
   ///

@@ -32,7 +32,7 @@ namespace paddle_infer {
 struct TensorWrapper : public Tensor {
   TensorWrapper(paddle_infer::PlaceType place, paddle::framework::Scope* scope,
                 const std::string& name)
-      : Tensor{static_cast<void*>(scope)} {
+      : Tensor{static_cast<void*>(scope), nullptr} {
     SetPlace(place, 0 /*device_id*/);
     SetName(name);
     input_or_output_ = true;

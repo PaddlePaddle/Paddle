@@ -54,6 +54,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -459,18 +460,41 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
   resource_.reset(new ResourceManager(place_, stream));
 }
 
-std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
-    *AnalysisPredictor::GetGlobalDeviceContexts() {
+void *AnalysisPredictor::GetExecStream() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (place_.GetType() == phi::AllocationType::GPU) {
+    if (private_context_) {
+      if (status_is_cloned_) {
+        return clone_stream_;
+      } else {
+        return reinterpret_cast<const phi::GPUContext *>(
+                   device_contexts_.at(place_).get().get())
+            ->stream();
+      }
+    } else {
+      return reinterpret_cast<const phi::GPUContext *>(
+                 GetGlobalDeviceContexts()->at(place_).get().get())
+          ->stream();
+    }
+  } else {
+    return nullptr;
+  }
+#else
+  // TODO(inference): Support other backends.
+  return nullptr;
+#endif
+}
+
+const std::map<phi::Place,
+               std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+    *AnalysisPredictor::GetGlobalDeviceContexts() const {
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
   const auto &dev_ctxs = pool.device_contexts();
-  return &const_cast<std::map<
-      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> &>(
-      dev_ctxs);
+  return &dev_ctxs;
 }
 
-std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
-    *AnalysisPredictor::GetDeviceContexts() {
+const void *AnalysisPredictor::GetDeviceContexts() const {
   if (private_context_) {
     return &device_contexts_;
   } else {
@@ -911,7 +935,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 
   // Run the inference program
   // if share variables, we need not create variables
-  auto *dev_ctxs = GetDeviceContexts();
+  auto *dev_ctxs = reinterpret_cast<const std::map<
+      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+      GetDeviceContexts());
   executor_->Run(dev_ctxs);
 
   // get fetch variable
@@ -1549,7 +1575,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
-  auto *dev_ctxs = GetDeviceContexts();
+  auto *dev_ctxs = reinterpret_cast<const std::map<
+      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+      GetDeviceContexts());
   executor_->Run(dev_ctxs);
 
   if (config_.shape_range_info_collected()) {
@@ -2072,6 +2100,10 @@ void Predictor::ClearIntermediateTensor() {
 }
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
+
+const void *Predictor::GetExecStream() const {
+  return predictor_->GetExecStream();
+}
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -183,10 +184,13 @@ void Tensor::CopyFromCpu(const T *data) {
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-    auto *p = static_cast<paddle::AnalysisPredictor *>(predictor_);
     paddle::platform::CUDAPlace gpu_place(device_);
-    auto *dev_ctx = static_cast<phi::GPUContext *>(
-        p->GetDeviceContexts()->at(gpu_place).get().get());
+    auto *p = static_cast<paddle::PaddlePredictor *>(predictor_);
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        p->GetDeviceContexts());
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     auto *t_data = tensor->mutable_data<T>(gpu_place);
 
     paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
@@ -360,9 +364,12 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto gpu_place = t_place;
-    auto *p = static_cast<paddle::AnalysisPredictor *>(predictor_);
-    auto *dev_ctx = static_cast<phi::GPUContext *>(
-        p->GetDeviceContexts()->at(gpu_place).get().get());
+    auto *p = static_cast<paddle::PaddlePredictor *>(predictor_);
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        p->GetDeviceContexts());
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), gpu_place, t_data,
                          ele_num * sizeof(T), dev_ctx->stream());

@@ -262,7 +262,10 @@ class MKLDNNConvBatchNormPassTest {
       FillTensorWithRandomData(variance2_tensor, 1.0f, 2.0f, place);
     }
 
-    exe.Run();
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    const auto& dev_ctxs = pool.device_contexts();
+    exe.Run(&dev_ctxs);
 
     // Get result without IR passes applied
     // Need to copy result over as the same scope is used in both executors
@@ -283,7 +286,7 @@ class MKLDNNConvBatchNormPassTest {
     graph2program_pass->Apply(graph.release());
 
     exe.Prepare(&scope, optimized_prog, 0, false);
-    exe.Run();
+    exe.Run(&dev_ctxs);
 
     auto* ir_result = exe.FindTensor("m");
 

@@ -149,6 +149,14 @@ class PD_INFER_DECL Predictor {
   ///
   uint64_t TryShrinkMemory();
 
+  ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  const void* GetExecStream() const;
+
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
   friend class paddle_infer::experimental::InternalUtils;

@@ -300,6 +300,13 @@ class PD_INFER_DECL PaddlePredictor {
   struct Config {
     std::string model_dir; /*!< path to the model directory. */
   };
+
+  virtual void* GetExecStream() const { return nullptr; }
+
+ protected:
+  virtual const void* GetDeviceContexts() const { return nullptr; }
+
+  friend class paddle_infer::Tensor;
 };
 
 ///
