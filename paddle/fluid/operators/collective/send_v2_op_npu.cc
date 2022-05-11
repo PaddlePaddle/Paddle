@@ -41,7 +41,6 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(ring_id);
       std::vector<phi::DenseTensor> in_tensor;
-      auto x = ctx.Input<framework::LoDTensor>("X");
       in_tensor.push_back(*x);
       auto task = pg->Send(in_tensor, 1);
       return;

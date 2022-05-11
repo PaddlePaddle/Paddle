@@ -1377,7 +1377,9 @@ class RandomErasing(BaseTransform):
             
             fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
             transform = paddle.vision.transforms.RandomErasing()
-            result = transform(fake_img) 
+            result = transform(fake_img)
+
+            print(result)
     """
 
     def __init__(self,
