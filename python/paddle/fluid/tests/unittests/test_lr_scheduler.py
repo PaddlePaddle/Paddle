@@ -322,15 +322,15 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
 
 
 def one_cycle_lr(epoch_num,
-                 learning_rate,
+                 max_learning_rate,
                  total_steps,
-                 scale_factor=25,
+                 divide_factor=25,
                  end_lr=0.0001,
                  phase_pct=0.3,
                  anneal_strategy='cos',
                  three_phase=False,
                  verbose=False):
-    max_lr = learning_rate * scale_factor
+    initial_lr = max_learning_rate / divide_factor
     if three_phase:
         _end_steps = [
             float(phase_pct * total_steps) - 1,
@@ -338,15 +338,15 @@ def one_cycle_lr(epoch_num,
         ]
         _schedule_phases = [
             {
-                'start_lr': learning_rate,
-                'end_lr': max_lr,
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
             },
             {
-                'start_lr': max_lr,
-                'end_lr': learning_rate,
+                'start_lr': max_learning_rate,
+                'end_lr': initial_lr,
             },
             {
-                'start_lr': learning_rate,
+                'start_lr': initial_lr,
                 'end_lr': end_lr,
             },
         ]
@@ -354,11 +354,11 @@ def one_cycle_lr(epoch_num,
         _end_steps = [float(phase_pct * total_steps) - 1, total_steps - 1]
         _schedule_phases = [
             {
-                'start_lr': learning_rate,
-                'end_lr': max_lr,
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
             },
             {
-                'start_lr': max_lr,
+                'start_lr': max_learning_rate,
                 'end_lr': end_lr,
             },
         ]
@@ -532,24 +532,29 @@ class TestLRScheduler(unittest.TestCase):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
         with self.assertRaises(TypeError):
-            paddle.optimizer.lr.OneCycleLR(learning_rate='test', total_steps=20)
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate='test', total_steps=20)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=-1.5, total_steps=20)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
-                learning_rate=0.1, total_steps=20, end_lr='test')
+                max_learning_rate=0.1, total_steps=20, end_lr='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                learning_rate=0.1, total_steps=20, end_lr=-1)
+                max_learning_rate=0.1, total_steps=20, end_lr=-1)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
-                learning_rate=0.1, total_steps='test')
-        with self.assertRaises(ValueError):
-            paddle.optimizer.lr.OneCycleLR(learning_rate=0.1, total_steps=-10)
+                max_learning_rate=0.1, total_steps='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                learning_rate=0.1, total_steps=20, anneal_strategy='test')
+                max_learning_rate=0.1, total_steps=-10)
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                learning_rate=0.1,
+                max_learning_rate=0.1, total_steps=20, anneal_strategy='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1,
                 total_steps=20,
                 phase_pct=0.6,
                 three_phase=True)
@@ -614,33 +619,33 @@ class TestLRScheduler(unittest.TestCase):
             "T_max": 10,
             "verbose": False
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "learning_rate": 0.1,
+            "max_learning_rate": 0.1,
             "total_steps": 20,
-            "scale_factor": 5,
+            "divide_factor": 5,
             "end_lr": 0.0001,
             "anneal_strategy": 'cos',
             "phase_pct": 0.3,
             "three_phase": False,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "learning_rate": 0.5,
+            "max_learning_rate": 0.5,
             "total_steps": 20,
-            "scale_factor": 10,
+            "divide_factor": 10,
             "end_lr": 0.001,
             "anneal_strategy": 'linear',
             "phase_pct": 0.4,
             "three_phase": False,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "learning_rate": 0.1,
+            "max_learning_rate": 1.0,
             "total_steps": 20,
-            "scale_factor": 9,
+            "divide_factor": 9,
             "end_lr": 0.0001,
             "anneal_strategy": 'cos',
             "phase_pct": 0.3,
             "three_phase": True,
         }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
-            "learning_rate": 0.3,
+            "max_learning_rate": 0.3,
             "total_steps": 20,
-            "scale_factor": 25,
+            "divide_factor": 25,
             "end_lr": 0.0005,
             "anneal_strategy": 'linear',
             "phase_pct": 0.2,
