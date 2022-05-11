@@ -395,6 +395,69 @@ def rotate(img,
     return out.squeeze(0)
 
 
+def _perspective_grid(img, coeffs, ow, oh, dtype):
+    theta1 = coeffs[:6].reshape([1, 2, 3])
+    tmp = paddle.tile(coeffs[6:].reshape([1, 2]), repeat_times=[2, 1])
+    dummy = paddle.ones((2, 1), dtype=dtype)
+    theta2 = paddle.concat((tmp, dummy), axis=1).unsqueeze(0)
+
+    d = 0.5
+    base_grid = paddle.ones((1, oh, ow, 3), dtype=dtype)
+
+    x_grid = paddle.linspace(d, ow * 1.0 + d - 1.0, ow)
+    base_grid[..., 0] = x_grid
+    y_grid = paddle.linspace(d, oh * 1.0 + d - 1.0, oh).unsqueeze_(-1)
+    base_grid[..., 1] = y_grid
+
+    scaled_theta1 = theta1.transpose(
+        (0, 2, 1)) / paddle.to_tensor([0.5 * ow, 0.5 * oh])
+    output_grid1 = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta1)
+    output_grid2 = base_grid.reshape(
+        (1, oh * ow, 3)).bmm(theta2.transpose((0, 2, 1)))
+
+    output_grid = output_grid1 / output_grid2 - 1.0
+    return output_grid.reshape((1, oh, ow, 2))
+
+
+def perspective(img,
+                coeffs,
+                interpolation="nearest",
+                fill=None,
+                data_format='CHW'):
+    """Perspective the image.
+
+    Args:
+        img (paddle.Tensor): Image to be rotated.
+        coeffs (list[float]): coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set NEAREST. When use pil backend, 
+            support method are as following: 
+            - "nearest" 
+            - "bilinear"
+            - "bicubic"
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        paddle.Tensor: Perspectived image.
+
+    """
+
+    img = img.unsqueeze(0)
+
+    img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
+    ow, oh = img.shape[-1], img.shape[-2]
+    dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
+
+    coeffs = paddle.to_tensor(coeffs, place=img.place)
+    grid = _perspective_grid(img, coeffs, ow=ow, oh=oh, dtype=dtype)
+    out = _grid_transform(img, grid, mode=interpolation, fill=fill)
+
+    out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
+
+    return out.squeeze(0)
+
+
 def vflip(img, data_format='CHW'):
     """Vertically flips the given paddle tensor.
 

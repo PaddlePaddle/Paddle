@@ -1481,6 +1481,125 @@ class RandomRotation(BaseTransform):
                         self.center, self.fill)
 
 
+class RandomPerspective(BaseTransform):
+    """Random perspective transformation with a given probability.
+
+    Args:
+        prob (float, optional): Probability of using transformation, ranges from
+            0 to 1, default is 0.5.
+        distortion_scale (float, optional): Degree of distortion, ranges from
+            0 to 1, default is 0.5.
+        interpolation (str, optional): Interpolation method. If omitted, or if
+            the image has only one channel, it is set to PIL.Image.NEAREST or
+            cv2.INTER_NEAREST.
+            When use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            When use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
+        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A perspectived image.
+
+    Returns:
+        A callable object of RandomPerspective.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.transforms import RandomPerspective
+
+            transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
+
+            fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
+
+            fake_img = transform(fake_img)
+            print(fake_img.shape)
+    """
+
+    def __init__(self,
+                 prob=0.5,
+                 distortion_scale=0.5,
+                 interpolation='nearest',
+                 fill=0,
+                 keys=None):
+        super(RandomPerspective, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
+        assert 0 <= distortion_scale <= 1, "distortion_scale must be between 0 and 1"
+        assert interpolation in ['nearest', 'bilinear', 'bicubic']
+        assert isinstance(fill, (numbers.Number, str, list, tuple))
+
+        self.prob = prob
+        self.distortion_scale = distortion_scale
+        self.interpolation = interpolation
+        self.fill = fill
+
+    def get_params(self, width, height, distortion_scale):
+        """
+        Returns:
+            startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
+            endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
+        """
+        half_height = height // 2
+        half_width = width // 2
+        topleft = [
+            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+        ]
+        topright = [
+            int(
+                random.uniform(width - int(distortion_scale * half_width) - 1,
+                               width)),
+            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
+        ]
+        botright = [
+            int(
+                random.uniform(width - int(distortion_scale * half_width) - 1,
+                               width)),
+            int(
+                random.uniform(height - int(distortion_scale * half_height) - 1,
+                               height)),
+        ]
+        botleft = [
+            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
+            int(
+                random.uniform(height - int(distortion_scale * half_height) - 1,
+                               height)),
+        ]
+        startpoints = [[0, 0], [width - 1, 0], [width - 1, height - 1],
+                       [0, height - 1]]
+        endpoints = [topleft, topright, botright, botleft]
+
+        return startpoints, endpoints
+
+    def _apply_image(self, img):
+        """
+        Args:
+            img (PIL.Image|np.array|paddle.Tensor): Image to be Perspectively transformed.
+
+        Returns:
+            PIL.Image|np.array|paddle.Tensor: Perspectively transformed image.
+        """
+
+        width, height = _get_image_size(img)
+
+        if random.random() < self.prob:
+            startpoints, endpoints = self.get_params(width, height,
+                                                     self.distortion_scale)
+            return F.perspective(img, startpoints, endpoints,
+                                 self.interpolation, self.fill)
+        return img
+
+
 class Grayscale(BaseTransform):
     """Converts image to grayscale.
 

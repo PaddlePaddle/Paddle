@@ -30,6 +30,7 @@ from .transforms import RandomCrop  # noqa: F401
 from .transforms import Pad  # noqa: F401
 from .transforms import RandomAffine  # noqa: F401
 from .transforms import RandomRotation  # noqa: F401
+from .transforms import RandomPerspective  # noqa: F401
 from .transforms import Grayscale  # noqa: F401
 from .transforms import ToTensor  # noqa: F401
 from .transforms import RandomErasing  # noqa: F401
@@ -40,6 +41,7 @@ from .functional import resize  # noqa: F401
 from .functional import pad  # noqa: F401
 from .functional import affine  # noqa: F401
 from .functional import rotate  # noqa: F401
+from .functional import perspective  # noqa: F401
 from .functional import to_grayscale  # noqa: F401
 from .functional import crop  # noqa: F401
 from .functional import center_crop  # noqa: F401
@@ -68,6 +70,7 @@ __all__ = [ #noqa
     'Pad',
     'RandomAffine',
     'RandomRotation',
+    'RandomPerspective',
     'Grayscale',
     'ToTensor',
     'RandomErasing',
@@ -78,6 +81,7 @@ __all__ = [ #noqa
     'pad',
     'affine',
     'rotate',
+    'perspective',
     'to_grayscale',
     'crop',
     'center_crop',
