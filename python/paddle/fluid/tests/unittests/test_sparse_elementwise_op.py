@@ -20,6 +20,8 @@ import numpy as np
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
+op_list = [__add__, __sub__, __mul__, __truediv__]
+
 
 def get_actual_res(x, y, op):
     if op == __add__:
@@ -42,7 +44,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
     def setUp(self):
         np.random.seed(2022)
-        self.op_list = [__add__, __sub__, __mul__, __truediv__]
+        self.op_list = op_list
         self.csr_shape = [128, 256]
         self.coo_shape = [4, 8, 3, 5]
         self.support_dtypes = ['float32', 'float64', 'int32', 'int64']
@@ -105,45 +107,17 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                         coo_y.grad.to_dense().numpy(),
                         equal_nan=True))
 
-    def test_coo_add(self):
+    def test_support_dtypes_csr(self):
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
-                self.func_test_coo(__add__)
+                for op in op_list:
+                    self.func_test_csr(op)
 
-    def test_coo_sub(self):
+    def test_support_dtypes_coo(self):
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
-                self.func_test_coo(__sub__)
-
-    def test_coo_mul(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_coo(__mul__)
-
-    def test_coo_div(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_coo(__truediv__)
-
-    def test_csr_add(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_csr(__add__)
-
-    def test_csr_sub(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_csr(__sub__)
-
-    def test_csr_mul(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_csr(__mul__)
-
-    def test_csr_div(self):
-        if paddle.device.get_device() == "cpu":
-            with _test_eager_guard():
-                self.func_test_csr(__truediv__)
+                for op in op_list:
+                    self.func_test_coo(op)
 
 
 if __name__ == "__main__":
