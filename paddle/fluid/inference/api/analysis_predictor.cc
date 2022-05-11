@@ -718,10 +718,8 @@ bool AnalysisPredictor::CommInit() {
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
   e.Prepare(scope_.get(), *comm_init_program, 0, false);
-  auto *dev_ctxs = reinterpret_cast<const std::map<
-      phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-      GetGlobalDeviceContexts());
-  e.Run();
+  auto *dev_ctxs = GetGlobalDeviceContexts();
+  e.Run(dev_ctxs);
   VLOG(3) << "Comm init successful.";
   return true;
 }

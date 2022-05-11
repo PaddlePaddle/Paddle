@@ -249,7 +249,7 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
                         "The out variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr, this));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
