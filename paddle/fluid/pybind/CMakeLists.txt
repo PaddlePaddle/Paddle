@@ -153,8 +153,10 @@ if(WITH_PYTHON)
   else()
     set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   endif()
-
-  ADD_LIBRARY(glob_op_shared SHARED glob_op_shared.cc)
+  
+  file(GLOB GLOB_OP_SRCS "${PROJECT_SOURCE_DIR}/paddle/fluid/operators/*/*_op.cc")
+  message(${GLOB_OP_SRCS})
+  ADD_LIBRARY(glob_op_shared SHARED ${GLOB_OP_SRCS})
   # fc tensorrt_converter tensorrt_engine tensorrt_plugin
   #add_dependencies(glob_op_shared protobuf enforce  proto_desc imperative_flag fleet_executor 
   #op_registry layer sequence2batch string_array parallel_executor executor_cache op_version_registry while_op_helper 
@@ -163,12 +165,13 @@ if(WITH_PYTHON)
   #infer_io_utils reader_op_registry py_reader sequence_pooling mask_util gpc buffered_reader
   #fc_functor bert_encoder_functor cos_sim_functor)
   #set_target_properties(glob_op_shared PROPERTIES LINK_FLAGS "/WHOLEARCHIVE:${CMAKE_CURRENT_BINARY_DIR}/libglob_op_static.lib")
-  target_link_libraries(glob_op_shared ${GLOB_OP_LIB} protobuf enforce  proto_desc imperative_flag fleet_executor 
+  target_link_libraries(glob_op_shared protobuf enforce  proto_desc imperative_flag fleet_executor 
   op_registry layer sequence2batch string_array parallel_executor executor_cache op_version_registry while_op_helper 
   tensor_formatter common_infer_shape_functions beam_search concat_and_split lod_rank_table sampler unpooling 
   tree2col sample_prob matrix_solve zero_copy_tensor paddle_inference_api paddle_pass_builder infer_io_utils 
   reader_op_registry py_reader sequence_pooling mask_util gpc buffered_reader fc_functor bert_encoder_functor 
   cos_sim_functor)
+
   if(WIN32)
     set_property(TARGET glob_op_shared PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     target_link_libraries(glob_op_shared shlwapi.lib)
@@ -185,7 +188,7 @@ if(WITH_PYTHON)
     set(GLOB_OP_SHARED_LIB "${CMAKE_CURRENT_BINARY_DIR}/glob_op_shared.a")
   endif()
 
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS glob_op_shared)
+  list(APPEND OP_FUNCTION_GENERETOR_DEPS glob_op_shared ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
   if (WITH_NCCL OR WITH_RCCL)
