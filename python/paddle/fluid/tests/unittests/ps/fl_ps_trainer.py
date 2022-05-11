@@ -39,9 +39,10 @@ def get_dataset(inputs, config, pipe_cmd, role="worker"):
     ]
     if role == "worker":
         file_list = fleet.util.get_file_shard(file_list)
+        print("worker file list: {}".format(file_list))
     elif role == "heter_worker":
         file_list = fleet.util.get_heter_file_shard(file_list)
-    print("file list: {}".format(file_list))
+        print("heter worker file list: {}".format(file_list))
 
     return dataset, file_list
 

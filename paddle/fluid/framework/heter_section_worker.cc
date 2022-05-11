@@ -74,6 +74,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
       new ::paddle::framework::BlockingQueue<std::pair<std::string, int>>());
+  VLOG(4) << "addr of thread_queue_ is: " << thread_queue_.get();
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
 
@@ -102,6 +103,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
         forward_ops_.push_back(std::move(op));
       }
     }
+    VLOG(0) << "test111";
     for (auto& op_desc : program_->Block(1).AllOps()) {
       auto op = std::move(OpRegistry::CreateOp(*op_desc));
       backward_ops_.push_back(std::move(op));
@@ -193,9 +195,10 @@ void HeterSectionWorker::MiniBatchBarrier() {
   // get micro id & deserialize data
   std::set<int> micro_ids;
   VLOG(4) << "entering MiniBatchBarrier";
+  VLOG(4) << "micro_ids_.size(): " << micro_ids_.size();
   while (micro_ids.size() < micro_ids_.size()) {
     auto task = (*thread_queue_).Pop();
-    VLOG(0) << "get one task from task que in cpu worker";
+    VLOG(4) << "got one task from task que in cpu worker";
     auto message_name = task.first;
     auto micro_id = task.second;
     PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos, true,
@@ -388,6 +391,7 @@ void HeterSectionWorker::Run() {
       VLOG(0) << "one batch run over! micro_ids_size: " << micro_ids_.size();
     }
   } else {  // for heter worker
+    VLOG(4) << "entering heter Run...";
     auto heter_server = paddle::distributed::HeterServer::GetInstance();
     while (true) {
       if (heter_server->IsStop()) {
@@ -396,7 +400,7 @@ void HeterSectionWorker::Run() {
         break;
       }
       auto task = (*thread_queue_).Pop();
-      VLOG(0) << "get one task from task que in heter worker";
+      VLOG(4) << "got one task from task que in heter worker";
       auto message_name = task.first;
       auto micro_id = task.second;
       if (is_last_stage) {
@@ -458,12 +462,16 @@ void HeterSectionWorker::TrainFiles() {
     VLOG(3) << "begin section_worker TrainFiles";
     epoch_finish_ = false;
 #ifdef PADDLE_WITH_FLPS
+    if (device_reader_ == nullptr) {
+      VLOG(4) << "device_reader_ is null!!";
+    }
     device_reader_->Start();
 #else
     if (pipeline_stage_ == 0) {
       device_reader_->Start();
     }
 #endif
+    VLOG(4) << "Run in TrainFiles:";
     while (!epoch_finish_) {
       Run();
       dev_ctx_->Wait();

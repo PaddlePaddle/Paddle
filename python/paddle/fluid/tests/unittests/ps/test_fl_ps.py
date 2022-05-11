@@ -25,9 +25,9 @@ class FlPsTest(unittest.TestCase):
         cmd = [
             'python', '-m', 'paddle.distributed.fleet.launch', '--log_dir',
             '/ps_log/fl_ps', '--servers', "127.0.0.1:8070", '--workers',
-            "127.0.0.1:8080", '--heter_workers', "127.0.0.1:8090",
-            '--heter_devices', "cpu", '--heter_worker_num', "1",
-            'fl_ps_trainer.py'
+            "127.0.0.1:8080,127.0.0.1:8081", '--heter_workers',
+            "127.0.0.1:8090,127.0.0.1:8091", '--heter_devices', "cpu",
+            '--worker_num', "2", '--heter_worker_num', "2", 'fl_ps_trainer.py'
         ]
         cmd = [shlex.quote(c) for c in cmd]
         prepare_python_path_and_return_module(__file__)
