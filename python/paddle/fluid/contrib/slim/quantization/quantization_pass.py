@@ -120,7 +120,8 @@ class QuantizationTransformPass(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer_func=None,
-                 executor=None):
+                 executor=None,
+                 is_test=None):
         r"""
         Constructor.
 
@@ -237,7 +238,7 @@ class QuantizationTransformPass(object):
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
-        self._is_test = None
+        self._is_test = is_test
         self._global_step = None
 
         self.create_var_map = {}
@@ -256,7 +257,9 @@ class QuantizationTransformPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
+
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
@@ -1394,7 +1397,7 @@ class TransformForMobilePass(object):
 
 
 class OutScaleForTrainingPass(object):
-    def __init__(self, scope=None, place=None, moving_rate=0.9):
+    def __init__(self, scope=None, place=None, moving_rate=0.9, is_test=None):
         """
         This pass is used for calculating output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
@@ -1409,7 +1412,7 @@ class OutScaleForTrainingPass(object):
         self._scope = scope
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
-        self._is_test = None
+        self._is_test = is_test
         self._teller_set = utils._out_scale_op_list
 
     def apply(self, graph):
@@ -1422,7 +1425,8 @@ class OutScaleForTrainingPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         target_ops = []
         for op in graph.all_op_nodes():
             if op.name() in self._teller_set:
@@ -1583,7 +1587,8 @@ class AddQuantDequantPass(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False):
+                 is_full_quantized=False,
+                 is_test=None):
         """
         Constructor.
 
@@ -1610,7 +1615,7 @@ class AddQuantDequantPass(object):
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        self._is_test = None
+        self._is_test = is_test
         self._skip_pattern = skip_pattern
 
         if is_full_quantized:
@@ -1639,7 +1644,8 @@ class AddQuantDequantPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
 
         # Forward stage, insert quant_dequant op
@@ -1966,7 +1972,8 @@ class QuantizationTransformPassV2(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer_func=None,
-                 executor=None):
+                 executor=None,
+                 is_test=None):
         r"""
         Args:
             scope(paddle.Scope): When activation use 'range_abs_max' as the quantize
@@ -2080,7 +2087,7 @@ class QuantizationTransformPassV2(object):
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
-        self._is_test = None
+        self._is_test = is_test
         self._global_step = None
 
         self.create_var_map = {}
@@ -2223,7 +2230,8 @@ class QuantizationTransformPassV2(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -2267,7 +2275,8 @@ class AddQuantDequantPassV2(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False):
+                 is_full_quantized=False,
+                 is_test=None):
         """
         Args:
             scope(paddle.Scope): The scope is used to initialize these new parameters.
@@ -2307,7 +2316,7 @@ class AddQuantDequantPassV2(object):
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        self._is_test = None
+        self._is_test = is_test
         self._skip_pattern = skip_pattern
 
         if is_full_quantized:
@@ -2337,7 +2346,8 @@ class AddQuantDequantPassV2(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
 
         self.persistable_vars = [
