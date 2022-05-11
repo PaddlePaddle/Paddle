@@ -55,8 +55,8 @@ def ParseArguments():
 ## Code Gen Templates ##
 ########################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{
-    {} = egr::TensorWrapper({}, full_reserved, {});
+"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
+    {} = egr::TensorWrapper({}, {});
   }}
 """
 
@@ -69,9 +69,9 @@ CLEAR_TENSOR_WRAPPER_TEMPLATE = \
 """
 
 SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
+"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}) {{
     for(const auto& eager_tensor : {}) {{
-      {}.emplace_back(egr::TensorWrapper(eager_tensor, full_reserved, {}));
+      {}.emplace_back(egr::TensorWrapper(eager_tensor, {}));
     }};
   }}
 """
@@ -679,9 +679,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             if is_fwd_input:
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, true);"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
@@ -691,9 +691,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     fwd_output_pos = forward_outputs_position_map[name][1]
 
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
             set_input_tensor_wrappers_list)
