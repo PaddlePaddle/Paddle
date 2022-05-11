@@ -372,6 +372,9 @@ class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
 
 
 class TestConcatDoubleGradCheck(unittest.TestCase):
+    def concat_wrapper(self, x):
+        return paddle.concat(x, axis=0)
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -388,6 +391,11 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x1, x2], out, x_init=[x1_arr, x2_arr], place=place)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.concat_wrapper, [x1, x2],
+            out,
+            x_init=[x1_arr, x2_arr],
+            place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
