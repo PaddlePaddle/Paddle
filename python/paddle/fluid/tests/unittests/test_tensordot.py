@@ -119,8 +119,8 @@ class TestTensordotAPI(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static()
-        for place in self.places:
-            for axes in self.all_axes:
+        for axes in self.all_axes:
+            for place in self.places:
                 x = paddle.to_tensor(self.x, place=place)
                 y = paddle.to_tensor(self.y, place=place)
                 paddle_res = paddle.tensordot(x, y, axes)
@@ -129,8 +129,8 @@ class TestTensordotAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        for place in self.places:
-            for axes in self.all_axes:
+        for axes in self.all_axes:
+            for place in self.places:
                 with paddle.static.program_guard(paddle.static.Program(),
                                                  paddle.static.Program()):
                     x = paddle.static.data(
