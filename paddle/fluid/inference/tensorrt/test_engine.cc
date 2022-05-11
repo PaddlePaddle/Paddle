@@ -46,7 +46,16 @@ class TensorRTEngineTest : public ::testing::Test {
             .get());
     ctx_->PartialInitWithAllocator();
 
-    engine_ = new TensorRTEngine(16, 1 << 10);
+    std::map<std::string, std::vector<int>> min_input_shape = {
+        {"input", {16, 32, 1, 1}}};
+    std::map<std::string, std::vector<int>> max_input_shape = {
+        {"input", {16, 32, 1, 1}}};
+    std::map<std::string, std::vector<int>> optim_input_shape = {
+        {"input", {16, 32, 1, 1}}};
+
+    engine_ = new TensorRTEngine(16, 1<<10,
+      AnalysisConfig::Precision::kFloat32, nullptr, 0,
+      min_input_shape, max_input_shape, optim_input_shape, false, NaiveLogger::Global());
     engine_->InitNetwork();
   }
 
@@ -109,7 +118,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 16);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape() << std::endl;
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::Dims4{16, 32, 1, 1});
+                                  nvinfer1::Dims4{-1, 32, 1, 1});
 
   plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kNone;
 
@@ -146,10 +155,13 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
 
+  auto context = engine_->context();
+  context->setBindingDimensions(0, nvinfer1::Dims4{16,32,1,1});
+  context->setBindingDimensions(1, nvinfer1::Dims4{16,16,1,1});
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
-  engine_->Execute(16, &buffers, ctx_->stream());
+  engine_->Execute(16, &buffers, context, ctx_->stream());
 
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);

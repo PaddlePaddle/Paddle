@@ -62,6 +62,20 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   SetRuntimeBatch(batch_size);
 }
 
+void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
+                             nvinfer1::IExecutionContext* infer_context, cudaStream_t stream) {
+  freshDeviceId();
+  if (!with_dynamic_shape()) {
+    infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
+  } else {
+#if IS_TRT_VERSION_GE(6000)
+    infer_context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
+  }
+  SetRuntimeBatch(batch_size);
+}
+
+
 void TensorRTEngine::FreezeNetwork() {
   freshDeviceId();
   VLOG(3) << "TRT to freeze network";
@@ -201,6 +215,7 @@ void TensorRTEngine::FreezeNetwork() {
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    LOG(INFO) << "max profile num: " << max_profile_num_ << " min_input_shape_ size: " << min_input_shape_.size();
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape_) {
 #if IS_TRT_VERSION_LT(7000)

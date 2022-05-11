@@ -433,6 +433,9 @@ class TensorRTEngine {
   void FreezeNetwork();
   void Execute(int batch_size, std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
+  void Execute(int batch_size, std::vector<void*>* buffers,
+               nvinfer1::IExecutionContext* infer_context = nullptr,
+               cudaStream_t stream = nullptr);
 
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
@@ -650,7 +653,7 @@ class TensorRTEngine {
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
 
   // For dynamic shape
-  bool with_dynamic_shape_{true};
+  bool with_dynamic_shape_{false};
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
