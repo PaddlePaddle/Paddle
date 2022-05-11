@@ -123,6 +123,44 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_affine(self):
+        trans = transforms.Compose([
+            transforms.RandomAffine(90),
+            transforms.RandomAffine(
+                [-10, 10], translate=[0.1, 0.3]),
+            transforms.RandomAffine(
+                45, translate=[0.2, 0.2], scale=[0.2, 0.5]),
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear'),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114,
+                center=(60, 80)),
+        ])
+        self.do_transform(trans)
+
     def test_rotate(self):
         trans = transforms.Compose([
             transforms.RandomRotation(90),
@@ -131,6 +169,14 @@ class TestTransformsCV2(unittest.TestCase):
                 45, expand=True),
             transforms.RandomRotation(
                 10, expand=True, center=(60, 80)),
+        ])
+        self.do_transform(trans)
+
+    def test_perspective(self):
+        trans = transforms.Compose([
+            transforms.RandomPerspective(prob=1.0),
+            transforms.RandomPerspective(
+                prob=1.0, distortion_scale=0.9),
         ])
         self.do_transform(trans)
 
@@ -277,6 +323,35 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(ValueError):
             tensor_img = paddle.rand((3, 100, 100))
             F.pad(tensor_img, [1.0, 2.0, 3.0])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(-10)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine([-30, 60], translate=[2, 2])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 0, 20, 40])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                fill=114,
+                center=(1, 2, 3))
 
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
@@ -480,6 +555,29 @@ class TestTransformsTensor(TestTransformsCV2):
             F.pad(tensor_img, [1.0, 2.0, 3.0])
 
         with self.assertRaises(ValueError):
+            transforms.RandomAffine(-10)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine([-30, 60], translate=[2, 2])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 0, 20, 40])
+
+        with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
 
         with self.assertRaises(ValueError):
@@ -546,6 +644,36 @@ class TestFunctional(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             F.adjust_saturation(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.affine('45')
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=0.3)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2, 0.3])
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=-0.5)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=0.5, shear=10)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 0, 10])
+
+        with self.assertRaises(TypeError):
+            F.affine(
+                45,
+                translate=[0.2, 0.2],
+                scale=0.5,
+                shear=[-10, 10],
+                interpolation=2)
+
+        with self.assertRaises(TypeError):
+            F.affine(
+                45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10], center=0)
 
         with self.assertRaises(TypeError):
             F.rotate(1, 0.1)
@@ -785,6 +913,31 @@ class TestFunctional(unittest.TestCase):
 
         os.remove(path)
 
+    def test_affine(self):
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+
+        np_affined_img = F.affine(
+            np_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+        pil_affined_img = F.affine(
+            pil_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+        tensor_affined_img = F.affine(
+            tensor_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+
+        np.testing.assert_equal(np_affined_img.shape,
+                                np.array(pil_affined_img).shape)
+        np.testing.assert_equal(np_affined_img.shape,
+                                tensor_affined_img.transpose((1, 2, 0)).shape)
+
+        np.testing.assert_almost_equal(
+            np.array(pil_affined_img),
+            tensor_affined_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
+
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
@@ -818,6 +971,37 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+
+    def test_perspective(self):
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+
+        startpoints = [[0, 0], [13, 0], [13, 15], [0, 15]]
+        endpoints = [[3, 2], [12, 3], [10, 14], [2, 15]]
+
+        np_perspectived_img = F.perspective(np_img, startpoints, endpoints)
+        pil_perspectived_img = F.perspective(pil_img, startpoints, endpoints)
+        tensor_perspectived_img = F.perspective(tensor_img, startpoints,
+                                                endpoints)
+
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                np.array(pil_perspectived_img).shape)
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                tensor_perspectived_img.transpose(
+                                    (1, 2, 0)).shape)
+
+        result_pil = np.array(pil_perspectived_img)
+        result_tensor = tensor_perspectived_img.numpy().transpose(
+            (1, 2, 0)).astype('uint8')
+        num_diff_pixels = (result_pil != result_tensor).sum() / 3.0
+        ratio_diff_pixels = num_diff_pixels / result_tensor.shape[
+            0] / result_tensor.shape[1]
+        # Tolerance : less than 6% of different pixels
+        assert ratio_diff_pixels < 0.06
 
 
 if __name__ == '__main__':
