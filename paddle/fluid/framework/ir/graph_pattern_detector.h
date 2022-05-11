@@ -1057,7 +1057,7 @@ struct Pool : public PatternBase {
 
 // Elementwise ops
 // Forward pass for element-wise operators (add, mul)
-// elementwise_mul_out is the result of the operator
+// elementwise_out is the result of the operator
 struct Elementwise : public PatternBase {
   Elementwise(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise") {}
