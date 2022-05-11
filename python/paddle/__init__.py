@@ -31,6 +31,8 @@ from .framework import disable_signal_handler  # noqa: F401
 from .framework import get_flags  # noqa: F401
 from .framework import set_flags  # noqa: F401
 
+set_flags({'FLAGS_allocator_strategy': 'naive_best_fit'})
+
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
