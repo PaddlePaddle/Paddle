@@ -263,6 +263,9 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
 
 
 class TestClipDoubleGradCheck(unittest.TestCase):
+    def clip_wrapper(self, x):
+        return paddle.clip(x[0], min=-1., max=1.)
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 4, 10]
@@ -274,6 +277,8 @@ class TestClipDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-5., 5., x_shape).astype(dtype)
 
         gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.clip_wrapper, [x], out, x_init=x_arr, place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
