@@ -458,6 +458,20 @@ class TestTransformsTensor(TestTransformsCV2):
         trans = transforms.Compose([transforms.ColorJitter(1.1, 2.2, 0.8, 0.1)])
         self.do_transform(trans)
 
+        color_jitter_trans = transforms.ColorJitter(1.2, 0.2, 0.5, 0.2)
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = color_jitter_trans(batch_input)
+
+    def test_perspective(self):
+        trans = transforms.RandomPerspective(prob=1.0, distortion_scale=0.7)
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = trans(batch_input)
+
+    def test_affine(self):
+        trans = transforms.RandomAffine(15, translate=[0.1, 0.1])
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = trans(batch_input)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -507,6 +521,10 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomErasing(value="random")
         ])
         self.do_transform(trans)
+
+        erase_trans = transforms.RandomErasing(value=(0.5, 0.2, 0.01))
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = erase_trans(batch_input)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -1002,6 +1020,113 @@ class TestFunctional(unittest.TestCase):
             0] / result_tensor.shape[1]
         # Tolerance : less than 6% of different pixels
         assert ratio_diff_pixels < 0.06
+
+    def test_batch_input(self):
+        paddle.seed(777)
+        batch_tensor = paddle.rand((2, 3, 8, 8), dtype=paddle.float32)
+
+        def test_erase(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.erase(input1, 1, 1, 2, 2, 0.5),
+                F.erase(input2, 1, 1, 2, 2, 0.5)
+            ])
+
+            batch_result = F.erase(batch_tensor, 1, 1, 2, 2, 0.5)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_erase(batch_tensor))
+
+        def test_affine(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.affine(
+                    input1,
+                    45,
+                    translate=[0.2, 0.2],
+                    scale=0.5,
+                    shear=[-10, 10]), F.affine(
+                        input2,
+                        45,
+                        translate=[0.2, 0.2],
+                        scale=0.5,
+                        shear=[-10, 10])
+            ])
+            batch_result = F.affine(
+                batch_tensor,
+                45,
+                translate=[0.2, 0.2],
+                scale=0.5,
+                shear=[-10, 10])
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_affine(batch_tensor))
+
+        def test_perspective(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            startpoints = [[0, 0], [3, 0], [4, 5], [6, 7]]
+            endpoints = [[0, 1], [3, 1], [4, 4], [5, 7]]
+            target_result = paddle.stack([
+                F.perspective(input1, startpoints, endpoints),
+                F.perspective(input2, startpoints, endpoints)
+            ])
+
+            batch_result = F.perspective(batch_tensor, startpoints, endpoints)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_perspective(batch_tensor))
+
+        def test_adjust_brightness(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_brightness(input1, 2.1),
+                F.adjust_brightness(input2, 2.1)
+            ])
+
+            batch_result = F.adjust_brightness(batch_tensor, 2.1)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_brightness(batch_tensor))
+
+        def test_adjust_contrast(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_contrast(input1, 0.3), F.adjust_contrast(input2, 0.3)
+            ])
+
+            batch_result = F.adjust_contrast(batch_tensor, 0.3)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_contrast(batch_tensor))
+
+        def test_adjust_saturation(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_saturation(input1, 1.1),
+                F.adjust_saturation(input2, 1.1)
+            ])
+
+            batch_result = F.adjust_saturation(batch_tensor, 1.1)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_saturation(batch_tensor))
+
+        def test_adjust_hue(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack(
+                [F.adjust_hue(input1, -0.2), F.adjust_hue(input2, -0.2)])
+
+            batch_result = F.adjust_hue(batch_tensor, -0.2)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_hue(batch_tensor))
 
 
 if __name__ == '__main__':

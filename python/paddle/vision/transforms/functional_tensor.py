@@ -28,8 +28,9 @@ __all__ = []
 
 def _assert_image_tensor(img, data_format):
     if not isinstance(
-            img, paddle.Tensor) or img.ndim != 3 or not data_format.lower() in (
-                'chw', 'hwc'):
+            img, paddle.Tensor
+    ) or img.ndim < 3 or img.ndim > 4 or not data_format.lower() in ('chw',
+                                                                     'hwc'):
         raise RuntimeError(
             'not support [type={}, ndim={}, data_format={}] paddle image'.
             format(type(img), img.ndim, data_format))
@@ -276,7 +277,10 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
         paddle.Tensor: Affined image.
 
     """
-    img = img.unsqueeze(0)
+    ndim = len(img.shape)
+    if ndim == 3:
+        img = img.unsqueeze(0)
+
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
 
     matrix = paddle.to_tensor(matrix, place=img.place)
@@ -292,8 +296,9 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
     out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
+    out = out.squeeze(0) if ndim == 3 else out
 
-    return out.squeeze(0)
+    return out
 
 
 def rotate(img,
@@ -443,7 +448,9 @@ def perspective(img,
 
     """
 
-    img = img.unsqueeze(0)
+    ndim = len(img.shape)
+    if ndim == 3:
+        img = img.unsqueeze(0)
 
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
     ow, oh = img.shape[-1], img.shape[-2]
@@ -454,8 +461,9 @@ def perspective(img,
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
     out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
+    out = out.squeeze(0) if ndim == 3 else out
 
-    return out.squeeze(0)
+    return out
 
 
 def vflip(img, data_format='CHW'):
