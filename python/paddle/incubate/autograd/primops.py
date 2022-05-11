@@ -154,8 +154,7 @@ def split(x, num_or_sections, axis=0, outs=None):
 
 @REGISTER_FN('concat_p', 'XS', 'Y')
 def concat(xs, axis=0, out=None):
-    # TODO(lml): This is hacky, refine it later
-    if not isinstance(xs, (list, tuple)):
+    if isinstance(xs, paddle.fluid.framework.Variable):
         xs = [xs]
     attrs = {'axis': axis}
     helper = LayerHelper('concat_p', **locals())

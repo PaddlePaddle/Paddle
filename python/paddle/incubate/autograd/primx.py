@@ -417,44 +417,68 @@ def _gradients(ys, xs, ys_bar=None):
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
-    # prim2orig(block, xs_bar)
     return xs_bar
 
 
 def orig2prim(block=None):
+    """ 
+    Convert all orig OP to prim OP in the bolck.
+    
+    Args:
+        block: The block where all orig OP is loacted.
+    
+    Returns:
+        None
+    """
     _lower(block, reverse=False)
 
 
 def prim2orig(block=None):
+    """ 
+    Convert all prim OP to orig OP in the bolck.
+    
+    Args:
+        block: The block where all prim OP is loacted.
+    
+    Returns:
+        None
+    """
     _lower(block, reverse=True)
 
 
 def to_tensors(xs):
-    if isinstance(xs, (tuple, list)):
-        return xs
-    else:
+    if isinstance(xs, paddle.fluid.framework.Variable):
         return [xs]
-
-
-def single_layer_list(xs):
-    rt_l = []
-    for x in xs:
-        if isinstance(x, list):
-            rt_l = rt_l + single_layer_list(x)
-        else:
-            rt_l.append(x)
-    return rt_l
-
-
-def bind(args, to_bind, vlt):
-    for i in range(len(args)):
-        if isinstance(args[i], list):
-            bind(args[i], to_bind, vlt)
-        elif args[i] is not None and args[i].name in to_bind:
-            args[i] = vlt[to_bind[args[i].name]]
+    else:
+        return xs
 
 
 def _lower(block, reverse):
+    def bind(args, to_bind, vlt):
+        for i in range(len(args)):
+            if isinstance(args[i], list):
+                bind(args[i], to_bind, vlt)
+            elif args[i] is not None and args[i].name in to_bind:
+                args[i] = vlt[to_bind[args[i].name]]
+
+    def bind_name(names, to_bind):
+        rt_l = []
+        for name in names:
+            if isinstance(name, list):
+                rt_l.append(bind_name(name, to_bind))
+            else:
+                rt_l.append(to_bind[name] if name in to_bind else name)
+        return rt_l
+
+    def single_layer_list(xs):
+        rt_l = []
+        for x in xs:
+            if isinstance(x, list):
+                rt_l = rt_l + single_layer_list(x)
+            else:
+                rt_l.append(x)
+        return rt_l
+
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
     if block is None:
@@ -487,16 +511,6 @@ def _lower(block, reverse):
                 to_bind[orig_out.name] = new_out.name
                 to_bind_rev[new_out.name] = orig_out.name
         else:
-
-            def bind_name(names, to_bind):
-                rt_l = []
-                for name in names:
-                    if isinstance(name, list):
-                        rt_l.append(bind_name(name, to_bind))
-                    else:
-                        rt_l.append(to_bind[name] if name in to_bind else name)
-                return rt_l
-
             inputs = {}
             for i in range(len(op.input_names)):
                 inputs[op.input_names[i]] = bind_name(
@@ -537,7 +551,8 @@ def _lower(block, reverse):
                 op._rename_output(out_name, to_bind_rev[out_name])
 
     for var_name in sorted(vars_to_remove):
-        assert var_name in to_bind_rev
+        assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
+            var_name)
         if var_name != to_bind_rev[var_name]:
             block.desc._remove_var(cpt.to_bytes(var_name))
             del block.vars[var_name]

@@ -24,7 +24,8 @@ class Registry(object):
         self.tab = {}
 
     def register(self, name, value):
-        assert name not in self.tab
+        assert name not in self.tab, 'name "{}" should not be registered before.'.format(
+            name)
         self.tab[name] = value
 
     def lookup(self, name):
@@ -67,20 +68,23 @@ def op_position_inputs(op):
     ```
     @REGISTER_FN('div_p', 'X', 'Y', 'Z')
     def div(x, y, out=None):
-        ...
+        return _simple_binop(LayerHelper('div_p', **locals()))
     ```
 
     The registered inputs are ['X', 'Y'] for div_p and accordingly this
     function will return inputs in the order of X then Y.
     """
     args = _primop_position_argnames.lookup(op.type)
-    assert args is not None
+    assert args is not None, 'args should not be None in op_position_inputs().'
     *input_names, _ = args
 
     inputs = []
     for name in input_names:
         vars = list(map(op.block.var, op.input(name)))
-        assert len(vars) >= 0
+        assert len(
+            vars
+        ) >= 0, 'len(vars) should be greater than or equal to 0, but len(vars)={}.'.format(
+            (len(vars)))
         if len(vars) > 1:
             inputs.append(vars)
         else:
@@ -97,18 +101,21 @@ def op_position_output(op):
     ```
     @REGISTER_FN('div_p', 'X', 'Y', 'Z')
     def div(x, y, out=None):
-        ...
+        return _simple_binop(LayerHelper('div_p', **locals()))
     ```
 
     The registered output is ['Z'] for div_p and accordingly this
     function will return output Z.
     """
     args = _primop_position_argnames.lookup(op.type)
-    assert args is not None
+    assert args is not None, 'args should not be None in op_position_output().'
     *_, output_name = args
 
     outvars = list(map(op.block.var, op.output(output_name)))
-    assert len(outvars) >= 0
+    assert len(
+        outvars
+    ) >= 0, 'len(outvars) should be greater than or equal to 0, but len(outvars)={}.'.format(
+        len(outvars))
     if len(outvars) > 1:
         output = outvars
     else:
@@ -120,7 +127,7 @@ def op_position_output(op):
 def REGISTER_FN(op_type, *position_argnames):
     """Decorator for registering the Python function for a primitive op."""
 
-    assert isinstance(op_type, str)
+    assert isinstance(op_type, str), 'type(op_type) must be str.'
 
     _primop_position_argnames.register(op_type, position_argnames)
 
@@ -142,11 +149,12 @@ def REGISTER_ORIG2PRIM(op_type):
             return primops.tanh(x)
 
     """
-    assert isinstance(op_type, str)
+    assert isinstance(op_type, str), 'type(op_type) must be str.'
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type
+            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
+                op.type, op_type)
             return f(op, *args, **kwargs)
 
         _orig2prim.register(op_type, _lower)
@@ -165,11 +173,12 @@ def REGISTER_PRIM2ORIG(op_type):
             return paddle.tanh(x)
 
     """
-    assert isinstance(op_type, str)
+    assert isinstance(op_type, str), 'type(op_type) must be str.'
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type
+            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
+                op.type, op_type)
             return f(op, *args, **kwargs)
 
         _prim2orig.register(op_type, _lower)
@@ -187,11 +196,12 @@ def REGISTER_JVP(op_type):
             return primops.add(x_dot, y_dot)
     
     """
-    assert isinstance(op_type, str)
+    assert isinstance(op_type, str), 'type(op_type) must be str.'
 
     def wrapper(f):
         def _jvp(op, *args, **kwargs):
-            assert op.type == op_type
+            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
+                op.type, op_type)
             return f(op, *args, **kwargs)
 
         _primop_jvp.register(op_type, _jvp)
@@ -211,11 +221,12 @@ def REGISTER_TRANSPOSE(op_type):
             return z_bar, z_bar
     
     """
-    assert isinstance(op_type, str)
+    assert isinstance(op_type, str), 'type(op_type) must be str.'
 
     def wrapper(f):
         def _transpose(op, dot_checker, *args, **kwargs):
-            assert op.type == op_type
+            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
+                op.type, op_type)
             return f(op, dot_checker, *args, **kwargs)
 
         _primop_transpose.register(op_type, _transpose)

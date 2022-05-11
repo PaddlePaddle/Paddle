@@ -74,50 +74,6 @@ p_norm
 """
 
 
-@REGISTER_ORIG2PRIM('sqrt')
-def sqrt_orig2prim(op, x):
-    return sqrt(x)
-
-
-@REGISTER_ORIG2PRIM('elementwise_mul')
-def elementwise_mul_orig2prim(op, x, y):
-    if x.shape != y.shape:
-        y = broadcast(y, shape=x.shape)
-    if op.attr('Scale_x') - 1.0 > 1e-5:
-        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = mul(x, tmp)
-    if op.attr('Scale_y') - 1.0 > 1e-5:
-        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = mul(y, tmp)
-    z = mul(x, y)
-    if op.attr('Scale_out') - 1.0 > 1e-5:
-        tmp = fill_const(
-            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = mul(z, tmp)
-    return z
-
-
-@REGISTER_ORIG2PRIM('matmul_v2')
-def matmul_v2_orig2prim(op, x, y):
-    def trans(shape):
-        ret = [i for i in range(len(shape))]
-        ret[-1], ret[-2] = ret[-2], ret[-1]
-        return ret
-
-    assert len(x.shape) < 4 and len(
-        y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
-
-    if len(x.shape) == 1:
-        x = broadcast(x, shape=[1, x.shape[0]])
-    if len(y.shape) == 1:
-        y = broadcast(y, shape=[y.shape[0], 1])
-    if op.attr('trans_x'):
-        x = transpose(x, axis=trans(x.shape))
-    if op.attr('trans_y'):
-        y = transpose(y, axis=trans(y.shape))
-    return matmul(x, y)
-
-
 @REGISTER_ORIG2PRIM('elementwise_add')
 def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
@@ -141,40 +97,6 @@ def tanh_orig2prim(op, x):
     return tanh(x)
 
 
-## NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
-@REGISTER_ORIG2PRIM('reshape2')
-def reshape2_orig2prim(op, shape_t, shape_tl, x):
-    assert shape_t is None, 'Can not lower reshape2 into prim ops with shapetensor.'
-    assert shape_tl is None, 'Can not lower reshape2 into prim ops with shapetensorlist.'
-    y, xshape = get_output_var_list(op)
-    return reshape(
-        x, shape=y.shape), fill_const(
-            shape=xshape.shape, dtype=xshape.dtype, value=0.0)
-
-
-@REGISTER_ORIG2PRIM('concat')
-def concat_orig2prim(op, axis_t, xs):
-    assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
-    return concat(xs, axis=op.attr('axis'))
-
-
-@REGISTER_ORIG2PRIM('slice')
-def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
-    assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'
-    assert ends_t is None, 'Can not lower concat into prim ops with endstensor.'
-    assert starts_tl is None, 'Can not lower concat into prim ops with startstensorlist.'
-    assert ends_tl is None, 'Can not lower concat into prim ops with endstensorlist.'
-    starts = op.attr('starts')
-    ends = op.attr('ends')
-    strides = [1 for _ in starts]
-    axis = op.attr('axes')
-    y = slice_select(x, starts=starts, ends=ends, strides=strides, axis=axis)
-    # op.attr('decrease_axis') is p[]
-    if op.attr('decrease_axis'):
-        y = reshape(y, shape=get_output_var_list(op)[0].shape)
-    return y
-
-
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op, x):
     return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
@@ -186,27 +108,6 @@ def sum_orig2prim(op, xs):
     for x in xs[1:]:
         x0 = add(x0, x)
     return x0
-
-
-@REGISTER_ORIG2PRIM('p_norm')
-def p_norm_orig2prim(op, x):
-    def num_el(shape):
-        n = 1
-        for s in shape:
-            n = n * s
-        return n
-
-    assert op.attr(
-        'asvector'), 'Only support lower pnorm when asvector=True currently'
-    if len(x.shape) > 1:
-        x = reshape(x, shape=[num_el(x.shape)])
-
-    if abs(op.attr('porder') - 2.0) < 1e-5:
-        return sqrt(reduce(mul(x, x), axis=[0]))
-    elif abs(op.attr('porder') - 1.0) < 1e-5:
-        return reduce(sqrt(mul(x, x)), axis=[0])
-    else:
-        raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
 @REGISTER_ORIG2PRIM('index_select')
@@ -248,6 +149,104 @@ def scale_orig2prim(op, scale_t, x):
 def assign_orig2prim(op, x):
     zero_t = fill_const(shape=x.shape, dtype=x.dtype, value=0.0)
     return add(x, zero_t)
+
+
+@REGISTER_ORIG2PRIM('elementwise_mul')
+def elementwise_mul_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    if op.attr('Scale_x') - 1.0 > 1e-5:
+        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = mul(x, tmp)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = mul(y, tmp)
+    z = mul(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        tmp = fill_const(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = mul(z, tmp)
+    return z
+
+
+@REGISTER_ORIG2PRIM('sqrt')
+def sqrt_orig2prim(op, x):
+    return sqrt(x)
+
+
+@REGISTER_ORIG2PRIM('matmul_v2')
+def matmul_v2_orig2prim(op, x, y):
+    def trans(shape):
+        ret = [i for i in range(len(shape))]
+        ret[-1], ret[-2] = ret[-2], ret[-1]
+        return ret
+
+    assert len(x.shape) < 4 and len(
+        y.shape) < 4, 'Do not support multi batchsize dimensions currently.'
+
+    if len(x.shape) == 1:
+        x = broadcast(x, shape=[1, x.shape[0]])
+    if len(y.shape) == 1:
+        y = broadcast(y, shape=[y.shape[0], 1])
+    if op.attr('trans_x'):
+        x = transpose(x, axis=trans(x.shape))
+    if op.attr('trans_y'):
+        y = transpose(y, axis=trans(y.shape))
+    return matmul(x, y)
+
+
+## NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
+@REGISTER_ORIG2PRIM('reshape2')
+def reshape2_orig2prim(op, shape_t, shape_tl, x):
+    assert shape_t is None, 'Can not lower reshape2 into prim ops with shapetensor.'
+    assert shape_tl is None, 'Can not lower reshape2 into prim ops with shapetensorlist.'
+    y, xshape = get_output_var_list(op)
+    return reshape(
+        x, shape=y.shape), fill_const(
+            shape=xshape.shape, dtype=xshape.dtype, value=0.0)
+
+
+@REGISTER_ORIG2PRIM('concat')
+def concat_orig2prim(op, axis_t, xs):
+    assert axis_t is None, 'Can not lower concat into prim ops with axistensor.'
+    return concat(xs, axis=op.attr('axis'))
+
+
+@REGISTER_ORIG2PRIM('slice')
+def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
+    assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'
+    assert ends_t is None, 'Can not lower concat into prim ops with endstensor.'
+    assert starts_tl is None, 'Can not lower concat into prim ops with startstensorlist.'
+    assert ends_tl is None, 'Can not lower concat into prim ops with endstensorlist.'
+    starts = op.attr('starts')
+    ends = op.attr('ends')
+    strides = [1 for _ in starts]
+    axis = op.attr('axes')
+    y = slice_select(x, starts=starts, ends=ends, strides=strides, axis=axis)
+    if op.attr('decrease_axis'):
+        y = reshape(y, shape=get_output_var_list(op)[0].shape)
+    return y
+
+
+@REGISTER_ORIG2PRIM('p_norm')
+def p_norm_orig2prim(op, x):
+    def num_el(shape):
+        n = 1
+        for s in shape:
+            n = n * s
+        return n
+
+    assert op.attr(
+        'asvector'), 'Only support lower pnorm when asvector=True currently'
+    if len(x.shape) > 1:
+        x = reshape(x, shape=[num_el(x.shape)])
+
+    if abs(op.attr('porder') - 2.0) < 1e-5:
+        return sqrt(reduce(mul(x, x), axis=[0]))
+    elif abs(op.attr('porder') - 1.0) < 1e-5:
+        return reduce(sqrt(mul(x, x)), axis=[0])
+    else:
+        raise RuntimeError('Only support lower l2/l1 norm currently')
 
 
 ## Register prim2orig lower rules
