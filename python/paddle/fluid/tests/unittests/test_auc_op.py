@@ -27,6 +27,7 @@ class TestAucOp(OpTest):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
+        ins_tag_weight = np.ones((128, 1)).astype("float32")
         num_thresholds = 200
         slide_steps = 1
 
@@ -39,7 +40,8 @@ class TestAucOp(OpTest):
             'Predict': pred,
             'Label': labels,
             "StatPos": stat_pos,
-            "StatNeg": stat_neg
+            "StatNeg": stat_neg,
+            "InsTagWeight": ins_tag_weight
         }
         self.attrs = {
             'curve': 'ROC',
@@ -72,6 +74,7 @@ class TestGlobalAucOp(OpTest):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
+        ins_tag_weight = np.ones((128, 1)).astype("float32")
         num_thresholds = 200
         slide_steps = 0
 
@@ -82,7 +85,8 @@ class TestGlobalAucOp(OpTest):
             'Predict': pred,
             'Label': labels,
             "StatPos": stat_pos,
-            "StatNeg": stat_neg
+            "StatNeg": stat_neg,
+            "InsTagWeight": ins_tag_weight
         }
         self.attrs = {
             'curve': 'ROC',

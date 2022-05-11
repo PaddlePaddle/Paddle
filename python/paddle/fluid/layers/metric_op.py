@@ -169,7 +169,9 @@ def auc(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
+            paddle.enable_static()
 
             data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = fluid.data(name="label", shape=[-1], dtype="int")
