@@ -1870,6 +1870,15 @@
   kernel :
     func : thresholded_relu_grad
 
+- backward_api : tile_double_grad
+  forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray repeat_times)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : TileInferMeta
+  kernel :
+    func : tile
+
 - backward_api : tile_grad
   forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray repeat_times)
@@ -1880,6 +1889,7 @@
   kernel :
     func : tile_grad
   no_need_buffer : x
+  backward : tile_double_grad
 
 - backward_api : top_k_grad
   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
