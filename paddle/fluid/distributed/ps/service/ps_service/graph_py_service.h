@@ -81,14 +81,14 @@ class GraphPyService {
 
     graph_proto->set_table_name("cpu_graph_table");
     graph_proto->set_use_cache(false);
-    for (int i = 0; i < id_to_edge.size(); i++)
+    for (size_t i = 0; i < id_to_edge.size(); i++)
       graph_proto->add_edge_types(id_to_edge[i]);
-    for (int i = 0; i < id_to_feature.size(); i++) {
+    for (size_t i = 0; i < id_to_feature.size(); i++) {
       graph_proto->add_node_types(id_to_feature[i]);
       auto feat_node = id_to_feature[i];
       ::paddle::distributed::GraphFeature* g_f =
           graph_proto->add_graph_feature();
-      for (int x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
+      for (size_t x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
         g_f->add_name(table_feat_conf_feat_name[i][x]);
         g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
         g_f->add_shape(table_feat_conf_feat_shape[i][x]);
@@ -116,7 +116,7 @@ class GraphPyService {
     this->num_node_types = num_node_types;
   }
   int get_server_size(int server_size) { return server_size; }
-  std::vector<std::string> split(std::string& str, const char pattern);
+  std::vector<std::string> split(const string& str, const char pattern);
   void set_up(std::string ips_str, int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types);
@@ -158,7 +158,7 @@ class GraphPyClient : public GraphPyService {
   std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
-  void bind_local_server(int local_channel_index, GraphPyServer& server) {
+  void bind_local_server(int local_channel_index, const GraphPyServer& server) {
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
@@ -169,9 +169,10 @@ class GraphPyClient : public GraphPyService {
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
-  void add_graph_node(std::string name, std::vector<int64_t>& node_ids,
-                      std::vector<bool>& weight_list);
-  void remove_graph_node(std::string name, std::vector<int64_t>& node_ids);
+  void add_graph_node(std::string name, const std::vector<int64_t>& node_ids,
+                      const std::vector<bool>& weight_list);
+  void remove_graph_node(std::string name,
+                         const std::vector<int64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
@@ -198,5 +199,5 @@ class GraphPyClient : public GraphPyService {
   std::thread* client_thread;
   bool stoped_ = false;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

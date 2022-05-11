@@ -49,7 +49,7 @@ int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(shard_num);
 
-  for (int x = 0; x < num; ++x) {
+  for (size_t x = 0; x < num; ++x) {
     auto y = keys[x] % shard_num;
     offset_bucket[y].push_back(x);
     if (x < 10) {

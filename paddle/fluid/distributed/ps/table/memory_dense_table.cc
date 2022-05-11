@@ -74,7 +74,7 @@ int32_t MemoryDenseTable::InitializeValue() {
     values_[x].resize(dim);
     names_index_[varname] = x;
 
-    for (int y = 0; y < dim; ++y) {
+    for (size_t y = 0; y < dim; ++y) {
       values_[x][y] = initializers_[varname]->GetValue();
     }
   }
@@ -252,7 +252,7 @@ int32_t MemoryDenseTable::Load(const std::string& path,
       int size = static_cast<int>(values_.size());
       auto common = _config.common();
 
-      for (int i = start_file_idx; i < end_file_idx + 1; ++i) {
+      for (size_t i = start_file_idx; i < end_file_idx + 1; ++i) {
         channel_config.path = file_list[i];
         err_no = 0;
         auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
