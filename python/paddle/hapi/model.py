@@ -29,7 +29,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -722,10 +722,10 @@ class DynamicGraphAdapter(object):
                 level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -746,7 +746,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -760,7 +760,16 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+
+        # Transfrom data to expected device
+        expected_device = paddle.device.get_device()
+        for o in to_list(outputs):
+            o._to(device=expected_device)
+
+        for l in labels:
+            l._to(device=expected_device)
+
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -791,7 +800,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -2088,6 +2097,12 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
+                print("=== in _run_one_epoch, data[:len(self._inputs)]")
+                for x in data[:len(self._inputs)]:
+                    print(" for loop, x.place:", x.place)
+                print("=== in _run_one_epoch, data[len(self._inputs):]")
+                for label in data[len(self._inputs):]:
+                    print(" for loop, label.place:", label.place)
 
                 _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
                 if mode == 'train':

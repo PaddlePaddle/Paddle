@@ -20,6 +20,7 @@ import time
 import copy
 import subprocess
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
@@ -123,14 +124,23 @@ class TestMultipleGpus(unittest.TestCase):
                 break
             time.sleep(3)
 
-    def test_hapi_multiple_gpus_static(self):
+    def func_hapi_multiple_gpus_static(self):
         self.run_mnist_2gpu('dist_hapi_mnist_static.py')
 
-    def test_hapi_multiple_gpus_dynamic(self):
+    def func_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
 
-    def test_hapi_amp_static(self):
+    def func_hapi_amp_static(self):
         self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
+
+    def test_all_cases(self):
+        with _test_eager_guard():
+            self.func_hapi_amp_static()
+            self.func_hapi_multiple_gpus_static()
+            self.func_hapi_multiple_gpus_dynamic()
+        self.func_hapi_amp_static()
+        self.func_hapi_multiple_gpus_static()
+        self.func_hapi_multiple_gpus_dynamic()
 
 
 if __name__ == "__main__":
