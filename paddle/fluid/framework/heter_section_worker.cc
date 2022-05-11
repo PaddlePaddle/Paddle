@@ -220,9 +220,9 @@ void HeterSectionWorker::MiniBatchBarrier() {
 }
 
 void HeterSectionWorker::RunListen() {
-  VLOG(0) << ">>> run listen_op";
+  VLOG(4) << ">>> run listen_op";
   listen_op_->Run(*root_scope_, place_);
-  VLOG(0) << "<<< run listen_op over";
+  VLOG(4) << "<<< run listen_op over";
 }
 
 void HeterSectionWorker::RunForward(int micro_id) {
@@ -453,7 +453,7 @@ void HeterSectionWorker::BatchPostProcess() {
 }
 
 void HeterSectionWorker::TrainFiles() {
-  VLOG(0) << "entering HeterSectionWorker::TrainFiles";
+  VLOG(4) << "entering HeterSectionWorker::TrainFiles";
   if (thread_id_ >= 0) {
     total_ins_num_ = 0;
     batch_num_ = 0;

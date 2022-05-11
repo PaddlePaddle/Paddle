@@ -52,8 +52,6 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   } else {
     VLOG(0) << "heter server start success! listen on " << endpoint_;
   }
-  VLOG(0) << "server: mutex: " << &(this->mutex_ready_)
-          << " ready: " << &ready_;
 
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
@@ -114,11 +112,8 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
 void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
 
 void HeterServer::WaitServerReady() {
-  VLOG(0) << "entering HeterServer::WaitServerReady()";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
-
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  VLOG(3) << "WaitServerReady done";
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithShard(

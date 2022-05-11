@@ -280,7 +280,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name, response_var_names, empty_var_names, *dev_ctx_,
         &local_scope, response, &response_io_buffer);
-    VLOG(0) << "Handle over";
+    VLOG(4) << "Handle over";
     return 0;
   }
 

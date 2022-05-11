@@ -285,7 +285,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
-  VLOG(0) << "entering PrivateQueueDataFeed<T>::Start()";
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::Start()";
   CheckSetFileList();
   read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
   read_thread_.detach();
@@ -359,7 +359,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
-  VLOG(0) << "entering InMemoryDataFeed<T>::Start()";
+  VLOG(4) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
@@ -975,18 +975,18 @@ void MultiSlotDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
-    VLOG(0) << "MultiSlotDataFeed::PutToFeedVec i: " << i;
+    VLOG(4) << "MultiSlotDataFeed::PutToFeedVec i: " << i;
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
-    VLOG(0) << "total_instance: " << total_instance;
+    VLOG(4) << "total_instance: " << total_instance;
     // platform::CPUPlace()
-    VLOG(0) << "this->place_: " << this->place_;
+    VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
-      VLOG(0) << "MultiSlotDataFeed::PutToFeedVec feasign(f): ";
+      VLOG(4) << "MultiSlotDataFeed::PutToFeedVec feasign(f): ";
       for (auto e : feasign) {
-        VLOG(0) << e << ", ";
+        VLOG(4) << e << ", ";
       }
       float* tensor_ptr =
           feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
@@ -994,9 +994,9 @@ void MultiSlotDataFeed::PutToFeedVec(
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec[i].GetUint64Data();
-      VLOG(0) << "MultiSlotDataFeed::PutToFeedVec feasign(u): ";
+      VLOG(4) << "MultiSlotDataFeed::PutToFeedVec feasign(u): ";
       for (auto e : feasign) {
-        VLOG(0) << e << ", ";
+        VLOG(4) << e << ", ";
       }
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
@@ -2588,7 +2588,7 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 }
 
 bool SlotRecordInMemoryDataFeed::Start() {
-  VLOG(0) << "entering SlotRecordInMemoryDataFeed::Start";
+  VLOG(4) << "entering SlotRecordInMemoryDataFeed::Start";
 #ifdef _LINUX
   this->CheckSetFileList();
   if (input_channel_->Size() != 0) {

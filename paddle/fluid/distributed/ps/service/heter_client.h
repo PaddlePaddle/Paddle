@@ -160,14 +160,6 @@ class HeterClient {
       const int& trainer_id) {
     if (NULL == s_instance_) {
       s_instance_.reset(new HeterClient());
-      VLOG(0) << "all workers eplist: next - ";
-      for (auto ep : endpoints) {
-        VLOG(0) << ep << ", ";
-      }
-      VLOG(0) << "; prev - ";
-      for (auto ep : previous_endpoints) {
-        VLOG(0) << ep << ", ";
-      }
       s_instance_->SetXpuList(endpoints);
       s_instance_->SetPreviousXpuList(previous_endpoints);
       s_instance_->SetTrainerID(trainer_id);

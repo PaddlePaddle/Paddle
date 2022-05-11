@@ -80,8 +80,8 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     trainers_.push_back(trainer_num);
   }
   int cpu_trainer_num = trainers_[0];
-  VLOG(0) << "trainer_id_: " << trainer_id_;
-  VLOG(0) << "cpu_trainer_num: " << cpu_trainer_num
+  VLOG(4) << "trainer_id_: " << trainer_id_;
+  VLOG(4) << "cpu_trainer_num: " << cpu_trainer_num
           << " xpu_trainer_num: " << trainers_[1];
 #ifdef PADDLE_WITH_FLPS
   thread_num_ = 1;
@@ -111,7 +111,8 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     }
   } else {
     // for heter_trainer
-    // heter trainer with thread_id == -1 is not for real training
+    // heter trainer with thread_id == -1 is not for real training, just for run
+    // listen op
     workers_[-1] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
     auto this_worker =
