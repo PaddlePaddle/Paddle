@@ -85,7 +85,7 @@ struct FastDivMod {
 struct BroadcastConfig {
   FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
-  int dims_size;
+  int kDims;
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
@@ -109,22 +109,9 @@ struct BroadcastConfig {
                                             std::multiplies<int64_t>())
                           : strides_in[i];
     }
-
-    dims_size = dim_size;
-    memcpy(strides, strides_in.data(), dim_size * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), dim_size * sizeof(FastDivMod));
-  }
-  __device__ inline int operator()(int index_output) const {
-    int index_src = 0;
-#pragma unroll
-    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-      if (i >= dims_size) {
-        break;
-      }
-      auto fast_divmoder = divmoders[i].Divmod(index_output);
-      index_output = fast_divmoder.val[0];
-      index_src += fast_divmoder.val[1] * strides[i];
-    }
+    kDims = dim_size;
+    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
+    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
   }
 };
 
@@ -472,7 +459,13 @@ __device__ __forceinline__ void ReadDataBc(
           break;
         }
       }
-      index_src = config(index_output);
+#pragma unroll
+      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+        if (i >= config.kDims) break;
+        auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+        index_output = fast_divmoder.val[0];
+        index_src += fast_divmoder.val[1] * config.strides[i];
+      }
       dst[nx + ny * NX] = src[index_src];
     }
   }
@@ -789,6 +782,35 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * total_num_output: Total number of original output.
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+__device__ __forceinline__ void ReadDataBc(T* dst,
+                                           const T* __restrict__ src,
+                                           uint32_t block_offset,
+                                           details::BroadcastConfig config,
+                                           int total_num_output) {
+  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t index_src = 0;
+
+#pragma unroll
+  for (uint32_t nx = 0; nx < NX; ++nx) {
+    uint32_t index_output = thread_offset + nx;
+    index_src = 0;
+    if (IsBoundary) {
+      if (index_output >= total_num_output) {
+        break;
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= config.kDims) break;
+      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+      index_output = fast_divmoder.val[0];
+      index_src += fast_divmoder.val[1] * config.strides[i];
+    }
+    dst[nx] = src[index_src];
+  }
+}
+
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
@@ -808,7 +830,13 @@ __device__ __forceinline__ void ReadDataBc(
         break;
       }
     }
-    index_src = config(index_output);
+#pragma unroll
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= config.kDims) break;
+      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+      index_output = fast_divmoder.val[0];
+      index_src += fast_divmoder.val[1] * config.strides[i];
+    }
     dst[nx] = src[index_src];
   }
 }
