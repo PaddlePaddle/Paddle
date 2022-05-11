@@ -30,8 +30,10 @@ class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();
+    memset(global_device_map, -1, sizeof(global_device_map));
     for (int i = 0; i < gpu_num; i++) {
       gpu_graph_list.push_back(GpuPsCommGraph());
+      global_device_map[resource_->dev_id(i)] = i;
       sample_status.push_back(NULL);
       tables_.push_back(NULL);
     }
@@ -121,6 +123,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
   // }
   int gpu_num;
   std::vector<GpuPsCommGraph> gpu_graph_list;
+  int global_device_map[32];
   std::vector<int *> sample_status;
   const int parallel_sample_size = 1;
   const int dim_y = 256;

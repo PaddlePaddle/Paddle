@@ -327,6 +327,7 @@ void BindNeighborSampleResult(py::module* m) {
       .def("initialize", &NeighborSampleResult::initialize)
       .def("get_len", &NeighborSampleResult::get_len)
       .def("get_val", &NeighborSampleResult::get_actual_val)
+      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
       .def("display", &NeighborSampleResult::display);
 }
 

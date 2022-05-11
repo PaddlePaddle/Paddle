@@ -314,11 +314,9 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
 
-  std::cerr << "start to call sample\n";
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
-  std::cerr << "calling sample done\n";
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),
@@ -327,7 +325,6 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   for (int i = 0; i < key.size(); i++) {
     cumsum += actual_sample_size[i];
   }
-  VLOG(0) << "cumsum " << cumsum;
 
   std::vector<int64_t> cpu_key, res;
   cpu_key.resize(key.size() * sample_size);

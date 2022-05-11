@@ -208,6 +208,49 @@ struct NeighborSampleResult {
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }
+  std::vector<int64_t> get_sampled_graph(NeighborSampleQuery q) {
+    std::vector<int64_t> graph;
+    int64_t *sample_keys = new int64_t[q.len];
+    std::string key_str;
+    cudaMemcpy(sample_keys, q.key, q.len * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
+    int64_t *res = new int64_t[sample_size * key_size];
+    cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
+    int *ac_size = new int[key_size];
+    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+               cudaMemcpyDeviceToHost);  // 3, 1, 3
+    int total_sample_size = 0;
+    for (int i = 0; i < key_size; i++) {
+      total_sample_size += ac_size[i];
+    }
+    int64_t *res2 = new int64_t[total_sample_size];  // r
+    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);  // r
+
+    int start = 0;
+    for (int i = 0; i < key_size; i++) {
+      // VLOG(0) << "actual sample size for " << i << "th key is " <<
+      // ac_size[i];
+      // VLOG(0) << "sampled neighbors are ";
+      // std::string neighbor, neighbor2;
+      for (int j = 0; j < ac_size[i]; j++) {
+        // if (neighbor.size() > 0) neighbor += ";";
+        // if (neighbor2.size() > 0) neighbor2 += ";";  // r
+        // neighbor += std::to_string(res[i * sample_size + j]);
+        // neighbor2 += std::to_string(res2[start + j]);  // r
+        graph.push_back(sample_keys[i]);
+        graph.push_back(res2[start + j]);
+      }
+      // VLOG(0) << neighbor << " " << neighbor2;
+      start += ac_size[i];  // r
+    }
+    delete[] res;
+    delete[] res2;  // r
+    delete[] ac_size;
+    delete[] sample_keys;
+    return graph;
+  }
   NeighborSampleResult(){};
   ~NeighborSampleResult() {
     // if (val != NULL) cudaFree(val);
