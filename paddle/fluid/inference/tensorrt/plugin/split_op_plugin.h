@@ -45,6 +45,7 @@ class SplitPlugin : public PluginTensorRTV2Ext {
     ptr->shareData(this);
     ptr->data_type_ = data_type_;
     ptr->data_format_ = data_format_;
+    ptr->input_dims_ = input_dims_;
     return ptr;
   }
 
