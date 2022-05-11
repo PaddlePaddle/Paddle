@@ -75,7 +75,7 @@ class SwishOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta, with_fp16);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
