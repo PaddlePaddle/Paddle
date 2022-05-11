@@ -186,6 +186,9 @@ class TestTileDoubleGradCheck(unittest.TestCase):
 
 
 class TestExpandV2DoubleGradCheck(unittest.TestCase):
+    def expand_wrapper(self, x):
+        return paddle.expand(x[0], [4, 12])
+
     @prog_scope()
     def func(self, place):
         x_shape = [1, 12]
@@ -200,6 +203,8 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], out, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.expand_wrapper, [x], out, x_init=x_arr, place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
