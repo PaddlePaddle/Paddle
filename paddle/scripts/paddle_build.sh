@@ -1739,7 +1739,7 @@ set +x
         while read line
         do
             num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
-            card_test "$line" 1 5
+            card_test "$line" 1 4
         done < $PADDLE_ROOT/tools/mem0_test
         echo "EXIT_CODE:: "$EXIT_CODE
         mem0_ut_endTime_s=`date +%s`
