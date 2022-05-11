@@ -1321,11 +1321,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     }}
     api_output[i].reserve(returns[i].size());
     for (size_t j = 0; j < returns[i].size(); ++j) {{
-      if (out_metas[i][j].IsStopGradient()) {{
-        api_output[i].push_back(nullptr);
-      }} else {{
-        api_output[i].push_back(&returns[i][j]);
-      }}
+      api_output[i].push_back(&returns[i][j]);
     }}
   }}
 """
