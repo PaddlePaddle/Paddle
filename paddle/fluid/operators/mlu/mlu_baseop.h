@@ -456,7 +456,7 @@ class MLUCnnl {
                               cnnlQuantizeMode_t mode,
                               const cnnlTensorDescriptor_t input_desc,
                               const void* input,
-                              const cnnlTensorDescriptor_t output_desc,
+                              const cnnlTensorDescriptor_t ouput_desc,
                               void* output);
 
   static void QuantifyOnline(const ExecutionContext& context,
@@ -464,7 +464,7 @@ class MLUCnnl {
                              const cnnlTensorDescriptor_t input_desc,
                              const void* input, const bool compute_scale,
                              void* position, void* scale,
-                             const cnnlTensorDescriptor_t output_desc,
+                             const cnnlTensorDescriptor_t ouput_desc,
                              void* output);
 
   static void SGD(const ExecutionContext& context,
@@ -553,7 +553,7 @@ class MLUCnnl {
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
                      const cnnlTensorDescriptor_t input_desc, const void* input,
-                     const cnnlTensorDescriptor_t output_desc, void* output);
+                     const cnnlTensorDescriptor_t ouput_desc, void* output);
 
   static void BroadcastTo(const ExecutionContext& ctx,
                           const cnnlTensorDescriptor_t input_desc,
@@ -636,7 +636,7 @@ class MLUCnnl {
                     const cnnlTensorDescriptor_t input1_desc,
                     const void* input1,
                     const cnnlTensorDescriptor_t input2_desc,
-                    const void* input2, const cnnlTensorDescriptor_t output_desc,
+                    const void* input2, const cnnlTensorDescriptor_t ouput_desc,
                     void* output);
 
   static void Select(const ExecutionContext& ctx,
