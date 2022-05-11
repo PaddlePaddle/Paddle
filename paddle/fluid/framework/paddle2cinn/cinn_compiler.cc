@@ -127,11 +127,7 @@ const CinnCompiledObject& CinnCompiler::GetCompiledObject(
 }
 
 std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
-  std::string graph_key;
-  ProgramDesc program;
-  GraphToProgram(*graph, &program);
-  program.Proto()->SerializeToString(&graph_key);
-
+  std::string graph_key = std::to_string(reinterpret_cast<size_t>(&(*graph)));
   PADDLE_ENFORCE_EQ(
       graphs_.count(graph_key), 0,
       platform::errors::PreconditionNotMet(
@@ -144,12 +140,13 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
 }
 
 const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
+  auto it = graphs_.find(graph_key);
   PADDLE_ENFORCE_NE(
-      graphs_.count(graph_key), 0,
+      it, graphs_.end(),
       platform::errors::PreconditionNotMet(
           "Can not find the target graph, of which the key is:\n%s",
           ReadableKey(graph_key).c_str()));
-  return *graphs_.at(graph_key);
+  return *it->second;
 }
 
 std::string CinnCompiler::VizGraph(const std::string& graph_key) const {
