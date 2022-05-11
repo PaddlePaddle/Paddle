@@ -258,13 +258,13 @@ void BindDistributed(py::module *m) {
 #else
                     const platform::CUDAPlace &,
 #endif
-                    int, int, int, int, int, bool, std::string>(),
+                    int, int, int, int, int, bool, std::string, int, int>(),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::arg("place"), py::arg("gid") = 0, py::arg("local_rank") = 0,
            py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
            py::arg("gloo_size") = 1, py::arg("with_switch") = false,
-           py::arg("switch_endpoint") = "",
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("switch_endpoint") = "", py::arg("src_rank") = "",
+           py::arg("dst_rank") = "", py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
