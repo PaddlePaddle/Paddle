@@ -1024,8 +1024,8 @@ class QuantizationFreezePass(object):
                         scale_v = scale_v.tolist()
                     self._quant_var_scale_map[input_arg_name] = scale_v
                     # Quantize weight and restore
-                    param_v = self._load_var(input_arg_name)
                     if self._round_type == 'round':
+                        param_v = self._load_var(input_arg_name)
                         if any(
                                 _check_grandchild_op_node(op_node, op)
                                 for op in utils._channelwise_quant_axis1_ops):
@@ -1035,7 +1035,7 @@ class QuantizationFreezePass(object):
                         quantized_param_v = utils.quant_tensor(
                             param_v.copy(), scale_v, quant_axis,
                             self._weight_bits)
-                        quantized_param_v = np.round(quantized_param_v)
+                        # Weight bias correction
                         if self._bias_correction == True:
                             quantized_param_v = utils.bias_correction_w(
                                 param_v,
@@ -1043,7 +1043,6 @@ class QuantizationFreezePass(object):
                                 scale_v,
                                 quant_axis,
                                 weight_bits=self._weight_bits)
-                            quantized_param_v = np.round(quantized_param_v)
                         self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
 

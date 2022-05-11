@@ -323,12 +323,6 @@ def set_variable_data(scope, place, var_name, np_value):
 
 
 def quant_tensor(x, scale, quant_axis=0, weight_bits=8):
-    # symmetry quant
-    def _clip(x, scale):
-        x[x > scale] = scale
-        x[x < -scale] = -scale
-        return x
-
     assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
     bnt = (1 << (weight_bits - 1)) - 1
     if isinstance(scale, list):
@@ -336,15 +330,15 @@ def quant_tensor(x, scale, quant_axis=0, weight_bits=8):
             if s == 0.0:
                 s = 1e-8
             if quant_axis == 0:
-                x[i] = _clip(x[i], s)
-                x[i] = x[i] / s * bnt
+                x[i] = np.round(x[i] / s * bnt)
+                x[i] = np.clip(x[i], -bnt - 1, bnt)
             else:
-                x[:, i] = _clip(x[:, i], s)
-                x[:, i] = x[:, i] / s * bnt
+                x[:, i] = np.round(x[:, i] / s * bnt)
+                x[:, i] = np.clip(x[:, i], -bnt - 1, bnt)
     else:
         scale = 1e-8 if scale == 0.0 else scale
-        x = _clip(x, scale)
-        x = x / scale * bnt
+        x = np.round(x / scale * bnt)
+        x = np.clip(x, -bnt - 1, bnt)
     return x
 
 

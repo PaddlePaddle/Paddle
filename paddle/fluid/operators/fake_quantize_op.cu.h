@@ -222,11 +222,14 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
   T bin_cnt_t = static_cast<T>(bin_cnt);
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
-    T v = x > s ? s : x;
-    v = v < -s ? -s : v;
-    v = bin_cnt_t * inv_s * v;
-    out[i] = static_cast<T>(
-        round(static_cast<typename QuantizeDataType<T>::type>(v)));
+    x = bin_cnt_t * inv_s * x;
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt_t;
+    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    out[i] = x;
   }
 }
 
@@ -243,11 +246,14 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
-    x = x > s ? s : x;
-    x = x < -s ? -s : x;
     x = bin_cnt_t * inv_s * x;
-    x = static_cast<T>(
-        round(static_cast<typename QuantizeDataType<T>::type>(x)));
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt_t;
+    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    // Dequant
     out[i] = (x * s) / bin_cnt_t;
   }
 }
@@ -308,11 +314,14 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
 
   for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
-    T v = x > s ? s : x;
-    v = v < -s ? -s : v;
-    v = bin_cnt_t * inv_s * v;
-    out_c[i] = static_cast<T>(
-        round(static_cast<typename QuantizeDataType<T>::type>(v)));
+    x = bin_cnt_t * inv_s * x;
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt_t;
+    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    out_c[i] = x;
   }
 }
 
@@ -327,11 +336,15 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(
     T s = scale[(i / quant_stride) % nScale];
     T inv_s = inverse(s);
     T x = in[i];
-    T v = x > s ? s : x;
-    v = v < -s ? -s : v;
-    v = bin_cnt_t * inv_s * v;
-    out[i] = static_cast<T>(
-        round(static_cast<typename QuantizeDataType<T>::type>(v)));
+
+    x = bin_cnt_t * inv_s * x;
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt_t;
+    T min_bound = -bin_cnt_t - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    out[i] = x;
   }
 }
 
@@ -492,10 +505,15 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(
 
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
-    T v = x > s ? s : x;
-    v = v < -s ? -s : v;
-    v = bin_cnt * inv_s * v;
-    out_c[i] = round(v) * s / bin_cnt;
+
+    x = bin_cnt * inv_s * x;
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt;
+    T min_bound = -bin_cnt - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    out_c[i] = (x * s) / bin_cnt;
   }
 }
 
@@ -513,10 +531,15 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(
 
   for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
     T x = in_c[i];
-    T v = x > s ? s : x;
-    v = v < -s ? -s : v;
-    v = bin_cnt * inv_s * v;
-    out_c[i] = round(v) * s / bin_cnt;
+
+    x = bin_cnt * inv_s * x;
+    x = static_cast<T>(roundWithTiesToEven(
+        static_cast<typename QuantizeDataType<T>::type>(x)));
+    T max_bound = bin_cnt;
+    T min_bound = -bin_cnt - static_cast<T>(1);
+    x = x > max_bound ? max_bound : x;
+    x = x < min_bound ? min_bound : x;
+    out_c[i] = (x * s) / bin_cnt;
   }
 }
 

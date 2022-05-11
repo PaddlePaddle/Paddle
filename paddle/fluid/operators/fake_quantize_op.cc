@@ -91,9 +91,8 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     T inv_s = inverse(s);
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
   }
 };
 
@@ -109,10 +108,10 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
 
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
+          out->mutable_data<T>(ctx.GetPlace()),
+          QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) =
-        (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+    out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -143,15 +142,9 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int64_t i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
+        trans(ctx, start, end, out_data + i * channel_size,
+              QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -163,10 +156,8 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
-          for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]);
-          }
+          trans(ctx, start, end, cur_out_data,
+                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
         }
       }
     }
@@ -199,16 +190,12 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
         T s = scale_data[i];
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
-        trans(ctx, start, end, out_data + i * channel_size,
-              phi::ClipFunctor<T>(-s, s));
-      }
-      for (int i = 0; i < channel; i++) {
-        T s = scale_data[i];
         T inv_s = inverse(s);
+        trans(ctx, start, end, out_data + i * channel_size,
+              QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
         framework::Tensor one_channel_out = out->Slice(i, i + 1);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) =
-            (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
+        out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
       }
     } else if (quant_axis == 1) {
       const int64_t step_i = in.numel() / in_dims[0];
@@ -220,10 +207,11 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
+          trans(ctx, start, end, cur_out_data,
+                QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
           for (int k = 0; k < step_j; k++) {
-            cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]) *
-                              s / static_cast<T>(bin_cnt);
+            cur_out_data[k] =
+                std::round(cur_out_data[k]) * s / static_cast<T>(bin_cnt);
           }
         }
       }
