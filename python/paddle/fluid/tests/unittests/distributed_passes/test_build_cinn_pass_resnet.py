@@ -33,7 +33,8 @@ class TestBuildCINNPass(DistPassTestBase):
         print(pass_manager.names)
 
     def test_bs_32(self):
-        self.check_main(resnet_model, batch_size=32)
+        if paddle.is_compiled_with_cinn():
+            self.check_main(resnet_model, batch_size=32)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,8 @@ class TestBuildCINNPass(DistPassTestBase):
         self.assertTrue('cinn_launch' in op_types)
 
     def test_bs_32(self):
-        self.check_main(simple_net, batch_size=32)
+        if paddle.is_compiled_with_cinn():
+            self.check_main(simple_net, batch_size=32)
 
 
 if __name__ == "__main__":
