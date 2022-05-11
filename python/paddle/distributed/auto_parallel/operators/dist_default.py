@@ -201,10 +201,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         changed = False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
-        # The following statement will be replaced by a more elegent way
-        if op_desc.type() == "shape" \
-            or op_desc.type() == "slice" \
-                or op_desc.type() == "while":
+
+        if op_desc.type() == "while":
             return False
 
         input_names = op_desc.input_names()
@@ -273,6 +271,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 )[0])
                 if input_tensor.is_parameter:
                     continue
+            if op_desc.type() in ["shape", "slice"]:
+                continue
             serial_tensor = dist_op.get_serial_output(arg_name)
             if serial_tensor.is_parameter:
                 continue
