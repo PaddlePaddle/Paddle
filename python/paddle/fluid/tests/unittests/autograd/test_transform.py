@@ -23,7 +23,7 @@ from paddle.fluid.layers.utils import flatten
 paddle.enable_static()
 
 
-class TestAutoGradTransform1(unittest.TestCase):
+class TestAutoGradTransformForAdd(unittest.TestCase):
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -134,7 +134,7 @@ class TestAutoGradTransform1(unittest.TestCase):
             self.assertEqual(sorted(prim2orig_ops), sorted(self.prim2orig_ops))
 
 
-class TestAutoGradTransform2(TestAutoGradTransform1):
+class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (100, 2), 1: (5, 2)}
@@ -210,7 +210,7 @@ class TestAutoGradTransform2(TestAutoGradTransform1):
         ]
 
 
-class TestAutoGradTransform3(TestAutoGradTransform1):
+class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3, )}

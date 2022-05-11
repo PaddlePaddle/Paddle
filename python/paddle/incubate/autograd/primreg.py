@@ -28,7 +28,7 @@ class Registry(object):
         self.tab[name] = value
 
     def lookup(self, name):
-        return self.tab[name] if name in self.tab else None
+        return self.tab.get(name)
 
 
 _primop_fn = Registry('primop_fn')
@@ -60,18 +60,24 @@ def lookup_transpose(optype):
 
 
 def op_position_inputs(op):
-    """ Returns the position inputs of `op` as registered with REGISTER_FN.
+    """
+    Returns the position inputs of `op` as registered with REGISTER_FN.
     
-    Example: 
-    
-    ```
-    @REGISTER_FN('div_p', 'X', 'Y', 'Z')
-    def div(x, y, out=None):
-        return _simple_binop(LayerHelper('div_p', **locals()))
-    ```
+    Args:
+        op(Operator): The op that needs to get the inputs
+
+    Returns:
+        Tensor(s): Inputs of the op
+
+    Examples: 
+        .. code-block:: python
+            @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+            def div(x, y, out=None):
+                return _simple_binop(LayerHelper('div_p', **locals()))
 
     The registered inputs are ['X', 'Y'] for div_p and accordingly this
     function will return inputs in the order of X then Y.
+    
     """
     args = _primop_position_argnames.lookup(op.type)
     assert args is not None, 'args should not be None in op_position_inputs().'
@@ -92,18 +98,24 @@ def op_position_inputs(op):
 
 
 def op_position_output(op):
-    """ Returns the output of `op` as registered with REGISTER_FN..
+    """
+    Returns the output of `op` as registered with REGISTER_FN.
     
-    Example: 
-    
-    ```
-    @REGISTER_FN('div_p', 'X', 'Y', 'Z')
-    def div(x, y, out=None):
-        return _simple_binop(LayerHelper('div_p', **locals()))
-    ```
+    Args:
+        op(Operator): The op that needs to get the output
+
+    Returns:
+        Tensor(s): Output of the op
+
+    Examples: 
+        .. code-block:: python
+            @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+            def div(x, y, out=None):
+                return _simple_binop(LayerHelper('div_p', **locals()))
 
     The registered output is ['Z'] for div_p and accordingly this
     function will return output Z.
+    
     """
     args = _primop_position_argnames.lookup(op.type)
     assert args is not None, 'args should not be None in op_position_output().'
@@ -122,7 +134,23 @@ def op_position_output(op):
 
 
 def REGISTER_FN(op_type, *position_argnames):
-    """Decorator for registering the Python function for a primitive op."""
+    """
+    Decorator for registering the Python function for a primitive op.        
+
+    Args:
+        op_type(str): The op name
+        position_argnames(list[str]): Input and ouput names of the op
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples: 
+        .. code-block:: python
+        @REGISTER_FN('tanh_p', 'X', 'Y')
+        def tanh(x, out=None):
+            return _simple_unop(LayerHelper('tanh_p', **locals()))
+    
+    """
 
     assert isinstance(op_type,
                       str), f'op_type must be str, but got {type(op_type)}.'
@@ -137,14 +165,21 @@ def REGISTER_FN(op_type, *position_argnames):
 
 
 def REGISTER_ORIG2PRIM(op_type):
-    """Decorator for registering the lower function for an original op into sequence of primitive ops.
+    """
+    Decorator for registering the lower function for an original op into sequence of primitive ops.
     
-    Usage:
-    .. code-block:: python
-        @REGISTER_ORIG2PRIM('tanh')
-        def tanh_orig2prim(op):
-            x = get_input_var_list(op)
-            return primops.tanh(x)
+    Args:
+        op_type(str): The op name
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples:
+        .. code-block:: python
+            @REGISTER_ORIG2PRIM('tanh')
+            def tanh_orig2prim(op):
+                x = get_input_var_list(op)
+                return primops.tanh(x)
 
     """
     assert isinstance(op_type,
@@ -161,14 +196,21 @@ def REGISTER_ORIG2PRIM(op_type):
 
 
 def REGISTER_PRIM2ORIG(op_type):
-    """Decorator for registering the lower function for an primitive op into sequence of original ops.
+    """
+    Decorator for registering the lower function for an primitive op into sequence of original ops.
     
-    Usage:
-    .. code-block:: python
-        @REGISTER_PRIM2ORIG('tanh_p')
-        def tanh_prim2orig(op):
-            x = get_input_var_list(op)
-            return paddle.tanh(x)
+    Args:
+        op_type(str): The op name
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples:
+        .. code-block:: python
+            @REGISTER_PRIM2ORIG('tanh_p')
+            def tanh_prim2orig(op):
+                x = get_input_var_list(op)
+                return paddle.tanh(x)
 
     """
     assert isinstance(op_type,
@@ -185,13 +227,20 @@ def REGISTER_PRIM2ORIG(op_type):
 
 
 def REGISTER_JVP(op_type):
-    """Decorator for registering the JVP function for a primitive op.
+    """
+    Decorator for registering the JVP function for a primitive op.
     
-    Usage:
-    .. code-block:: python
-        @REGISTER_JVP('add_p')
-        def add_jvp(op, x_dot, y_dot):
-            return primops.add(x_dot, y_dot)
+    Args:
+        op_type(str): The op name
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples:
+        .. code-block:: python
+            @REGISTER_JVP('add_p')
+            def add_jvp(op, x_dot, y_dot):
+                return primops.add(x_dot, y_dot)
     
     """
     assert isinstance(op_type,
@@ -209,14 +258,21 @@ def REGISTER_JVP(op_type):
 
 
 def REGISTER_TRANSPOSE(op_type):
-    """Decorator for registering the transpose function for a primitive op
+    """
+    Decorator for registering the transpose function for a primitive op
     that denotes a linear operation in the forward AD graph.
     
-    Usage:
-    .. code-block:: python
-        @REGISTER_TRANSPOSE('add_p')
-        def add_transpose(op, z_bar):
-            return z_bar, z_bar
+    Args:
+        op_type(str): The op name
+
+    Returns:
+        wrapper: Inner wrapper function
+
+    Examples:
+        .. code-block:: python
+            @REGISTER_TRANSPOSE('add_p')
+            def add_transpose(op, z_bar):
+                return z_bar, z_bar
     
     """
     assert isinstance(op_type,
