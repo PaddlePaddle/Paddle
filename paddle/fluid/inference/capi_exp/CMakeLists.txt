@@ -27,3 +27,7 @@ set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME paddle_in
 if(WIN32)
     target_link_libraries(paddle_inference_c_shared shlwapi.lib)
 endif()
+if(WITH_CUSTOM_DEVICE)
+target_compile_definitions(paddle_inference_c PRIVATE PADDLE_CUSTOM_DEVICE_INFERENCE)
+target_compile_definitions(paddle_inference_c_shared PRIVATE PADDLE_CUSTOM_DEVICE_INFERENCE)
+endif()

@@ -400,7 +400,11 @@ void DeviceManager::Clear() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
-  std::regex express(".*\\.so");
+#ifndef PADDLE_CUSTOM_DEVICE_INFERENCE
+  std::regex express("libpaddle-.*\\.so");
+#else
+  std::regex express("libpaddle_inference-.*\\.so");
+#endif
   std::match_results<std::string::iterator> results;
   DIR* dir = nullptr;
   dirent* ptr = nullptr;

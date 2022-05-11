@@ -111,6 +111,7 @@ if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   if (WITH_CUSTOM_DEVICE)
     set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_custom_device.map")
+    target_compile_definitions(paddle_inference_shared PRIVATE PADDLE_CUSTOM_DEVICE_INFERENCE)
   else()
     set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
   endif()

@@ -38,6 +38,9 @@ if(WITH_CRYPTO)
 endif()
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS ${paddle_inference_api_deps})
+if(WITH_CUSTOM_DEVICE)
+target_compile_definitions(paddle_inference_api PRIVATE PADDLE_CUSTOM_DEVICE_INFERENCE)
+endif()
 
 if(WIN32)
     target_link_libraries(paddle_inference_api gflags)
