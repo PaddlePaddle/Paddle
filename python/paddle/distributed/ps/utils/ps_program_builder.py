@@ -115,13 +115,6 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
                                        self.pass_ctx)
         return
 
-    def _build_pserver_programs(self):
-        add_listen_and_serv_pass = new_pass('add_listen_and_serv_pass',
-                                            self.attrs)
-        add_listen_and_serv_pass.apply([self.attrs['_main_server']], [None],
-                                       self.pass_ctx)
-        return
-
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):

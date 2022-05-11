@@ -2359,7 +2359,7 @@ class Executor(object):
             fetch_info=fetch_info,
             print_period=print_period)
 
-        trainer._set_infer(is_infer)
+        trainer._set_infer(False)
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
