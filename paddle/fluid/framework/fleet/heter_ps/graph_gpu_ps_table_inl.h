@@ -949,7 +949,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       d_shard_vals_ptr, val, d_shard_actual_sample_size_ptr, actual_sample_size,
       d_idx_ptr, sample_size, len);
 
-  VLOG(0) << "compress memory on gpu";
   {
     platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
     platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
@@ -973,7 +972,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
         thrust::raw_pointer_cast(cumsum_actual_sample_size.data()), sample_size,
         len);
   }
-  VLOG(0) << "compress memory on gpu done1";
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
@@ -984,7 +982,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   }
 
   cudaStreamSynchronize(stream);
-  VLOG(0) << "compress memory on gpu done2";
   return result;
 }
 
