@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/fused/fused_softmax_mask.cuh"
+#include "paddle/fluid/operators/fused/fused_softmax_mask.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -150,9 +150,9 @@ class FMHARef {
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        fused_softmax_mask<T>(qk_out_data, src_mask_tensor->data<T>(),
-                              softmax_out_data, batch_size_, num_head_,
-                              seq_len_, dev_ctx_.stream());
+        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data, src_mask_tensor->data<T>(),
+                                        softmax_out_data, batch_size_,
+                                        num_head_, seq_len_, dev_ctx_.stream());
       } else {
         std::vector<const Tensor*> ins;
         std::vector<Tensor*> outs;
