@@ -80,8 +80,8 @@ class Stat : public StatBase {
       while (prev_value < current_value &&
              !peak_value_.compare_exchange_weak(prev_value, current_value)) {
       }
-      VLOG(8) << "Update peak_value, after update, peak_value = " << peak_value_
-              << " , current value = " << current_value;
+      VLOG(8) << "Update peak_value, after update, peak_value = "
+              << peak_value_.load() << " , current value = " << current_value;
     }
   }
 

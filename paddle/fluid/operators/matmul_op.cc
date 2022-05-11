@@ -585,6 +585,19 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    // (jczaja): For NHWC execution output shape needs
+    // to be computed like instead x*y we are to do y*x
+    bool channelwise_onednn =
+        context->IsRunMKLDNNKernel() &&
+        (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+         framework::DataLayout::kNHWC);
+    if (channelwise_onednn) {
+      std::swap(dim_x, dim_y);
+    }
+#endif
+
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(dim_x), 0,
         context->Attrs().Get<bool>("transpose_X"));
@@ -770,6 +783,21 @@ class MatMulOp : public framework::OperatorWithKernel {
           framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
           tensor.layout());
     } else {
+#ifdef PADDLE_WITH_MKLDNN
+      // When matmul is first oneDNN op in a chain (there was some non oneDNN op
+      // previously)
+      // then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ ==
+           framework::DataLayout::kMKLDNN) &&
+          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+          paddle::platform::MKLDNNDeviceContext::tls()
+                  .get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(),
+                                       framework::DataLayout::kNHWC);
+      }
+#endif
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
     }

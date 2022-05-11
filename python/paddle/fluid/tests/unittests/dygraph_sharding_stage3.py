@@ -39,7 +39,6 @@ np.random.seed(2021)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -277,4 +276,5 @@ def test_stage2_stage3():
 if __name__ == '__main__':
     with _test_eager_guard():
         pass
+    fleet.init(is_collective=True)
     test_stage2_stage3()
