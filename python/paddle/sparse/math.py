@@ -17,20 +17,21 @@ sparse math functions
 from __future__ import print_function
 
 from paddle import _C_ops, in_dynamic_mode, device, int32, int64
-import paddle
-from paddle.sparse import sparse_coo_tensor, sparse_csr_tensor
+from ..tensor import cast
+from paddle.sparse import sparse_csr_tensor
 
 
 def _cast_coo(x, dtype, name=None):
     indices = x.indices()
-    values = paddle.cast(x.values(), dtype)
-    return sparse_coo_tensor(indices, values, x.shape)
+    values = cast(x.values(), dtype)
+    return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
+                                                              x.shape)
 
 
 def _cast_csr(x, dtype, name=None):
     crows = x.crows()
     cols = x.cols()
-    values = paddle.cast(x.values(), dtype)
+    values = cast(x.values(), dtype)
     return sparse_csr_tensor(crows, cols, values, x.shape)
 
 
