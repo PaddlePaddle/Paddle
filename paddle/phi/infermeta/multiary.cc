@@ -1998,7 +1998,9 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
   for (size_t i = 0; i < x.size(); ++i) {
-    out[i]->share_meta(*x[i]);
+    if (out[i]) {
+      out[i]->share_meta(*x[i]);
+    }
   }
 }
 

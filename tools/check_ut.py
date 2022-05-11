@@ -24,7 +24,7 @@ class PRChecker(object):
     """ PR Checker. """
 
     def __init__(self):
-        self.github = Github(timeout=60)
+        self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = None
 
     def check(self, filename, msg):
