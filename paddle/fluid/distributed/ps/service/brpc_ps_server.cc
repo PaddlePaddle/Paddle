@@ -301,11 +301,6 @@ int32_t BrpcPsService::PullDense(Table *table, const PsRequestMessage &request,
   }
   CostTimer timer("pserver_server_pull_dense");
   uint32_t num = *(const uint32_t *)request.params(0).c_str();
-  if (num < 0) {
-    set_response_code(response, -1,
-                      "PsRequestMessage.datas[0] is invalid, num must >= 0");
-    return 0;
-  }
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->ValueAccesor()->GetAccessorInfo().select_size /

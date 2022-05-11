@@ -196,7 +196,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
         ptr[idx + j] = embedx_w[j];
       }
       idx += 8;
-      for (auto j = 0u; j < 0; ++j) {
+      for (auto j = 0u; j < 1; ++j) {
         ptr[idx + j] = embedx_g2sum[j];
       }
     }
