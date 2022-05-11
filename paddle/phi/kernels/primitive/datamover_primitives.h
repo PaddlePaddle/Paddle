@@ -118,7 +118,7 @@ struct BroadcastConfig {
     int index_src = 0;
 #pragma unroll
     for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-      if (i > dims_size) {
+      if (i >= dims_size) {
         break;
       }
       auto fast_divmoder = divmoders[i].Divmod(index_output);
