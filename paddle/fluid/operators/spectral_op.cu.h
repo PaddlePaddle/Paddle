@@ -692,6 +692,18 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
 
 #endif
 
+inline bool has_large_prime_factor(int64_t n) {
+  static const std::array<int, 31> small_primes{
+      2,  3,  5,  7,  11, 13, 17, 19, 23, 29,  31,  37,  41,  43,  47, 53,
+      59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127};
+  for (const auto x : small_primes) {
+    while (n % x == 0) {
+      n /= x;
+    }
+  }
+  return n != 1;
+}
+
 // Execute a general unnormalized fft operation (can be c2c, onesided r2c or
 // onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
@@ -758,9 +770,21 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   // create plan
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  bool using_cache = false;
-#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10200)
-  using_cache = true;
+  bool using_cache = true;
+#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10400)
+  // NOTE: before cufft 10.4 cufftplans with bluestein algorithm cannot be
+  // reused
+  // bluestein algorithm is only used when at least of one of the fft sizes
+  // has a prime factor larger than 127
+  // some earlier vesions of cufft does not have CUFFT_VERSION defined in the
+  // header
+  for (int i = 1; i <= signal_ndim; ++i) {
+    if (has_large_prime_factor(
+            std::max(collapsed_input_shape[i], collapsed_output_shape[i]))) {
+      using_cache = false;
+      break;
+    }
+  }
 #endif
 
   if (using_cache) {
