@@ -499,5 +499,49 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
             self.func(p)
 
 
+class TestMultiDotDoubleGradCheck(unittest.TestCase):
+    def multi_dot_wrapper(self, x):
+        return paddle.linalg.multi_dot(x)
+
+    @prog_scope()
+    def func(self, place):
+        dtype = np.float32
+
+        x1_shape = [2, 10]
+        x2_shape = [10, 4]
+        x3_shape = [4, 3]
+
+        x1 = layers.data('x1', x1_shape, False, dtype)
+        x2 = layers.data('x2', x2_shape, False, dtype)
+        x3 = layers.data('x3', x3_shape, False, dtype)
+        x1.persistable = True
+        x2.persistable = True
+        x3.persistable = True
+
+        out = paddle.linalg.multi_dot([x1, x2, x3])
+        x1_arr = np.random.uniform(-1, 1, x1_shape).astype(dtype)
+        x2_arr = np.random.uniform(-1, 1, x2_shape).astype(dtype)
+        x3_arr = np.random.uniform(-1, 1, x3_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x1, x2, x3],
+            out,
+            x_init=[x1_arr, x2_arr, x3_arr],
+            place=place,
+            eps=0.005)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.multi_dot_wrapper, [x1, x2, x3],
+            out,
+            x_init=[x1_arr, x2_arr, x3_arr],
+            place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()

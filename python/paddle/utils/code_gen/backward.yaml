@@ -1171,6 +1171,15 @@
     func : modulo_grad
   no_need_buffer : x, y
 
+- backward_api : multi_dot_double_grad
+  forward : multi_dot_grad (Tensor[] x, Tensor grad_out) -> Tensor[] (grad_x)
+  args : (Tensor[] grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+
 - backward_api : multi_dot_grad
   forward : multi_dot (Tensor[] x) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad)
@@ -1179,6 +1188,7 @@
     func : MultiDotGradInferMeta
   kernel :
     func : multi_dot_grad
+  backward : multi_dot_double_grad
 
 - backward_api : multiplex_grad
   forward : multiplex (Tensor[] ins, Tensor ids) -> Tensor(out)
