@@ -50,7 +50,7 @@ class TensorWrapper {
      * to avoid recursive and additional depends on GradNodeBase
      * **/
     auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
-
+    no_need_buffer_ = no_need_buffer;
     // shallow copy tensor_impl here
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
