@@ -21,6 +21,9 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
+from paddle.fluid.framework import _enable_legacy_dygraph
+_enable_legacy_dygraph()
+
 
 class TestInplace(unittest.TestCase):
     def func_test_forward_version(self):
