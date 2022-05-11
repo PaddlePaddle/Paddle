@@ -16,6 +16,7 @@ import subprocess
 import shlex
 import os
 import json
+import shutil
 
 
 class Info(object):
@@ -39,6 +40,9 @@ def query_smi(query=None,
 
     ret_type: obj/dict/str
     """
+
+    if not has_nvidia_smi():
+        return None
 
     cmd = ["nvidia-smi", "--format=csv,noheader,nounits"]
     if isinstance(query, list) and query_type == "gpu":
@@ -99,6 +103,10 @@ def get_gpu_process(index=None, ret_type="obj"):
 
     return query_smi(
         q, index=index, query_type="compute", dtype=d, ret_type=ret_type)
+
+
+def has_nvidia_smi():
+    return shutil.which("nvidia-smi")
 
 
 if __name__ == '__main__':
