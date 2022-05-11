@@ -263,7 +263,6 @@ phi::sparseHandle_t ResourceManager::GetSparseHandle() const {
 Eigen::GpuDevice* ResourceManager::GetGpuEigenDevice() const {
   return gpu_eigen_device_.get();
 }
-#endif
 
 int ResourceManager::GetGpuComputeCapability() const {
   return compute_capability_;
@@ -287,4 +286,5 @@ std::array<int, 3> ResourceManager::GetGpuMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 
+#endif
 }  // namespace paddle

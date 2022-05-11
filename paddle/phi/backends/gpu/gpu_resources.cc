@@ -114,7 +114,7 @@ void InitGpuProperties(Place place,
 void InitStream(gpuStream_t* stream) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
-      hipStreamCreateWithPriority(&stream, hipStreamDefault, 0));
+      hipStreamCreateWithPriority(stream, hipStreamDefault, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamCreateWithPriority(stream, cudaStreamDefault, 0));
