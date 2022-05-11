@@ -28,6 +28,7 @@ from .transforms import HueTransform  # noqa: F401
 from .transforms import ColorJitter  # noqa: F401
 from .transforms import RandomCrop  # noqa: F401
 from .transforms import Pad  # noqa: F401
+from .transforms import RandomAffine  # noqa: F401
 from .transforms import RandomRotation  # noqa: F401
 from .transforms import Grayscale  # noqa: F401
 from .transforms import ToTensor  # noqa: F401
@@ -37,6 +38,7 @@ from .functional import hflip  # noqa: F401
 from .functional import vflip  # noqa: F401
 from .functional import resize  # noqa: F401
 from .functional import pad  # noqa: F401
+from .functional import affine  # noqa: F401
 from .functional import rotate  # noqa: F401
 from .functional import to_grayscale  # noqa: F401
 from .functional import crop  # noqa: F401
@@ -64,6 +66,7 @@ __all__ = [ #noqa
     'ColorJitter',
     'RandomCrop',
     'Pad',
+    'RandomAffine',
     'RandomRotation',
     'Grayscale',
     'ToTensor',
@@ -73,6 +76,7 @@ __all__ = [ #noqa
     'vflip',
     'resize',
     'pad',
+    'affine',
     'rotate',
     'to_grayscale',
     'crop',

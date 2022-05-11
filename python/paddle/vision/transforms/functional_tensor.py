@@ -226,8 +226,8 @@ def _affine_grid(theta, w, h, ow, oh):
 
 def _grid_transform(img, grid, mode, fill):
     if img.shape[0] > 1:
-        grid = grid.expand(img.shape[0], grid.shape[1], grid.shape[2],
-                           grid.shape[3])
+        grid = grid.expand(
+            shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]])
 
     if fill is not None:
         dummy = paddle.ones(
@@ -253,6 +253,47 @@ def _grid_transform(img, grid, mode, fill):
             img = img * mask + (1.0 - mask) * fill_img
 
     return img
+
+
+def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
+    """Affine to the image by matrix.
+
+    Args:
+        img (paddle.Tensor): Image to be rotated.
+        matrix (float or int): Affine matrix.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest" 
+            - "bilinear"
+            - "bicubic"
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
+
+    Returns:
+        paddle.Tensor: Affined image.
+
+    """
+    img = img.unsqueeze(0)
+    img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
+
+    matrix = paddle.to_tensor(matrix, place=img.place)
+    matrix = matrix.reshape((1, 2, 3))
+    shape = img.shape
+
+    grid = _affine_grid(
+        matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2])
+
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    out = _grid_transform(img, grid, mode=interpolation, fill=fill)
+
+    out = out if data_format.lower() == 'chw' else out.transpose((0, 2, 3, 1))
+
+    return out.squeeze(0)
 
 
 def rotate(img,
