@@ -148,6 +148,36 @@ class TestReplicaInference(TestBase):
         }
 
 
+class TestReplicaCollectiveInference(TestBase):
+    def set_attrs(self):
+        self.ipu_options = {
+            "batches_per_step": 1,
+            "enable_pipelining": False,
+            "enable_gradient_accumulation": False,
+            "accumulation_factor": 1,
+            "enable_replicated_graphs": True,
+            "replicated_graph_count": 2,
+            "accumulate_outer_fragment": {
+                0: []
+            },
+            "replicated_collectives_settings": {
+                "prepare_schedule_for_merging_collectives": True,
+                "merge_all_reduce_collectives": True
+            }
+        }
+        self.cpu_bs = 1
+        self.ipu_bs = 1
+
+    def set_data_feed(self):
+        np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
+        self.feed_cpu = {"image": np_image}
+        self.feed_ipu = {
+            "image":
+            np.tile(np_image,
+                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
+        }
+
+
 class TestPipelineInference(TestBase):
     def set_attrs(self):
         self.ipu_options = {
@@ -197,7 +227,44 @@ class TestReplicaTrain(TestTrainBase):
             "enable_gradient_accumulation": False,
             "accumulation_factor": 1,
             "enable_replicated_graphs": True,
+            "replicated_graph_count": 2
+        }
+        self.cpu_bs = 2
+        self.ipu_bs = 1
+        self.optimizer = 'sgd'
+
+    def set_data_feed(self):
+        np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
+        self.feed_cpu = {"image": np.tile(np_image, [self.cpu_bs, 1, 1, 1])}
+        self.feed_ipu = {
+            "image":
+            np.tile(np_image,
+                    [self.ipu_options['replicated_graph_count'], 1, 1, 1])
+        }
+
+    def test(self):
+        cpu_outputs = self._test_base(False)
+        ipu_outputs = self._test_base(True)[::2]
+
+        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
+
+
+class TestReplicaCollectiveTrain(TestTrainBase):
+    def set_attrs(self):
+        self.ipu_options = {
+            "batches_per_step": 1,
+            "enable_pipelining": False,
+            "enable_gradient_accumulation": False,
+            "accumulation_factor": 1,
+            "enable_replicated_graphs": True,
             "replicated_graph_count": 2,
+            "accumulate_outer_fragment": {
+                0: []
+            },
+            "replicated_collectives_settings": {
+                "prepare_schedule_for_merging_collectives": True,
+                "merge_all_reduce_collectives": True
+            }
         }
         self.cpu_bs = 2
         self.ipu_bs = 1
