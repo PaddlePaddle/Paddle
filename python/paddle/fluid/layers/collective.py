@@ -18,8 +18,6 @@ from ..framework import Variable, in_dygraph_mode, _in_legacy_dygraph
 import paddle
 from paddle import _C_ops
 
-# from paddle.distributed.collective import _get_default_group
-
 
 def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
     helper = LayerHelper("allreduce", **locals())

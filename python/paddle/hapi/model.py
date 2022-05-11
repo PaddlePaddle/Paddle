@@ -2097,13 +2097,6 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-                print("=== in _run_one_epoch, data[:len(self._inputs)]")
-                for x in data[:len(self._inputs)]:
-                    print(" for loop, x.place:", x.place)
-                print("=== in _run_one_epoch, data[len(self._inputs):]")
-                for label in data[len(self._inputs):]:
-                    print(" for loop, label.place:", label.place)
-
                 _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
                 if mode == 'train':
                     _inputs.append((step + 1) % self._accumulate == 0 or
