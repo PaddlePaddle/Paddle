@@ -410,6 +410,32 @@ def adjust_hue(img, hue_factor):
     return img
 
 
+def affine(img, matrix, interpolation="nearest", fill=0):
+    """Affine the image by matrix.
+
+    Args:
+        img (PIL.Image): Image to be affined.
+        matrix (float or int): Affine matrix.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        PIL.Image: Affined image.
+
+    """
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    return img.transform(img.size, Image.AFFINE, matrix,
+                         _pil_interp_from_str[interpolation], fill)
+
+
 def rotate(img,
            angle,
            interpolation="nearest",

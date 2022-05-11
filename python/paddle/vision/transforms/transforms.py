@@ -1205,6 +1205,189 @@ class Pad(BaseTransform):
         return F.pad(img, self.padding, self.fill, self.padding_mode)
 
 
+def _check_sequence_input(x, name, req_sizes):
+    msg = req_sizes[0] if len(req_sizes) < 2 else " or ".join(
+        [str(s) for s in req_sizes])
+    if not isinstance(x, Sequence):
+        raise TypeError(f"{name} should be a sequence of length {msg}.")
+    if len(x) not in req_sizes:
+        raise ValueError(f"{name} should be sequence of length {msg}.")
+
+
+def _setup_angle(x, name, req_sizes=(2, )):
+    if isinstance(x, numbers.Number):
+        if x < 0:
+            raise ValueError(
+                f"If {name} is a single number, it must be positive.")
+        x = [-x, x]
+    else:
+        _check_sequence_input(x, name, req_sizes)
+
+    return [float(d) for d in x]
+
+
+class RandomAffine(BaseTransform):
+    """Random affine transformation of the image.
+
+    Args:
+        degrees (int|float|tuple): The angle interval of the random rotation.
+            If set as a number instead of sequence like (min, max), the range of degrees
+            will be (-degrees, +degrees) in clockwise order. If set 0, will not rotate.
+        translate (tuple, optional): Maximum absolute fraction for horizontal and vertical translations.
+            For example translate=(a, b), then horizontal shift is randomly sampled in the range -img_width * a < dx < img_width * a
+            and vertical shift is randomly sampled in the range -img_height * b < dy < img_height * b. 
+            Default is None, will not translate.
+        scale (tuple, optional): Scaling factor interval, e.g (a, b), then scale is randomly sampled from the range a <= scale <= b. 
+            Default is None, will keep original scale and not scale.
+        shear (sequence or number, optional): Range of degrees to shear, ranges from -180 to 180 in clockwise order.
+            If set as a number, a shear parallel to the x axis in the range (-shear, +shear) will be applied. 
+            Else if set as a sequence of 2 values a shear parallel to the x axis in the range (shear[0], shear[1]) will be applied. 
+            Else if set as a sequence of 4 values, a x-axis shear in (shear[0], shear[1]) and y-axis shear in (shear[2], shear[3]) will be applied.
+            Default is None, will not apply shear.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend. 
+            When use pil backend, support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+            When use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (int|list|tuple, optional): Pixel fill value for the area outside the transformed
+            image. If given a number, the value is used for all bands respectively.
+        center (2-tuple, optional): Optional center of rotation, (x, y).
+            Origin is the upper left corner.
+            Default is the center of the image.
+        keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
+
+    Shape:
+        - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An affined image.
+
+    Returns:
+        A callable object of RandomAffine.
+
+    Examples:
+    
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.transforms import RandomAffine
+
+            transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
+
+            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
+
+            fake_img = transform(fake_img)
+            print(fake_img.shape)
+    """
+
+    def __init__(self,
+                 degrees,
+                 translate=None,
+                 scale=None,
+                 shear=None,
+                 interpolation='nearest',
+                 fill=0,
+                 center=None,
+                 keys=None):
+        self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2, ))
+
+        super(RandomAffine, self).__init__(keys)
+        assert interpolation in ['nearest', 'bilinear', 'bicubic']
+        self.interpolation = interpolation
+
+        if translate is not None:
+            _check_sequence_input(translate, "translate", req_sizes=(2, ))
+            for t in translate:
+                if not (0.0 <= t <= 1.0):
+                    raise ValueError(
+                        "translation values should be between 0 and 1")
+        self.translate = translate
+
+        if scale is not None:
+            _check_sequence_input(scale, "scale", req_sizes=(2, ))
+            for s in scale:
+                if s <= 0:
+                    raise ValueError("scale values should be positive")
+        self.scale = scale
+
+        if shear is not None:
+            self.shear = _setup_angle(shear, name="shear", req_sizes=(2, 4))
+        else:
+            self.shear = shear
+
+        if fill is None:
+            fill = 0
+        elif not isinstance(fill, (Sequence, numbers.Number)):
+            raise TypeError("Fill should be either a sequence or a number.")
+        self.fill = fill
+
+        if center is not None:
+            _check_sequence_input(center, "center", req_sizes=(2, ))
+        self.center = center
+
+    def _get_param(self,
+                   img_size,
+                   degrees,
+                   translate=None,
+                   scale_ranges=None,
+                   shears=None):
+        """Get parameters for affine transformation
+
+        Returns:
+            params to be passed to the affine transformation
+        """
+        angle = random.uniform(degrees[0], degrees[1])
+
+        if translate is not None:
+            max_dx = float(translate[0] * img_size[0])
+            max_dy = float(translate[1] * img_size[1])
+            tx = int(random.uniform(-max_dx, max_dx))
+            ty = int(random.uniform(-max_dy, max_dy))
+            translations = (tx, ty)
+        else:
+            translations = (0, 0)
+
+        if scale_ranges is not None:
+            scale = random.uniform(scale_ranges[0], scale_ranges[1])
+        else:
+            scale = 1.0
+
+        shear_x, shear_y = 0.0, 0.0
+        if shears is not None:
+            shear_x = random.uniform(shears[0], shears[1])
+            if len(shears) == 4:
+                shear_y = random.uniform(shears[2], shears[3])
+        shear = (shear_x, shear_y)
+
+        return angle, translations, scale, shear
+
+    def _apply_image(self, img):
+        """
+        Args:
+            img (PIL.Image|np.array): Image to be affine transformed.
+
+        Returns:
+            PIL.Image or np.array: Affine transformed image.
+        """
+
+        w, h = _get_image_size(img)
+        img_size = [w, h]
+
+        ret = self._get_param(img_size, self.degrees, self.translate,
+                              self.scale, self.shear)
+
+        return F.affine(
+            img,
+            *ret,
+            interpolation=self.interpolation,
+            fill=self.fill,
+            center=self.center)
+
+
 class RandomRotation(BaseTransform):
     """Rotates the image by angle.
 
