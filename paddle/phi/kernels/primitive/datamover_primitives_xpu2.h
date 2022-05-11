@@ -77,7 +77,7 @@ struct BroadcastConfig {
   int n = 1;
   int k = 1;
   int buf_len = 0;
-  int kDim;
+  int kDims;
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
