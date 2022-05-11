@@ -503,7 +503,10 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 
   const auto place = dev_ctx.GetPlace();
   const T* x_data = values.data<T>();
-  T* out_data = out->mutable_data<T>(place);
+  *out = phi::Empty(dev_ctx,
+                    phi::DenseTensorMeta(
+                        x.dtype(), x.dims(), x.non_zero_elements().layout()));
+  T* out_data = out->data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
