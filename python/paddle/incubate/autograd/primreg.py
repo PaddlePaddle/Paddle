@@ -24,8 +24,7 @@ class Registry(object):
         self.tab = {}
 
     def register(self, name, value):
-        assert name not in self.tab, 'name "{}" should not be registered before.'.format(
-            name)
+        assert name not in self.tab, f'name "{name}" should not be registered before.'
         self.tab[name] = value
 
     def lookup(self, name):
@@ -83,8 +82,7 @@ def op_position_inputs(op):
         vars = list(map(op.block.var, op.input(name)))
         assert len(
             vars
-        ) >= 0, 'len(vars) should be greater than or equal to 0, but len(vars)={}.'.format(
-            (len(vars)))
+        ) >= 0, f'len(vars) should be greater than or equal to 0, but len(vars)={len(vars)}.'
         if len(vars) > 1:
             inputs.append(vars)
         else:
@@ -114,8 +112,7 @@ def op_position_output(op):
     outvars = list(map(op.block.var, op.output(output_name)))
     assert len(
         outvars
-    ) >= 0, 'len(outvars) should be greater than or equal to 0, but len(outvars)={}.'.format(
-        len(outvars))
+    ) >= 0, f'len(outvars) should be greater than or equal to 0, but len(outvars)={len(outvars)}.'
     if len(outvars) > 1:
         output = outvars
     else:
@@ -127,7 +124,8 @@ def op_position_output(op):
 def REGISTER_FN(op_type, *position_argnames):
     """Decorator for registering the Python function for a primitive op."""
 
-    assert isinstance(op_type, str), 'type(op_type) must be str.'
+    assert isinstance(op_type,
+                      str), f'op_type must be str, but got {type(op_type)}.'
 
     _primop_position_argnames.register(op_type, position_argnames)
 
@@ -149,12 +147,12 @@ def REGISTER_ORIG2PRIM(op_type):
             return primops.tanh(x)
 
     """
-    assert isinstance(op_type, str), 'type(op_type) must be str.'
+    assert isinstance(op_type,
+                      str), f'op_type must be str, but got {type(op_type)}.'
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
-                op.type, op_type)
+            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _orig2prim.register(op_type, _lower)
@@ -173,12 +171,12 @@ def REGISTER_PRIM2ORIG(op_type):
             return paddle.tanh(x)
 
     """
-    assert isinstance(op_type, str), 'type(op_type) must be str.'
+    assert isinstance(op_type,
+                      str), f'op_type must be str, but got {type(op_type)}.'
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
-                op.type, op_type)
+            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _prim2orig.register(op_type, _lower)
@@ -196,12 +194,12 @@ def REGISTER_JVP(op_type):
             return primops.add(x_dot, y_dot)
     
     """
-    assert isinstance(op_type, str), 'type(op_type) must be str.'
+    assert isinstance(op_type,
+                      str), f'op_type must be str, but got {type(op_type)}.'
 
     def wrapper(f):
         def _jvp(op, *args, **kwargs):
-            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
-                op.type, op_type)
+            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _primop_jvp.register(op_type, _jvp)
@@ -221,12 +219,12 @@ def REGISTER_TRANSPOSE(op_type):
             return z_bar, z_bar
     
     """
-    assert isinstance(op_type, str), 'type(op_type) must be str.'
+    assert isinstance(op_type,
+                      str), f'op_type must be str, but got {type(op_type)}.'
 
     def wrapper(f):
         def _transpose(op, dot_checker, *args, **kwargs):
-            assert op.type == op_type, 'op.type should be equal to op_type, but op.type is {} and op_type is {}'.format(
-                op.type, op_type)
+            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, dot_checker, *args, **kwargs)
 
         _primop_transpose.register(op_type, _transpose)

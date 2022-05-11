@@ -516,10 +516,10 @@ def slice_select_jvp(op, x_dot):
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
     if x_dot is None:
-        assert y_dot is None
+        assert y_dot is None, 'y_dot must be None.'
         return None
     else:
-        assert y_dot is not None
+        assert y_dot is not None, 'y_dot should not be None.'
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
