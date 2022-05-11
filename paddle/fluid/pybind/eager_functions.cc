@@ -119,8 +119,7 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   egr::Backward(tensors, grad_tensors,
                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -159,8 +158,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
       egr::EagerUtils::autograd_meta(&(src))->Persistable());
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -455,8 +453,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
     grad_node->SetAttrs(attrs);
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -688,8 +685,7 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
   cudaMemcpyAsync(dst_data + (numel * size), buffer_tensor->data<float>(),
                   index_tensor.numel() * size * sizeof(float),
                   cudaMemcpyHostToDevice, stream);
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -771,8 +767,7 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
                     cudaMemcpyDeviceToHost, stream);
     src_offset += c;
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

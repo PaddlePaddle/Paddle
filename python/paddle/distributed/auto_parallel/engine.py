@@ -118,11 +118,10 @@ class Engine:
                 losses = to_list(self._loss(*(outputs + labels)))
 
         default_ctx = get_default_distributed_context()
-        if not default_ctx.is_annotation or self._default_strategy:
+        if not default_ctx.has_annotation or self._default_strategy:
             inputs = [self._set_data_parallel(var) for var in inputs]
             labels = [self._set_data_parallel(var) for var in labels]
 
-        # print(serial_main_prog)
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
         self._fetch_vars[mode] = {
