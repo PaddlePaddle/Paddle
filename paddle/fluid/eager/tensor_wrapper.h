@@ -50,7 +50,13 @@ class TensorWrapper {
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
      * to avoid recursive depends on GradNodeBase
      * **/
-    full_reserved_ = full_reserved;
+    auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
+    bool potential_stop_gradients = true;
+    if (tensor_autograd_meta) {
+      potential_stop_gradients = tensor_autograd_meta->StopGradient();
+    }
+    full_reserved_ = full_reserved &&
+                     ((!tensor_autograd_meta) || (!potential_stop_gradients));
     no_need_buffer_ = no_need_buffer;
     if (full_reserved_) {
       VLOG(6) << "Fully reserved tensor: " << tensor.name();
@@ -92,7 +98,6 @@ class TensorWrapper {
     // TODO(jiabin): This may has server performance issue
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
 
-    auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     if (tensor_autograd_meta) {
       auto autograd_meta =
           std::make_shared<AutogradMeta>(*tensor_autograd_meta);
@@ -119,18 +124,23 @@ class TensorWrapper {
       paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
 
       std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
-      auto* intermediate_autograd_meta =
-          EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
-      auto p_ab_autograd_meta =
-          std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
       if (new_grad_node) {
         VLOG(3) << "Recovered TensorWrapper with GradNode "
                 << new_grad_node->name() << " addr: " << new_grad_node.get();
-        p_ab_autograd_meta->SetGradNode(new_grad_node);
       } else {
         VLOG(3) << "Recovered TensorWrapper with Empth GradNode";
       }
-      recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
+      auto* intermediate_autograd_meta =
+          EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+
+      if (intermediate_autograd_meta) {
+        auto p_ab_autograd_meta =
+            std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
+        if (new_grad_node) {
+          p_ab_autograd_meta->SetGradNode(new_grad_node);
+        }
+        recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
+      }
       return recovered_tensor;
     }
   }
