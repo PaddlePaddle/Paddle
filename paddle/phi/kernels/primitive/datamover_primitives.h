@@ -782,35 +782,6 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * total_num_output: Total number of original output.
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
-__device__ __forceinline__ void ReadDataBc(T* dst,
-                                           const T* __restrict__ src,
-                                           uint32_t block_offset,
-                                           details::BroadcastConfig config,
-                                           int total_num_output) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
-
-#pragma unroll
-  for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
-    index_src = 0;
-    if (IsBoundary) {
-      if (index_output >= total_num_output) {
-        break;
-      }
-    }
-#pragma unroll
-    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-      if (i >= config.kDims) break;
-      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-      index_output = fast_divmoder.val[0];
-      index_src += fast_divmoder.val[1] * config.strides[i];
-    }
-    dst[nx] = src[index_src];
-  }
-}
-
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
