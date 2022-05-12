@@ -1624,6 +1624,7 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
         if check_dygraph:
+            # print("===== check_legacy: ", self.op_type)
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
 
@@ -1633,6 +1634,7 @@ class OpTest(unittest.TestCase):
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
+            print("===== check_eager: ", self.op_type)
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
