@@ -24,9 +24,10 @@ BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 def is_elementwise_op(op_type):
-    for eltwise_op in _g_elementwise_ops:
-        if eltwise_op in op_type:
-            return True
+    if op_type in _g_elementwise_ops:
+        return True
+    if "elementwise" in op_type:
+        return True
     return False
 
 
