@@ -240,7 +240,8 @@ void GpuPsGraphTable::move_neighbor_sample_result_to_source_gpu(
         reinterpret_cast<char*>(src_sample_res + h_left[i] * sample_size),
         node.val_storage + sizeof(int64_t) * shard_len[i] +
             sizeof(int) * (shard_len[i] + shard_len[i] % 2),
-        sizeof(int64_t) * shard_len[i], cudaMemcpyDefault, node.out_stream);
+        sizeof(int64_t) * shard_len[i] * sample_size, cudaMemcpyDefault,
+        node.out_stream);
     cudaMemcpyAsync(reinterpret_cast<char*>(actual_sample_size + h_left[i]),
                     node.val_storage + sizeof(int64_t) * shard_len[i],
                     sizeof(int) * shard_len[i], cudaMemcpyDefault,
@@ -662,12 +663,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     create_storage(gpu_id, i, shard_len * sizeof(int64_t),
                    shard_len * (1 + sample_size) * sizeof(int64_t) +
                        sizeof(int) * (shard_len + shard_len % 2));
-    auto& node = path_[gpu_id][i].nodes_[0];
+    // auto& node = path_[gpu_id][i].nodes_[0];
   }
-  // auto end1 = std::chrono::steady_clock::now();
-  // auto tt = std::chrono::duration_cast<std::chrono::microseconds>(end1 -
-  // start1);
-  // VLOG(0)<< "create storage time  " << tt.count() << " us";
   walk_to_dest(gpu_id, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
   for (int i = 0; i < total_gpu; ++i) {
@@ -680,9 +677,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
                     node.in_stream);
     cudaStreamSynchronize(node.in_stream);
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    // platform::CUDADeviceGuard guard(i);
-    // use the key-value map to update alloc_mem_i[0,shard_len)
-    // tables_[i]->rwlock_->RDLock();
     tables_[i]->get(reinterpret_cast<int64_t*>(node.key_storage),
                     reinterpret_cast<int64_t*>(node.val_storage),
                     h_right[i] - h_left[i] + 1,
@@ -779,8 +773,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     if (shard_len == 0) {
       continue;
     }
-    // create_storage(gpu_id, i, shard_len * sizeof(int64_t),
-    //                shard_len * (1 + sample_size) * sizeof(int64_t));
     create_storage(gpu_id, i, shard_len * sizeof(int64_t),
                    shard_len * (1 + sample_size) * sizeof(int64_t) +
                        sizeof(int) * (shard_len + shard_len % 2));
@@ -870,9 +862,10 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
             0, cpu_keys, sample_size, buffers, ac, false);
 
         auto& node = path_[gpu_id][i].nodes_.back();
-        int* id_array = reinterpret_cast<int*>(node.val_storage);
-        int* actual_size_array = id_array + shard_len;
-        int64_t* sample_array = (int64_t*)(id_array + shard_len * 2);
+        int64_t* id_array = reinterpret_cast<int64_t*>(node.val_storage);
+        int* actual_size_array = (int*)(id_array + shard_len);
+        int64_t* sample_array =
+            (int64_t*)(actual_size_array + shard_len + shard_len % 2);
         for (int j = 0; j < number_on_cpu; j++) {
           int offset = cpu_index[j + 1] * sample_size;
           ac[j] = ac[j] / sizeof(int64_t);
