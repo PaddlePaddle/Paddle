@@ -2310,6 +2310,86 @@ void Yolov3LossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
+void GraphSendERecvInferMeta(const MetaTensor& x,
+                             const MetaTensor& e,
+                             const MetaTensor& src_index,
+                             const MetaTensor& dst_index,
+                             const std::string& compute_type,
+                             const std::string& pool_type,
+                             int64_t out_size,
+                             MetaTensor* out,
+                             MetaTensor* dst_count) {
+  auto src_index_dims = src_index.dims();
+  if (src_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(src_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Src_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          src_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The Src_index should be 1D, when it is not 2D, but we get %d",
+            src_index_dims.size()));
+  }
+
+  auto dst_index_dims = dst_index.dims();
+  if (dst_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dst_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Dst_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          dst_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dst_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The Dst_index should be 1D, "
+                                     "when it is not 2D, but we get %d",
+                                     dst_index_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(src_index_dims[0],
+                    dst_index_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Src_index and Dst_index should have the same shape."));
+
+  auto e_dims = e.dims();
+  PADDLE_ENFORCE_EQ(
+      e_dims[0],
+      src_index_dims[0],
+      phi::errors::InvalidArgument(
+          "Expect Input E to have size %d on the first dimension, "
+          "but we get %d",
+          src_index_dims[0],
+          e_dims[0]));
+
+  auto dims = x.dims();
+  if (out_size <= 0) {
+    out->set_dims(dims);
+  } else {
+    std::vector<int64_t> dims_ = phi::vectorize(dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->set_dims(phi::make_ddim(dims_));
+  }
+  out->set_dtype(x.dtype());
+
+  if (pool_type == "MEAN") {
+    if (out_size <= 0) {
+      dst_count->set_dims({dims[0]});
+    } else {
+      dst_count->set_dims({out_size});
+    }
+    dst_count->set_dtype(DataType::INT32);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);

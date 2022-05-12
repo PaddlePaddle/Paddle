@@ -15,4 +15,129 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/multiary.h"
+
+namespace paddle {
+namespace operators {
+
+class GraphSendERecvOP : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+  }
+};
+
+class GraphSendERecvGradOP : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto in_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
+    auto e_dims = ctx->GetInputDim("E");
+    ctx->SetOutputDim(framework::GradVarName("E"), in_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
+
+class GraphSendERecvOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input tensor with data type float32, float64, int32, int64.");
+    AddInput("E",
+             "The input edge weight tensor, data type should be same with X");
+    AddInput("Src_index", "The source index tensor.");
+    AddInput("Dst_index", "The destination index tensor.");
+    AddOutput("Out", "Output tensor of graph_send_e_recv op.");
+    AddOutput("Dst_count",
+              "Count tensor of Dst_index, mainly for MEAN pool_type.")
+        .AsIntermediate();
+    AddAttr<std::string>("compute_type",
+                         "(string, default 'ADD')"
+                         "Define differenct computation types between X and E".)
+        .SetDefault("ADD")
+        .InEnum({"ADD", "SUB", "MUL", "DIV"});
+    AddAttr<std::string>("pool_type",
+                         "(string, default 'SUM')"
+                         "Define different pool types to receive the result "
+                         "tensors of Dst_index.")
+        .SetDefault("SUM")
+        .InEnum({"SUM", "MEAN", "MIN", "MAX"});
+    AddAttr<int64_t>(
+        "out_size",
+        "(int64_t, default 0)"
+        "Define the first dimension of Output tensor."
+        "If set default 0, then the shape of Out is the same with X.")
+        .SetDefault(0);
+    AddComment(R"DOC(
+Graph Learning Send_E_Recv combine operator.
+
+$Out = Recv(Compute(Send(X, Src_index), E, compute_type), Dst_index, pool_type)$
+
+This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
+intermediate memory consumption in the process of message passing.
+
+Take `X` as the input tensor, we first use `src_index` to gather corresponding data.
+Then the gather data should compute with `E` in different compute_types, like add, sub, mul, and div,
+and get the computation result. Then, use `dst_index` to update the corresponding position of output 
+tensor in different pooling types, like sum, mean, max, or min.
+
+)DOC");
+  }
+};
+
+template <typename T>
+class GraphSendERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("graph_send_e_recv_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("E", this->Input("E"));
+    op->SetInput("Src_index", this->Input("Src_index"));
+    op->SetInput("Dst_index", this->Input("Dst_index"));
+
+    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+      op->SetInput("Dst_count", this->Output("Dst_count"));
+    }
+
+    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
+        BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+      op->SetInput("Out", this->Output("Out"));
+    }
+
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(graph_send_e_recv, GraphSendERecvInferShapeFunctor,
+                            PD_INFER_META(phi::GraphSendERecvInferMeta));
+REGISTER_OPERATOR(graph_send_e_recv, ops::GraphSendERecvOP,
+                  ops::GraphSendERecvOpMaker,
+                  ops::GraphSendERecvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GraphSendERecvGradOpMaker<paddle::imperative::OpBase>,
+                  GraphSendERecvInferShapeFunctor);
+REGISTER_OPERATOR(graph_send_e_recv_grad, ops::GraphSendERecvGradOp);
