@@ -342,7 +342,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         continue
                     param_grads.append((param, grad))
 
-        outputs_name_to_idx = self.__get_outputs_name_to_idx(first_backward_idx,
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
                                                             block)
 
         # structure of grad_param_segments is
@@ -398,7 +398,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     attrs={OP_ROLE_KEY: OpRole.Backward})
 
         # update the outputs_name_to_idx after insertion of sync/allreduce ops
-        outputs_name_to_idx = self.__get_outputs_name_to_idx(first_backward_idx,
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
                                                             block)
         # the before_idx is not guaranteed sorted, therefore we have to find the
         # topology to insert the coalesce ops
@@ -450,7 +450,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 break
         block._sync_with_cpp()
 
-    def __get_outputs_name_to_idx(self, first_backward_idx, block):
+    def __get_ouputs_name_to_idx(self, first_backward_idx, block):
         # Each item of outputs_name_to_idx is a pair of idx.
         # The first entry of this pair is the idx of the first op generates the grad,
         # which is used to indicate the position to insert coalesce op.
