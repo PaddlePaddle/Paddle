@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void IndexAddGradKernel(const Context& ctx,
                         const DenseTensor& out_grad,
-                        int axis,
-                        float added_value,
+                        // int axis,
+                        // float added_value,
                         DenseTensor* x_grad);
 
 }  // namespace phi
