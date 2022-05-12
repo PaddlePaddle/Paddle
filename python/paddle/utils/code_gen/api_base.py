@@ -307,14 +307,50 @@ class BaseAPI(object):
     def get_return_type(self, out_type_list):
         return None
 
+    def get_input_tensor_args(self, inplace_flag=False):
+        input_args = []
+        inplace_type_map = {
+            "const Tensor&": "Tensor&",
+            "const std::vector<Tensor>&": "std::vector<Tensor>&"
+        }
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            if inplace_flag and name in self.inplace_map.values():
+                input_args.append(inplace_type_map[self.inputs['input_info'][
+                    name]] + ' ' + name)
+            else:
+                input_args.append(self.inputs['input_info'][name] + ' ' + name)
+        return input_args
+
+    def gene_api_declare_args(self, inplace_flag=False):
+        declare_args = self.get_input_tensor_args(inplace_flag)
+        for name in self.attrs['names']:
+            default_value = ''
+            if self.attrs['attr_info'][name][1] is not None:
+                default_value = ' = ' + self.attrs['attr_info'][name][1]
+            declare_args.append(self.attrs['attr_info'][name][0] + ' ' + name +
+                                default_value)
+
+        return ", ".join(declare_args)
+
+    def gene_api_define_args(self, inplace_flag=False):
+        define_args = self.get_input_tensor_args(inplace_flag)
+        for name in self.attrs['names']:
+            define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
+
+        return ", ".join(define_args)
+
     def gene_api_declaration(self):
-        api_declaration = f"""
-PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.args_str['args_declare']});
+        api_declaration = ""
+        api_func_name = self.get_api_func_name()
+        if api_func_name[-1] != '_':
+            api_declaration = f"""
+PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.gene_api_declare_args()});
 """
 
         if self.is_base_api and self.inplace_map is not None:
             api_declaration = api_declaration + f"""
-PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self.args_str['args_declare']});
+PADDLE_API {self.gene_return_type_code()} {api_func_name + '_'}({self.gene_api_declare_args()});
 """
 
         return api_declaration
@@ -778,9 +814,11 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  return {self.gene_return_code()};"""
 
     def gene_base_api_code(self, inplace_flag=False):
-        api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
+        api_func_name = self.get_api_func_name()
+        if inplace_flag and api_func_name[-1] != '_':
+            api_func_name += '_'
         api_code = f"""
-PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.gene_api_define_args(inplace_flag)}) {{
 {self.gene_kernel_select()}
 """
 
@@ -821,10 +859,10 @@ PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.args_str["args_d
 
                 invoke_code = re.sub(pattern, adjust_name, self.invoke)
                 params_code = re.sub(pattern, adjust_name,
-                                     self.args_str["args_define"])
+                                     self.gene_api_define_args())
             else:
                 invoke_code = self.invoke
-                params_code = self.args_str["args_define"]
+                params_code = self.gene_api_define_args()
             return f"""
 {self.outputs['return_type']} {self.api}({params_code}) {{
   return {invoke_code};
