@@ -222,6 +222,7 @@ def get_user_defined_strategy(config):
     strategy.sparse_table_configs = table_config
     print("strategy table config:", strategy.sparse_table_configs)
     a_sync_configs = strategy.a_sync_configs
+    a_sync_configs["launch_barrier"] = False
     # a_sync_configs["launch_barrier"] = True
     strategy.a_sync_configs = a_sync_configs
     print("launch_barrier: ", strategy.a_sync_configs["launch_barrier"])

@@ -70,6 +70,11 @@ def fl_ps_train():
 
     # 3. compile time - build program_desc
     user_defined_strategy = get_user_defined_strategy(config)
+    a_sync_configs = user_defined_strategy.a_sync_configs
+    a_sync_configs["launch_barrier"] = True
+    user_defined_strategy.a_sync_configs = a_sync_configs
+    print("launch_barrier: ",
+          user_defined_strategy.a_sync_configs["launch_barrier"])
     learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
     inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
     from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer

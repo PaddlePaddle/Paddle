@@ -35,6 +35,7 @@ class FlPsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    return
     remove_path_if_exists('/ps_log')
     remove_path_if_exists('/ps_usr_print_log')
     if not os.path.exists('./train_data'):
