@@ -79,9 +79,9 @@ class SplitOpConverter : public OpConverter {
       std::string layer_name = "split (Output: ";
       // input : [C,H,W]
       for (size_t i = 0; i < output_num; i++) {
-        trt_start_dims[axis] =
-            std::accumulate(output_lengths.begin(), output_lengths.end(), 0);
-        trt_out_dims[axis] = output_lengths[i];
+        trt_start_dims.d[axis] = std::accumulate(output_lengths.begin(),
+                                                 output_lengths.begin() + i, 0);
+        trt_out_dims.d[axis] = output_lengths[i];
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_out_dims, trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
