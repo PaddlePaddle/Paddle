@@ -915,7 +915,7 @@ class Model(object):
 
     When training on GPU, auto mixed precision (AMP O1) and pure float16 
     (AMP O2) training are both supported in static mode and dynamic mode.
-    In static graph mode, before traing with pure float16 (AMP O2),
+    In static graph mode, before training with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
     should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
@@ -2075,7 +2075,7 @@ class Model(object):
             #    [input1, input2, ..., label1, lable2, ...]
             # 3. custumed iterator yield concated inputs and labels:
             #   [input1, input2, ..., label1, lable2, ...]
-            # 4. custumed iterator yield seperated inputs and labels:
+            # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
             data = flatten(data)

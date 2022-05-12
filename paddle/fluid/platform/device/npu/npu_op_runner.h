@@ -70,7 +70,7 @@ class NpuOpRunner {
   NpuOpRunner &AddInput(const Tensor &tensor);
 
   // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
-  // Specifically, the tensor of shape, tensor of dims, etc, which are are small
+  // Specifically, the tensor of shape, tensor of dims, etc, which are small
   // vector/list.
   NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
 

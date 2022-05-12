@@ -156,7 +156,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     }
   }
 
-  // compute select rows seperately.
+  // compute select rows separately.
   if (!selectrow_index.empty()) {
     std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
@@ -241,7 +241,7 @@ class SumKernel<platform::CUDADeviceContext, T>
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Ouput(out) must be Tensor,  SelectedRows or "
+          "Expected type of Output(out) must be Tensor,  SelectedRows or "
           "LodTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

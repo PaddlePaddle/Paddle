@@ -698,14 +698,14 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                   const bool exclusive, const bool reverse,
                                   const cnnlTensorDescriptor_t input_desc,
                                   const void* input,
-                                  const cnnlTensorDescriptor_t ouput_desc,
+                                  const cnnlTensorDescriptor_t output_desc,
                                   void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   // NAN propagation mode: Only support CNNL_NOT_PROPAGATE_NAN now.
   cnnlNanPropagation_t mode = CNNL_NOT_PROPAGATE_NAN;
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCumsum(handle, input_desc, input, axis,
-                                        exclusive, reverse, mode, ouput_desc,
+                                        exclusive, reverse, mode, output_desc,
                                         output));
 }
 
