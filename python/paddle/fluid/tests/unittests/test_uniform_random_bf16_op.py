@@ -260,9 +260,9 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name="input", shape=[1, 3], dtype=bfloat16)
+            input = fluid.data(name="input", shape=[1, 3], dtype="bfloat16")
             out_1 = fluid.layers.uniform_random_batch_size_like(
-                input, [2, 4], dtype=bfloat16)  # out_1.shape=[1, 4]
+                input, [2, 4], dtype="bfloat16")  # out_1.shape=[1, 4]
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

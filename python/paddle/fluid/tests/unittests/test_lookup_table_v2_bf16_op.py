@@ -105,7 +105,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="emb_weight", initializer=self.initializer),
                 is_sparse=False,
-                dtype=bfloat16)  # bfloat16
+                dtype="bfloat16")
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(self.prog,

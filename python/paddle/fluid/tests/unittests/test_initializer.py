@@ -102,8 +102,8 @@ class TestConstantInitializer(unittest.TestCase):
         """Test constant initializer with bfloat16
            No cast operator has been added here
         """
-        self.test_constant_initializer_default_value("uint16")
-        self.test_constant_initializer("uint16")
+        self.test_constant_initializer_default_value("bfloat16")
+        self.test_constant_initializer("bfloat16")
 
 
 class TestUniformInitializer(unittest.TestCase):
@@ -208,9 +208,9 @@ class TestUniformInitializer(unittest.TestCase):
         """Test uniform initializer with bfloat16
            No cast operator has been added here
         """
-        block = self.test_uniform_initializer_default_value("uint16")
-        block = self.test_uniform_initializer(dtype="uint16")
-        block = self.test_uniform_initializer_two_op("uint16")
+        block = self.test_uniform_initializer_default_value("bfloat16")
+        block = self.test_uniform_initializer(dtype="bfloat16")
+        block = self.test_uniform_initializer_two_op("bfloat16")
 
 
 class TestNormalInitializer(unittest.TestCase):
@@ -245,7 +245,8 @@ class TestNormalInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
+        num_ops = 2 if (dtype == "float16" or dtype == "uint16" or
+                        dtype == "bfloat16") else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -262,7 +263,7 @@ class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_bf16(self):
         """Test normal initializer with bfloat16
         """
-        self.test_normal_initializer(bfloat16)
+        self.test_normal_initializer("bfloat16")
 
 
 class TestXavierInitializer(unittest.TestCase):
@@ -369,8 +370,8 @@ class TestXavierInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.XavierInitializer(
                     uniform=uniform, fan_in=12, fan_out=23, seed=134))
-        num_ops = 2 if (dtype == "float16" or (dtype in ["uint16", bfloat16] and
-                                               not uniform)) else 1
+        num_ops = 2 if (dtype == "float16" or (
+            dtype in ["uint16", "bfloat16"] and not uniform)) else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         if uniform:
@@ -393,10 +394,10 @@ class TestXavierInitializer(unittest.TestCase):
         """Test the Xavier initializer with bfloat16
         """
         block_uniform = self.test_xavier_initializer_supplied_arguments(
-            bfloat16)
+            "bfloat16")
         self.assertEqual(len(block_uniform.ops), 1)
         block_gaussian = self.test_xavier_initializer_supplied_arguments(
-            bfloat16, False)
+            "bfloat16", False)
         self.assertTrue(check_cast_op(block_gaussian.ops[1]))
 
 
@@ -575,7 +576,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NumpyArrayInitializer(np_array))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype in ["float16", "bfloat16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
@@ -591,7 +592,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
     def test_numpy_array_initializer_bf16(self):
         """Test the numpy array initializer with bfloat16
         """
-        block = self.test_numpy_array_initializer("uint16")
+        block = self.test_numpy_array_initializer("bfloat16")
         self.assertTrue(block.ops[1])
 
 

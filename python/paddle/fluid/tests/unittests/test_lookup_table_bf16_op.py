@@ -56,7 +56,7 @@ class TestLookupTableBF16Op(OpTest):
 
     def setUp(self):
         self.init_test()
-        self.dtype = bfloat16
+        self.dtype = "bfloat16"
 
         table = np.random.random((17, 31)).astype("float32")
         self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
@@ -217,7 +217,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="emb_weight", initializer=self.initializer),
                 is_sparse=False,
-                dtype=bfloat16)
+                dtype="bfloat16")
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(self.prog,
