@@ -51,7 +51,9 @@ class MasterDaemon {
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
   int _nranks;
-  bool _stop = false;
+  bool _stop = false;  // all workers stopped
+  std::chrono::time_point<std::chrono::system_clock> _stop_time;
+  bool _has_stop = false;  // at least one worker stopped
 };
 
 class TCPServer {

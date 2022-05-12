@@ -833,3 +833,14 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Example:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+/**
+ * TCPStore related FLAG
+ * Name: FLAGS_stop_check_timeout
+ * Since Version: 2.4
+ * Value Range: int32, default=900
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(
+    stop_check_timeout, 900,
+    "Timeout value for check whether the master worker should stop or not.");

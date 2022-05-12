@@ -19,13 +19,16 @@
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
+
+DECLARE_int32(stop_check_timeout);
 
 namespace paddle {
 namespace distributed {
 
 namespace detail {
 
-constexpr int INFTIME = -1;
+constexpr int INFTIME = 10000;  // 10 seconds
 
 std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
                                                   int nranks) {
@@ -86,6 +89,10 @@ void MasterDaemon::_do_get(SocketType socket) {
 
 void MasterDaemon::_do_stop(SocketType socket) {
   VLOG(3) << "MasterDaemon::_do_stop";
+  if (!_has_stop) {
+    _stop_time = std::chrono::system_clock::now();
+  }
+  _has_stop = true;
   ReplyType value = ReplyType::STOP_WAIT;
   tcputils::send_value<ReplyType>(socket, value);
   if (--_nranks == 0) {
@@ -115,6 +122,20 @@ void MasterDaemon::run() {
 #endif
 
   while (!_stop) {
+    auto end_time = std::chrono::system_clock::now();
+    if (_has_stop) {
+      std::chrono::duration<double> diff = end_time - _stop_time;
+      int elapsed_seconds = static_cast<int>(diff.count());
+      PADDLE_ENFORCE_LT(
+          elapsed_seconds, FLAGS_stop_check_timeout,
+          platform::errors::Fatal(
+              "%d seconds elapsed after the first worker "
+              "stopped, so we think there may be something wrong and will "
+              "stop the master worker. You can use "
+              "'export FLAGS_stop_check_timeout=3600'"
+              " to change the timeout value in seconds. The default one is 900",
+              elapsed_seconds));
+    }
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
