@@ -1396,7 +1396,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 if IsPlainTensorType(rtype):
                     output_autograd_meta = f"""
   auto& {transformed_tensor_name} = returns[{pos}][0];
-  egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"""
+  egr::AutogradMeta* {output_autograd_meta_name} = returns[{pos}][0].initialized() ? egr::EagerUtils::autograd_meta(&{transformed_tensor_name}) : nullptr;"""
 
                 else:
                     assert IsVectorTensorType(rtype)
