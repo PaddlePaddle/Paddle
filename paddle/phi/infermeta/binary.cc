@@ -1184,7 +1184,7 @@ void HuberLossInferMeta(const MetaTensor& input,
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        int axis,
-                       float added_value,
+                      //  float add_value,
                        MetaTensor* output) {
   auto input_dim = x.dims();
   auto index_dim = index.dims();
@@ -1217,8 +1217,8 @@ void IndexAddInferMeta(const MetaTensor& x,
 }
 
 void IndexAddGradInferMeta(const MetaTensor& out_grad,
-                           int axis,
-                           float added_value,
+                          //  int axis,
+                          //  float add_value,
                            MetaTensor* x_grad) {
   x_grad->set_dims(out_grad.dims());
   x_grad->set_dtype(out_grad.dtype());

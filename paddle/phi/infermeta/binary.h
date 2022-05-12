@@ -187,12 +187,12 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        int axis,
-                       float added_value,
+                    //    float add_value,
                        MetaTensor* output);
 
 void IndexAddGradInferMeta(const MetaTensor& out_grad,
-                           int axis,
-                           float added_value,
+                        //    int axis,
+                        //    float add_value,
                            MetaTensor* x_grad);
 
 void IndexSampleInferMeta(const MetaTensor& x,
