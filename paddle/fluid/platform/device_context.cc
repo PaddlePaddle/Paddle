@@ -809,7 +809,7 @@ void MKLDNNDeviceContext::BlockNextCacheClearing() {
           << block_next_cache_clearing_;
 }
 
-bool MKLDNNDeviceContext::IsNextCacheClearingBlocked() {
+bool MKLDNNDeviceContext::IsNextCacheClearingBlocked() const {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   return block_next_cache_clearing_ > 0;
 }
