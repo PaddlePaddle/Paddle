@@ -63,7 +63,7 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
 
-    def test_func_double_grad_dynamic(self):
+    def func_double_grad_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -83,6 +83,11 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                     np.allclose(dout, pd_dout),
                     "custom op out grad: {},\n paddle api out grad: {}".format(
                         dout, pd_dout))
+
+    def test_func_double_grad_dynamic(self):
+        with _test_eager_guard():
+            self.func_double_grad_dynamic()
+        self.func_double_grad_dynamic()
 
 
 if __name__ == "__main__":

@@ -357,10 +357,8 @@ if (WITH_PSCORE)
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
 
-    if (WITH_HETERPS)
-        include(external/rocksdb)     # download, build, install libmct
-        list(APPEND third_party_deps extern_rocksdb)
-    endif()
+    include(external/rocksdb)     # download, build, install rocksdb
+    list(APPEND third_party_deps extern_rocksdb)
 endif()
 
 if(WITH_XBYAK)
