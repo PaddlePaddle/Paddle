@@ -25,6 +25,7 @@ add_subdirectory(string)
 add_subdirectory(jit)
 add_subdirectory(prim_ops)
 
+file(GLOB math_cc "*_op.cc")
 file(GLOB math_cc "math/*_op.cc")
 file(GLOB controlflow_cc "controlflow/*_op.cc")
 file(GLOB detection_cc "detection/*_op.cc")
