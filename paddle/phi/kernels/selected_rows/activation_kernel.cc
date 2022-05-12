@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/square_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
