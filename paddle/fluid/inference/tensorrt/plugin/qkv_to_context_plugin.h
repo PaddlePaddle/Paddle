@@ -265,7 +265,7 @@ class QkvToContextAndQkPluginDynamicCreator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* deserializePlugin(
       const char* name, const void* serial_data,
       size_t serial_length) TRT_NOEXCEPT override {
-    auto plugin = new QkvToContextPluginDynamic(serial_data, serial_length);
+    auto plugin = new QkvToContextAndQkPluginDynamic(serial_data, serial_length);
     return plugin;
   }
 

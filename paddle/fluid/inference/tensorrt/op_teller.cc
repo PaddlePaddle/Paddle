@@ -115,6 +115,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_matmul_with_attention",
       "skip_layernorm",
       "slice",
       "strided_slice",
