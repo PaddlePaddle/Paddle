@@ -148,14 +148,16 @@ void EinsumGradKernel(const Context& dev_ctx,
     right = splits[1].substr(1);
 
     auto equation_for_A =
-        right + "," + ops[1] + "->" + gather_labels_except_reduction(ops[0]);
+        ops[1] + "," + right + "->" + gather_labels_except_reduction(ops[0]);
     auto equation_for_B =
         right + "," + ops[0] + "->" + gather_labels_except_reduction(ops[1]);
     auto operands_for_A = std::vector<const DenseTensor*>();
     auto operands_for_B = std::vector<const DenseTensor*>();
     DenseTensor dA, dB;
-    operands_for_A.push_back(&out_grad);
+    // dA = einsum(B, dC)
     operands_for_A.push_back(x[1]);
+    operands_for_A.push_back(&out_grad);
+    // dB = einsum(dC, A)
     operands_for_B.push_back(&out_grad);
     operands_for_B.push_back(x[0]);
 

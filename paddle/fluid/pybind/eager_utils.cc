@@ -516,8 +516,7 @@ PyObject* ToPyObject(const std::string& value) {
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize) {
   if (return_py_none_if_not_initialize && !value.initialized()) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   PyObject* obj = nullptr;
   if (value.initialized() && value.is_string_tensor()) {
@@ -679,8 +678,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value) {
 
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   PADDLE_THROW(
       platform::errors::Fatal("ToPyObject do not support void* with value."));
