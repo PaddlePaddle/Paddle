@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activation import relu  # noqa: F401
+from .unary import relu  # noqa: F401
+from .unary import tanh  # noqa: F401
+from .unary import sqrt  # noqa: F401
+from .unary import sin  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
 from .pooling import max_pool3d  # noqa: F401
 
-__all__ = ['relu', 'conv3d', 'subm_conv3d', 'max_pool3d']
+__all__ = ['relu', 'tanh', 'conv3d', 'subm_conv3d', 'max_pool3d', 'sqrt', 'sin']

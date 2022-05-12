@@ -13748,7 +13748,7 @@ def get_tensor_from_selected_rows(x, name=None):
            x.height = 20
            x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
 
-        Ouput is LoDTensor:
+        Output is LoDTensor:
            out.shape = [5, 2]
            out.data = [[1, 1],
                        [2, 2],

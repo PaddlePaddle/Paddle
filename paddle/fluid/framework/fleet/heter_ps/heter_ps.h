@@ -44,10 +44,8 @@ class HeterPs : public HeterPsBase {
                               int comm_size) override;
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
   void set_embedx_sgd(const OptimizerConfig& optimizer_config) override;
-#endif
 
   void end_pass() override;
   int get_index_by_devid(int devid) override;

@@ -158,6 +158,19 @@ void AnalysisConfig::EnableNpu(int device_id) {
   Update();
 }
 
+void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
+                                        int device_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = device_type;
+#else
+  LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
+  use_custom_device_ = false;
+#endif
+  Update();
+}
+
 void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
                                bool ipu_enable_pipelining,
                                int ipu_batches_per_step) {
@@ -323,6 +336,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // fleet exe related
   CP_MEMBER(dist_config_);
+
+  // custom device related.
+  CP_MEMBER(use_custom_device_);
+  CP_MEMBER(custom_device_type_);
+  CP_MEMBER(custom_device_id_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -539,7 +557,8 @@ void AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
       ((use_npu() ^ pass_builder_->use_npu())) ||
-      ((use_ipu() ^ pass_builder_->use_ipu()))) {
+      ((use_ipu() ^ pass_builder_->use_ipu())) ||
+      ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -562,6 +581,12 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -588,6 +613,13 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy(
           *static_cast<NpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -733,7 +765,13 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
-
+  if (use_custom_device_) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to enable the custom device "
+        "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
+#endif
+  }
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
