@@ -286,7 +286,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
   // serialization is affected by max_batch_size, but calibration is not.
-  // So we use seperate engine keys in serialization and calibration.
+  // So we use separate engine keys in serialization and calibration.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0),
       std::to_string(max_batch_size),

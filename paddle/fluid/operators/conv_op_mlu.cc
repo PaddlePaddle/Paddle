@@ -98,7 +98,7 @@ class MLUConvOpKernel : public framework::OpKernel<T> {
         output_desc.get(), GetBasePtr(&output_tensor));
 
     if (!channel_last) {
-      // transpose ouput from NHWC to NCHW
+      // transpose output from NHWC to NCHW
       const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
       TransposeFromMLUTensor<T>(ctx, perm_to_nchw, &output_tensor, output,
                                 false /*need_reshape_or_alloc*/);

@@ -808,7 +808,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   mode,
                   is_test);
 
-    // concat the the output result
+    // concat the output result
     funcs::ConcatFunctor<CPUContext, T> concat_functor;
     concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
   }
