@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -21,23 +22,27 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-template <typename Context, typename T, typename IndexT = int>
-void IndexAddInner(const Context& ctx,
-                   const DenseTensor& index,
+// template <typename Context, typename T, typename IndexT = int>
+template <typename Context, typename T>
+void IndexAddCPUImpl(const Context& ctx,
+                  //  const DenseTensor& index,
+                   const IntArray& index,
                    DenseTensor* output,
                    int axis,
-                   T added_val) {
+                   T add_val) {
   auto output_dim = output->dims();
   auto output_dim_size = output_dim.size();
-  auto index_size = index.dims()[0];
+  // auto index_size = index.dims()[0];
+  auto index_size = index.size();
 
-  DenseTensor index_cpu_copy;
-  if (!paddle::platform::is_cpu_place(index.place())) {
-    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
-  }
-  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
-                                 ? index.data<IndexT>()
-                                 : index_cpu_copy.data<IndexT>();
+  // DenseTensor index_cpu_copy;
+  // if (!paddle::platform::is_cpu_place(index.place())) {
+  //   phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+  // }
+  // const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
+  //                                ? index.data<IndexT>()
+  //                                : index_cpu_copy.data<IndexT>();
+  const auto& index_data = index.GetData();
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < output_dim_size; i++) {
@@ -54,8 +59,8 @@ void IndexAddInner(const Context& ctx,
         index_data[i],
         0,
         phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "(elements of index of OP(index_add)) "
+            "expected >= 0 and < %ld, but got %ld. Please check index "
             "value.",
             output_dim[axis],
             index_data[i]));
@@ -63,8 +68,8 @@ void IndexAddInner(const Context& ctx,
         index_data[i],
         output_dim[axis],
         phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "(elements of index of OP(index_add) "
+            "expected >= 0 and < %ld, but got %ld. Please check index "
             "value.",
             output_dim[axis],
             index_data[i]));
@@ -75,10 +80,10 @@ void IndexAddInner(const Context& ctx,
   auto output_tensor = EigenTensor<T, 3>::From(*output);
   auto& place = *ctx.eigen_device();
   for (auto j = 0; j < index_size; j++) {
-    IndexT index_value = index_data[j];
+    auto index_value = index_data[j];
     auto output_t = output_tensor.chip(index_value, 1);
     // output_t.device(place) = output_t.constant(fill_val);
-    output_t.device(place) += output_t.constant(added_val);
+    output_t.device(place) += output_t.constant(add_val);
   }
   output->Resize(output_dim);
 }
