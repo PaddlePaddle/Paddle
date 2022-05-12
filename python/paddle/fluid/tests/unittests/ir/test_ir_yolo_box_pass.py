@@ -52,7 +52,7 @@ def multiclass_nms(bboxes,
     output.stop_gradient = True
     index.stop_gradient = True
 
-    return output, nms_rois_num, index
+    return output, index, nms_rois_num
 
 
 class TestYoloBoxPass(unittest.TestCase):

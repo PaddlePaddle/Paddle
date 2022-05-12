@@ -131,11 +131,11 @@ static void PostNMS(std::vector<Detection>* det_bboxes, float thresh,
 }
 
 __global__ void YoloBoxNum(const float* input, int* bbox_count,
-                           const uint grid_size, const uint class_num,
-                           const uint anchors_num, float prob_thresh) {
-  uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
+                           const int grid_size, const int class_num,
+                           const int anchors_num, float prob_thresh) {
+  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
   if ((x_id >= grid_size) || (y_id >= grid_size) || (z_id >= anchors_num)) {
     return;
   }
@@ -152,12 +152,12 @@ __global__ void YoloBoxNum(const float* input, int* bbox_count,
 
 __global__ void YoloTensorParseKernel(
     const float* input, const float* im_shape_data, const float* im_scale_data,
-    float* output, int* bbox_index, const uint grid_size, const uint class_num,
-    const uint anchors_num, const uint netw, const uint neth, int* biases,
+    float* output, int* bbox_index, const int grid_size, const int class_num,
+    const int anchors_num, const int netw, const int neth, int* biases,
     float prob_thresh) {
-  uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
+  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
   if ((x_id >= grid_size) || (y_id >= grid_size) || (z_id >= anchors_num)) {
     return;
   }
@@ -206,7 +206,7 @@ __global__ void YoloTensorParseKernel(
                                  : pic_h - 1;
 
   // Probabilities of classes
-  for (uint i = 0; i < class_num; ++i) {
+  for (int i = 0; i < class_num; ++i) {
     float prob =
         input[bbindex + grids_num * (z_id * (5 + class_num) + (5 + i))] *
         objectness;

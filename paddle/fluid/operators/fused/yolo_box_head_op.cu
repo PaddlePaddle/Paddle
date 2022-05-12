@@ -24,13 +24,13 @@ inline __device__ float SigmoidGPU(const float& x) {
 }
 
 __global__ void YoloBoxHeadCudaKernel(const float* input, float* output,
-                                      const uint grid_size_x,
-                                      const uint grid_size_y,
-                                      const uint class_num,
-                                      const uint anchors_num) {
-  uint x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  uint y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  uint z_id = blockIdx.z * blockDim.z + threadIdx.z;
+                                      const int grid_size_x,
+                                      const int grid_size_y,
+                                      const int class_num,
+                                      const int anchors_num) {
+  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
   if ((x_id >= grid_size_x) || (y_id >= grid_size_y) || (z_id >= anchors_num)) {
     return;
   }
@@ -53,7 +53,7 @@ __global__ void YoloBoxHeadCudaKernel(const float* input, float* output,
   output[bbindex + grids_num * (z_id * (5 + class_num) + 3)] =
       __expf(input[bbindex + grids_num * (z_id * (5 + class_num) + 3)]);
   // Probabilities of classes
-  for (uint i = 0; i < class_num; ++i) {
+  for (int i = 0; i < class_num; ++i) {
     output[bbindex + grids_num * (z_id * (5 + class_num) + (5 + i))] =
         SigmoidGPU(
             input[bbindex + grids_num * (z_id * (5 + class_num) + (5 + i))]);
