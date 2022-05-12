@@ -15,10 +15,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_recompute_pass")
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_sharding_pass")
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_fp16_pass")
-    list(REMOVE_ITEM TEST_OPS "test_build_cinn_pass_resnet")
 endif()
-
-list(REMOVE_ITEM TEST_OPS "test_build_cinn_pass") 
 
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
