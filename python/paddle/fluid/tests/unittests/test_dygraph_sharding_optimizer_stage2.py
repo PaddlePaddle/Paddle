@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import os
 import unittest
 import paddle.fluid as fluid
 
@@ -30,5 +29,4 @@ class TestDygraphShardingOptimizerStage2(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

@@ -54,8 +54,8 @@ def adamw_step(inputs, attributes):
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
+    denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
+    param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
     return param_out, moment1_out, moment2_out
 
 
@@ -314,16 +314,16 @@ def simple_lr_setting(param, decay_rate, n_layers):
                  "core is not compiled with CUDA")
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
     def setUp(self):
-        random.seed(2021)
-        np.random.seed(2021)
-        paddle.seed(2021)
+        random.seed(2022)
+        np.random.seed(2022)
+        paddle.seed(2022)
 
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
-        value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_tensor(value)
-        linear1 = paddle.nn.Linear(13, 8)
-        linear2 = paddle.nn.Linear(8, 5)
+        linear1 = paddle.nn.Linear(
+            13, 8, bias_attr=paddle.nn.initializer.Constant(value=1.0))
+        linear2 = paddle.nn.Linear(
+            8, 5, bias_attr=paddle.nn.initializer.Constant(value=1.0))
 
         # fix the linear name, simple_lr_setting function will use the name
         linear1.weight.name = "linear_1.w_0"
@@ -331,33 +331,103 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         linear2.weight.name = "linear_2.w_0"
         linear2.bias.name = "linear_2.b_0"
 
-        simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
+        fc1_w = np.array(linear1.weight)
+        fc1_w_mon1 = np.zeros_like(fc1_w)
+        fc1_w_mon2 = np.zeros_like(fc1_w)
+        fc1_b = np.array(linear1.bias)
+        fc1_b_mon1 = np.zeros_like(fc1_b)
+        fc1_b_mon2 = np.zeros_like(fc1_b)
 
-        adam = paddle.optimizer.AdamW(
-            learning_rate=0.01,
+        fc2_w = np.array(linear2.weight)
+        fc2_w_mon1 = np.zeros_like(fc2_w)
+        fc2_w_mon2 = np.zeros_like(fc2_w)
+        fc2_b = np.array(linear2.bias)
+        fc2_b_mon1 = np.zeros_like(fc2_b)
+        fc2_b_mon2 = np.zeros_like(fc2_b)
+
+        simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
+        learning_rate = 0.001
+        weight_decay = 0.01
+        beta1 = 0.9
+        beta2 = 0.999
+
+        opt = paddle.optimizer.AdamW(
+            learning_rate=learning_rate,
             parameters=[{
                 'params': linear1.parameters()
             }, {
                 'params': linear2.parameters(),
             }],
             apply_decay_param_fun=lambda name: True,
-            weight_decay=0.01,
+            weight_decay=weight_decay,
             lr_ratio=simple_lr_fun)
 
-        loss_ref = np.array(
-            [-1.7267396, -2.81524, -3.9250019, -5.05954, -6.2272625])
+        def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+            np_inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([beta1**t]).astype("float32"),
+                'Beta2Pow': np.array([beta2**t]).astype("float32")
+            }
+
+            np_attrs = {
+                'epsilon': 1e-8,
+                'beta1': beta1,
+                'beta2': beta2,
+                "lr_ratio": lr_ratio,
+                "coeff": weight_decay,
+                "with_decay": True
+            }
+            param_out, moment1_out, moment2_out = adamw_step(np_inputs,
+                                                             np_attrs)
+            return param_out, moment1_out, moment2_out
+
         for i in range(5):
+            a = paddle.to_tensor(
+                np.random.uniform(-1, 1, (2, 13)).astype("float32"))
             a1 = linear1(a)
             out = linear2(a1)
             out = paddle.mean(out)
             out.backward()
-            adam.step()
-            adam.clear_gradients()
-            np.testing.assert_allclose(out[0].numpy(), loss_ref[i], rtol=1e-6)
+
+            fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+                fc1_w,
+                np.array(linear1.weight.grad), fc1_w_mon1, fc1_w_mon2,
+                simple_lr_fun(linear1.weight), i + 1)
+            fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+                fc1_b,
+                np.array(linear1.bias.grad), fc1_b_mon1, fc1_b_mon2,
+                simple_lr_fun(linear1.bias), i + 1)
+            fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+                fc2_w,
+                np.array(linear2.weight.grad), fc2_w_mon1, fc2_w_mon2,
+                simple_lr_fun(linear2.weight), i + 1)
+            fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+                fc2_b,
+                np.array(linear2.bias.grad), fc2_b_mon1, fc2_b_mon2,
+                simple_lr_fun(linear2.bias), i + 1)
+
+            opt.step()
+            opt.clear_gradients()
+
+            np.testing.assert_allclose(linear1.weight.numpy(), fc1_w, rtol=1e-6)
+            np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
+            np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
+            np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, rtol=1e-6)
 
     def test_adamw_op(self):
         paddle.enable_static()
         place = fluid.CUDAPlace(0)
+
+        learning_rate = 0.0001
+        beta1 = 0.85
+        beta2 = 0.95
+        weight_decay = 0.01
+        epsilon = 1e-8
+
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
@@ -365,42 +435,121 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 x = fluid.data(name='x', shape=[None, 10], dtype='float32')
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
 
-                fc1 = fluid.layers.fc(input=x, size=32, act=None)
-                prediction = fluid.layers.fc(input=fc1, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=prediction, label=y)
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0))
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0))
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1)
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2)
+
+                out = linear1(x)
+                out = linear2(out)
+
+                fc1_w_mon1 = np.zeros((linear1.weight.shape)).astype("float32")
+                fc1_w_mon2 = np.zeros((linear1.weight.shape)).astype("float32")
+                fc1_b_mon1 = np.zeros((linear1.bias.shape)).astype("float32")
+                fc1_b_mon2 = np.zeros((linear1.bias.shape)).astype("float32")
+                fc2_w_mon1 = np.zeros((linear2.weight.shape)).astype("float32")
+                fc2_w_mon2 = np.zeros((linear2.weight.shape)).astype("float32")
+                fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype("float32")
+                fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype("float32")
+
+                cost = fluid.layers.square_error_cost(input=out, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 simple_lr_fun = partial(
                     simple_lr_setting, decay_rate=0.8, n_layers=2)
 
-                beta1 = fluid.layers.create_global_var(
-                    shape=[1], value=0.85, dtype='float32', persistable=True)
-                beta2 = fluid.layers.create_global_var(
-                    shape=[1], value=0.95, dtype='float32', persistable=True)
-                betas = [beta1, beta2]
                 opt = paddle.optimizer.AdamW(
-                    learning_rate=1e-5,
+                    learning_rate=learning_rate,
                     beta1=beta1,
                     beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
                     lr_ratio=simple_lr_fun)
                 opt.minimize(avg_cost)
 
+        def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
+            np_inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([beta1**t]).astype("float32"),
+                'Beta2Pow': np.array([beta2**t]).astype("float32")
+            }
+
+            np_attrs = {
+                'epsilon': epsilon,
+                'beta1': beta1,
+                'beta2': beta2,
+                "lr_ratio": lr_ratio,
+                "coeff": weight_decay,
+                "with_decay": True
+            }
+            param_out, moment1_out, moment2_out = adamw_step(np_inputs,
+                                                             np_attrs)
+            return param_out, moment1_out, moment2_out
+
+        fetch_list1 = [
+            "linear_0.w_0", "linear_0.b_0", "linear_1.w_0", "linear_1.b_0"
+        ]
+        fetch_list2 = [
+            "linear_0.w_0", "linear_0.w_0@GRAD", "linear_0.b_0",
+            "linear_0.b_0@GRAD", "linear_1.w_0", "linear_1.w_0@GRAD",
+            "linear_1.b_0", "linear_1.b_0@GRAD"
+        ]
+
         exe = fluid.Executor(place)
         exe.run(startup)
+        test_prog = train_prog.clone(for_test=True)
 
-        loss_ref = np.array(
-            [0.33895183, 0.3159437, 0.19472016, 0.17764759, 0.1520702])
         for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
-            rets = exe.run(train_prog,
-                           feed={"x": inputs,
-                                 "y": outputs},
-                           fetch_list=[avg_cost])
-            assert rets[0] is not None
-            np.testing.assert_allclose(rets[0], loss_ref[i], rtol=1e-6)
+
+            param = exe.run(test_prog,
+                            feed={"x": inputs,
+                                  "y": outputs},
+                            fetch_list=fetch_list1)
+            params_and_gras = exe.run(train_prog,
+                                      feed={"x": inputs,
+                                            "y": outputs},
+                                      fetch_list=fetch_list2)
+
+            fc1_w = param[0]
+            fc1_w_grad = params_and_gras[1]
+            fc1_b = param[1]
+            fc1_b_grad = params_and_gras[3]
+            fc2_w = param[2]
+            fc2_w_grad = params_and_gras[5]
+            fc2_b = param[3]
+            fc2_b_grad = params_and_gras[7]
+
+            fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+                fc1_w, fc1_w_grad, fc1_w_mon1, fc1_w_mon2,
+                simple_lr_fun(linear1.weight), i + 1)
+            fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+                fc1_b, fc1_b_grad, fc1_b_mon1, fc1_b_mon2,
+                simple_lr_fun(linear1.bias), i + 1)
+            fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+                fc2_w, fc2_w_grad, fc2_w_mon1, fc2_w_mon2,
+                simple_lr_fun(linear2.weight), i + 1)
+            fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+                fc2_b, fc2_b_grad, fc2_b_mon1, fc2_b_mon2,
+                simple_lr_fun(linear2.bias), i + 1)
+
+            np.testing.assert_allclose(params_and_gras[0], fc1_w, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[2], fc1_b, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[4], fc2_w, rtol=1e-6)
+            np.testing.assert_allclose(params_and_gras[6], fc2_b, rtol=1e-6)
 
         paddle.disable_static()
 
