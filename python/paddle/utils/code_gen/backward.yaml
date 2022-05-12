@@ -251,6 +251,16 @@
   kernel :
     func : cholesky_solve_grad
 
+- backward_api : clip_double_grad
+  forward : clip_grad (Tensor x, Tensor grad_out, Scalar min = 0., Scalar max = 0.) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, Scalar min = 0., Scalar max = 0.)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip_grad
+
 - backward_api : clip_grad
   forward : clip (Tensor x, Scalar min, Scalar max) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar min = 0., Scalar max = 0.)
@@ -260,6 +270,18 @@
     param : [x]
   kernel :
     func : clip_grad
+  backward : clip_double_grad
+
+- backward_api : concat_double_grad
+  forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
+  args : (Tensor[] grad_x_grad, Scalar axis = 0)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : ConcatInferMeta
+    param : [grad_x_grad, axis]
+  kernel :
+    func : concat
+  no_need_buffer : x
 
 - backward_api : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
@@ -271,6 +293,7 @@
   kernel :
     func : concat_grad
   no_need_buffer : x
+  backward : concat_double_grad
 
 - backward_api : conj_grad
   forward : conj (Tensor x) -> Tensor(out)
@@ -582,6 +605,15 @@
     func : expand_as_grad
   no_need_buffer : x
 
+- backward_api : expand_double_grad
+  forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray shape)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+
 - backward_api : expand_grad
   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray shape)
@@ -592,6 +624,7 @@
   kernel :
     func : expand_grad
   no_need_buffer : x
+  backward : expand_double_grad
 
 - backward_api : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
@@ -1881,6 +1914,15 @@
   kernel :
     func : thresholded_relu_grad
 
+- backward_api : tile_double_grad
+  forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray repeat_times)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : TileInferMeta
+  kernel :
+    func : tile
+
 - backward_api : tile_grad
   forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray repeat_times)
@@ -1891,6 +1933,7 @@
   kernel :
     func : tile_grad
   no_need_buffer : x
+  backward : tile_double_grad
 
 - backward_api : top_k_grad
   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
