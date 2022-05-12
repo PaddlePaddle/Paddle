@@ -27,7 +27,7 @@ ops_to_fill_zero_for_empty_grads = set([
     "add_triple_grad", "multiply_double_grad", "multiply_triple_grad",
     "conv2d_grad_grad", "batch_norm_double_grad", "tanh_double_grad",
     "tanh_triple_grad", "subtract_double_grad", "divide_double_grad",
-    "log_double_grad", "elu_double_grad"
+    "log_double_grad", "elu_double_grad", "leaky_relu_double_grad"
 ])
 
 # For API dispatch used at python-level
@@ -178,7 +178,7 @@ def GetForwardFunctionName(string):
 
 
 def GetIndent(num):
-    tab = "   "
+    tab = "  "
     return "".join([tab for i in range(num)])
 
 
@@ -416,10 +416,6 @@ class FunctionGeneratorBase:
 
             self.forward_outputs_position_map[
                 return_name] = [return_type, return_pos]
-        print("Generated Forward Input Position Map: ",
-              self.forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              self.forward_outputs_position_map)
 
 
 class YamlGeneratorBase:

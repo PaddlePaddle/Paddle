@@ -908,6 +908,73 @@ void TestKernelAdam() {
 }
 
 template <typename KernelTuple, typename PlaceType>
+void TestKernelAdamW() {
+  using T = typename KernelTuple::data_type;
+  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
+  const T old_lr = 0.1;
+  const T beta1 = 0.99;
+  const T beta2 = 0.95;
+  const T beta1_pow = beta1 * beta1;
+  const T beta2_pow = beta2 * beta2;
+
+  const T epsilon = 0.000001;
+  const int64_t numel = 123;
+  const T lr_ratio = 0.2;
+  const T coeff = 0.3;
+
+  T learning_rate = old_lr * (sqrt(1 - beta2_pow) / (1 - beta1_pow));
+  T eps = epsilon * sqrt(1 - beta2_pow);
+
+  std::vector<T> param(numel);
+  std::vector<T> grad(numel);
+  std::vector<T> mom1(numel);
+  std::vector<T> mom2(numel);
+
+  std::vector<T> param_out(param.size());
+  std::vector<T> mom1_out(mom1.size());
+  std::vector<T> mom2_out(mom2.size());
+
+  RandomVec<T>(numel, param.data(), 0.5f);
+  RandomVec<T>(numel, grad.data(), 0.5f);
+  RandomVec<T>(numel, mom1.data(), 0.5f);
+  RandomVec<T>(numel, mom2.data(), 0.5f);
+  auto ref = jit::GetReferFunc<KernelTuple>();
+  EXPECT_TRUE(ref != nullptr);
+  ref(beta1, beta2, -learning_rate, eps, old_lr, lr_ratio, coeff, numel,
+      grad.data(), mom1.data(), mom2.data(), param.data(), mom1_out.data(),
+      mom2_out.data(), param_out.data());
+
+  auto verifier = [](
+      const typename KernelTuple::func_type tgt, T beta1, T beta2, T lr, T eps,
+      T old_lr, T lr_ratio, T coeff, int64_t numel, const std::vector<T>& grad,
+      const std::vector<T>& mom1, const std::vector<T>& mom2,
+      const std::vector<T>& param, const std::vector<T>& ref_mom1_out,
+      const std::vector<T>& ref_mom2_out, const std::vector<T>& ref_param_out) {
+    EXPECT_TRUE(tgt != nullptr);
+    EXPECT_EQ(param.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(grad.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(mom1.size(), static_cast<size_t>(numel));
+    EXPECT_EQ(mom2.size(), static_cast<size_t>(numel));
+
+    std::vector<T> jit_mom1_out(ref_mom1_out.size());
+    std::vector<T> jit_mom2_out(ref_mom2_out.size());
+    std::vector<T> jit_param_out(ref_param_out.size());
+
+    tgt(beta1, beta2, -lr, eps, old_lr, lr_ratio, coeff, numel, grad.data(),
+        mom1.data(), mom2.data(), param.data(), jit_mom1_out.data(),
+        jit_mom2_out.data(), jit_param_out.data());
+
+    ExpectEQ<T>(ref_mom1_out.data(), jit_mom1_out.data(), numel);
+    ExpectEQ<T>(ref_mom2_out.data(), jit_mom2_out.data(), numel);
+    ExpectEQ<T>(ref_param_out.data(), jit_param_out.data(), numel);
+  };
+
+  TestAllImpls<KernelTuple, PlaceType>(
+      1, verifier, beta1, beta2, learning_rate, eps, old_lr, lr_ratio, coeff,
+      numel, grad, mom1, mom2, param, mom1_out, mom2_out, param_out);
+}
+
+template <typename KernelTuple, typename PlaceType>
 void TestKernelSgd() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1046,7 +1113,7 @@ TEST(JITKernel_pool, jitcreator) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_EQ(jitcreators.size(), 0UL);
 #else
-  EXPECT_EQ(jitcreators.size(), 26UL);
+  EXPECT_EQ(jitcreators.size(), 27UL);
 #endif
 }
 
@@ -1080,7 +1147,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 32UL);
+  EXPECT_EQ(kers.size(), 33UL);
 }
 
 // test helper
@@ -1464,6 +1531,7 @@ TEST_CPU_KERNEL(EmbSeqPool);
 TEST_CPU_KERNEL(MatMul);
 TEST_CPU_KERNEL(Softmax);
 TEST_CPU_KERNEL(Adam);
+TEST_CPU_KERNEL(AdamW);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
 

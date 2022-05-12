@@ -14,25 +14,36 @@
 
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
-from .math import add, multiply, subtract, divide
-from .layer.activation import ReLU
-from .layer.norm import BatchNorm
 
-from .layer.conv import Conv3D
-from .layer.conv import SubmConv3D
+from .functional import sqrt
+from .functional import sin
+from .functional import tanh
 
-from .layer.pooling import MaxPool3D
+from .layer import ReLU
+from .layer import BatchNorm
+from .layer import Conv3D
+from .layer import SubmConv3D
+from .layer import MaxPool3D
 
-__all__ = [ #noqa
+from .math import add
+from .math import divide
+from .math import multiply
+from .math import subtract
+
+
+__all__ = [  # noqa
     'sparse_coo_tensor',
     'sparse_csr_tensor',
     'ReLU',
+    'Conv3D',
+    'SubmConv3D',
+    'BatchNorm',
+    'MaxPool3D',
+    'sqrt',
+    'sin',
+    'tanh',
     'add',
     'subtract',
     'multiply',
     'divide',
-    'Conv3D',
-    'SubmConv3D',
-    'BatchNorm',
-    'MaxPool3D'
 ]
