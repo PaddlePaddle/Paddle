@@ -10,6 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -37,17 +39,23 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default input Tensor<float>), "
              "the input feature data of IndexAddOp, dtype should be"
              "int32, int64, float16, float32, float64.");
-    AddInput("Index",
-             "(Tensor, default 1-d Tensor<int>), "
-             "the 1-D tensor containing the indices to index, "
-             "dtype should be int32, int64");
     AddAttr<int>("axis",
-                 "(int, default 0), "
-                 "the dimension in which we index.")
-        .SetDefault(0);
-    AddAttr<float>("added_value",
-                   "(float, default 0.0f) The value to add.")
-        .SetDefault(0.0f);
+              "(int), the dimension in which we index.");
+    // .SetDefault(0);
+
+    // AddInput("Index",
+    //          "(Tensor, default 1-d Tensor<int>), "
+    //          "the 1-D tensor containing the indices to index, "
+    //          "dtype should be int32, int64");
+
+    AddAttr<IntArray>("index",
+          "(list of ints), "
+          "containing the indices to index, "
+          "dtype should be int32, int64");
+
+    AddAttr<Scalar>("add_value",
+                   "(a scalar), The value to add.");
+        // .SetDefault(0.0f);
     AddOutput("Out",
               "(Tensor, default Tensor<float>),"
               " the output of  IndexAddOp, whose dtype and shape is the same as X.");
