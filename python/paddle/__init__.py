@@ -270,6 +270,7 @@ from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
 from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
+from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
@@ -636,4 +637,5 @@ __all__ = [  # noqa
            'renorm',
            'take_along_axis',
            'put_along_axis',
+           'heaviside',
 ]
