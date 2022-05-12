@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import (
-    OpTest, convert_float_to_uint16, convert_uint16_to_float,
+    OpTest, OpTestTool, convert_float_to_uint16, convert_uint16_to_float,
     skip_check_grad_ci)
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -188,6 +188,7 @@ class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
     Test embedding layer api and results for bfloat16

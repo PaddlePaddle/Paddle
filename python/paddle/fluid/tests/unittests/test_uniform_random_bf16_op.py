@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_uint16_to_float, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.test_uniform_random_op import output_hist, out
 from paddle_bfloat import bfloat16
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomOpBF16(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
@@ -108,6 +109,7 @@ class TestUniformRandomOpBF16WithDiagInit(TestUniformRandomOpBF16):
         self.output_hist = output_hist_diag
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
     def test_check_output(self):
         self.check_with_place(core.CPUPlace())
@@ -159,6 +161,7 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
     def test_attr_tensor_API(self):
         startup_program = fluid.Program()
@@ -175,6 +178,7 @@ class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
             outs = exe.run(train_program, fetch_list=[ret])
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomOpAPISeed(unittest.TestCase):
     def test_attr_tensor_API(self):
         _seed = 10
@@ -202,6 +206,7 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
                 self.assertLess(i, _max)
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
     def test_check_output(self):
         place = core.CPUPlace()
@@ -255,6 +260,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
     def test_attr_tensorlist_int32_API(self):
         startup_program = fluid.Program()
