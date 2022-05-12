@@ -29,7 +29,7 @@ namespace phi {
 //                     float added_value,
 //                     DenseTensor* output) {
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx,
+void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     // const DenseTensor& index,
                     const IntArray& index,
