@@ -154,8 +154,6 @@ if(WITH_PYTHON)
     set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   endif()
   
-  file(GLOB GLOB_OP_SRCS "${PROJECT_SOURCE_DIR}/paddle/fluid/operators/*/*_op.cc")
-  message(${GLOB_OP_SRCS})
   ADD_LIBRARY(glob_op_shared SHARED ${GLOB_OP_SRCS})
   # fc tensorrt_converter tensorrt_engine tensorrt_plugin
   #add_dependencies(glob_op_shared protobuf enforce  proto_desc imperative_flag fleet_executor 
