@@ -17,7 +17,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -185,10 +184,9 @@ void Tensor::CopyFromCpu(const T *data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
     paddle::platform::CUDAPlace gpu_place(device_);
-    auto *p = static_cast<paddle::PaddlePredictor *>(predictor_);
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        p->GetDeviceContexts());
+        device_contexs_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     auto *t_data = tensor->mutable_data<T>(gpu_place);
@@ -364,10 +362,9 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto gpu_place = t_place;
-    auto *p = static_cast<paddle::PaddlePredictor *>(predictor_);
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        p->GetDeviceContexts());
+        device_contexs_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -553,8 +550,8 @@ template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
 
-Tensor::Tensor(void *scope, void *predictor)
-    : scope_{scope}, predictor_(predictor) {}
+Tensor::Tensor(void *scope, const void *device_contexts)
+    : scope_{scope}, device_contexs_(device_contexts) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {

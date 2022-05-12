@@ -194,8 +194,8 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
-  explicit ZeroCopyTensor(void* scope, void* predictor)
-      : paddle_infer::Tensor{scope, predictor} {}
+  explicit ZeroCopyTensor(void* scope, const void* device_contexts)
+      : paddle_infer::Tensor{scope, device_contexts} {}
 };
 
 /// \brief A Predictor for executing inference on a model.
@@ -305,8 +305,6 @@ class PD_INFER_DECL PaddlePredictor {
 
  protected:
   virtual const void* GetDeviceContexts() const { return nullptr; }
-
-  friend class paddle_infer::Tensor;
 };
 
 ///

@@ -1463,7 +1463,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
           "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
-      static_cast<void *>(scope), static_cast<void *>(this)));
+      static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1518,7 +1518,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
           "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
-      static_cast<void *>(scope), static_cast<void *>(this)));
+      static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
