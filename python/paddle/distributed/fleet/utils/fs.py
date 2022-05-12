@@ -1145,3 +1145,420 @@ class HDFSClient(FS):
             file_list.append({'path': file_path, 'size': file_size})
 
         return file_list
+
+
+class AFSClient(FS):
+    """
+    A tool of AFS. Use AfsWrapper.
+
+    Examples:
+
+        .. code-block:: text
+
+            from paddle.distributed.fleet.utils import AFSClient
+            client = AFSClient()
+            client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+            client.ls_dir("hdfs:/test_hdfs_client")
+    """
+
+    def __init__(
+            self,
+            time_out=5 * 60 * 1000,  # ms
+            sleep_inter=1000):  # ms
+        self._fs = core.AfsWrapper()
+        self._time_out = time_out
+
+    def init(self, fs_name, fs_user, fs_passwd, fs_conf):
+        self._fs.init(fs_name, fs_user, fs_passwd, fs_conf)
+
+    def list_dirs(self, fs_path):
+        """	
+        Only list directorys under `fs_path` .
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            List: A list of all its subdirectories, e.g. [subdirname1, subdirname1, ...].
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                subdirs = client.list_dirs("hdfs:/test_hdfs_client")
+        """
+        if not self.is_exist(fs_path):
+            return []
+        # TODO:fengdanlei
+        dirs, files = self._ls_dir(fs_path)
+        return dirs
+
+    def ls_dir(self, fs_path):
+        """	
+        List directorys and files under `fs_path` .
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories, 
+            and the second one is the list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
+        """
+        if not self.is_exist(fs_path):
+            return [], []
+
+        return self._ls_dir(fs_path)
+
+    def _ls_dir(self, fs_path):
+
+        files = self._fs.list(fs_path)
+        dirs = [fs_path]
+        return dirs, files
+
+    def is_dir(self, fs_path):
+        """
+        Whether the remote HDFS path is a directory.
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            Bool: Return true if the path exists and it's a directory, otherwise return false.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                ret = client.is_file("hdfs:/test_hdfs_client")
+        """
+        if not self.is_exist(fs_path):
+            return False
+
+        return self._is_dir(fs_path)
+
+    def _is_dir(self, fs_path):
+        list_path = self._fs.list(fs_path)
+        if (len(list_path)) > 0:
+            return True
+        else:
+            return False
+
+    def is_file(self, fs_path):
+        """
+        Whether the remote HDFS path is a file.
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            Bool: Return true if the path exists and it's a file, otherwise return false.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                ret = client.is_file("hdfs:/test_hdfs_client")
+        """
+        if not self.is_exist(fs_path):
+            return False
+
+        return not self._is_dir(fs_path)
+
+    def is_exist(self, fs_path):
+        """
+        Whether the remote HDFS path exists.
+
+        Args:
+            fs_path(str): The hdfs file path.
+
+        Returns:
+            Bool: Whether it's is file or directory, return true if the path exists,
+            otherwise return false.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                ret = client.is_exist("hdfs:/test_hdfs_client")
+        """
+        return self._fs.exist(fs_path)
+
+    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+        """
+        upload dir to hdfs
+        Args:
+            local_dir(str): local dir
+            dest_dir(str): hdfs dest dir
+            overwrite(bool): is overwrite
+        Returns:
+            return code
+        """
+        local_dir = local_dir.rstrip("/")
+        dest_dir = dest_dir.rstrip("/")
+        local_basename = os.path.basename(local_dir)
+        if self.is_exist(dest_dir + "/" + local_basename) and overwrite:
+            self.delete(dest_dir + "/" + local_basename)
+        if not self.is_exist(dest_dir):
+            self.mkdirs(dest_dir)
+        self._fs.upload(local_dir, dest_dir)
+
+    # can't retry
+    def upload(self, local_path, fs_path, multi_processes=1, overwrite=False):
+        """
+        Upload the local path to remote HDFS.
+
+        Args:
+            local_path(str): The local path.
+            fs_path(str): The HDFS path.
+            multi_processes(int|1): the upload data process at the same time, default=5
+            overwrite(bool|False): will overwrite file on HDFS or not
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
+        """
+
+        local = LocalFS()
+        if not local.is_exist(local_path):
+            raise FSFileNotExistsError("{} not exists".format(local_path))
+
+        self._fs.upload(local_path, fs_path)
+
+    def download(self, fs_path, local_path, multi_processes=1, overwrite=False):
+        """
+        Download remote HDFS path to the local.
+
+        Args:
+            fs_path(str):  The HDFS path.
+            local_path(str): The local path.
+            multi_processes(int|1): the download data process at the same time, default=1
+            overwrite(bool): is overwrite
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.download("hdfs:/test_hdfs_client", "./")
+        """
+
+        def __subprocess_download(local_path, datas):
+            """
+            download file from HDFS
+            Args:
+                local_path(str): the local file path
+                datas(str): the hdfs file path list
+            """
+            for data in datas:
+                self._fs.download(local_path, data)
+
+        if not self.is_exist(fs_path):
+            raise FSFileNotExistsError("{} not exits".format(fs_path))
+        # download file
+        if self.is_file(fs_path):
+            return self._fs.download(local_path, fs_path)
+        # download dir
+        _, all_filenames = self.ls_dir(fs_path)
+        all_files = [fs_path + i for i in all_filenames]
+        procs = []
+        for i in range(multi_processes):
+            process_datas = self._split_files(all_files, i, multi_processes)
+            p = multiprocessing.Process(
+                target=__subprocess_download, args=(local_path, process_datas))
+            procs.append(p)
+            p.start()
+
+        # complete the processes
+        for proc in procs:
+            proc.join()
+
+    def mkdirs(self, fs_path):
+        """
+        Create a remote HDFS directory.
+
+        Args:
+            fs_path(str): The HDFS directory path.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.mkdirs("hdfs:/test_hdfs_client")
+        """
+        if self.is_exist(fs_path):
+            return
+        self._fs.mkdir(fs_path)
+
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
+        """
+        Move a remote HDFS file or directory from `fs_src_path` to `fs_dst_path` .
+
+        Args:
+            fs_src_path(str):  Name of the file or directory, that's needed to be moved.
+            fs_dst_path(str):  Name of the file or directory to which to move to.
+            overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
+        """
+        if overwrite and self.is_exist(fs_dst_path):
+            self.delete(fs_dst_path)
+
+        if test_exists:
+            if not self.is_exist(fs_src_path):
+                raise FSFileNotExistsError("{} is not exists".format(
+                    fs_src_path))
+
+            if self.is_exist(fs_dst_path):
+                raise FSFileExistsError("{} exists already".format(fs_dst_path))
+
+        self._fs.mv(fs_src_path, fs_dst_path)
+
+    def delete(self, fs_path):
+        """
+        Delete a remote HDFS path, whether it's a file or directory.
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import HDFSClient
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.delete("hdfs:/test_hdfs_client")
+        """
+        if not self.is_exist(fs_path):
+            return
+        self._fs.remove(fs_path)
+
+    def touch(self, fs_path, exist_ok=True):
+        """
+        Create a remote HDFS file.
+
+        Args:
+            fs_path(str): The HDFS file path.
+            exist_ok(bool): When `fs_path` exists, if `exist_ok` is set false,
+            program will throw an Exception. Default is true.
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.touch("hdfs:/test_hdfs_client")
+        """
+        if self.is_exist(fs_path):
+            if exist_ok:
+                return
+            raise FSFileExistsError
+
+        return self._fs.touchz(fs_path)
+
+    def need_upload_download(self):
+        return True
+
+    def cat(self, fs_path=None):
+        """
+        Cat a remote HDFS file.
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            file content
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import AFSClient
+
+                client = AFSClient()
+                client.init("hdfs://xxx.hadoop.com:54310", "hello", "hello123", "./fs_conf")
+                client.cat("hdfs:/test_hdfs_client")
+        """
+        if self.is_file(fs_path):
+            return self._fs.cat(fs_path)
+        else:
+            return ""
+
+    def _split_files(self, files, trainer_id, trainers):
+        """
+        split file list
+        Args:
+            files(list): file list
+            trainer_id(int): trainer mpi rank id
+            trainers(int): all trainers num
+        Returns:
+            fileist(list): file list of current trainer
+        """
+        remainder = len(files) % trainers
+        blocksize = len(files) // trainers
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]

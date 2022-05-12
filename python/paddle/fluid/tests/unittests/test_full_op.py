@@ -121,6 +121,10 @@ class TestFullAPI(unittest.TestCase):
                     dtype="float32",
                     fill_value=1.1)
 
+                # test for numpy.float64 as fill_value
+                out_10 = paddle.full_like(
+                    out_7, dtype=np.float32, fill_value=np.abs(1.1))
+
                 assert np.array_equal(
                     out_1, np.full(
                         [1, 2], 1.1, dtype="float32"))
@@ -146,6 +150,9 @@ class TestFullAPI(unittest.TestCase):
                 assert np.array_equal(
                     out_9, np.full(
                         [2, 2, 4], 1.1, dtype="float32"))
+                assert np.array_equal(
+                    out_10, np.full(
+                        [1, 2], 1.1, dtype="float32"))
 
 
 class TestFullOpError(unittest.TestCase):

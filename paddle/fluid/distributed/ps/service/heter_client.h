@@ -93,7 +93,15 @@ class HeterClient {
     options.timeout_ms = FLAGS_pserver_timeout_ms;
     std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
     if (peer_role == PEER_ROLE_IS_SWITCH) {
+#ifdef PADDLE_WITH_ARM_BRPC
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
+      options.connection_type = "";
+      VLOG(4) << "ssl enabled in arm";
+#else
       options.ssl_options.enable = need_encrypt;
+#endif
       client_channels = &peer_switch_channels_;
     } else if (peer_role == PEER_ROLE_IS_WORKER) {
       client_channels = &peer_worker_channels_;
@@ -130,7 +138,8 @@ class HeterClient {
                         const std::string& mode = "forward");
 
   int Send(int group_id, const std::vector<std::string>& var_names,
-           const std::vector<int>& vars_len, void* data_ptr, int64_t data_size);
+           const std::vector<int64_t>& vars_len, void* data_ptr,
+           int64_t data_size);
 
   int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
            const std::string& message_name,
@@ -160,16 +169,19 @@ class HeterClient {
   }
 
   // switch client singleton
-  static HeterClient& GetSwitchInstance(
+  static std::shared_ptr<HeterClient> GetSwitchInstance(
       const std::vector<std::string>& peer_endpoints, int32_t peer_role) {
-    static HeterClient switch_s_instance_;
+    std::unique_lock<std::mutex> lock(mtx_);
     if (peer_endpoints.empty()) {
       VLOG(4) << "init switch client failed, null peer_endpoints";
     }
     VLOG(4) << "peer role is: " << peer_role
             << ", addr is: " << peer_endpoints[0];
-    switch_s_instance_.SetPeerSwitchList(peer_endpoints);
-    switch_s_instance_.InitClientChannels(false, peer_endpoints, peer_role);
+    if (switch_s_instance_ == nullptr) {
+      switch_s_instance_.reset(new HeterClient());
+      switch_s_instance_->SetPeerSwitchList(peer_endpoints);
+      switch_s_instance_->InitClientChannels(false, peer_endpoints, peer_role);
+    }
     return switch_s_instance_;
   }
 
@@ -221,6 +233,8 @@ class HeterClient {
   HeterClient(const HeterClient&);
 
   static std::shared_ptr<HeterClient> s_instance_;
+  static std::mutex mtx_;
+  static std::shared_ptr<HeterClient> switch_s_instance_;
   std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   std::vector<std::shared_ptr<brpc::Channel>> previous_xpu_channels_;
 

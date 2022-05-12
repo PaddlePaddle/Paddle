@@ -22,7 +22,7 @@ enum ConvAlgos { GEMMKernel = 0, CuDNNKernel_1 = 1, CuDNNKernel_2 = 2 };
 
 TEST(AlgosCache, AlgosCache) {
   auto autotune_cache = phi::autotune::AutoTuneCache::Instance();
-  auto& cache = autotune_cache.RegisterOrGet("conv_fw");
+  auto& cache = autotune_cache.GetConvForward();
 
   std::vector<int64_t> x_shape = {4, 224, 224, 3};
   std::vector<int64_t> w_shape = {32, 3, 3, 3};

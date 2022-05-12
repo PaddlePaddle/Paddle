@@ -2848,7 +2848,11 @@ class AdamaxOptimizer(Optimizer):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 if framework._non_static_mode():
-                    tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
+                    if framework.in_dygraph_mode():
+                        tmp = _C_ops.final_state_scale(beta1_pow_acc,
+                                                       self._beta1, 0.0, True)
+                    else:
+                        tmp = _C_ops.scale(beta1_pow_acc, "scale", self._beta1)
                     beta1_pow_acc.copy_(tmp, False)
                 else:
                     block.append_op(
@@ -6001,7 +6005,14 @@ class PipelineOptimizer(object):
         for p in program_list:
             self._create_vars(p.global_block(), main_block)
 
-        self.local_rank %= len(device_list)
+        if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
+            self.local_rank = int(os.getenv("PADDLE_MANUAL_PIPELINE_STAGE"))
+            assert self.local_rank < len(device_list), (
+                "Manually specified "
+                "pipeline stage must be less than total number of pipeline "
+                "stages.")
+        else:
+            self.local_rank %= len(device_list)
         # Step3.5: optimize forward send sync_comm to overlap send and recv
         self._optimize_forward_send_sync(program_list[self.local_rank])
 

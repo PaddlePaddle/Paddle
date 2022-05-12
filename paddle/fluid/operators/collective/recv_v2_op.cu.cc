@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
+
 namespace paddle {
 namespace operators {
 
@@ -42,6 +45,20 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup *pg = map->get(rid);
+      std::vector<phi::DenseTensor> out_tensor;
+      auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+      auto out = ctx.Output<framework::LoDTensor>("Out");
+      auto out_dims = out->dims();
+      out->mutable_data<T>(out_dims, place);
+
+      out_tensor.emplace_back(*out);
+      auto task = pg->Recv(out_tensor, peer);
+      return;
+    }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -105,4 +122,5 @@ REGISTER_OP_CUDA_KERNEL(recv_v2, ops::RecvOpV2CUDAKernel<float>,
                         ops::RecvOpV2CUDAKernel<double>,
                         ops::RecvOpV2CUDAKernel<int>,
                         ops::RecvOpV2CUDAKernel<int64_t>,
+                        ops::RecvOpV2CUDAKernel<int8_t>,
                         ops::RecvOpV2CUDAKernel<plat::float16>);

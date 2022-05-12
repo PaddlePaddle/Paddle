@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
@@ -64,6 +65,9 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
+
   int log2i(int x);
 
   template <typename DstPlace, typename SrcPlace, typename StreamType>
@@ -92,6 +96,7 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
+#endif
 
   bool need_transfer(int send_id, int receive_id) {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
@@ -100,8 +105,6 @@ class HeterComm {
   // void dump_to_cpu(int index);
 
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
-
-#endif
 
   void end_pass();
 
@@ -154,11 +157,13 @@ class HeterComm {
 
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDAPlace place_;
+
 #elif defined(PADDLE_WITH_XPU_KP)
     platform::XPUPlace place_;
 #endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
+
     KeyType* all_keys;
     GradType* all_grads;
 
@@ -211,11 +216,11 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
  private:
-  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
-  std::vector<LocalStorage> storage_;
   int topo_aware_{0};
+  std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;
@@ -229,5 +234,7 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
+
 #endif

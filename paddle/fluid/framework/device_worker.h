@@ -522,7 +522,8 @@ class HeterCpuWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
+     defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUWorker : public HogwildWorker {
  public:
@@ -537,8 +538,10 @@ class PSGPUWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   void ProduceTasks() override;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
+#endif
   void ResetStat();
 
  protected:
@@ -588,8 +591,10 @@ class PSGPUWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuEvent_t event_;
   gpuStream_t copy_stream_;
+#endif
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
 

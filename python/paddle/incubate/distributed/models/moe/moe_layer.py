@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# The file has been adapted from the file:
+#     https://github.com/laekov/fastmoe/blob/master/fmoe/layers.py
+#     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+# We retain the following license from the original files:
+#     Copyright 2021, Jiaao He. All rights reserved.
+#   Licensed under the Apache License, Version 2.0 (the "License").
 
 import collections
 import math
@@ -392,7 +399,7 @@ class MoELayer(nn.Layer):
         def experts_fwd(x, fwd_expert_count, experts):
 
             if x.shape[0] == 0:
-                return paddle.empty(x.shape, x.dtype)
+                return x
             y = []
             last_index = 0
             assert isinstance(fwd_expert_count, np.ndarray)
@@ -404,7 +411,7 @@ class MoELayer(nn.Layer):
                 last_index = expert_count + last_index
             return paddle.concat(y, axis=0)
 
-        if self.recompute_interval <= 0:
+        if self.recompute_interval <= 0 or x.shape[0] == 0:
             x = experts_fwd(x, fwd_expert_count.numpy(), self.experts)
         else:
             x = _hp_recompute(experts_fwd, x,
