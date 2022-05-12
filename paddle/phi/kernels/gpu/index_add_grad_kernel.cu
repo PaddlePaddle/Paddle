@@ -16,15 +16,15 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/index_add_grad_kernel.h"
 
-DECLARE_bool(cudnn_deterministic);
+// DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
 template <typename T, typename Context>
 void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
-                        int axis,
-                        float added_value,
+                        // int axis,
+                        // float added_value,
                         DenseTensor* x_grad) {
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 }
@@ -37,6 +37,5 @@ PD_REGISTER_KERNEL(index_add_grad,
                    phi::IndexAddGradKernel,
                    float,
                    phi::dtype::float16,
-                   double,
-                   int,
-                   int64_t) {}
+                   phi::dtype::bfloat16,
+                   double) {}
