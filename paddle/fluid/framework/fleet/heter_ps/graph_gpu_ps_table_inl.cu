@@ -659,16 +659,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
    *)alloc_mem_i)[shard_len + x]
     */
 
-    //   cudaMemcpyAsync(
-    //     reinterpret_cast<char*>(src_sample_res + h_left[i] * sample_size),
-    //     node.val_storage + sizeof(int64_t) * shard_len[i] + sizeof(int) *
-    //     shard_len + (shard_len % 2 == 0?0:4),
-    //     sizeof(int64_t) * shard_len[i], cudaMemcpyDefault,
-    //     node.out_stream);
-    // cudaMemcpyAsync(reinterpret_cast<char*>(actual_sample_size + h_left[i]),
-    //                 node.val_storage + sizeof(int64_t) * shard_len[i],
-    //                 sizeof(int) * shard_len[i], cudaMemcpyDefault,
-    //                 node.out_stream);
     create_storage(gpu_id, i, shard_len * sizeof(int64_t),
                    shard_len * (1 + sample_size) * sizeof(int64_t) +
                        sizeof(int) * (shard_len + shard_len % 2));
