@@ -376,7 +376,7 @@ int32_t GraphTable::load_edges_to_ssd(const std::string &path,
 }
 
 int32_t GraphTable::dump_edges_to_ssd(int idx) {
-  VLOG(0) << "calling dump edges to ssd";
+  VLOG(2) << "calling dump edges to ssd";
   const int64_t fixed_size = 10000;
   // std::vector<int64_t> edge_array[task_pool_size_];
   std::vector<std::unordered_map<int64_t, int>> count(task_pool_size_);
@@ -405,7 +405,7 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
 }
 int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
   VLOG(0) << "make_complementary_graph";
-  const int64_t fixed_size = 10000;
+  const int64_t fixed_size = byte_size / 8;
   // std::vector<int64_t> edge_array[task_pool_size_];
   std::vector<std::unordered_map<int64_t, int>> count(task_pool_size_);
   std::vector<std::future<int>> tasks;
@@ -1258,7 +1258,7 @@ int32_t GraphTable::random_sample_neighbors(
           if (node == nullptr) {
 #ifdef PADDLE_WITH_HETERPS
             if (search_level == 2) {
-              VLOG(2) << "enter sample from ssd";
+              VLOG(2) << "enter sample from ssd for node_id " << node_id;
               char *buffer_addr = random_sample_neighbor_from_ssd(
                   idx, node_id, sample_size, rng, actual_size);
               if (actual_size != 0) {
