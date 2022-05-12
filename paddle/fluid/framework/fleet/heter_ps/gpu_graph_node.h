@@ -230,19 +230,11 @@ struct NeighborSampleResult {
 
     int start = 0;
     for (int i = 0; i < key_size; i++) {
-      // VLOG(0) << "actual sample size for " << i << "th key is " <<
-      // ac_size[i];
-      // VLOG(0) << "sampled neighbors are ";
-      // std::string neighbor, neighbor2;
+      graph.push_back(sample_keys[i]);
+      graph.push_back(ac_size[i]);
       for (int j = 0; j < ac_size[i]; j++) {
-        // if (neighbor.size() > 0) neighbor += ";";
-        // if (neighbor2.size() > 0) neighbor2 += ";";  // r
-        // neighbor += std::to_string(res[i * sample_size + j]);
-        // neighbor2 += std::to_string(res2[start + j]);  // r
-        graph.push_back(sample_keys[i]);
         graph.push_back(res2[start + j]);
       }
-      // VLOG(0) << neighbor << " " << neighbor2;
       start += ac_size[i];  // r
     }
     delete[] res;
@@ -252,11 +244,7 @@ struct NeighborSampleResult {
     return graph;
   }
   NeighborSampleResult(){};
-  ~NeighborSampleResult() {
-    // if (val != NULL) cudaFree(val);
-    // if (actual_sample_size != NULL) cudaFree(actual_sample_size);
-    // if (offset != NULL) cudaFree(offset);
-  }
+  ~NeighborSampleResult() {}
 };
 
 struct NodeQueryResult {

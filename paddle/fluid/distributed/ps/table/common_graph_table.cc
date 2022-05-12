@@ -126,8 +126,8 @@ int32_t GraphTable::add_node_to_ssd(int type_id, int idx, int64_t src_id,
       _db->put(src_id % shard_num % task_pool_size_, ch,
                sizeof(int) * 2 + sizeof(int64_t), (char *)data, len);
     }
-    _db->flush(src_id % shard_num % task_pool_size_);
-    std::string x;
+    // _db->flush(src_id % shard_num % task_pool_size_);
+    // std::string x;
     // if (_db->get(src_id % shard_num % task_pool_size_, ch, sizeof(int64_t) +
     // 2 * sizeof(int), x) ==0){
     // VLOG(0)<<"put result";
@@ -416,7 +416,7 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
           std::vector<Node *> &v = shards[i]->get_bucket();
           size_t ind = i % this->task_pool_size_;
           for (size_t j = 0; j < v.size(); j++) {
-            size_t location = v[j]->get_id();
+            // size_t location = v[j]->get_id();
             for (int k = 0; k < v[j]->get_neighbor_size(); k++) {
               count[ind][v[j]->get_neighbor_id(k)]++;
             }
@@ -424,19 +424,12 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
           return 0;
         }));
   }
-
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
   std::unordered_map<int64_t, int> final_count;
   std::map<int, std::vector<int64_t>> count_to_id;
   std::vector<int64_t> buffer;
-  for (auto p : edge_shards[idx]) {
-    delete p;
-  }
+  clear_graph(idx);
 
-  edge_shards[idx].clear();
-  for (size_t i = 0; i < shard_num_per_server; i++) {
-    edge_shards[idx].push_back(new GraphShard());
-  }
-  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
   for (int i = 0; i < task_pool_size_; i++) {
     for (auto &p : count[i]) {
       final_count[p.first] = final_count[p.first] + p.second;
@@ -447,7 +440,6 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
     count_to_id[p.second].push_back(p.first);
     VLOG(2) << p.first << " appear " << p.second << " times";
   }
-  // std::map<int,std::vector<int64_t>>::iterator iter= count_to_id.rbegin();
   auto iter = count_to_id.rbegin();
   while (iter != count_to_id.rend() && byte_size > 0) {
     for (auto x : iter->second) {
