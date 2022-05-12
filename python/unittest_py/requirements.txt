@@ -1,3 +1,4 @@
+pynacl==1.4.0 ; python_version == "3.6"
 PyGithub
 coverage==5.5
 pycrypto ; platform_system != "Windows"
