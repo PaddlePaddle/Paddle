@@ -134,9 +134,9 @@ def split(x, num_or_sections, axis=0, outs=None):
     if isinstance(num_or_sections, (list, tuple)):
         n = len(num_or_sections)
     else:
-        assert isinstance(
-            num_or_sections, int
-        ), f'num_or_sections must be int, but got {type(num_or_sections)}.'
+        if not isinstance(num_or_sections, int):
+            raise TypeError(
+                f'num_or_sections must be int, but got {type(num_or_sections)}.')
         n = num_or_sections
 
     attrs = {'num_or_sections': num_or_sections, 'axis': axis}
@@ -173,11 +173,10 @@ def concat(xs, axis=0, out=None):
 
 @REGISTER_FN('reduce_p', 'X', 'Y')
 def reduce(x, axis, keepdim=False, out=None):
-    assert isinstance(axis, (
-        tuple, list)), f'axis must be tuple or list, but got {type(axis)}'
-    assert isinstance(keepdim,
-                      bool), f'keepdim must be bool, but got {type(keepdim)}'
-
+    if not isinstance(axis, (tuple, list)):
+        raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
+    if not isinstance(keepdim, bool):
+        raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
     attrs = {'axis': axis, 'keepdim': keepdim}
 
     helper = LayerHelper('reduce_p', **locals())
@@ -199,15 +198,16 @@ def matmul(x, y, out=None):
 
 @REGISTER_FN('slice_select_p', 'X', 'Y')
 def slice_select(x, axis, starts, ends, strides, out=None):
-    assert isinstance(axis, (list, tuple)), (
-        f'Argument type error. `axis` is supposed to be list or'
-        f' tuple but found {type(axis)}.')
-    assert isinstance(starts, (list, tuple)), (
-        f'Argument type error. `starts` is supposed to be list or'
-        f' tuple but found {type(starts)}.')
-    assert isinstance(ends, (list, tuple)), (
-        f'Argument type error. `ends` is supposed to be list or'
-        f' tuple but found {type(ends)}.')
+    if not isinstance(axis, (list, tuple)):
+        raise TypeError(f'Argument type error. `axis` is supposed to be list or'
+                        f' tuple but found {type(axis)}.')
+    if not isinstance(starts, (list, tuple)):
+        raise TypeError(
+            f'Argument type error. `starts` is supposed to be list or'
+            f' tuple but found {type(starts)}.')
+    if not isinstance(ends, (list, tuple)):
+        raise TypeError(f'Argument type error. `ends` is supposed to be list or'
+                        f' tuple but found {type(ends)}.')
     assert len(axis) == len(starts) == len(ends) == len(strides), (
         f'len(axis), len(starts), len(ends) and len(strides) should be equal, '
         f'but len(axis)={len(axis)}, len(starts)={len(starts)}, '

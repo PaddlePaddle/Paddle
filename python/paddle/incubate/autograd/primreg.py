@@ -152,8 +152,8 @@ def REGISTER_FN(op_type, *position_argnames):
     
     """
 
-    assert isinstance(op_type,
-                      str), f'op_type must be str, but got {type(op_type)}.'
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     _primop_position_argnames.register(op_type, position_argnames)
 
@@ -182,8 +182,8 @@ def REGISTER_ORIG2PRIM(op_type):
                 return primops.tanh(x)
 
     """
-    assert isinstance(op_type,
-                      str), f'op_type must be str, but got {type(op_type)}.'
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
@@ -213,8 +213,8 @@ def REGISTER_PRIM2ORIG(op_type):
                 return paddle.tanh(x)
 
     """
-    assert isinstance(op_type,
-                      str), f'op_type must be str, but got {type(op_type)}.'
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
         def _lower(op, *args, **kwargs):
@@ -243,8 +243,8 @@ def REGISTER_JVP(op_type):
                 return primops.add(x_dot, y_dot)
     
     """
-    assert isinstance(op_type,
-                      str), f'op_type must be str, but got {type(op_type)}.'
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
         def _jvp(op, *args, **kwargs):
@@ -275,8 +275,8 @@ def REGISTER_TRANSPOSE(op_type):
                 return z_bar, z_bar
     
     """
-    assert isinstance(op_type,
-                      str), f'op_type must be str, but got {type(op_type)}.'
+    if not isinstance(op_type, str):
+        raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
         def _transpose(op, dot_checker, *args, **kwargs):

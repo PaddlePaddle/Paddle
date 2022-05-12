@@ -117,7 +117,9 @@ class VarMap(object):
         if value_vars is None:
             return
         if isinstance(key_vars, paddle.fluid.framework.Variable):
-            assert isinstance(value_vars, paddle.fluid.framework.Variable)
+            if not isinstance(value_vars, paddle.fluid.framework.Variable):
+                raise TypeError(
+                    f'value_vars must be Variable, but got {type(value_vars)}')
             self.tab[id(key_vars)] = id(value_vars)
         else:
             assert len(key_vars) == len(value_vars)
@@ -180,7 +182,8 @@ class Transform(object):
         if isinstance(new_vars, paddle.fluid.framework.Variable):
             self.vars.update({id(new_vars): new_vars})
             return
-        assert isinstance(new_vars, list)
+        if not isinstance(new_vars, list):
+            raise TypeError(f'new_vars must be list, but got {type(new_vars)}')
         for var in new_vars:
             self.add_vars_rec(var)
 
