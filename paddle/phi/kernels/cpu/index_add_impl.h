@@ -54,7 +54,7 @@ void IndexAddCPUImpl(const Context& ctx,
     outer_nums *= output_dim[i];
   }
 
-  for (int i = 0; i < index_size; i++) {
+  for (size_t i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_data[i],
         0,
@@ -79,7 +79,7 @@ void IndexAddCPUImpl(const Context& ctx,
 
   auto output_tensor = EigenTensor<T, 3>::From(*output);
   auto& place = *ctx.eigen_device();
-  for (auto j = 0; j < index_size; j++) {
+  for (size_t j = 0; j < index_size; j++) {
     auto index_value = index_data[j];
     auto output_t = output_tensor.chip(index_value, 1);
     // output_t.device(place) = output_t.constant(fill_val);
