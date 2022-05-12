@@ -1039,7 +1039,7 @@ class RandomCrop(BaseTransform):
             top, right, bottom borders respectively. Default: None, without padding.
         pad_if_needed (boolean|optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
-        fill (float, optional): Pixel fill value for constant fill. If a tuple of
+        fill (float|tuple, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
@@ -1059,7 +1059,7 @@ class RandomCrop(BaseTransform):
                      will result in [2, 1, 1, 2, 3, 4, 4, 3]
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
-    Shape:
+    Shape
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
         - output(PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
 
