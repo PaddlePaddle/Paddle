@@ -178,7 +178,7 @@ def GetForwardFunctionName(string):
 
 
 def GetIndent(num):
-    tab = "   "
+    tab = "  "
     return "".join([tab for i in range(num)])
 
 
@@ -416,10 +416,6 @@ class FunctionGeneratorBase:
 
             self.forward_outputs_position_map[
                 return_name] = [return_type, return_pos]
-        print("Generated Forward Input Position Map: ",
-              self.forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              self.forward_outputs_position_map)
 
 
 class YamlGeneratorBase:

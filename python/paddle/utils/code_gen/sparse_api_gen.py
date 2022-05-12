@@ -25,10 +25,9 @@ class SparseAPI(ForwardAPI):
         super(SparseAPI, self).__init__(api_item_yaml)
 
     def gene_api_declaration(self):
-        return f"""
-// {", ".join(self.outputs['names'])}
-PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_str['args_declare']});
-"""
+        api_declaration = "// " + ', '.join(self.outputs['names'])
+        return api_declaration + super(SparseAPI,
+                                       self).gene_api_declaration() + '\n'
 
     def get_kernel_tensor_out_type(self, output_name):
         sparse_type = 'TensorType::DENSE_TENSOR'
@@ -136,7 +135,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 
         kernel_context_code = self.gen_sparse_kernel_context(
             kernel_output_names)
-
+        return_code = "" if len(self.gene_return_code(
+        )) == 0 else "  " + self.gene_return_code()
         return f"""
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
@@ -148,13 +148,11 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {output_create}
 {kernel_context_code}
   phi_kernel(&kernel_context);
-
-  return api_output;"""
+{return_code}"""
 
     def gene_base_api_code(self, inplace_flag=False):
-        api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.outputs['return_type']} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.get_define_args()}) {{
 {self.gene_kernel_select()}
 {self.gen_sparse_kernel_code(inplace_flag)}
 }}

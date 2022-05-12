@@ -88,6 +88,7 @@ class TensorWrapper {
     } else {
       intermidiate_tensor_.set_impl(tensor.impl());
     }
+
     // TODO(jiabin): This may has server performance issue
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
 
@@ -122,20 +123,27 @@ class TensorWrapper {
         VLOG(3) << "Recovered TensorWrapper with GradNode "
                 << new_grad_node->name() << " addr: " << new_grad_node.get();
       } else {
-        VLOG(3) << "Recovered TensorWrapper with Empth GradNode";
+        VLOG(3) << "Recovered TensorWrapper with Empty GradNode";
       }
       auto* intermediate_autograd_meta =
-          EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
-      auto p_ab_autograd_meta =
-          std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
-      if (new_grad_node) {
-        p_ab_autograd_meta->SetGradNode(new_grad_node);
+          EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+
+      if (intermediate_autograd_meta) {
+        auto p_ab_autograd_meta =
+            std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
+        if (new_grad_node) {
+          p_ab_autograd_meta->SetGradNode(new_grad_node);
+        }
+        recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
       }
-      recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
+
       return recovered_tensor;
     }
   }
 
+  void clear() { intermidiate_tensor_.reset(); }
+
+ private:
   void check_inplace_version() {
     if (no_need_buffer_) {
       VLOG(6) << "There's no need to check inplace_version because "
@@ -169,8 +177,6 @@ class TensorWrapper {
               << " ]";
     }
   }
-
-  void clear() { intermidiate_tensor_.reset(); }
 
  private:
   bool full_reserved_ = false;
