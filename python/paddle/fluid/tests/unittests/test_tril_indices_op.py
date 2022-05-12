@@ -68,13 +68,8 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
                 data1 = paddle.tril_indices(4, 4, -1)
                 exe1 = paddle.static.Executor(place)
                 result1 = exe1.run(feed={}, fetch_list=[data1])
-                data2 = paddle.tril_indices(4, 4, 2)
-                exe2 = paddle.static.Executor(place)
-                result2 = exe2.run(feed={}, fetch_list=[data2])
             expected_result1 = np.tril_indices(4, -1, 4)
-            expected_result2 = np.tril_indices(4, 2, 4)
             self.assertTrue(np.allclose(result1, expected_result1))
-            self.assertTrue(np.allclose(result2, expected_result2))
 
 
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
@@ -85,11 +80,8 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
         for place in places:
             with fluid.dygraph.base.guard(place=place):
                 out1 = paddle.tril_indices(4, 4, 2)
-                out2 = paddle.tril_indices(4, 4, -1)
             expected_result1 = np.tril_indices(4, 2, 4)
-            expected_result2 = np.tril_indices(4, -1, 4)
             self.assertEqual((out1.numpy() == expected_result1).all(), True)
-            self.assertEqual((out2.numpy() == expected_result2).all(), True)
 
     def test_dygraph_eager(self):
         with _test_eager_guard():
@@ -115,24 +107,6 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
-    def test_default_GPU(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            data = paddle.tril_indices(4, None, 2)
-            exe = paddle.static.Executor(paddle.fluid.CUDAPlace(0))
-            result = exe.run(feed={}, fetch_list=[data])
-        expected_result = np.tril_indices(4, 2)
-        self.assertTrue(np.allclose(result, expected_result))
-
-        with fluid.dygraph.base.guard(paddle.fluid.CUDAPlace(0)):
-            out = paddle.tril_indices(4, None, 2)
-        expected_result = np.tril_indices(4, 2)
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
