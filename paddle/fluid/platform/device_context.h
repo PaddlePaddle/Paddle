@@ -826,7 +826,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
-  bool IsNextCacheClearingBlocked() const { return block_next_cache_clearing_; }
+  bool IsNextCacheClearingBlocked() const;
 
   // Get the ShapeBlob size in cur_mkldnn_session_id.
   size_t GetShapeBlobSize() const;
@@ -850,7 +850,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // to erase
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
-  bool block_next_cache_clearing_ = false;
+  // 0 - clearing is allowed. x > 0 do not clear. Each time
+  unsigned int block_next_cache_clearing_ = 0;
 };
 #endif
 
