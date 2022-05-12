@@ -700,6 +700,48 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void IndexFillInferMeta(const MetaTensor& x,
+                        const IntArray& index_arr,
+                        const Scalar& axis_scalar,
+                        float fill_value,
+                        MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index = index_arr.GetData();
+  auto axis = axis_scalar.to<int>();
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Axis is out of range, It's expected "
+          "to be in range of [-%d, %d). But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          axis));
+
+  PADDLE_ENFORCE_EQ(
+      index.size() > 0,
+      true,
+      phi::errors::InvalidArgument("The index array should not be empty."));
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
+void IndexFillGradInferMeta(const MetaTensor& out_grad,
+                            const IntArray& index_arr,
+                            const Scalar& axis_scalar,
+                            float fill_value,
+                            MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  x_grad->set_dims(do_dims);
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->set_layout(out_grad.layout());
+  x_grad->share_lod(out_grad);
+}
+
 static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                                const phi::DDim& in_dims) {
   const int64_t in_size = phi::product(in_dims);

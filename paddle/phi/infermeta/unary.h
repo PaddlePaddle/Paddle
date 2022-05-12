@@ -121,6 +121,18 @@ void HistogramInferMeta(
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
 
+void IndexFillInferMeta(const MetaTensor& x,
+                        const IntArray& index_arr,
+                        const Scalar& axis_scalar,
+                        float fill_value,
+                        MetaTensor* output);
+
+void IndexFillGradInferMeta(const MetaTensor& out_grad,
+                            const IntArray& index_arr,
+                            const Scalar& axis_scalar,
+                            float fill_value,
+                            MetaTensor* x_grad);
+
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);

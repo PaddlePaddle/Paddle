@@ -21,15 +21,37 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillGradKernel(const Context& dev_ctx,
-                         const DenseTensor& out_grad,
-                         const IntArray& index_arr,
-                         const Scalar& axis_scalar,
-                         float fill_value,
-                         DenseTensor* x_grad) {
-  float fill_val = 0.0;
-  IndexFillBaseKernel<T, Context>(
-      dev_ctx, out_grad, index_arr, axis_scalar, fill_val, x_grad, nullptr);
+void IndexFillTensorGradKernel(const Context& dev_ctx,
+                               const MetaTensor& out_grad,
+                               const MetaTensor& index,
+                               const Scalar& axis_scalar,
+                               DenseTensor* x_grad,
+                               DenseTensor* fill_tensor_grad) {
+  DenseTensor raw_fill_tensor_grad;
+  raw_fill_tensor_grad->Resize(out_grad.dims());
+  raw_fill_tensor_grad->set_dtype(out_grad.dtype);
+  dev_ctx.template Alloc<T>(&raw_fill_tensor_grad);
+  phi::funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, raw_fill_tensor_grad, static_cast<T>(0));
+
+  float fill_value = 0.0;
+  IndexFillBaseKernel<T, Context>(dev_ctx,
+                                  x,
+                                  index_arr,
+                                  axis_scalar,
+                                  fill_value,
+                                  output,
+                                  &raw_fill_tensor_grad);
+
+  // sum
+  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(dev_ctx,
+                                                     &raw_fill_tensor_grad,
+                                                     true,
+                                                     dims,
+                                                     false,
+                                                     out_grad.dtype(),
+                                                     fill_tensor_grad);
+
   /*
   auto index_list = index_arr.GetData();
   int64_t index_size = static_cast<int64_t>(index_list.size());
@@ -47,10 +69,10 @@ void IndexFillGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_fill_grad,
+PD_REGISTER_KERNEL(index_fill_tensor_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::IndexFillGradKernel,
+                   phi::IndexFillTensorGradKernel,
                    bool,
                    float,
                    phi::dtype::float16,

@@ -12,19 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/gpu/index_fill_funcs.h"
 #include "paddle/phi/kernels/index_fill_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& index_arr,
-                     const Scalar& axis_scalar,
-                     float fill_value,
-                     DenseTensor* output) {
+void IndexFillTensorKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& fill_tensor,
+                           const IntArray& index_arr,
+                           const Scalar& axis_scalar,
+                           DenseTensor* output) {
+  float fill_value;
+  T fill_tensor_ptr = fill_tensor.data<T>();
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       &fill_value,
+                       phi::CPUPlace(),
+                       fill_tensor_ptr,
+                       sizeof(float),
+                       0);
+
   IndexFillBaseKernel<T, Context>(
       dev_ctx, x, index_arr, axis_scalar, fill_value, output, nullptr);
 
@@ -48,10 +59,10 @@ index_fill_cuda_impl<T, Context>(dev_ctx, index, axis, fill_value, output);*/
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_fill,
+PD_REGISTER_KERNEL(index_fill_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::IndexFillKernel,
+                   phi::IndexFillTensorKernel,
                    bool,
                    float,
                    phi::dtype::float16,

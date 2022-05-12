@@ -18,16 +18,54 @@
 namespace phi {
 
 KernelSignature IndexFillOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "index_fill", {"X", "Index"}, {"axis", "fill_value"}, {"Out"});
+  if (ctx.HasInput("AxisTensor")) {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_fill",
+                             {"X"},
+                             {"IndexTensor", "AxisTensor", "fill_value"},
+                             {"Out"});
+    } else {
+      return KernelSignature(
+          "index_fill", {"X"}, {"index", "AxisTensor", "fill_value"}, {"Out"});
+    }
+  } else {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature(
+          "index_fill", {"X"}, {"IndexTensor", "axis", "fill_value"}, {"Out"});
+    } else {
+      return KernelSignature(
+          "index_fill", {"X"}, {"index", "axis", "fill_value"}, {"Out"});
+    }
+  }
 }
 
 KernelSignature IndexFillGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_fill_grad",
-                         {"Out@GRAD", "Index"},
-                         {"axis", "fill_value"},
-                         {"X@GRAD"});
+  if (ctx.HasInput("AxisTensor")) {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_fill_grad",
+                             {"Out@GRAD"},
+                             {"IndexTensor", "AxisTensor", "fill_value"},
+                             {"X@GRAD"});
+    } else {
+      return KernelSignature("index_fill_grad",
+                             {"Out@GRAD"},
+                             {"index", "AxisTensor", "fill_value"},
+                             {"X@GRAD"});
+    }
+  } else {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_fill_grad",
+                             {"Out@GRAD"},
+                             {"IndexTensor", "axis", "fill_value"},
+                             {"X@GRAD"});
+    } else {
+      return KernelSignature("index_fill_grad",
+                             {"Out@GRAD"},
+                             {"index", "axis", "fill_value"},
+                             {"X@GRAD"});
+    }
+  }
 }
 
 }  // namespace phi

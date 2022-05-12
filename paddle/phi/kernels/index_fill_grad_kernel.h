@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,9 +23,17 @@ namespace phi {
 template <typename T, typename Context>
 void IndexFillGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
-                         const DenseTensor& index,
-                         int axis,
+                         const IntArray& index_arr,
+                         const Scalar& axis_scalar,
                          float fill_value,
                          DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void IndexFillTensorGradKernel(const Context& ctx,
+                               const DenseTensor& out_grad,
+                               const DenseTensor& index,
+                               const Scalar& axis_scalar,
+                               DenseTensor* x_grad,
+                               DenseTensor* fill_tensor_grad);
 
 }  // namespace phi

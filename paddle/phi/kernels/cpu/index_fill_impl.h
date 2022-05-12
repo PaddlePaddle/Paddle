@@ -21,12 +21,13 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-template <typename Context, typename T, typename IndexT = int>
+template <typename Context, typename T>
 void IndexFillInner(const Context& ctx,
                     const DenseTensor& index,
                     DenseTensor* output,
                     int axis,
-                    T fill_val) {
+                    T fill_val,
+                    DenseTensor* fill_grad) {
   auto output_dim = output->dims();
   auto output_dim_size = output_dim.size();
   auto index_size = index.dims()[0];
@@ -35,9 +36,9 @@ void IndexFillInner(const Context& ctx,
   if (!paddle::platform::is_cpu_place(index.place())) {
     phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
-                                 ? index.data<IndexT>()
-                                 : index_cpu_copy.data<IndexT>();
+  const int64_t* index_data = paddle::platform::is_cpu_place(index.place())
+                                  ? index.data<int64_t>()
+                                  : index_cpu_copy.data<int64_t>();
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < output_dim_size; i++) {
@@ -50,20 +51,12 @@ void IndexFillInner(const Context& ctx,
   }
 
   for (int i = 0; i < index_size; i++) {
+    bool check_index = index_data[i] >= 0 && index_data[i] < output_dim[axis];
     PADDLE_ENFORCE_GE(
-        index_data[i],
-        0,
+        check_index,
+        true,
         phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_select) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
-            "value.",
-            output_dim[axis],
-            index_data[i]));
-    PADDLE_ENFORCE_LT(
-        index_data[i],
-        output_dim[axis],
-        phi::errors::InvalidArgument(
-            "Variable value (index) of OP(index_select) "
+            "Variable value (index) of OP(index_fill) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             output_dim[axis],
@@ -74,12 +67,53 @@ void IndexFillInner(const Context& ctx,
 
   auto output_tensor = EigenTensor<T, 3>::From(*output);
   auto& place = *ctx.eigen_device();
-  for (auto j = 0; j < index_size; j++) {
-    IndexT index_value = index_data[j];
-    auto output_t = output_tensor.chip(index_value, 1);
-    output_t.device(place) = output_t.constant(fill_val);
+  if (fill_grad) {
+    auto fill_grad_tensor = EigenTensor<T, 3>::From(*fill_grad);
+    for (auto j = 0; j < index_size; j++) {
+      int64_t index_value = index_data[j];
+      auto output_t = output_tensor.chip(index_value, 1);
+      auto fill_grad_t = fill_grad_tensor.chip(index_value, 1);
+      fill_grad_t.device(place) = output_tensor.chip(index_value, 1);
+      output_t.device(place) = output_t.constant(fill_val);
+    }
+  } else {
+    for (auto j = 0; j < index_size; j++) {
+      int64_t index_value = index_data[j];
+      auto output_t = output_tensor.chip(index_value, 1);
+      output_t.device(place) = output_t.constant(fill_val);
+    }
   }
   output->Resize(output_dim);
+}
+
+template <typename T, typename Context>
+void IndexFillBaseKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const IntArray& index_arr,
+                         const Scalar& axis_scalar,
+                         float fill_value,
+                         DenseTensor* output,
+                         DenseTensor* fill_grad) {
+  auto index_list = index_arr.GetData();
+  int64_t index_size = static_cast<int64_t>(index_list.size());
+  DenseTensor index;
+  index.Resize(make_ddim({index_size}));
+  int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       index_ptr,
+                       phi::CPUPlace(),
+                       index_list.data(),
+                       index_size * sizeof(int64_t),
+                       0);
+
+  int axis = axis_scalar.to<int>();
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+  if (axis < 0) {
+    axis += x.dims().size();
+  }
+
+  IndexFillInner<Context, T>(
+      dev_ctx, index, output, axis, static_cast<T>(fill_value), fill_grad);
 }
 
 }  // namespace phi

@@ -4240,28 +4240,40 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
 
 def _index_fill_params_check(x, axis, index, fill_value):
     dims = len(x.shape)
-    if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-        raise ValueError(
-            "Axis should be int, element should in range [-rank(x), rank(x)).")
-
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
 
-    if not isinstance(index, Variable):
-        raise TypeError("The index should be a Tensor.")
+    if not isinstance(axis, (int, Variable)):
+        raise TypeError("The axis should be a Tensor or int constant")
 
-    if index.dtype != paddle.int64 and index.dtype != paddle.int32:
-        raise TypeError("The index dtype should be int32 or int64.")
+    check_axis = axis
+    if isinstance(axis, Variable):
+        if axis.dtype != paddle.int64 and axis.dtype != paddle.int32:
+            raise TypeError("The axis dtype should be int32 or int64.")
+        if axis.numel() != 1:
+            raise ValueError(
+                "The numel of axis must be one when it is a tensor.")
+        check_axis = axis.numpy().item(0)
+    if check_axis > dims or check_axis <= -dims:
+        raise ValueError(
+            "Axis should be int, element should in range [-rank(x), rank(x)).")
 
-    if len(index.shape) != 1:
-        raise ValueError("The index should be a 1-D Tensor.")
+    if not isinstance(index, (list, tuple, Variable)):
+        raise TypeError(
+            "The index should be a Tensor, list of int, or tuple of int.")
+
+    if isinstance(index, Variable):
+        if index.dtype != paddle.int64 and index.dtype != paddle.int32:
+            raise TypeError("The index dtype should be int32 or int64.")
+        if len(index.shape) != 1:
+            raise ValueError("The index should be a 1-D Tensor.")
 
     if isinstance(fill_value, Variable) and fill_value.numel() != 1:
         raise ValueError(
             "The numel of fill_value must be one when it is a tensor.")
 
 
-def index_fill(x, index, axis=0, fill_value=0.0):
+def index_fill(x, index, axis, fill_value):
     """
     Fills the elements of the input tensor with value by selecting the indices in the order given in index.
     Args:
@@ -4295,51 +4307,62 @@ def index_fill(x, index, axis=0, fill_value=0.0):
     """
     _index_fill_params_check(x, axis, index, fill_value)
 
-    if axis < 0:
-        axis += len(x.shape)
-
-    fill_value = float(fill_value)
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_fill(x, index, axis, fill_value)
-
     if _non_static_mode():
-        return _C_ops.index_fill(x, index, "axis", axis, "fill_value",
-                                 fill_value)
+        _axis = axis.numpy().item(0) if isinstance(axis, Variable) else axis
+        if isinstance(fill_value, Variable):
+            return _C_ops.index_fill_tensor(x, fill_value, "index", index,
+                                            "axis", _axis)
+        else:
+            fill_value = float(fill_value)
+            return _C_ops.index_fill(x, "index", index, "axis", _axis,
+                                     "fill_value", fill_value)
 
-    helper = LayerHelper("index_fill", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+    check_variable_and_dtype(x, 'x',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'paddle.tensor.manipulation.index_fill')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.manipulation.index_fill')
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='index_fill',
-        inputs={'X': x,
-                'Index': index},
-        outputs={'Out': out},
-        attrs={'axis': axis,
-               'fill_value': fill_value})
-    return out
+
+    if isinstance(fill_value, Variable):
+        helper = LayerHelper("index_fill_tensor", **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='index_fill_tensor',
+            inputs={'X': x,
+                    'FillValue': fill_value},
+            outputs={'Out': out},
+            attrs={'index': index,
+                   'axis': axis})
+
+    else:
+        helper = LayerHelper("index_fill", **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='index_fill',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={
+                'index': index,
+                'axis': axis,
+                'fill_value': float(fill_value)
+            })
+        return out
 
 
 @inplace_apis_in_dygraph_only
-def index_fill_(x, index, axis=0, fill_value=0.0):
+def index_fill_(x, index, axis, fill_value):
     r"""
     Inplace version of ``index_fill`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_index_fill`.
     """
+
     _index_fill_params_check(x, axis, index, fill_value)
 
-    if axis < 0:
-        axis += len(x.shape)
-
-    fill_value = float(fill_value)
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_fill_(x, index, axis, fill_value)
-
     if _non_static_mode():
-        return _C_ops.index_fill_(x, index, "axis", axis, "fill_value",
-                                  fill_value)
+        if isinstance(fill_value, Variable):
+            return _C_ops.index_fill_tensor_(x, fill_value, "index", index,
+                                             "axis", axis)
+        else:
+            return _C_ops.index_fill_(x, "index", index, "axis", axis,
+                                      "fill_value", fill_value)
 
     raise ValueError("This inplace op index_fill_ should only work in dygraph.")
 

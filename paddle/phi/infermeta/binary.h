@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -184,17 +185,17 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
-void IndexFillInferMeta(const MetaTensor& x,
-                        const MetaTensor& index,
-                        int axis,
-                        float fill_value,
-                        MetaTensor* output);
+void IndexFillTensorInferMeta(const MetaTensor& x,
+                              const MetaTensor& fill_tensor,
+                              const IntArray& index_arr,
+                              const Scalar& axis_scalar,
+                              MetaTensor* output);
 
-void IndexFillGradInferMeta(const MetaTensor& out_grad,
-                            const MetaTensor& index,
-                            int axis,
-                            float fill_value,
-                            MetaTensor* x_grad);
+void IndexFillTensorGradInferMeta(const MetaTensor& out_grad,
+                                  const IntArray& index_arr,
+                                  const Scalar& axis_scalar,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* fill_tensor_grad);
 
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
