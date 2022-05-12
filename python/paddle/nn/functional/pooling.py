@@ -1174,7 +1174,7 @@ def max_pool3d(x,
                                           stride = 2,
                                           padding=0,
                                           return_mask=True)
-            # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16],
+            # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
     """
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
