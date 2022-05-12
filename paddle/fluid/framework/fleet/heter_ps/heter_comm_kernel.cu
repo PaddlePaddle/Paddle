@@ -209,6 +209,8 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
     int* idx, long long len, const cudaStream_t& stream);
+template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
+    uint32_t* idx, long long len, const cudaStream_t& stream);
 
 template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     int* idx, int* left, int* right, long long len, int total_devs,
