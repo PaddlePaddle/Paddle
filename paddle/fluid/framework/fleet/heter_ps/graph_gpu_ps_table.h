@@ -23,10 +23,10 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
+class GpuPsGraphTable : public HeterComm<int64_t, int64_t, int> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
-      : HeterComm<int64_t, unsigned int, int>(1, resource) {
+      : HeterComm<int64_t, int64_t, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();
@@ -109,18 +109,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
                                                  int *h_right,
                                                  int64_t *src_sample_res,
                                                  int *actual_sample_size);
-  // void move_neighbor_sample_result_to_source_gpu(
-  //     int gpu_id, int gpu_num, int *h_left, int *h_right,
-  //     int64_t *src_sample_res, thrust::host_vector<int> &total_sample_size);
-  // void move_neighbor_sample_size_to_source_gpu(int gpu_id, int gpu_num,
-  //                                              int *h_left, int *h_right,
-  //                                              int *actual_sample_size,
-  //                                              int *total_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
-  // int load(const std::string &path, const std::string &param);
-  // virtual int32_t end_graph_sampling() {
-  //   return cpu_graph_table->end_graph_sampling();
-  // }
   int gpu_num;
   std::vector<GpuPsCommGraph> gpu_graph_list;
   int global_device_map[32];
@@ -135,5 +124,5 @@ class GpuPsGraphTable : public HeterComm<int64_t, unsigned int, int> {
 };
 }
 };
-#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
+//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
 #endif

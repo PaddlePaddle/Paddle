@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -28,6 +29,7 @@ class GraphGpuWrapper {
     }
     return s_instance_;
   }
+  static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
   void test();
   void set_device(std::vector<int> ids);
@@ -67,9 +69,6 @@ class GraphGpuWrapper {
   std::vector<int> device_id_mapping;
   int search_level = 1;
   void* graph_table;
-
- private:
-  static std::shared_ptr<GraphGpuWrapper> s_instance_;
 };
 #endif
 }

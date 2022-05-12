@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 struct GpuPsGraphNode {
   int64_t node_id;
-  unsigned int neighbor_size, neighbor_offset;
+  int64_t neighbor_size, neighbor_offset;
   // this node's neighbor is stored on [neighbor_offset,neighbor_offset +
   // neighbor_size) of int64_t *neighbor_list;
 };
@@ -32,17 +32,17 @@ struct GpuPsGraphNode {
 struct GpuPsCommGraph {
   int64_t *neighbor_list;
   GpuPsGraphNode *node_list;
-  unsigned int neighbor_size, node_size;
+  int64_t neighbor_size, node_size;
   // the size of neighbor array and graph_node_list array
   GpuPsCommGraph()
       : neighbor_list(NULL), node_list(NULL), neighbor_size(0), node_size(0) {}
   GpuPsCommGraph(int64_t *neighbor_list_, GpuPsGraphNode *node_list_,
-                 unsigned int neighbor_size_, unsigned int node_size_)
+                 int64_t neighbor_size_, int64_t node_size_)
       : neighbor_list(neighbor_list_),
         node_list(node_list_),
         neighbor_size(neighbor_size_),
         node_size(node_size_) {}
-  void init_on_cpu(unsigned int neighbor_size, unsigned int node_size) {
+  void init_on_cpu(int64_t neighbor_size, int64_t node_size) {
     this->neighbor_size = neighbor_size;
     this->node_size = node_size;
     this->neighbor_list = new int64_t[neighbor_size];

@@ -80,7 +80,7 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   }
   for (int i = 0; i < (int)tasks.size(); i++) tasks[i].get();
   paddle::framework::GpuPsCommGraph res;
-  unsigned int tot_len = 0;
+  int64_t tot_len = 0;
   for (int i = 0; i < task_pool_size_; i++) {
     tot_len += edge_array[i].size();
   }
@@ -88,8 +88,8 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   // res.node_size = ids.size();
   // res.neighbor_list = new int64_t[tot_len];
   // res.node_list = new paddle::framework::GpuPsGraphNode[ids.size()];
-  res.init_on_cpu(tot_len, (unsigned int)ids.size());
-  unsigned int offset = 0, ind = 0;
+  res.init_on_cpu(tot_len, ids.size());
+  int64_t offset = 0, ind = 0;
   for (int i = 0; i < task_pool_size_; i++) {
     for (int j = 0; j < (int)node_array[i].size(); j++) {
       res.node_list[ind] = node_array[i][j];
