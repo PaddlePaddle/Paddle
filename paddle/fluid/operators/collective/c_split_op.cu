@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_split_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -81,8 +81,8 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
     int64_t end_size = dims[dims_size - 1];
 
     // remain dim
-    auto remain_ddim = framework::slice_ddim(dims, 0, dims_size - 1);
-    int64_t remain_numel = framework::product(remain_ddim);
+    auto remain_ddim = phi::slice_ddim(dims, 0, dims_size - 1);
+    int64_t remain_numel = phi::product(remain_ddim);
 
     int limit = x->numel();
     int blocks = NumBlocks(limit);

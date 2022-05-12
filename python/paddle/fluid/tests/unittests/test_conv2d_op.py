@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 
 import paddle
 import paddle.fluid.core as core
@@ -171,9 +172,9 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
 
 def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-        "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
-    )
+        not core.is_compiled_with_cuda() or
+        not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16")
     class TestConv2DCUDNNBF16(parent):
         def get_numeric_grad(self, place, check_name):
             scope = core.Scope()
@@ -603,7 +604,7 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
         self.groups = 3
 
 
-#----------------Conv2DCUDNN----------------
+# #----------------Conv2DCUDNN----------------
 
 create_test_cudnn_class(TestConv2DOp)
 create_test_cudnn_class(TestWithPad)
@@ -1001,4 +1002,5 @@ create_test_cudnn_channel_last_fp16_class(
     TestWithDilation_AsyPadding, grad_check=False)
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

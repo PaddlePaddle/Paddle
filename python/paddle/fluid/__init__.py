@@ -69,8 +69,9 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
+
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace, CustomPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -129,6 +130,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPlace',
         'CUDAPinnedPlace',
         'NPUPlace',
+        'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -194,6 +197,11 @@ def __bootstrap__():
     if os.name == 'nt':
         remove_flag_if_exists('cpu_deterministic')
 
+    if core.is_compiled_with_ipu():
+        # Currently we request all ipu available for training and testing
+        #   finer control of pod of IPUs will be added later
+        read_env_flags += []
+
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     # Note(zhouwei25): sys may not have argv in some cases, 
     # Such as: use Python/C API to call Python from C++
@@ -204,6 +212,7 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
+    core.init_default_kernel_signatures()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
@@ -218,3 +227,9 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+# NOTE(wangran16): clean up DeviceManger in advance manually.
+# Keep clear_kernel_factory running before clear_device_manager
+atexit.register(core.clear_device_manager)
+atexit.register(core.clear_kernel_factory)

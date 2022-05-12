@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import six
 from fake_reader import fake_imdb_reader
+from paddle.fluid.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
 
@@ -564,6 +565,36 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
                     a=a, b=b, rtol=1e-6, atol=1e-8),
                 "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
                 % (a, b))
+
+
+class TestPureFP16ClipGradByGlobalNorm(unittest.TestCase):
+    def check_main(self, expected_has_cast_op):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            names = ["p0", "p1"]
+            shapes = [[2, 3], [4, 5]]
+
+            param_and_grads = []
+            main_block = main_prog.global_block()
+            for name, shape in zip(names, shapes):
+                p = main_block.create_parameter(
+                    name=name, shape=shape, dtype='float16')
+                g = main_block.create_parameter(
+                    name=p.name + '@GRAD', shape=p.shape, dtype=p.dtype)
+                param_and_grads.append((p, g))
+
+            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+            clip(param_and_grads)
+            actual_has_cast = any(op.type == 'cast' for op in main_block.ops)
+            self.assertEqual(actual_has_cast, expected_has_cast_op)
+
+    def test_main(self):
+        self.check_main(True)
+        _allow_pure_fp16_global_norm_clip(True)
+        self.check_main(False)
+        _allow_pure_fp16_global_norm_clip(False)
+        self.check_main(True)
 
 
 if __name__ == '__main__':

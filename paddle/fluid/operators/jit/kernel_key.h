@@ -23,8 +23,8 @@ namespace jit {
 struct KernelKey {
   struct Hash {
     size_t operator()(const KernelKey& key) const {
-      int place = key.place_.which();               // less than 2^8
-      int type = static_cast<int>(key.type_) << 8;  // less than 2^(32-8)
+      int place = static_cast<int>(key.place_.GetType());  // less than 2^8
+      int type = static_cast<int>(key.type_) << 8;         // less than 2^(32-8)
       std::hash<int> hasher;
       return hasher(place + type);
     }

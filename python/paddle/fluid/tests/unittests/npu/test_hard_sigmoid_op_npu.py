@@ -59,9 +59,6 @@ class TestNPUHardSigmoid(OpTest):
         self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):

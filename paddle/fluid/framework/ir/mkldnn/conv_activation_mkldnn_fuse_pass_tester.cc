@@ -148,6 +148,7 @@ TEST(ConvActivationFusePass, conv_swish_fuse_pass) { MainTest("swish"); }
 TEST(ConvActivationFusePass, conv_hard_swish_fuse_pass) {
   MainTest("hard_swish");
 }
+TEST(ConvActivationFusePass, conv_mish_fuse_pass) { MainTest("mish"); }
 TEST(ConvActivationFusePass, conv_hard_sigmoid_fuse_pass) {
   MainTest("hard_sigmoid");
 }

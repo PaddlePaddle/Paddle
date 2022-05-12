@@ -33,7 +33,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("NeutralPair"), "Output", "NeutralPair",
                    "positive_negative_pair");
 
-    auto scalar_dim = framework::make_ddim({1});
+    auto scalar_dim = phi::make_ddim({1});
     if (ctx->HasInput("AccumulatePositivePair") ||
         ctx->HasInput("AccumulateNegativePair") ||
         ctx->HasInput("AccumulateNeutralPair")) {

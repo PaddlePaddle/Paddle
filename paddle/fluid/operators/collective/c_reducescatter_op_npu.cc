@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -51,7 +51,8 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 
     void* inputPtr = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     void* outputPtr = reinterpret_cast<void*>(out->data<T>());
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

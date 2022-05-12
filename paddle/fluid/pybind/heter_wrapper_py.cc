@@ -33,7 +33,7 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 void BindHeterWrapper(py::module* m) {
   py::class_<framework::HeterWrapper, std::shared_ptr<framework::HeterWrapper>>(
       *m, "Heter")

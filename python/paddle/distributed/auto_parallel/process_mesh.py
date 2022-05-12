@@ -93,9 +93,14 @@ class ProcessMesh(object):
         self._topology = _get_nested_list_shape(mesh)
         self._processes = processes
 
+        # Store all process meshes
         from .dist_context import get_default_distributed_context
         default_dist_cxt = get_default_distributed_context()
         default_dist_cxt.add_process_mesh(self)
+        # Add new processes to process group 0 
+        from .process_group import get_process_group
+        pg0 = get_process_group(0)
+        pg0.add_ranks(self.processes)
 
     @property
     def topology(self):

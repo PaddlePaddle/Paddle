@@ -1,0 +1,3 @@
+add_subdirectory(data_structure_tests)
+add_subdirectory(task_tests)
+add_subdirectory(performance_tests)

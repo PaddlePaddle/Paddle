@@ -19,6 +19,32 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class element_visitor : public boost::static_visitor<Attribute> {
+ public:
+  explicit element_visitor(int index) : index_(index) {}
+
+  template <typename T>
+  Attribute operator()(const T& attr) const {
+    PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+  }
+
+  template <typename T>
+  Attribute operator()(const std::vector<T>& attr) const {
+    using ET = std::conditional_t<std::is_same<T, double>::value, float, T>;
+    int index = index_;
+    if (index < 0) {
+      index += attr.size();
+    }
+    if (index >= 0 && static_cast<size_t>(index) < attr.size()) {
+      return static_cast<ET>(attr[index]);
+    }
+    return boost::blank();
+  }
+
+ private:
+  int index_;
+};
+
 class operation_visitor : public boost::static_visitor<Attribute> {
  public:
   explicit operation_visitor(const proto::PassDesc::OperationType& type)
@@ -29,13 +55,15 @@ class operation_visitor : public boost::static_visitor<Attribute> {
     PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 
-  template <typename T,
-            std::enable_if_t<std::is_integral<T>::value ||
-                             std::is_floating_point<T>::value>* = nullptr>
+  template <typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
   Attribute operator()(const T& attr, const T& operation) const {
     switch (type_) {
       case proto::PassDesc_OperationType_kSub: {
         return attr - operation;
+      }
+
+      case proto::PassDesc_OperationType_kMod: {
+        return attr % operation;
       }
 
       default:
@@ -70,6 +98,15 @@ Attribute GetVarAttrValue(const VarDesc* desc,
     }
   }
   return boost::blank();
+}
+
+Attribute GetOpAttrValue(const OpDesc* desc,
+                         const proto::PassDesc::Attr& attr) {
+  Attribute value = desc->GetAttr(attr.name());
+  if (attr.has_element_index()) {
+    value = boost::apply_visitor(element_visitor(attr.element_index()), value);
+  }
+  return value;
 }
 
 void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
@@ -163,6 +200,11 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
       PDNode* pdnode = pattern->RetrieveNode(condition.attr().var_name());
       pdnode->assert_more([&](Node* x) {
         Attribute attr = GetVarAttrValue(x->Var(), condition.attr());
+        if (condition.has_operation()) {
+          Attribute operation = GetAttrValue(condition.operation().value());
+          attr = boost::apply_visitor(
+              operation_visitor(condition.operation().type()), attr, operation);
+        }
         switch (condition.type()) {
           case proto::PassDesc_ConditionType_kEQ: {
             return attr == GetAttrValue(condition.condition_value());
@@ -305,7 +347,12 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             node = graph->CreateVarNode(&var_desc);
             var_node_maps.insert({argument, node});
           } else {
-            node = iter->second;
+            if (in_nodes.end() ==
+                std::find(in_nodes.begin(), in_nodes.end(), iter->second)) {
+              node = iter->second;
+            } else {
+              node = graph->CreateVarNode(iter->second->Var());
+            }
           }
           out_nodes.push_back(node);
           arguments.push_back(node->Name());
@@ -329,7 +376,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             Node* condition_node = subgraph.at(pattern.RetrieveNode(
                 std::to_string(attr_map.pattern_attr().op_index())));
             attr =
-                condition_node->Op()->GetAttr(attr_map.pattern_attr().name());
+                GetOpAttrValue(condition_node->Op(), attr_map.pattern_attr());
           }
           if (attr_map.has_operation()) {
             Attribute operation = GetAttrValue(attr_map.operation().value());

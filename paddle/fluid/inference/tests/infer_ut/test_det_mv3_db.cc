@@ -35,11 +35,26 @@ paddle::test::Record PrepareInput(int batch_size, int image_shape = 640) {
 void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
   // set dynamic shape range
   std::map<std::string, std::vector<int>> min_input_shape = {
-      {"x", {1, 3, 50, 50}}};
+      {"x", {1, 3, 224, 224}},
+      {"conv2d_124.tmp_0", {1, 256, 56, 56}},
+      {"nearest_interp_v2_2.tmp_0", {1, 256, 56, 56}},
+      {"nearest_interp_v2_3.tmp_0", {1, 64, 56, 56}},
+      {"nearest_interp_v2_4.tmp_0", {1, 64, 56, 56}},
+      {"nearest_interp_v2_5.tmp_0", {1, 64, 56, 56}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
-      {"x", {max_batch_size, 3, 1600, 1600}}};
+      {"x", {max_batch_size, 3, 448, 448}},
+      {"conv2d_124.tmp_0", {max_batch_size, 256, 112, 112}},
+      {"nearest_interp_v2_2.tmp_0", {max_batch_size, 256, 112, 112}},
+      {"nearest_interp_v2_3.tmp_0", {max_batch_size, 64, 112, 112}},
+      {"nearest_interp_v2_4.tmp_0", {max_batch_size, 64, 112, 112}},
+      {"nearest_interp_v2_5.tmp_0", {max_batch_size, 64, 112, 112}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
-      {"x", {1, 3, 640, 640}}};
+      {"x", {1, 3, 256, 256}},
+      {"conv2d_124.tmp_0", {1, 256, 64, 64}},
+      {"nearest_interp_v2_2.tmp_0", {1, 256, 64, 64}},
+      {"nearest_interp_v2_3.tmp_0", {1, 64, 64, 64}},
+      {"nearest_interp_v2_4.tmp_0", {1, 64, 64, 64}},
+      {"nearest_interp_v2_5.tmp_0", {1, 64, 64, 64}}};
   config->SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                  opt_input_shape);
 }
@@ -76,7 +91,7 @@ TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
   int thread_num = 2;  // thread > 2 may OOM
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
-  my_input_data_map["x"] = PrepareInput(2, 640);
+  my_input_data_map["x"] = PrepareInput(2, 256);
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
@@ -90,7 +105,7 @@ TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 20, 4, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   PrepareDynamicShape(&config, 4);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);

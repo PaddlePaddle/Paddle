@@ -73,7 +73,7 @@ class FillDiagonalTensorCUDAKernel : public framework::OpKernel<T> {
 
     auto out_dims = out->dims();
     auto matdims = srctensor->dims();
-    auto fill_dims = flatten_to_2d(matdims, matdims.size() - 1);
+    auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
 
     int64_t new_dims[2];
     std::vector<int64_t> memory_block;
@@ -101,7 +101,7 @@ class FillDiagonalTensorCUDAKernel : public framework::OpKernel<T> {
     Tensor tensor_tmp;
     int64_t *memory_block_cu =
         tensor_tmp.mutable_data<int64_t>({2 + fill_dims[0]}, ctx.GetPlace());
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gpu_place = ctx.GetPlace();
     memory::Copy(gpu_place, memory_block_cu, platform::CPUPlace(),
                  memory_block.data(), sizeof(int64_t) * (2 + fill_dims[0]),
                  stream);
@@ -159,8 +159,7 @@ class FillDiagonalTensorGradCUDAKernel : public framework::OpKernel<T> {
       Tensor tensor_tmp;
       int64_t *memory_block_cu =
           tensor_tmp.mutable_data<int64_t>({2 + matrows}, ctx.GetPlace());
-      const auto gpu_place =
-          BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+      const auto gpu_place = ctx.GetPlace();
       memory::Copy(gpu_place, memory_block_cu, platform::CPUPlace(),
                    memory_block.data(), sizeof(int64_t) * (2 + matrows),
                    stream);

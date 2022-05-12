@@ -40,15 +40,14 @@ def set_cinn_flag(val):
 class TestResnet50Accuracy(unittest.TestCase):
     def reader(self, limit):
         for _ in range(limit):
-            yield np.random.randint(0, 256, size=[32, 3, 224, 224]).astype('float32'), \
-                  np.random.randint(0, 1000, size=[32]).astype('int64')
+            yield {'image': np.random.randint(0, 256, size=[32, 3, 224, 224]).astype('float32'), \
+                   'label': np.random.randint(0, 1000, size=[32]).astype('int64')}
 
     def generate_random_data(self, loop_num=10):
         feed = []
         data = self.reader(loop_num)
         for _ in range(loop_num):
-            x, y = next(data)
-            feed.append({'image': x, 'label': y})
+            feed.append(next(data))
         return feed
 
     def build_program(self, main_program, startup_program):
@@ -56,6 +55,9 @@ class TestResnet50Accuracy(unittest.TestCase):
             image = paddle.static.data(
                 name='image', shape=[32, 3, 224, 224], dtype='float32')
             label = paddle.static.data(name='label', shape=[32], dtype='int64')
+
+            # TODO: stop_gradient slower training speed, need fix
+            image.stop_gradient = False
 
             model = paddle.vision.models.resnet50()
             prediction = model(image)

@@ -155,13 +155,13 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SampledLabels", {logits_dims[0], labels_dims[1]});
 
     // append 0 to shape variable to avoid optimized by memory optimize pass
-    auto logits_dim_vec = framework::vectorize(logits_dims);
+    auto logits_dim_vec = phi::vectorize(logits_dims);
     logits_dim_vec.push_back(0);
-    ctx->SetOutputDim("LogitsDim", framework::make_ddim(logits_dim_vec));
+    ctx->SetOutputDim("LogitsDim", phi::make_ddim(logits_dim_vec));
 
-    auto labels_dim_vec = framework::vectorize(labels_dims);
+    auto labels_dim_vec = phi::vectorize(labels_dims);
     labels_dim_vec.push_back(0);
-    ctx->SetOutputDim("LabelsDim", framework::make_ddim(labels_dim_vec));
+    ctx->SetOutputDim("LabelsDim", phi::make_ddim(labels_dim_vec));
   }
 
  protected:

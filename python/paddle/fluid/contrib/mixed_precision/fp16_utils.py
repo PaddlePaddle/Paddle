@@ -80,10 +80,26 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+_keep_layer_norm_scale_bias_to_fp32_flag = True
+
+
+def _keep_layer_norm_scale_bias_to_fp32(*args):
+    global _keep_layer_norm_scale_bias_to_fp32_flag
+    if len(args) == 0:
+        return _keep_layer_norm_scale_bias_to_fp32_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
+        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
+        return old_value
+
+
 def _keep_fp32_input(op, in_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'layer_norm']:
+    if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
@@ -93,12 +109,16 @@ def _keep_fp32_input(op, in_name):
         return in_name in {
             'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
         }
+    if op_type == 'fused_multi_transformer':
+        return in_name in {'LnScale', 'LnBias', 'FFNLnScale', 'FFNLnBias'}
     return False
 
 
 def _keep_fp32_output(op, out_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+    if op_type in ['batch_norm', 'fused_bn_add_activation']:
+        return out_name != 'Y'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}
@@ -173,7 +193,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         attrs={
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype,
-                            "op_device": op_device
+                            "op_device": op_device,
+                            "op_role": op.attr("op_role"),
                         })
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
@@ -223,7 +244,8 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
             attrs={
                 "in_dtype": target_var.dtype,
                 "out_dtype": cast_var.dtype,
-                "op_device": op.attr("op_device")
+                "op_device": op.attr("op_device"),
+                "op_role": op.attr("op_role"),
             })
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
@@ -397,7 +419,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if _keep_fp32_input(op, in_name):
+                # for ipu, all inputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_input(
+                        op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -425,7 +449,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if _keep_fp32_output(op, out_name):
+                # for ipu, all outputs must be converted to fp16
+                if not core.is_compiled_with_ipu() and _keep_fp32_output(
+                        op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None

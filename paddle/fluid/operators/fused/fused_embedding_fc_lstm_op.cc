@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_fc_lstm_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
 namespace operators {
@@ -243,12 +243,12 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
   auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
   if (platform::MayIUse(platform::avx)) {                                      \
-    math::VecActivations<T, platform::avx> act_functor;                        \
+    phi::funcs::VecActivations<T, platform::avx> act_functor;                  \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
   } else {                                                                     \
-    math::VecActivations<T, platform::isa_any> act_functor;                    \
+    phi::funcs::VecActivations<T, platform::isa_any> act_functor;              \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
@@ -267,15 +267,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   bool is_reverse = ctx.Attr<bool>("is_reverse");     \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
-#define INIT_BASE_SIZES                                      \
-  auto ids_dims = ids->dims();                   /* T x M*/  \
-  auto ids_numel = framework::product(ids_dims); /* T x 1*/  \
-  auto wh_dims = wh->dims();                     /* D x 4D*/ \
-  const int D = wh_dims[0];                                  \
-  const int D2 = D * 2;                                      \
-  const int D3 = D * 3;                                      \
-  int64_t row_number = embeddings->dims()[0];                \
-  int64_t row_width = embeddings->dims()[1];                 \
+#define INIT_BASE_SIZES                                \
+  auto ids_dims = ids->dims();             /* T x M*/  \
+  auto ids_numel = phi::product(ids_dims); /* T x 1*/  \
+  auto wh_dims = wh->dims();               /* D x 4D*/ \
+  const int D = wh_dims[0];                            \
+  const int D2 = D * 2;                                \
+  const int D3 = D * 3;                                \
+  int64_t row_number = embeddings->dims()[0];          \
+  int64_t row_width = embeddings->dims()[1];           \
   const int D4 = wh_dims[1];
 
 #define INIT_BASE_INPUT_DATAS                                        \
@@ -364,7 +364,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -473,9 +473,9 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     hidden_out->mutable_data<T>(place);
     cell_out->mutable_data<T>(place);
 
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -591,7 +591,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 #undef MOVE_ONE_BATCH
 #undef DEFINE_CUR
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_h_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_h_out, hidden_out);
     batched_c_out->set_lod(batched_lod);

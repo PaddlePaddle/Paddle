@@ -34,11 +34,12 @@ class TestRelu(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.rand(3, 2).astype(self.dtype)
-        out = x
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {}
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -50,31 +51,17 @@ class TestRelu(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.006)
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
-class TestReluFp16(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "relu"
-        self.place = paddle.NPUPlace(0)
 
-        self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.rand(3, 2).astype(self.dtype)
-        out = x
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-
+class TestReluFp16(TestRelu):
     def init_dtype(self):
         self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
 
 
 class TestReluNeg(OpTest):

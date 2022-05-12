@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from paddle.utils.download import get_weights_path_from_url
@@ -69,6 +70,36 @@ class TestDownload(unittest.TestCase):
         ]
         for url in urls:
             get_path_from_url(url, root_dir='./test')
+
+    def test_uncompress_result(self):
+        results = [
+            [
+                "files/single_dir/file1", "files/single_dir/file2",
+                "files/single_file.pdparams"
+            ],
+            ["single_dir/file1", "single_dir/file2"],
+            ["single_file.pdparams"],
+        ]
+        tar_urls = [
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.tar",
+        ]
+
+        for url, uncompressd_res in zip(tar_urls, results):
+            uncompressed_path = get_path_from_url(url, root_dir='./test_tar')
+            self.assertTrue(all([os.path.exists(os.path.join("./test_tar", filepath)) \
+                                 for filepath in uncompressd_res]))
+
+        zip_urls = [
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.zip",
+        ]
+        for url, uncompressd_res in zip(zip_urls, results):
+            uncompressed_path = get_path_from_url(url, root_dir='./test_zip')
+            self.assertTrue(all([os.path.exists(os.path.join("./test_zip", filepath)) \
+                                 for filepath in uncompressd_res]))
 
     def test_retry_exception(self, ):
         with self.assertRaises(RuntimeError):

@@ -31,19 +31,19 @@ class CudnnFusionOp {
  public:
   explicit CudnnFusionOp(cudnnFusedOps_t op_id) : plan_created_(false) {
     // New 'fused op' descriptor creation
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFusedOpsPlan(&op_, op_id));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateFusedOpsPlan(&op_, op_id));
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnCreateFusedOpsConstParamPack(&op_const_params_, op_id));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFusedOpsVariantParamPack(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateFusedOpsVariantParamPack(
         &op_variant_params_, op_id));
   }
 
   ~CudnnFusionOp() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
   }
 
   // Execute fused op
@@ -53,7 +53,7 @@ class CudnnFusionOp {
         platform::errors::Fatal(
             "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnFusedOpsExecute(cudnn_handle, op_, op_variant_params_));
   }
 
@@ -61,9 +61,8 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpConstParamDesc(cudnnFusedOpsConstParamLabel_t param_label,
                            T *param_ptr) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnSetFusedOpsConstParamPackAttribute(
-            op_const_params_, param_label, param_ptr));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFusedOpsConstParamPackAttribute(
+        op_const_params_, param_label, param_ptr));
     plan_created_ = false;
   }
 
@@ -81,9 +80,8 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpConstParamAttr(cudnnFusedOpsConstParamLabel_t param_label,
                            T param) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnSetFusedOpsConstParamPackAttribute(op_const_params_,
-                                                         param_label, &param));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFusedOpsConstParamPackAttribute(
+        op_const_params_, param_label, &param));
     plan_created_ = false;
   }
 
@@ -101,7 +99,7 @@ class CudnnFusionOp {
   template <typename T>
   void SetOpVariantParamAttrPtr(cudnnFusedOpsVariantParamLabel_t param_label,
                                 T *param_ptr) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnSetFusedOpsVariantParamPackAttribute(
             op_variant_params_, param_label, param_ptr));
   }
@@ -120,7 +118,7 @@ class CudnnFusionOp {
   size_t GetWorkspaceSizeInBytes(cudnnHandle_t cudnn_handle) {
     if (!plan_created_) {
       workspace_bytes_ = 0U;
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
           cudnn_handle, op_, op_const_params_, &workspace_bytes_));
       plan_created_ = true;
     }

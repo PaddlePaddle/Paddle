@@ -209,5 +209,87 @@ class TestArgsortOpDescendingAxisNeg2NPUFP32(TestArgsortOpAxisNeg2NPUFP32):
         self.descending = True
 
 
+# test cases for int64
+class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "argsort"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+        self.init_inputshape()
+        self.init_axis()
+        self.init_direction()
+
+        self.x = np.random.randint(
+            low=-100, high=100, size=self.input_shape,
+            dtype=self.dtype).astype(self.dtype)
+        self.inputs = {"X": self.x}
+        self.attrs = {"axis": self.axis, "descending": self.descending}
+        self.get_output()
+        self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
+
+    def init_axis(self):
+        self.axis = 0
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-2)
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+
+class TestArgsortOpAxis1NPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestArgsortOpAxis2NPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_axis(self):
+        self.axis = 2
+
+
+class TestArgsortOpAxisNeg1NPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestArgsortOpAxisNeg2NPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_axis(self):
+        self.axis = -2
+
+
+class TestArgsortOpDescendingAxisNPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis0NPUINT64(TestArgsortOpAxis0NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis1NPUINT64(TestArgsortOpAxis1NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis2NPUINT64(TestArgsortOpAxis2NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxisNeg1NPUINT64(TestArgsortOpAxisNeg1NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxisNeg2NPUINT64(TestArgsortOpAxisNeg2NPUINT64):
+    def init_direction(self):
+        self.descending = True
+
+
 if __name__ == '__main__':
     unittest.main()

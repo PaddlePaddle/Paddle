@@ -25,7 +25,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/include/core.h"
 
 namespace paddle {
 namespace imperative {
@@ -122,6 +121,8 @@ class OpBase {
   const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
 
   bool HasAttr(const std::string& name) const {
+    VLOG(6) << "Default attrs: " << default_attrs_;
+    VLOG(6) << "attrs: " << &attrs_;
     return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
@@ -183,8 +184,25 @@ class OpBase {
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
+  static void Run(const framework::OperatorBase& op,
+                  const NameVarMap<egr::EagerVariable>& ins,
+                  const NameVarMap<egr::EagerVariable>& outs,
+                  const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
+                  const platform::Place& place);
 
-  static pten::KernelContext* GetKernelContext() { return &pt_kernel_context_; }
+  bool HasVoidFunctionPostHook() const {
+    return !void_function_post_hooks_.empty();
+  }
+
+  void AddVoidFunctionPostHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_function_post_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>&
+  GetVoidFunctionPostHooks() const {
+    return void_function_post_hooks_;
+  }
 
  private:
   static const std::string& UnknownOpType() {
@@ -202,7 +220,8 @@ class OpBase {
   size_t id_{-1UL};
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext
-  static pten::KernelContext pt_kernel_context_;
+  static phi::KernelContext pt_kernel_context_;
+  std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 
 class GradOpNode {

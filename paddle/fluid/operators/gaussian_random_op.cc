@@ -15,38 +15,19 @@ limitations under the License. */
 #include <random>
 
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T>
-class CPUGaussianRandomKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    float mean = context.Attr<float>("mean");
-    float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
-
-    std::normal_distribution<T> dist(mean, std);
-    auto shape = GetShape(context);
-    tensor->Resize(shape);
-    int64_t size = tensor->numel();
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
-
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-  }
-};  // namespace operators
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -74,38 +55,6 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 class GaussianRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GaussianRandom");
-
-    auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    std::vector<int64_t> temp;
-    temp.reserve(shape.size());
-    for (auto dim : shape) {
-      temp.push_back(static_cast<int64_t>(dim));
-    }
-    if (shape.empty() && ctx->HasInput("ShapeTensor")) {
-      auto shape_dims = ctx->GetInputDim("ShapeTensor");
-      int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
-      }
-      auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
-
-      return;
-    }
-    if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
-      PADDLE_ENFORCE_GT(
-          shape.size(), 0UL,
-          platform::errors::InvalidArgument(
-              "Attribute(shape) of GaussianRandomOp must be set "
-              "and shape.size() > 0, but reveived shape.size() is %d",
-              shape.size()));
-    }
-
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -192,13 +141,20 @@ Used to initialize tensors with gaussian random generator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
-                             ops::GaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
-                       ops::CPUGaussianRandomKernel<double>);
+
+DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random, GaussianRandomInferShapeFunctor,
+                            PD_INFER_META(phi::GaussianRandomInferMeta));
+
+REGISTER_OPERATOR(
+    gaussian_random, ops::GaussianRandomOp, ops::GaussianRandomOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    GaussianRandomInferShapeFunctor);
+
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
+
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/quantize_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -21,13 +21,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
 using framework::DataLayout;
-using mkldnn::stream;
+using dnnl::stream;
 using platform::GetMKLDNNFormat;
 
 template <typename T>
@@ -56,8 +56,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
-    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
+    auto src_tz = phi::vectorize<int64_t>(input->dims());
+    auto dst_tz = phi::vectorize<int64_t>(output->dims());
 
     const T* input_data = input->data<T>();
 
@@ -65,19 +65,19 @@ class QuantOpKernel : public framework::OpKernel<T> {
     bool bfloat16 = ctx.Attr<bool>("bfloat16");
 
     // TODO(jczaja): Refactor with Acquire API
-    std::shared_ptr<mkldnn::memory> src_memory;
-    std::shared_ptr<mkldnn::memory> dst_memory;
+    std::shared_ptr<dnnl::memory> src_memory;
+    std::shared_ptr<dnnl::memory> dst_memory;
     std::shared_ptr<reorder> reorder_p;
 
     std::string out_layout = ctx.Attr<std::string>("output_format");
     MKLDNNMemoryFormat out_format =
         platform::data_format_to_memory_format(out_layout);
-    mkldnn::primitive_attr attri;
+    dnnl::primitive_attr attri;
     int mask = 0;
     attri.set_output_scales(mask, {scale_data});
 
     if (with_shift) {
-      mkldnn::post_ops post_operations;
+      dnnl::post_ops post_operations;
       post_operations.append_sum();
       attri.set_post_ops(post_operations);
       uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
@@ -87,10 +87,10 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
                                           input->format());
-    src_memory = std::make_shared<mkldnn::memory>(src_md, engine,
-                                                  to_void_cast<T>(input_data));
+    src_memory = std::make_shared<dnnl::memory>(src_md, engine,
+                                                to_void_cast<T>(input_data));
 
-    std::shared_ptr<mkldnn::memory::desc> dst_md;
+    std::shared_ptr<dnnl::memory::desc> dst_md;
     if (bfloat16) {
       platform::SetDstMemoryQuantized<paddle::platform::bfloat16>(
           ctx, output, dst_tz, engine, dst_md, dst_memory, out_format);
@@ -106,12 +106,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *src_memory, *dst_memory);
-      astream.wait();
-    }
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));

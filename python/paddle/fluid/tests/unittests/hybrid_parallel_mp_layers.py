@@ -274,7 +274,7 @@ class TestDistTraning(unittest.TestCase):
         seq_length = 16
         class_size_per_card = 2
         vocab_size = class_size_per_card * self.model_parallel_size
-        seed = 1025
+        seed = 100
 
         set_random_seed(seed)
         rank_id = dist.get_rank()

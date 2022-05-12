@@ -207,6 +207,87 @@ void TestTunedDynamic() {
   check_func(test_predictor.get());
 }
 
+void TestDynamicClone(bool with_dynamic = true, bool delete_cache = true,
+                      bool delete_conv_bn = false) {
+  std::string model_dir =
+      FLAGS_infer_model + "/conv_bn_swish_split_gelu/conv_bn_swish_split_gelu";
+
+  std::string opt_cache_dir = model_dir + "/my_cache";
+  if (delete_cache) {
+    delete_cache_files(opt_cache_dir);
+  }
+
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  std::string buffer_prog, buffer_param;
+  ReadBinaryFile(model_dir + "/model", &buffer_prog);
+  ReadBinaryFile(model_dir + "/params", &buffer_param);
+  config.SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+                        buffer_param.size());
+  config.SetOptimCacheDir(opt_cache_dir);
+
+  config.SwitchUseFeedFetchOps(false);
+  // Set the input's min, max, opt shape
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, false, false);
+  if (delete_conv_bn) {
+    config.pass_builder()->DeletePass("conv_bn_fuse_pass");
+  }
+  if (with_dynamic) {
+    std::map<std::string, std::vector<int>> min_input_shape = {
+        {"image", {1, 1, 3, 3}}};
+    std::map<std::string, std::vector<int>> max_input_shape = {
+        {"image", {1, 1, 10, 10}}};
+    std::map<std::string, std::vector<int>> opt_input_shape = {
+        {"image", {1, 1, 3, 3}}};
+
+    config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
+                                  opt_input_shape);
+  }
+  auto predictor = CreatePaddlePredictor(config);
+  auto input_names = predictor->GetInputNames();
+  int channels = 1;
+  int height = 3;
+  int width = 3;
+  int input_num = channels * height * width * 1;
+
+  float *input = new float[input_num];
+  memset(input, 0, input_num * sizeof(float));
+  auto input_t = predictor->GetInputTensor(input_names[0]);
+  input_t->Reshape({1, channels, height, width});
+  input_t->copy_from_cpu(input);
+
+  ASSERT_TRUE(predictor->ZeroCopyRun());
+
+  std::vector<float> out_data;
+  auto output_names = predictor->GetOutputNames();
+  auto output_t = predictor->GetOutputTensor(output_names[0]);
+  std::vector<int> output_shape = output_t->shape();
+  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                std::multiplies<int>());
+  out_data.resize(out_num);
+  output_t->copy_to_cpu(out_data.data());
+
+  auto predictor2 = predictor->Clone();
+  auto input_t2 = predictor2->GetInputTensor(input_names[0]);
+  input_t2->Reshape({1, channels, height, width});
+  input_t2->copy_from_cpu(input);
+
+  ASSERT_TRUE(predictor2->ZeroCopyRun());
+
+  std::vector<float> out_data2;
+  auto output_t2 = predictor2->GetOutputTensor(output_names[0]);
+  std::vector<int> output_shape2 = output_t2->shape();
+  int out_num2 = std::accumulate(output_shape2.begin(), output_shape2.end(), 1,
+                                 std::multiplies<int>());
+  out_data2.resize(out_num2);
+  output_t2->copy_to_cpu(out_data2.data());
+  ASSERT_TRUE(out_data2.size() == out_data.size());
+  for (size_t i = 0; i < out_data.size(); i++) {
+    EXPECT_NEAR(out_data2[i], out_data[i], 1e-5);
+  }
+}
+
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
 TEST(AnalysisPredictor, trt_static) { TestDynamic(false); }
 TEST(AnalysisPredictor, trt_memory_serialize) {
@@ -218,6 +299,7 @@ TEST(AnalysisPredictor, trt_memory_serialize) {
 TEST(AnalysisPredictor, trt_dynamic2) { TestDynamic2(); }
 
 TEST(AnalysisPredictor, trt_tuned_dynamic) { TestTunedDynamic(); }
+TEST(AnalysisPredictor, trt_dynamic_clone) { TestDynamicClone(); }
 
 }  // namespace inference
 }  // namespace paddle

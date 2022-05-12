@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -205,13 +205,13 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     Tensor temp_out_tensor;
     auto temp_out_dims =
-        framework::make_ddim({batch, seq_len, 3, head_number, head_size});
-    temp_out_tensor.Resize({batch * seq_len, framework::product(temp_out_dims) /
-                                                 (batch * seq_len)});
+        phi::make_ddim({batch, seq_len, 3, head_number, head_size});
+    temp_out_tensor.Resize(
+        {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
     auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
 
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(device_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(device_ctx);
     blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
 
     // temp_out_tensor.Resize(temp_out_dims);

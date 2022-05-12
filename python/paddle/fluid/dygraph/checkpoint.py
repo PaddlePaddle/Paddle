@@ -17,7 +17,7 @@ from __future__ import print_function
 import os
 import collections
 import functools
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer
+from ..framework import Variable, default_main_program, _non_static_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer, EagerParamBase
 import pickle
 from . import learning_rate_scheduler
 import warnings
@@ -94,7 +94,7 @@ def save_dygraph(state_dict, model_path):
 
     param_num = 0
     for k, v in state_dict.items():
-        if isinstance(v, ParamBase):
+        if isinstance(v, (ParamBase, EagerParamBase)):
             param_num += 1
 
     if param_num == 0:
@@ -103,7 +103,7 @@ def save_dygraph(state_dict, model_path):
     model_dict = {}
     name_table = {}
     for k, v in state_dict.items():
-        if isinstance(v, (Variable, core.VarBase)):
+        if isinstance(v, (Variable, core.VarBase, core.eager.Tensor)):
             model_dict[k] = v.numpy()
             name_table[k] = v.name
         else:

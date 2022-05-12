@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -84,6 +86,9 @@ class CinnGraphSymbolization {
     return var_model_to_program_map_;
   }
 
+  // get fetch var ids used in CINN
+  std::unordered_set<std::string> GetFetchIds() const;
+
   using OpMapperContext = ::cinn::frontend::OpMapperContext;
   using FeedInfoMap =
       std::unordered_map<std::string, OpMapperContext::FeedInfo>;
@@ -95,9 +100,12 @@ class CinnGraphSymbolization {
   const ::cinn::common::Target& target_;
   const std::map<std::string, const LoDTensor*>& input_tensors_;
 
-  // preserve local variable map
+  // preserve cinn variable map
   std::unordered_map<std::string, ::cinn::frontend::Variable> var_map_;
   std::unordered_map<std::string, std::string> var_model_to_program_map_;
+
+  // fetch var names used in paddle
+  std::unordered_set<std::string> fetch_var_names_;
 
   // transform all paddle var desc in feed list into cinn_var_descs_
   FeedInfoMap GetFeedInfoMapFromInput() const;

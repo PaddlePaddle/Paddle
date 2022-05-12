@@ -147,7 +147,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     out_neg_indices_lod.emplace_back(batch_starts);
     int neg_offset = 0;
     auto neg_data = out_neg_indices->mutable_data<int>(
-        framework::make_ddim({static_cast<int>(batch_starts.back()), 1}),
+        phi::make_ddim({static_cast<int>(batch_starts.back()), 1}),
         ctx.GetPlace());
 
     for (auto neg_indices : all_neg_indices) {

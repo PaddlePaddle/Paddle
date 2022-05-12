@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import paddle
-
 import paddle.nn as nn
-import paddle.nn.functional as F
-
 from paddle.utils.download import get_weights_path_from_url
+
+from .utils import _make_divisible
+from ..ops import ConvNormActivation
 
 __all__ = []
 
@@ -27,39 +26,6 @@ model_urls = {
     ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
      '0340af0a901346c8d46f4529882fb63d')
 }
-
-
-def _make_divisible(v, divisor, min_value=None):
-    if min_value is None:
-        min_value = divisor
-    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-
-    if new_v < 0.9 * v:
-        new_v += divisor
-    return new_v
-
-
-class ConvBNReLU(nn.Sequential):
-    def __init__(self,
-                 in_planes,
-                 out_planes,
-                 kernel_size=3,
-                 stride=1,
-                 groups=1,
-                 norm_layer=nn.BatchNorm2D):
-        padding = (kernel_size - 1) // 2
-
-        super(ConvBNReLU, self).__init__(
-            nn.Conv2D(
-                in_planes,
-                out_planes,
-                kernel_size,
-                stride,
-                padding,
-                groups=groups,
-                bias_attr=False),
-            norm_layer(out_planes),
-            nn.ReLU6())
 
 
 class InvertedResidual(nn.Layer):
@@ -79,15 +45,20 @@ class InvertedResidual(nn.Layer):
         layers = []
         if expand_ratio != 1:
             layers.append(
-                ConvBNReLU(
-                    inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
+                ConvNormActivation(
+                    inp,
+                    hidden_dim,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.ReLU6))
         layers.extend([
-            ConvBNReLU(
+            ConvNormActivation(
                 hidden_dim,
                 hidden_dim,
                 stride=stride,
                 groups=hidden_dim,
-                norm_layer=norm_layer),
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6),
             nn.Conv2D(
                 hidden_dim, oup, 1, 1, 0, bias_attr=False),
             norm_layer(oup),
@@ -102,23 +73,30 @@ class InvertedResidual(nn.Layer):
 
 
 class MobileNetV2(nn.Layer):
+    """MobileNetV2 model from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+
+    Args:
+        scale (float): scale of channels in each layer. Default: 1.0.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.models import MobileNetV2
+
+            model = MobileNetV2()
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+    """
+
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
-        """MobileNetV2 model from
-        `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
-
-        Args:
-            scale (float): scale of channels in each layer. Default: 1.0.
-            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
-                                will not be defined. Default: 1000.
-            with_pool (bool): use pool before the last fc layer or not. Default: True.
-
-        Examples:
-            .. code-block:: python
-
-                from paddle.vision.models import MobileNetV2
-
-                model = MobileNetV2()
-        """
         super(MobileNetV2, self).__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
@@ -142,8 +120,12 @@ class MobileNetV2(nn.Layer):
         self.last_channel = _make_divisible(last_channel * max(1.0, scale),
                                             round_nearest)
         features = [
-            ConvBNReLU(
-                3, input_channel, stride=2, norm_layer=norm_layer)
+            ConvNormActivation(
+                3,
+                input_channel,
+                stride=2,
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6)
         ]
 
         for t, c, n, s in inverted_residual_setting:
@@ -160,11 +142,12 @@ class MobileNetV2(nn.Layer):
                 input_channel = output_channel
 
         features.append(
-            ConvBNReLU(
+            ConvNormActivation(
                 input_channel,
                 self.last_channel,
                 kernel_size=1,
-                norm_layer=norm_layer))
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6))
 
         self.features = nn.Sequential(*features)
 
@@ -211,6 +194,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import mobilenet_v2
 
             # build model
@@ -221,6 +205,11 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
 
             # build mobilenet v2 with scale=0.5
             model = mobilenet_v2(scale=0.5)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     model = _mobilenet(
         'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs)

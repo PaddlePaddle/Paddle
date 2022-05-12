@@ -34,7 +34,7 @@ class TestExpand(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.randn(3, 1, 7).astype(self.dtype)
+        x = np.random.randn(30, 1, 7).astype(self.dtype)
         out = np.tile(x, [1, 10, 1])
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -50,12 +50,8 @@ class TestExpand(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestExpandV2(TestExpand):
@@ -66,7 +62,7 @@ class TestExpandV2(TestExpand):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.randn(3, 1, 7).astype(self.dtype)
+        x = np.random.randn(30, 1, 7).astype(self.dtype)
         out = np.tile(x, [1, 10, 1])
         expand_times = np.array([1, 10, 1]).astype(np.int32)
 
@@ -130,6 +126,27 @@ class TestExpandNet(unittest.TestCase):
         npu_loss = self._test(True)
 
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
+
+
+# ------------------------------------------------
+# Special Cases for NPU
+# ------------------------------------------------
+
+
+class TestExpand_expand_times_all_one(TestExpand):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "expand"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.randn(30, 1, 7).astype(self.dtype)
+        out = np.tile(x, [1, 1, 1])
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'expand_times': [1, 1, 1]}
+        self.outputs = {'Out': out}
 
 
 if __name__ == '__main__':

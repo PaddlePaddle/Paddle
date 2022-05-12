@@ -68,7 +68,7 @@ DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 }
 

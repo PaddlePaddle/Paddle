@@ -14,7 +14,6 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 #include "xpu/refactor/math.h"
 

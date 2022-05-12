@@ -19,7 +19,6 @@
 
 namespace paddle {
 namespace framework {
-class Tensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle

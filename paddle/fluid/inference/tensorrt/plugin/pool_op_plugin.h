@@ -29,26 +29,32 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                                        const bool& adaptive,
                                        const std::vector<int>& ksize,
                                        const std::vector<int>& strides,
-                                       const std::vector<int>& paddings) {
+                                       const std::vector<int>& real_paddings) {
   std::vector<int> output_shape = input_shape;
   if (adaptive) {
     output_shape[0] = ksize[0];
     output_shape[1] = ksize[1];
   } else {
-    int output_h, output_w;
-    if (!ceil_mode) {
-      output_h = (input_shape[0] - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
-      output_w = (input_shape[1] - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
-    } else {
-      output_h =
-          (input_shape[0] - ksize[0] + 2 * paddings[0] + strides[0] - 1) /
-              strides[0] +
-          1;
-      output_w =
-          (input_shape[1] - ksize[1] + 2 * paddings[1] + strides[1] - 1) /
-              strides[1] +
-          1;
+    int output_h = 0, output_w = 0;
+    if (ceil_mode) {
+      output_h = (input_shape[0] - ksize[0] + real_paddings[0] +
+                  real_paddings[1] + strides[0] - 1) /
+                     strides[0] +
+                 1;
+      output_w = (input_shape[1] - ksize[1] + real_paddings[2] +
+                  real_paddings[3] + strides[1] - 1) /
+                     strides[1] +
+                 1;
     }
+    // TRT will use native layer when ceil_model=false
+    /*
+    else{
+      output_h = (input_shape[0] - ksize[0] + real_paddings[0] +
+    real_paddings[1]) / strides[0] + 1;
+      output_w = (input_shape[1] - ksize[1] + real_paddings[2] +
+    real_paddings[3]) / strides[1] + 1;
+    }
+    */
     output_shape[0] = output_h;
     output_shape[1] = output_w;
   }
@@ -57,47 +63,32 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
 
 class PoolPlugin : public PluginTensorRT {
  public:
-  size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
-           SerializedSize(pool_type_) + SerializedSize(adaptive_) +
-           SerializedSize(ksize_) + SerializedSize(strides_) +
-           SerializedSize(paddings_) + SerializedSize(input_shape_) +
-           SerializedSize(output_shape_);
-  }
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
 
-  // TRT will call this func when we need to serialize the configuration of
-  // tensorrt.
-  void serialize(void* buffer) const TRT_NOEXCEPT override {
-    serializeBase(buffer);
-    SerializeValue(&buffer, ceil_mode_);
-    SerializeValue(&buffer, pool_type_);
-    SerializeValue(&buffer, adaptive_);
-    SerializeValue(&buffer, ksize_);
-    SerializeValue(&buffer, strides_);
-    SerializeValue(&buffer, paddings_);
-    SerializeValue(&buffer, input_shape_);
-    SerializeValue(&buffer, output_shape_);
-  }
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
 
   enum class PoolType {
     max = 0,
     avg,
   };
   PoolPlugin() {}
-  PoolPlugin(bool ceil_mode, PoolType pool_type, bool adaptive,
+  PoolPlugin(bool ceil_mode, PoolType pool_type, bool adaptive, bool exclusive,
              std::vector<int> ksize, std::vector<int> strides,
-             std::vector<int> paddings, std::vector<int> input_shape)
+             std::vector<int> paddings, std::vector<int> input_shape,
+             std::vector<int> real_paddings)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
         adaptive_(adaptive),
+        exclusive_(exclusive),
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
+        real_paddings_(real_paddings),
         input_shape_(input_shape) {
     output_shape_ = input_shape_;
     std::vector<int> output_shape =
         CalcOutputSize({input_shape_[1], input_shape_[2]}, ceil_mode_,
-                       adaptive_, ksize_, strides_, paddings_);
+                       adaptive_, ksize_, strides_, real_paddings_);
     output_shape_[1] = output_shape[0];
     output_shape_[2] = output_shape[1];
   }
@@ -109,17 +100,16 @@ class PoolPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &ceil_mode_);
     DeserializeValue(&serialData, &serialLength, &pool_type_);
     DeserializeValue(&serialData, &serialLength, &adaptive_);
+    DeserializeValue(&serialData, &serialLength, &exclusive_);
     DeserializeValue(&serialData, &serialLength, &ksize_);
     DeserializeValue(&serialData, &serialLength, &strides_);
     DeserializeValue(&serialData, &serialLength, &paddings_);
+    DeserializeValue(&serialData, &serialLength, &real_paddings_);
     DeserializeValue(&serialData, &serialLength, &input_shape_);
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
 
-  PoolPlugin* clone() const TRT_NOEXCEPT override {
-    return new PoolPlugin(ceil_mode_, pool_type_, adaptive_, ksize_, strides_,
-                          paddings_, input_shape_);
-  }
+  PoolPlugin* clone() const TRT_NOEXCEPT override;
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "pool_plugin";
@@ -139,9 +129,11 @@ class PoolPlugin : public PluginTensorRT {
   bool ceil_mode_;
   PoolType pool_type_;
   bool adaptive_;
+  bool exclusive_;
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;
+  std::vector<int> real_paddings_;
   std::vector<int> input_shape_;
   std::vector<int> output_shape_;
 };
@@ -167,12 +159,14 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
  public:
   PoolPluginDynamic() {}
   PoolPluginDynamic(const bool& ceil_mode, const std::string& pool_type,
-                    const bool& adaptive, const std::vector<int>& ksize,
+                    const bool& adaptive, bool exclusive,
+                    const std::vector<int>& ksize,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings, const bool& is_global)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
         adaptive_(adaptive),
+        exclusive_(exclusive),
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
@@ -180,10 +174,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
 
   PoolPluginDynamic(void const* serialData, size_t serialLength);
   ~PoolPluginDynamic() {}
-  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, ksize_,
-                                 strides_, paddings_, is_global_);
-  }
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "pool_plugin_dynamic";
@@ -229,6 +220,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
   bool ceil_mode_;
   std::string pool_type_;
   bool adaptive_;
+  bool exclusive_;
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;

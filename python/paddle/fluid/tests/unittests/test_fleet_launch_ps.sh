@@ -48,6 +48,7 @@ function test_launch_ps_heter(){
         --workers="127.0.0.1:${worker_port_01},127.0.0.1:${worker_port_11}" \
         --heter_workers="127.0.0.1:${heter_worker_port_0},127.0.0.1:${heter_worker_port_1}" \
         --heter_devices="gpu" \
+        --heter_worker_num="2" \
         fleet_heter_ps_training.py 2> ut2.elog
     if grep -q "server are killed" ut2.elog; then
         echo "test heter trainer launch succeed"

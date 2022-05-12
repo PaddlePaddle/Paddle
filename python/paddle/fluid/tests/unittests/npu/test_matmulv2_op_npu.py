@@ -71,7 +71,7 @@ class TestMatMulV2Op(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
 
-class TestMatMuklOp2(TestMatMulV2Op):
+class TestMatMulOp2(TestMatMulV2Op):
     """
     case 2
     """
@@ -83,7 +83,7 @@ class TestMatMuklOp2(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOp3(TestMatMulV2Op):
+class TestMatMulOp3(TestMatMulV2Op):
     """
     case 3
     """
@@ -95,7 +95,7 @@ class TestMatMuklOp3(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp4(TestMatMulV2Op):
+class TestMatMulOp4(TestMatMulV2Op):
     """
     case 4
     """
@@ -107,7 +107,7 @@ class TestMatMuklOp4(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp5(TestMatMulV2Op):
+class TestMatMulOp5(TestMatMulV2Op):
     """
     case 5
     """
@@ -119,7 +119,7 @@ class TestMatMuklOp5(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp6(TestMatMulV2Op):
+class TestMatMulOp6(TestMatMulV2Op):
     """
     case 6
     """
@@ -131,7 +131,7 @@ class TestMatMuklOp6(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp7(TestMatMulV2Op):
+class TestMatMulOp7(TestMatMulV2Op):
     """
     case 7
     """
@@ -143,7 +143,7 @@ class TestMatMuklOp7(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp8(TestMatMulV2Op):
+class TestMatMulOp8(TestMatMulV2Op):
     """
     case 8
     """
@@ -155,7 +155,7 @@ class TestMatMuklOp8(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp9(TestMatMulV2Op):
+class TestMatMulOp9(TestMatMulV2Op):
     """
     case 9
     """
@@ -167,7 +167,7 @@ class TestMatMuklOp9(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOp10(TestMatMulV2Op):
+class TestMatMulOp10(TestMatMulV2Op):
     """
     case 10
     """
@@ -179,7 +179,7 @@ class TestMatMuklOp10(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp11(TestMatMulV2Op):
+class TestMatMulOp11(TestMatMulV2Op):
     """
     case 11
     """
@@ -191,7 +191,7 @@ class TestMatMuklOp11(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp12(TestMatMulV2Op):
+class TestMatMulOp12(TestMatMulV2Op):
     """
     case 12
     """
@@ -203,7 +203,7 @@ class TestMatMuklOp12(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp13(TestMatMulV2Op):
+class TestMatMulOp13(TestMatMulV2Op):
     """
     case 13
     """
@@ -215,7 +215,7 @@ class TestMatMuklOp13(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp14(TestMatMulV2Op):
+class TestMatMulOp14(TestMatMulV2Op):
     """
     case 14_1
     """
@@ -227,7 +227,7 @@ class TestMatMuklOp14(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp15(TestMatMulV2Op):
+class TestMatMulOp15(TestMatMulV2Op):
     """
     case 14_2
     """
@@ -239,7 +239,7 @@ class TestMatMuklOp15(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp16(TestMatMulV2Op):
+class TestMatMulOp16(TestMatMulV2Op):
     """
     case 16 : to check the gradient for special case
     """
@@ -251,7 +251,7 @@ class TestMatMuklOp16(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOp17(TestMatMulV2Op):
+class TestMatMulOp17(TestMatMulV2Op):
     """
     case 17 : to check the gradient for special case
     """
@@ -263,7 +263,7 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
-class TestMatMuklOpBroadcast1(TestMatMulV2Op):
+class TestMatMulOpBroadcast1(TestMatMulV2Op):
     """
     case 14_3
     """
@@ -275,7 +275,7 @@ class TestMatMuklOpBroadcast1(TestMatMulV2Op):
         self.trans_y = True
 
 
-class TestMatMuklOpBroadcast2(TestMatMulV2Op):
+class TestMatMulOpBroadcast2(TestMatMulV2Op):
     """
     case 14_4
     """
@@ -310,22 +310,22 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
 
 
 create_test_fp16_class(TestMatMulV2Op)
-create_test_fp16_class(TestMatMuklOp2)
-create_test_fp16_class(TestMatMuklOp3)
-create_test_fp16_class(TestMatMuklOp4)
-create_test_fp16_class(TestMatMuklOp5)
-create_test_fp16_class(TestMatMuklOp6)
-create_test_fp16_class(TestMatMuklOp7)
-create_test_fp16_class(TestMatMuklOp8)
-create_test_fp16_class(TestMatMuklOp9)
-create_test_fp16_class(TestMatMuklOp10)
-create_test_fp16_class(TestMatMuklOp11)
-create_test_fp16_class(TestMatMuklOp12)
-create_test_fp16_class(TestMatMuklOp13)
-create_test_fp16_class(TestMatMuklOp14)
-create_test_fp16_class(TestMatMuklOp15)
-create_test_fp16_class(TestMatMuklOp16)
-create_test_fp16_class(TestMatMuklOp17)
+create_test_fp16_class(TestMatMulOp2)
+create_test_fp16_class(TestMatMulOp3)
+create_test_fp16_class(TestMatMulOp4)
+create_test_fp16_class(TestMatMulOp5)
+create_test_fp16_class(TestMatMulOp6)
+create_test_fp16_class(TestMatMulOp7)
+create_test_fp16_class(TestMatMulOp8)
+create_test_fp16_class(TestMatMulOp9)
+create_test_fp16_class(TestMatMulOp10)
+create_test_fp16_class(TestMatMulOp11)
+create_test_fp16_class(TestMatMulOp12)
+create_test_fp16_class(TestMatMulOp13)
+create_test_fp16_class(TestMatMulOp14)
+create_test_fp16_class(TestMatMulOp15)
+create_test_fp16_class(TestMatMulOp16)
+create_test_fp16_class(TestMatMulOp17)
 
 
 class TestMatMulV2API(unittest.TestCase):

@@ -14,8 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/transform.h"
+
+#if defined(PADDLE_WITH_XPU)
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -26,6 +31,49 @@ struct CastDataTypeFunctor {
     return static_cast<OutType>(in);
   }
 };
+
+#if defined(PADDLE_WITH_XPU)
+
+template <typename InType, typename OutType>
+static void XPUCastData(const framework::Tensor& in, framework::Tensor* out,
+                        const platform::XPUDeviceContext* dev_ctx) {
+  using XPUInTDType = typename XPUTypeTrait<InType>::Type;
+  using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
+  int r = xpu::cast_v2<XPUInTDType, XPUOutTDType>(
+      dev_ctx->x_context(),
+      reinterpret_cast<const XPUInTDType*>(in.data<InType>()),
+      reinterpret_cast<XPUOutTDType*>(out->mutable_data<OutType>(in.place())),
+      in.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+  dev_ctx->Wait();
+}
+
+template <typename InType>
+static void XPUTransDataType(
+    const framework::Tensor& in, framework::Tensor* out,
+    const paddle::framework::proto::VarType::Type& dst_type,
+    const platform::DeviceContext* ctx) {
+  auto* context = static_cast<const platform::XPUDeviceContext*>(ctx);
+
+#define XPUCastCallback(cpp_type, proto_type)          \
+  do {                                                 \
+    if (dst_type == proto_type) {                      \
+      XPUCastData<InType, cpp_type>(in, out, context); \
+    }                                                  \
+  } while (0)
+
+  if (dst_type == proto::VarType::FP32 && dst_type == proto::VarType::FP16 &&
+      dst_type == proto::VarType::BOOL && dst_type == proto::VarType::INT16 &&
+      dst_type == proto::VarType::INT32 && dst_type == proto::VarType::INT64) {
+    _ForEachDataType_(XPUCastCallback);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Data type (%s) is not supported in XPU when casting data type.",
+        DataTypeToString(dst_type)));
+  }
+}
+
+#endif
 
 template <typename InType>
 struct CastDataType {
@@ -65,12 +113,14 @@ struct CastDataType {
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type, const Tensor& in,
                    Tensor* out) {
-  PADDLE_ENFORCE_EQ(in.type(), kernel_type_for_var.data_type_,
-                    platform::errors::InvalidArgument(
-                        "The src dtype(%s) of input tensor and kernel_type(%s) "
-                        "are not conststent.",
-                        DataTypeToString(in.type()),
-                        DataTypeToString(kernel_type_for_var.data_type_)));
+  PADDLE_ENFORCE_EQ(
+      framework::TransToProtoVarType(in.dtype()),
+      kernel_type_for_var.data_type_,
+      platform::errors::InvalidArgument(
+          "The src dtype(%s) of input tensor and kernel_type(%s) "
+          "are not conststent.",
+          DataTypeToString(framework::TransToProtoVarType(in.dtype())),
+          DataTypeToString(kernel_type_for_var.data_type_)));
   auto dst_type = expected_kernel_type.data_type_;
   TransDataType(in, dst_type, out);
 }
@@ -81,9 +131,37 @@ void TransDataType(const Tensor& in,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
-  auto src_type = in.type();
+  auto src_type = framework::TransToProtoVarType(in.dtype());
   auto dst_type = type;
   auto ctx = pool.Get(in.place());
+
+#if defined(PADDLE_WITH_XPU)
+  switch (src_type) {
+    case proto::VarType::FP16:
+      XPUTransDataType<platform::float16>(in, out, dst_type, ctx);
+      break;
+    case proto::VarType::FP32:
+      XPUTransDataType<float>(in, out, dst_type, ctx);
+      break;
+    case proto::VarType::BOOL:
+      XPUTransDataType<bool>(in, out, dst_type, ctx);
+      break;
+    case proto::VarType::INT16:
+      XPUTransDataType<int16_t>(in, out, dst_type, ctx);
+      break;
+    case proto::VarType::INT32:
+      XPUTransDataType<int>(in, out, dst_type, ctx);
+      break;
+    case proto::VarType::INT64:
+      XPUTransDataType<int64_t>(in, out, dst_type, ctx);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported in XPU when casting data type.",
+          DataTypeToString(src_type)));
+  }
+
+#else
 
   switch (src_type) {
     case proto::VarType::FP16:
@@ -120,6 +198,7 @@ void TransDataType(const Tensor& in,
           "Data type (%s) is not supported when casting data type.",
           DataTypeToString(src_type)));
   }
+#endif
 }
 
 void TransComplexToReal(const proto::VarType::Type& dst_type,
@@ -128,7 +207,6 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
   auto& pool = platform::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());
-
   // complex -> real
   switch (src_type) {
     case proto::VarType::COMPLEX64:

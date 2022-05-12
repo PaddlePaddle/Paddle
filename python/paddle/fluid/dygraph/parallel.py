@@ -22,6 +22,7 @@ import warnings
 from contextlib import contextmanager
 
 import paddle
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -30,7 +31,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import ParamBase
+from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -50,7 +51,7 @@ def prepare_context(strategy=None):
         strategy.current_endpoint = Env().current_endpoint
     if strategy.nranks < 2:
         return
-    assert framework.in_dygraph_mode() is True, \
+    assert framework._non_static_mode() is True, \
         "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
@@ -62,9 +63,12 @@ def prepare_context(strategy=None):
         elif isinstance(place, core.XPUPlace):
             parallel_helper._set_parallel_ctx(
                 core.BKCLParallelContext(strategy, place))
+        elif isinstance(place, core.NPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.HCCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace or XPUPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace or NPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -122,6 +126,12 @@ class ParallelEnv(object):
         elif core.is_compiled_with_xpu():
             selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
             self._device_id = int(selected_xpus[0])
+        elif core.is_compiled_with_npu():
+            selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+            self._device_id = int(selected_npus[0])
+        elif core.is_compiled_with_mlu():
+            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+            self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -298,17 +308,28 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
-        grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
-        framework._dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': coalesced_grad},
-            outputs={'Out': origin_grad_vars},
-            attrs={'sections': grad_var_len,
-                   'axis': 0})
-        for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-            _reshape_inplace(x=g_var, shape=g_shape)
-            assert g_var.shape == g_shape
+    if _in_legacy_dygraph():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_grad},
+                outputs={'Out': origin_grad_vars},
+                attrs={'sections': grad_var_len,
+                       'axis': 0})
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                _reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
+    elif in_dygraph_mode():
+        for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
+            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            attrs = ()
+            attrs += ('sections', grad_var_len)
+            attrs += ('axis', 0)
+            _C_ops.split(coalesced_grad, origin_grad_vars, *attrs)
+            for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
+                g_var.reshape_(shape=g_shape)
+                assert g_var.shape == g_shape
 
 
 def scale_loss(loss):
@@ -350,13 +371,14 @@ def sync_params_buffers(model,
                         src_rank=0,
                         is_model_parallel=False):
     model_vars = []
-    for _, param in model.state_dict().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+    for _, param in model._obtain_parameters_buffers().items():
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, ParamBase):
+        if isinstance(param, (ParamBase, core.eager.Tensor)):
             if is_model_parallel and param.is_distributed:
                 continue
 
@@ -364,6 +386,8 @@ def sync_params_buffers(model,
             # such as moe's expert parameters
             if getattr(param, "no_sync", False):
                 continue
+        if param.type == core.VarDesc.VarType.VOCAB:
+            continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
@@ -552,13 +576,20 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=False):
+                 find_unused_parameters=False,
+                 group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
+
+        assert _non_static_mode(), \
+            "It's not supported to construct DataParallel in static mode."
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
+        self.group = group
+        self.var_dtype = core.eager.Tensor if in_dygraph_mode(
+        ) else core.VarBase
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -574,6 +605,13 @@ class DataParallel(layers.Layer):
             assert parallel_helper.__parallel_ctx__clz__ is not None, \
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
+
+            if in_dygraph_mode():
+                self.group = paddle.distributed.collective._get_default_group(
+                ) if self.group is None else self.group
+
+                assert isinstance(self.group, paddle.distributed.collective.Group), \
+                    "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
             # TODO(liuyuhui) Currently not support xpu. xpu is 
@@ -603,9 +641,9 @@ class DataParallel(layers.Layer):
                 if param is None or param in params_set:
                     continue
                 params_set.add(param)
-                if not isinstance(param, core.VarBase):
-                    raise TypeError("The data type of '%s' must be Varbase" %
-                                    param.name)
+                if not isinstance(param, self.var_dtype):
+                    raise TypeError("The data type of '%s' must be '%s'" %
+                                    (param.name, self.var_dtype))
                 if param.trainable:
                     layers_param.append((sublayer, param))
 
@@ -632,19 +670,32 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        self.group_indices = core.assign_group_by_size(
-            trainable_parameters, is_sparse_gradient,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+        if in_dygraph_mode():
+            self.group_indices = core.eager_assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
 
-        self._reducer = core.Reducer(
-            trainable_parameters,
-            list(reversed(self.group_indices)), is_sparse_gradient,
-            parallel_helper.__parallel_ctx__clz__,
-            [self.last_comm_buffer_size, self.comm_buffer_size],
-            self.find_unused_parameters)
+            self._reducer = core.EagerReducer(
+                trainable_parameters,
+                list(reversed(self.group_indices)), is_sparse_gradient,
+                self.group.process_group,
+                [self.last_comm_buffer_size, self.comm_buffer_size],
+                self.find_unused_parameters)
+        elif _in_legacy_dygraph():
+            self.group_indices = core.assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
+
+            self._reducer = core.Reducer(
+                trainable_parameters,
+                list(reversed(self.group_indices)), is_sparse_gradient,
+                parallel_helper.__parallel_ctx__clz__,
+                [self.last_comm_buffer_size, self.comm_buffer_size],
+                self.find_unused_parameters)
 
     def _find_varbase(self, obj):
-        if isinstance(obj, core.VarBase):
+        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
+        if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
             return itertools.chain(*map(self._find_varbase, obj))

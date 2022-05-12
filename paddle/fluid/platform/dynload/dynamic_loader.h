@@ -26,6 +26,7 @@ namespace dynload {
 #endif
 
 void* GetCublasDsoHandle();
+void* GetCublasLtDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();

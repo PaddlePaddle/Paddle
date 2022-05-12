@@ -66,7 +66,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
 
-    const auto& index_type = ids_t->type();
+    const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       GetIdsEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
                       table_data, height, width, output_data);
@@ -110,9 +110,11 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
 
     size_t table_t_mem_size =
-        table_t->numel() * framework::SizeOfType(table_grad_t->type());
+        table_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
     size_t table_grad_t_mem_size =
-        table_grad_t->numel() * framework::SizeOfType(table_grad_t->type());
+        table_grad_t->numel() *
+        framework::SizeOfType(
+            framework::TransToProtoVarType(table_grad_t->dtype()));
 
     VLOG(10) << "table_dims:" << table_t->dims()
              << ", table_t memory_size:" << table_t_mem_size
@@ -125,7 +127,7 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
 
-    const auto& index_type = ids_t->type();
+    const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       UpdateEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
                       table_grad_data, height, width, d_output_data);

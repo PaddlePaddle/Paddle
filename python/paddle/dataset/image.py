@@ -54,7 +54,10 @@ if six.PY3:
     if retcode != 0:
         cv2 = None
     else:
-        import cv2
+        try:
+            import cv2
+        except ImportError:
+            cv2 = None
 else:
     try:
         import cv2

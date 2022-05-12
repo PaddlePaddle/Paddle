@@ -35,12 +35,13 @@ class StreamAnalyzer {
   platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
  private:
-  std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
-                                       const Instruction& next_instr);
+  std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
+                                         const Instruction& next_instr);
 
-  void AssociateInputWithEvents(const std::vector<size_t>& new_event_var_id,
-                                Instruction* next_instr,
-                                platform::DeviceType waiter_type);
+  void ConstructEventForVar(const std::vector<size_t>& new_event_var_id,
+                            Instruction* next_instr,
+                            platform::DeviceType waiter_type,
+                            const platform::Place& place);
 
   bool IsDirectRun(Instruction& cur_instr,  // NOLINT
                    const Instruction& next_instr);

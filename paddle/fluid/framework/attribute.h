@@ -27,9 +27,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
+
+paddle::any GetAttrValue(const Attribute& attr);
+
+Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 template <typename T>
 struct ExtractAttribute {
@@ -198,13 +203,16 @@ struct ExtractAttribute<std::vector<double>> {
 
   const std::string& attr_name_;
 };
+
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
   return static_cast<proto::AttrType>(tmp.which() - 1);
 }
 
-Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
+inline proto::AttrType AttrTypeID(const Attribute& attr) {
+  return static_cast<proto::AttrType>(attr.which() - 1);
+}
 
 class AttrReader {
  public:
@@ -232,6 +240,21 @@ class AttrReader {
     ExtractAttribute<T> extract_attr(name);
     T* attr_value = extract_attr(attr);
     return *attr_value;
+  }
+
+  const Attribute* GetAttr(const std::string& name) const {
+    auto it = attrs_.find(name);
+    bool found = it != attrs_.end();
+    if (!found) {
+      if (default_attrs_ != nullptr) {
+        it = default_attrs_->find(name);
+        found = it != default_attrs_->end();
+      }
+    }
+    if (found) {
+      return &it->second;
+    }
+    return nullptr;
   }
 
  private:

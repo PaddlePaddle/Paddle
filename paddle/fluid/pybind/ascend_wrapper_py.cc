@@ -32,7 +32,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
-#include "paddle/fluid/platform/ascend_npu_info.h"
+#include "paddle/fluid/platform/device/npu/ascend_npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 

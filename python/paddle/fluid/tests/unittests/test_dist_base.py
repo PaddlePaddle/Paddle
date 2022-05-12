@@ -31,10 +31,11 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel
-
+from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
@@ -541,7 +542,6 @@ class TestParallelDyGraphRunnerBase(object):
             return batch
 
     def run_trainer(self, args):
-
         seed = 90
         if args.update_method == 'gloo':
             place = fluid.CPUPlace()
@@ -551,6 +551,9 @@ class TestParallelDyGraphRunnerBase(object):
         elif fluid.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
+        elif fluid.core.is_compiled_with_npu():
+            device_id = int(os.getenv("FLAGS_selected_npus", "0"))
+            place = fluid.NPUPlace(device_id)
         else:
             assert ("Only support CUDAPlace or XPUPlace or CPU(Gloo) for now.")
 
@@ -564,12 +567,13 @@ class TestParallelDyGraphRunnerBase(object):
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
             #if args.update_method == "nccl2":
-            if args.update_method == "nccl2" or args.update_method == "bkcl":
+            if args.update_method == "nccl2" or args.update_method == "bkcl" or args.update_method == "hccl":
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
+                paddle.distributed.init_parallel_env()
                 print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
@@ -631,10 +635,8 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method in ["nccl2", "gloo"]:
-            if args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
+            model = paddle.DataParallel(
+                model, find_unused_parameters=args.find_unused_parameters)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -671,12 +673,12 @@ class TestParallelDyGraphRunnerBase(object):
             strategy.find_unused_parameters = True
 
         # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl":
+        if args.update_method == "nccl2" or "bkcl" or "hccl":
             fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2" or "bkcl":
+        if args.update_method == "nccl2" or "bkcl" or "hccl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -706,7 +708,8 @@ def runtime_main(test_class):
         type=str,
         default="local",
         choices=[
-            "pserver", "nccl2", "bkcl", "local", "nccl2_reduce_layer", "gloo"
+            "pserver", "nccl2", "bkcl", "local", "nccl2_reduce_layer", "gloo",
+            "hccl"
         ])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
@@ -728,6 +731,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
+    parser.add_argument('--use_npu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -784,13 +788,21 @@ class TestDistBase(unittest.TestCase):
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
+            self.__use_npu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
+            self.__use_npu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
+            self.__use_npu = False
+        elif self._enforce_place == "NPU":
+            self.__use_cuda = False
+            self.__use_xpu = False
+            self._use_dgc = False
+            self.__use_npu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -815,6 +827,7 @@ class TestDistBase(unittest.TestCase):
         self._nccl2_mode = False
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
+        self._hccl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -847,10 +860,10 @@ class TestDistBase(unittest.TestCase):
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
         else:
-            print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
+            self._dist_port = DIST_UT_PORT
 
         self._after_setup_config()
 
@@ -950,6 +963,13 @@ class TestDistBase(unittest.TestCase):
             cmd += " --use_xpu"
             env_local = {
                 "FLAGS_selected_xpus": devices,
+                "PADDLE_TRAINERS_NUM": "1",
+                "PADDLE_TRAINER_ID": "0"
+            }
+        elif self.__use_npu:
+            cmd += " --use_npu"
+            env_local = {
+                "FLAGS_selected_npus": devices,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
@@ -1138,6 +1158,7 @@ class TestDistBase(unittest.TestCase):
         })
 
         assert self._use_dgc == False, "gloo not support use dgc"
+
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
 
@@ -1193,6 +1214,16 @@ class TestDistBase(unittest.TestCase):
             env.update({
                 "FLAGS_selected_xpus": "{}".format(trainer_id),
                 #"XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
+                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": ep,
+                "GLOG_v": "2",
+            })
+        elif self.__use_npu:
+            tr_cmd += " --use_npu"
+            env.update({
+                "FLAGS_selected_npus": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -1429,7 +1460,36 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+        if self._dygraph and (self._gloo_mode or self._nccl2_mode):
+            need_envs.update({"FLAGS_enable_eager_mode": "1"})
+            with _test_eager_guard():
+                self.check_with_place_func(
+                    model_file=model_file,
+                    delta=delta,
+                    check_error_log=check_error_log,
+                    need_envs=need_envs,
+                    log_name=log_name)
+            need_envs.update({"FLAGS_enable_eager_mode": "0"})
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
+        else:
+            self.check_with_place_func(
+                model_file=model_file,
+                delta=delta,
+                check_error_log=check_error_log,
+                need_envs=need_envs,
+                log_name=log_name)
 
+    def check_with_place_func(self,
+                              model_file,
+                              delta=1e-3,
+                              check_error_log=False,
+                              need_envs={},
+                              log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         if self._gloo_mode:
@@ -1469,6 +1529,13 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='gloo',
+                check_error_log=check_error_log,
+                log_name=log_name)
+        elif self._hccl_mode:
+            tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                model_file,
+                required_envs,
+                update_method='hccl',
                 check_error_log=check_error_log,
                 log_name=log_name)
 

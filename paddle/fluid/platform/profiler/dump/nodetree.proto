@@ -1,0 +1,200 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.platform;
+
+enum TracerEventTypeProto {
+  // Used to mark operator record
+  Operator = 0;
+  // Used to mark dataloader record
+  Dataloader = 1;
+  // Used to mark profile step record
+  ProfileStep = 2;
+  // Used to mark cuda runtime record returned by cupti
+  CudaRuntime = 3;
+  // Used to mark kernel computation record returned by cupti
+  Kernel = 4;
+  // Used to mark memcpy record returned by cupti
+  Memcpy = 5;
+  // Used to mark memset record returned by cupti
+  Memset = 6;
+  // Used to mark record defined by user
+  UserDefined = 7;
+  // Used to mark operator detail, (such as infer shape, compute)
+  OperatorInner = 8;
+  // Used to mark model training or testing perspective, forward process
+  Forward = 9;
+  // Used to mark model training perspective, backward process
+  Backward = 10;
+  // Used to mark model training perspective, optimization process
+  Optimization = 11;
+  // Used to mark distributed training perspective
+  Communication = 12;
+  // Used to mark python api
+  PythonOp = 13;
+  // Used to mark python level userdefined
+  PythonUserDefined = 14;
+};
+
+message KernelEventInfoProto {
+  // The X-dimension block size for the kernel.
+  required uint32 block_x = 1;
+  // The Y-dimension block size for the kernel.
+  required uint32 block_y = 2;
+  // The Z-dimension grid size for the kernel.
+  required uint32 block_z = 3;
+  // X-dimension of a grid.
+  required uint32 grid_x = 4;
+  // Y-dimension of a grid.
+  required uint32 grid_y = 5;
+  // Z-dimension of a grid.
+  required uint32 grid_z = 6;
+  // The dynamic shared memory reserved for the kernel, in bytes.
+  required uint32 dynamic_shared_memory = 7;
+  // The static shared memory allocated for the kernel, in bytes.
+  required uint32 static_shared_memory = 8;
+  // The number of registers required for each thread executing the kernel.
+  required uint32 registers_per_thread = 9;
+  // The amount of local memory reserved for each thread, in bytes.
+  required uint32 local_memory_per_thread = 10;
+  // The total amount of local memory reserved for the kernel, in bytes.
+  required uint32 local_memory_total = 11;
+  // The timestamp when the kernel is queued up in the command buffer, in ns.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
+  required uint64 queued = 12;
+  // The timestamp when the command buffer containing the kernel launch is
+  // submitted to the GPU, in ns.
+  // This timestamp is not collected by default. Use API
+  // cuptiActivityEnableLatencyTimestamps() to enable collection.
+  required uint64 submitted = 13;
+  // The completed timestamp for the kernel execution, in ns.
+  required uint64 completed = 14;
+}
+
+message MemcpyEventInfoProto {
+  // The number of bytes transferred by the memory copy.
+  required uint64 num_bytes = 1;
+  // The kind of the memory copy.
+  // Each kind represents the source and destination targets of a memory copy.
+  // Targets are host, device, and array. Refer to CUpti_ActivityMemcpyKind
+  required string copy_kind = 2;
+  // The source memory kind read by the memory copy.
+  // Each kind represents the type of the memory accessed by a memory
+  // operation/copy. Refer to CUpti_ActivityMemoryKind
+  required string src_kind = 3;
+  // The destination memory kind read by the memory copy.
+  required string dst_kind = 4;
+}
+
+message MemsetEventInfoProto {
+  // The number of bytes being set by the memory set.
+  required uint64 num_bytes = 1;
+  // The memory kind of the memory set. Refer to CUpti_ActivityMemoryKind
+  required string memory_kind = 2;
+  // the value being assigned to memory by the memory set.
+  required uint32 value = 3;
+}
+
+message HostTraceEventProto {
+  required string name = 1;
+  required TracerEventTypeProto type = 2;
+  // start timestamp of the record
+  required uint64 start_ns = 3;
+  // end timestamp of the record
+  required uint64 end_ns = 4;
+  // process id of the record
+  required uint64 process_id = 5;
+  // thread id of the record
+  required uint64 thread_id = 6;
+}
+
+message CudaRuntimeTraceEventProto {
+  // record name
+  required string name = 1;
+  // start timestamp of the record
+  required uint64 start_ns = 2;
+  // end timestamp of the record
+  required uint64 end_ns = 3;
+  // process id of the record
+  required uint64 process_id = 4;
+  // thread id of the record
+  required uint64 thread_id = 5;
+  // correlation id, used for correlating async activities happened on device
+  required uint32 correlation_id = 6;
+  // callback id, used to identify which cuda runtime api is called
+  required uint32 callback_id = 7;
+}
+
+message DeviceTraceEventProto {
+  // record name
+  required string name = 1;
+  // record type, one of TracerEventType
+  required TracerEventTypeProto type = 2;
+  // start timestamp of the record
+  required uint64 start_ns = 3;
+  // end timestamp of the record
+  required uint64 end_ns = 4;
+  // device id
+  required uint64 device_id = 5;
+  // context id
+  required uint64 context_id = 6;
+  // stream id
+  required uint64 stream_id = 7;
+  // correlation id, used for correlating async activities happened on device
+  required uint32 correlation_id = 8;
+  // union, specific device record type has different detail information
+  oneof detail_info {
+    // used for TracerEventType::Kernel
+    KernelEventInfoProto kernel_info = 9;
+    // used for TracerEventType::Memcpy
+    MemcpyEventInfoProto memcpy_info = 10;
+    // used for TracerEventType::Memset
+    MemsetEventInfoProto memset_info = 11;
+  }
+}
+
+message DeviceTraceEventNodeProto {
+  required DeviceTraceEventProto device_event = 1;
+}
+
+message CudaRuntimeTraceEventNodeProto {
+  required CudaRuntimeTraceEventProto runtime_trace_event = 1;
+  repeated DeviceTraceEventNodeProto device_nodes = 2;
+}
+
+message HostTraceEventNodeProto {
+  required int64 id = 1;
+  required int64 parentid = 2;
+  required HostTraceEventProto host_trace_event = 3;
+  repeated CudaRuntimeTraceEventNodeProto runtime_nodes = 4;
+}
+
+message ThreadNodeTreeProto {
+  required uint64 thread_id = 1;
+  repeated HostTraceEventNodeProto host_nodes = 2;
+}
+
+message ExtraInfoMap {
+  required string key = 1;
+  required string value = 2;
+}
+
+message NodeTreesProto {
+  required string version = 1;
+  required uint32 span_indx = 2;
+  repeated ThreadNodeTreeProto thread_trees = 3;
+  repeated ExtraInfoMap extra_info = 4;
+}
