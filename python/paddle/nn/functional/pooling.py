@@ -1166,7 +1166,7 @@ def max_pool3d(x,
             output = F.max_pool3d(x,
                                   kernel_size=2,
                                   stride=2, padding=0)
-            output.shape [1, 3, 16, 16, 16]
+            # output.shape [1, 3, 16, 16, 16]
             # for return_mask=True
             x = paddle.uniform([1, 3, 32, 32, 32])
             output, max_indices = paddle.nn.functional.max_pool3d(x,
