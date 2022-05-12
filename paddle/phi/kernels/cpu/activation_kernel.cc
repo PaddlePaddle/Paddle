@@ -76,7 +76,6 @@ DEFINE_CPU_ACTIVATION_KERNEL(Silu, SiluFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Exp, ExpFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Expm1, Expm1Functor)
 DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
@@ -167,8 +166,6 @@ PD_REGISTER_KERNEL(expm1,
                    double,
                    phi::dtype::float16) {}
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
-PD_REGISTER_KERNEL(
-    square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)

@@ -95,7 +95,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Exp, CudaExpFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Expm1, CudaExpm1Functor)
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
@@ -224,16 +223,6 @@ PD_REGISTER_KERNEL(logit,
                    float,
                    double,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(square,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SquareKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
