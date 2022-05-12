@@ -1269,6 +1269,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
                       as input tensor.
     Examples:
         .. code-block:: python
+          :name: code-example1
 
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
