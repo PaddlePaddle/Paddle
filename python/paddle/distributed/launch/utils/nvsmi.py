@@ -29,20 +29,24 @@ class Info(object):
     def dict(self):
         return self.__dict__
 
+    def str(self, keys=None):
+        if keys is None:
+            keys = self.__dict__.keys()
 
-def query_smi(query=None,
-              query_type="gpu",
-              index=None,
-              dtype=None,
-              ret_type="obj"):
+        if isinstance(keys, str):
+            keys = keys.split(',')
+
+        values = [str(self.__dict__.get(k, '')) for k in keys]
+        return ",".join(values)
+
+
+def query_smi(query=None, query_type="gpu", index=None, dtype=None):
     """
     query_type: gpu/compute
-
-    ret_type: obj/dict/str
     """
 
     if not has_nvidia_smi():
-        return None
+        return []
 
     cmd = ["nvidia-smi", "--format=csv,noheader,nounits"]
     if isinstance(query, list) and query_type == "gpu":
@@ -63,46 +67,40 @@ def query_smi(query=None,
     for line in lines:
         if not line:
             continue
-        info = Info() if ret_type == "obj" else {}
+        info = Info()
         for k, v, d in zip(query, line.split(", "), dtype):
-            if ret_type == "obj":
-                setattr(info, k.replace(".", "_"), d(v))
-            elif ret_type == "dict":
-                info[k.replace(".", "_")] = d(v)
-            else:
-                info = line
+            setattr(info, k.replace(".", "_"), d(v))
         ret.append(info)
     return ret
 
 
-def get_gpu_info(index=None, ret_type="obj"):
+def get_gpu_info(index=None):
     q = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode".split(
         ",")
     d = [int, str, str, str, str, str, str]
     index = index if index is None or isinstance(
         index, list) else str(index).split(",")
 
-    return query_smi(q, index=index, dtype=d, ret_type=ret_type)
+    return query_smi(q, index=index, dtype=d)
 
 
-def get_gpu_util(index=None, ret_type="obj"):
+def get_gpu_util(index=None):
     q = "index,utilization.gpu,memory.total,memory.used,memory.free,timestamp".split(
         ",")
     d = [int, int, int, int, int, str]
     index = index if index is None or isinstance(
         index, list) else str(index).split(",")
 
-    return query_smi(q, index=index, dtype=d, ret_type=ret_type)
+    return query_smi(q, index=index, dtype=d)
 
 
-def get_gpu_process(index=None, ret_type="obj"):
+def get_gpu_process(index=None):
     q = "pid,process_name,gpu_uuid,gpu_name,used_memory".split(",")
     d = [int, str, str, str, int]
     index = index if index is None or isinstance(
         index, list) else str(index).split(",")
 
-    return query_smi(
-        q, index=index, query_type="compute", dtype=d, ret_type=ret_type)
+    return query_smi(q, index=index, query_type="compute", dtype=d)
 
 
 def has_nvidia_smi():
@@ -113,3 +111,7 @@ if __name__ == '__main__':
     print(get_gpu_info(0))
     print(get_gpu_util(0))
     print(get_gpu_process(0))
+
+    u = get_gpu_util()
+    for i in u:
+        print(i.str())

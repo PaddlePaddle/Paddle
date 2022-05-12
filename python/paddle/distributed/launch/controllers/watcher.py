@@ -39,6 +39,7 @@ class Watcher(object):
 
         # start
         self.proc = Thread(target=self.watch)
+        self.proc.daemon = True
         self.proc.start()
 
     def watch(self):
@@ -47,12 +48,12 @@ class Watcher(object):
 
         self._print_gpu_info()
 
-        self.gpu_fd.write(
-            "index,utilization_gpu,memory_total,memory_used,memory_free,timestamp\n"
-        )
+        util_key = "index,utilization_gpu,memory_total,memory_used,memory_free,timestamp"
+        self.gpu_fd.write(util_key)
+        self.gpu_fd.write('\n')
 
         while not self.ctx.status.is_done():
-            self._save_gpu_log()
+            self._save_gpu_log(util_key)
             time.sleep(self.interval)
 
         if hasattr(self, "gpu_fd"):
@@ -60,18 +61,19 @@ class Watcher(object):
 
     def _print_gpu_info(self):
         try:
-            self.gpu_fd.write(
-                "index,uuid,driver_version,name,gpu_serial,display_active,display_mode\n"
-            )
-            for line in get_gpu_info(self.gpus, ret_type="str"):
-                self.gpu_fd.write(line)
+            info_key = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode"
+            self.gpu_fd.write(info_key)
+            self.gpu_fd.write('\n')
+            for line in get_gpu_info(self.gpus):
+                self.gpu_fd.write(line.str(info_key))
                 self.gpu_fd.write('\n')
             self.gpu_fd.write('\n')
 
-            self.gpu_fd.write(
-                "pid,process_name,gpu_uuid,gpu_name,used_memory\n")
-            for line in get_gpu_process(self.gpus, ret_type="str"):
-                self.gpu_fd.write(line)
+            process_key = "pid,process_name,gpu_uuid,gpu_name,used_memory"
+            self.gpu_fd.write(process_key)
+            self.gpu_fd.write('\n')
+            for line in get_gpu_process(self.gpus):
+                self.gpu_fd.write(line.str(process_key))
                 self.gpu_fd.write('\n')
             self.gpu_fd.write('\n')
 
@@ -79,10 +81,10 @@ class Watcher(object):
         except:
             self.ctx.log.error("save gpu info failed")
 
-    def _save_gpu_log(self):
+    def _save_gpu_log(self, util_key):
         try:
-            for line in get_gpu_util(self.gpus, ret_type="str"):
-                self.gpu_fd.write(line)
+            for line in get_gpu_util(self.gpus):
+                self.gpu_fd.write(line.str(util_key))
                 self.gpu_fd.write('\n')
             self.gpu_fd.flush()
         except:
