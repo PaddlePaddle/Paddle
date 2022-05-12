@@ -25,7 +25,7 @@ add_subdirectory(string)
 add_subdirectory(jit)
 add_subdirectory(prim_ops)
 
-file(GLOB math_cc "*_op.cc")
+file(GLOB operators_cc "*_op.cc")
 file(GLOB math_cc "math/*_op.cc")
 file(GLOB controlflow_cc "controlflow/*_op.cc")
 file(GLOB detection_cc "detection/*_op.cc")
@@ -38,7 +38,7 @@ file(GLOB sequence_ops_cc "sequence_ops/*_op.cc")
 file(GLOB string_cc "string/*_op.cc")
 file(GLOB prim_ops_cc "prim_ops/*_op.cc")
 
-set(GLOB_OP_SRCS ${math_cc} ${controlflow_cc} ${detection_cc} ${elementwise_cc} 
+set(GLOB_OP_SRCS ${operators_cc} ${math_cc} ${controlflow_cc} ${detection_cc} ${elementwise_cc} 
     ${fused_cc} ${metrics_cc} ${optimizers_cc} ${reduce_ops_cc}
     ${sequence_ops_cc} ${constring_cctrolflow_cc} ${prim_ops_cc} CACHE INTERNAL "glob_op_src")
 message(${GLOB_OP_SRCS})
