@@ -117,7 +117,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 512);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 16);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape() << std::endl;
-  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+  auto *x = engine_->DeclareInput("input", nvinfer1::DataType::kFLOAT,
                                   nvinfer1::Dims4{-1, 32, 1, 1});
 
   plugin::SpmmPluginDynamic::Activation act = plugin::SpmmPluginDynamic::Activation::kNone;
@@ -150,7 +150,7 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   }
 
   std::vector<float> y_cpu;
-  PrepareInputOutput(x_v, {16});
+  PrepareInputOutput(x_v, {16, 16});
 
   auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
