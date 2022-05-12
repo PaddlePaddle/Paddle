@@ -56,7 +56,7 @@ class TestLookupTableBF16Op(OpTest):
 
     def setUp(self):
         self.init_test()
-        self.dtype = "bfloat16"
+        self.dtype = bfloat16
 
         table = np.random.random((17, 31)).astype("float32")
         self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
