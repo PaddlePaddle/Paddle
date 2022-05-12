@@ -33,24 +33,15 @@ class YoloBoxHeadOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     auto* x_tensor = engine_->GetITensor(op_desc.Input("X").front());
-
-    int class_num = BOOST_GET_CONST(int, op_desc.GetAttr("class_num"));
     std::vector<int> anchors =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
-    int downsample_ratio =
-        BOOST_GET_CONST(int, op_desc.GetAttr("downsample_ratio"));
-    float conf_thresh = BOOST_GET_CONST(float, op_desc.GetAttr("conf_thresh"));
-    bool clip_bbox = BOOST_GET_CONST(bool, op_desc.GetAttr("clip_bbox"));
-    float scale_x_y = BOOST_GET_CONST(float, op_desc.GetAttr("scale_x_y"));
+    int class_num = BOOST_GET_CONST(int, op_desc.GetAttr("class_num"));
 
-    auto* yolo_box_plugin =
-        new plugin::YoloBoxHeadPlugin(anchors, class_num, conf_thresh,
-                                      downsample_ratio, clip_bbox, scale_x_y);
+    auto* yolo_box_plugin = new plugin::YoloBoxHeadPlugin(anchors, class_num);
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;
     yolo_box_inputs.push_back(x_tensor);
     auto* yolo_box_head_layer = engine_->network()->addPluginV2(
         yolo_box_inputs.data(), yolo_box_inputs.size(), *yolo_box_plugin);
-
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out").front());
     RreplenishLayerAndOutput(yolo_box_head_layer, "yolo_box_head", output_names,

@@ -200,29 +200,21 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
 #undef GET_IR_NODE
 
 // create yolo_box_head
-#define CREATE_YOLO_BOX_HEAD(idx_)                                            \
-  framework::OpDesc yolo_box_head##idx_##_op_desc;                            \
-  yolo_box_head##idx_##_op_desc.SetType("yolo_box_head");                     \
-  yolo_box_head##idx_##_op_desc.SetInput("X",                                 \
-                                         {yolo_box##idx_##_in_x->Name()});    \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "anchors", yolo_box##idx_->Op()->GetAttr("anchors"));                   \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "class_num", yolo_box##idx_->Op()->GetAttr("class_num"));               \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "conf_thresh", yolo_box##idx_->Op()->GetAttr("conf_thresh"));           \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "downsample_ratio", yolo_box##idx_->Op()->GetAttr("downsample_ratio")); \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "clip_bbox", yolo_box##idx_->Op()->GetAttr("clip_bbox"));               \
-  yolo_box_head##idx_##_op_desc.SetAttr(                                      \
-      "scale_x_y", yolo_box##idx_->Op()->GetAttr("scale_x_y"));               \
-  yolo_box_head##idx_##_op_desc.SetOutput(                                    \
-      "Out", {yolo_box##idx_##_out_boxes->Name()});                           \
-  yolo_box_head##idx_##_op_desc.Flush();                                      \
-  auto* yolo_box_head##idx_ =                                                 \
-      graph->CreateOpNode(&yolo_box_head##idx_##_op_desc);                    \
-  IR_NODE_LINK_TO(yolo_box##idx_##_in_x, yolo_box_head##idx_);                \
+#define CREATE_YOLO_BOX_HEAD(idx_)                                         \
+  framework::OpDesc yolo_box_head##idx_##_op_desc;                         \
+  yolo_box_head##idx_##_op_desc.SetType("yolo_box_head");                  \
+  yolo_box_head##idx_##_op_desc.SetInput("X",                              \
+                                         {yolo_box##idx_##_in_x->Name()}); \
+  yolo_box_head##idx_##_op_desc.SetAttr(                                   \
+      "anchors", yolo_box##idx_->Op()->GetAttr("anchors"));                \
+  yolo_box_head##idx_##_op_desc.SetAttr(                                   \
+      "class_num", yolo_box##idx_->Op()->GetAttr("class_num"));            \
+  yolo_box_head##idx_##_op_desc.SetOutput(                                 \
+      "Out", {yolo_box##idx_##_out_boxes->Name()});                        \
+  yolo_box_head##idx_##_op_desc.Flush();                                   \
+  auto* yolo_box_head##idx_ =                                              \
+      graph->CreateOpNode(&yolo_box_head##idx_##_op_desc);                 \
+  IR_NODE_LINK_TO(yolo_box##idx_##_in_x, yolo_box_head##idx_);             \
   IR_NODE_LINK_TO(yolo_box_head##idx_, yolo_box##idx_##_out_boxes);
     CREATE_YOLO_BOX_HEAD(0);
     CREATE_YOLO_BOX_HEAD(1);

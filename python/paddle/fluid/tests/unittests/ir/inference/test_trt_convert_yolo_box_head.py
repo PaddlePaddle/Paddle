@@ -24,26 +24,19 @@ import unittest
 class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input(attrs: List[Dict[str, Any]], batch, shape):
-            gen_shape = shape.copy().insert(0, batch)
+            gen_shape = shape.copy()
+            gen_shape.insert(0, batch)
             return np.random.uniform(0, 1, gen_shape).astype("float32")
 
         input_shape = [[255, 19, 19], [255, 38, 38], [255, 76, 76]]
-        class_num = 80
-        conf_thresh = 0.005
-        clip_bbox = True
-        scale_x_y = 1
         anchors = [[116, 90, 156, 198, 373, 326], [30, 61, 62, 45, 59, 119],
                    [10, 13, 16, 30, 33, 23]]
-        downsample_ratio = [32, 16, 8]
+        class_num = 80
         for batch in [1, 4]:
             for i in range(len(anchors)):
                 attrs_dict = {
                     "anchors": anchors[i],
                     "class_num": class_num,
-                    "conf_thresh": conf_thresh,
-                    "downsample_ratio": downsample_ratio[0],
-                    "clip_bbox": clip_bbox,
-                    "scale_x_y": scale_x_y,
                 }
                 ops_config = [{
                     "op_type": "yolo_box_head",
@@ -61,7 +54,7 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                     weights={},
                     inputs={
                         "yolo_box_head_input": TensorConfig(data_gen=partial(
-                            generate_input1, batch, shape[i]))
+                            generate_input, attrs_dict, batch, input_shape[i]))
                     },
                     outputs=["yolo_box_head_output"])
 

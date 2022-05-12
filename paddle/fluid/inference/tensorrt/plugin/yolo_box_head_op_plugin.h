@@ -26,30 +26,19 @@ namespace plugin {
 class YoloBoxHeadPlugin : public PluginTensorRT {
  public:
   explicit YoloBoxHeadPlugin(const std::vector<int>& anchors,
-                             const int class_num, const float conf_thresh,
-                             const int downsample_ratio, const bool clip_bbox,
-                             const float scale_x_y)
-      : anchors_(anchors),
-        class_num_(class_num),
-        conf_thresh_(conf_thresh),
-        downsample_ratio_(downsample_ratio),
-        clip_bbox_(clip_bbox),
-        scale_x_y_(scale_x_y) {}
+                             const int class_num)
+      : anchors_(anchors), class_num_(class_num) {}
 
   YoloBoxHeadPlugin(const void* data, size_t length) {
+    deserializeBase(data, length);
     DeserializeValue(&data, &length, &anchors_);
     DeserializeValue(&data, &length, &class_num_);
-    DeserializeValue(&data, &length, &conf_thresh_);
-    DeserializeValue(&data, &length, &downsample_ratio_);
-    DeserializeValue(&data, &length, &clip_bbox_);
-    DeserializeValue(&data, &length, &scale_x_y_);
   }
 
   ~YoloBoxHeadPlugin() override{};
 
   nvinfer1::IPluginV2* clone() const TRT_NOEXCEPT override {
-    return new YoloBoxHeadPlugin(anchors_, class_num_, conf_thresh_,
-                                 downsample_ratio_, clip_bbox_, scale_x_y_);
+    return new YoloBoxHeadPlugin(anchors_, class_num_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -76,40 +65,26 @@ class YoloBoxHeadPlugin : public PluginTensorRT {
               void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    size_t serialize_size = 0;
-    serialize_size += SerializedSize(anchors_);
-    serialize_size += SerializedSize(class_num_);
-    serialize_size += SerializedSize(conf_thresh_);
-    serialize_size += SerializedSize(downsample_ratio_);
-    serialize_size += SerializedSize(clip_bbox_);
-    serialize_size += SerializedSize(scale_x_y_);
-    return serialize_size;
+    return getBaseSerializationSize() + SerializedSize(anchors_) +
+           SerializedSize(class_num_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
+    serializeBase(buffer);
     SerializeValue(&buffer, anchors_);
     SerializeValue(&buffer, class_num_);
-    SerializeValue(&buffer, conf_thresh_);
-    SerializeValue(&buffer, downsample_ratio_);
-    SerializeValue(&buffer, clip_bbox_);
-    SerializeValue(&buffer, scale_x_y_);
   }
 
  private:
   std::vector<int> anchors_;
-  int* anchors_device_;
   int class_num_;
-  float conf_thresh_;
-  int downsample_ratio_;
-  bool clip_bbox_;
-  float scale_x_y_;
   std::string namespace_;
 };
 
 class YoloBoxHeadPluginCreator : public TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "hard_swish_plugin";
+    return "yolo_box_head_plugin";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }

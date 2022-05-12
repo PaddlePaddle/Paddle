@@ -36,20 +36,6 @@ class YoloBoxHeadOpMaker : public framework::OpProtoAndCheckerMaker {
                               "The anchor width and height, "
                               "it will be parsed pair by pair.");
     AddAttr<int>("class_num", "The number of classes to predict.");
-    AddAttr<float>("conf_thresh",
-                   "The confidence scores threshold of detection boxes. "
-                   "Boxes with confidence scores under threshold should "
-                   "be ignored.");
-    AddAttr<int>("downsample_ratio",
-                 "The downsample ratio from network input to YoloBox operator "
-                 "input, so 32, 16, 8 should be set for the first, second, "
-                 "and thrid YoloBox operators.");
-    AddAttr<bool>("clip_bbox",
-                  "Whether clip output bonding box in Input(ImgSize) "
-                  "boundary. Default true.");
-    AddAttr<float>("scale_x_y",
-                   "Scale the center point of decoded bounding "
-                   "box. Default 1.0");
     AddOutput("Out", "The output tensor");
     AddComment(R"DOC(
               yolo_box_head Operator.
