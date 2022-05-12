@@ -167,7 +167,7 @@ class OperatorBase {
       const std::map<phi::Place,
                      std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
           device_contexts);
-  phi::DeviceContext* GetDeviceContext(const phi::Place& place) const;
+  const phi::DeviceContext* GetDeviceContext(const phi::Place& place) const;
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}

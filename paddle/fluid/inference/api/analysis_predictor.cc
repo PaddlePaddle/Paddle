@@ -191,13 +191,16 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 
 std::set<std::string> GetNotSupportedGpuPhiOps(
     framework::ProgramDesc *program) {
+  static std::set<std::string> ops{
+      "feed", "fetch", "tensorrt_engine",
+  };
   std::set<std::string> not_ready_phi;
   for (size_t block_idx = 0; block_idx < program->Size(); ++block_idx) {
     auto &block = program->Block(block_idx);
     for (size_t op_idx = 0; op_idx < block.OpSize(); ++op_idx) {
       auto *op_desc = block.Op(op_idx);
       auto fluid_op_name = op_desc->Type();
-      if (fluid_op_name == "feed" || fluid_op_name == "fetch") continue;
+      if (ops.count(fluid_op_name)) continue;
 
       // The logic of selecting kernel is as follows:
       //  1. phi gpu kernel

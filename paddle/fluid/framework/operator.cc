@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -212,7 +213,7 @@ void OperatorBase::SetDeviceContexts(
   device_contexts_ = device_contexts;
 }
 
-phi::DeviceContext* OperatorBase::GetDeviceContext(
+const phi::DeviceContext* OperatorBase::GetDeviceContext(
     const phi::Place& place) const {
   if (device_contexts_ == nullptr) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -1541,7 +1542,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
-      BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
+      BuildPhiKernelContext(*runtime_ctx,
+                            const_cast<phi::DeviceContext*>(dev_ctx),
+                            &pt_kernel_context);
       (*pt_kernel_)(&pt_kernel_context);
     } else {
       (*kernel_func_)(

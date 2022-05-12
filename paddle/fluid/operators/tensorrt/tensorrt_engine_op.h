@@ -439,10 +439,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
   void RunTrt(const framework::Scope &scope, const platform::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
+    auto *dev_ctx = this->GetDeviceContext(dev_place);
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext *>(dev_ctx)
+                      ->stream();
 
     PADDLE_ENFORCE_EQ(
         runtime_input_names_.empty(), false,
