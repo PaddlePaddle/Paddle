@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import unique_name, core
-from paddle.fluid.framework import default_main_program, default_startup_program
 from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
@@ -157,7 +154,9 @@ def split(x, num_or_sections, axis=0, outs=None):
 
 @REGISTER_FN('concat_p', 'XS', 'Y')
 def concat(xs, axis=0, out=None):
-    assert isinstance(xs, (list, tuple)) and len(xs) > 0
+    # TODO(lml): This is hacky, refine it later
+    if not isinstance(xs, (list, tuple)):
+        xs = [xs]
     attrs = {'axis': axis}
     helper = LayerHelper('concat_p', **locals())
     if out is None:
@@ -233,7 +232,7 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
     return out
 
 
-@REGISTER_FN('gather_p', 'X', 'Y')
+@REGISTER_FN('gather_p', 'X', 'IndexTensor', 'Y')
 def gather(x, indextensor, axis, out=None):
     attrs = {'axis': axis}
     helper = LayerHelper('gather_p', **locals())
