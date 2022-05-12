@@ -194,7 +194,6 @@ __all__ = [
     'gather_tree',
     'uniform_random',
     'unbind',
-    'fused_token_prune',
 ]
 
 OP_NAMEMAPPING = {
@@ -15734,32 +15733,3 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
-
-
-def fused_token_prune(attn, x, mask, new_mask):
-    """
-    fused_token_prune.
-    Args:
-        
-    Returns:
-        Tensor
-
-    Example:
-        .. code-block:: python
-            import paddle
-            
-
-    """
-    if _non_static_mode():
-        return _C_ops.fused_token_prune(attn, x, mask, new_mask)
-    else:
-        helper = LayerHelper('fused_token_prune', **locals())
-        out = helper.create_variable_for_type_inference('float32')
-        helper.append_op(
-            type='fused_token_prune',
-            inputs={'Attn': attn,
-                    'X': x,
-                    'Mask': mask,
-                    'NewMask': new_mask},
-            outputs={'SlimmedX': out})
-        return out
