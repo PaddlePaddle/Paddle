@@ -688,8 +688,9 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     const cnnlTensorDescriptor_t diff_y_desc, void* back_out) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSparseSoftmaxCrossEntropyWithLogits(
-      handle, mode, x_desc, input, label_desc, label, y_desc, output,
+  const cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSparseSoftmaxCrossEntropyWithLogits_v2(
+      handle, prefer, mode, x_desc, input, label_desc, label, y_desc, output,
       diff_y_desc, back_out));
 }
 
