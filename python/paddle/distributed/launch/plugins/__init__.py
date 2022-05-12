@@ -29,8 +29,9 @@ def process_args(ctx):
     #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
     argdev = ctx.args.devices
     if argdev:
-        ctx.node.device.labels = argdev.split(',')
-        ctx.logger.debug('Device reset by args {}'.format(argdev))
+        for d in argdev.split(','):
+            assert d in ctx.node.device.labels, 'Device not found {}'.format(
+                argdev)
 
 
 def collective_compatible(ctx):

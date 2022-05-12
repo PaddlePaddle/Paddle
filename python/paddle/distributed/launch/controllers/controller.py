@@ -40,7 +40,7 @@ class ControllerBase(object):
         self.master = Master.factory(self.ctx)
 
         self.job = Job(nnodes=self.ctx.args.nnodes,
-                       mode=self.ctx.args.mode,
+                       mode=self.ctx.args.run_mode,
                        jid=self.ctx.args.job_id)
         self.pod = Pod()
 
@@ -65,18 +65,52 @@ class ControllerBase(object):
         self.watch()
 
     def watch(self) -> bool:
+        '''
+        watch self and peer status, return true to exit
+        '''
+        #TODO(kuizhiqing) unify ctx.status and master status
+
         self.ctx.logger.info("Watching {}".format(self.pod))
 
-        status = self.pod.watch()
+        while not self.ctx.status.is_done():
+            status = self.pod.watch(timeout=2)
 
-        if status == self.ctx.status.COMPLETED:
-            self.ctx.logger.info("Pod {}".format(status))
-        elif status == self.ctx.status.FAILED:
-            fc = self.pod.failed_container()
-            self.ctx.logger.info("Pod {}".format(status))
-            self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
-            fc[0].tail()
-            self.pod.stop()
+            #if self.ctx.continous_log():
+            # default to print log
+            self.pod.logs()
+
+            # completed
+            if status == self.ctx.status.COMPLETED:
+                self.ctx.status.complete()
+
+                self.master.set_status(status)
+
+                self.ctx.logger.info("Pod {}".format(status))
+                return True
+
+            # self failure
+            elif status == self.ctx.status.FAILED:
+                self.ctx.status.fail()
+
+                self.master.set_status(status)
+                self.master.restart_peer()
+
+                fc = self.pod.failed_container()
+                self.ctx.logger.info("Pod {}".format(status))
+                self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                fc[0].tail()
+                self.pod.stop()
+
+                if self.ctx.args.elastic_level <= 0:
+                    return True
+                else:
+                    return False
+
+            # peer failure
+            if self.ctx.status.is_restarting() and self.master.get_status(
+            ) != self.ctx.status.COMPLETED:
+                self.pod.stop()
+                return False
 
     def stop(self, sigint=None):
         self.ctx.logger.debug("Controller stop")
@@ -94,14 +128,15 @@ class ControllerBase(object):
         self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            time.sleep(11)
             sys.exit(sigint)
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 
@@ -177,6 +212,8 @@ class Controller(ControllerBase):
 
         if self.ctx.args.nproc_per_node:
             return int(self.ctx.args.nproc_per_node)
+        elif self.ctx.args.devices:
+            return len(self.ctx.args.devices.split(','))
         else:
             return self.ctx.node.device.count
 

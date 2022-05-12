@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <algorithm>
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#define CHAR_BIT 8
+#endif
 
 namespace phi {
 

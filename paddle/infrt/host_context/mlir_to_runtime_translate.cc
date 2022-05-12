@@ -130,7 +130,7 @@ boost::optional<int32_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(32)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -142,7 +142,7 @@ boost::optional<int64_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(64)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -233,7 +233,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
                                                                                \
     std::vector<type__> res;                                                   \
     for (auto& v : array) {                                                    \
-      res.push_back(v.cast<mlir::IntegerAttr>().getInt());                     \
+      res.push_back(v.cast<mlir::IntegerAttr>().getValue().getSExtValue());    \
     }                                                                          \
     return res;                                                                \
   }
@@ -309,7 +309,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
           arg_value = GetOpResult(upstream_op);
         }
       }
-      if (arg_value->is_type<phi::DenseTensor>()) {
+      if (arg_value->is_type<::phi::DenseTensor>()) {
         impl_->runtime->FeedInArgs(
             std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }
@@ -360,8 +360,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   if (attrs.size()) {
     if (attr_names.empty()) {
       LOG(WARNING) << "The kernel `" << kernel_name
-                   << "` has not been registered with "
-                      "`KernelRegistry::AddKernelWithAttrs()`.";
+                   << "` has not been registered with attributes order ";
     } else {
       CHECK_EQ(attr_names.size(), attrs.size())
           << "The number of kernel `" << kernel_name
@@ -380,8 +379,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
       }
     }
     LOG(WARNING) << "The attribute `" << attr << "` of kernel `" << kernel_name
-                 << "` is not properly registered with "
-                    "`KernelRegistry::AddKernelWithAttrs()`.";
+                 << "` is not properly register";
     return -1;
   };
 

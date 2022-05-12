@@ -22,6 +22,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import numpy
+from paddle.fluid.framework import _test_eager_guard
 
 
 def calculate_momentum_by_numpy(param,
@@ -528,6 +529,11 @@ class TestMomentumV2(unittest.TestCase):
             ValueError, paddle.optimizer.Momentum, learning_rate=None)
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_momentum_dygraph()
+            self.test_raise_error()
+
 
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
@@ -872,6 +878,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             place=place, use_amp=use_amp, use_multi_tensor=True)
         output2, params2 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=False)
+
         self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
         for idx in range(len(params1)):
             self.assertEqual(
@@ -919,6 +926,10 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_main()
 
 
 class TestMultiTensorMomentumStatic(unittest.TestCase):
@@ -991,4 +1002,5 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

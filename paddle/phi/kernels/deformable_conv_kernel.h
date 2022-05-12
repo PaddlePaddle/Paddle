@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
@@ -23,7 +24,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const DenseTensor& mask,
+                          paddle::optional<const DenseTensor&> mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,

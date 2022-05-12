@@ -19,6 +19,23 @@ import json
 import yaml
 from typing import List, Dict, Any
 
+skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
+api_yaml_file = "/python/paddle/utils/code_gen/api.yaml"
+
+
+def get_skipped_kernel_list():
+    skiped_kernel_list = []
+    with open(skipped_phi_api_list_file, 'r') as f:
+        skiped_api_list = json.load(f)
+    infer_meta_data = get_api_yaml_info(api_yaml_file)
+    for api in infer_meta_data:
+        if "kernel" not in api or "infer_meta" not in api:
+            continue
+        if api["api"] in skiped_api_list["phi_apis"]:
+            skiped_kernel_list.append(api["kernel"]["func"])
+    skiped_kernel_list += skiped_api_list["phi_kernels"]
+    return skiped_kernel_list
+
 
 def parse_args():
     parser = argparse.ArgumentParser("gather phi kernel and infermate info")
@@ -50,7 +67,7 @@ def parse_args():
 
 
 def get_api_yaml_info(file_path):
-    f = open(file_path + "/python/paddle/utils/code_gen/api.yaml", "r")
+    f = open(file_path, "r")
     cont = f.read()
     return yaml.load(cont, Loader=yaml.FullLoader)
 
@@ -58,7 +75,29 @@ def get_api_yaml_info(file_path):
 def get_kernel_info(file_path):
     f = open(file_path, "r")
     cont = f.readlines()
-    return [l.strip() for l in cont]
+    ret = []
+    prev = []
+    for line in cont:
+        info = line.strip().split()
+        if not info:
+            continue
+
+        if len(prev) == 0:
+            ret.append(line.strip())
+            prev = info
+            continue
+
+        if prev[0] == info[0] and prev[1] == info[1]:
+            ret.pop()
+        ret.append(line.strip())
+        prev = info
+    return ret
+
+
+def get_infermeta_info(file_path):
+    f = open(file_path, "r")
+    cont = f.readlines()
+    return [l.strip() for l in cont if l.strip() != ""]
 
 
 def get_attr_info(file_path):
@@ -91,11 +130,10 @@ def merge(infer_meta_data, kernel_data, wrap_data):
     full_kernel_data = []
     for l in kernel_data:
         key = l.split()[0]
-        if key in meta_map:
-            if key in meta_map:
-                full_kernel_data.append((l + " " + wrap_map[key]).split())
-            else:
-                full_kernel_data.append((l + " " + meta_map[key]).split())
+        if key in wrap_map:
+            full_kernel_data.append((l + " " + wrap_map[key]).split())
+        elif key in meta_map:
+            full_kernel_data.append((l + " " + meta_map[key]).split())
         else:
             full_kernel_data.append((l + " unknown").split())
 
@@ -204,6 +242,9 @@ def gen_dtype(vals: List[str]):
         elif val == "complex<double>" or val == "complex128":
             ir_dtypes.append("complex128")
             origin_dtypes.append("paddle::experimental::complex128")
+        elif val == "pstring":
+            ir_dtypes.append("pstring")
+            origin_dtypes.append("paddle::experimental::pstring")
         elif val == "ALL_DTYPE":
             ir_dtypes.append("all")
             origin_dtypes.append("all")
@@ -235,26 +276,24 @@ def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
         # TODO(wilber): handle the unknown inferShape func.
         return ""
 
+    skipped_kernel_list = get_skipped_kernel_list()
     for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
         kernel_func = gen_kernel_func(item[3], ctx_name, origin_dtype)
+        if item[0].lower() in skipped_kernel_list:
+            continue
         ir_name = ir_ctx_name + '.' + item[0].lower(
         ) + '.' + ir_dtype + '.' + item[2].lower()
         if ir_name in attr_data.keys() and attr_data[ir_name] is not None:
             attr_names = ', '.join(
                 ["\"" + a + "\"" for a in attr_data[ir_name]])
             res += f"""
-registry->AddKernelWithAttrs("{ir_name}","""
+registry->AddKernel("{ir_name}","""
 
             res += f"""
-    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+    &KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
                                   {infer_shape_func}>,
-              KernelLauncher<decltype({kernel_func}),
-                                  {kernel_func},
-                                  decltype({infer_shape_func}),
-                                  {infer_shape_func}>(),
-              std::placeholders::_1),
     {{{attr_names}}});
 """
 
@@ -263,15 +302,10 @@ registry->AddKernelWithAttrs("{ir_name}","""
 registry->AddKernel("{ir_name}","""
 
             res += f"""
-    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+    &KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
-                                  {infer_shape_func}>,
-              KernelLauncher<decltype({kernel_func}),
-                                  {kernel_func},
-                                  decltype({infer_shape_func}),
-                                  {infer_shape_func}>(),
-              std::placeholders::_1));
+                                  {infer_shape_func}>);
 """
 
     return res
@@ -328,9 +362,11 @@ def gen_phi_kernel_register_code(resources: List[List[str]],
 
 if __name__ == "__main__":
     args = parse_args()
-    infer_meta_data = get_api_yaml_info(args.paddle_root_path)
+    skipped_phi_api_list_file = args.paddle_root_path + skipped_phi_api_list_file
+    api_yaml_file = args.paddle_root_path + api_yaml_file
+    infer_meta_data = get_api_yaml_info(api_yaml_file)
     kernel_data = get_kernel_info(args.kernel_info_file)
-    info_meta_wrap_data = get_kernel_info(args.infermeta_wrap_file)
+    info_meta_wrap_data = get_infermeta_info(args.infermeta_wrap_file)
     attr_data = get_attr_info(args.attr_info_file)
     out = merge(infer_meta_data, kernel_data, info_meta_wrap_data)
     gen_phi_kernel_register_code(out, attr_data, args.generate_file)

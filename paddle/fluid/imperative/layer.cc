@@ -459,7 +459,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
                           const platform::Place& place) {
-  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
+  auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
                      "Only support operator with kernel in Dygraph mode."));
@@ -573,6 +573,8 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       auto& old_tensor = var.Get<framework::LoDTensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
+      new_tensor->set_type(old_tensor.dtype());
+      new_tensor->set_layout(old_tensor.layout());
       each_var.reset(new_var);
     }
   }

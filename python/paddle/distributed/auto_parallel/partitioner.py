@@ -25,7 +25,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext, Di
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
 from .utils import set_dist_op_desc_original_id
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -198,15 +198,29 @@ class Partitioner(object):
         dist_op_context = self._dist_context.dist_op_context
         serial_ops = ref_block.ops
 
+        last_fwd_op_idx = -1
+        for idx, op in enumerate(ref_block.ops):
+            if is_loss_op(op):
+                last_fwd_op_idx = idx
+                break
+
+        if last_fwd_op_idx == -1:
+            last_fwd_op_idx = len(ref_block.ops)
+
         # init mapping
         forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
-            if is_forward_op(serial_ops[idx]):
+            if idx <= last_fwd_op_idx:
                 forward_op_id2forward_op[serial_ops[idx].desc.id(
                 )] = serial_ops[idx]
 
+        appended_grad_times = 0
         # partiiton
-        for op in serial_ops:
+        for idx, op in enumerate(serial_ops):
+
+            if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1]) or
+                                       is_loss_op(serial_ops[idx - 1])):
+                appended_grad_times += 1
 
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
@@ -244,8 +258,11 @@ class Partitioner(object):
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op)
-                dist_op_backward_impl.backward(self._dist_context, **kinputs,
-                                               **koutputs)
+                grad_var_to_var = self._dist_context.dist_op_context.grad_var_to_var[
+                    appended_grad_times]
+                dist_op_backward_impl.backward(
+                    self._dist_context, **kinputs, **koutputs,
+                    **{"grad_var_to_var": grad_var_to_var})
             else:
                 raise NotImplementedError(
                     "partitioner only support forward op and backward op, but got {}".
@@ -329,13 +346,7 @@ def _partition_parameter(dist_context, src_var, dst_block, dst_varname,
         belong_to_optimizer=src_var.belong_to_optimizer,
         **copied_kwargs)
 
-    # set dist attr uid
-    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
-    # param.desc.set_distributed_attr_uid(distributed_attr_uid)
-    dist_attr = copy.deepcopy(
-        dist_context.get_tensor_dist_attr_for_program(src_var))
-    assert dist_attr is not None
-    dist_context.set_tensor_dist_attr_for_program(param, dist_attr)
+    return param
 
 
 def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
@@ -352,13 +363,7 @@ def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer)
 
-    # set dist attr uid
-    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
-    # var.desc.set_distributed_attr_uid(distributed_attr_uid)
-    dist_attr = copy.deepcopy(
-        dist_context.get_tensor_dist_attr_for_program(src_var))
-    assert dist_attr is not None
-    dist_context.set_tensor_dist_attr_for_program(var, dist_attr)
+    return var
 
 
 def _partition_var(dist_context, src_block, dst_block, src_varname,
@@ -369,10 +374,11 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
     src_var = src_block.var(src_varname)
 
     if src_var.type in __not_shape_var_type__:
-        dst_block.create_var(
+        persist = getattr(src_var, 'persistable', False)
+        new_var = dst_block.create_var(
             type=src_var.type,
             name=dst_varname,
-            persistable=True,
+            persistable=persist,
             stop_gradient=True)
         target_shape = None
     else:
@@ -380,11 +386,17 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
         target_shape = _get_dist_shape(src_var, dist_attr)
 
         if isinstance(src_var, Parameter):
-            _partition_parameter(dist_context, src_var, dst_block, dst_varname,
-                                 target_shape)
+            new_var = _partition_parameter(dist_context, src_var, dst_block,
+                                           dst_varname, target_shape)
         else:
-            _partition_intermediate_var(dist_context, src_var, dst_block,
-                                        dst_varname, target_shape)
+            new_var = _partition_intermediate_var(
+                dist_context, src_var, dst_block, dst_varname, target_shape)
+
+    dist_attr = copy.deepcopy(
+        dist_context.get_tensor_dist_attr_for_program(src_var))
+    assert dist_attr is not None
+    dist_context.set_tensor_dist_attr_for_program(new_var, dist_attr)
+
     return target_shape
 
 

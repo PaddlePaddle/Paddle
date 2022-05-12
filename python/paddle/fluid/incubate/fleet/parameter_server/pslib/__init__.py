@@ -1139,10 +1139,11 @@ class DownpourOptimizer(DistributedOptimizer):
             from paddle.fluid.transpiler.collective import MultiThread
             # check start program
             if program_mode not in [
-                    "all_reduce", "fuse_all_reduce", "all_gather"
+                    "all_reduce", "fuse_all_reduce", "all_gather",
+                    "all_reduce_xpu"
             ]:
                 raise ValueError("You should set program_mode in [ all_reduce, \
-                                fuse_all_reduce, all_gather ]")
+                                fuse_all_reduce, all_gather, all_reduce_xpu ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]

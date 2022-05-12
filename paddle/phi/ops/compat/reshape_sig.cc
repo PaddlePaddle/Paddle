@@ -20,27 +20,33 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasOutput("XShape")) {
     if (ctx.InputSize("ShapeTensor") > 0) {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"Out", "XShape"});
     } else if (ctx.HasInput("Shape")) {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"Shape"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"Shape"}, {"Out", "XShape"});
     } else {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"shape"}, {"XShape", "Out"});
+          "reshape_with_xshape", {"X"}, {"shape"}, {"Out", "XShape"});
+    }
+  } else {
+    if (ctx.InputSize("ShapeTensor") > 0) {
+      return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+    } else {
+      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
     }
   }
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ReshapeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "reshape_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("reshape_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("reshape_double_grad", {"DDX"}, {}, {"DDOut"});
+  return KernelSignature("reshape_double_grad", {"DOut", "DDX"}, {}, {"DDOut"});
 }
 
 }  // namespace phi

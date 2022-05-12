@@ -50,6 +50,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclInt64;
   } else if (type == framework::proto::VarType::FP16) {
     return ncclFloat16;
+  } else if (type == framework::proto::VarType::INT8) {
+    return ncclInt8;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
@@ -112,6 +114,10 @@ struct NCCLContext {
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
   }

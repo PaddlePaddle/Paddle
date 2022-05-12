@@ -18,6 +18,7 @@ from op_test import OpTest, skip_check_grad_ci
 from numpy.linalg import multi_dot
 from op_test import OpTest
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -27,6 +28,7 @@ paddle.enable_static()
 class TestMultiDotOp(OpTest):
     def setUp(self):
         self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
         self.get_inputs_and_outputs()
 
@@ -40,11 +42,11 @@ class TestMultiDotOp(OpTest):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
 
 
 #(A*B)*C
@@ -57,9 +59,9 @@ class TestMultiDotOp3Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 #A*(B*C)
@@ -72,9 +74,9 @@ class TestMultiDotOp3Mat2(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 class TestMultiDotOp4Mat(TestMultiDotOp):
@@ -90,10 +92,10 @@ class TestMultiDotOp4Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x3'], 'Out', check_eager=True)
 
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
@@ -143,9 +145,9 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+        self.check_grad(['x2'], 'Out', check_eager=True)
 
 
 class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
@@ -259,6 +261,10 @@ class APITestMultiDot(unittest.TestCase):
         out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
         self.assertTrue(np.allclose(expected_result, out.numpy()))
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_without_out()
 
 
 if __name__ == "__main__":

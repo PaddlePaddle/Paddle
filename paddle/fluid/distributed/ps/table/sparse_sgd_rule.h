@@ -28,33 +28,33 @@ class SparseValueSGDRule {
  public:
   SparseValueSGDRule() {}
   virtual ~SparseValueSGDRule() {}
-  virtual void load_config(const SparseCommonSGDRuleParameter& param,
-                           size_t emb_dim) {
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim) {
     _embedding_dim = emb_dim;
     _name = param.name();
   }
-  virtual void update_value_work(float* w, float* sgd, const float* push_value,
-                                 float scale) = 0;
-  virtual void init_value_work(float* value, float* sgd, bool zero_init) = 0;
-  virtual size_t dim() = 0;
-  const std::string& get_name() const { return _name; }
-  void init_value(float* value, float* sgd, bool zero_init = true) {
-    init_value_work(value, sgd, zero_init);
+  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+                               float scale) = 0;
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init) = 0;
+  virtual size_t Dim() = 0;
+  const std::string& GetName() const { return _name; }
+  void InitValue(float* value, float* sgd, bool zero_init = true) {
+    InitValueWork(value, sgd, zero_init);
   }
-  void update_value(float* w, float* sgd, const float* push_value,
-                    float scale = 1) {
-    update_value_work(w, sgd, push_value, scale);
+  void UpdateValue(float* w, float* sgd, const float* push_value,
+                   float scale = 1) {
+    UpdateValueWork(w, sgd, push_value, scale);
   }
   template <class T>
-  void bound_value(T& w) {  // NOLINT
+  void BoundValue(T& w) {  // NOLINT
     if (!(w >= _min_bound)) {
       w = (T)_min_bound;
     } else if (!(w <= _max_bound)) {
       w = (T)_max_bound;
     }
   }
-  float& min_bound() { return _min_bound; }
-  float& max_bound() { return _max_bound; }
+  float& MinBound() { return _min_bound; }
+  float& MaxBound() { return _max_bound; }
 
  protected:
   float _min_bound;
@@ -70,12 +70,12 @@ REGISTER_PSCORE_REGISTERER(SparseValueSGDRule);
 
 class SparseNaiveSGDRule : public SparseValueSGDRule {
  public:
-  virtual void load_config(const SparseCommonSGDRuleParameter& param,
-                           size_t emb_dim);
-  virtual void update_value_work(float* w, float* sgd, const float* push_value,
-                                 float scale);
-  virtual void init_value_work(float* value, float* sgd, bool zero_init);
-  virtual size_t dim() { return 0; }
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim);
+  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+                               float scale);
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init);
+  virtual size_t Dim() { return 0; }
 
  private:
   float learning_rate_;
@@ -83,13 +83,13 @@ class SparseNaiveSGDRule : public SparseValueSGDRule {
 
 class SparseAdaGradSGDRule : public SparseValueSGDRule {
  public:
-  virtual void load_config(const SparseCommonSGDRuleParameter& param,
-                           size_t emb_dim);
-  virtual void update_value_work(float* w, float* sgd, const float* push_value,
-                                 float scale);
-  virtual void init_value_work(float* value, float* sgd, bool zero_init);
-  virtual size_t dim() { return 1; }
-  size_t g2sum_index() { return 0; }
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim);
+  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+                               float scale);
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init);
+  virtual size_t Dim() { return 1; }
+  size_t G2SumIndex() { return 0; }
 
  private:
   float learning_rate_;
@@ -98,13 +98,13 @@ class SparseAdaGradSGDRule : public SparseValueSGDRule {
 
 class StdAdaGradSGDRule : public SparseValueSGDRule {
  public:
-  virtual void load_config(const SparseCommonSGDRuleParameter& param,
-                           size_t emb_dim);
-  virtual void update_value_work(float* w, float* sgd, const float* push_value,
-                                 float scale);
-  virtual void init_value_work(float* value, float* sgd, bool zero_init);
-  virtual size_t dim() { return _embedding_dim; }
-  size_t g2sum_index() { return 0; }
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim);
+  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+                               float scale);
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init);
+  virtual size_t Dim() { return _embedding_dim; }
+  size_t G2SumIndex() { return 0; }
 
  private:
   float learning_rate_;
@@ -113,16 +113,16 @@ class StdAdaGradSGDRule : public SparseValueSGDRule {
 
 class SparseAdamSGDRule : public SparseValueSGDRule {
  public:
-  virtual void load_config(const SparseCommonSGDRuleParameter& param,
-                           size_t emb_dim);
-  virtual void update_value_work(float* w, float* sgd, const float* push_value,
-                                 float scale);
-  virtual void init_value_work(float* value, float* sgd, bool zero_init);
-  virtual size_t dim() { return _embedding_dim * 2 + 2; }
-  size_t gsum_index() { return 0; }
-  size_t g2sum_index() { return gsum_index() + _embedding_dim; }
-  size_t beta1_pow_index() { return g2sum_index() + _embedding_dim; }
-  size_t beta2_pow_index() { return beta1_pow_index() + 1; }
+  virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
+                          size_t emb_dim);
+  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+                               float scale);
+  virtual void InitValueWork(float* value, float* sgd, bool zero_init);
+  virtual size_t Dim() { return _embedding_dim * 2 + 2; }
+  size_t GSumIndex() { return 0; }
+  size_t G2SumIndex() { return GSumIndex() + _embedding_dim; }
+  size_t Beta1PowIndex() { return G2SumIndex() + _embedding_dim; }
+  size_t Beta2PowIndex() { return Beta1PowIndex() + 1; }
 
  protected:
   float learning_rate_;

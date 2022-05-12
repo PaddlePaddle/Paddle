@@ -27,7 +27,5 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              const std::vector<int64_t>& axis,
                              bool keep_dim,
                              bool reduce_all,
-                             DataType in_dtype,
-                             DataType out_dtype,
                              DenseTensor* dx);
 }  // namespace phi

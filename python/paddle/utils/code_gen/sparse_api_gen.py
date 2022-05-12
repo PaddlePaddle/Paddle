@@ -24,14 +24,10 @@ class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
-    def get_api_func_name(self):
-        return self.api
-
     def gene_api_declaration(self):
-        return f"""
-// {", ".join(self.outputs['names'])}
-PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_str['args_declare']});
-"""
+        api_declaration = "// " + ', '.join(self.outputs['names'])
+        return api_declaration + super(SparseAPI,
+                                       self).gene_api_declaration() + '\n'
 
     def get_kernel_tensor_out_type(self, output_name):
         sparse_type = 'TensorType::DENSE_TENSOR'
@@ -116,8 +112,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 continue
             if param in attr_names:
                 # set attr for kernel_context
-                if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    param = 'phi::ScalarArray(' + param + ')'
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    param = 'phi::IntArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     param = 'phi::Scalar(' + param + ')'
             elif isinstance(param, bool):
@@ -139,7 +135,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 
         kernel_context_code = self.gen_sparse_kernel_context(
             kernel_output_names)
-
+        return_code = "" if len(self.gene_return_code(
+        )) == 0 else "  " + self.gene_return_code()
         return f"""
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
@@ -151,13 +148,11 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {output_create}
 {kernel_context_code}
   phi_kernel(&kernel_context);
-
-  return api_output;"""
+{return_code}"""
 
     def gene_base_api_code(self, inplace_flag=False):
-        api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.outputs['return_type']} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.get_define_args()}) {{
 {self.gene_kernel_select()}
 {self.gen_sparse_kernel_code(inplace_flag)}
 }}
@@ -170,7 +165,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -182,17 +177,12 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 """
-
-
-def api_register():
-    return ""
 
 
 def api_namespace():
@@ -228,13 +218,13 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     for api in apis:
         sparse_api = SparseAPI(api)
+        if sparse_api.is_dygraph_api:
+            sparse_api.is_dygraph_api = False
         header_file.write(sparse_api.gene_api_declaration())
         source_file.write(sparse_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    source_file.write(api_register())
 
     header_file.close()
     source_file.close()

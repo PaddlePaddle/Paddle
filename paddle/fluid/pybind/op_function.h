@@ -177,7 +177,7 @@ static inline void HandleViewBetweenInputAndOutput(
   }
 }
 
-PyObject* MakeReturnPyObject(
+static inline PyObject* MakeReturnPyObject(
     const std::shared_ptr<paddle::imperative::VarBase>& out) {
   return ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
              ::pybind11::detail::holder_helper<
@@ -186,7 +186,7 @@ PyObject* MakeReturnPyObject(
       .ptr();
 }
 
-PyObject* MakeReturnPyObject(
+static inline PyObject* MakeReturnPyObject(
     const std::vector<std::shared_ptr<imperative::VarBase>>& out) {
   PyObject* result = PyList_New((Py_ssize_t)out.size());
 

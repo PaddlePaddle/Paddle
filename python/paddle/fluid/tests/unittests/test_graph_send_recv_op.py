@@ -17,13 +17,26 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 from op_test import OpTest
+
+
+def graph_send_recv_wrapper(x,
+                            src_index,
+                            dst_index,
+                            pool_type="sum",
+                            out_size=None,
+                            name=None):
+    return paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                           pool_type.lower(), out_size, name)
 
 
 class TestGraphSendRecvMaxOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
@@ -39,15 +52,18 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True)
 
 
 class TestGraphSendRecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
@@ -64,15 +80,18 @@ class TestGraphSendRecvMinOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_eager=True)
 
 
 class TestGraphSendRecvSumOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
@@ -88,15 +107,17 @@ class TestGraphSendRecvSumOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGraphSendRecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_recv"
         x = np.random.random((10, 20)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
@@ -113,10 +134,10 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):
@@ -332,6 +353,12 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 "two value is\
                 {}\n{}, check diff!"
                 .format(np_res_set_outsize, res_set_outsize))
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+            self.test_int32_input()
+            self.test_set_outsize_gpu()
 
 
 if __name__ == '__main__':

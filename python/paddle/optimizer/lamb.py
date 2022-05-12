@@ -268,7 +268,7 @@ class Lamb(Optimizer):
             master_weight = None
         found_inf = self._get_auxiliary_var('found_inf')
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             _C_ops.lamb(param_and_grad[0], param_and_grad[1], lr, moment1,
                         moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
                         param_and_grad[0], moment1, moment2, beta1_pow_acc,

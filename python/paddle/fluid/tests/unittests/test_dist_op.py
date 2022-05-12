@@ -37,6 +37,7 @@ def dist(x, y, p):
 class TestDistOp(OpTest):
     def setUp(self):
         self.op_type = 'dist'
+        self.python_api = paddle.dist
         self.attrs = {}
         self.init_case()
         self.init_data_type()
@@ -106,10 +107,14 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Y"], "Out", user_defined_grads=self.gradient)
+        self.check_grad(
+            ["X", "Y"],
+            "Out",
+            user_defined_grads=self.gradient,
+            check_eager=True)
 
 
 class TestDistOpCase1(TestDistOp):
@@ -174,4 +179,5 @@ class TestDistAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

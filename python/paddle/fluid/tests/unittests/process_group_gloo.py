@@ -45,9 +45,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             nranks = ParallelEnv().nranks
             rank = ParallelEnv().local_rank
             is_master = True if rank == 0 else False
-            store = paddle.fluid.core.TCPStore("127.0.0.1", 6172, is_master,
+            store = paddle.fluid.core.TCPStore("127.0.0.1", 6272, is_master,
                                                nranks, datetime.timedelta(0))
-            pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks)
+            place = paddle.fluid.core.CPUPlace()
+            pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks, place)
 
             # test allreduce sum
             # rank 0

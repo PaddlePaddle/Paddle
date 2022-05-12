@@ -377,12 +377,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-
-  trt_engine->SetWithErnie(
-      (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-       graph->Has(framework::ir::kMultiheadMatmulPass)) ||
-      (graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
-       graph->Has(framework::ir::kMultiheadMatmulPass)));
+  trt_engine->SetWithErnie(graph->Has(framework::ir::kMultiheadMatmulPass));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
