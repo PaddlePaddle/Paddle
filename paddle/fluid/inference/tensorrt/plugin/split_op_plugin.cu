@@ -61,7 +61,8 @@ bool SplitPlugin::supportsFormat(
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kLINEAR || format == nvinfer1::TensorFormat::kHWC8));
+            (format == nvinfer1::TensorFormat::kLINEAR ||
+             format == nvinfer1::TensorFormat::kHWC8));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
             (format == nvinfer1::PluginFormat::kLINEAR));
@@ -122,24 +123,49 @@ void SplitPlugin::terminate() TRT_NOEXCEPT {}
 // The following part of the code refers to onnx-tensorrt
 // https://github.com/onnx/onnx-tensorrt/blob/master/Split.cu
 template <typename T>
-__global__ void split_kernel(int nsegment,
-                             int const* __restrict__ segment_offsets,
-                             T const* __restrict__ idata, T* const* odatas,
-                             int inner_cols, int axis_shape, int outer_rows) {
+__global__ void split_kernel1(int nsegment,
+                              int const* __restrict__ segment_offsets,
+                              T const* __restrict__ idata, T* const* odatas,
+                              int inner_cols, int axis_shape, int outer_rows) {
   int x0 = threadIdx.x + blockIdx.x * blockDim.x;
   int src_y0 = threadIdx.y + blockIdx.y * blockDim.y;
   int z0 = threadIdx.z + blockIdx.z * blockDim.z;
-  
+
   for (int z = z0; z < outer_rows; z += blockDim.z * gridDim.z) {
     for (int src_y = src_y0; src_y < axis_shape;
          src_y += blockDim.y * gridDim.y) {
       for (int x = x0; x < inner_cols; x += blockDim.x * gridDim.x) {
-        int segment = src_y / segment_offsets[1];//upper_bound(segment_offsets, nsegment, src_y) - 1;
+        int segment =
+            src_y / segment_offsets[1];  // upper_bound(segment_offsets,
+                                         // nsegment, src_y) - 1;
 
         int dst_y = src_y - segment_offsets[segment];
         int dst_ny = segment_offsets[segment + 1] - segment_offsets[segment];
-        odatas[segment][x + inner_cols * (dst_y + dst_ny * z)] = idata[x + inner_cols * (src_y + axis_shape * z)];
+        odatas[segment][x + inner_cols * (dst_y + dst_ny * z)] =
+            idata[x + inner_cols * (src_y + axis_shape * z)];
       }
+    }
+  }
+}
+
+template <typename T>
+__global__ void split_kernel(int nsegment,
+                             int const* __restrict__ segment_offsets,
+                             T const* __restrict__ idata, T* const* odatas,
+                             int inner_cols, int axis_shape, int outer_rows) {
+  // int x0 = threadIdx.x + blockIdx.x * blockDim.x;
+  int src_y0 = threadIdx.x + blockIdx.x * blockDim.x;
+  int z0 = threadIdx.y + blockIdx.y * blockDim.y;
+  for (int z = z0; z < outer_rows; z += blockDim.y * gridDim.y) {
+    for (int src_y = src_y0; src_y < axis_shape;
+         src_y += blockDim.x * gridDim.x) {
+      int segment = src_y / segment_offsets[1];  // upper_bound(segment_offsets,
+                                                 // nsegment, src_y) - 1;
+
+      int dst_y = src_y - segment_offsets[segment];
+      int dst_ny = segment_offsets[segment + 1] - segment_offsets[segment];
+      odatas[segment][inner_cols * (dst_y + dst_ny * z)] =
+          idata[inner_cols * (src_y + axis_shape * z)];
     }
   }
 }
@@ -166,14 +192,14 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   int outer_rows = outer_rows_ * batchSize;
   dim3 block(32, 16);
   if (data_format_ == nvinfer1::TensorFormat::kHWC8) {
-    block.x = 1;
-    block.y = 4;
-    block.z = 64;
+    block.x = 16;
+    block.y = 64;
+    block.z = 1;
   }
   std::cout << inner_cols_ << std::endl;
-  dim3 grid(std::min((inner_cols_ - 1) / block.x + 1, 65535u),
-            std::min((axis_shape_ - 1) / block.y + 1, 65535u),
-            std::min((outer_rows_ - 1) / block.z + 1, 65535u));
+  dim3 grid(std::min((axis_shape_ - 1) / block.x + 1, 65535u),
+            std::min((outer_rows_ - 1) / block.y + 1, 65535u),
+            std::min((1 - 1) / block.z + 1, 65535u));
 
   if (global_i > 600 * 100) {
     if (input_type == nvinfer1::DataType::kFLOAT) {
@@ -221,11 +247,11 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
         outer_rows);
   }
 
-
-if (global_i > 600 * 100) {
+  if (global_i > 600 * 100) {
     if (input_type == nvinfer1::DataType::kFLOAT) {
       cudaStreamSynchronize(stream);
-      int total = inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
+      int total =
+          inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
       float* host = new float[total];
       std::string name =
           "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
@@ -239,13 +265,15 @@ if (global_i > 600 * 100) {
 
     else if (input_type == nvinfer1::DataType::kHALF) {
       cudaStreamSynchronize(stream);
-      int total = inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
+      int total =
+          inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
       half* host = new half[total];
       std::string name =
           "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
           std::to_string(global_i);
       std::ofstream outputOs(name);
-      cudaMemcpy(host, outputs[3], total * sizeof(half), cudaMemcpyDeviceToHost);
+      cudaMemcpy(host, outputs[3], total * sizeof(half),
+                 cudaMemcpyDeviceToHost);
       for (int i = 0; i < total; i++)
         outputOs << __half2float(host[i]) << std::endl;
       delete[] host;
