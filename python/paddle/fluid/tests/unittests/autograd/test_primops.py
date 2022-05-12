@@ -20,18 +20,7 @@ from paddle.incubate.autograd.primops import (
     transpose, split, concat, reduce, matmul, slice_select, slice_assign,
     gather, scatter_add, fill_const)
 from paddle.incubate.autograd.primx import Transform, topo_path, orig2prim, prim2orig, _gradients
-from paddle.incubate.autograd.utils import enable_prim
-
-
-def prog1(x, y):
-    t = paddle.matmul(x, y)
-    return t
-
-
-def prog2(x, y):
-    t = paddle.multiply(x, x)
-    z = paddle.norm(t, p=2)
-    return z
+from paddle.incubate.autograd.utils import enable_prim, disable_prim, prim_enabled
 
 
 class TestPyPrimOps(unittest.TestCase):
@@ -153,92 +142,6 @@ class TestPyPrimOps(unittest.TestCase):
             d, a, axis=[1], starts=[1], ends=[3], strides=[1], out=d)
         self.assertEqual(set_value_1.shape, d.shape)
         self.assertEqual(set_value_1.dtype, d.dtype)
-
-    def test_gradients_set1(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('X', shape=[100, 1, 2], dtype='float32')
-            y = paddle.static.data('Y', shape=[100, 2, 5], dtype='float32')
-            z = prog1(x, y)
-            x_grad, y_grad = _gradients([z], [x, y])
-            print(f'-------test_gradients_set1-------')
-            print(f'x_grad : {x_grad}')
-            print(f'y_grad : {y_grad}')
-            print(x.block)
-
-    def test_gradients_set2(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
-            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
-            t = paddle.matmul(x, x)
-            z = paddle.norm(t, p=2)
-            x_grad, y_grad = _gradients([z], [x, y])
-            print(x.block)
-
-    def test_gradients_set3(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
-            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
-            t = paddle.matmul(x, y)
-            z = paddle.tanh(t)
-            x_grad, y_grad = _gradients([z], [x, y])
-            print(f'-------test_gradients_set3-------')
-            print(x.block)
-
-    def test_second_order_gradients_set1(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('X', shape=[3, 3], dtype='float32')
-            y = paddle.static.data('Y', shape=[3, 3], dtype='float32')
-            z = paddle.matmul(x, x) + x
-            x_grad, = _gradients([z], [x])
-            xx_grad, = _gradients(x_grad, [x])
-            print(f'-------test_second_order_gradients_set1-------')
-            print(f'x_grad: {x_grad.name}')
-            print(f'xx_grad: {xx_grad.name}')
-            print(x.block)
-
-    def test_second_order_gradients_set2(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('x', shape=[121, 2], dtype='float32')
-            x.stop_gradient = False
-            w = paddle.static.create_parameter(
-                shape=[2, 2], dtype='float32', is_bias=False)
-            bias = paddle.static.create_parameter(
-                shape=[2], dtype='float32', is_bias=True)
-            y = paddle.matmul(x, w) + bias
-            jac, = _gradients([y], [x])
-
-    def test_minimize(self):
-        enable_prim()
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data('x', shape=[2, 20], dtype='float32')
-            x.stop_gradient = False
-            w = paddle.static.create_parameter(
-                shape=[20, 2], dtype='float32', is_bias=False)
-            bias = paddle.static.create_parameter(
-                shape=[2], dtype='float32', is_bias=True)
-            y = paddle.tanh(paddle.matmul(x, w) + bias)
-            loss = paddle.norm(y, p=2)
-            opt = paddle.fluid.optimizer.AdamOptimizer(0.01)
-            opt.minimize(loss)
-
-            print(f'-------test_minimize: orig-------')
-            print(x.block)
 
 
 if __name__ == '__main__':
