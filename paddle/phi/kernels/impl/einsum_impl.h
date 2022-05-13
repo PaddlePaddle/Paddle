@@ -137,7 +137,6 @@ inline std::vector<char> TransformLabelsOrder(
     std::vector<char> tmp;
     for (int c : all_labels) {
       if (type[c] == cnt_type) tmp.push_back(c);
-      std::sort(tmp.begin(), tmp.end());
     }
     ret.insert(ret.end(), tmp.begin(), tmp.end());
   }
@@ -175,6 +174,15 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
   }
 
   (*label2type)['.'] = LabelType::Batch;
+
+  if (sorted_labels->size()) {
+    std::set<char> exist(all.begin(), all.end());
+    all.clear();
+    std::for_each(
+        sorted_labels->begin(), sorted_labels->end(), [&exist, &all](char c) {
+          if (exist.count(c)) all.push_back(c);
+        });
+  }
 
   *sorted_labels = TransformLabelsOrder(all,
                                         *label2type,
@@ -517,14 +525,18 @@ void TransposeToOutput(const Context& dev_ctx,
       axis.push_back(it - all_labels.begin() + offset);
     }
   }
-  if (is_no_need_transpose(axis)) return output->ShareBufferWith(to_trans);
+  if (is_no_need_transpose(axis)) {
+    output->ShareBufferWith(to_trans);
+    return;
+  }
   VLOG(5) << "call TransposeToOutput: with axis: "
           << paddle::string::join_strings(axis, ",");
-  return TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
+  TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
 }
 
 template <typename T, typename Context>
 void EinsumKernelImpl(const Context& dev_ctx,
+                      const std::vector<char>& forward_all_labels,
                       const std::vector<const DenseTensor*>& inputs,
                       const std::string& equation,
                       DenseTensor* out,
@@ -545,6 +557,9 @@ void EinsumKernelImpl(const Context& dev_ctx,
     input_dims.push_back(i->dims());
   }
   std::string right;
+  if (!is_forward) {
+    all_labels = forward_all_labels;
+  }
   ParseEinsumEquation(equation,
                       input_dims,
                       &labelshape,
@@ -560,7 +575,6 @@ void EinsumKernelImpl(const Context& dev_ctx,
     auto& A = inputs[0];
     auto& B = inputs[1];
     // Reduction and Contract Procedure
-    dev_ctx.template Alloc<T>(out);
     auto after_contraction = PerformContraction<T, Context>(dev_ctx,
                                                             *A,
                                                             *B,
@@ -609,8 +623,9 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      const std::string& equation,
                      DenseTensor* out,
                      std::vector<DenseTensor*> cache) {
+  std::vector<char> tmp;
   EinsumKernelImpl<T, Context>(
-      dev_ctx, inputs, equation, out, cache, /*forward=*/true);
+      dev_ctx, tmp, inputs, equation, out, cache, /*forward=*/true);
 }
 
 template <typename T, typename Context>
@@ -618,6 +633,7 @@ void EinsumKernel(const Context& dev_ctx,
                   const std::vector<const DenseTensor*>& inputs,
                   const std::string& equation,
                   DenseTensor* out) {
+  std::vector<char> place_holder;
   std::vector<DenseTensor> cache(inputs.size());  // set empty; TA, TB, TdC
   std::vector<DenseTensor*> cache_tensor(
       inputs.size());  // set empty; TA, TB, TdC
@@ -625,7 +641,7 @@ void EinsumKernel(const Context& dev_ctx,
     cache_tensor[i] = &cache[i];
   }
   EinsumKernelImpl<T, Context>(
-      dev_ctx, inputs, equation, out, cache_tensor, true);
+      dev_ctx, place_holder, inputs, equation, out, cache_tensor, true);
 }
 
 }  // namespace phi

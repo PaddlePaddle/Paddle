@@ -563,7 +563,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor
+  output : Tensor(out), Tensor[] (inner_cache) {x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]

@@ -176,17 +176,24 @@ void EinsumGradKernel(const Context& dev_ctx,
     cache[1].ShareBufferWith(*(forward_cache[1]));
 
     EinsumKernelImpl<T, Context>(dev_ctx,
+                                 all_labels,
                                  operands_for_A,
                                  equation_for_A,
                                  &dA,
                                  {&cache[1], &cache[2]},
                                  false);
+
     EinsumKernelImpl<T, Context>(dev_ctx,
+                                 all_labels,
                                  operands_for_B,
                                  equation_for_B,
                                  &dB,
                                  {&cache[2], &cache[0]},
                                  false);
+
+    // release the cache tensor dTC to save memory right now. they are useless
+    // now.
+    cache.clear();
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,
