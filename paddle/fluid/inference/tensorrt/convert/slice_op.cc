@@ -131,12 +131,12 @@ class SliceOpConverter : public OpConverter {
             trt_end_dims, output_name + "_add_slice_op_" + "end");
 
         auto shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
+        auto shape_tensor = shape_layer->getOutput(0);
 
         auto min_layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *shape_tensor, *end_tensor,
             nvinfer1::ElementWiseOperation::kMIN);
         auto min_tensor = min_layer->getOutput(0);
 
-        auto shape_tensor = shape_layer->getOutput(0);
         auto size_layer = TRT_ENGINE_ADD_LAYER(
             engine_, ElementWise, *min_tensor, *start_tensor,
             nvinfer1::ElementWiseOperation::kSUB);
