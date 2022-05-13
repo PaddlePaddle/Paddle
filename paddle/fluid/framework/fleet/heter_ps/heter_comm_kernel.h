@@ -79,6 +79,8 @@ class HeterCommKernel {
                      NumRunsOutputIteratorT d_num_runs_out, int num_items,
 
                      StreamType stream = NULL, bool debug_synchronous = false);
+  template <typename KeyT, typename ValueT>
+  void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out);
 
  private:
   int block_size_{256};

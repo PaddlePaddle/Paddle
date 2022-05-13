@@ -18,6 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
 #endif
 
 namespace paddle {
@@ -524,14 +528,70 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     return;
   }
 
-  int total_device = resource_->total_device();
   int dev_id = resource_->dev_id(num);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(num, 0);
-
   // int grid_size = (len - 1) / block_size_ + 1;
 
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  // d_keys memcpy to cpu h_keys
+  std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
+  auto cpu_place = platform::CPUPlace();
+  memory_copy(cpu_place, &h_keys[0], place, d_keys,
+              len * sizeof(KeyType), stream);
+
+  // cachemanager convert h_keys to h_bfids
+  std::unique_ptr<int[]> h_bfids(new int[len]);
+  cache_mgr_ -> convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
+
+  // h_bfids memcpy to d_bfids
+  auto d_bfids = memory::Alloc(place, len * sizeof(int));
+  int* d_bfids_ptr = reinterpret_cast<int*>(d_bfids->ptr());
+
+  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0],
+              len * sizeof(int), stream);
+  
+  // cachemanager get fid_seq
+  std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
+
+  // h_fid_seq memcpy to d_fid_seq
+  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(uint64_t));
+  uint64_t* d_fid_seq_ptr = reinterpret_cast<uint64_t*>(d_fid_seq->ptr());
+  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(),
+              len * sizeof(uint64_t), stream);
+
+  // alloc d_shard_vals
+  auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+  ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
+
+  // local search
+  tables_[dev_id]->get(reinterpret_cast<KeyType*>(d_fid_seq_ptr),
+                       reinterpret_cast<ValType*>(d_shard_vals_ptr),
+                       len,
+                       stream);
+  // allreduce
+  auto d_all_values = memory::Alloc(place, h_fid_seq -> size() * sizeof(ValType));
+  ValType* d_all_values_ptr = reinterpret_cast<ValType*>(d_all_values->ptr());
+
+  auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
+  bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr, 
+      h_fid_seq -> size() * sizeof(ValType) / sizeof(float), 
+      BKCL_FLOAT, BKCL_ADD, stream);
+
+  // fill to d_val
+  heter_comm_kernel_->fill_dvals(d_all_values_ptr, d_vals, d_bfids_ptr, len,
+                                 stream);
+
+#else
+  int total_device = resource_->total_device();
+#if defined(PADDLE_WITH_CUDA)
+  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
+
+//#elif defined(PADDLE_WITH_XPU_KP) 
+  // get XPUDeviceContext according to xpu place
+#endif
   int h_left[total_device];   // NOLINT
   int h_right[total_device];  // NOLINT
 
@@ -540,12 +600,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-#if defined(PADDLE_WITH_CUDA)
-  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
-  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
-#elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
@@ -559,16 +616,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
                         XPUAPIErrorMsg[r2]));
-#endif
-
-#if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  // TODO(dingjie02): gather emb with bfids
-  (void)stream;
-  (void)h_left;
-  (void)h_right;
-#else
-  auto d_idx = memory::Alloc(place, len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
@@ -752,12 +799,57 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     return;
   }
 
-  int total_device = resource_->total_device();
   int dev_id = resource_->dev_id(dev_num);
 
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  // d_keys memcpy to cpu h_keys
+  std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
+  auto cpu_place = platform::CPUPlace();
+  memory_copy(cpu_place, &h_keys[0], place, d_keys,
+              len * sizeof(KeyType), stream);
+
+  // cachemanager convert h_keys to h_bfids
+  std::unique_ptr<int[]> h_bfids(new int[len]);
+  cache_mgr_ -> convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
+
+  // h_bfids memcpy to d_bfids
+  auto d_bfids = memory::Alloc(place, len * sizeof(int));
+  int* d_bfids_ptr = reinterpret_cast<int*>(d_bfids->ptr());
+  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0],
+              len * sizeof(int), stream);
+  
+  // cachemanager get fid_seq
+  std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
+
+  // h_fid_seq memcpy to d_fid_seq
+  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(uint64_t));
+  uint64_t* d_fid_seq_ptr = reinterpret_cast<uint64_t*>(d_fid_seq->ptr());
+  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(),
+              len * sizeof(uint64_t), stream);
+
+  // merge grad
+  auto d_fgrad = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
+  GradType* d_fgrad_ptr = reinterpret_cast<GradType*>(d_fgrad->ptr());
+  heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_fgrad_ptr);
+
+  // allreduce
+  auto d_fgrad_all = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
+  GradType* d_fgrad_all_ptr = reinterpret_cast<GradType*>(d_fgrad_all->ptr());
+
+  auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
+  bkcl_all_reduce(comm->comm(), d_fgrad_ptr, d_fgrad_all_ptr, 
+      h_fid_seq -> size() * sizeof(GradType) / sizeof(float), 
+      BKCL_FLOAT, BKCL_ADD, stream);
+  
+  // update
+  tables_[dev_id]->update(d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
+
+#else
+  int total_device = resource_->total_device();
 
   int h_left[total_device];   // NOLINT
   int h_right[total_device];  // NOLINT
@@ -770,17 +862,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
-
-#if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  // TODO(dingjie02): gather grad and update params with bfids
-  (void)stream;
-  (void)h_left;
-  (void)h_right;
-  (void)d_left_ptr;
-  (void)d_right_ptr;
-  (void)xpu_context;
-
-#else
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,

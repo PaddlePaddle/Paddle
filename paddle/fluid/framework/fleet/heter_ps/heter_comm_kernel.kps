@@ -355,6 +355,19 @@ template void HeterCommKernel::reduce_by_key<
     paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
     int num_items, XPUStream stream, bool debug_synchronous);
 
+// Todo
+template <typename KeyT, typename ValueT>
+void HeterCommKernel::merge_grad(
+    KeyT* d_keys, 
+    ValueT* d_vals_in, 
+    int len, 
+    ValueT* d_vals_out) {};
+template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue>(
+    int* d_keys, 
+    paddle::framework::FeaturePushValue* d_vals_in, 
+    int len, 
+    paddle::framework::FeaturePushValue* d_vals_out);
+
 #endif
 
 }  // end namespace framework

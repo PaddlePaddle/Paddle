@@ -51,7 +51,7 @@ class CacheManager {
   void build_batch_fid_seq(Record * recs, int size);
   void prepare_current_batch_fid_seq();
   std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq();
-  void convert_fid2bfid(uint64_t * fids, uint64_t * out_bfids, int size);
+  void convert_fid2bfid(uint64_t * fids, int * out_bfids, int size);
 #endif
 
  private:
@@ -70,7 +70,7 @@ class CacheManager {
       fid_seq_channel_ = 
           paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint64_t>>>();;
   std::shared_ptr<std::vector<uint64_t>> current_batch_fid_seq_ = nullptr;
-  std::unordered_map<uint64_t, uint64_t> current_batch_fid2bfid_;
+  std::unordered_map<uint64_t, int> current_batch_fid2bfid_;
   int current_batch_fid_seq_ref_ = 0;
   std::shared_ptr<std::mutex> current_batch_fid_seq_lock;
 #endif

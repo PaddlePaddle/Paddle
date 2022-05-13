@@ -107,7 +107,7 @@ std::shared_ptr<std::vector<uint64_t>>  CacheManager::get_current_batch_fid_seq(
     return current_batch_fid_seq_; 
 }
 
-void CacheManager::convert_fid2bfid(uint64_t * fids, uint64_t * out_bfids, int size) {
+void CacheManager::convert_fid2bfid(uint64_t * fids, int * out_bfids, int size) {
     std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
     for (int i = 0; i < size; ++i) {
         out_bfids[i] = current_batch_fid2bfid_[fids[i]];
