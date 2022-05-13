@@ -112,8 +112,8 @@ class SliceOpConverter : public OpConverter {
         trt_start_dims.nbDims = nchw_input_dims.nbDims;
         memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
 
-        nvinfer1::Dims trt_out_dims;
-        trt_out_dims.nbDims = nchw_input_dims.nbDims;
+        nvinfer1::Dims trt_size_dims;
+        trt_size_dims.nbDims = nchw_input_dims.nbDims;
         
         nvinfer1::Dims trt_end_dims;
         trt_end_dims.nbDims = nchw_input_dims.nbDims;
@@ -128,9 +128,7 @@ class SliceOpConverter : public OpConverter {
           int trt_axis = axes[i];
           trt_start_dims.d[trt_axis] = starts[i];
           trt_end_dims.d[trt_axis] = ends[i];
-        }
 
-        for (size_t i = 0; i < axes.size(); i++) {
         PADDLE_ENFORCE_GE(
             starts[i], 0,
             platform::errors::InvalidArgument(
@@ -159,7 +157,7 @@ class SliceOpConverter : public OpConverter {
             nvinfer1::ElementWiseOperation::kSUB)->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                     trt_out_dims, trt_step_dims);
+                                     trt_size_dims, trt_step_dims);
         layer->setInput(2, *size_tensor);
       }
     } else {
@@ -168,7 +166,7 @@ class SliceOpConverter : public OpConverter {
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = chw_input_dims.nbDims;
       memset(trt_start_dims.d, 0, sizeof(int32_t) * chw_input_dims.nbDims);
-      nvinfer1::Dims trt_out_dims = chw_input_dims;
+      nvinfer1::Dims trt_size_dims = chw_input_dims;
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = chw_input_dims.nbDims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
@@ -177,10 +175,10 @@ class SliceOpConverter : public OpConverter {
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i] - 1;
         trt_start_dims.d[trt_axis] = starts[i];
-        trt_out_dims.d[trt_axis] = ends[i] - starts[i];
+        trt_size_dims.d[trt_axis] = ends[i] - starts[i];
       }
       layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                   trt_out_dims, trt_step_dims);
+                                   trt_size_dims, trt_step_dims);
 #else
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

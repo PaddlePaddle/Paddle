@@ -85,13 +85,7 @@ class SplitOpConverter : public OpConverter {
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_out_dims, trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
-        layer->getOutput(0)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput(0));
-        layer_name += output_name;
-        if (test_mode) {
-          engine_->DeclareOutput(output_name);
-        }
-        layer->setName((layer_name + ")").c_str());
+        RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
       }
 #else
       bool with_fp16 =
