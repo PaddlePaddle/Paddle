@@ -44,14 +44,13 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NE(quantization_scale, 0.0f,
                       platform::errors::InvalidArgument(
-                          "Dequantization scale cannot be 0.0"));
-    PADDLE_ENFORCE_GE(quantization_shift, 0.0f,
-                      platform::errors::Unimplemented(
-                          "Dequantization shift must be nonnegative."));
-    PADDLE_ENFORCE_LE(
-        quantization_shift, 255,
-        platform::errors::Unimplemented(
-            "Dequantization shift must be less than or equal to 255."));
+                          "Dequantization scale must be different than 0.0f"));
+
+    PADDLE_ENFORCE(
+        quantization_shift <= 255 && quantization_shift >= 0,
+        platform::errors::InvalidArgument(
+            "Dequantization shift must be lower or equal to",
+            "255 and greater or equal to 0, but got %f", quantization_shift));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
