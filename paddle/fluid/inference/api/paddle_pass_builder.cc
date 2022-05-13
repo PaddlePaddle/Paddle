@@ -98,18 +98,21 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "multihead_matmul_fuse_pass_v3",                //
       "skip_layernorm_fuse_pass",                     //
       "preln_skip_layernorm_fuse_pass",               //
-      "conv_bn_fuse_pass",                            //
-      "unsqueeze2_eltwise_fuse_pass",                 //
-      "trt_squeeze2_matmul_fuse_pass",                //
-      "trt_reshape2_matmul_fuse_pass",                //
-      "trt_flatten2_matmul_fuse_pass",                //
-      "trt_map_matmul_v2_to_mul_pass",                //
-      "trt_map_matmul_v2_to_matmul_pass",             //
-      "trt_map_matmul_to_mul_pass",                   //
-      "fc_fuse_pass",                                 //
-      "conv_elementwise_add_fuse_pass",               //
-      "tensorrt_subgraph_pass",                       //
-      "conv_bn_fuse_pass",                            //
+      // "set_transformer_input_convert_pass",           //
+      "conv_bn_fuse_pass",                 //
+      "unsqueeze2_eltwise_fuse_pass",      //
+      "trt_squeeze2_matmul_fuse_pass",     //
+      "trt_reshape2_matmul_fuse_pass",     //
+      "trt_flatten2_matmul_fuse_pass",     //
+      "trt_map_matmul_v2_to_mul_pass",     //
+      "trt_map_matmul_v2_to_matmul_pass",  //
+      "trt_map_matmul_to_mul_pass",        //
+      "fc_fuse_pass",                      //
+      "conv_elementwise_add_fuse_pass",    //
+      // "remove_padding_recover_padding_pass",          //
+      // "delete_remove_padding_recover_padding_pass",    //
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -282,7 +285,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-             "conv_transpose_bn_fuse_pass",   //
+             "conv_affine_channel_mkldnn_fuse_pass",    //
+             "conv_transpose_bn_fuse_pass",             //
              "conv_transpose_eltwiseadd_bn_fuse_pass",  //
              "conv_bias_mkldnn_fuse_pass",              //
              "conv_transpose_bias_mkldnn_fuse_pass",

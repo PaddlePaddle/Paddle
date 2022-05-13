@@ -60,6 +60,12 @@ class BaseAPI(object):
     def get_api_func_name(self):
         return self.api
 
+    def get_declare_args(self):
+        return self.args_str['args_declare']
+
+    def get_define_args(self):
+        return self.args_str["args_define"]
+
     def parse_args(self, api_name, api_item_yaml):
         optional_vars = []
         if 'optional' in api_item_yaml:
@@ -309,12 +315,12 @@ class BaseAPI(object):
 
     def gene_api_declaration(self):
         api_declaration = f"""
-PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.args_str['args_declare']});
+PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name()}({self.get_declare_args()});
 """
 
         if self.is_base_api and self.inplace_map is not None:
             api_declaration = api_declaration + f"""
-PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self.args_str['args_declare']});
+PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self.get_declare_args()});
 """
 
         return api_declaration
@@ -513,7 +519,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}  auto {out_name}_{PREFIX_META_TENSOR_NAME}vec = MakeMetaTensor({out_name});
 {code_indent}  std::vector<phi::MetaTensor*> {out_name}_metas({out_name}_{PREFIX_META_TENSOR_NAME}vec.size());
 {code_indent}  for (size_t i = 0; i < {out_name}_{PREFIX_META_TENSOR_NAME}vec.size(); ++i) {{
-{code_indent}    {out_name}_metas[i] = &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i];
+{code_indent}    {out_name}_metas[i] = {out_name}[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i] : nullptr;
 {code_indent}  }}"""
 
                 param_code = param_code + out_name + '_metas, '
@@ -521,8 +527,10 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + out_name.replace(
                     'kernel_',
                     PREFIX_META_TENSOR_NAME) + "(" + out_name + ");\n"
-                param_code = param_code + "&" + out_name.replace(
-                    'kernel_', PREFIX_META_TENSOR_NAME) + ", "
+                if len(kernel_output_names) == 1:
+                    param_code = param_code + f"&{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}, "
+                else:
+                    param_code = param_code + f"{out_name} ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)} : nullptr, "
 
         param_code = param_code[:-2]
         return f"""{meta_tensor_code}
@@ -712,7 +720,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
     # Override by child class
     def gene_return_code(self):
-        return "api_output"
+        return "return api_output;"
 
     # Override by child class
     def gene_output(self,
@@ -748,7 +756,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
-{code_indent}  return {self.gene_return_code()};"""
+{code_indent}  {self.gene_return_code()}"""
 
     def gen_selected_rows_kernel_code(self, code_indent, inplace_flag=False):
         input_tensors, kernel_args, kernel_signature = self.get_selected_rows_kernel_args(
@@ -775,12 +783,12 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
 {code_indent}  }}
 
-{code_indent}  return {self.gene_return_code()};"""
+{code_indent}  {self.gene_return_code()}"""
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
         api_code = f"""
-PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.get_define_args()}) {{
 {self.gene_kernel_select()}
 """
 
@@ -802,6 +810,12 @@ PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.args_str["args_d
 }
 """
 
+    def gene_invoke_code(self, invoke_code, params_code):
+        return f"""
+PADDLE_API {self.outputs['return_type']} {self.api}({params_code}) {{
+  return {invoke_code};
+}}"""
+
     def gene_api_code(self):
         if self.is_base_api:
             api_code = self.gene_base_api_code()
@@ -821,12 +835,8 @@ PADDLE_API {self.gene_return_type_code()} {api_func_name}({self.args_str["args_d
 
                 invoke_code = re.sub(pattern, adjust_name, self.invoke)
                 params_code = re.sub(pattern, adjust_name,
-                                     self.args_str["args_define"])
+                                     self.get_define_args())
             else:
                 invoke_code = self.invoke
-                params_code = self.args_str["args_define"]
-            return f"""
-{self.outputs['return_type']} {self.api}({params_code}) {{
-  return {invoke_code};
-}}
-"""
+                params_code = self.get_define_args()
+            return self.gene_invoke_code(invoke_code, params_code)

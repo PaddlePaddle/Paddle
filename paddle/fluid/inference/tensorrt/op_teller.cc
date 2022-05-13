@@ -65,6 +65,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "exp",
+      "log",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -128,6 +130,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "exp",
+      "log",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -200,7 +204,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
   for (auto& teller : tellers_) {
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
-        op_type == "sigmoid") {
+        op_type == "sigmoid" || op_type == "exp" || op_type == "log") {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -941,6 +945,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "strided_slice") {
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3)
+          << "strided_slice converter does not support trt versions below 7.0";
+      return false;
+#endif
       if (!with_dynamic_shape) {
         return false;
       }

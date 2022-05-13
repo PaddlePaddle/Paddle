@@ -4394,6 +4394,12 @@ All parameter, weight, gradient are variables in Paddle.
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
                    }
+                 } else if (option_name == "replicated_collectives_settings") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     self.SetReplicatedCollectivesSettings(
+                         option.first.cast<std::string>(),
+                         option.second.cast<bool>());
+                   }
                  } else if (option_name == "accumulate_outer_fragment") {
                    for (auto option : element.second.cast<py::dict>()) {
                      std::vector<int> values;

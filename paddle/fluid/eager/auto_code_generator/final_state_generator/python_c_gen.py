@@ -399,35 +399,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-        logging.info(
-            f"Parsed Original Forward Inputs List: \n{self.orig_forward_inputs_list}"
-        )
-        logging.info(
-            f"Prased Original Forward Attrs List: \n{self.orig_forward_attrs_list}"
-        )
-        logging.info(
-            f"Parsed Original Forward Returns List: \n{self.orig_forward_returns_list}"
-        )
 
         if SkipAPIGeneration(self.forward_api_name): return False
 
         # Initialized forward_inputs_position_map, forward_outputs_position_map
         self.DetermineForwardPositionMap(self.orig_forward_inputs_list,
                                          self.orig_forward_returns_list)
-        logging.info(
-            f"Generated Forward Input Position Map: {self.forward_inputs_position_map}"
-        )
-        logging.info(
-            f"Generated Forward Output Position Map: {self.forward_outputs_position_map}"
-        )
 
         # Code Generation
         self.GeneratePythonCFunction()
-        logging.info(
-            f"Generated Python-C Function: {self.python_c_function_str}")
-        logging.info(
-            f"Generated Python-C Function Declaration: {self.python_c_function_reg_str}"
-        )
 
         return True
 
@@ -535,8 +515,6 @@ if __name__ == "__main__":
 
     python_c_str = GeneratePythonCWrappers(generated_python_c_functions,
                                            generated_python_c_registration)
-
-    logging.info(f"Generated Python-C Codes: \n{python_c_str}")
 
     output_path = args.output_path
     for path in [output_path]:

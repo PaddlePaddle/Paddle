@@ -194,7 +194,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  (*kernel_fn)({kernel_args}, {outputs_args});
 
-{code_indent}  return {self.gene_return_code()};"""
+{code_indent}  {self.gene_return_code()}"""
 
     def gene_kernel_select(self) -> str:
         api = self.api

@@ -1,0 +1,1 @@
+^job$|^test_ps_trainer_pass$|^test_dist_pnorm$|^test_dist_reshape$|^test_collective_split_embedding_none_divisible$|^test_dist_slice$|^test_white_lists$|^test_ps_server_pass$

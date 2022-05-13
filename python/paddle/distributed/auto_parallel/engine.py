@@ -34,12 +34,9 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-from .mapper import mapping
 from .cluster import Cluster
-from .reshard import Resharder
-from .planner import Planner
-from .completion import Completer
-from .partitioner import Partitioner
+from .planner_v2 import Planner
+from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
@@ -79,7 +76,6 @@ class Engine:
         self._dist_main_progs = defaultdict(dict)  # dist main programs
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
         self._dist_contexts = {}
-        self._pass_contexts = {}
         self._feed_vars = {}
         self._fetch_vars = {}
 
@@ -94,10 +90,27 @@ class Engine:
         self._loss = loss
         self._metrics = to_list(metrics)
         self._mode = mode
-        self._build(mode)  # build forward program
-        self._plan(mode)  # completion & planner
-        self._parallel(mode, all_ranks)  # parallel
-        self._initialize(mode)  # init comm and startup program
+        # Build forward program
+        self._build(mode)
+        # Do the planning process
+        planner = Planner(mode, self._dist_contexts[mode])
+        planner.plan()
+        # Parallelize program based on the planner's results
+        # For now, the completer has to be passed to the planner,
+        # because we may use it to complete the annotation of the backwarkward and update.
+        parallelizer = Parallelizer(mode, planner.completer,
+                                    self._dist_contexts[mode])
+        if not all_ranks:
+            parallelizer.parallel(self._cur_rank)
+        else:
+            parallelizer.parallel_all()
+        # Get the distributed main programs and startup programs
+        self._dist_main_progs[mode] = self._dist_contexts[
+            mode].dist_main_programs
+        self._dist_startup_progs[mode] = self._dist_contexts[
+            mode].dist_startup_programs
+        # Init comm and startup program
+        self._initialize(mode)
 
     def _build(self, mode):
         serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -118,11 +131,10 @@ class Engine:
                 losses = to_list(self._loss(*(outputs + labels)))
 
         default_ctx = get_default_distributed_context()
-        if not default_ctx.is_annotation or self._default_strategy:
+        if not default_ctx.has_annotation or self._default_strategy:
             inputs = [self._set_data_parallel(var) for var in inputs]
             labels = [self._set_data_parallel(var) for var in labels]
 
-        # print(serial_main_prog)
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
         self._fetch_vars[mode] = {
@@ -134,34 +146,9 @@ class Engine:
         self._serial_main_progs[mode] = serial_main_prog
         self._serial_startup_progs[mode] = serial_startup_prog
         self._dist_contexts[mode] = DistributedContext(
-            serial_main_prog, serial_startup_prog, self._dist_main_progs[mode],
-            self._dist_startup_progs[mode])
-        self._pass_contexts[mode] = PassContext()
-
-    def _plan(self, mode):
-
-        # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
-        # dependency of backward-forward ops in forward completition.
-        defualt_ctx = get_default_distributed_context()
-        self._dist_contexts[mode]._dist_op_context = defualt_ctx.dist_op_context
-
-        # Complete the distributed annotation
-        serial_main_prog = self._serial_main_progs[mode]
-        self._completer = Completer(self._dist_contexts[mode])
-        self._completer.complete_forward_annotation(serial_main_prog)
-        # TODO: add auto planner process
-        # parse forward sub block
-        self._dist_contexts[mode].block_state.parse_forward_blocks(
-            serial_main_prog)
-
-    def _parallel(self, mode, all_ranks=False):
-        if not all_ranks:
-            self._parallel_program(mode, self._cur_rank)
-        else:
-            world_process_group = get_world_process_group()
-            all_ranks = world_process_group.ranks
-            for rank in all_ranks:
-                self._parallel_program(mode, rank)
+            self._serial_main_progs[mode], self._serial_startup_progs[mode],
+            self._optimizer, losses, self._feed_vars[mode],
+            self._fetch_vars[mode], self.strategy)
 
     def _initialize(self, mode):
         if self._nranks > 1:
@@ -189,131 +176,6 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 self._executor.run(prune_startup_prog)
-
-    def _parallel_program(self, mode, rank):
-        serial_main_program = self._serial_main_progs[mode]
-        serial_startup_program = self._serial_startup_progs[mode]
-        dist_context = self._dist_contexts[mode]
-        if mode == "train" and self._optimizer:
-            # Generate backward
-            serial_loss = self._fetch_vars[mode]["loss"][0]
-            params_grads = self._generate_backward(
-                serial_main_program, serial_startup_program, serial_loss)
-            # Apply pre optimization passes
-            self._apply_pre_optimization(serial_main_program,
-                                         serial_startup_program, serial_loss,
-                                         params_grads)
-            # Do logical partition
-            partitioner = Partitioner(dist_context, rank)
-            dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
-                serial_main_program, serial_startup_program, params_grads)
-            # Generate optimizer
-            self._generate_optimizer(dist_main_prog, dist_startup_prog,
-                                     dist_params_grads)
-            # Do reshard process
-            set_grad_var_shape(dist_main_prog, dist_context)
-            make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
-                                  dist_context, dist_params_grads)
-            resharder.reshard()
-            # Apply post optimization passes
-            self._apply_post_optimization(dist_main_prog, dist_startup_prog,
-                                          rank, dist_params_grads)
-        else:
-            # Apply pre optimization passes
-            self._apply_pre_optimization(serial_main_program,
-                                         serial_startup_program, None, None)
-            # Do logical partition
-            partitioner = Partitioner(dist_context, rank)
-            dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
-                serial_main_program, serial_startup_program, [])
-            # Do reshard process
-            make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
-                                  dist_context, [], 1)
-            resharder.reshard()
-
-        # clone program for test
-        if mode != 'train':
-            dist_main_prog = dist_main_prog.clone(for_test=True)
-            dist_startup_prog = dist_startup_prog.clone(for_test=True)
-
-        self._dist_main_progs[mode][rank] = dist_main_prog
-        self._dist_startup_progs[mode][rank] = dist_startup_prog
-
-    def _generate_backward(self, main_program, startup_program, loss):
-        with program_guard(main_program, startup_program):
-            params_grads = append_backward(
-                loss,
-                distop_context=self._dist_contexts[self.mode].dist_op_context)
-        self._completer.complete_backward_annotation(main_program)
-        self._dist_contexts[self.mode].block_state.parse_backward_blocks(
-            main_program)
-        return params_grads
-
-    def _generate_optimizer(self, main_program, startup_program, params_grads):
-        with program_guard(main_program, startup_program):
-            optimizer_ops = copy.deepcopy(self._optimizer).apply_gradients(
-                params_grads)
-        self._completer.complete_update_annotation(main_program)
-        return optimizer_ops
-
-    def _apply_pre_optimization(self, main_program, startup_program, loss,
-                                params_grads):
-
-        # apply amp pass
-        if self.strategy.amp:
-            config = copy.deepcopy(self.strategy.amp_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
-            config["params_grads"] = params_grads
-            config["loss"] = loss
-            config["input_data"] = self._feed_vars[self.mode][
-                "inputs"] + self._feed_vars[self.mode]["labels"]
-            if config["use_pure_fp16"]:
-                config["base_opt"] = self._optimizer
-                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
-                auto_parallel_fp16_pass.apply([main_program],
-                                              [startup_program],
-                                              self._pass_contexts[self.mode])
-            else:
-                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-                auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                             self._pass_contexts[self.mode])
-
-        # apply recompute pass
-        if self.strategy.recompute:
-            config = copy.deepcopy(self.strategy.recompute_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
-            config["no_grad_set"] = None
-            config["loss"] = loss
-            auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
-                                                    config)
-            auto_parallel_recompute_pass.apply([main_program],
-                                               [startup_program],
-                                               self._pass_contexts[self.mode])
-
-    def _apply_post_optimization(self, main_program, startup_program, rank,
-                                 params_grads):
-        if self.strategy.sharding:
-            config = copy.deepcopy(self.strategy.sharding_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
-            config["params_grads"] = params_grads
-            config["global_rank"] = rank
-            auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
-                                                   config)
-            auto_parallel_sharding_pass.apply([main_program],
-                                              [startup_program],
-                                              self._pass_contexts[self.mode])
-
-        if self.strategy.gradient_merge:
-            config = copy.deepcopy(self.strategy.gradient_merge_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
-            config["params_grads"] = params_grads
-            auto_parallel_gradient_merge_pass = new_pass(
-                "auto_parallel_gradient_merge_pass", config)
-            auto_parallel_gradient_merge_pass.apply(
-                [main_program], [startup_program],
-                self._pass_contexts[self.mode])
 
     def fit(self,
             train_data,

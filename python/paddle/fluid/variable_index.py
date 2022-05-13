@@ -306,8 +306,9 @@ def get_value_for_bool_tensor(var, item):
         return paddle.empty(var_shape, dtype=var.dtype)
 
     from .layers.control_flow import cond
-    return cond(item.any(), lambda: idx_not_empty(var, item),
-                lambda: idx_empty(var))
+    return cond(
+        paddle.logical_not(item.any()), lambda: idx_empty(var),
+        lambda: idx_not_empty(var, item))
 
 
 def _getitem_impl_(var, item):

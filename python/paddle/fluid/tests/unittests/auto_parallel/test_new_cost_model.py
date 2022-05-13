@@ -18,7 +18,7 @@ import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
 from paddle.distributed.auto_parallel.cost.base_cost import parse_to_desc
 from paddle.distributed.auto_parallel.cost.base_cost import parse_desc_to_str
-from paddle.distributed.auto_parallel.cost.base_cost import calc_time_from_model
+from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_modeling
 
 paddle.enable_static()
 
@@ -45,13 +45,13 @@ class TestCost(unittest.TestCase):
             if op.type == "matmul_v2":
                 matmul_v2_op = op
                 break
-        matmul_v2_cost = cost_model.OP_COST_FACTORY["matmul_v2"](
+        matmul_v2_cost = cost_model._g_op_cost_factory["matmul_v2"](
             op=matmul_v2_op)
         desc = parse_to_desc(op=matmul_v2_op)
         desc_str = parse_desc_to_str(desc)
         self.assertIsNotNone(desc_str)
         self.assertTrue(check_cost(matmul_v2_cost.cost))
-        time = calc_time_from_model(op=matmul_v2_op)
+        time = calc_time_by_modeling(op=matmul_v2_op)
         self.assertEqual(time, matmul_v2_cost.cost.time)
         tensor_cost = cost_model.TensorCost(tensor=x)
         # check memory
@@ -61,7 +61,8 @@ class TestCost(unittest.TestCase):
         desc = {}
         desc["op"] = "c_allreduce_sum"
         desc["inputs"] = {"X": [([100, 200], paddle.float32)]}
-        allreduce_cost = cost_model.OP_COST_FACTORY["c_allreduce_sum"](
+        desc["group_ranks"] = [0, 1]
+        allreduce_cost = cost_model._g_op_cost_factory["c_allreduce_sum"](
             op_desc=desc)
         self.assertTrue(check_cost(allreduce_cost.cost))
 

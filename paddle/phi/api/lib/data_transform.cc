@@ -15,12 +15,14 @@ limitations under the License. */
 #include "paddle/phi/api/lib/data_transform.h"
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-#include "paddle/fluid/framework/data_device_transform.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace experimental {
@@ -139,9 +141,8 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;
 
-  phi::DenseTensor out(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(tensor.place()),
-      {dtype, tensor.dims(), tensor.layout()});
+  DefaultAllocator alloc(tensor.place());
+  phi::DenseTensor out(&alloc, {dtype, tensor.dims(), tensor.layout()});
 
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
@@ -155,6 +156,51 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
     PADDLE_THROW(phi::errors::Unimplemented(
         "Place type is not supported when casting data type."));
   }
+  return out;
+}
+
+inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
+                                       Place dst_place) {
+  VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
+          << " dst_place: " << dst_place;
+
+  DefaultAllocator alloc(dst_place);
+  phi::DenseTensor out(&alloc,
+                       {tensor.dtype(), tensor.dims(), tensor.layout()});
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  // NOTE(yy): TransDataPlace should wait for computation of input.
+  if (!platform::is_cuda_pinned_place(tensor.place())) {
+    pool.Get(tensor.place())->Wait();
+    pool.Get(dst_place)->Wait();
+  } else if (platform::is_gpu_place(dst_place)) {
+    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(dst_place));
+    phi::Copy(*dev_ctx, tensor, dst_place, false, &out);
+
+    // Note: This is an empty callback, the only way is to "reference"
+    // tensor, so it will not be destructed until the kernels launched at
+    // current
+    // stream of given place is finished.
+    auto callback = [tensor, dst_place]() {
+      VLOG(4) << "Run callback of tensor:" << &tensor << " at place "
+              << dst_place;
+    };
+    dev_ctx->AddStreamCallback(callback);
+    return out;
+  }
+#endif
+
+  // FIXME(zcd): TransDataPlace is used to transform data from GPU to CPU and
+  // the enforced checkings have been done in GetDeviceContext, so the
+  // `dev_ctx->Wait()` is necessary. But `dev_ctx->Wait()` will make the program
+  // slow, especially when the number of elements is little, for example,
+  // the elements of learning rate are one and it's CPU side.
+  // One solution is to use a CUDA kernel to complete the copy operation when
+  // the transforming is from CPU to GPU and the number of elements is little.
+  // But the embarrassment is that this solution this solution makes training
+  // slower.
+  paddle::framework::TensorCopySync(tensor, dst_place, &out);
   return out;
 }
 
@@ -174,10 +220,7 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
-    phi::DenseTensor result;
-    framework::TransDataDevice(
-        out, phi::TransToPhiPlace(target_args_def.backend), &result);
-    out = result;
+    out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
   }
   return out;
 }

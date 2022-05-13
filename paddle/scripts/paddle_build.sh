@@ -1698,12 +1698,6 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
-            if [[ -f "ut_list" ]]; then
-                set +x
-                echo "PREC length: "`wc -l ut_list`
-                precision_cases=`cat ut_list`
-                set -x
-            fi
         fi
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
@@ -1732,46 +1726,177 @@ set +x
         EXIT_CODE=0;
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/tools/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
+        sed -i 's/RUN_SERIAL "1" //g' ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/CTestTestfile.cmake
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
-
         test_cases=$(ctest -N -V) # get all test cases
+
+        python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+        
+        echo "xxxx"
+        cat $PADDLE_ROOT/tools/multiple_txt_new
+
+        single_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" 1 4
+        done < $PADDLE_ROOT/tools/single_txt_mem0_new
+        single_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s" 
+        
         single_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/4]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
             card_test "$line" 1 $num
-        done < $PADDLE_ROOT/tools/single_txt
-
-        echo "EXIT_CODE:: "$EXIT_CODE
+        done < $PADDLE_ROOT/tools/single_txt_new
         single_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        
+
+        multiple_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" 2 4
+        done < $PADDLE_ROOT/tools/multiple_txt_mem0_new
+        multiple_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" 
+
         multiple_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
-            #echo "num: " $num 
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/4]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
             card_test "$line" 2 $num 
 
-        done < $PADDLE_ROOT/tools/multiple_txt
-
+        done < $PADDLE_ROOT/tools/multiple_txt_new
         multiple_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" 
+
+
+        exclusive_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" -1 4
+        done < $PADDLE_ROOT/tools/exclusive_txt_mem0_new
+        exclusive_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" 
+
 
         exclusive_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/2]
-            #echo "num: " $num 
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/4]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
             card_test "$line" -1 $num 
-
-        done < $PADDLE_ROOT/tools/exclusive_txt
-
+        done < $PADDLE_ROOT/tools/exclusive_txt_new
         exclusive_ut_endTime_s=`date +%s`
-        #echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" 
+        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
+        
+        noparallel_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/4]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
+            card_test "$line" -1 $num 
+        done < $PADDLE_ROOT/tools/no_parallel_case_file
+        noparallel_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
+        #sleep 1h
+        ###retry
+        collect_failed_tests
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
+        is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"                    
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                
+                                if [[ "$retry_cases" == "" ]]; then
+                                    retry_cases="^$line$"
+                                else
+                                    retry_cases="$retry_cases|^$line$"
+                                fi
+                            done
+
+                        if [[ "$retry_cases" != "" ]]; then
+                            card_test "$retry_cases" -1 1
+                        fi
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                        multiple_card_retry=''
+                        exclusive_retry='' 
+                    else 
+                        break
+                    fi 
+                done
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
+        fi
+        rerun_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
 set -ex
     fi
 }

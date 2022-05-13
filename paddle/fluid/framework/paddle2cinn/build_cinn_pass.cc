@@ -511,7 +511,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                        ExtractOpRole(cluster));
   cinn_op_desc.Flush();
   auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
-  // Add new links from or to the the cinn launch op node
+  // Add new links from or to the cinn launch op node
   AddLinkToCinnOp(cluster_inputs, cluster_outputs, cinn_op_node);
 
   VLOG(4) << "Add op [" << kCinnLaunchOp << "] into graph.";
@@ -545,6 +545,15 @@ void ReplaceSubGraphWithCinnOpNode(
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
+static bool IsInplaceOp(const OpDesc& op_desc) {
+  auto inputs = op_desc.InputArgumentNames();
+  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
+  for (auto& name : op_desc.OutputArgumentNames()) {
+    if (input_set.count(name) > 0) return true;
+  }
+  return false;
+}
+
 // Search all subgraphs which all op node supported by CINN,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
@@ -565,9 +574,10 @@ void SearchAllSubgraphs(Graph* graph) {
     if (deny_ops.size()) {
       return registered && !deny_ops.count(node->Name());
     }
+
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
-    return registered;
+    return registered && (node->IsOp() && !IsInplaceOp(*node->Op()));
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;

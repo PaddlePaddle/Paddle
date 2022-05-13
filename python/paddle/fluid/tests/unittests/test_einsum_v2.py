@@ -464,5 +464,19 @@ class TestNumpyTests(unittest.TestCase):
             self.check_output_equal(a, e)
 
 
+class TestStaticGraphShape(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def test_shape(self):
+        A = paddle.static.data(name='x', shape=[-1])
+        B = paddle.static.data(name='y', shape=[384])
+        C = paddle.einsum('i,d->id', A, B)
+        self.assertEqual(C.shape, (-1, 384))
+
+
 if __name__ == "__main__":
-    u
+    unittest.main()

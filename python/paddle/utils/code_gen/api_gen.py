@@ -53,7 +53,7 @@ class ForwardAPI(BaseAPI):
         else:
             return_out_list = []
             for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
+                if name.split('@')[0] not in self.intermediate_outs:
                     return_out_list.append(self.outputs['types'][i])
             return return_out_list[0] if len(
                 return_out_list) == 1 else "std::tuple<" + ",".join(
@@ -61,19 +61,19 @@ class ForwardAPI(BaseAPI):
 
     def gene_return_code(self):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
-            return "api_output"
+            return "return api_output;"
         else:
             return_out_list = []
             for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
+                if name.split('@')[0] not in self.intermediate_outs:
                     return_out_list.append(i)
             if len(return_out_list) == 1:
-                return f"std::get<{return_out_list[0]}>(api_output)"
+                return f"return std::get<{return_out_list[0]}>(api_output);"
             else:
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
-            return '{' + ", ".join(selected_code) + '}'
+            return 'return {' + ", ".join(selected_code) + '};'
 
     def gene_output(self,
                     output_type_list,

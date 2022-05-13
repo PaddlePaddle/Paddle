@@ -3346,7 +3346,7 @@ def increment(x, value=1.0, name=None):
 
 def all(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical and`` of tensor elements over the given dimension.
+    Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3442,7 +3442,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical or`` of tensor elements over the given dimension.
+    Computes the ``logical or`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -4380,6 +4380,54 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+def heaviside(x, y, name=None):
+    """
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
+
+    .. math::
+        heaviside(x, y)=
+            \left\{
+                \\begin{array}{lcl}
+                0,& &\\text{if} \ x < 0, \\\\
+                y,& &\\text{if} \ x = 0, \\\\
+                1,& &\\text{if} \ x > 0.
+                \end{array}
+            \\right.
+
+    Notes:
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
+    Args:
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
+
+    Examples:
+        .. code-block:: python
+            :name: heaviside-example
+
+            import paddle
+            x = paddle.to_tensor([-0.5, 0, 0.5])
+            y = paddle.to_tensor([0.1])
+            paddle.heaviside(x, y)
+            #    [0.        , 0.10000000, 1.        ]
+            x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
+            y = paddle.to_tensor([0.1, 0.2, 0.3])
+            paddle.heaviside(x, y)
+            #    [[0.        , 0.20000000, 1.        ],
+            #     [0.        , 1.        , 0.30000001]]
+     """
+    op_type = 'elementwise_heaviside'
+    axis = -1
+    act = None
+    if _non_static_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def frac(x, name=None):
     """
