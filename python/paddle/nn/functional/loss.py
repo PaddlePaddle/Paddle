@@ -2268,6 +2268,11 @@ def soft_margin_loss(input, label,reduction='mean',
             input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
             label = paddle.to_tensor([1.0, -1.0, 1.0], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
+
+            shape = (5, 5)
+            input = np.random.uniform(0, 2, shape).astype('float32')
+            label = np.random.randint(1, shape).astype('float32')
+            output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -2282,27 +2287,26 @@ def soft_margin_loss(input, label,reduction='mean',
             return _C_ops.mean(out)
         else:
             return out
+
+    fluid.data_feeder.check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'soft_margin_loss')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['int32','int64','float32', 'float64'], 'soft_margin_loss')
+
+    sub_name = name if reduction == 'none' else None
+    helper = LayerHelper("soft_margin_loss", name=sub_name)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='soft_margin_loss',
+        inputs={
+            'X': [input],
+            'Label': [label],
+        },
+        outputs={'Out': [out]})
+
+    if reduction == 'sum':
+        return paddle.sum(out, name=name)
+    elif reduction == 'mean':
+        return paddle.mean(out, name=name)
     else:
-
-        fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'soft_margin_loss')
-        fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'soft_margin_loss')
-
-        sub_name = name if reduction == 'none' else None
-        helper = LayerHelper("soft_margin_loss", name=sub_name)
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-        helper.append_op(
-            type='soft_margin_loss',
-            inputs={
-                'X': [input],
-                'Label': [label],
-            },
-            outputs={'Out': [out]})
-
-        if reduction == 'sum':
-            return paddle.sum(out, name=name)
-        elif reduction == 'mean':
-            return paddle.mean(out, name=name)
-        else:
-            return out
+        return out
