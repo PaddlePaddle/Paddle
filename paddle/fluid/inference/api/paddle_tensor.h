@@ -39,6 +39,10 @@ namespace contrib {
 class TensorUtils;
 }
 
+namespace experimental {
+class InternalUtils;
+};
+
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
@@ -50,7 +54,7 @@ enum DataType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 
@@ -183,6 +187,7 @@ class PD_INFER_DECL Tensor {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   bool is_ort_tensor_{false};
   std::vector<int64_t> shape_;
+  std::vector<int8_t> buffer_;
   std::weak_ptr<Ort::IoBinding> binding_;
   int idx_{-1};
 
@@ -198,6 +203,7 @@ class PD_INFER_DECL Tensor {
 #endif
 
   friend class paddle_infer::contrib::TensorUtils;
+  friend class paddle_infer::experimental::InternalUtils;
 #if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
   friend class paddle_infer::InferApiTesterUtils;
 #endif

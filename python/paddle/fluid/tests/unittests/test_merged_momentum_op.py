@@ -258,6 +258,7 @@ class TestMergedMomentum(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
+
         self.seed = 10
 
     def gen_rand_data(self, shapes, dtype):
@@ -391,4 +392,5 @@ class TestMergedMomentum2(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

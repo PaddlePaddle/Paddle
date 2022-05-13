@@ -116,7 +116,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro._all_gather(1, "worker"), 1)
         self.assertEqual(ro._all_reduce(1, "sum", "worker"), 1)
 
-    def test_traing_role(self):
+    def test_training_role(self):
         """Test training role."""
         os.environ["TRAINING_ROLE"] = "TEST"
 

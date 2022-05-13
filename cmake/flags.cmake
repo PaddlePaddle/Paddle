@@ -158,12 +158,15 @@ if(WITH_IPU)
     )
 endif()
 
+if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
+    set(COMMON_FLAGS ${COMMON_FLAGS} -faligned-new)
+endif()
+
 if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2
-                -Wno-error=cast-function-type # Warning in boost gcc 8.2
                 -Wno-error=parentheses # Warning in boost gcc 8.2
                 -Wno-error=catch-value # Warning in boost gcc 8.2
                 -Wno-error=nonnull-compare # Warning in boost gcc 8.2
@@ -244,3 +247,7 @@ if(WITH_ROCM)
     string (REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
+if(WITH_PSCORE OR WITH_PSLIB)
+    string (REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string (REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+endif()

@@ -242,7 +242,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     elastic_group.add_argument(
         "--force", type=bool, default=False, help="update np force")
 
-    return parser.parse_args()
+    known_args, _ = parser.parse_known_args()
+    return known_args
 
 
 def get_cluster_from_args(args, device_mode, devices_per_proc):
@@ -555,7 +556,7 @@ def launch():
 
         - ``--selected_mlus``: mlus aliases, recommend to use ``--mlus``.
 
-        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 

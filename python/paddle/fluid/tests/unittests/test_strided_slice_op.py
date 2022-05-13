@@ -58,6 +58,7 @@ class TestStrideSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'strided_slice'
+        self.python_api = paddle.strided_slice
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides)
 
@@ -72,10 +73,10 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out')
+        self.check_grad(set(['Input']), 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -533,25 +534,25 @@ class TestStridedSliceAPI(unittest.TestCase):
             shape=[3, 4, 5, 6],
             append_batch_size=False,
             dtype="float64")
-        out_1 = fluid.layers.strided_slice(
+        out_1 = paddle.strided_slice(
             x,
             axes=[0, 1, 2],
             starts=[-3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1])
-        out_2 = fluid.layers.strided_slice(
+        out_2 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1])
-        out_3 = fluid.layers.strided_slice(
+        out_3 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, minus_1],
             strides=[1, 1, 1])
-        out_4 = fluid.layers.strided_slice(
+        out_4 = paddle.strided_slice(
             x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides)
 
         out_5 = x[-3:3, 0:100:2, -1:2:-1]
@@ -704,7 +705,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         l2.sum().backward()
         grads_static = net.get_all_grads()
         net.clear_all_grad()
-        # compare result of dygraph and static 
+        # compare result of dygraph and static
         self.is_grads_equal(grads_static, grads_dy)
         self.assertTrue(
             np.array_equal(s1, s2),

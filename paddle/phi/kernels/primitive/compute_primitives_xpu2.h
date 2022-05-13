@@ -17,6 +17,7 @@
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
+#include "xpu/kernel/simd_header.h"
 
 namespace phi {
 namespace kps {
@@ -154,6 +155,19 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
                                                   OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
+  }
+}
+
+template <typename InT,
+          typename OutT,
+          int NX,
+          int NY,
+          int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseBinary(
+    OutT* out, const InT* in1, const InT* in2, OpFunc compute, int read_lens) {
+  for (int idx = 0; idx < read_lens; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
   }
 }
@@ -329,14 +343,12 @@ __device__ __forceinline__ void Reduce(T* out,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
   if (Mode == details::kGlobalMode) {
+    if (reduce_last_dim) {
 #pragma unroll
-    for (int i = 0; i < NY; ++i) {
-#pragma unroll
-      for (int j = 0; j < NX; ++j) {
-        out[i] = reducer(out[i], in[i * NX + j]);
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], reducer);
       }
     }
-    BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {

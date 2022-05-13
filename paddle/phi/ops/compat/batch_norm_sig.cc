@@ -18,10 +18,17 @@ namespace phi {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   bool is_test = paddle::any_cast<bool>(ctx.Attr("is_test"));
-  bool use_global_stats = paddle::any_cast<bool>(ctx.Attr("use_global_stats"));
+  bool use_global_stats =
+      ctx.HasAttr("use_global_stats")
+          ? paddle::any_cast<bool>(ctx.Attr("use_global_stats"))
+          : false;
   bool trainable_statistics =
-      paddle::any_cast<bool>(ctx.Attr("trainable_statistics"));
-  bool fuse_with_relu = paddle::any_cast<bool>(ctx.Attr("fuse_with_relu"));
+      ctx.HasAttr("trainable_statistics")
+          ? paddle::any_cast<bool>(ctx.Attr("trainable_statistics"))
+          : false;
+  bool fuse_with_relu = ctx.HasAttr("fuse_with_relu")
+                            ? paddle::any_cast<bool>(ctx.Attr("fuse_with_relu"))
+                            : false;
   // Dispenable `MomentumTensor` is useless now
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
@@ -50,40 +57,41 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature BatchNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "batch_norm_grad",
-      {GradVarName("Y"),
-       "X",
-       "Scale",
-       "Bias",
-       "SavedMean",
-       "SavedVariance",
-       "ReserveSpace",
-       "Mean",
-       "Variance"},
-      {"momentum",
-       "epsilon",
-       "data_layout",
-       "is_test",
-       "use_global_stats",
-       "trainable_statistics",
-       "fuse_with_relu"},
-      {GradVarName("X"), GradVarName("Scale"), GradVarName("Bias")});
+  return KernelSignature("batch_norm_grad",
+                         {
+                             "X",
+                             "Scale",
+                             "Bias",
+                             "Mean",
+                             "Variance",
+                             "SavedMean",
+                             "SavedVariance",
+                             "ReserveSpace",
+                             "Y@GRAD",
+                         },
+                         {"momentum",
+                          "epsilon",
+                          "data_layout",
+                          "is_test",
+                          "use_global_stats",
+                          "trainable_statistics",
+                          "fuse_with_relu"},
+                         {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
 KernelSignature BatchNormGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("batch_norm_grad_grad",
-                         {"DDX",
-                          "DDScale",
-                          "DDBias",
-                          "DY",
-                          "X",
+                         {"X",
                           "Scale",
+                          "Mean",
+                          "Variance",
                           "SavedMean",
                           "SavedVariance",
-                          "Mean",
-                          "Variance"},
+                          "DY",
+                          "DDX",
+                          "DDScale",
+                          "DDBias"},
                          {"momentum",
                           "epsilon",
                           "data_layout",

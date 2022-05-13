@@ -20,39 +20,57 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   int axis = -1;
-  AddRawKernel<T>(dev_ctx, x, y, axis, out);
+  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   int axis = -1;
-  SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
+  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
+void ModuloKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
   int axis = -1;
-  DivideRawKernel<T>(dev_ctx, x, y, axis, out);
+  ModuloRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 template <typename T, typename Context>
-void MultiplyKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
+void FloorDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
   int axis = -1;
-  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
+  FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void ElementwisePowKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  int axis = -1;
+  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void ElementwiseHeavisideKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& y,
+                                DenseTensor* out) {
+  int axis = -1;
+  ElementwiseHeavisideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
 }  // namespace phi
@@ -60,102 +78,85 @@ void MultiplyKernel(const Context& dev_ctx,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(maximum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(subtract,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(divide,
+PD_REGISTER_KERNEL(minimum,
                    CPU,
                    ALL_LAYOUT,
-                   phi::DivideKernel,
+                   phi::MinimumKernel,
                    float,
                    double,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(multiply,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   complex64,
-                   complex128,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    modulo, CPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(
+    floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-PD_REGISTER_KERNEL(add,
-                   GPU,
+PD_REGISTER_KERNEL(maximum,
+                   KPS,
                    ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
-                   int16_t,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(subtract,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(divide,
-                   GPU,
+PD_REGISTER_KERNEL(minimum,
+                   KPS,
                    ALL_LAYOUT,
-                   phi::DivideKernel,
+                   phi::MinimumKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
-PD_REGISTER_KERNEL(multiply,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    modulo, GPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(
+    floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MultiplyKernel,
+                   phi::ElementwiseHeavisideKernel,
                    float,
                    double,
                    int,
-                   int64_t,
-                   bool,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128) {}
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_pow,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 #endif

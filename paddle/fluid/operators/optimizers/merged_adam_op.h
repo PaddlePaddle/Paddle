@@ -11,7 +11,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/adam_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -82,7 +83,7 @@ class MergedAdamOpKernel : public framework::OpKernel<T> {
 
     size_t param_num = param.size();
     for (size_t idx = 0; idx < param_num; idx++) {
-      AdamFunctor<T, CPUAdam> functor(
+      phi::funcs::AdamFunctor<T, phi::funcs::CPUAdam> functor(
           beta1, beta2, epsilon, beta1_pow[idx]->data<T>(),
           beta2_pow[idx]->data<T>(), mom1[idx]->data<T>(),
           mom1_out[idx]->mutable_data<T>(ctx.GetPlace()), mom2[idx]->data<T>(),

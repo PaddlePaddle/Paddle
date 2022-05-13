@@ -65,19 +65,19 @@ class PSServer {
   PSServer(PSServer &&) = delete;
   PSServer(const PSServer &) = delete;
 
-  virtual int32_t configure(
+  virtual int32_t Configure(
       const PSParameter &config, PSEnvironment &env, size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
-  virtual uint64_t start(const std::string &ip, uint32_t port) = 0;
-  virtual int32_t stop() = 0;
+  virtual uint64_t Start(const std::string &ip, uint32_t port) = 0;
+  virtual int32_t Stop() = 0;
 
-  inline size_t rank() const { return _rank; }
+  inline size_t Rank() const { return _rank; }
 
-  inline PSEnvironment *environment() { return _environment; }
+  inline PSEnvironment *Environment() { return _environment; }
 
-  inline const ServerParameter *config() const { return &_config; }
-  inline Table *table(size_t table_id) {
+  inline const ServerParameter *Config() const { return &_config; }
+  inline Table *GetTable(size_t table_id) {
     auto itr = _table_map.find(table_id);
     if (itr != _table_map.end()) {
       return itr->second.get();
@@ -85,18 +85,58 @@ class PSServer {
     return NULL;
   }
 
-  inline std::unordered_map<uint32_t, std::shared_ptr<Table>> *table() {
+  inline std::unordered_map<uint32_t, std::shared_ptr<Table>> *GetTable() {
     return &_table_map;
   }
 
+  // for cache
+  virtual int32_t StartS2S() { return 0; }
+
+  virtual ::std::future<int32_t> SendPServer2PServerMsg(
+      int msg_type, int to_pserver_id, const std::string &msg) {
+    LOG(FATAL) << "NotImplementError: PSServer::send_pserver2pserver_msg";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
+  virtual int RegistePServer2PServerMsgHandler(int msg_type,
+                                               MsgHandlerFunc handler) {
+    _msg_handler_map[msg_type] = handler;
+    return 0;
+  }
+  virtual int HandlePServer2PServerMsg(int msg_type, int from_pserver_id,
+                                       const std::string &msg) {
+    auto itr = _msg_handler_map.find(msg_type);
+    if (itr == _msg_handler_map.end()) {
+      if (msg_type == 101) {
+        return ReceiveFromPServer(msg_type, from_pserver_id, msg);
+      } else {
+        LOG(WARNING) << "unknown pserver2pserver_msg type:" << msg_type;
+        return -1;
+      }
+    }
+    return itr->second(msg_type, from_pserver_id, msg);
+  }
+  virtual int32_t ReceiveFromPServer(int msg_type, int pserver_id,
+                                     const std::string &msg) {
+    LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
+    return -1;
+  }
+
+  paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
+
  protected:
-  virtual int32_t initialize() = 0;
+  virtual int32_t Initialize() = 0;
 
  protected:
   size_t _rank;
   ServerParameter _config;
   PSEnvironment *_environment;
   std::unordered_map<uint32_t, std::shared_ptr<Table>> _table_map;
+  std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
 
  protected:
   std::shared_ptr<framework::Scope> scope_;
@@ -129,11 +169,11 @@ class PsBaseService : public PsService {
  public:
   PsBaseService() : _rank(0), _server(NULL), _config(NULL) {}
   virtual ~PsBaseService() {}
-  virtual size_t get_rank() { return _rank; }
-  virtual int32_t configure(PSServer *server) {
+  virtual size_t GetRank() { return _rank; }
+  virtual int32_t Configure(PSServer *server) {
     _server = server;
-    _rank = _server->rank();
-    _config = _server->config();
+    _rank = _server->Rank();
+    _config = _server->Config();
     return 0;
   }
   virtual void service(::google::protobuf::RpcController *controller,
@@ -148,8 +188,8 @@ class PsBaseService : public PsService {
     LOG(WARNING) << "Resonse err_code:" << err_code << " msg:" << err_msg;
   }
 
-  virtual int32_t initialize() = 0;
-  PSServer *get_server() { return _server; }
+  virtual int32_t Initialize() = 0;
+  PSServer *GetServer() { return _server; }
 
  protected:
   size_t _rank;
@@ -160,7 +200,7 @@ REGISTER_PSCORE_REGISTERER(PsBaseService);
 
 class PSServerFactory {
  public:
-  static PSServer *create(const PSParameter &config);
+  static PSServer *Create(const PSParameter &config);
 };
 }  // namespace distributed
 }  // namespace paddle

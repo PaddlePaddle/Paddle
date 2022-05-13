@@ -68,12 +68,6 @@ class ActivationOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
-    if (op_desc.HasAttr("out_scale")) {
-#if IS_TRT_VERSION_GE(5130)
-      float out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
-#endif
-    }
   }
 
  protected:

@@ -22,9 +22,9 @@ math_library(sampler DEPS generator)
 math_library(maxouting)
 
 if(WITH_MKLDNN)
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mkldnn_axpy_handler mixed_vector)
 else()
-    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
+    math_library(selected_rows_functor DEPS selected_rows_utils math_function blas mixed_vector)
 endif()
 
 math_library(sequence_padding)
@@ -36,7 +36,6 @@ if (WITH_ASCEND_CL)
 else()
     math_library(beam_search DEPS math_function)
 endif()
-math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
 
 

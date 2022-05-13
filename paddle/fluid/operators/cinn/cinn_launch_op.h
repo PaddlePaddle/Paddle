@@ -14,11 +14,14 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "cinn/common/target.h"
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -26,6 +29,7 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
+DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
 namespace operators {
 
@@ -98,37 +102,39 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    using ClockType = std::chrono::steady_clock;
+    std::chrono::time_point<ClockType> start_t, end_t;
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << "Starts to compile at thread " << std::this_thread::get_id();
+      start_t = ClockType::now();
+    }
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
         compilation_key, inputs_name2tensor, target, stream);
-    details::DebugCinnCompiledResult(cinn_compiled_object);
-
-    auto* launch_context = cinn_compiled_object.launch_context.get();
-    // Step 3. check the computational consistency of the subgraph
-    //         before and after the compilation
-    // 3.1 Input variables: tensors of input variables have
-    //     been initialized before graph compiled, just check the
-    //     equiality between tensors of paddle and cinn.
-    for (const auto& var_name : input_x_variable_names) {
-      // some input variables don't need for cinn because they are
-      // eliminated by optimized passes or some cinn operators use
-      // less variables
-      if (!launch_context->IsVariableUsed(var_name)) {
-        VLOG(4) << "Input variable" << var_name << " not used by cinn";
-        continue;
-      }
-      launch_context->CheckTensorEquivalent(var_name,
-                                            *inputs_name2tensor.at(var_name));
+    if (VLOG_IS_ON(1)) {
+      end_t = ClockType::now();
+      auto time_sec = std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_t - start_t);
+      VLOG(1) << "Ends to compile at thread " << std::this_thread::get_id()
+              << " , time cost : " << time_sec.count() << " ms";
     }
+    details::DebugCinnCompiledResult(cinn_compiled_object);
+    auto* launch_context = cinn_compiled_object.launch_context.get();
 
-    // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
+    // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
-    // Step 5. use PE to execute the compiled CINN instructions
-    //         in nodes of the runtime graph
-    VLOG(4) << "Execute the runtime graph by PE";
-    framework::Scope& exec_scope = scope.NewScope();
-    auto* pe = launch_context->InitializePE(place, &exec_scope);
-    pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+    // Step 4. Execute the compiled CINN instructions by a PE or
+    //         by the CINN compiled program in sequential order
+    if (FLAGS_enable_pe_launch_cinn) {
+      VLOG(4) << "Execute the runtime graph by PE";
+      framework::Scope& exec_scope = scope.NewScope();
+      auto* pe = launch_context->InitializePE(place, &exec_scope);
+      pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
+    } else {
+      VLOG(4) << "Execute the compiled executable program";
+      launch_context->UpdateCapturedEnv(scope, place);
+      LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+    }
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };

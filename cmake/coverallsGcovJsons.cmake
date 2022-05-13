@@ -238,7 +238,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 	message("MD5: ${GCOV_SRC_PATH} = ${GCOV_CONTENTS_MD5}")
 
 	# Loads the gcov file as a list of lines.
-	# (We first open the file and replace all occurences of [] with _
+	# (We first open the file and replace all occurrences of [] with _
 	#  because CMake will fail to parse a line containing unmatched brackets...
 	#  also the \ to escaped \n in macros screws up things.)
 	# https://public.kitware.com/Bug/view.php?id=15369

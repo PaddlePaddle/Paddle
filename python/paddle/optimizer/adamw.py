@@ -19,9 +19,8 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
+from .. import _C_ops
 import paddle
-
-_C_ops = core.ops
 
 __all__ = []
 
@@ -282,7 +281,7 @@ class AdamW(Adam):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
                 param_and_grad[0])
 
@@ -291,14 +290,24 @@ class AdamW(Adam):
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
 
-            _, _, _, _, _, _ = _C_ops.adamw(
-                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
-                moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
-                'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
-                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                'beta2', _beta2, "with_decay", with_decay, 'coeff', self._coeff,
-                'multi_precision', find_master, 'lr_ratio', lr_ratio_)
+            if framework.in_dygraph_mode():
+                found_inf = self._get_auxiliary_var('found_inf')
+                _, _, _, _, _, _ = _C_ops.final_state_adamw(
+                    param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                    beta1_pow_acc, beta2_pow_acc, master_weight, found_inf,
+                    _beta1, _beta2, self._epsilon, lr_ratio_, self._coeff,
+                    with_decay, self._lazy_mode, 1000, find_master, False)
+            else:
+                _, _, _, _, _, _ = _C_ops.adamw(
+                    param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                    beta1_pow_acc, beta2_pow_acc, master_weight,
+                    param_and_grad[0], moment1, moment2, beta1_pow_acc,
+                    beta2_pow_acc, master_weight, 'epsilon', self._epsilon,
+                    'lazy_mode', self._lazy_mode,
+                    'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                    'beta2', _beta2, "with_decay", with_decay, 'coeff',
+                    self._coeff, 'multi_precision', find_master, 'lr_ratio',
+                    lr_ratio_)
             return None
 
         inputs = {

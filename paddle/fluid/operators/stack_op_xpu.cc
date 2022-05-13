@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/stack_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 

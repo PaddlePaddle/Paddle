@@ -60,15 +60,7 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "X_scale"
-    type: FLOAT
-  }
-  attrs {
-    name: "weight_scale"
-    type: FLOAT
-  }
-  attrs {
-    name: "out_scale"
+    name: "Input_scale"
     type: FLOAT
   }
   attrs {

@@ -40,7 +40,6 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=True,
             weight_attr=paddle.ParamAttr(
-                name='embedding_param',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale)))
         self.softmax_weight = self.create_parameter(

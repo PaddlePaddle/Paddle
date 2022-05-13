@@ -159,11 +159,11 @@ def print_program_with_dist_attr(program, dist_context=None):
     from .dist_context import set_default_distributed_context
     if dist_context is None:
         dist_context = get_default_distributed_context()
-        print(program)
+        print(program, flush=True)
     else:
         original_default_context = get_default_distributed_context()
         set_default_distributed_context(dist_context)
-        print(program)
+        print(program, flush=True)
         set_default_distributed_context(original_default_context)
     lock.release()
 
@@ -775,19 +775,19 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
     """ Merge parameter with distributed attribute """
-    from .reshard import _compute_complete_shape, _compute_partition_index
+    from .reshard import Resharder
 
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
-                                             dims_mapping)
+    complete_shape = Resharder.compute_complete_shape(
+        param_list[0].shape, process_shape, dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         if partition_index not in merged_partiton:
@@ -840,7 +840,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
             _merge_parameter(partition_param_list, param, partition_index)
             # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
     """
-    from .reshard import _compute_concat_info
+    from .reshard import Resharder
 
     if len(partition_param_list) == 1:
         is_complete_data = True
@@ -856,7 +856,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
     else:
         i = 0
         while i < len(partition_param_list):
-            concat_axis, first_order, new_partition = _compute_concat_info(
+            concat_axis, first_order, new_partition = Resharder.compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
                 if first_order == 0:
@@ -933,9 +933,9 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
                                             process_shape, process_group)
             # index: 2
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
-    partition_index = _compute_partition_index(
+    partition_index = Resharder.compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group)
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
@@ -943,8 +943,8 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
             slice_shape = shape
         else:
             slice_shape = shape // process_shape[dims_mapping[i]]
-        if shape == 1:
-            index = 0
+        if slice_shape == 1:
+            index = partition_index[i][0]
         else:
             index = (partition_index[i][0] + 1) // slice_shape
         sliced_param_index = sliced_param_index * (shape // slice_shape) + index
@@ -972,11 +972,11 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
             # index: [[], [], [2, 4]]
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
     split_indices_list = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         if split_indices_list:
             for dim in range(len(partition_index)):
@@ -996,70 +996,87 @@ def set_grad_var_shape(program, dist_context):
 
     block = program.global_block()
     vars = block.vars
-    for op in block.ops:
+    appended_grad_times = 0
+    grad_var_to_var = dist_context.dist_op_context.grad_var_to_var
+
+    for idx, op in enumerate(block.ops):
+
+        if int(op.attr('op_role')) != int(OpRole.Backward):
+            continue
+
+        if int(block.ops[idx-1].attr('op_role')) == int(OpRole.Forward) or \
+            int(block.ops[idx-1].attr('op_role')) == 257:
+            appended_grad_times += 1
 
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum", "concat"]:
+        if op.type in ["sum", "concat", "shape"]:
             continue
-        if int(op.attr('op_role')) == int(OpRole.Backward):
-            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-            assert op_dist_attr is not None
 
-            for var_name in op.output_arg_names:
-                if "@GRAD" not in var_name:
-                    continue
+        op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+        assert op_dist_attr is not None
+
+        for var_name in op.output_arg_names:
+
+            if "@GRAD" not in var_name:
+                continue
+            if var_name in grad_var_to_var[appended_grad_times]:
+                forward_var_name = grad_var_to_var[appended_grad_times][
+                    var_name]
+            else:
                 forward_var_name = var_name[:var_name.find("@GRAD")]
-                if op.type in [
-                        "c_allreduce_sum", "c_identity", "scale", "cast"
-                ]:
-                    forward_var_name = op.input_arg_names[0]
-                elif op.type == "matmul_v2_grad":
-                    forward_var_name = None
-                    for output_name in op.output_names:
-                        if var_name in op.output(output_name):
-                            assert "@GRAD" in output_name
-                            input_name = output_name[:output_name.find("@GRAD")]
-                            assert len(op.input(input_name)) == 1
-                            forward_var_name = op.input(input_name)[0]
-                    assert forward_var_name is not None
 
-                need_set_shape_list = [
-                    "reshape2_grad", "softmax_with_cross_entropy_grad",
-                    "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
-                ]
-                forward_list = [
-                    "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
-                ]
-                if op.type in need_set_shape_list:
-                    for forward_op in block.ops:
-                        assert int(forward_op.attr('op_role')) != int(
-                            OpRole.Backward)
-                        idx = need_set_shape_list.index(op.type)
-                        forward_op_name = forward_list[idx]
-                        if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
-                            op_dist_attr = dist_context.get_op_dist_attr_for_program(
-                                forward_op)
-                            break
+            if op.type in [
+                    "c_allreduce_sum", "c_identity", "scale", "cast",
+                    "fill_zeros_like"
+            ]:
+                forward_var_name = op.input_arg_names[0]
+            elif op.type == "matmul_v2_grad":
+                forward_var_name = None
+                for output_name in op.output_names:
+                    if var_name in op.output(output_name):
+                        assert "@GRAD" in output_name
+                        input_name = output_name[:output_name.find("@GRAD")]
+                        assert len(op.input(input_name)) == 1
+                        forward_var_name = op.input(input_name)[0]
+                assert forward_var_name is not None
 
-                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
-                    forward_var_name)
+            need_set_shape_list = [
+                "reshape2_grad", "softmax_with_cross_entropy_grad",
+                "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                "dropout_grad", "tanh_grad", "slice", "assign",
+                "matmul_v2_triple_grad", "elementwise_add_triple_grad",
+                "fill_constant", "sqrt_grad"
+            ]
+            forward_list = [
+                "reshape2", "softmax_with_cross_entropy", "transpose2",
+                "softmax", "cross_entropy2", "dropout", "tanh",
+                ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
+                "elementwise_add_grad_grad", "shape", "sqrt"
+            ]
+            if op.type in need_set_shape_list:
+                for forward_op in block.ops:
+                    idx = need_set_shape_list.index(op.type)
+                    forward_op_name = forward_list[idx]
+                    if forward_op.type in forward_op_name and forward_var_name in forward_op.input_arg_names:
+                        op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                            forward_op)
+                        break
 
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
-                forward_var = vars[forward_var_name]
-                forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    forward_var)
-                assert forward_var_dist_attr is not None
-                grad_var = vars[var_name]
-                ref_shape = infer_shape(block, forward_var,
-                                        forward_var_dist_attr,
-                                        forward_input_dist_attr)
+            forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                forward_var_name)
+            assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
+            forward_var = vars[forward_var_name]
+            forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                forward_var)
+            assert forward_var_dist_attr is not None
+            grad_var = vars[var_name]
+            ref_shape = infer_shape(block, forward_var, forward_var_dist_attr,
+                                    forward_input_dist_attr)
 
-                if list(grad_var.shape) != ref_shape:
-                    grad_var.desc.set_shape(ref_shape)
+            if list(grad_var.shape) != ref_shape:
+                grad_var.desc.set_shape(ref_shape)
 
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1416,3 +1433,11 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]

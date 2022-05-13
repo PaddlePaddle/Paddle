@@ -37,9 +37,9 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter
+from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
-from paddle.fluid.framework import dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
@@ -125,7 +125,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_to_static:
+        if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
@@ -302,6 +302,7 @@ class _SaveLoadConfig(object):
 
         # If True, It will save inference program only, and do not save params of Program
         self._program_only = False
+        self.with_hook = False
 
     @property
     def output_spec(self):
@@ -370,7 +371,7 @@ class _SaveLoadConfig(object):
 
 
 def _parse_save_configs(configs):
-    supported_configs = ['output_spec']
+    supported_configs = ['output_spec', "with_hook"]
 
     # input check
     for key in configs:
@@ -382,6 +383,7 @@ def _parse_save_configs(configs):
     # construct inner config
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
+    inner_config.with_hook = configs.get('with_hook', False)
 
     return inner_config
 
@@ -454,11 +456,15 @@ def _get_input_var_names(inputs, input_spec):
     return result_list
 
 
-def _get_output_vars(outputs, output_spec):
+def _get_output_vars(outputs, output_spec, with_hook=False):
     name_no_exists_error = "The tensor `%s` does not exists. " \
         "Please make sure the name of example Tensor " \
         "in configs.output_spec is the output tensor of " \
         "Layer.forward method."
+    if output_spec and with_hook:
+        raise RuntimeError(
+            "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
+        )
     result_list = []
     output_vars_dict = OrderedDict()
     for var in flatten(outputs):
@@ -830,10 +836,16 @@ def save(layer, path, input_spec=None, **configs):
 
     # parse configs
     configs = _parse_save_configs(configs)
+    # whether outermost layer has pre/post hook, if does, we need also save
+    # these operators in program. 
+    with_hook = configs.with_hook
+
     scope = core.Scope()
     extra_var_info = dict()
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
+        if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
+            with_hook = True
     else:
         # layer is function
         functions = [layer, ]
@@ -842,7 +854,7 @@ def save(layer, path, input_spec=None, **configs):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
                 concrete_program = static_func.concrete_program_specify_input_spec(
-                    inner_input_spec)
+                    inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
@@ -852,7 +864,8 @@ def save(layer, path, input_spec=None, **configs):
                                                         inner_input_spec)
                 static_forward = declarative(
                     inner_layer.forward, input_spec=inner_input_spec)
-                concrete_program = static_forward.concrete_program
+                concrete_program = static_forward.concrete_program_specify_input_spec(
+                    with_hook=with_hook)
                 # the input_spec has been used in declarative, which is equal to
                 # @declarative with input_spec and jit.save without input_spec,
                 # avoid needless warning
@@ -921,7 +934,8 @@ def save(layer, path, input_spec=None, **configs):
                                     param_or_buffer.name]
                         extra_info_dict[
                             'stop_gradient'] = param_or_buffer.stop_gradient
-                        if isinstance(param_or_buffer, ParamBase):
+                        if isinstance(param_or_buffer,
+                                      (ParamBase, EagerParamBase)):
                             extra_info_dict[
                                 'trainable'] = param_or_buffer.trainable
                         extra_var_info[param_or_buffer.name] = extra_info_dict
@@ -942,8 +956,10 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support VarBase spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
+        # print(concrete_program.main_program)
+        # print(concrete_program.outputs, configs.output_spec)
         output_vars = _get_output_vars(concrete_program.outputs,
-                                       configs.output_spec)
+                                       configs.output_spec, with_hook)
 
         # 5. save inference model
         from paddle.fluid.io import save_inference_model
@@ -1435,7 +1451,7 @@ class TracedLayer(object):
             "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if in_dygraph_mode():
+        if _non_static_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:

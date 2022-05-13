@@ -171,6 +171,47 @@ class DenseTensor : public TensorBase,
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
 
+ public:
+  /* Temporarily put InplaceVersion inside DenseTensor.
+  Will move to AutogradMeta as soon as we switch to Eager Dygraph.
+  */
+  class InplaceVersion {
+   public:
+    bool IsUnique() const { return inplace_version_ == 0; }
+    void Bump() { ++inplace_version_; }
+    uint32_t CurrentVersion() const { return inplace_version_; }
+    void SetInplaceVersionToZero() { inplace_version_ = 0; }
+
+   private:
+    uint32_t inplace_version_{0};
+  };
+
+ protected:
+  std::shared_ptr<InplaceVersion> inplace_version_counter_{
+      std::make_shared<InplaceVersion>()};
+
+/* @jim19930609: This is a hack
+In general, it is badly designed to fuse MKLDNN-specific objects into a
+generic Tensor.
+We temporarily leave them here to unblock Tensor Unification progress.
+In the final state, we should come up with a MKLDNN_Tensor and move the
+following codes there.
+*/
+#ifdef PADDLE_WITH_MKLDNN
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
+
+  /// \brief memory descriptor of tensor which have layout set as kMKLDNN
+  dnnl::memory::desc mem_desc_;
+#endif
+
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif

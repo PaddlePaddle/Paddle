@@ -15,7 +15,6 @@
 import copy
 import time
 import random
-import logging
 from functools import reduce
 from itertools import chain, product
 from collections import OrderedDict
@@ -36,7 +35,6 @@ from .utils import get_all_distributed_main_program
 from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
-paddle.enable_static()
 paddle.seed(123)
 random.seed(123)
 np.random.seed(123)
@@ -741,7 +739,7 @@ class MCMC(SearchAlgorithm):
         return best_dist_context, min_cost
 
     def search(self):
-        logging.info("Start MCMC searching.")
+        print("Start MCMC searching.")
         start_time = time.time()
         train_program = self.serial_program_info.train_program
         cluster = self.serial_program_info.cluster
@@ -757,9 +755,8 @@ class MCMC(SearchAlgorithm):
         searched_pipeline_dist_context = None
         pipeline_min_cost = None
         for process_mesh_topology in process_mesh_topology_list:
-            logging.info(
-                "MCMC search: search process mesh {} with pipeline mode.".
-                format(process_mesh_topology))
+            print("MCMC search: search process mesh {} with pipeline mode.".
+                  format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, True)
             init_dist_context = self.init_program(
@@ -768,7 +765,7 @@ class MCMC(SearchAlgorithm):
             best_dist_context, cost = self._search_core(valid_dist_attr_dict,
                                                         init_dist_context,
                                                         pipeline_process_meshes)
-            logging.info(
+            print(
                 "MCMC search: the min cost is {} in the process mesh {} with pipeline mode.".
                 format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
@@ -784,9 +781,8 @@ class MCMC(SearchAlgorithm):
             # if process_mesh_topology shape is 3, include pipeline mode by default
             if len(process_mesh_topology) == 3:
                 continue
-            logging.info(
-                "MCMC search: search process mesh {} without pipeline mode.".
-                format(process_mesh_topology))
+            print("MCMC search: search process mesh {} without pipeline mode.".
+                  format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, False)
             init_dist_context = self.init_program(
@@ -795,7 +791,7 @@ class MCMC(SearchAlgorithm):
             best_dist_context, cost = self._search_core(valid_dist_attr_dict,
                                                         init_dist_context,
                                                         pipeline_process_meshes)
-            logging.info(
+            print(
                 "MCMC search: the min cost is {} in the process mesh {} without pipeline mode.".
                 format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
@@ -808,7 +804,7 @@ class MCMC(SearchAlgorithm):
         if non_pipeline_min_cost > pipeline_min_cost:
             searched_dist_context = searched_pipeline_dist_context
             min_cost = pipeline_min_cost
-            logging.info(
+            print(
                 "Better set FLAGS_benchmark=1 to avoid hang problem in the pipeline mode."
             )
         else:
@@ -820,7 +816,7 @@ class MCMC(SearchAlgorithm):
         for process_mesh in searched_dist_context._process_meshes:
             pg0.add_ranks(process_mesh.processes)
         end_time = time.time()
-        logging.info(
+        print(
             "End MCMC searching: the min cost is {} and the search time is {}s.".
             format(min_cost, end_time - start_time))
         return searched_dist_context, min_cost

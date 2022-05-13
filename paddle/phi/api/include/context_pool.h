@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
+
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -53,26 +56,31 @@ struct DefaultDeviceContextType<AllocationType::GPU> {
  * In order not to depend on the fluid's DeviceContextPool,
  * the DeviceContextPool here needs to be initialized in the fluid, and cannot
  * be initialized by itself.
+ *
+ * Note: DeviceContextPool is an experimental API and may be removed in the
+ * future. From 2.3, we recommend directly using the C++ API to combine new
+ * perators.
  */
-class DeviceContextPool {
+class PADDLE_API DeviceContextPool {
  public:
   static DeviceContextPool& Instance();
 
-  const phi::DeviceContext* Get(const Place& place) const;
+  const phi::DeviceContext* Get(const Place& place);
 
   phi::DeviceContext* GetMutable(const Place& place);
 
   template <AllocationType T>
-  const typename DefaultDeviceContextType<T>::TYPE* Get(
-      const Place& place) const {
+  const typename DefaultDeviceContextType<T>::TYPE* Get(const Place& place) {
     return reinterpret_cast<const typename DefaultDeviceContextType<T>::TYPE*>(
         Get(place));
   }
 
  private:
-  DeviceContextPool();
+  DeviceContextPool() = default;
+
   paddle::flat_hash_map<Place, const phi::DeviceContext*, Place::Hash>
       context_map_;
+  std::mutex mutex_;
 
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
