@@ -68,7 +68,7 @@ class SplitOpConverter : public OpConverter {
       gather_indices.resize(trt_step_dims.nbDims);
       std::iota(gather_indices.begin(), gather_indices.end(), 0);
       gather_indices[axis] = gather_indices.size();
-      string s = "";
+      std::string s = "";
       auto gather_indices_tensor = Add1DConstantLayer(gather_indices, s + "_add_split_op_" + "gather_indices");
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
       auto zeros_tensor = Add1DConstantLayer(zeros, s + "_add_split_op_" + "zeros");
@@ -87,11 +87,11 @@ class SplitOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor, each_len_tensor};
         start_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
                  *zeros_tensor,
-                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data() ,2)->getOutput(0),
+                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs1.data() ,2)->getOutput(0),
                 0);
         auto size_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
                  *shape_tensor,
-                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data() ,2)->getOutput(0),
+                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs2.data() ,2)->getOutput(0),
                 0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
