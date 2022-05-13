@@ -15,7 +15,9 @@
 import unittest
 import numpy as np
 import paddle
-from paddle import _C_ops
+from op_test import OpTest
+from paddle.framework import core
+# from paddle import _C_ops
 
 
 # def fused_token_prune(attn, mask, x, factor):
@@ -51,10 +53,10 @@ from paddle import _C_ops
 #     return slimmed_x
 
 
-class TestFusedTokenPruneOp(unittest.TestCase):
+class TestFusedTokenPruneOp(OpTest):
     def setUp(self):
-        # self.op_type = 'fused_token_prune'
-        # self.dtype = np.float32
+        self.op_type = 'fused_token_prune'
+        self.dtype = np.float32
         attn = [[1, 2], [3, 4]]
         attn = np.array(attn, dtype='float32')
         attn = np.expand_dims(attn, axis=0)
@@ -70,22 +72,33 @@ class TestFusedTokenPruneOp(unittest.TestCase):
         new_mask = np.array(new_mask, dtype='float32')
         new_mask = np.expand_dims(new_mask, axis=0) 
         self.new_mask = np.expand_dims(new_mask, axis=0)  #[1, 1, 1, 1]
+        self.inputs = {'Attn': self.attn,
+                        'Mask': self.mask,
+                        'X': self.x,
+                        'NewMask': self.new_mask}
         # self.factor = 0.5
         # self.attn = np.random.rand(16, 12, 128, 128)
         # self.mask = np.random.uniform(-1, 1, [16, 12, 128, 128])
         # self.x = np.random.rand(16, 128, 768)
 
-    def test_fused_token_prune_op(self):
         out_py = [[[1,2,3]]]
         out_py = np.array(out_py, dtype='float32')
-        attn = paddle.to_tensor(self.attn)
-        mask = paddle.to_tensor(self.mask)
-        x = paddle.to_tensor(self.x)
-        new_mask = paddle.to_tensor(self.new_mask)
-        out = _C_ops.fused_token_prune(attn, x, mask, new_mask)
-        self.assertTrue(
-            np.array_equal(out.numpy(), out_py),
-            "paddle out: {}\n py out: {}\n".format(out.numpy(), out_py))
+        self.outputs = {'SlimmedX': out_py}
+
+
+    # def test_fused_token_prune_op(self):
+        
+    #     attn = paddle.to_tensor(self.attn)
+    #     mask = paddle.to_tensor(self.mask)
+    #     x = paddle.to_tensor(self.x)
+    #     new_mask = paddle.to_tensor(self.new_mask)
+    #     out = _C_ops.fused_token_prune(attn, x, mask, new_mask)
+    #     self.assertTrue(
+    #         np.array_equal(out.numpy(), out_py),
+    #         "paddle out: {}\n py out: {}\n".format(out.numpy(), out_py))
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 if __name__ == "__main__":

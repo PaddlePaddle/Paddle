@@ -233,6 +233,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_fused_elemwise_activation_op',
     'test_fused_emb_seq_pool_op',
     'test_fused_embedding_fc_lstm_op',
+    'test_fused_token_prune_op',
     'test_fusion_gru_op',
     'test_fusion_lstm_op',
     'test_fusion_repeated_fc_relu_op',
