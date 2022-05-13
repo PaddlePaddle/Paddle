@@ -128,8 +128,8 @@ class SliceOpConverter : public OpConverter {
         auto shape_tensor = shape_layer->getOutput(0);
         auto size_layer = TRT_ENGINE_ADD_LAYER(
             engine_, ElementWise, *shape_tensor, *start_tensor,
-            nvinfer1::ElementWiseOperation::kSUB) auto size_tensor =
-            size_layer->getOutput(0);
+            nvinfer1::ElementWiseOperation::kSUB);
+        auto size_tensor = size_layer->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_out_dims, trt_step_dims);
