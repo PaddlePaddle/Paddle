@@ -13,13 +13,29 @@
 # limitations under the License
 
 from collections import OrderedDict
+from functools import reduce
+
 import paddle
 
+from ..cluster import LinkType
+from ..process_group import get_process_group
+
 COMM_OP_TYPE = [
-    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum"
+    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum",
+    "c_identity"
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
 _g_op_cost_factory = {}
+
+
+def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
+    desc = {}
+    desc["op"] = op_type
+    desc["group_ranks"] = group_ranks
+    desc["inputs"] = {"X": [(dtype, shape)]}
+    if attrs is not None:
+        desc["attrs"] = attrs
+    return desc
 
 
 def _parse_op_to_desc(op, dist_context=None):
