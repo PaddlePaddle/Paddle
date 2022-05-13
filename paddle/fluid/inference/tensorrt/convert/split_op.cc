@@ -99,20 +99,20 @@ class SplitOpConverter : public OpConverter {
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16);
       layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
+
+      std::string layer_name = "split (Output: ";
+      for (size_t i = 0; i < output_num; i++) {
+        auto output_name = op_desc.Output("Out")[i];
+        layer->getOutput(i)->setName(output_name.c_str());
+        engine_->SetITensor(output_name, layer->getOutput(i));
+        layer_name += output_name;
+        if (test_mode) {
+          engine_->DeclareOutput(output_name);
+        }
+      }
+      layer->setName((layer_name + ")").c_str());
 #endif
     }
-
-    // std::string layer_name = "split (Output: ";
-    // for (size_t i = 0; i < output_num; i++) {
-    //   auto output_name = op_desc.Output("Out")[i];
-    //   layer->getOutput(i)->setName(output_name.c_str());
-    //   engine_->SetITensor(output_name, layer->getOutput(i));
-    //   layer_name += output_name;
-    //   if (test_mode) {
-    //     engine_->DeclareOutput(output_name);
-    //   }
-    // }
-    // layer->setName((layer_name + ")").c_str());
   }
 };
 
