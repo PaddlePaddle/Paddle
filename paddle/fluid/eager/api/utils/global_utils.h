@@ -21,7 +21,7 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/utils/small_vector.h"
 namespace egr {
-constexpr size_t kSlotSmallVectorSize = 15U;
+
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}

@@ -479,7 +479,7 @@ static void PreparedOpRunImpl(
 
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
-        op.Type(), outs, dev_ctx->GetPlace());
+        op, outs, dev_ctx->GetPlace());
   }
 
   if (FLAGS_benchmark) {
@@ -544,7 +544,7 @@ static void PreparedOpRunPtImpl(
 
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
-        op.Type(), outs, dev_ctx->GetPlace());
+        op, outs, dev_ctx->GetPlace());
   }
 
   if (FLAGS_benchmark) {

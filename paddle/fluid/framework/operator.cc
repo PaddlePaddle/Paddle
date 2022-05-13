@@ -532,56 +532,6 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   }
 }
 
-bool ExecutionContext::HasInput(const std::string& name) const {
-  auto* var = InputVar(name);
-  return var != nullptr;
-}
-
-bool ExecutionContext::HasInputs(const std::string& name) const {
-  const auto& ins = ctx_.inputs;
-  auto it = ins.find(name);
-  if (it == ins.end() || it->second.empty()) {
-    return false;
-  }
-  for (const auto* input : it->second) {
-    if (input == nullptr) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool ExecutionContext::HasOutput(const std::string& name) const {
-  auto* var = OutputVar(name);
-  return var != nullptr;
-}
-
-const Variable* ExecutionContext::InputVar(const std::string& name) const {
-  LogVarUsageIfUnusedVarCheckEnabled(name);
-
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) return nullptr;
-
-  PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
-      platform::errors::InvalidArgument(
-          "Operator %s's input %s should contain only one variable.",
-          op_.Type(), name));
-  return it->second.empty() ? nullptr : it->second[0];
-}
-
-Variable* ExecutionContext::OutputVar(const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) return nullptr;
-
-  PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
-      platform::errors::InvalidArgument(
-          "Operator %s's output %s should contain only one variable.",
-          op_.Type(), name));
-  return it->second.empty() ? nullptr : it->second[0];
-}
-
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {

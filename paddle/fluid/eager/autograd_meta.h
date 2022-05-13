@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 namespace egr {
 

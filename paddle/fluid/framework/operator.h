@@ -296,11 +296,29 @@ class ExecutionContext {
     return op_.Attrs().at(name);
   }
 
-  virtual bool HasInput(const std::string& name) const;
+  virtual bool HasInput(const std::string& name) const {
+    auto* var = InputVar(name);
+    return var != nullptr;
+  }
 
-  virtual bool HasInputs(const std::string& name) const;
+  virtual bool HasInputs(const std::string& name) const {
+    const auto& ins = ctx_.inputs;
+    auto it = ins.find(name);
+    if (it == ins.end() || it->second.empty()) {
+      return false;
+    }
+    for (const auto* input : it->second) {
+      if (input == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-  virtual bool HasOutput(const std::string& name) const;
+  virtual bool HasOutput(const std::string& name) const {
+    auto* var = OutputVar(name);
+    return var != nullptr;
+  }
 
   virtual size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
@@ -310,9 +328,31 @@ class ExecutionContext {
     return op_.Outputs(name).size();
   }
 
-  virtual const Variable* InputVar(const std::string& name) const;
+  virtual const Variable* InputVar(const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
 
-  virtual Variable* OutputVar(const std::string& name) const;
+    auto it = ctx_.inputs.find(name);
+    if (it == ctx_.inputs.end()) return nullptr;
+
+    PADDLE_ENFORCE_LE(
+        it->second.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Operator %s's input %s should contain only one variable.",
+            op_.Type(), name));
+    return it->second.empty() ? nullptr : it->second[0];
+  }
+
+  virtual Variable* OutputVar(const std::string& name) const {
+    auto it = ctx_.outputs.find(name);
+    if (it == ctx_.outputs.end()) return nullptr;
+
+    PADDLE_ENFORCE_LE(
+        it->second.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Operator %s's output %s should contain only one variable.",
+            op_.Type(), name));
+    return it->second.empty() ? nullptr : it->second[0];
+  }
 
   virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {

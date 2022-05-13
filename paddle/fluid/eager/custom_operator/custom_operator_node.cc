@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/phi/api/ext/op_meta_info.h"

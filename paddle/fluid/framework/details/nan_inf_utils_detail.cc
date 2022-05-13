@@ -19,7 +19,9 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
 namespace framework {
@@ -604,6 +606,57 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
     }
   }
 }
+
+template <typename VarType>
+void CheckOpHasNanOrInfInDygraph(const framework::OperatorBase& op,
+                                 const imperative::NameVarMap<VarType>& op_outs,
+                                 platform::Place place) {
+  std::call_once(white_list_init_flag, InitWhiteListFormEnv);
+
+  if (IsSkipOp(op)) return;
+
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+    for (const auto& pair : op_outs) {
+      for (const auto& ivar : pair.second) {
+        auto* var = ivar->MutableVar();
+        if (var == nullptr) continue;
+        CheckVarHasNanOrInf(op.Type(), imperative::GetNameFromVar(ivar), var,
+                            place);
+      }
+    }
+  } else {
+    // NOTE: dygraph var may be different in each iter
+    for (const auto& pair : op_outs) {
+      for (const auto& ivar : pair.second) {
+        auto& var_name = imperative::GetNameFromVar(ivar);
+        bool need_check = true;
+        for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
+          if (var_name.find(white_vname) != std::string::npos) {
+            need_check = false;
+            break;
+          }
+        }
+        if (!need_check) continue;
+        auto* var = ivar->MutableVar();
+        if (var == nullptr) continue;
+        CheckVarHasNanOrInf(op.Type(), var_name, var, place);
+      }
+    }
+  }
+}
+
+template void CheckOpHasNanOrInfInDygraph<imperative::VarBase>(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VarBase>& op_outs,
+    platform::Place place);
+template void CheckOpHasNanOrInfInDygraph<imperative::VariableWrapper>(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VariableWrapper>& op_outs,
+    platform::Place place);
+template void CheckOpHasNanOrInfInDygraph<egr::EagerVariable>(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<egr::EagerVariable>& op_outs,
+    platform::Place place);
 
 }  // namespace details
 }  // namespace framework

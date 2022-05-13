@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
 namespace egr {

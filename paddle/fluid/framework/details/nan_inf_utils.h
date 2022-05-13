@@ -41,18 +41,9 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const platform::Place& place);
 
 template <typename VarType>
-void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
+void CheckOpHasNanOrInfInDygraph(const framework::OperatorBase& op,
                                  const imperative::NameVarMap<VarType>& op_outs,
-                                 platform::Place place) {
-  for (const auto& pair : op_outs) {
-    for (const auto& ivar : pair.second) {
-      auto* var = ivar->MutableVar();
-      if (var == nullptr) continue;
-      CheckVarHasNanOrInf(op_type, paddle::imperative::GetNameFromVar(ivar),
-                          var, place);
-    }
-  }
-}
+                                 platform::Place place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,

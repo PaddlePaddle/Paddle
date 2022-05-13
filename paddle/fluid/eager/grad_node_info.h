@@ -15,13 +15,20 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 
-#include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/eager_tensor.h"
+#include "glog/logging.h"
+
 #include "paddle/fluid/eager/hooks.h"
-#include "paddle/phi/api/all.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/utils/small_vector.h"
 
 namespace egr {
+
+constexpr size_t kSlotSmallVectorSize = 15U;
+
 /**
  * GradNodeBase is base class of all grad node, which is what should be used by
  * eager execution, we define most of backward autograd members here, and for
