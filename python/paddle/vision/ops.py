@@ -895,7 +895,9 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
     Examples:
         .. code-block:: python
+
             import cv2
+            import numpy as np
             import paddle
 
             fake_img = (np.random.random(
