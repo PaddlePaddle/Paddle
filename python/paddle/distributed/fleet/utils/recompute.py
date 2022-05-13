@@ -19,6 +19,7 @@ from paddle.autograd import PyLayer, EagerPyLayer
 from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
 
 import logging
 logger = logging.getLogger(__name__)
@@ -53,13 +54,17 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def swith_rng_state(rng_state):
+def swith_rng_state_tracker(rng_state, tracker):
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
+    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
     paddle.set_cuda_rng_state(rng_state)
+    get_rng_state_tracker().set_states_tracker(tracker)
     try:
         yield
     finally:
         paddle.set_cuda_rng_state(orig_cuda_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
 
 
 class EagerRecomputeFunction(EagerPyLayer):
@@ -98,6 +103,8 @@ class EagerRecomputeFunction(EagerPyLayer):
                     "Recompute with RNG perserve is not support current device: {}.".
                     format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -143,7 +150,8 @@ class EagerRecomputeFunction(EagerPyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
@@ -232,6 +240,8 @@ class RecomputeFunction(PyLayer):
                     "Recompute with RNG perserve is not support current device: {}.".
                     format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -277,7 +287,8 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
