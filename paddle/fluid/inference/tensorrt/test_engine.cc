@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
+#include <chrono>
+#include <math.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -148,6 +149,10 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
     x_v[4*i+2] = 3.0;
     x_v[4*i+3] = 4.0;
   }
+  for (int i=0; i<512; i++) {
+    x_v[i] = sqrt(-1);
+    std::cout << isnan(x_v[i]);
+  }
 
   std::vector<float> y_cpu;
   PrepareInputOutput(x_v, {16, 16});
@@ -160,9 +165,15 @@ TEST_F(TensorRTEngineTest, test_sparse_fc) {
   context->setBindingDimensions(1, nvinfer1::Dims4{16,16,1,1});
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
-
-  engine_->Execute(16, &buffers, context, ctx_->stream());
-
+  float dur = 0;
+  for (int i=0; i<1000; i++) {
+    auto start = std::chrono::high_resolution_clock::now();
+    engine_->Execute(16, &buffers, context, ctx_->stream());
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    dur = dur + duration.count();
+  }
+  std::cout << "Time taken by function: " << dur/1000 << " ms" << std::endl;
   LOG(INFO) << "to get output";
   GetOutput(&y_cpu);
 

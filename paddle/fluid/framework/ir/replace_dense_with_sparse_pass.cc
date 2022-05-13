@@ -66,7 +66,7 @@ void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
     auto *fc_op = fc->Op();
     auto w_name = fc_op->Input("W")[0];
     // recognize sparse op by name
-    w_name = "fake_sparse_2_4";
+    // w_name = "fake_sparse_2_4";
     if (w_name.find("sparse_2_4") != w_name.npos) {
       // fake op
       OpDesc desc(fc_op->Block());

@@ -665,7 +665,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
       const auto* const input = static_cast<const float*>(inputs[0]);
       auto* output = static_cast<float*>(outputs[0]);
-
+      /*
       size_t in_size = 1;
       size_t out_size = 1;
       for (int i=0; i<inputDesc->dims.nbDims; i++) {
@@ -682,7 +682,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         std::cout << " " << static_cast<float>(reinterpret_cast<float*>(in_host)[i]);
       }
       std::cout << std::endl;
-
+      */
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_, &beta, output, output, workSpace, &stream, 1);
