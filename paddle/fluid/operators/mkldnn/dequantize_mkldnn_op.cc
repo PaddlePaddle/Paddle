@@ -42,9 +42,9 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     const bool with_shift = quantization_shift != 0.0f;
     auto* out = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE_NE(quantization_scale, 0.0f,
-                      platform::errors::InvalidArgument(
-                          "Dequantization scale must be different than 0.0f"));
+    PADDLE_ENFORCE(quantization_scale != 0.0f,
+                   platform::errors::InvalidArgument(
+                       "Dequantization scale must be different than 0.0f"));
 
     PADDLE_ENFORCE(
         quantization_shift <= 255 && quantization_shift >= 0,

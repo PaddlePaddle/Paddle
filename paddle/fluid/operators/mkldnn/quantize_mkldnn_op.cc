@@ -43,9 +43,9 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const bool with_scale = quantization_scale != 1.0f;
     const bool with_shift = quantization_shift != 0.0f;
 
-    PADDLE_ENFORCE_NE(quantization_scale, 0.0f,
-                      platform::errors::InvalidArgument(
-                          "Quantization scale must be different than 0.0f"));
+    PADDLE_ENFORCE(quantization_scale != 0.0f,
+                   platform::errors::InvalidArgument(
+                       "Quantization scale must be different than 0.0f"));
     PADDLE_ENFORCE(
         quantization_shift <= 255 && quantization_shift >= 0,
         platform::errors::InvalidArgument(
