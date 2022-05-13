@@ -181,13 +181,12 @@ DDim DDim::reshape(const std::vector<int>& new_shape) const {
   // dim marked as "-1" must be infered
   auto it = std::find(shape.begin(), shape.end(), -1);
   if (it != shape.end()) {
-    int index = std::distance(shape.begin(), it);
     auto ddim_out_vec = phi::vectorize(in_dims);
     int ddim_out_product = std::accumulate(
         ddim_out_vec.begin(), ddim_out_vec.end(), 1, std::multiplies<int>());
     int reshape_out_product =
         std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
-
+    int index = std::distance(shape.begin(), it);
     shape[index] = ddim_out_product / reshape_out_product;
   }
 

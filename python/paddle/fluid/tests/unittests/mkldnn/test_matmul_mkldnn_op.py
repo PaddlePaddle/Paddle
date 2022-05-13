@@ -518,6 +518,7 @@ class TestMatMulOpTransposeReshapeOtherDimInt(
     def init_data_type(self):
         self.data_type_ = np.int8
 
+
 if __name__ == "__main__":
     from paddle import enable_static
     enable_static()

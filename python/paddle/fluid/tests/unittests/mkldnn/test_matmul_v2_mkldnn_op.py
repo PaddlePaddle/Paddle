@@ -26,11 +26,11 @@ import paddle.fluid.framework as framework
 from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
     TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeBasicFloat,
-    TestMatMulOpTransposeReshapeOtherDimFloat,
-    TestReshapeTransposeMatMulOp, TestReshapeTransposeMatMulOp4DXFloat,
-    TestReshapeTransposeMatMulOp4DYFloat, TestReshapeTransposeMatMulOp4DXYFloat,
-    TestReshapeTransposeMatMulOp2DXFloat, TestReshapeTransposeMatMulOp2DYFloat,
-    TestReshapeTransposeMatMulOp3DXFloat, TestReshapeTransposeMatMulOp3DYFloat)
+    TestMatMulOpTransposeReshapeOtherDimFloat, TestReshapeTransposeMatMulOp,
+    TestReshapeTransposeMatMulOp4DXFloat, TestReshapeTransposeMatMulOp4DYFloat,
+    TestReshapeTransposeMatMulOp4DXYFloat, TestReshapeTransposeMatMulOp2DXFloat,
+    TestReshapeTransposeMatMulOp2DYFloat, TestReshapeTransposeMatMulOp3DXFloat,
+    TestReshapeTransposeMatMulOp3DYFloat)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
