@@ -333,6 +333,10 @@ class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
 
 
 class TestConstantPadDoubleGradCheck(unittest.TestCase):
+    def pad_wrapper(self, x):
+        pad = [1, 1, 1, 1]
+        return paddle.nn.functional.pad(x[0], pad)
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -347,6 +351,8 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], out, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.pad_wrapper, [x], out, x_init=x_arr, place=place)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -357,6 +363,10 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
 
 class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
+    def pad_wrapper(self, x):
+        pad = [1, 0, 1, 0, 1, 0, 1, 0]
+        return paddle.nn.functional.pad(x[0], pad)
+
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -369,6 +379,8 @@ class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.pad_wrapper, [x], out, x_init=x_arr, place=place)
 
 
 class TestConcatDoubleGradCheck(unittest.TestCase):
