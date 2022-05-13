@@ -34,7 +34,7 @@ class VitAttentionOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Output(Out) of MultiHeadMatMul should not be null."));
 
-    int head_number = context->Attrs().Get<int>("head_number");
+    // int head_number = context->Attrs().Get<int>("head_number");
     auto dim_input = context->GetInputDim("Input");
     int batch = dim_input[0];
     int seq_len = dim_input[1];
