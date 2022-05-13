@@ -81,12 +81,12 @@ class Optimizer(object):
     Returns:
        Base class for optimizer. 
     
-    Example:
+    Examples:
         .. code-block:: python
 
             #Take the subclass adam as an example
             import paddle
-
+            
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             out = linear(inp)
@@ -227,6 +227,7 @@ class Optimizer(object):
         self._auxiliary_vars = {}
 
     def _set_auxiliary_var(self, key, val):
+        print("0")
         self._auxiliary_vars[key] = val
 
     def _get_auxiliary_var(self, key):
