@@ -339,10 +339,10 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 Please use '.. code-block:: python' to format the sample code.""")
                 return []
         else:
-            logger.warning("Error: No sample code found! \
-                            Please check if the sample code contais string 'Examples:' correctly"
-                           )
-            return []
+            logger.error(
+                "Error: No sample code found! Please check if the sample code contais string 'Examples:' correctly"
+            )
+            exit(1)
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
