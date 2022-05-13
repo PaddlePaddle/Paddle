@@ -107,13 +107,28 @@ class SliceOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
                                           plugin_inputs.size(), plugin);
       } else {
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        int decrease_axis =
-            decrease_axises.size() == 0 ? -1 : decrease_axises[0];
-        plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
-            starts, ends, axes, decrease_axis, with_fp16);
-        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+      auto nchw_input_dims = input->getDimensions();
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = nchw_input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * nchw_input_dims.nbDims);
+      nvinfer1::Dims trt_out_dims = nchw_input_dims;
+      nvinfer1::Dims trt_step_dims;
+      trt_step_dims.nbDims = nchw_input_dims.nbDims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
+
+      // input : [N,C,H,W]
+      for (size_t i = 0; i < axes.size(); i++) {
+        int trt_axis = axes[i];
+        trt_start_dims.d[trt_axis] = starts[i];
+      }
+
+      auto start_tensor = Add1DConstantLayer(trt_start_dims, output_name + "_add_slice_op_" + "start");
+      auto shape_tensor = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+      auto size_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, shape_tensor, start_tensor)->getOutput(0);
+
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
+                                   trt_out_dims, trt_step_dims);
+      layer->setInput(2, *size_tensor);
       }
     } else {
 #if IS_TRT_VERSION_GE(7130)
