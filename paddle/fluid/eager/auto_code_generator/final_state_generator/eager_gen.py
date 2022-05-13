@@ -1324,8 +1324,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             if IsPlainTensorType(ttype):
                 grad_function_call_str += f"""
-  auto* api_output_{out_index} = out_metas[{fwd_position}][0].IsStopGradient() ? nullptr : &returns[{fwd_position}][0];
-"""
+  auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];"""
 
             else:
                 assert IsVectorTensorType(ttype)
@@ -1338,8 +1337,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     }} else {{
       api_output_{out_index}.push_back(&returns[{fwd_position}][i]);
     }}
-  }}
-"""
+  }}"""
 
         grad_api_args_str = ", ".join(grad_api_args)
 
