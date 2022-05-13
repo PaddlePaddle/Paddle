@@ -1934,7 +1934,7 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
-  m.def("get_readable_comile_key", [](int64_t compilation_key) {
+  m.def("get_serialize_comile_key", [](int64_t compilation_key) {
 #ifdef PADDLE_WITH_CINN
     auto compiler = framework::paddle2cinn::CinnCompiler::GetInstance();
     auto s = compiler->SerializeKey(compilation_key);

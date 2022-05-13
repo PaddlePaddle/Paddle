@@ -144,8 +144,8 @@ const Graph& CinnCompiler::FindGraph(int64_t graph_key) const {
   PADDLE_ENFORCE_NE(
       it, graphs_.end(),
       platform::errors::PreconditionNotMet(
-          "Can not find the target graph, of which the key is:\n%s",
-          ReadableKey(graph_key).c_str()));
+          "Can not find the target graph, of which the key is: %lld",
+          graph_key));
   return *it->second;
 }
 
