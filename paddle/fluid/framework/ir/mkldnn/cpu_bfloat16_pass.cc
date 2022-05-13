@@ -187,18 +187,22 @@ class DeQuantizer final : public Quanter {
   // should be added after the output to the operator
   bool IsNotPermittedName(const std::string& output_name) const override {
     std::unordered_map<std::string, std::vector<std::string>> black_list{
-      {"layer_norm", {"Mean", "Variance"}}}; // not used in inference in MKLDNN
+        {"layer_norm",
+         {"Mean", "Variance"}}}; // not used in inference in MKLDNN
 
-    std::vector<std::string> blacklisted_outputs{"XShape"}; // blacklist for any op
+    std::vector<std::string> blacklisted_outputs{
+        "XShape"}; // blacklist for any op
     auto op_name = op->Name();
     if (black_list.count(op_name)) {
       const auto& op_blacklist = black_list[op_name];
-      blacklisted_outputs.insert(blacklisted_outputs.begin(), op_blacklist.begin(), op_blacklist.end());
+      blacklisted_outputs.insert(blacklisted_outputs.begin(),
+                                 op_blacklist.begin(), op_blacklist.end());
     }
 
-    return std::any_of(blacklisted_outputs.begin(),
-                       blacklisted_outputs.end(),
-                       [&output_name](const std::string& name) { return name == output_name; });
+    return std::any_of(blacklisted_outputs.begin(), blacklisted_outputs.end(),
+                       [&output_name](const std::string& name) {
+                         return name == output_name;
+                       });
   }
 
   std::string get_op_type() const override { return "dequantize"; };

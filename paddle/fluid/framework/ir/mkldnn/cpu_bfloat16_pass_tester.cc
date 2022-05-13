@@ -65,8 +65,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 static const std::initializer_list<std::string> variable_names{
     "z", "a", "b", "c", "d", "e", "f", "g", "h", "i"};
 
-void PreparePass(std::unique_ptr<ir::Graph>& graph,
-                 int* original_nodes_num,
+void PreparePass(std::unique_ptr<ir::Graph>& graph, int* original_nodes_num,
                  int* current_nodes_num) {
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
 
