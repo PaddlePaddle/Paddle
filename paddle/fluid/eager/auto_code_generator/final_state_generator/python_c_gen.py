@@ -100,7 +100,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
     // Set Device ID
 {}
-    auto out = {}({});
+    decltype({}({})) out = {}({});
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -328,7 +328,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
-        # Generate Python-C Function Definitions 
+        # Generate Python-C Function Definitions
         if is_forward_only:
             fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
                 "paddle::experimental::", namespace, forward_api_name)
@@ -344,7 +344,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name, pythonc_record_event_str, forward_api_name,
             get_eager_tensor_str, parse_attributes_str, set_device_str,
-            fwd_function_name, dygraph_function_call_str, return_str)
+            fwd_function_name, dygraph_function_call_str, fwd_function_name,
+            dygraph_function_call_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -379,6 +380,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
                 parse_attributes_str, set_device_str,
+                inplaced_fwd_function_name, dygraph_function_call_str,
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 return_str)
 
