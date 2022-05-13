@@ -67,6 +67,37 @@ def np_logcumsumexp(x: np.ndarray,
     return x
 
 
+def np_logcumsumexp_grad(
+        x: np.ndarray,
+        dout: np.ndarray,
+        axis: Optional[int]=None,
+        flatten: Optional[bool]=None,
+        reverse: bool=False,
+        exclusive: bool=False, ):
+    # Reference:
+    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/math_grad.py
+    out = np_logcumsumexp(x, axis, flatten, reverse, exclusive)
+    log_grad_positive = np.where(dout > 0, np.log(dout), np.finfo(x.dtype).min)
+    log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
+
+    output_pos = np.exp(
+        np_logcumsumexp(
+            log_grad_positive - out,
+            axis=axis,
+            flatten=flatten,
+            reverse=not reverse,
+            exclusive=exclusive).reshape(x.shape) + x)
+    output_neg = np.exp(
+        np_logcumsumexp(
+            log_grad_negative - out,
+            axis=axis,
+            flatten=flatten,
+            reverse=not reverse,
+            exclusive=exclusive).reshape(x.shape) + x)
+
+    return output_pos - output_neg
+
+
 class TestLogcumsumexp(unittest.TestCase):
     def run_imperative(self):
         data_np = np.arange(12, dtype=np.float32).reshape(3, 4)
@@ -189,7 +220,13 @@ class BaseTestCases:
             self.check_output()
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out')
+            self.check_grad(
+                ['X'],
+                'Out',
+                user_defined_grads=[
+                    np_logcumsumexp_grad(self.inputs['X'], 1 /
+                                         self.inputs['X'].size, **self.attrs)
+                ])
 
         def input_and_attrs(self):
             raise NotImplementedError()
@@ -197,12 +234,21 @@ class BaseTestCases:
 
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 0, 'flatten': True, 'reverse': True}
+        return np.arange(
+            200, dtype=np.float64).reshape(20, 10), {
+                'axis': 0,
+                'flatten': True,
+                'reverse': True
+            }
 
 
 class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 1, 'reverse': True}
+        return np.arange(
+            200, dtype=np.float64).reshape(20, 10), {
+                'axis': 1,
+                'reverse': True
+            }
 
 
 class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
@@ -212,7 +258,13 @@ class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
 
 class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 0, 'flatten': True, 'reverse': True, 'exclusive': True}
+        return np.arange(
+            200, dtype=np.float64).reshape(20, 10), {
+                'axis': 0,
+                'flatten': True,
+                'reverse': True,
+                'exclusive': True
+            }
 
 
 if __name__ == '__main__':
