@@ -20,7 +20,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
 
@@ -76,7 +76,7 @@ class GradNodePyLayer : public GradNodeBase {
  private:
   PyObject* ctx_{nullptr};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
-  std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
+  std::vector<std::vector<phi::Place>> forward_outputs_place_;
 };
 
 }  // namespace egr
