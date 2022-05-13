@@ -770,14 +770,21 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   // create plan
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  bool using_cache = true;
-#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10400)
-  // NOTE: before cufft 10.4 cufftplans with bluestein algorithm cannot be
-  // reused
-  // bluestein algorithm is only used when at least of one of the fft sizes
+  bool using_cache = false;
+#if defined(CUFFT_VERSION)
+// some earlier vesions of cufft does not have CUFFT_VERSION defined in the
+// header
+#if CUFFT_VERSION == 10400
+  using_cache = true;
+#elif (10200 <= CUFFT_VERSION) && (CUFFT_VERSION < 10400)
+  // cufft 10.2 (cuda11.0）and cufft 10.3 (cuda 11.1) cannot cache any plan,
+  // as tested
+  using_cache = false;
+#elif CUFFT_VERSION < 10200
+  using_cache = true;
+  // NOTE: in cufft 10.1, plans with bluestein algorithm cannot be reused
+  // it is only used when at least of one of the fft sizes
   // has a prime factor larger than 127
-  // some earlier vesions of cufft does not have CUFFT_VERSION defined in the
-  // header
   for (int i = 1; i <= signal_ndim; ++i) {
     if (has_large_prime_factor(
             std::max(collapsed_input_shape[i], collapsed_output_shape[i]))) {
@@ -785,6 +792,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
       break;
     }
   }
+#endif
 #endif
 
   if (using_cache) {
@@ -795,6 +803,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
     std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
     guard.lock();
     config = &(plan_cache.lookup(key));
+    VLOG(10) << "current cufft cache size: " << plan_cache.size();
   } else {
     config_ = std::make_unique<FFTConfig>(key);
     config = config_.get();
