@@ -43,16 +43,14 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const bool with_scale = quantization_scale != 1.0f;
     const bool with_shift = quantization_shift != 0.0f;
 
-    PADDLE_ENFORCE_NE(
-        quantization_scale, 0.0f,
-        platform::errors::InvalidArgument("Quantization scale cannot be 0.0"));
-    PADDLE_ENFORCE_GE(quantization_shift, 0,
-                      platform::errors::Unimplemented(
-                          "Quantization shift must be nonnegative."));
-    PADDLE_ENFORCE_LE(
-        quantization_shift, 255,
-        platform::errors::Unimplemented(
-            "Quantization shift must be less than or equal to 255."));
+    PADDLE_ENFORCE_NE(quantization_scale, 0.0f,
+                      platform::errors::InvalidArgument(
+                          "Quantization scale must be different than 0.0f"));
+    PADDLE_ENFORCE(
+        quantization_shift <= 255 && quantization_shift >= 0,
+        platform::errors::InvalidArgument(
+            "Quantization shift must be lower or equal to",
+            "255 and greater or equal to 0, but got %f", quantization_shift));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
