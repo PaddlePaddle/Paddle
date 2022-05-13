@@ -32,6 +32,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
+    bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
         rid, 0,
         platform::errors::InvalidArgument(
@@ -79,6 +80,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto *out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensorArray>()) {
+      PADDLE_ENFORCE_EQ(
+          dynamic_shape, false,
+          platform::errors::InvalidArgument("Dynamic shape for send/recv not "
+                                            "support LoDTensorArray for now."));
       auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < out_array->size(); ++idx) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
@@ -99,7 +104,66 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     auto numel = out->numel();
 
-    out->mutable_data<T>(out_dims, place);
+    if (dynamic_shape) {
+      VLOG(3) << "recv_v2 will use dynamic shape with send_v2";
+      paddle::experimental::DataType shape_dytpe =
+          paddle::experimental::DataType::INT64;
+      ncclDataType_t nccl_dtype =
+          platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
+
+      // step1: recv the shape size
+
+      // recv the shape size tensor on gpu
+      framework::Tensor gpu_shape_size_tensor(shape_dytpe);
+      gpu_shape_size_tensor.Resize({1});
+      gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
+      auto *gpu_data = gpu_shape_size_tensor.data<int64_t>();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+          gpu_data, 1, nccl_dtype, peer, comm->comm(), stream));
+      framework::Tensor *cpu_shape_size_tensor =
+          new framework::Tensor(shape_dytpe);
+
+      // copy the shape size tensor to cpu
+      cpu_shape_size_tensor->Resize({1});
+      cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+      framework::TensorCopySync(gpu_shape_size_tensor, platform::CPUPlace(),
+                                cpu_shape_size_tensor);
+      auto *cpu_data = cpu_shape_size_tensor->data<int64_t>();
+      int64_t shape_size = cpu_data[0];
+      VLOG(3) << "recv the shape size: " << shape_size << " from peer";
+
+      // step2: recv the shape
+
+      // recv the shape tensor on gpu
+      framework::Tensor gpu_shape_tensor(shape_dytpe);
+      gpu_shape_tensor.Resize({shape_size});
+      gpu_shape_tensor.mutable_data(place, shape_dytpe);
+      auto *gpu_shape_data = gpu_shape_tensor.data<int64_t>();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+          gpu_shape_data, shape_size, nccl_dtype, peer, comm->comm(), stream));
+
+      // copy the shape tensor to cpu
+      framework::Tensor *cpu_shape_tensor = new framework::Tensor(shape_dytpe);
+      cpu_shape_tensor->Resize({shape_size});
+      cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+      framework::TensorCopySync(gpu_shape_tensor, platform::CPUPlace(),
+                                cpu_shape_tensor);
+      auto *cpu_shape_data = cpu_shape_tensor->data<int64_t>();
+      std::vector<int> all_shape;
+      for (int i = 0; i < shape_size; ++i) {
+        all_shape.emplace_back(cpu_shape_data[i]);
+      }
+      framework::DDim new_dim;
+      new_dim = new_dim.reshape(all_shape);
+      VLOG(3) << "recv the shape: (" << new_dim << ") from peer";
+
+      // step3: reshape the out tensor and recv the out tensor
+      out->Resize(new_dim);
+      numel = out->numel();
+      out->mutable_data<T>(new_dim, place);
+    } else {
+      out->mutable_data<T>(out_dims, place);
+    }
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())

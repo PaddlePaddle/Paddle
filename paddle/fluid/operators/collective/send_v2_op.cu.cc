@@ -31,6 +31,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
+    bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
         rid, 0,
         platform::errors::InvalidArgument(
@@ -68,6 +69,10 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto* x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensorArray>()) {
+      PADDLE_ENFORCE_EQ(
+          dynamic_shape, false,
+          platform::errors::InvalidArgument("Dynamic shape for send/recv not "
+                                            "support LoDTensorArray for now."));
       auto& x_array = x_var->Get<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < x_array.size(); idx++) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
@@ -84,6 +89,58 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     }
     auto x = ctx.Input<framework::LoDTensor>("X");
     int numel = x->numel();
+
+    if (dynamic_shape) {
+      VLOG(3) << "send_v2 will use dynamic shape with recv_v2";
+      paddle::experimental::DataType shape_dytpe =
+          paddle::experimental::DataType::INT64;
+      ncclDataType_t nccl_dtype =
+          platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
+      auto dims = x->dims();
+      int64_t shape_size = dims.size();
+
+      // step1: send the shape size
+
+      // prepare the shape size tensor on cpu
+      framework::Tensor cpu_shape_size_tensor(shape_dytpe);
+      cpu_shape_size_tensor.Resize({1});
+      cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+      auto* cpu_data = cpu_shape_size_tensor.data<int64_t>();
+      cpu_data[0] = shape_size;
+
+      // copy the shape size tensor to gpu and send
+      framework::Tensor* gpu_shape_size_tensor =
+          new framework::Tensor(shape_dytpe);
+      gpu_shape_size_tensor->Resize({1});
+      gpu_shape_size_tensor->mutable_data(place, shape_dytpe);
+      framework::TensorCopySync(cpu_shape_size_tensor, place,
+                                gpu_shape_size_tensor);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclSend(gpu_shape_size_tensor->data<int64_t>(), 1,
+                                      nccl_dtype, peer, comm->comm(), stream));
+      VLOG(3) << "send the shape size: " << shape_size << " to peer";
+
+      // step2: send the shape
+
+      // perpare the shape tensor on cpu
+      framework::Tensor cpu_shape_tensor(shape_dytpe);
+      cpu_shape_tensor.Resize({shape_size});
+      cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+      auto* cpu_shape_data = cpu_shape_tensor.data<int64_t>();
+      for (int i = 0; i < shape_size; ++i) {
+        cpu_shape_data[i] = dims[i];
+      }
+
+      // copy the shape tensor to gpu and send
+      framework::Tensor* gpu_shape_tensor = new framework::Tensor(shape_dytpe);
+      gpu_shape_tensor->Resize({shape_size});
+      gpu_shape_tensor->mutable_data(place, shape_dytpe);
+      framework::TensorCopySync(cpu_shape_tensor, place, gpu_shape_tensor);
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+          gpu_shape_tensor->data<int64_t>(), shape_size, nccl_dtype, peer,
+          comm->comm(), stream));
+      VLOG(3) << "send the shape: (" << dims << ") to peer";
+    }
 
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
