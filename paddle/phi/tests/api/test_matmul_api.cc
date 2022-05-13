@@ -179,8 +179,18 @@ TEST(API, matmul_double_grad) {
   auto dx_grad = paddle::experimental::full({3, 3}, 2.0);
 
   // 2. test API
-  const auto out = paddle::experimental::matmul_double_grad(
-      x, y, out_grad, dx_grad, {}, false, false);
+  std::vector<std::vector<paddle::experimental::Tensor>> out(
+      3, std::vector<paddle::experimental::Tensor>(1));
+  paddle::experimental::matmul_double_grad(x,
+                                           y,
+                                           out_grad,
+                                           dx_grad,
+                                           {},
+                                           false,
+                                           false,
+                                           &out[0][0],
+                                           &out[1][0],
+                                           &out[2][0]);
 
   // 3. check result
   ASSERT_EQ(out.size(), 3UL);

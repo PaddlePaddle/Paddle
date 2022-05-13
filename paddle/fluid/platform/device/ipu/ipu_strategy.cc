@@ -32,6 +32,20 @@ void RegisterGetter(
   options_type[name] = type_str;
 }
 
+struct DefaultCompilationProgressLogger {
+  void operator()(int progress, int total) {
+    if (progress != progress_ && progress % log_interval_ == 0) {
+      progress_ = progress;
+      VLOG(1) << "Graph compile progress: " << progress << "%";
+    }
+  }
+
+  int log_interval_ = 10;
+  int progress_ = 0;
+  // default total progress
+  int total_ = 100;
+};
+
 }  // namespace
 
 namespace paddle {
@@ -271,6 +285,8 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_BOOL_OPTION_ALIAS(
       schedule_non_weight_update_gradient_consumers_early,
       scheduleNonWeightUpdateGradientConsumersEarly);
+  ADD_POPART_BOOL_OPTION_ALIAS(create_implicit_pipelining_fwd_only_program,
+                               createImplicitPipeliningFwdOnlyProgram);
 
   ADD_POPART_DOUBLE_OPTION_ALIAS(outline_sequence_break_cost,
                                  outlineSequenceBreakCost);
@@ -327,21 +343,26 @@ IpuStrategy::IpuStrategy() {
         return std::to_string(popart_options.partialsTypeMatMuls == "half");
       });
 
-  RegisterSetter(
-      container_options, "dot_checks",
-      [&](const std::pair<std::string, std::string>& p) {
-        std::uint64_t value = std::stoul(p.first);
-        popart_options.dotChecks.insert(static_cast<popart::DotCheck>(value));
-      });
+  RegisterSetter(container_options, "dot_checks",
+                 [&](const std::pair<std::string, std::string>& p) {
+                   std::vector<std::string> valid_dot{"Fwd0", "Fwd1", "Bwd0",
+                                                      "PreAlias", "Final"};
+                   if (std::find(valid_dot.begin(), valid_dot.end(), p.first) ==
+                       valid_dot.end()) {
+                     PADDLE_THROW(platform::errors::InvalidArgument(
+                         "Unknown dot check: %s", p.first));
+                   }
+                   popart_options.dotChecks.insert(p.first);
+                 });
 
-  RegisterGetter(
-      vector_options_getter, options_type, "dot_checks", "vector", [&]() {
-        std::vector<std::string> res;
-        for (auto x : popart_options.dotChecks) {
-          res.push_back(std::to_string(static_cast<std::uint64_t>(x)));
-        }
-        return res;
-      });
+  RegisterGetter(vector_options_getter, options_type, "dot_checks", "vector",
+                 [&]() {
+                   std::vector<std::string> res;
+                   for (auto x : popart_options.dotChecks) {
+                     res.push_back(x);
+                   }
+                   return res;
+                 });
 
   RegisterSetter(container_options, "hardware_instrumentations",
                  [&](const std::pair<std::string, std::string>& p) {
@@ -417,11 +438,7 @@ IpuStrategy::IpuStrategy() {
   // Default options
 
   // Can also be set as a custom logger in python, like using tqdm
-  popart_options.compilationProgressLogger = [](int progress, int total) {
-    if (progress % 10 == 0) {
-      VLOG(1) << "compile progress: " << progress << "%";
-    }
-  };
+  popart_options.compilationProgressLogger = DefaultCompilationProgressLogger();
 }
 
 void IpuStrategy::AddBoolOption(const std::string& option, bool value) {
@@ -503,6 +520,21 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unknown option ' %s' for tensor location: %s", opt, tensor));
+  }
+}
+
+void IpuStrategy::SetReplicatedCollectivesSettings(const std::string& opt,
+                                                   bool value) {
+  VLOG(10) << "Set Replica Setting " << opt << " to " << value;
+  if (opt == "prepare_schedule_for_merging_collectives") {
+    popart_options.replicatedCollectivesSettings
+        .prepareScheduleForMergingCollectives = value;
+  } else if (opt == "merge_all_reduce_collectives") {
+    popart_options.replicatedCollectivesSettings.mergeAllReduceCollectives =
+        value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unknown option ' %s' for replicated collectives settings", opt));
   }
 }
 

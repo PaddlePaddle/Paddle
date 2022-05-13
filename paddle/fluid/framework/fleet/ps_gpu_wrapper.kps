@@ -263,13 +263,8 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
                                 float learning_rate, float initial_g2sum,
                                 float initial_range) {
   OptimizerConfig optimizer_config;
-  optimizer_config.nonclk_coeff = nonclk_coeff;
-  optimizer_config.clk_coeff = clk_coeff;
-  optimizer_config.min_bound = min_bound;
-  optimizer_config.max_bound = max_bound;
-  optimizer_config.learning_rate = learning_rate;
-  optimizer_config.initial_g2sum = initial_g2sum;
-  optimizer_config.initial_range = initial_range;
+  optimizer_config.set_sparse_sgd(nonclk_coeff, clk_coeff, min_bound, max_bound,
+                                  learning_rate, initial_g2sum, initial_range);
   HeterPs_->set_sparse_sgd(optimizer_config);
 }
 
@@ -278,12 +273,9 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_initial_range, float mf_min_bound,
                                 float mf_max_bound) {
   OptimizerConfig optimizer_config;
-  optimizer_config.mf_create_thresholds = mf_create_thresholds;
-  optimizer_config.mf_learning_rate = mf_learning_rate;
-  optimizer_config.mf_initial_g2sum = mf_initial_g2sum;
-  optimizer_config.mf_initial_range = mf_initial_range;
-  optimizer_config.mf_min_bound = mf_min_bound;
-  optimizer_config.mf_max_bound = mf_max_bound;
+  optimizer_config.set_embedx_sgd(mf_create_thresholds, mf_learning_rate,
+                                  mf_initial_g2sum, mf_initial_range,
+                                  mf_min_bound, mf_max_bound);
   HeterPs_->set_embedx_sgd(optimizer_config);
 }
 

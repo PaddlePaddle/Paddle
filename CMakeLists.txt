@@ -256,8 +256,8 @@ option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
 else()            
     include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
 endif()
@@ -394,6 +394,11 @@ if(WITH_DISTRIBUTE)
         # disable WITH_PSCORE for NPU before include third_party
         MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
         set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
+    if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
+        # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
+        MESSAGE(WARNING "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496" FORCE)
     endif()
 endif()
 
