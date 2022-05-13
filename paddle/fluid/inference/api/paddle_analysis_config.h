@@ -916,7 +916,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "unfold", "generate_proposals_v2", "nearest_interp_v2",
       "bilinear_interp_v2"
       "yolo_box",
-      "multiclass_nms3", "matrix_nms"};
+      "multiclass_nms3", "matrix_nms", "greater_than", "less_than", "set_value",
+      "batch_norm"};
 
   bool use_cudnn_{false};
 
