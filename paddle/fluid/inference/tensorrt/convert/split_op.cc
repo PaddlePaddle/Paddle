@@ -110,6 +110,7 @@ class SplitOpConverter : public OpConverter {
         }
         layer->setName((layer_name + ")").c_str());
       }
+      printf("%d\n",input_num);
 
     } else {
 #if IS_TRT_VERSION_GE(7130)
