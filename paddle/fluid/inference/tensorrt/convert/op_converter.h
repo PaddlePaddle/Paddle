@@ -296,7 +296,7 @@ class OpConverter {
 
   // Create and add 1D constant layer
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
-                                        const string& weight_name) {
+                                        const std::string& weight_name) {
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
@@ -307,14 +307,14 @@ class OpConverter {
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
     TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
-                                  static_cast<void*>(tmp_data.data()),
-                                  static_cast<size_t>(input_dims.nbDims)};
+                                  static_cast<void*>(tmp_data),
+                                  static_cast<size_t>(data_size)};
     nvinfer1::Dims input_shape;
     input_shape.nbDims = 1;
     input_shape.d[0] = data_size;
     auto const_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
-    return *const_layer->getOutput(0);
+    return const_layer->getOutput(0);
   }
 
   void RreplenishLayerAndOutput(
