@@ -53,7 +53,7 @@ struct DimensionsTransform {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
-                "recieved %d.",
+                "received %d.",
                 in_idx + 1,
                 axis + 1,
                 out_dims[axis],
@@ -70,7 +70,7 @@ struct DimensionsTransform {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
-                "recieved %d.",
+                "received %d.",
                 in_idx + 1,
                 in_idx + 1,
                 out_dims[in_idx],
@@ -552,7 +552,7 @@ void BroadcastKernelForDifferentDimSize(
     default: {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The maximum dimension of input tensor is expected to be less than "
-          "%d, but recieved %d.",
+          "%d, but received %d.",
           merge_dims.dim_size,
           phi::DDim::kMaxRank));
     }
@@ -578,7 +578,7 @@ void BroadcastKernelForDifferentVecSize(
                     kArity,
                     phi::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
-                        "arity of functor. But recieved: the number of inputs "
+                        "arity of functor. But received: the number of inputs "
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));

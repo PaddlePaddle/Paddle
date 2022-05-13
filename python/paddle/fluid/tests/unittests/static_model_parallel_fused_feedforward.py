@@ -172,10 +172,10 @@ class ParallelFusedFeedForward(Layer):
                  name=None):
         super(ParallelFusedFeedForward, self).__init__()
         assert d_model > 0, (
-            "Expected d_model to be greater than 0, but recieved {}".format(
+            "Expected d_model to be greater than 0, but received {}".format(
                 d_model))
         assert dim_feedforward > 0, (
-            "Expected dim_feedforward to be greater than 0, but recieved {}".
+            "Expected dim_feedforward to be greater than 0, but received {}".
             format(dim_feedforward))
 
         self._dtype = self._helper.get_default_dtype()

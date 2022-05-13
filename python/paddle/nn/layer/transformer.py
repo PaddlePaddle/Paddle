@@ -163,9 +163,9 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
-                               "but recieved {}".format(embed_dim))
+                               "but received {}".format(embed_dim))
         assert num_heads > 0, ("Expected num_heads to be greater than 0, "
-                               "but recieved {}".format(num_heads))
+                               "but received {}".format(num_heads))
 
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
@@ -508,12 +508,12 @@ class TransformerEncoderLayer(Layer):
         super(TransformerEncoderLayer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
@@ -813,12 +813,12 @@ class TransformerDecoderLayer(Layer):
         super(TransformerDecoderLayer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
@@ -1220,12 +1220,12 @@ class Transformer(Layer):
         super(Transformer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         if isinstance(bias_attr, (list, tuple)):
             if len(bias_attr) == 1:
