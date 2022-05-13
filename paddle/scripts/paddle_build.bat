@@ -766,7 +766,9 @@ goto:eof
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
-echo Testing fluid library for inference failed!
+echo    ==========================================
+echo    Testing fluid library for inference failed!
+echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------

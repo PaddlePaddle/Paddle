@@ -128,7 +128,7 @@ for WITH_STATIC_LIB in ON OFF; do
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
-        echo "simple_on_word2vec ${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+        echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
         EXIT_CODE=1
       fi
     done
@@ -153,7 +153,7 @@ for WITH_STATIC_LIB in ON OFF; do
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name ${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
           EXIT_CODE=1
         fi
       done
@@ -200,7 +200,7 @@ for WITH_STATIC_LIB in ON OFF; do
           --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "simple_on_word2vec ${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
           EXIT_CODE=1
         fi
       done
@@ -222,7 +222,7 @@ for WITH_STATIC_LIB in ON OFF; do
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
           --use_gpu=$use_gpu
         if [ $? -ne 0 ]; then
-          echo "vis demo $vis_demo_name ${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+          echo "vis demo $vis_demo_name use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
           EXIT_CODE=1
         fi
       done
