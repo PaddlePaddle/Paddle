@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.utils.internal_storage import GradStorage
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
@@ -124,9 +125,20 @@ def train_mlp():
             avg_loss.backward()
             oss_optimizer.step()
 
-    # oss_optimizer clear cache
-    oss_optimizer.clear_cache()
+            # oss_optimizer clear cache
+            oss_optimizer._clear_cache()
+
+            # check optimizer.minimize() error
+            try:
+                oss_optimizer.minimize()
+            except:
+                print(
+                    "====== Find sharding_stage2_optimizer.minimize() error ======"
+                )
+            return
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
     train_mlp()

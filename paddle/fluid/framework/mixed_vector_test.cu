@@ -25,9 +25,10 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 
 template <typename T>
-using vec = paddle::framework::Vector<T>;
+using vec = paddle::framework::MixVector<T>;
 using gpuStream_t = paddle::gpuStream_t;
 
 static __global__ void multiply_10(int* ptr) {
@@ -43,10 +44,11 @@ gpuStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
 }
 
 TEST(mixed_vector, GPU_VECTOR) {
-  vec<int> tmp;
+  std::vector<int> x;
   for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
+    x.push_back(i);
   }
+  vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu(0);
 
@@ -69,10 +71,11 @@ TEST(mixed_vector, MultiGPU) {
     return;
   }
 
-  vec<int> tmp;
+  std::vector<int> x;
   for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
+    x.push_back(i);
   }
+  vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu0(0);
   paddle::platform::SetDeviceId(0);

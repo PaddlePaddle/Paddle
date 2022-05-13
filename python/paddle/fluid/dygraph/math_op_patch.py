@@ -15,9 +15,10 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _in_legacy_dygraph, in_dygraph_mode
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
+from .. import framework
 
 import numpy as np
 import warnings
@@ -59,6 +60,7 @@ _complex_dtypes = [
 ]
 
 _already_patch_varbase = False
+_already_patch_eager_tensor = False
 
 
 def monkey_patch_math_varbase():
@@ -69,9 +71,13 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        out = _varbase_creator(dtype=dtype)
-        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
-                                   value, 'force_cpu', False)
+        if framework._in_eager_mode_:
+            out = _C_ops.final_state_full(shape, value, dtype,
+                                          framework._current_expected_place())
+        else:
+            out = _varbase_creator(dtype=dtype)
+            out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
+                                       'value', value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
@@ -103,9 +109,14 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+
+        if _in_legacy_dygraph():
+            return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.final_state_cast(self, dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
+        if framework.in_dygraph_mode():
+            return _C_ops.final_state_scale(var, float(scale), bias, True)
         return _C_ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
@@ -162,7 +173,10 @@ def monkey_patch_math_varbase():
         perm = []
         for i in range(len(var.shape)):
             perm.insert(0, i)
-        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(var, 'axis', perm)
+        else:
+            out = _C_ops.final_state_transpose(var, perm)
         return out
 
     def _scalar_add_(var, value):
@@ -184,7 +198,8 @@ def monkey_patch_math_varbase():
     def _binary_creator_(method_name,
                          op_type,
                          reverse=False,
-                         scalar_method=None):
+                         scalar_method=None,
+                         call_final_api=False):
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
@@ -207,7 +222,9 @@ def monkey_patch_math_varbase():
                 # so the calculation result here and the calculation result of numpy are 
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
-                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                if (op_type == "final_state_divide" or
+                        op_type == "elementwise_div"
+                    ) and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -219,7 +236,11 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if not isinstance(other_var, core.VarBase):
+            if framework._in_eager_mode_:
+                other_var_should_be = core.eager.Tensor
+            else:
+                other_var_should_be = core.VarBase
+            if not isinstance(other_var, other_var_should_be):
                 if isinstance(other_var, complex):
                     import paddle
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
@@ -258,12 +279,22 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
+            if (op_type == "final_state_divide" or op_type == "elementwise_div"
+                ) and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # 4. calculation
             axis = -1
             math_op = getattr(_C_ops, op_type)
+            if call_final_api:
+                return math_op(self, other_var, -1)
             return math_op(self, other_var, 'axis', axis)
 
-        comment = OpProtoHolder.instance().get_op_proto(op_type).comment
+        if call_final_api:
+            comment = ""
+        else:
+            comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
         __impl__.__doc__ = """
         {0}
@@ -289,28 +320,48 @@ def monkey_patch_math_varbase():
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
-        ('__add__',
-         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        ('__add__', _binary_creator_('__add__', 'final_state_add', False,
+                                     _scalar_add_, True))
+        if framework._in_eager_mode_ else ('__add__', _binary_creator_(
+            '__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__',
-         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
-        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
-                                     _scalar_sub_)),
-        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
-                                      _scalar_rsub_)),
-        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
-                                     _scalar_mul_)),
+        ('__radd__', _binary_creator_('__radd__', 'final_state_add', False,
+                                      _scalar_add_, True))
+        if framework._in_eager_mode_ else ('__radd__', _binary_creator_(
+            '__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__', _binary_creator_('__sub__', 'final_state_subtract', False,
+                                     _scalar_sub_, True))
+        if framework._in_eager_mode_ else ('__sub__', _binary_creator_(
+            '__sub__', 'elementwise_sub', False, _scalar_sub_)),
+        ('__rsub__', _binary_creator_('__rsub__', 'final_state_subtract', True,
+                                      _scalar_rsub_, True))
+        if framework._in_eager_mode_ else ('__rsub__', _binary_creator_(
+            '__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
+        ('__mul__', _binary_creator_('__mul__', 'final_state_multiply', False,
+                                     _scalar_mul_, True))
+        if framework._in_eager_mode_ else ('__mul__', _binary_creator_(
+            '__mul__', 'elementwise_mul', False, _scalar_mul_)),
         ## a*b == b*a. Do not need to reverse explicitly
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     _scalar_div_)),
-        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
-                                      None)),
-        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
-                                          None)),
+        ('__rmul__', _binary_creator_('__rmul__', 'final_state_multiply', False,
+                                      _scalar_mul_, True))
+        if framework._in_eager_mode_ else ('__rmul__', _binary_creator_(
+            '__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'final_state_divide', False,
+                                     _scalar_div_, True))
+        if framework._in_eager_mode_ else ('__div__', _binary_creator_(
+            '__div__', 'elementwise_div', False, _scalar_div_)),
+        ('__truediv__', _binary_creator_('__truediv__', 'final_state_divide',
+                                         False, _scalar_div_, True))
+        if framework._in_eager_mode_ else ('__truediv__', _binary_creator_(
+            '__truediv__', 'elementwise_div', False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'final_state_divide', True,
+                                      None, True)) if framework._in_eager_mode_
+        else ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                           None)),
+        ('__rtruediv__', _binary_creator_('rtruediv__', 'final_state_divide',
+                                          True, None, True))
+        if framework._in_eager_mode_ else ('__rtruediv__', _binary_creator_(
+            'rtruediv__', 'elementwise_div', True, None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
                                      None)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
@@ -322,31 +373,55 @@ def monkey_patch_math_varbase():
         ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
                                         None)),
         ## for logical compare
+        ('__eq__',
+         _binary_creator_('__eq__', 'final_state_equal', False, None, True))
+        if framework._in_eager_mode_ else
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
-        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__ne__', _binary_creator_('__ne__', 'final_state_not_equal', False,
+                                    None, True)) if framework._in_eager_mode_
+        else ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
+        ('__lt__', _binary_creator_('__lt__', 'final_state_less_than', False,
+                                    None, True)) if framework._in_eager_mode_
+        else ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
+        ('__le__', _binary_creator_('__le__', 'final_state_less_equal', False,
+                                    None, True)) if framework._in_eager_mode_
+        else ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__gt__', _binary_creator_('__gt__', 'final_state_greater_than', False,
+                                    None, True))
+        if framework._in_eager_mode_ else
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+        ('__ge__', _binary_creator_('__ge__', 'final_state_greater_equal',
+                                    False, None, True))
+        if framework._in_eager_mode_ else
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None)
     ]
 
     global _already_patch_varbase
-    if not _already_patch_varbase:
+    global _already_patch_eager_tensor
+
+    if framework._in_eager_mode_:
+        local_already_patch = _already_patch_eager_tensor
+        _already_patch_eager_tensor = True
+        local_tensor = core.eager.Tensor
+    else:
+        local_already_patch = _already_patch_varbase
+        _already_patch_varbase = True
+        local_tensor = core.VarBase
+
+    if not local_already_patch:
         for method in varbase_methods:
             method_name = method[0]
             method_impl = method[1]
-            setattr(core.VarBase, method_name, method_impl)
+            setattr(local_tensor, method_name, method_impl)
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
         for method_name in paddle.tensor.tensor_method_func:
-            if hasattr(core.VarBase, method_name): continue
+            if hasattr(local_tensor, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
-            if method_impl: setattr(core.VarBase, method_name, method_impl)
+            if method_impl: setattr(local_tensor, method_name, method_impl)
 
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
-            if impl: setattr(core.VarBase, magic_method, impl)
-
-    _already_patch_varbase = True
+            if impl: setattr(local_tensor, magic_method, impl)

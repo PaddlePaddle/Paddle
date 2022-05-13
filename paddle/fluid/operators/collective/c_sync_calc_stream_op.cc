@@ -59,7 +59,7 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
 #elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
 
@@ -67,6 +67,24 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
         platform::DeviceContextPool::Instance().Get(place));
     platform::NPUStreamSync(dev_ctx->stream());
 
+#elif defined(PADDLE_WITH_CNCL)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on mlu place only for now."));
+
+    auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    platform::MLUStreamSync(dev_ctx->stream());
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on xpu place only for now."));
+
+    auto dev_ctx = static_cast<platform::XPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -85,3 +103,7 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream, ops::CSyncCalcStreamOp,
 REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
 
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
+
+REGISTER_OP_XPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);

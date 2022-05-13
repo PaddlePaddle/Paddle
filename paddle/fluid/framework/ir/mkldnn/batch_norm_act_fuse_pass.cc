@@ -108,15 +108,6 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
     auto *bn_op = batch_norm->Op();
-
-    if (bn_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
-          platform::errors::PreconditionNotMet(
-              "The BatchNorm+Act fusion may happen only when oneDNN library "
-              "is used."));
-    }
-
     if (bn_op->HasAttr("trainable_statistics")) {
       PADDLE_ENFORCE(
           !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),

@@ -49,7 +49,7 @@ void training_or_inference(
   {
     common_mean_tile_1.Resize({C});
     common_mean_tile_1.mutable_data<float>(place);
-    TensorCopySync(*common_mean, place, &common_mean_tile_1);
+    paddle::framework::TensorCopySync(*common_mean, place, &common_mean_tile_1);
     if (layout == framework::DataLayout::kNCHW)
       common_mean_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
@@ -70,7 +70,7 @@ void training_or_inference(
   {
     common_var_tile_1.Resize({C});
     common_var_tile_1.mutable_data<float>(place);
-    TensorCopySync(*common_var, place, &common_var_tile_1);
+    paddle::framework::TensorCopySync(*common_var, place, &common_var_tile_1);
     if (layout == framework::DataLayout::kNCHW)
       common_var_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
@@ -129,7 +129,7 @@ void training_or_inference(
   {
     scale_tile_1.Resize({C});
     scale_tile_1.mutable_data<float>(place);
-    TensorCopySync(*scale, place, &scale_tile_1);
+    paddle::framework::TensorCopySync(*scale, place, &scale_tile_1);
     if (layout == framework::DataLayout::kNCHW)
       scale_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
@@ -159,7 +159,7 @@ void training_or_inference(
   {
     bias_tile_1.Resize({C});
     bias_tile_1.mutable_data<float>(place);
-    TensorCopySync(*bias, place, &bias_tile_1);
+    paddle::framework::TensorCopySync(*bias, place, &bias_tile_1);
     if (layout == framework::DataLayout::kNCHW)
       bias_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
@@ -339,11 +339,11 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     if (test_mode) {  // inference
       // cacl saved_mean
       saved_mean->mutable_data<float>(place);
-      TensorCopySync(*mean, place, saved_mean);
+      paddle::framework::TensorCopySync(*mean, place, saved_mean);
 
       // cacl saved_variance
       saved_variance->mutable_data<float>(place);
-      TensorCopySync(*variance, place, saved_variance);
+      paddle::framework::TensorCopySync(*variance, place, saved_variance);
 
       // cacl y
       training_or_inference<T>(ctx, stream, place, layout, test_mode, N, C, H,
@@ -354,7 +354,8 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(*mom_tensor, platform::CPUPlace(),
+                                          &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
@@ -397,7 +398,8 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         float device_counts = 0.0;
         if (comm) {
-          HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
+          HcclDataType dtype = platform::ToHCCLDataType(
+              framework::TransToProtoVarType(mean_out->dtype()));
 
           Tensor device_count_tensor;
           {
@@ -417,8 +419,8 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           }
 
           std::vector<float> device_count_vec(1);
-          TensorToVector(device_count_tensor, ctx.device_context(),
-                         &device_count_vec);
+          paddle::framework::TensorToVector(
+              device_count_tensor, ctx.device_context(), &device_count_vec);
           device_counts = device_count_vec[0];
 
           // HcclAllReduce x_sum
@@ -538,7 +540,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       multiples = {N, H, W, 1};
 
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
-    HcclDataType dtype = platform::ToHCCLDataType(scale->type());
+    HcclDataType dtype = platform::ToHCCLDataType(
+        framework::TransToProtoVarType(scale->dtype()));
 
     float device_counts = 0.0;
     if (comm) {
@@ -560,8 +563,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       }
 
       std::vector<float> device_count_vec(1);
-      TensorToVector(device_count_tensor, ctx.device_context(),
-                     &device_count_vec);
+      paddle::framework::TensorToVector(
+          device_count_tensor, ctx.device_context(), &device_count_vec);
       device_counts = device_count_vec[0];
       PADDLE_ENFORCE_GE(device_counts, 2, platform::errors::PreconditionNotMet(
                                               "device_counts should >= 2."));
@@ -626,7 +629,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     {
       saved_mean_tile_1.Resize({C});
       saved_mean_tile_1.mutable_data<float>(place);
-      TensorCopySync(*saved_mean, place, &saved_mean_tile_1);
+      paddle::framework::TensorCopySync(*saved_mean, place, &saved_mean_tile_1);
       if (layout == framework::DataLayout::kNCHW)
         saved_mean_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
@@ -656,7 +659,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     {
       var_ref_tile_1.Resize({C});
       var_ref_tile_1.mutable_data<float>(place);
-      TensorCopySync(var_ref, place, &var_ref_tile_1);
+      paddle::framework::TensorCopySync(var_ref, place, &var_ref_tile_1);
       if (layout == framework::DataLayout::kNCHW)
         var_ref_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
@@ -694,7 +697,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     Tensor dy_mul_x_sub_mean_for_scale;
     {
-      if (d_y->type() == framework::proto::VarType::FP16) {
+      if (framework::TransToProtoVarType(d_y->dtype()) ==
+          framework::proto::VarType::FP16) {
         dy_mul_x_sub_mean_for_scale.Resize(x->dims());
         dy_mul_x_sub_mean_for_scale.mutable_data<float>(place);
         const auto &runner = NpuOpRunner("Mul", {*d_y, x_sub_saved_mean},
@@ -711,7 +715,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     Tensor dy_mul_x_sub_mean;
     {
-      if (d_y->type() == framework::proto::VarType::FP16) {
+      if (framework::TransToProtoVarType(d_y->dtype()) ==
+          framework::proto::VarType::FP16) {
         dy_mul_x_sub_mean.Resize(x->dims());
         dy_mul_x_sub_mean.mutable_data<float>(place);
         const auto &runner = NpuOpRunner("Mul", {*d_y, x_sub_saved_mean},
@@ -750,7 +755,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     if (d_x) {
       Tensor dy_mean;
       {
-        if (d_y->type() == framework::proto::VarType::FP16) {
+        if (framework::TransToProtoVarType(d_y->dtype()) ==
+            framework::proto::VarType::FP16) {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
           dy_mean.Resize({C});
@@ -793,7 +799,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       {
         dy_mean_tile_1.Resize({C});
         dy_mean_tile_1.mutable_data<float>(place);
-        TensorCopySync(dy_mean, place, &dy_mean_tile_1);
+        paddle::framework::TensorCopySync(dy_mean, place, &dy_mean_tile_1);
         if (layout == framework::DataLayout::kNCHW)
           dy_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
@@ -812,7 +818,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
       Tensor dy_sub_dy_mean;
       {
-        if (d_y->type() == framework::proto::VarType::FP16) {
+        if (framework::TransToProtoVarType(d_y->dtype()) ==
+            framework::proto::VarType::FP16) {
           dy_sub_dy_mean.Resize(x->dims());
           dy_sub_dy_mean.mutable_data<float>(place);
           const auto &runner =
@@ -842,8 +849,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       {
         dy_mul_x_sub_mean_mean_tile_1.Resize({C});
         dy_mul_x_sub_mean_mean_tile_1.mutable_data<float>(place);
-        TensorCopySync(dy_mul_x_sub_mean_mean, place,
-                       &dy_mul_x_sub_mean_mean_tile_1);
+        paddle::framework::TensorCopySync(dy_mul_x_sub_mean_mean, place,
+                                          &dy_mul_x_sub_mean_mean_tile_1);
         if (layout == framework::DataLayout::kNCHW)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
@@ -900,7 +907,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       {
         scale_tile_1.Resize({C});
         scale_tile_1.mutable_data<float>(place);
-        TensorCopySync(*scale, place, &scale_tile_1);
+        paddle::framework::TensorCopySync(*scale, place, &scale_tile_1);
         if (layout == framework::DataLayout::kNCHW)
           scale_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
@@ -963,7 +970,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     // cacl d_bias
     if (d_bias) {
-      if (d_y->type() == framework::proto::VarType::FP16) {
+      if (framework::TransToProtoVarType(d_y->dtype()) ==
+          framework::proto::VarType::FP16) {
         framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                  {"axes", axes}};
         d_bias->mutable_data<float>(place);

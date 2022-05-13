@@ -15,9 +15,9 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -112,7 +112,7 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = ins_num * in_dim;
     int64_t strideB = in_dim * out_dim;
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     blas.BatchedGEMM(transA, transB, ins_num, out_dim, in_dim, alpha, in_data,
                      w_data, beta, out_data, slot_pairs_num, strideA, strideB);
     add_bias<T>(ctx.cuda_device_context().stream(), out_data, slot_pairs_num,
@@ -165,7 +165,7 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     add_bias_grad<T>(ctx.cuda_device_context().stream(), dout_data,
                      slot_pairs_num, ins_num, out_dim, db_data);
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 

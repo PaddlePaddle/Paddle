@@ -34,10 +34,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 #define SCOPE_VARS_READER_LOCK
 #define SCOPE_VARS_WRITER_LOCK
 #else
-#define SCOPE_KIDS_READER_LOCK AutoRDLock auto_lock(&kids_lock_);
-#define SCOPE_KIDS_WRITER_LOCK AutoWRLock auto_lock(&kids_lock_);
-#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+#define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 #endif
 
 namespace paddle {
@@ -287,6 +287,11 @@ void Scope::AddListener(const std::shared_ptr<ScopeListener>& listener) {
 
 void Scope::DelListener(const std::shared_ptr<ScopeListener>& listener) {
   listeners_.remove(listener);
+}
+
+bool Scope::HasListener(const std::shared_ptr<ScopeListener>& listener) {
+  auto it = std::find(listeners_.begin(), listeners_.end(), listener);
+  return it != listeners_.end();
 }
 
 void Scope::EraseVarsExcept(const std::unordered_set<Variable*>& vars) {

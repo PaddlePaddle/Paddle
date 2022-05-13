@@ -20,6 +20,10 @@
 
 namespace infrt::tensor {
 
+DenseHostTensor::DenseHostTensor(std::initializer_list<int64_t>&& list,
+                                 DType dtype)
+    : DenseHostTensor(TensorShape(list), dtype) {}
+
 DenseHostTensor::DenseHostTensor(const TensorShape& shape, DType dtype)
     : HostTensor(TensorMetadata{dtype, shape}) {
   CHECK(metadata().IsValid()) << "Tensor construct get invalid metadata";
@@ -28,6 +32,9 @@ DenseHostTensor::DenseHostTensor(const TensorShape& shape, DType dtype)
 }
 
 const TensorShape& DenseHostTensor::shape() const { return metadata().shape; }
+TensorShape* DenseHostTensor::mutable_shape() {
+  return &mutable_metadata()->shape;
+}
 
 void DenseHostTensor::Init(const std::vector<int64_t>& shape, DType dtype) {
   auto shape_array = llvm::ArrayRef<int64_t>(shape.data(), shape.size());
@@ -82,5 +89,7 @@ std::ostream& operator<<(std::ostream& os, const DenseHostTensor& instance) {
 DenseHostTensor::~DenseHostTensor() {}
 
 void* DenseHostTensor::raw_data() const { return buffer_->data()->memory; }
+
+DType DenseHostTensor::dtype() const { return metadata().dtype; }
 
 }  // namespace infrt::tensor

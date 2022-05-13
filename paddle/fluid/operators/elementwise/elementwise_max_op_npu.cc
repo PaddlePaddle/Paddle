@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -39,11 +38,9 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
     auto stream =

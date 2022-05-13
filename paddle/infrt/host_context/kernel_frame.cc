@@ -15,6 +15,7 @@
 #include "paddle/infrt/host_context/kernel_frame.h"
 
 #include <memory>
+#include <sstream>
 
 namespace infrt {
 namespace host_context {
@@ -24,6 +25,30 @@ std::ostream& operator<<(std::ostream& os, const KernelFrame& frame) {
      << frame.GetNumResults() << " res, " << frame.GetNumResults() << " attrs";
   return os;
 }
+
+#ifndef NDEBUG
+std::string KernelFrame::DumpArgTypes() const {
+  std::stringstream ss;
+  for (auto* value : GetValues(0, GetNumElements())) {
+#define DUMP(type_name)                                    \
+  if (value->is_type<type_name>()) {                       \
+    ss << #type_name << &value->get<type_name>() << "), "; \
+  }
+    DUMP(bool);
+    DUMP(tensor::DenseHostTensor);
+    DUMP(float);
+    DUMP(int);
+    DUMP(::phi::DenseTensor);
+    DUMP(::phi::MetaTensor);
+    DUMP(::phi::CPUContext);
+    DUMP(host_context::None);
+    DUMP(backends::CpuPhiContext);
+#undef DUMP
+    ss << "typeid: " << value->index() << ", ";
+  }
+  return ss.str();
+}
+#endif
 
 }  // namespace host_context
 }  // namespace infrt

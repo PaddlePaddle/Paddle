@@ -31,9 +31,7 @@ class HCCLCommImpl : public HCCLComm {
   void set_rank(int rank) { rank_ = rank; }
   int rank() const override { return rank_; }
 
-  int device_id() const override {
-    return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
-  }
+  int device_id() const override { return dev_ctx_->GetPlace().device; }
 
   ~HCCLCommImpl() {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));

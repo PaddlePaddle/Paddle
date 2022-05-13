@@ -112,7 +112,7 @@ class TrtConvertDropoutTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if attrs[0]['dropout_implementation'] == "upscale_in_train":
                 return 0, 2
-            elif self.dims == 1:
+            elif self.dims == 1 and dynamic_shape == False:
                 return 0, 3
             else:
                 return 1, 2
@@ -141,17 +141,7 @@ class TrtConvertDropoutTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(
-                    program_config.inputs['input_data'].shape
-            ) == 2 and not predictor_config.tensorrt_dynamic_shape_enabled():
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output shape has diff, but we can add shuffle layer to resolve it."
-        )
+        pass
 
     def test(self):
         self.add_skip_trt_case()

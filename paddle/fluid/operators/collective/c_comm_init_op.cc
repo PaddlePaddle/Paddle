@@ -20,12 +20,15 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
+#if defined(PADDLE_WITH_CNCL)
+#include <cncl.h>
+#endif
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -56,17 +59,23 @@ class CCommInitOp : public framework::OperatorBase {
     using UniqueId = BKCLUniqueId;
     using Place = platform::XPUPlace;
     using CommContext = platform::BKCLCommContext;
+#elif defined(PADDLE_WITH_CNCL)
+    using UniqueId = cnclCliqueId;
+    using Place = platform::MLUPlace;
+    using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should be compiled with GPU or XPU."));
+        "PaddlePaddle should be compiled with GPU or XPU or MLU."));
 #endif
 
-    PADDLE_ENFORCE_EQ(is_gpu_place(place) || is_xpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "CCommInitOp can run on gpu or xpu place only."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
+            platform::is_mlu_place(place),
+        true, platform::errors::PreconditionNotMet(
+                  "CCommInitOp can run on gpu or xpu or mlu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
@@ -74,7 +83,6 @@ class CCommInitOp : public framework::OperatorBase {
     UniqueId* comm_id = var->GetMutable<UniqueId>();
 
     int nranks = Attr<int>("nranks");
-    int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -85,12 +93,22 @@ class CCommInitOp : public framework::OperatorBase {
             rid));
 #endif
 
-    int device_id = BOOST_GET_CONST(Place, place).device;
+    int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
+
+#if defined(PADDLE_WITH_XPU_BKCL) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSLIB)
+    // XPUPS rank_id only equals 0, so replace rank_id with device_id
+    CommContext::Instance().CreateComm(comm_id, nranks, device_id, device_id,
+                                       rid);
+#else
+    int rank_id = Attr<int>("rank");
     CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
                                        rid);
+#endif
+
 #endif
   }
 };

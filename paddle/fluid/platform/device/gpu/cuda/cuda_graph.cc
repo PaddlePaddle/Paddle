@@ -18,6 +18,7 @@ namespace paddle {
 namespace platform {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
+paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
 
 void CUDAGraph::Reset() {
   if (is_reset_) return;
@@ -58,6 +59,13 @@ void CUDAGraph::BeginSegmentCapture() {
       IsCapturing(), true,
       errors::PermissionDenied("BeginSegmentCapture should be called when CUDA "
                                "Graph is capturing."));
+  if (IsThreadLocalCapturing()) {
+    PADDLE_ENFORCE_EQ(IsThisThreadCapturing(), true,
+                      platform::errors::PermissionDenied(
+                          "When capturing CUDA Graph in the thread local mode, "
+                          "you cannot begin segmented capturing in the thread "
+                          "which is not the one that starts the capturing."));
+  }
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
   PADDLE_ENFORCE_EQ(IsValidCapturing(), true,
@@ -82,6 +90,11 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
   capturing_graph_->capture_mode_ = mode;
+  if (mode == cudaStreamCaptureModeThreadLocal) {
+    capturing_thread_id_ = std::this_thread::get_id();
+    VLOG(10) << "Capturing CUDA Graph in thread local mode, thread id: "
+             << capturing_thread_id_;
+  }
   BeginSegmentCapture();
 #endif
 }
@@ -115,6 +128,7 @@ void CUDAGraph::EndSegmentCapture() {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   EndSegmentCapture();
+  capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
 }
 

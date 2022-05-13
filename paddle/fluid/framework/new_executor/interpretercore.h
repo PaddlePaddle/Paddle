@@ -21,13 +21,11 @@
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -74,11 +72,20 @@ class InterpreterCore {
                const std::vector<framework::LoDTensor>& feed_tensors,
                bool prepare_feed);
 
-  void CheckGC(const Instruction& instr);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void RecordStreamForGC(const Instruction& instr);
+#endif
 
-  void RunInstructionAsync(size_t instr_id);
+  void CheckGC(const Instruction& instr,
+               std::vector<std::atomic<size_t>>* atomic_var_ref);
+
+  void RunInstructionAsync(size_t instr_id,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+                           std::queue<size_t>* reserved_next_ops,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void BuildSkipShareLoDInfo();
 
@@ -102,8 +109,13 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
+  // op_happens_before_[i][j] == true means op[i] happens before op[j]
+  std::vector<std::vector<bool>> op_happens_before_;
+  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  std::map<size_t, std::set<size_t>> last_live_ops_;
+
   std::vector<size_t> dependecy_count_;
-  std::atomic<size_t> op_run_number_{0};
+  std::atomic<size_t> unfinished_op_numer_{0};
   std::vector<std::vector<size_t>> input_var2op_info_;
 
   StreamAnalyzer stream_analyzer_;
@@ -111,6 +123,7 @@ class InterpreterCore {
   std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;

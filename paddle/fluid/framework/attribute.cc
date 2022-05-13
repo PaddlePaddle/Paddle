@@ -17,6 +17,41 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+paddle::any GetAttrValue(const Attribute& attr) {
+  switch (AttrTypeID(attr)) {
+    case proto::AttrType::INT:
+      return BOOST_GET_CONST(int, attr);
+    case proto::AttrType::FLOAT:
+      return BOOST_GET_CONST(float, attr);
+    case proto::AttrType::STRING:
+      return BOOST_GET_CONST(std::string, attr);
+    case proto::AttrType::INTS:
+      return BOOST_GET_CONST(std::vector<int>, attr);
+    case proto::AttrType::FLOATS:
+      return BOOST_GET_CONST(std::vector<float>, attr);
+    case proto::AttrType::STRINGS:
+      return BOOST_GET_CONST(std::vector<std::string>, attr);
+    case proto::AttrType::BOOLEAN:
+      return BOOST_GET_CONST(bool, attr);
+    case proto::AttrType::BOOLEANS:
+      return BOOST_GET_CONST(std::vector<bool>, attr);
+    case proto::AttrType::LONG:
+      return BOOST_GET_CONST(int64_t, attr);
+    case proto::AttrType::LONGS:
+      return BOOST_GET_CONST(std::vector<int64_t>, attr);
+    case proto::AttrType::FLOAT64S:
+      return BOOST_GET_CONST(std::vector<double>, attr);
+    case proto::AttrType::BLOCK:
+      return BOOST_GET_CONST(BlockDesc*, attr);
+    case proto::AttrType::BLOCKS:
+      return BOOST_GET_CONST(std::vector<BlockDesc*>, attr);
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported Attribute value type `%s` for phi.",
+          platform::demangle(attr.type().name())));
+  }
+}
+
 Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case proto::AttrType::BOOLEAN: {

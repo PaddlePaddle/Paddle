@@ -27,6 +27,7 @@ import paddle.tensor as tensor
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
@@ -154,10 +155,9 @@ class TestMLPAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_mp(self):
@@ -171,10 +171,9 @@ class TestMLPAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_dp_mp(self):
@@ -189,10 +188,9 @@ class TestMLPAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     # def test_mlp_misc(self):
@@ -212,8 +210,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
     #     train_program, start_program = mlp_pretrain_forward(train_program,
     #                                                         start_program)
     #     # pdb.set_trace()
-    #     complete_train_program = auto.complete_annotation(train_program,
-    #                                                       dist_context)
+    #    completer = Completer(dist_context)
+    #     complete_train_program = auto.completer.complete_forward_annotation(train_program)
     #     # print_program_with_dist_attr(complete_train_program,
     #     #                                     dist_context)
     #     dist_context.finalize_distributed_attr_for_program(
@@ -423,8 +421,9 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         # print_program_with_dist_attr(complete_train_program,
         #                                     dist_context)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
@@ -440,10 +439,9 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_attn_dp_mp(self):
@@ -458,10 +456,9 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(train_program,
                                                              start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 
@@ -747,10 +744,9 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_mp(self):
@@ -764,10 +760,9 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_dp_mp(self):
@@ -782,10 +777,9 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(train_program,
                                                                 start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 

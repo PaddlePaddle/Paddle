@@ -33,7 +33,8 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
 
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) + offset);
     int numel = send_numel;
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();

@@ -241,9 +241,21 @@ class TestClassCenterSampleAPIError1(unittest.TestCase):
 
                     remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                         label, self.num_classes, self.num_samples)
-                    print(remapped_label, sampled_class_index)
+
+        def test_group_value():
+            for place in self.places:
+                with paddle.fluid.dygraph.guard(place):
+                    label_np = np.random.randint(
+                        0,
+                        self.num_classes, (self.batch_size, ),
+                        dtype=self.dtype)
+                    label = paddle.to_tensor(label_np)
+
+                    remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
+                        label, self.num_classes, self.num_samples, group=True)
 
         self.assertRaises(ValueError, test_empty_label)
+        self.assertRaises(ValueError, test_group_value)
 
 
 if __name__ == '__main__':

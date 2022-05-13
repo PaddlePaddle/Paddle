@@ -24,9 +24,9 @@ class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36000"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        #os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+        #    "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_ps_minimize(self):
         import paddle
@@ -77,45 +77,6 @@ class TestFleetBase(unittest.TestCase):
 
         fleet.load_model(path="/tmp", mode=0)
         fleet.load_model(path="/tmp", mode=1)
-
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor="exe")
-
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor=exe,
-            main_program=compiled_prog)
-
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='afs:/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor=exe,
-            main_program=compiled_prog)
-
-        self.assertRaises(
-            Exception, fleet.save_persistables, executor=pe, dirname='/tmp/')
-
-        self.assertRaises(
-            Exception, fleet.save_persistables, executor="exe", dirname='/tmp/')
-
-        self.assertRaises(
-            Exception,
-            fleet.save_persistables,
-            executor=exe,
-            dirname='/tmp/',
-            main_program=compiled_prog)
 
 
 if __name__ == "__main__":

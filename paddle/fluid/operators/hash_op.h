@@ -51,7 +51,7 @@ class HashKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> out_dims;
     HashOutputSize(in_dims, out_dims, num_hash);
-    out_t->Resize(framework::make_ddim(out_dims));
+    out_t->Resize(phi::make_ddim(out_dims));
     auto* output = out_t->mutable_data<T>(context.GetPlace());
 
     auto seq_length = in_dims[0];

@@ -14,88 +14,81 @@ limitations under the License. */
 
 #pragma once
 
-#include <cmath>
 #include <popart/devicemanager.hpp>
 #include <popart/names.hpp>
+#include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/ipu/device.h"
-#include "paddle/fluid/platform/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/ipu/ipu_executor.h"
-#include "paddle/fluid/platform/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/timer.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
+class IpuStrategy;
+class Compiler;
+class Executor;
+
 class IpuBackend {
-  // IpuBackend is the center of paddle-ipu, its function include:
-  //   1. Compile paddle model to popart model
-  //   2. Run popart model, inference or training
-  //   3. Request and release device
-  //   4. Other helper function
+ public:
+  static IpuBackend *GetInstance();
 
  public:
   IpuBackend();
   ~IpuBackend();
 
-  void Clear();
-
-  // return if exsits, else create and return
-  static std::shared_ptr<IpuBackend> GetInstance();
-
-  // always return a new instance_
-  static std::shared_ptr<IpuBackend> GetNewInstance();
-
-  // what compile does include(call compiler_):
-  //   1. map paddle-op -> poart op
-  //   2. construct popart onnx compute graph
+  // What compile method does:
+  // Convert paddle ops to popart ops;
+  // Construct a popart graph, which is a onnx compute graph;
+  // Load the graph and weights to ipu.
   void Compile(framework::ir::Graph *graph,
                const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
-  // what run does include:
-  //   1. construct forward onnx graph
-  //   2. graph-level optimization
-  //   3. autodiff
+  // Run the compiled graph on ipu
   void Run(const std::vector<const framework::Tensor *> &inputs,
            const std::vector<framework::Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  Executor &GetExecutor() { return *executor_; }
+  // Sync weights from IPU while training
+  void WeightsToHost();
+
+  // Detach IPU manually
+  void Detach();
+
+  // Reset manually
+  // Call it before destruct works
+  void Reset();
 
   void SetScope(const framework::Scope &scope);
   const framework::Scope *GetScope() { return scope_; }
   void SetIpuStrategy(const IpuStrategy &strategy);
   const IpuStrategy *GetIpuStrategy() { return ipu_strategy_; }
 
-  // Device
-  size_t GetNumDevices();
-  std::vector<int> GetDeviceIds();
-  Device GetDevice(int id);
-  void AttachDevice(int id);
-  bool DeviceIsAttached();
+  // Save compiled model to onnx
+  void SaveModelProto(const std::string &path);
 
  private:
-  int UpperIpuNum();
-  void Prepare();
-
- private:
-  std::shared_ptr<Compiler> compiler_;
-  std::unique_ptr<Executor> executor_;
-  std::shared_ptr<popart::DeviceInfo> device_;
-  bool is_prepared_ = false;
-
-  // not own
+  // Not own
   const framework::Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 
- private:
-  static std::shared_ptr<IpuBackend> instance_;
+  // Own
+  std::unique_ptr<Compiler> compiler_;
+  std::unique_ptr<Executor> executor_;
+  std::unique_ptr<Timer> timer_;
+
+  bool is_compiled_ = false;
+
+  DISABLE_COPY_AND_ASSIGN(IpuBackend);
 };
 
 }  // namespace ipu

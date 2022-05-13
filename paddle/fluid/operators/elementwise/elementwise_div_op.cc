@@ -102,42 +102,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
                   ops::ElementwiseDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div_grad_grad,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
-
 REGISTER_OP_VERSION(elementwise_div)
     .AddCheckpoint(
         R"ROC(Register elementwise_div for adding the attribute of Scale_y)ROC",

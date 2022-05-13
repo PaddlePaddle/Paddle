@@ -68,8 +68,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto reduction_op_ = str_to_nccl_red_type(reduction);
 
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     VLOG(3) << "gpu : "
             << " invoke allreduce. send " << x->numel() << " recv "
@@ -100,14 +99,13 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     auto reduction_op_ = str_to_nccl_red_type(reduction);
 
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
       recvbuffer = out->mutable_data<T>(ctx.GetPlace());
     } else {
-      out->Resize(framework::make_ddim({0}));
+      out->Resize(phi::make_ddim({0}));
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
@@ -130,8 +128,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
-    int gpu_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+    int gpu_id = ctx.GetPlace().GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
       auto* x = ctx.Input<LoDTensor>("X");
@@ -144,7 +141,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     } else {
       auto* out = ctx.Output<LoDTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
-              << framework::product(out->dims());
+              << phi::product(out->dims());
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
           out->mutable_data<T>(ctx.GetPlace()), out->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),

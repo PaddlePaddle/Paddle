@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/device/gpu/rocm/rocm_helper.h"
 #else
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_helper.h"
+#include "paddle/fluid/platform/device/gpu/cuda/cusparse_helper.h"
 #endif
 
 #define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)

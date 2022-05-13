@@ -21,7 +21,9 @@
 #include "paddle/infrt/paddle/cpp/desc_api.h"
 #include "paddle/infrt/paddle/framework.pb.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 namespace framework_proto = ::paddle::framework::proto;
 
 class ProgramDesc : public cpp::ProgramDescAPI {
@@ -58,4 +60,6 @@ class ProgramDesc : public cpp::ProgramDescAPI {
   framework_proto::ProgramDesc *desc_;  // not_own
 };
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

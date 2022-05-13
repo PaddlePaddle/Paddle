@@ -46,7 +46,8 @@ class PReluOpConverter : public OpConverter {
     std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
         new framework::LoDTensor());
     alpha_tensor_temp->Resize(alpha_tensor->dims());
-    TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
+    paddle::framework::TensorCopySync(*alpha_tensor, cpu_place,
+                                      alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
     nvinfer1::ILayer* layer = nullptr;
@@ -56,8 +57,8 @@ class PReluOpConverter : public OpConverter {
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
     } else {
 #if IS_TRT_VERSION_GE(7000)
-      float* alpha_weight_data = engine_->GetWeightCPUData(
-          op_desc.Input("Alpha")[0], alpha_tensor, false);
+      float* alpha_weight_data =
+          engine_->GetWeightCPUData(op_desc.Input("Alpha")[0], alpha_tensor);
       TensorRTEngine::Weight alpha_weight{
           nvinfer1::DataType::kFLOAT, static_cast<void*>(alpha_weight_data),
           static_cast<size_t>(alpha_tensor->numel())};

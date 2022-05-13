@@ -503,7 +503,7 @@ def append_send_ops_pass(program, config):
         split_dense_table=config.is_heter_ps_mode)
 
     for merged_name, send in sends.items():
-        if send.is_sparse():
+        if send.is_sparse() and not config.is_geo_mode():
             continue
         is_sparse = 1 if send.is_sparse() else 0
         is_sparse = 2 if send.is_distributed() else is_sparse
@@ -1407,7 +1407,7 @@ def get_communicate_var_info(program,
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the uneccessary variable
+    union the forward op and corresponding gradient op to elimincate the unnecessary variable
     transmit
     """
     """

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -45,11 +44,9 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
     Tensor transformed_x, transformed_y;
     if (direct_compute) {
@@ -103,7 +100,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_x.empty()) {
-          tmp_x.Resize(framework::make_ddim(dst_dims_vec_x));
+          tmp_x.Resize(phi::make_ddim(dst_dims_vec_x));
         }
       }
       // dy
@@ -126,7 +123,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_y.empty()) {
-          tmp_y.Resize(framework::make_ddim(dst_dims_vec_y));
+          tmp_y.Resize(phi::make_ddim(dst_dims_vec_y));
         }
       }
 
@@ -159,7 +156,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_x.empty()) {
-          tmp_x.Resize(framework::make_ddim(dst_dims_vec_x));
+          tmp_x.Resize(phi::make_ddim(dst_dims_vec_x));
         }
       }
 
@@ -193,7 +190,7 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_y.empty()) {
-          tmp_y.Resize(framework::make_ddim(dst_dims_vec_y));
+          tmp_y.Resize(phi::make_ddim(dst_dims_vec_y));
         }
       }
 

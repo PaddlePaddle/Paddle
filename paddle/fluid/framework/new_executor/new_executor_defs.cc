@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -74,6 +74,10 @@ bool InterpretercoreInferShapeContext::HasOutput(
   return out[0] != nullptr;
 }
 
+bool InterpretercoreInferShapeContext::HasAttr(const std::string& name) const {
+  return op_.HasAttr(name);
+}
+
 bool InterpretercoreInferShapeContext::HasInputs(
     const std::string& name) const {
   const auto& ins = ctx_.inputs;
@@ -89,19 +93,24 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return true;
     }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -171,9 +180,9 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
       platform::errors::InvalidArgument(
           "The type of input (%s) and output (%s) are inconsistent.", in, out));
 
-  if (in_var->IsType<framework::SelectedRows>()) {
-    auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-    auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+  if (in_var->IsType<phi::SelectedRows>()) {
+    auto& in_sele_rows = in_var->Get<phi::SelectedRows>();
+    auto out_sele_rows = out_var->GetMutable<phi::SelectedRows>();
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
@@ -307,20 +316,33 @@ void InterpretercoreInferShapeContext::SetLoDLevel(const std::string& out,
 
 bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
+bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
+  try {
+    auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
+    return ((op_with_kernel.kernel_type()) &&
+            (op_with_kernel.kernel_type()->data_layout_ ==
+             framework::DataLayout::kMKLDNN));
+  } catch (std::bad_cast& exp) {
+    return false;
+  }
+}
+
 // TODO(paddle-dev): Can this be template?
-std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
-    const std::string& name) {
+paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+InterpretercoreInferShapeContext::GetInputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
 }
 
-std::vector<InferShapeVarPtr>
-InterpretercoreInferShapeContext::GetOutputVarPtrs(const std::string& name) {
+paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+InterpretercoreInferShapeContext::GetOutputVarPtrs(
+    const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
@@ -341,6 +363,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   return GetDims(vars);
+}
+
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
 }
 
 std::vector<proto::VarType::Type>
@@ -371,6 +398,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
   SetDims(vars, dims);
 }
 
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+}
+
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }
@@ -380,8 +417,8 @@ DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
-  } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Only LoDTensor or SelectedRows support 'GetDim', but input "
@@ -408,8 +445,8 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
   if (var->IsType<LoDTensor>()) {
     var->GetMutable<LoDTensor>()->Resize(dim);
-  } else if (var->IsType<SelectedRows>()) {
-    var->GetMutable<SelectedRows>()->set_height(dim[0]);
+  } else if (var->IsType<phi::SelectedRows>()) {
+    var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Variable type error, expect LoDTensor or SelectedRows, but received "
@@ -620,6 +657,28 @@ void VariableScope::CheckExist(const std::string& name) const {
                                             "%s not in VariableScope.", name));
 }
 
+void VariableScope::ClearListener() {
+  if (scope_ && listener_ && scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << scope_;
+    scope_->DelListener(listener_);
+  }
+  if (local_scope_ && listener_ && local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << local_scope_;
+    local_scope_->DelListener(listener_);
+  }
+}
+
+void VariableScope::ResetListener() {
+  if (scope_ && listener_ && !scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << scope_;
+    scope_->AddListener(listener_);
+  }
+  if (local_scope_ && listener_ && !local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << local_scope_;
+    local_scope_->AddListener(listener_);
+  }
+}
+
 VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
   var_scope_ = var_scope;
 }
@@ -672,7 +731,13 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
+phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
+
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+const std::map<int, int>& Instruction::InplaceBackMap() const {
+  return op_func_node_.inplace_back_map;
+}
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
@@ -703,6 +768,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {

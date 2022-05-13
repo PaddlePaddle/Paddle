@@ -26,6 +26,8 @@ namespace tensor {
 TensorShape::TensorShape(llvm::ArrayRef<int64_t> dims)
     : dims_(dims.begin(), dims.end()) {}
 
+TensorShape::TensorShape(std::initializer_list<int64_t> dims) : dims_(dims) {}
+
 int TensorShape::GetRank() const { return dims_.size(); }
 
 int64_t TensorShape::GetDim(int idx) const {

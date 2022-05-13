@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -294,6 +294,56 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
 class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftmaxBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "softmax"
+        self.use_cudnn = self.init_cudnn()
+        self.use_mkldnn = False
+        self.dtype = np.uint16
+        self.shape = [10, 10]
+        self.axis = -1
+
+        np.random.seed(0)
+        x = np.random.uniform(0.1, 1, self.shape).astype(np.float32)
+        out = np.apply_along_axis(stable_softmax, self.axis, x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            'axis': self.axis,
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
+        }
+
+    def init_cudnn(self):
+        return False
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, check_dygraph=(self.use_mkldnn == False))
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ["X"],
+            "Out",
+            numeric_grad_delta=0.05,
+            check_dygraph=(self.use_mkldnn == False))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
+    def init_cudnn(self):
+        return True
 
 
 class TestSoftmaxAPI(unittest.TestCase):

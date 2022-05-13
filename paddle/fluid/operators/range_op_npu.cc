@@ -50,7 +50,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     int64_t size = 0;
     GetSize(start, end, step, &size);
 
-    out->Resize(framework::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
     out->mutable_data<T>(context.GetPlace());
 
     std::vector<T> odata;

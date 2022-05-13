@@ -98,8 +98,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
             theta_dims[2], theta_dims));
 
     // N * H * W * 2
-    ctx->SetOutputDim("Output",
-                      framework::make_ddim({theta_dims[0], -1, -1, 2}));
+    ctx->SetOutputDim("Output", phi::make_ddim({theta_dims[0], -1, -1, 2}));
     ctx->ShareLoD("Theta", "Output");
   }
 
@@ -137,7 +136,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsExtra();
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
-                  "and ouput.")
+                  "and output.")
         .SetDefault(true);
     AddAttr<std::vector<int>>(
         "output_shape",

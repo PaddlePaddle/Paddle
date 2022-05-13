@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -46,12 +47,8 @@ class SoftmaxMKLDNNHandler
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    auto softmax_tz = framework::vectorize(input->dims());
-    auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
-                           input->format());
-
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
-                                            axis);
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
+                                            input->mem_desc(), axis);
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -70,18 +67,13 @@ class SoftmaxMKLDNNHandler
                           out_grad->dims(), in_x_grad->dims()));
 
     auto dims = out_grad->dims();  // input and output share the same shape
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-    auto softmax_tz = framework::vectorize<int64_t>(dims);
-
-    auto data_softmax_md = MKLDNNMemDesc(
-        softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
-    auto diff_softmax_md = MKLDNNMemDesc(
-        softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
+    const int axis =
+        phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            data_softmax_md, axis);
-    this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
-                                             axis);
+                                            out->mem_desc(), axis);
+    this->AcquireBackwardPrimitiveDescriptor(out_grad->mem_desc(),
+                                             out->mem_desc(), axis);
   }
 };
 
@@ -96,7 +88,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     Tensor* output = ctx.Output<Tensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
+    const int axis =
+        phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
 
     SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input,
                                     output, axis);
@@ -125,9 +118,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
       });
     }
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    // Softmax output format is the same as input one
-    output->set_format(input->format());
+    output->set_mem_desc(softmax_dst_memory_p->get_desc());
   }
 };
 
@@ -159,8 +150,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                                      {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
     astream.wait();
 
-    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
+    in_x_grad->set_mem_desc(diff_src_memory_p->get_desc());
   }
 };
 }  // namespace operators

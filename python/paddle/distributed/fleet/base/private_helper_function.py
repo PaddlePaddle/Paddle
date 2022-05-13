@@ -43,6 +43,10 @@ def wait_server_ready(endpoints):
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as sock:
                 sock.settimeout(2)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                if hasattr(socket, 'SO_REUSEPORT'):
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                 if result != 0:
                     all_ok = False

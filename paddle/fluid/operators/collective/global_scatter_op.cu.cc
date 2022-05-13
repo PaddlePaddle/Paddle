@@ -14,10 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -25,13 +26,15 @@ template <typename T>
 class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto local_count = ctx.Input<framework::LoDTensor>("local_count");
     auto global_count = ctx.Input<framework::LoDTensor>("global_count");
-    auto local_count_type = local_count->type();
-    auto global_count_type = global_count->type();
+    auto local_count_type =
+        framework::TransToProtoVarType(local_count->dtype());
+    auto global_count_type =
+        framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in local_count."));
@@ -63,7 +66,8 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
       global_count_len = cpu_global_count.numel();
     }
 
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
@@ -74,7 +78,7 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
@@ -89,7 +93,7 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = framework::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;

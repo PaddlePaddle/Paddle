@@ -67,12 +67,24 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
 
 void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
   std::string name_scope = "adaptive_pool2d_convert_global_pass";
+
   FusePassBase::Init(name_scope, graph);
   int num = 0;
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr("adaptive") && op->HasAttr("ksize")) {
+      if (op->Type() == "pool2d" && op->HasAttr("adaptive") &&
+          op->HasAttr("ksize")) {
+        if (op->HasAttr("global_pooling")) {
+          bool global_pooling =
+              BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+          if (global_pooling) continue;
+        }
+        if (!op->HasAttr("pooling_type")) continue;
+        std::string type =
+            BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
+        // adaptive has no effect on max pooling
+        if (type == "max") continue;
         bool adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
         std::vector<int> ksize =
             BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));

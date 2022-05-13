@@ -30,7 +30,8 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     int64_t numel = in->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");

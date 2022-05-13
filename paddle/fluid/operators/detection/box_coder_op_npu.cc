@@ -188,7 +188,7 @@ void BoxCoderEnc(const framework::ExecutionContext& ctx, const Tensor* tb,
                  const std::vector<float>& variance, Tensor* out) {
   auto M = pb->dims()[0];
   auto N = tb->dims()[0];
-  auto shape_0 = framework::make_ddim({4, 2});
+  auto shape_0 = phi::make_ddim({4, 2});
   Tensor m_diff;
   Tensor m_aver;
   std::vector<T> vec_diff = {static_cast<T>(-1), static_cast<T>(0),
@@ -213,8 +213,8 @@ void BoxCoderEnc(const framework::ExecutionContext& ctx, const Tensor* tb,
   tb_xy.Resize({N, 1, 2});
   tb_wh.Resize({N, 1, 2});
 
-  auto shape_half = framework::make_ddim({N, M, 2});
-  auto shape_full = framework::make_ddim({N, M, 4});
+  auto shape_half = phi::make_ddim({N, M, 2});
+  auto shape_full = phi::make_ddim({N, M, 4});
 
   Tensor out_xy_0 = F.DivWithBroadCast(
       F.SubWithBroadCast(tb_xy, pb_xy, shape_half), pb_wh, shape_half);
@@ -229,7 +229,7 @@ void BoxCoderEnc(const framework::ExecutionContext& ctx, const Tensor* tb,
     for (auto i = 0; i < 4; i++) {
       vec_var[i] = static_cast<T>(variance[i]);
     }
-    Vector2Tensor(ctx, vec_var, framework::make_ddim({1, 1, 4}), &t_var);
+    Vector2Tensor(ctx, vec_var, phi::make_ddim({1, 1, 4}), &t_var);
     F.DivWithBroadCastVoid(out_0, t_var, shape_full, out);
   }
 }
@@ -238,7 +238,7 @@ template <typename T>
 void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
                  const Tensor* pb, const Tensor* pbv, const bool norm,
                  const std::vector<float>& variance, int axis, Tensor* out) {
-  auto shape_0 = framework::make_ddim({4, 2});
+  auto shape_0 = phi::make_ddim({4, 2});
   Tensor m_diff;
   Tensor m_aver;
   std::vector<T> vec_diff = {static_cast<T>(-1), static_cast<T>(0),
@@ -255,14 +255,12 @@ void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
   BoxCoderFunction<T> F(ctx);
   Tensor pb_xy = F.Adds(F.Dot(*pb, m_aver), (norm ? 0 : 0.5));
   Tensor pb_wh = F.Adds(F.Dot(*pb, m_diff), (norm ? 0 : 1));
-  auto pb_resize_shape = axis == 0
-                             ? framework::make_ddim({1, pb->dims()[0], 2})
-                             : framework::make_ddim({pb->dims()[0], 1, 2});
+  auto pb_resize_shape = axis == 0 ? phi::make_ddim({1, pb->dims()[0], 2})
+                                   : phi::make_ddim({pb->dims()[0], 1, 2});
   pb_xy.Resize(pb_resize_shape);
   pb_wh.Resize(pb_resize_shape);
 
-  auto tbox_slice_shape =
-      framework::make_ddim({tb->dims()[0], tb->dims()[1], 2});
+  auto tbox_slice_shape = phi::make_ddim({tb->dims()[0], tb->dims()[1], 2});
   std::vector<int> tbox_slice_size = {static_cast<int>(tb->dims()[0]),
                                       static_cast<int>(tb->dims()[1]), 2};
   Tensor tbox01 = F.Slice(*tb, {0, 0, 0}, tbox_slice_size, tbox_slice_shape);
@@ -271,10 +269,9 @@ void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
   Tensor tb_xy;
   Tensor tb_wh;
   if (pbv) {
-    auto pbvt_slice_shape = framework::make_ddim({pbv->dims()[0], 2});
-    auto pbvt_resize_shape = axis == 0
-                                 ? framework::make_ddim({1, pbv->dims()[0], 2})
-                                 : framework::make_ddim({pbv->dims()[0], 1, 2});
+    auto pbvt_slice_shape = phi::make_ddim({pbv->dims()[0], 2});
+    auto pbvt_resize_shape = axis == 0 ? phi::make_ddim({1, pbv->dims()[0], 2})
+                                       : phi::make_ddim({pbv->dims()[0], 1, 2});
     std::vector<int> pbvt_slice_size = {static_cast<int>(pbv->dims()[0]), 2};
     Tensor pbv_t01 = F.Slice(*pbv, {0, 0}, pbvt_slice_size, pbvt_slice_shape);
     Tensor pbv_t23 = F.Slice(*pbv, {0, 2}, pbvt_slice_size, pbvt_slice_shape);
@@ -293,7 +290,7 @@ void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
     F.MulWithBroadCastVoid(F.Exp(tbox23), pb_wh, tbox_slice_shape, &tb_wh);
   } else {
     Tensor t_var01, t_var23;
-    auto t_var_shape = framework::make_ddim({1, 1, 2});
+    auto t_var_shape = phi::make_ddim({1, 1, 2});
     std::vector<T> vec_var01 = {static_cast<T>(variance[0]),
                                 static_cast<T>(variance[1])};
     std::vector<T> vec_var23 = {static_cast<T>(variance[2]),

@@ -35,7 +35,8 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
     void* ptr =
         reinterpret_cast<void*>(const_cast<T*>(out->data<T>()) + offset);
     int numel = recv_numel;
-    HcclDataType dtype = platform::ToHCCLDataType(out->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(out->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
 

@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid.core as core
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
-from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
 
 
@@ -25,12 +25,15 @@ def get_all_process_groups():
     return _g_process_group_map.values()
 
 
-def get_process_group(group_id):
+def get_process_group(group_id, g_process_group_map=None):
     global _g_process_group_map
-    return _g_process_group_map.get(group_id, None)
+    return _g_process_group_map.get(
+        group_id,
+        None) if g_process_group_map is None else g_process_group_map.get(
+            group_id, None)
 
 
-def get_world_process_groups():
+def get_world_process_group():
     global _g_process_group_map
     return _g_process_group_map[0]
 
@@ -129,7 +132,7 @@ class ProcessGroup:
         # TODO(shenliang03): This is a temporary solution to solve the problem of 
         # hang caused by cross-creation of new_group
         tmp = paddle.to_tensor(
-            [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [1], dtype="int32") if _non_static_mode() else fill_constant(
                 [0], dtype="int32", value="1")
         paddle.distributed.all_reduce(tmp, use_calc_stream=True)
         paddle.distributed.wait(tmp)
@@ -153,6 +156,6 @@ class ProcessGroup:
 
 
 # Note that Process group 0 is reserved for representing all ranks.
-# At the begining, group 0 is empty and new ranks will be added automatically. 
+# At the beginning, group 0 is empty and new ranks will be added automatically. 
 _g_process_group_map = {}
 _g_process_group_map[0] = ProcessGroup(0, [])

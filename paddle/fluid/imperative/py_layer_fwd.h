@@ -81,9 +81,6 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
-  auto result_forward = forward(context, *args, **kwargs);
-  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -166,6 +163,10 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       }
     }
   }
+
+  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
+      std::make_shared<operators::PyLayerContext>(context.ptr());
+  auto result_forward = forward(context, *args, **kwargs);
   NameVarBaseMap ins = {{"X", input_vars}};
 
   std::vector<std::shared_ptr<imperative::VarBase>> output_vars;

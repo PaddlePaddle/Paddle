@@ -30,15 +30,17 @@ import paddle.utils as utils
 import paddle.static as static
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
@@ -432,6 +434,12 @@ class MLPLayer(nn.Layer):
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
+        auto.shard_tensor(
+            out,
+            dist_attr={
+                "process_mesh": _global_process_mesh[1],
+                "dims_mapping": [0, -1]
+            })
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -469,22 +477,34 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
-    dist_strategy = fleet.DistributedStrategy()
+    fleet._user_defined_strategy = fleet.DistributedStrategy()
+    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    parallelizer = AutoParallelizer(fleet)
+    parallelizer._dist_context = dist_context
 
     # auto completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-    # logical partition
-    dist_train_program, dist_startup_prog = partitioner.transpile_forward(
-        complete_train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, complete_train_program, startup_program, dist_train_program,
-        dist_startup_prog)
-    optimizer = paddle.fluid.optimizer.AdamOptimizer()
-    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                         dist_train_program, dist_startup_prog)
-    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None)
+
+    partitioner = Partitioner(dist_context, rank_id)
+    dist_train_program, dist_startup_prog, dist_params_grads = partitioner.partition(
+        complete_train_program, startup_program, params_grads)
+
+    partitioned_optimize_ops = parallelizer._apply_optimize(
+        dist_train_program, dist_startup_prog, dist_params_grads)
+
+    resharder = Resharder(dist_train_program, dist_startup_prog, rank_id,
+                          dist_context, dist_params_grads)
+    resharder.reshard()
     return dist_train_program, dist_startup_prog
 
 
@@ -529,7 +549,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 train_program, startup_program, dist_context, rank_id)
             # if rank_id == 0:
             #   print_program_with_dist_attr(dist_train_program, dist_context)
-            dist_programs[rank_id] = dist_train_program
+            dist_programs[rank_id] = [dist_train_program, None]
 
         rank_mapping = mapping(dist_programs, cluster)
 

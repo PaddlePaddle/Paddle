@@ -50,12 +50,11 @@ class TestTanh(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            self.check_grad(['X'], 'Out', max_relative_error=0.009)
+        else:
+            self.check_grad(['X'], 'Out', max_relative_error=0.009)
 
 
 class TestTanhFp16(OpTest):

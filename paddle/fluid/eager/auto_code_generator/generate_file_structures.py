@@ -15,9 +15,45 @@
 import sys
 import os
 
-if __name__ == "__main__":
-    assert len(sys.argv) == 2
-    eager_dir = sys.argv[1]
+
+def GenerateFileStructureForFinalDygraph(eager_dir):
+    """
+    paddle/fluid/eager
+    |- generated
+    |  |- CMakeLists.txt
+    |  |  "add_subdirectory(forwards), add_subdirectory(backwards)"
+    |  
+    |  |- forwards
+    |     |- "dygraph_functions.cc"
+    |     |- "dygraph_functions.h"
+    |
+    |  |- backwards
+    |     |- "nodes.cc"
+    |     |- "nodes.h"
+    """
+    # Directory Generation
+    generated_dir = os.path.join(eager_dir, "api/generated/eager_generated")
+    forwards_dir = os.path.join(generated_dir, "forwards")
+    nodes_dir = os.path.join(generated_dir, "backwards")
+    dirs = [generated_dir, forwards_dir, nodes_dir]
+    for directory in dirs:
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+
+    # Empty files
+    dygraph_forward_api_h_path = os.path.join(generated_dir,
+                                              "dygraph_functions.h")
+    empty_files = [dygraph_forward_api_h_path]
+    empty_files.append(os.path.join(forwards_dir, "dygraph_functions.cc"))
+    empty_files.append(os.path.join(nodes_dir, "nodes.cc"))
+    empty_files.append(os.path.join(nodes_dir, "nodes.h"))
+
+    for path in empty_files:
+        if not os.path.exists(path):
+            open(path, 'a').close()
+
+
+def GenerateFileStructureForIntermediateDygraph(eager_dir):
     """
     paddle/fluid/eager
     |- generated
@@ -79,3 +115,10 @@ if __name__ == "__main__":
 
     with open(generated_level_cmakelist_path, "w") as f:
         f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
+
+
+if __name__ == "__main__":
+    assert len(sys.argv) == 2
+    eager_dir = sys.argv[1]
+    GenerateFileStructureForIntermediateDygraph(eager_dir)
+    GenerateFileStructureForFinalDygraph(eager_dir)

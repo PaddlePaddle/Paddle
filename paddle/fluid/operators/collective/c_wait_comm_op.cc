@@ -35,9 +35,11 @@ class CWaitCommOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "wait_comm op can run on gpu place only for now."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(place), true,
+        platform::errors::PreconditionNotMet(
+            "wait_comm op can run on gpu place only for now, but got %s",
+            place.DebugString()));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");

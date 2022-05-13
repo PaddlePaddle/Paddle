@@ -35,9 +35,12 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string &name) const override;
 
+  bool HasAttr(const std::string &name) const override;
+
   bool HasInputs(const std::string &name) const override;
 
-  bool HasOutputs(const std::string &name) const override;
+  bool HasOutputs(const std::string &name,
+                  bool allow_null = false) const override;
 
   AttrReader Attrs() const override;
 
@@ -199,10 +202,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string &name) override {
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Inputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -211,10 +214,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     return res;
   }
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string &name) override {
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string &name) const override {
     const std::vector<std::string> arg_names = Outputs(name);
-    std::vector<InferShapeVarPtr> res;
+    paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
     res.reserve(arg_names.size());
     std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
                    [this](const std::string &name) {
@@ -239,6 +242,12 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   bool IsRuntime() const override;
+
+  bool IsRunMKLDNNKernel() const override;
+
+  proto::VarType::Type GetInputVarType(const std::string &name) const override {
+    return GetVarType(Inputs(name).at(0));
+  }
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
@@ -266,6 +275,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     SetDims(names, dims);
   }
 
+  const phi::ArgumentMappingFn *GetPhiArgumentMappingFn() const override {
+    return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+  }
+
+  const phi::KernelSignature *GetPhiDefaultKernelSignature() const override {
+    return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+  }
+
  protected:
   std::vector<proto::VarType::Type> GetVarTypes(
       const std::vector<std::string> &names) const {
@@ -287,7 +304,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
+      res = shape.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -352,15 +369,9 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  // The record of original_id_ is only for auto parallel.
+  original_id_ = op_desc.original_id_;
   need_update_ = true;
-  // When creating graph from program, the creation of op node will create a new
-  // OpDesc instead of
-  // referring to the original one. To find the original OpDesc of the op node,
-  // the id have to be
-  // copied to the new OpDesc. The var node has the same situation, but the
-  // default copy constructor
-  // can copy the id automatically.
-  id_ = op_desc.id_;
 }
 
 OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
@@ -779,10 +790,17 @@ void OpDesc::CheckAttrs() {
   checker->Check(&attrs_);
 }
 
-void OpDesc::InferShape(const BlockDesc &block) const {
+void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
-    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    auto &op_info = OpInfoMap::Instance().Get(this->Type());
+    auto *checker = op_info.Checker();
+    if (checker != nullptr) {
+      // set dafault value here
+      VLOG(10) << "begin to check attribute of " << Type();
+      checker->Check(&attrs_);
+    }
+    auto &infer_shape = op_info.infer_shape_;
     PADDLE_ENFORCE_EQ(
         static_cast<bool>(infer_shape), true,
         platform::errors::NotFound(
@@ -859,6 +877,10 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   return block_.HasVarRecursive(output_names[0]);
 }
 
+bool CompileTimeInferShapeContext::HasAttr(const std::string &name) const {
+  return op_.HasAttr(name);
+}
+
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   if (op_.Inputs().find(name) == op_.Inputs().end()) {
     return false;
@@ -873,7 +895,8 @@ bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   return true;
 }
 
-bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
+                                              bool allow_null) const {
   if (op_.Outputs().find(name) == op_.Outputs().end()) {
     return false;
   }
@@ -881,10 +904,17 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
   if (output_names.empty()) {
     return false;
   }
-  for (auto &output : output_names) {
-    if (!block_.HasVarRecursive(output)) return false;
+  if (allow_null) {
+    for (auto &output : output_names) {
+      if (block_.HasVarRecursive(output)) return true;
+    }
+    return false;
+  } else {
+    for (auto &output : output_names) {
+      if (!block_.HasVarRecursive(output)) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
@@ -910,7 +940,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
+      res.push_back(s.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
@@ -930,11 +960,13 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found.", name));
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), phi::vectorize<>);
   var->SetShapes(dim_vec);
 }
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {

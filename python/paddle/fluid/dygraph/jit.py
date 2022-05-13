@@ -1,4 +1,5 @@
 # Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +21,11 @@ import warnings
 import functools
 from collections import OrderedDict
 import inspect
+import threading
 
 import six
 import paddle
-from paddle.fluid import core
+from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
@@ -35,9 +37,9 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter
+from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
-from paddle.fluid.framework import dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
@@ -123,7 +125,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_to_static:
+        if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
@@ -300,6 +302,7 @@ class _SaveLoadConfig(object):
 
         # If True, It will save inference program only, and do not save params of Program
         self._program_only = False
+        self.with_hook = False
 
     @property
     def output_spec(self):
@@ -368,7 +371,7 @@ class _SaveLoadConfig(object):
 
 
 def _parse_save_configs(configs):
-    supported_configs = ['output_spec']
+    supported_configs = ['output_spec', "with_hook"]
 
     # input check
     for key in configs:
@@ -380,6 +383,7 @@ def _parse_save_configs(configs):
     # construct inner config
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
+    inner_config.with_hook = configs.get('with_hook', False)
 
     return inner_config
 
@@ -452,11 +456,15 @@ def _get_input_var_names(inputs, input_spec):
     return result_list
 
 
-def _get_output_vars(outputs, output_spec):
+def _get_output_vars(outputs, output_spec, with_hook=False):
     name_no_exists_error = "The tensor `%s` does not exists. " \
         "Please make sure the name of example Tensor " \
         "in configs.output_spec is the output tensor of " \
         "Layer.forward method."
+    if output_spec and with_hook:
+        raise RuntimeError(
+            "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
+        )
     result_list = []
     output_vars_dict = OrderedDict()
     for var in flatten(outputs):
@@ -525,6 +533,105 @@ def _build_load_path_and_config(path, config):
     return model_path, config
 
 
+_save_pre_hooks_lock = threading.Lock()
+_save_pre_hooks = []
+
+
+class HookRemoveHelper(object):
+    """ A HookRemoveHelper that can be used to remove hook. """
+
+    def __init__(self, hook):
+        self._hook = hook
+
+    def remove(self):
+        _remove_save_pre_hook(self._hook)
+
+
+def _register_save_pre_hook(hook):
+    """
+    Register a save pre-hook for `paddle.jit.save`.
+    This hook will be executed before `save` function has been invoked.
+
+    hook(layer, input_spec, configs) -> None
+    - layer (Layer|function): This argument is corresponding to `layer` in `paddle.jit.save`.
+    - input_spec (list or tuple[InputSpec|Tensor|Python built-in variable]): This argument is corresponding to `input_spec` in `paddle.jit.save`.
+    - configs (dict): This argument is corresponding to `configs` in `paddle.jit.save`.
+
+    Args:
+        hook(function): a function registered as a save pre-hook
+
+    Returns:
+        HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()`.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            IMAGE_SIZE = 256
+            CLASS_NUM = 10
+
+            class LinearNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                def forward(self, x):
+                    return self._linear(x)
+
+            saving_count = 0
+            def save_pre_hook(layer, input_spec, configs):
+                global saving_count
+                saving_count += 1
+
+            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
+
+            layer = LinearNet()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+
+            remove_handler.remove()
+            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            # saving_count == 1
+    """
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook not in _save_pre_hooks:
+        _save_pre_hooks.append(hook)
+    _save_pre_hooks_lock.release()
+    return HookRemoveHelper(hook)
+
+
+def _clear_save_pre_hooks():
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    _save_pre_hooks.clear()
+    _save_pre_hooks_lock.release()
+
+
+def _remove_save_pre_hook(hook):
+    global _save_pre_hooks_lock
+    global _save_pre_hooks
+    _save_pre_hooks_lock.acquire()
+    if hook in _save_pre_hooks:
+        _save_pre_hooks.remove(hook)
+    _save_pre_hooks_lock.release()
+
+
+def _run_save_pre_hooks(func):
+    def wrapper(layer, path, input_spec=None, **configs):
+        global _save_pre_hooks
+        for hook in _save_pre_hooks:
+            hook(layer, input_spec, configs)
+        func(layer, path, input_spec, **configs)
+
+    return wrapper
+
+
+@_run_save_pre_hooks
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
@@ -720,7 +827,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, Variable)):
+            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var))
             else:
@@ -729,10 +836,16 @@ def save(layer, path, input_spec=None, **configs):
 
     # parse configs
     configs = _parse_save_configs(configs)
+    # whether outermost layer has pre/post hook, if does, we need also save
+    # these operators in program. 
+    with_hook = configs.with_hook
+
     scope = core.Scope()
     extra_var_info = dict()
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
+        if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
+            with_hook = True
     else:
         # layer is function
         functions = [layer, ]
@@ -741,7 +854,7 @@ def save(layer, path, input_spec=None, **configs):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
                 concrete_program = static_func.concrete_program_specify_input_spec(
-                    inner_input_spec)
+                    inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
@@ -751,7 +864,8 @@ def save(layer, path, input_spec=None, **configs):
                                                         inner_input_spec)
                 static_forward = declarative(
                     inner_layer.forward, input_spec=inner_input_spec)
-                concrete_program = static_forward.concrete_program
+                concrete_program = static_forward.concrete_program_specify_input_spec(
+                    with_hook=with_hook)
                 # the input_spec has been used in declarative, which is equal to
                 # @declarative with input_spec and jit.save without input_spec,
                 # avoid needless warning
@@ -797,30 +911,34 @@ def save(layer, path, input_spec=None, **configs):
                 state_var_dict[var.name] = var
 
             # 3. share parameters from Layer to scope & record var info
-            for param_or_buffer in concrete_program.parameters:
-                # share to scope
-                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
-                    scr_tensor = param_or_buffer.value().get_map_tensor()
-                    tgt_var = scope.var(param_or_buffer.name)
-                    tgt_var.set_vocab(scr_tensor)
-                else:
-                    param_or_buffer_tensor = scope.var(
-                        param_or_buffer.name).get_tensor()
-                    #src_tensor = param_or_buffer.value().get_tensor()
-                    src_tensor = state_var_dict[param_or_buffer.name].value(
-                    ).get_tensor()
-                    param_or_buffer_tensor._share_data_with(src_tensor)
-                # record var info
-                if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
-                    if param_or_buffer.name in state_names_dict:
-                        extra_info_dict['structured_name'] = state_names_dict[
-                            param_or_buffer.name]
-                    extra_info_dict[
-                        'stop_gradient'] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, ParamBase):
-                        extra_info_dict['trainable'] = param_or_buffer.trainable
-                    extra_var_info[param_or_buffer.name] = extra_info_dict
+            with dygraph.guard():
+                for param_or_buffer in concrete_program.parameters:
+                    # share to scope
+                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                        scr_tensor = param_or_buffer.value().get_map_tensor()
+                        tgt_var = scope.var(param_or_buffer.name)
+                        tgt_var.set_vocab(scr_tensor)
+                    else:
+                        param_or_buffer_tensor = scope.var(
+                            param_or_buffer.name).get_tensor()
+                        #src_tensor = param_or_buffer.value().get_tensor()
+                        src_tensor = state_var_dict[param_or_buffer.name].value(
+                        ).get_tensor()
+                        param_or_buffer_tensor._share_data_with(src_tensor)
+                    # record var info
+                    if param_or_buffer.name not in extra_var_info:
+                        extra_info_dict = dict()
+                        if param_or_buffer.name in state_names_dict:
+                            extra_info_dict[
+                                'structured_name'] = state_names_dict[
+                                    param_or_buffer.name]
+                        extra_info_dict[
+                            'stop_gradient'] = param_or_buffer.stop_gradient
+                        if isinstance(param_or_buffer,
+                                      (ParamBase, EagerParamBase)):
+                            extra_info_dict[
+                                'trainable'] = param_or_buffer.trainable
+                        extra_var_info[param_or_buffer.name] = extra_info_dict
 
         # 4. build input & output of save_infernece_model
         # NOTE(chenweihang): [ Get input variables name ]
@@ -838,8 +956,10 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support VarBase spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
+        # print(concrete_program.main_program)
+        # print(concrete_program.outputs, configs.output_spec)
         output_vars = _get_output_vars(concrete_program.outputs,
-                                       configs.output_spec)
+                                       configs.output_spec, with_hook)
 
         # 5. save inference model
         from paddle.fluid.io import save_inference_model
@@ -1331,7 +1451,7 @@ class TracedLayer(object):
             "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if in_dygraph_mode():
+        if _non_static_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:

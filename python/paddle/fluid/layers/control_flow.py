@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
+from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -100,6 +100,41 @@ def select_input(inputs, mask):
                 'Mask': mask},
         outputs={'Out': out})
     return out
+
+
+def select_input_with_buildin_type(inputs, mask):
+    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+    support_ret_buildin_type = (bool, float, six.integer_types)
+    false_var, true_var = inputs
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return select_input(inputs, mask)
+
+    elif (isinstance(false_var, (support_ret_buildin_type)) and
+          isinstance(false_var, type(true_var))):
+        if false_var == true_var:
+            return false_var
+        else:
+            inputs = [
+                to_static_variable(false_var), to_static_variable(true_var)
+            ]
+    # Deal with the situations like this: false_var is int and true_var is Variable
+    elif ((isinstance(false_var, support_ret_buildin_type) and
+           isinstance(true_var, Variable)) or
+          (isinstance(true_var, support_ret_buildin_type) and
+           isinstance(false_var, Variable))):
+        inputs = [to_static_variable(false_var), to_static_variable(true_var)]
+        warnings.warn(
+            "Return results from different branches in cond are not same type: "
+            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "'{}'".format(type(false_var), type(true_var)))
+    else:
+        raise TypeError(
+            "Unsupported return type of true_fn and false_fn in cond: false_var "
+            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".
+            format(type(false_var), type(true_var)))
+
+    return select_input(inputs, mask)
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -862,7 +897,9 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
-        parameters = [parent_block.var(name) for name in set(params)]
+        parameters = [
+            parent_block._find_var_recursive(name) for name in set(params)
+        ]
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -937,6 +974,19 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
     :return: inner_inputs, inner_outputs
     """
 
+    def is_ignore_vars(op, var_name):
+        # NOTE(dev): There are some persistable var created in some non-standard API
+        # such as "contrib.layers.shuffle_batch". It create a "Seed" used both in
+        # Input and Output. This var shall not be considered as a loop_var in
+        # control_flow.
+        IGNORE_VAR_NAMES = {"shuffle_batch": ["shuffle_batch_seed"]}
+        if op.type in IGNORE_VAR_NAMES:
+            var_names = IGNORE_VAR_NAMES[op.type]
+            for name in var_names:
+                if name in var_name:
+                    return True
+        return False
+
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
     # but some variables are created without appendding a real op.
@@ -945,7 +995,8 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
         assert isinstance(op, Operator)
         for iname in op.input_names:
             for in_var_name in op.input(iname):
-                if in_var_name not in inner_outputs:
+                if in_var_name not in inner_outputs and not is_ignore_vars(
+                        op, in_var_name):
                     inner_inputs.add(in_var_name)
 
         for oname in op.output_names:
@@ -1178,7 +1229,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         now_cond = pre_cond.numpy()[0]
         while (now_cond):
             output_vars = body(*loop_vars)
@@ -1491,7 +1542,7 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             x, Variable
         ), "The input data 'x' in array_write must be Variable in dygraph mode"
@@ -1576,7 +1627,7 @@ def create_array(dtype, initialized_list=None):
                 "All values in `initialized_list` should be Variable, but recevied {}.".
                 format(type(val)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return array
 
     helper = LayerHelper("array", **locals())
@@ -1745,13 +1796,16 @@ def greater_than(x, y, cond=None, name=None):
 
     attrs = dict()
 
-    helper.append_op(
-        type='greater_than',
-        inputs={'X': [x],
-                'Y': [y]},
-        outputs={'Out': [cond]},
-        attrs=attrs)
-    return cond
+    if in_dygraph_mode():
+        return _C_ops.final_state_greater_than(x, y, -1)
+    else:
+        helper.append_op(
+            type='greater_than',
+            inputs={'X': [x],
+                    'Y': [y]},
+            outputs={'Out': [cond]},
+            attrs=attrs)
+        return cond
 
 
 @templatedoc()
@@ -1963,7 +2017,7 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_read must be list in dygraph mode"
@@ -2077,7 +2131,7 @@ def array_length(array):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_write must be a list in dygraph mode"
@@ -2282,8 +2336,8 @@ class ConditionalBlock(object):
 
 
 def copy_var_to_parent_block(var, layer_helper):
-    if var is None:
-        return None
+    if not isinstance(var, Variable):
+        return var
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
@@ -2395,9 +2449,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]            
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
-        assert pred.numpy().size == 1, "condition input's numel should be 1"
+        assert pred.size == 1, "condition input's numel should be 1"
         pred = pred.numpy()[0]
         if pred:
             if true_fn is not None:
@@ -2466,7 +2520,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             format(e))
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
+    merge_func = lambda false_var, true_var : select_input_with_buildin_type([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
 
@@ -3817,6 +3871,8 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
+        return _C_ops.final_state_is_empty(x)
+    if _in_legacy_dygraph():
         return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

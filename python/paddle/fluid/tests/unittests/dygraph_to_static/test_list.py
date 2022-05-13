@@ -306,5 +306,37 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
         self.input = np.random.random((3, 4)).astype('float32')
 
 
+class ListWithCondNet(paddle.nn.Layer):
+    def __init__(self):
+        super(ListWithCondNet, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x, index):
+        y = paddle.nn.functional.relu(x)
+        a = []
+
+        for i in y:
+            a.append(i)
+
+        if index > 0:
+            res = a[0] * a[0]
+            y = y + 1
+        else:
+            res = a[-1] * a[-1]
+            y = y - 1
+
+        z = a[-1] * res * y[0]
+        return z
+
+
+class TestListWithCondGradInferVarType(unittest.TestCase):
+    def test_to_static(self):
+        net = ListWithCondNet()
+        x = paddle.to_tensor([2, 3, 4], dtype='float32')
+        index = paddle.to_tensor([1])
+        res = net(x, index)
+        self.assertEqual(res[0], 48.)
+
+
 if __name__ == '__main__':
     unittest.main()

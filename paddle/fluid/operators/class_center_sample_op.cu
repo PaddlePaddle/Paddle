@@ -27,8 +27,10 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 #include "paddle/fluid/operators/class_center_sample_op.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -306,7 +308,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                           num_classes, num_samples));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
 
     int batch_size = label->numel();
     // Algorithm:
@@ -328,18 +330,34 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      const auto& comm =
-          platform::NCCLCommContext::Instance().Get(rid, ctx.GetPlace());
-      // use global calculate stream
-      const auto calcu_stream =
-          static_cast<platform::CUDADeviceContext*>(
-              platform::DeviceContextPool::Instance().Get(ctx.GetPlace()))
-              ->stream();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          num_classes_per_device_ptr, num_classes_per_device_ptr,
-          num_classes_per_device.numel(),
-          platform::ToNCCLDataType(num_classes_per_device.type()), ncclSum,
-          comm->comm(), calcu_stream));
+      auto map = distributed::ProcessGroupMapFromGid::getInstance();
+      if (map->has(rid)) {
+        // Use ProcessGroup
+        distributed::ProcessGroup* pg = map->get(rid);
+        std::vector<phi::DenseTensor> in_tensor;
+        std::vector<phi::DenseTensor> out_tensor;
+        in_tensor.push_back(num_classes_per_device);
+        out_tensor.push_back(num_classes_per_device);
+
+        distributed::AllreduceOptions opts;
+        opts.reduce_op = distributed::ReduceOp::SUM;
+        auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+        task->Wait();
+      } else {
+        const auto& comm =
+            platform::NCCLCommContext::Instance().Get(rid, ctx.GetPlace());
+        // use global calculate stream
+        const auto calcu_stream =
+            static_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(ctx.GetPlace()))
+                ->stream();
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            num_classes_per_device_ptr, num_classes_per_device_ptr,
+            num_classes_per_device.numel(),
+            platform::ToNCCLDataType(
+                framework::TransToProtoVarType(num_classes_per_device.dtype())),
+            ncclSum, comm->comm(), calcu_stream));
+      }
     }
 #endif
 
@@ -390,18 +408,27 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
         ctx.cuda_device_context().stream())));
 
     // step 5: random sample negative class center
+    uint64_t seed_data;
+    uint64_t increment;
     int vec_size = VectorizedSize<T>(cub_sort_keys_ptr);
-    int increment = ((num_classes - 1) /
-                         (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
-                     1) *
-                    vec_size;
-    if (!fix_seed) {
+    auto offset = ((num_classes - 1) /
+                       (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
+                   1) *
+                  vec_size;
+    int device_id = ctx.GetPlace().GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+    if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
+      auto seed_offset = gen_cuda->IncrementOffset(offset);
+      seed_data = seed_offset.first;
+      increment = seed_offset.second;
+    } else {
       std::random_device rnd;
-      seed = rnd();
+      seed_data = fix_seed ? seed + rank : rnd();
+      increment = offset;
     }
     RandomSampleClassCenter<T><<<NumBlocks(num_classes), kNumCUDAThreads, 0,
                                  ctx.cuda_device_context().stream()>>>(
-        num_classes, seed + rank, increment, num_classes, cub_sort_keys_ptr);
+        num_classes, seed_data, increment, num_classes, cub_sort_keys_ptr);
 
     // step 6: mark positive class center as negative value
     // fill the sort values to index 0, 1, ..., batch_size-1

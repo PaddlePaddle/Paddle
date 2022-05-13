@@ -26,19 +26,19 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
                                       const size_t num_seq, size_t* lod0,
                                       const int blank, const int merge_repeated,
                                       size_t* out_lod0, T* output) {
-  int ouput_idx = 0;
+  int output_idx = 0;
   out_lod0[0] = 0;
 
   for (int i = 0; i < num_seq; ++i) {
     T pre_token = -1;
     for (int j = lod0[i]; j < lod0[i + 1]; ++j) {
       if (tokens[j] != blank && !(merge_repeated && tokens[j] == pre_token)) {
-        output[ouput_idx] = tokens[j];
-        ++ouput_idx;
+        output[output_idx] = tokens[j];
+        ++output_idx;
       }
       pre_token = tokens[j];
     }
-    out_lod0[i + 1] = ouput_idx;
+    out_lod0[i + 1] = output_idx;
   }
 }
 
@@ -110,10 +110,12 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
+      paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
       MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
           num_tokens, tokens, num_seq,
-          input_lod[level].CUDAMutableData(ctx.GetPlace()), blank,
-          merge_repeated, dev_out_lod0_ptr, output_data);
+          mixv_input_lod.CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
+          dev_out_lod0_ptr, output_data);
+      mixv_input_lod.CopyToCPU();
 
       // set output lod
       std::vector<size_t> host_out_lod0(dev_out_lod0.begin(),
@@ -128,7 +130,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       if (host_out_lod0.back() == 0) {
         output->Resize({1, 1});
         output->mutable_data<T>(ctx.GetPlace());
-        math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+        phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
         set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
                      output, -1);
       }

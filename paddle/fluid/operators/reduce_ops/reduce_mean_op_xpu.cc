@@ -14,10 +14,11 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
 namespace paddle {
 namespace operators {
@@ -41,15 +42,24 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
       xdims.push_back(input->dims()[i]);
     }
     auto rdims = context.Attr<std::vector<int>>("dim");
+    const auto& input_dim_size = input->dims().size();
+    std::vector<int> reduce_dims;
     if (reduce_all) {
-      rdims.clear();
       for (size_t i = 0; i < xdims.size(); i++) {
-        rdims.push_back(static_cast<int>(i));
+        reduce_dims.push_back(static_cast<int>(i));
+      }
+    } else {
+      for (size_t i = 0; i < rdims.size(); ++i) {
+        if (rdims[i] < 0) {
+          reduce_dims.push_back(rdims[i] + input_dim_size);
+        } else {
+          reduce_dims.push_back(rdims[i]);
+        }
       }
     }
     int r = xpu::reduce_mean(
         dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), xdims, rdims);
+        reinterpret_cast<XPUType*>(output->data<T>()), xdims, reduce_dims);
 
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(

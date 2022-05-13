@@ -27,6 +27,7 @@ np.random.seed(0)
 class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
+        self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
         x = np.arange(1., 101.).astype(self.dtype).reshape(self.shape)
@@ -42,10 +43,10 @@ class TestLerp(OpTest):
         self.shape = [100]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -94,13 +95,11 @@ class TestLerpAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.fluid.data('x', [1, 4], dtype=self.dtype)
                 y = paddle.fluid.data('y', [1, 4], dtype=self.dtype)
-                w = paddle.fluid.data('w', [1], dtype=self.dtype)
-                out = paddle.lerp(x, y, w)
+                out = paddle.lerp(x, y, 0.5)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'x': self.x.reshape([1, 4]),
                     'y': self.y.reshape([1, 4]),
-                    'w': self.w
                 })
             for r in res:
                 self.assertEqual(np.allclose(self.res_ref, r), True)

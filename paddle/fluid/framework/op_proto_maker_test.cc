@@ -18,12 +18,6 @@ limitations under the License. */
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
 
-namespace paddle {
-namespace platform {
-struct EnforceNotMet;
-}  // namespace platform
-}  // namespace paddle
-
 class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
   void Make() {

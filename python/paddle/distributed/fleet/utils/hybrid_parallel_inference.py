@@ -14,7 +14,7 @@
 
 from collections import defaultdict
 from paddle.fluid.framework import Program, Block, Operator
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
 import numpy as np
@@ -200,7 +200,7 @@ class HybridParallelInferenceHelper(object):
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
         assert self._device, "Only gpu and npu are supported."
-        assert not in_dygraph_mode(), "Only static mode is supported."
+        assert not _non_static_mode(), "Only static mode is supported."
 
         op_maker = core.op_proto_and_checker_maker
         self._op_role = op_maker.OpRole

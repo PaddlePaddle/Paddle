@@ -12,100 +12,112 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+
+#include <cmath>
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-void* PaddleIArray::data() { return tensor_->data<void>(); }
-
-popart::DataType PaddleIArray::dataType() const {
-  return VarType2PopartType(tensor_->type());
-}
-
-std::size_t PaddleIArray::rank() const { return tensor_->dims().size(); }
-
-int64_t PaddleIArray::dim(size_t index) const {
-  return tensor_->dims().at(index);
-}
-
-std::size_t PaddleIArray::nelms() const {
-  return std::accumulate(shape_.begin(), shape_.end(), static_cast<int64_t>(1),
-                         std::multiplies<int64_t>());
-}
-
-const popart::Shape PaddleIArray::shape() const { return shape_; }
-
-popart::DataType VarType2PopartType(
-    const framework::proto::VarType::Type type) {
+const popart::DataType VarType2PopartDType(const VarType::Type type) {
   switch (type) {
-    case framework::proto::VarType::UINT8:
+    case VarType::UINT8:
       return popart::DataType::UINT8;
-    case framework::proto::VarType::INT8:
+    case VarType::INT8:
       return popart::DataType::INT8;
-    case framework::proto::VarType::INT16:
+    case VarType::INT16:
       return popart::DataType::INT16;
-    case framework::proto::VarType::INT32:
+    case VarType::INT32:
       return popart::DataType::INT32;
-    case framework::proto::VarType::INT64:
+    case VarType::INT64:
       return popart::DataType::INT64;
-    case framework::proto::VarType::BOOL:
+    case VarType::BOOL:
       return popart::DataType::BOOL;
-    case framework::proto::VarType::FP64:
+    case VarType::FP64:
       return popart::DataType::DOUBLE;
-    case framework::proto::VarType::FP32:
+    case VarType::FP32:
       return popart::DataType::FLOAT;
-    case framework::proto::VarType::FP16:
+    case VarType::FP16:
       return popart::DataType::FLOAT16;
-    case framework::proto::VarType::BF16:
+    case VarType::BF16:
       return popart::DataType::BFLOAT16;
-    case framework::proto::VarType::COMPLEX64:
+    case VarType::COMPLEX64:
       return popart::DataType::COMPLEX64;
-    case framework::proto::VarType::COMPLEX128:
+    case VarType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Unsupported Paddle var type."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported VarType::Type when converting to popart data type."));
   }
 }
 
-framework::proto::VarType::Type PopartType2VarType(
-    const popart::DataType type) {
+const popart::DataType PhiDType2PopartDType(const phi::DataType type) {
+  switch (type) {
+    case phi::DataType::UINT8:
+      return popart::DataType::UINT8;
+    case phi::DataType::INT8:
+      return popart::DataType::INT8;
+    case phi::DataType::INT16:
+      return popart::DataType::INT16;
+    case phi::DataType::INT32:
+      return popart::DataType::INT32;
+    case phi::DataType::INT64:
+      return popart::DataType::INT64;
+    case phi::DataType::BOOL:
+      return popart::DataType::BOOL;
+    case phi::DataType::FLOAT64:
+      return popart::DataType::DOUBLE;
+    case phi::DataType::FLOAT32:
+      return popart::DataType::FLOAT;
+    case phi::DataType::FLOAT16:
+      return popart::DataType::FLOAT16;
+    case phi::DataType::BFLOAT16:
+      return popart::DataType::BFLOAT16;
+    case phi::DataType::COMPLEX64:
+      return popart::DataType::COMPLEX64;
+    case phi::DataType::COMPLEX128:
+      return popart::DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported phi::DataType when converting to popart data type."));
+  }
+}
+
+const VarType::Type PopartDType2VarType(const popart::DataType type) {
   switch (type) {
     case popart::DataType::UINT8:
-      return framework::proto::VarType::UINT8;
+      return VarType::UINT8;
     case popart::DataType::INT8:
-      return framework::proto::VarType::INT8;
+      return VarType::INT8;
     case popart::DataType::INT16:
-      return framework::proto::VarType::INT16;
+      return VarType::INT16;
     case popart::DataType::INT32:
-      return framework::proto::VarType::INT32;
+      return VarType::INT32;
     case popart::DataType::INT64:
-      return framework::proto::VarType::INT64;
+      return VarType::INT64;
     case popart::DataType::BOOL:
-      return framework::proto::VarType::BOOL;
+      return VarType::BOOL;
     case popart::DataType::DOUBLE:
-      return framework::proto::VarType::FP64;
+      return VarType::FP64;
     case popart::DataType::FLOAT:
-      return framework::proto::VarType::FP32;
+      return VarType::FP32;
     case popart::DataType::FLOAT16:
-      return framework::proto::VarType::FP16;
+      return VarType::FP16;
     case popart::DataType::BFLOAT16:
-      return framework::proto::VarType::BF16;
+      return VarType::BF16;
     case popart::DataType::COMPLEX64:
-      return framework::proto::VarType::COMPLEX64;
+      return VarType::COMPLEX64;
     case popart::DataType::COMPLEX128:
-      return framework::proto::VarType::COMPLEX128;
+      return VarType::COMPLEX128;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Unsupported Paddle var type."));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported popart::DataType when converting to var type."));
   }
 }
 
-popart::DataType OnnxDtype2PopartType(const int type) {
-  auto dtype = static_cast<ONNXDataType>(type);
-  switch (dtype) {
+const popart::DataType OnnxDType2PopartType(const ONNXDataType type) {
+  switch (type) {
     case ONNXDataType::BOOL:
       return popart::DataType::BOOL;
     case ONNXDataType::INT16:
@@ -132,12 +144,69 @@ popart::DataType OnnxDtype2PopartType(const int type) {
       return popart::DataType::COMPLEX128;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported ONNX data type: %d.", dtype));
+          "Unsupported ONNXDataType when converting to popart data type."));
   }
 }
 
-// count num should > 0
-bool GetBoolEnv(std::string str) {
+const ONNXDataType VarType2OnnxDType(const VarType::Type type) {
+  switch (type) {
+    case VarType::BOOL:
+      return ONNXDataType::BOOL;
+    case VarType::INT16:
+      return ONNXDataType::INT16;
+    case VarType::INT32:
+      return ONNXDataType::INT32;
+    case VarType::INT64:
+      return ONNXDataType::INT64;
+    case VarType::FP16:
+      return ONNXDataType::FLOAT16;
+    case VarType::FP32:
+      return ONNXDataType::FLOAT;
+    case VarType::FP64:
+      return ONNXDataType::DOUBLE;
+    case VarType::UINT8:
+      return ONNXDataType::UINT8;
+    case VarType::INT8:
+      return ONNXDataType::INT8;
+    case VarType::BF16:
+      return ONNXDataType::BFLOAT16;
+    case VarType::COMPLEX64:
+      return ONNXDataType::COMPLEX64;
+    case VarType::COMPLEX128:
+      return ONNXDataType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported VarType::Type when converting to onnx data type."));
+  }
+}
+
+const std::string VarType2PopartStr(const VarType::Type type) {
+  switch (type) {
+    case VarType::UINT8:
+      return "UINT8";
+    case VarType::INT8:
+      return "INT8";
+    case VarType::INT16:
+      return "INT16";
+    case VarType::INT32:
+      return "INT32";
+    case VarType::INT64:
+      return "INT64";
+    case VarType::BOOL:
+      return "BOOL";
+    case VarType::FP64:
+      return "DOUBLE";
+    case VarType::FP32:
+      return "FLOAT";
+    case VarType::FP16:
+      return "FLOAT16";
+    default:
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported VarType::Type when converting to popart type string."));
+  }
+}
+
+const bool GetBoolEnv(const std::string& str) {
   char* str_val = getenv(str.c_str());
   if (str_val == NULL) {
     return false;
@@ -148,6 +217,10 @@ bool GetBoolEnv(std::string str) {
       val = true;
     return val;
   }
+}
+
+const int RequestIpus(const int num_ipus) {
+  return std::pow(2, ceil(log2(num_ipus)));
 }
 
 }  // namespace ipu

@@ -149,11 +149,12 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
           batch_size, lod[lod.size() - 1],
           platform::errors::PreconditionNotMet(
               "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
+      paddle::framework::MixVector<size_t> mixv_lod(&lod);
       CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                  PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           use_cvm, item_size, cvm_data, dout_data, dx_data, true,
-          lod.CUDAData(context.GetPlace()), lod.size(), dx_numel);
+          mixv_lod.CUDAData(context.GetPlace()), lod.size(), dx_numel);
     }
   }
 };

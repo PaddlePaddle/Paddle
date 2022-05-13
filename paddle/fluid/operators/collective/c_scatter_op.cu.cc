@@ -30,7 +30,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
     int root_id = ctx.Attr<int>("root");

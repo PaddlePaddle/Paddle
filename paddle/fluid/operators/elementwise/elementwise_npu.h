@@ -50,29 +50,28 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
   }
 
   // 2.expand the ahead axis
-  auto prev = framework::product(framework::slice_ddim(dst_dims, 0, axis));
+  auto prev = phi::product(phi::slice_ddim(dst_dims, 0, axis));
   if (prev > 1) {
     Tensor tmp_tensor;
-    auto tmp_tensor_dims =
-        framework::slice_ddim(dst_dims, 0, axis + src_dims.size());
+    auto tmp_tensor_dims = phi::slice_ddim(dst_dims, 0, axis + src_dims.size());
     tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
-    const auto& runner = NpuOpRunner(
-        "ExpandD", {tmp_src}, {tmp_tensor},
-        {{"shape", framework::vectorize<int64_t>(tmp_tensor_dims)}});
+    const auto& runner =
+        NpuOpRunner("ExpandD", {tmp_src}, {tmp_tensor},
+                    {{"shape", phi::vectorize<int64_t>(tmp_tensor_dims)}});
     runner.Run(stream);
     tmp_src.ShareDataWith(tmp_tensor);
     tmp_src.Resize(tmp_tensor_dims);
   } else {
-    tmp_src.Resize(framework::slice_ddim(dst_dims, 0, axis + src_dims.size()));
+    tmp_src.Resize(phi::slice_ddim(dst_dims, 0, axis + src_dims.size()));
   }
 
   // 3.expand the tail axis
-  auto post = framework::product(
-      framework::slice_ddim(dst_dims, axis + src_dims.size(), dst_dims.size()));
+  auto post = phi::product(
+      phi::slice_ddim(dst_dims, axis + src_dims.size(), dst_dims.size()));
   if (post > 1) {
-    auto src_dims_vec = framework::vectorize<int>(tmp_src.dims());
+    auto src_dims_vec = phi::vectorize<int>(tmp_src.dims());
     src_dims_vec.push_back(1);
-    tmp_src.Resize(framework::make_ddim(src_dims_vec));
+    tmp_src.Resize(phi::make_ddim(src_dims_vec));
 
     Tensor tmp_tensor;
     tmp_tensor.mutable_data<T>(dst_dims, dev_ctx.GetPlace());
@@ -95,12 +94,12 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
   int max_dim = x_dims.size();
-  std::vector<int> dst_dims_vec = framework::vectorize<int>(x_dims);
+  std::vector<int> dst_dims_vec = phi::vectorize<int>(x_dims);
 
   if (x_dims.size() < y_dims.size()) {
     is_xsize_larger = false;
     max_dim = y_dims.size();
-    dst_dims_vec = framework::vectorize<int>(y_dims);
+    dst_dims_vec = phi::vectorize<int>(y_dims);
   }
 
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
@@ -126,7 +125,7 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
         std::max(dst_dims_vec[i + y_axis], static_cast<int>(y_dims[i]));
   }
 
-  auto dst_dims = framework::make_ddim(dst_dims_vec);
+  auto dst_dims = phi::make_ddim(dst_dims_vec);
   NpuBroadcast<T>(dev_ctx, x, x_axis, dst_dims, transformed_x);
   NpuBroadcast<T>(dev_ctx, y, y_axis, dst_dims, transformed_y);
 }

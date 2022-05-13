@@ -34,6 +34,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -47,11 +54,9 @@ static TracerOption g_tracer_option = TracerOption::kDefault;
 static ProfilerState g_state = ProfilerState::kDisabled;
 // To hook RecordEvent's events, use it to nvtx timeline
 static bool g_enable_nvprof_hook = false;
-// To hook RecordEvent, use HostEventRecorder
-static bool g_enable_host_event_recorder_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
-static thread_local int32_t g_thread_id;
+static thread_local uint64_t g_thread_id;
 // The g_next_thread_id is a global counter for threads, by the g_thread_id and
 // g_next_thread_id, we can know how many threads have created EventList.
 static uint32_t g_next_thread_id = 0;
@@ -134,6 +139,17 @@ void SynchronizeAllDevice() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  int count = GetMLUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetMLUDeviceId(i);
+    PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
+  }
+#endif
+}
+
+static double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
 }
 
 // Print results
@@ -145,6 +161,37 @@ void PrintMemProfiler(
   std::cout << "\n------------------------->"
             << "    Memory Profiling Report     "
             << "<-------------------------\n\n";
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  int num_gpus = GetGPUDeviceCount();
+  std::cout.setf(std::ios::left);
+  if (num_gpus > 0) {
+    std::cout << "GPU Memory Usage (MB):\n";
+    for (int dev_id = 0; dev_id < num_gpus; ++dev_id) {
+      int64_t allocated = memory::StatGetCurrentValue("Allocated", dev_id);
+      int64_t reserved = memory::StatGetCurrentValue("Reserved", dev_id);
+      size_t available = 0, total = 0, actual_available = 0, actual_total = 0;
+      RecordedGpuMemGetInfo(&available, &total, &actual_available,
+                            &actual_total, dev_id);
+
+      std::ostringstream system_gpu_memory;
+      system_gpu_memory << "System GPU Memory (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << system_gpu_memory.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(total)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(total - available) << "Free: " << std::setw(12)
+                << ToMegaBytes(available) << "\n";
+      std::ostringstream software_memory_pool;
+      software_memory_pool << "Software Memory Pool (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << software_memory_pool.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(reserved)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(reserved - allocated)
+                << "Free: " << std::setw(12) << ToMegaBytes(allocated) << "\n";
+    }
+    std::cout << "\n";
+  }
+#endif
 
   // Output events table
   std::cout.setf(std::ios::left);

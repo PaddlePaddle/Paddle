@@ -179,15 +179,18 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),
           reinterpret_cast<void *>(d_batch_size), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
+          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype())),
+          ncclSum, comm->comm(), stream));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_sum),
           reinterpret_cast<void *>(d_batch_sum), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
+          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype())),
+          ncclSum, comm->comm(), stream));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_square_sum),
           reinterpret_cast<void *>(d_batch_square_sum), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
+          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype())),
+          ncclSum, comm->comm(), stream));
       platform::GpuStreamSync(stream);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(

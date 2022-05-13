@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace dynload {
-std::once_flag cublasLt_dso_flag;
-void *cublasLt_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 

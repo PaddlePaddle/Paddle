@@ -195,3 +195,5 @@ OP_DECL(popart_sqrt, aiOnnxOpset.sqrt, NONE) // NOLINT
 OP_DECL(popart_tanh, aiOnnxOpset.tanh, NONE) // NOLINT
 OP_DECL(popart_tile, aiOnnxOpset.tile, NONE) // NOLINT
 OP_DECL(popart_transpose, aiOnnxOpset.transpose, ARG(INT_VEC,perm) ) // NOLINT
+
+// clang-format on

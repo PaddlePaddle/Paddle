@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
@@ -356,7 +356,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* out2in_w_data =
         out2in_w->mutable_data<T>({out->numel(), 4}, ctx.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, int> init;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int> init;
     init(ctx.cuda_device_context(), out2in_idx, static_cast<int>(-1));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
@@ -384,7 +384,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
         roi2image_data[j] = i;
       }
     }
-    TensorCopySync(roi2image, ctx.GetPlace(), &roi2image_dev);
+    paddle::framework::TensorCopySync(roi2image, ctx.GetPlace(),
+                                      &roi2image_dev);
 
     int out_size = rois_num * transformed_height * transformed_width * channels;
     auto stream = ctx.cuda_device_context().stream();
@@ -481,7 +482,7 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(ctx.cuda_device_context(), in_grad, static_cast<T>(0));
 
     const T* out_grad_data = out_grad->data<T>();

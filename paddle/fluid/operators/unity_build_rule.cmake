@@ -186,14 +186,12 @@ register_unity_group(cc
     norm_op.cc
     one_hot_op.cc
     one_hot_v2_op.cc
-    p_norm_op.cc
     pad2d_op.cc
     pad3d_op.cc
     pad_constant_like_op.cc
     pad_op.cc)
 register_unity_group(cc
     modified_huber_loss_op.cc
-    mkldnn/mul_mkldnn_op.cc
     partial_sum_op.cc
     pixel_shuffle_op.cc
     pool_op.cc
@@ -238,7 +236,6 @@ register_unity_group(cc
     scatter_nd_add_op.cc
     scatter_op.cc
     seed_op.cc
-    segment_pool_op.cc
     select_input_op.cc
     select_output_op.cc)
 register_unity_group(cc
@@ -468,7 +465,6 @@ register_unity_group(cu
     nll_loss_op.cu
     norm_op.cu
     one_hot_op.cu
-    p_norm_op.cu
     pad2d_op.cu
     pad3d_op.cu
     pad_constant_like_op.cu
@@ -499,8 +495,7 @@ register_unity_group(cu
     scale_op.cu
     scatter_nd_add_op.cu
     scatter_op.cu
-    seed_op.cu
-    segment_pool_op.cu)
+    seed_op.cu)
 register_unity_group(cu
     roi_pool_op.cu
     selu_op.cu

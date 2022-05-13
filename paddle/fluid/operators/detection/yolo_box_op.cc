@@ -9,9 +9,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/detection/yolo_box_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -102,12 +103,17 @@ class YoloBoxOp : public framework::OperatorWithKernel {
                           "But received class_num (%s)",
                           class_num));
 
-    int box_num = dim_x[2] * dim_x[3] * anchor_num;
+    int box_num;
+    if ((dim_x[2] > 0 && dim_x[3] > 0) || ctx->IsRuntime()) {
+      box_num = dim_x[2] * dim_x[3] * anchor_num;
+    } else {
+      box_num = -1;
+    }
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
-    ctx->SetOutputDim("Boxes", framework::make_ddim(dim_boxes));
+    ctx->SetOutputDim("Boxes", phi::make_ddim(dim_boxes));
 
     std::vector<int64_t> dim_scores({dim_x[0], box_num, class_num});
-    ctx->SetOutputDim("Scores", framework::make_ddim(dim_scores));
+    ctx->SetOutputDim("Scores", phi::make_ddim(dim_scores));
   }
 
  protected:
@@ -231,12 +237,13 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(yolo_box, YoloBoxInferShapeFunctor,
+                            PD_INFER_META(phi::YoloBoxInferMeta));
 REGISTER_OPERATOR(
     yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(yolo_box, ops::YoloBoxKernel<float>,
-                       ops::YoloBoxKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    YoloBoxInferShapeFunctor);
 
 REGISTER_OP_VERSION(yolo_box)
     .AddCheckpoint(

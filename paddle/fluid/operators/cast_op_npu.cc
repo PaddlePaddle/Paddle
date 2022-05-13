@@ -43,7 +43,7 @@ class CastNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     auto place = ctx.GetPlace();
 
-    if (x->type() == dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) == dtype) {
       // NOTE(zhiqiu): NPU cast op may result in wrong value, so
       // add special case here.
       VLOG(4) << "cast to same dtype:" << dtype;

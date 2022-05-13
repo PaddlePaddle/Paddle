@@ -25,13 +25,19 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -48,6 +54,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
+
+#include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
@@ -134,7 +142,28 @@ void InitCupti() {
 }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void LoadCustomDevice(const std::string &library_dir) {
+  LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
+  std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
+  for (const auto &lib_path : libs) {
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    PADDLE_ENFORCE_NOT_NULL(
+        dso_handle,
+        platform::errors::InvalidArgument(
+            "Fail to open library: %s with error: %s", lib_path, dlerror()));
+
+    phi::LoadCustomRuntimeLib(lib_path, dso_handle);
+  }
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
+  LOG(INFO) << "Finished in LoadCustomDevice with libs_path: [" << library_dir
+            << "]";
+}
+#endif
+
 void InitDevices() {
+  // set name at the entry point of Paddle
+  platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
@@ -178,6 +207,14 @@ void InitDevices() {
         << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_MLU
+  try {
+    // use user specified MLUs in single-node multi-process mode.
+    devices = platform::GetMLUSelectedDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+  }
+#endif
   InitDevices(devices);
 }
 
@@ -204,10 +241,37 @@ void InitDevices(const std::vector<int> devices) {
 #ifdef PADDLE_WITH_ASCEND_CL
     places.emplace_back(platform::NPUPlace(devices[i]));
 #endif
+#ifdef PADDLE_WITH_MLU
+    places.emplace_back(platform::MLUPlace(devices[i]));
+#endif
   }
   places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
+  if (!custom_kernel_root_p) {
+    VLOG(3) << "Env [CUSTOM_DEVICE_ROOT] is not set.";
+  } else {
+    std::string custom_kernel_root(custom_kernel_root_p);
+    if (!custom_kernel_root.empty()) {
+      LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
+      LoadCustomDevice(custom_kernel_root);
+
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      for (auto &dev_type : device_types) {
+        auto device_count = phi::DeviceManager::GetDeviceCount(dev_type);
+        LOG(INFO) << "CustomDevice: " << dev_type
+                  << ", visible devices count: " << device_count;
+        for (size_t i = 0; i < device_count; i++) {
+          places.push_back(platform::CustomPlace(dev_type, i));
+        }
+      }
+    } else {
+      VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
+    }
+  }
 #endif
   platform::DeviceContextPool::Init(places);
 

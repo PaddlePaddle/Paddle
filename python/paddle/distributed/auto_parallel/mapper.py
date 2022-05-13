@@ -118,11 +118,11 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     return comm_volume
 
 
-def analyze_comm_requirements_from_op(op, rank):
+def analyze_comm_requirements_from_op(op, rank, g_process_group_map):
     comm_requirements_to_ranks = {}
     if is_collective_comm_op(op):
         process_group_id = op.attr("ring_id")
-        process_group = get_process_group(process_group_id)
+        process_group = get_process_group(process_group_id, g_process_group_map)
         if rank not in process_group.ranks:
             return comm_requirements_to_ranks
         for tgt_rank in process_group.ranks:
@@ -142,7 +142,9 @@ def analyze_comm_requirements_from_op(op, rank):
     return comm_requirements_to_ranks
 
 
-def analyze_requirements_for_program(program, rank):
+def analyze_requirements_for_program(src_info, rank):
+    program = src_info[0]
+    g_process_group_map = src_info[1]
     resource_requirements = {}
     comm_requirements_to_ranks = {}
     # only support device_type and only support GPU for now
@@ -150,7 +152,7 @@ def analyze_requirements_for_program(program, rank):
     for block in program.blocks:
         for op in block.ops:
             cur_comm_requirements_to_ranks = analyze_comm_requirements_from_op(
-                op, rank)
+                op, rank, g_process_group_map)
             for tgt_rank, link_info in cur_comm_requirements_to_ranks.items():
                 if tgt_rank in comm_requirements_to_ranks:
                     comm_requirements_to_ranks[tgt_rank][
@@ -164,9 +166,9 @@ def analyze_requirements_for_program(program, rank):
 
 def build_process_graph(distributed_program):
     graph = Graph()
-    for src_rank, src_program in distributed_program.items():
+    for src_rank, src_info in distributed_program.items():
         resource_requirements, comm_requirements_to_ranks = analyze_requirements_for_program(
-            src_program, src_rank)
+            src_info, src_rank)
         graph.add_node(src_rank, resource_requirements=resource_requirements)
         for tgt_rank, comm_requirements in comm_requirements_to_ranks.items():
             graph.add_edge(
