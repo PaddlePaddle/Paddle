@@ -116,7 +116,7 @@ class TestUnpoolOpcase1(TestUnpoolOp):
         self.output_size = None
 
 
-class TestUnpoolOpOuputsize(TestUnpoolOp):
+class TestUnpoolOpOutputsize(TestUnpoolOp):
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
@@ -127,7 +127,7 @@ class TestUnpoolOpOuputsize(TestUnpoolOp):
         self.output_size = [9, 9]
 
 
-class TestUnpoolOpOuput(TestUnpoolOp):
+class TestUnpoolOpOutput(TestUnpoolOp):
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"

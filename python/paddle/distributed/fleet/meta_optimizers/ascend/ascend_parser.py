@@ -1372,7 +1372,7 @@ class UniformRandomParser(AscendParserBase):
         max_v = self.op.attr("max")
         seed = self.op.attr("seed")
         dtype = self.op.attr("dtype")
-        assert max_v > min_v, "assert max_v > min_v, but recieved " + \
+        assert max_v > min_v, "assert max_v > min_v, but received " + \
                "as max_v={}, min_v={} ".format(max_v, min_v)
 
         tensor1 = self._create_ge_tensor([len(shape)], 2, shape)

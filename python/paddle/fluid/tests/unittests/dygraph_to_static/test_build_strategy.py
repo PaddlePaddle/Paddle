@@ -18,8 +18,7 @@ import unittest
 import numpy as np
 from paddle.jit import ProgramTranslator
 
-from test_resnet import ResNet, train, predict_dygraph_jit
-from test_resnet import predict_dygraph, predict_static, predict_analysis_inference
+from test_resnet import ResNet, ResNetHelper
 
 program_translator = ProgramTranslator()
 
@@ -31,20 +30,20 @@ class TestResnetWithPass(unittest.TestCase):
         self.build_strategy.fuse_bn_act_ops = True
         self.build_strategy.fuse_bn_add_act_ops = True
         self.build_strategy.enable_addto = True
+        self.resnet_helper = ResNetHelper()
         # NOTE: for enable_addto
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
         program_translator.enable(to_static)
-
-        return train(to_static, self.build_strategy)
+        return self.resnet_helper.train(to_static, self.build_strategy)
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
-        dy_pre = predict_dygraph(image)
-        st_pre = predict_static(image)
-        dy_jit_pre = predict_dygraph_jit(image)
-        predictor_pre = predict_analysis_inference(image)
+        dy_pre = self.resnet_helper.predict_dygraph(image)
+        st_pre = self.resnet_helper.predict_static(image)
+        dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
@@ -69,7 +68,7 @@ class TestResnetWithPass(unittest.TestCase):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
             if paddle.fluid.core.is_compiled_with_mkldnn():
-                train(True, self.build_strategy)
+                self.resnet_helper.train(True, self.build_strategy)
         finally:
             paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -77,6 +77,10 @@ void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
   auto* dev_ctx = pool.GetByPlace(src_place);
   phi::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
                                     *dev_ctx);
+}
+
+void XPUStreamSync(xpuStream stream) {
+  PADDLE_ENFORCE_XDNN_SUCCESS(xpu_wait(stream), "xpu_wait");
 }
 
 /**************************** Others **************************/

@@ -43,7 +43,7 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
       output_size, 0,
       platform::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
-          "But recieved: output's size is %d. The output's size is computed by "
+          "But received: output's size is %d. The output's size is computed by "
           "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
           "stride + 1), where input_size is %d, padding is %d, "
           "filter_size is %d, dilation is %d, stride is %d.",
@@ -60,7 +60,7 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
       output_size, 0,
       platform::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
-          "But recieved: output's size is %d. The output's size is computed by "
+          "But received: output's size is %d. The output's size is computed by "
           "((input_size + padding_1 + padding_2 - (dilation * (filter_size - "
           "1) + 1)) / stride + 1), where input_size is %d, padding is "
           "(%d, %d), filter_size is %d, dilation is %d, stride is %d.",
@@ -90,7 +90,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
         platform::errors::InvalidArgument(
             "Attribute padding's size should be the same or twice as the "
             "input's dimension. "
-            "But recieved: padding's size is %d, padding is [%s]; input's "
+            "But received: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
             paddings->size(), phi::make_ddim(*paddings), data_dims.size(),
             data_dims));

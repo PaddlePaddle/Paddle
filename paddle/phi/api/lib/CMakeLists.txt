@@ -74,6 +74,7 @@ add_custom_command(
   COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
                  --api_yaml_path ${api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
+                 --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
