@@ -86,19 +86,19 @@ class SplitOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor, start_tensor};
         std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor, each_len_tensor};
         start_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                 *zeros_tensor,
                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs1.data() ,2)->getOutput(0),
+                *gather_indices_tensor,
                 0)->getOutput(0);
         auto size_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                 *shape_tensor,
                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs2.data() ,2)->getOutput(0),
+                *gather_indices_tensor,
                 0)->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
                                      trt_step_dims, trt_step_dims);
         layer->setInput(1, *start_tensor);
         layer->setInput(2, *size_tensor);
-        
+
         
         auto output_name = op_desc.Output("Out")[i];
         layer->getOutput(0)->setName(output_name.c_str());
