@@ -76,47 +76,47 @@ class FoldOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(kernel_height, 0,
                       platform::errors::InvalidArgument(
                           "The `kernel_sizes` should be greater than zero, "
-                          "but recieved kernel_height: %d kernel_width: %d.",
+                          "but received kernel_height: %d kernel_width: %d.",
                           kernel_sizes[0], kernel_sizes[1]));
     PADDLE_ENFORCE_GT(kernel_width, 0,
                       platform::errors::InvalidArgument(
                           "The `kernel_sizes` should be greater than zero, "
-                          "but recieved kernel_height: %d kernel_width: %d.",
+                          "but received kernel_height: %d kernel_width: %d.",
                           kernel_sizes[0], kernel_sizes[1]));
     // check strides
     PADDLE_ENFORCE_GT(stride_height, 0,
                       platform::errors::InvalidArgument(
                           "The `strides` should be greater than zero, "
-                          "but recieved strides_height: %d strides_width: %d.",
+                          "but received strides_height: %d strides_width: %d.",
                           strides[0], strides[1]));
     PADDLE_ENFORCE_GT(stride_width, 0,
                       platform::errors::InvalidArgument(
                           "The `strides` should be greater than zero, "
-                          "but recieved strides_height: %d strides_width: %d.",
+                          "but received strides_height: %d strides_width: %d.",
                           strides[0], strides[1]));
     // check dilations
     PADDLE_ENFORCE_GT(output_height, 1,
                       platform::errors::InvalidArgument(
                           "The `output_height` should be greater than one, "
-                          "but recieved output_height: %d .",
+                          "but received output_height: %d .",
                           output_height));
     PADDLE_ENFORCE_GT(output_width, 1,
                       platform::errors::InvalidArgument(
                           "The `output_width` should be greater than one, "
-                          "but recieved output_width: %d .",
+                          "but received output_width: %d .",
                           output_width));
     // check output size
     PADDLE_ENFORCE_GT(
         dilation_height, 0,
         platform::errors::InvalidArgument(
             "The `dilations` should be greater than zero, "
-            "but recieved dilations_height: %d dilations_width: %d.",
+            "but received dilations_height: %d dilations_width: %d.",
             dilations[0], dilations[1]));
     PADDLE_ENFORCE_GT(
         dilation_width, 0,
         platform::errors::InvalidArgument(
             "The `dilations` should be greater than zero, "
-            "but recieved dilations_height: %d dilations_width: %d.",
+            "but received dilations_height: %d dilations_width: %d.",
             dilations[0], dilations[1]));
 
     std::vector<int> out_dims;
