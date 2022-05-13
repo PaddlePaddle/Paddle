@@ -73,7 +73,7 @@ class SplitOpConverter : public OpConverter {
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
       auto zeros_tensor = Add1DConstantLayer(zeros, s + "_add_split_op_" + "zeros");
 
-      std::vector<int32_t> each_len(1, out_axis_dim);
+      std::vector<int32_t> each_len(1, output_lengths[0]);
       auto each_len_tensor = Add1DConstantLayer(each_len, s + "_add_split_op_" + "each_len");
 
       // input : [N,C,H,W]
