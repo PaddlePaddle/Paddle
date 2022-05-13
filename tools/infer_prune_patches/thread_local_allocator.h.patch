@@ -1,0 +1,30 @@
+diff --git a/paddle/fluid/memory/allocation/thread_local_allocator.h b/paddle/fluid/memory/allocation/thread_local_allocator.h
+index 654fb3fe7b..44c5dbf87f 100644
+--- a/paddle/fluid/memory/allocation/thread_local_allocator.h
++++ b/paddle/fluid/memory/allocation/thread_local_allocator.h
+@@ -26,6 +26,16 @@ namespace paddle {
+ namespace memory {
+ namespace allocation {
+ 
++class DirectAllocator {
++public:
++  DirectAllocator(const platform::Place& place) : place_{place} {}
++  void* Alloc(size_t unaligned_size);
++  void Free(void* ptr);
++  uint64_t Release() { return 0;}
++private:
++  platform::Place place_;
++};
++
+ class ThreadLocalAllocatorImpl;
+ 
+ class ThreadLocalAllocation : public Allocation {
+@@ -55,7 +65,7 @@ class ThreadLocalAllocatorImpl
+   uint64_t ReleaseImpl();
+ 
+  private:
+-  std::unique_ptr<memory::detail::BuddyAllocator> buddy_allocator_;
++  std::unique_ptr<DirectAllocator> direct_allocator_;
+   platform::Place place_;
+ };
+ 
