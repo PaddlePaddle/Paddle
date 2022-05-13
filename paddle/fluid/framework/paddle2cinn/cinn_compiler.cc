@@ -61,8 +61,8 @@ using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 
 CinnCompiler* CinnCompiler::GetInstance() {
-  static CinnCompiler instance;
-  return &instance;
+  static CinnCompiler* instance = new CinnCompiler();
+  return instance;
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(

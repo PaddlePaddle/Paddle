@@ -544,6 +544,13 @@ struct InverseModuloFunctor<
 };
 
 template <typename T>
+struct ElementwiseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > 0);
+  }
+};
+
+template <typename T>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
 #ifndef PADDLE_WITH_XPU_KP
