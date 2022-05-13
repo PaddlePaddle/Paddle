@@ -51,8 +51,8 @@ def add(x, y, name=None):
         out = x + y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64.
-        y (Tensor): the input tensor, it's data type should be float32, float64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -101,8 +101,8 @@ def subtract(x, y, name=None):
         out = x - y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64.
-        y (Tensor): the input tensor, it's data type should be float32, float64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -151,8 +151,8 @@ def multiply(x, y, name=None):
         out = x * y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64.
-        y (Tensor): the input tensor, it's data type should be float32, float64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -201,8 +201,8 @@ def divide(x, y, name=None):
         out = x / y
 
     Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64.
-        y (Tensor): the input tensor, it's data type should be float32, float64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
