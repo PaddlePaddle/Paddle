@@ -317,6 +317,14 @@ class OpConverter {
     return const_layer->getOutput(0);
   }
 
+  nvinfer1::ITensor* Add1DConstantLayer(nvinfer1::Dims data,
+                                        const std::string& weight_name) {
+          std::vector<int> tmp_data;
+          for (int i = 0; i < data.nbDims; i++)
+          tmp_data.push_back(data.d[i]);
+        return Add1DConstantLayer(tmp_data, weight_name);
+  }
+
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer, const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
