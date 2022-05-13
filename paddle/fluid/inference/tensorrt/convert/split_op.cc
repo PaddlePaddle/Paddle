@@ -68,18 +68,18 @@ class SplitOpConverter : public OpConverter {
       gather_indices.resize(trt_step_dims.nbDims);
       std::iota(gather_indices.begin(), gather_indices.end(), 0);
       gather_indices[axis] = gather_indices.size();
-
-      auto gather_indices_tensor = Add1DConstantLayer(gather_indices, "_add_split_op_" + "gather_indices");
+      string s = "";
+      auto gather_indices_tensor = Add1DConstantLayer(gather_indices, s + "_add_split_op_" + "gather_indices");
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
-      auto zeros_tensor = Add1DConstantLayer(zeros, "_add_split_op_" + "zeros");
+      auto zeros_tensor = Add1DConstantLayer(zeros, s + "_add_split_op_" + "zeros");
 
       std::vector<int32_t> each_len(1, out_axis_dim);
-      auto each_len_tensor = Add1DConstantLayer(each_len, "_add_split_op_" + "each_len");
+      auto each_len_tensor = Add1DConstantLayer(each_len, s + "_add_split_op_" + "each_len");
 
       // input : [N,C,H,W]
       for (size_t i = 0; i < output_num; i++) {
 
-        auto i_tensor = Add1DConstantLayer({i}, "_add_split_op_" + "i");
+        auto i_tensor = Add1DConstantLayer({i}, s + "_add_split_op_" + "i");
 
         auto start_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *i_tensor, *each_len_tensor,
             nvinfer1::ElementWiseOperation::kPROD)->getOutput(0);
