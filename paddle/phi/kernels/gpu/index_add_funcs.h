@@ -48,7 +48,8 @@ __global__ void index_add_cuda_kernel(T* output,
 
 template <typename T, typename Context>
 void index_add_cuda_impl(const Context& dev_ctx,
-                         const DenseTensor& index,
+                        //  const DenseTensor& index,
+                         const IntArray& index,
                          int axis,
                         //  float added_value,
                          const Scalar& add_value,
