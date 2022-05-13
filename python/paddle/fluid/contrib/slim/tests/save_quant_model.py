@@ -78,6 +78,9 @@ def parse_args():
         help=
         'The name of file to save all related parameters. If it is set None, parameters will be saved in separate files'
     )
+    parser.add_argument('--enable_fc_mkldnn_passes',
+                        action='store_true',
+                        help='If used, the graph will use fc with Mkldnn')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -91,7 +94,8 @@ def transform_and_save_int8_model(original_path,
                                   quant_model_filename='',
                                   quant_params_filename='',
                                   save_model_filename="__model__",
-                                  save_params_filename=None):
+                                  save_params_filename=None,
+                                  enable_fc_mkldnn_passes=False):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()
@@ -129,7 +133,8 @@ def transform_and_save_int8_model(original_path,
             _scope=inference_scope,
             _place=place,
             _core=core,
-            _debug=debug)
+            _debug=debug,
+            _enable_fc_mkldnn_passes=enable_fc_mkldnn_passes)
         graph = transform_to_mkldnn_int8_pass.apply(graph)
         inference_program = graph.to_program()
         with fluid.scope_guard(inference_scope):
@@ -152,4 +157,5 @@ if __name__ == '__main__':
         test_args.quant_model_path, test_args.int8_model_save_path,
         test_args.ops_to_quantize, test_args.op_ids_to_skip, test_args.debug,
         test_args.quant_model_filename, test_args.quant_params_filename,
-        test_args.save_model_filename, test_args.save_params_filename)
+        test_args.save_model_filename, test_args.save_params_filename,
+        test_args.enable_fc_mkldnn_passes)

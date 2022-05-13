@@ -82,6 +82,17 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
+void CpuPassStrategy::InsertFcMkldnnPasses() {
+  int idx = GetPassIndex("matmul_v2_transpose_reshape_fuse_pass");
+  if (idx != -1) {
+    std::vector<std::string> fc_passes({"fc_mkldnn_pass",
+                                        "fc_act_mkldnn_fuse_pass",
+                                        "fc_elementwise_add_mkldnn_fuse_pass"});
+    passes_.insert(std::begin(passes_) + idx + 1, std::begin(fc_passes),
+                   std::end(fc_passes));
+  }
+}
+
 const std::vector<std::string> kTRTSubgraphPasses({
   "identity_scale_op_clean_pass",              //
       "adaptive_pool2d_convert_global_pass",   //
@@ -242,6 +253,10 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
+void GpuPassStrategy::EnableMkldnnFcPasses() {
+  LOG(ERROR) << "GPU not support MKL-DNN fc";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -316,14 +331,11 @@ void CpuPassStrategy::EnableMKLDNN() {
              "reshape_transpose_matmul_v2_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",            //
              "matmul_v2_transpose_reshape_fuse_pass",         //
-             // Disabled due to topology-dependent speed-up
-             //  "fc_mkldnn_pass",
-             //  "fc_act_mkldnn_fuse_pass",
-             "fc_elementwise_add_mkldnn_fuse_pass",   //
-             "batch_norm_act_fuse_pass",              //
-             "softplus_activation_mkldnn_fuse_pass",  //
-             "shuffle_channel_mkldnn_detect_pass",    //
-             "elt_act_mkldnn_fuse_pass",              //
+             "fc_elementwise_add_mkldnn_fuse_pass",           //
+             "batch_norm_act_fuse_pass",                      //
+             "softplus_activation_mkldnn_fuse_pass",          //
+             "shuffle_channel_mkldnn_detect_pass",            //
+             "elt_act_mkldnn_fuse_pass",                      //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
@@ -353,9 +365,7 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_bfloat16_) {
-    passes_.push_back("fc_mkldnn_pass");
-    passes_.push_back("fc_act_mkldnn_fuse_pass");
-    passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
+    InsertFcMkldnnPasses();
 
     passes_.push_back("cpu_bfloat16_placement_pass");
     passes_.push_back("cpu_bfloat16_pass");
@@ -372,6 +382,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
   if (!use_mkldnn_int8_) {
     passes_.clear();
     passes_.push_back("quant_dequant_mkldnn_pass");
+    passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
@@ -392,8 +403,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("gpu_cpu_map_matmul_v2_to_matmul_pass");
     passes_.push_back("matmul_scale_fuse_pass");
     passes_.push_back("gpu_cpu_map_matmul_to_mul_pass");
+    passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
-    passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("depthwise_conv_mkldnn_pass");
     passes_.push_back("conv_bn_fuse_pass");
     passes_.push_back("conv_eltwiseadd_bn_fuse_pass");
@@ -411,10 +422,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_mish_mkldnn_fuse_pass");
     passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
     passes_.push_back("conv_gelu_mkldnn_fuse_pass");
-    passes_.push_back("fc_fuse_pass");
-    passes_.push_back("repeated_fc_relu_fuse_pass");
-    passes_.push_back("fc_mkldnn_pass");
-    passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
     passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
@@ -433,6 +440,17 @@ void CpuPassStrategy::EnableMkldnnInt8() {
   use_mkldnn_int8_ = true;
 #else
   use_mkldnn_int8_ = false;
+#endif
+}
+
+void CpuPassStrategy::EnableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!enable_mkldnn_fc_passes_) {
+    InsertFcMkldnnPasses();
+  }
+  enable_mkldnn_fc_passes_ = true;
+#else
+  enable_mkldnn_fc_passes_ = false;
 #endif
 }
 

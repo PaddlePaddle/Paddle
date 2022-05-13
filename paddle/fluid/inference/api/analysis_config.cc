@@ -508,6 +508,17 @@ void AnalysisConfig::EnableMkldnnInt8(
   Update();
 }
 
+void AnalysisConfig::EnableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  enable_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use EnableMkldnnFcPasses";
+  enable_mkldnn_fc_passes_ = false;
+#endif
+
+  Update();
+}
+
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -730,6 +741,12 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableMkldnnInt8();
     }
+#endif
+  }
+
+  if (enable_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnFcPasses();
 #endif
   }
 

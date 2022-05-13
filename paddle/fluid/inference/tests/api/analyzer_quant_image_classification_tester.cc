@@ -113,7 +113,6 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 TEST(Analyzer_quant_image_classification, quantization) {
   AnalysisConfig fp32_cfg;
   SetConfig(&fp32_cfg, FLAGS_fp32_model);
-  fp32_cfg.EnableMKLDNN();
 
   AnalysisConfig int8_cfg;
   SetConfig(&int8_cfg, FLAGS_int8_model);

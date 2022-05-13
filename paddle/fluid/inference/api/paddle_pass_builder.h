@@ -146,6 +146,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN int8.
   virtual void EnableMkldnnInt8() {}
 
+  /// \brief Enable MKLDNN fc passes.
+  virtual void EnableMkldnnFcPasses() {}
+
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
@@ -221,11 +224,18 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN int8.
   void EnableMkldnnInt8() override;
 
+  /// \brief Enable MKLDNN fc passes.
+  void EnableMkldnnFcPasses() override;
+
  protected:
+  /// \brief Insert MKLDNN fc passes.
+  void InsertFcMkldnnPasses();
+
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
   bool use_mkldnn_int8_{false};
+  bool enable_mkldnn_fc_passes_{false};
   /// \endcond
 };
 
@@ -262,6 +272,9 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
+
+  /// \brief Not supported in GPU mode yet.
+  void EnableMkldnnFcPasses() override;
 
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;

@@ -35,7 +35,11 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
+  if (FLAGS_enable_mkldnn) {
+    cfg->EnableMKLDNN();
+    // For batch size 1, use FC MklDNN option for a performance boost
+    if (FLAGS_batch_size == 1) cfg->EnableMkldnnFcPasses();
+  }
 }
 
 TEST(Analyzer_int8_image_classification, quantization) {
@@ -54,10 +58,6 @@ TEST(Analyzer_int8_image_classification, quantization) {
     // warmup batch size can be different than batch size
     std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
         paddle::inference::GetWarmupData(input_slots_all);
-
-    // INT8 implies FC oneDNN passes to be used
-    q_cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    q_cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
 
     // configure quantizer
     q_cfg.EnableMkldnnQuantizer();

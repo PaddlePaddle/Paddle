@@ -42,11 +42,13 @@ class Quant2Int8MkldnnPass(object):
                  _scope=None,
                  _place=None,
                  _core=None,
-                 _debug=False):
+                 _debug=False,
+                 _enable_fc_mkldnn_passes=False):
         self._scope = _scope
         self._place = _get_paddle_place(_place)
         self._core = _core
         self._debug = _debug
+        self._enable_fc_mkldnn_passes = _enable_fc_mkldnn_passes
         self._fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max',
@@ -139,7 +141,8 @@ class Quant2Int8MkldnnPass(object):
         return self._is_any_of_op_types_quantized(self._conv_ops, graph)
 
     def _is_fc_quantized(self, graph):
-        return self._is_any_of_op_types_quantized(self._fc_ops, graph)
+        return self._enable_fc_mkldnn_passes and self._is_any_of_op_types_quantized(
+            self._fc_ops, graph)
 
     def _label_skip_quantized_op(self, graph):
         """
@@ -395,6 +398,8 @@ class Quant2Int8MkldnnPass(object):
     def _optimize_fp32_graph(self, graph):
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
+        graph = self._apply_pass(graph, 'mkldnn_placement_pass',
+                                 ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'layer_norm_fuse_pass')
         graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
@@ -418,9 +423,9 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_v2_to_matmul_pass')
         graph = self._apply_pass(graph, 'matmul_scale_fuse_pass')
         graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_to_mul_pass')
+        graph = self._apply_pass(graph, 'fc_fuse_pass',
+                                 ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
-        graph = self._apply_pass(graph, 'mkldnn_placement_pass',
-                                 ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
@@ -440,9 +445,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_mish_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_hard_sigmoid_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'fc_fuse_pass',
-                                 ['use_gpu', 'use_fc_padding'], [False, False])
-        graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
+
         if self._is_fc_quantized(graph):
             # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')

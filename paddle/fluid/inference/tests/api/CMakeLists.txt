@@ -209,10 +209,10 @@ function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
 endfunction()
 
 function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary
-         model_dir disable_fc)
+         model_dir enable_fc)
   inference_analysis_test_run(
     ${TARGET_NAME} COMMAND ${test_binary} ARGS --infer_model=${model_dir}/model
-    --disable_mkldnn_fc=${disable_fc})
+    --enable_mkldnn_fc=${enable_fc})
 endfunction()
 
 function(
@@ -231,7 +231,7 @@ function(
     --fp32_model=${fp32_model_dir}
     --int8_model=${int8_model_dir}
     --infer_data=${data_path}
-    --batch_size=50
+    --batch_size=8
     --enable_int8=true
     --enable_quant_int8=${enable_quant_int8}
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
@@ -569,13 +569,13 @@ inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP}
 set(GOOGLENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/googlenet")
 download_data_without_verify(${GOOGLENET_MODEL_DIR} "googlenet.tar.gz")
 inference_analysis_api_test_with_fake_data_run(
-  test_analyzer_googlenet ${IMG_CLASS_TEST_APP} ${GOOGLENET_MODEL_DIR} false)
+  test_analyzer_googlenet ${IMG_CLASS_TEST_APP} ${GOOGLENET_MODEL_DIR} true)
 
 # resnet50
 set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
 download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
 inference_analysis_api_test_with_fake_data_run(
-  test_analyzer_resnet50 ${IMG_CLASS_TEST_APP} ${RESNET50_MODEL_DIR} true)
+  test_analyzer_resnet50 ${IMG_CLASS_TEST_APP} ${RESNET50_MODEL_DIR} false)
 if(WIN32)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 200)
 endif()
@@ -586,7 +586,7 @@ set(MOBILENET_MODEL_DIR
 download_data_without_verify(${MOBILENET_MODEL_DIR} "mobilenet_model.tar.gz")
 inference_analysis_api_test_with_fake_data_run(
   test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
-  ${MOBILENET_MODEL_DIR} false)
+  ${MOBILENET_MODEL_DIR} true)
 
 if(WITH_MKLDNN)
 
@@ -836,6 +836,12 @@ if(WITH_MKLDNN)
     test_analyzer_quant2_resnet50_channelwise_mkldnn
     ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL}
     ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
+
+  # Quant2 VGG16
+  # if(NOT WIN32)
+  #    set(QUANT2_VGG16_MODEL ${QUANT_DATA_DIR}/VGG16_quant/model)
+  #    inference_analysis_api_quant_test_run(test_analyzer_quant2_vgg16_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_VGG16_MODEL} ${QUANT2_VGG16_MODEL} ${IMAGENET_DATA_PATH} true)
+  # endif(NOT WIN32)
 
   ### Other tests
 
@@ -1253,6 +1259,9 @@ if(WITH_MKLDNN)
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn
                        PROPERTIES TIMEOUT 120)
+  # if(NOT WIN32)
+  #   set_tests_properties(test_analyzer_quant2_vgg16_mkldnn PROPERTIES TIMEOUT 200)
+  # endif(NOT WIN32)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
