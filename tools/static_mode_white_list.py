@@ -668,6 +668,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_fleet_metric',
     'test_fused_bn_add_act',
     'test_fused_multihead_matmul_op',
+    'test_fused_vit_attention_op',
     'test_ir_inplace_pass',
     'test_mix_precision_all_reduce_fuse',
     'test_parallel_executor_pg',

@@ -2314,6 +2314,76 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
 
 template <>
 template <typename T>
+void Blas<paddle::platform::CUDADeviceContext>::BatchedGemmArray(
+    CBLAS_TRANSPOSE transA,
+    CBLAS_TRANSPOSE transB,
+    int M,
+    int N,
+    int K,
+    T alpha,
+    const void **Aarray,
+    int lda,
+    const void **Barray,
+    int ldb,
+    T beta,
+    void **Carray,
+    int ldc,
+    int batchCount) const {
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+#if CUDA_VERSION >= 9010
+  // FLAGS_enable_cublas_tensor_op_math=1
+  if (std::is_same<T, float>::value ||
+      std::is_same<T, phi::dtype::float16>::value) {
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+    bool use_tensor_op_math = context_.tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+
+    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::cublasGemmBatchedEx(handle,
+                                                         cuTransA,
+                                                         cuTransB,
+                                                         M,
+                                                         N,
+                                                         K,
+                                                         &alpha,
+                                                         Aarray,
+                                                         fp,
+                                                         lda,
+                                                         Barray,
+                                                         fp,
+                                                         ldb,
+                                                         &beta,
+                                                         Carray,
+                                                         fp,
+                                                         ldc,
+                                                         batchCount,
+                                                         fp,
+                                                         algo));
+    });
+  } else {
+#endif  // CUDA_VERSION >= 9010
+    PADDLE_ENFORCE_GE(
+        0,
+        1,
+        phi::errors::InvalidArgument("cuda version don't support  %d",
+                                     context_.GetComputeCapability()));
+#if CUDA_VERSION >= 9010
+  }
+#endif  // CUDA_VERSION >= 9010
+}
+
+template <>
+template <typename T>
 void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,

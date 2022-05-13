@@ -303,6 +303,22 @@ class Blas {
                    T** C,
                    int batchCount) const;
 
+  template <typename T>
+  void BatchedGemmArray(CBLAS_TRANSPOSE transA,
+                        CBLAS_TRANSPOSE transB,
+                        int M,
+                        int N,
+                        int K,
+                        T alpha,
+                        const void** Aarray,
+                        int lda,
+                        const void** Barray,
+                        int ldb,
+                        T beta,
+                        void** Carray,
+                        int ldc,
+                        int batchCount) const;
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
   template <typename T>
@@ -527,6 +543,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedGemmArray(ARGS... args) const {
+    Base()->template BatchedGemmArray<T>(args...);
   }
 
   template <typename... ARGS>

@@ -10,6 +10,7 @@ register_operators(EXCLUDES
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
+    vit_attention_op
     skip_layernorm_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
@@ -52,6 +53,7 @@ if (WITH_GPU OR WITH_ROCM)
     op_library(fused_fc_elementwise_layernorm_op)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
+    op_library(vit_attention_op)
     op_library(skip_layernorm_op)
     op_library(fused_embedding_eltwise_layernorm_op)
     # fusion_group
