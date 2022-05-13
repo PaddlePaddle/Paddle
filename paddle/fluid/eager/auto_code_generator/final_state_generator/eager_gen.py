@@ -1332,7 +1332,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   std::vector<paddle::experimental::Tensor*> api_output_{out_index};
   api_output_{out_index}.reserve(returns[{fwd_position}].size());
   for (size_t i = 0; i < returns[{fwd_position}].size(); ++i) {{
-    if (out_metas[{fwd_position}][i].IsStopGradient()) {{
+    if (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][i].IsStopGradient()) {{
       api_output_{out_index}.push_back(nullptr);
     }} else {{
       api_output_{out_index}.push_back(&returns[{fwd_position}][i]);
