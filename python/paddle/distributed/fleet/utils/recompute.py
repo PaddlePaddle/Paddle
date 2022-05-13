@@ -19,7 +19,6 @@ from paddle.autograd import PyLayer, EagerPyLayer
 from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
 
 import logging
 logger = logging.getLogger(__name__)
@@ -55,6 +54,7 @@ def check_recompute_necessary(inputs):
 
 @contextlib.contextmanager
 def swith_rng_state_tracker(rng_state, tracker):
+    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
     orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
@@ -70,6 +70,7 @@ def swith_rng_state_tracker(rng_state, tracker):
 class EagerRecomputeFunction(EagerPyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         if framework._dygraph_tracer()._has_grad:
             check_recompute_necessary(args)
 
@@ -133,6 +134,7 @@ class EagerRecomputeFunction(EagerPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -207,6 +209,7 @@ class EagerRecomputeFunction(EagerPyLayer):
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         if framework._dygraph_tracer()._has_grad:
             check_recompute_necessary(args)
 
@@ -270,6 +273,7 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
