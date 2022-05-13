@@ -1266,10 +1266,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     Returns:
             Tensor: The output tensor of adaptive average pooling result. The data type is same
                       as input tensor.
-    Raises:
-            ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+          :name: code-example1
 
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1285,10 +1284,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               #
               import paddle
               import paddle.nn.functional as F
-              import numpy as np
 
-              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-              pool_out = F.adaptive_average_pool1d(data, output_size=16)
+              data = paddle.uniform([1, 3, 32])
+              pool_out = F.adaptive_avg_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
