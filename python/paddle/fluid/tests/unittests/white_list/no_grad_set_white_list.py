@@ -70,5 +70,6 @@ NEED_TO_FIX_OP_LIST = [
     'smooth_l1_loss',
     'spectral_norm',
     'complex',
+    'index_fill_tensor'
 ]
 # yapf: enable

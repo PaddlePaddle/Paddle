@@ -51,24 +51,24 @@ KernelSignature IndexFillTensorGradOpArgumentMapping(
       return KernelSignature("index_fill_tensor_grad",
                              {"Out@GRAD"},
                              {"IndexTensor", "AxisTensor"},
-                             {"X@GRAD", "FillValue"});
+                             {"X@GRAD", "FillValue@GRAD"});
     } else {
       return KernelSignature("index_fill_tensor_grad",
                              {"Out@GRAD"},
                              {"index", "AxisTensor"},
-                             {"X@GRAD", "FillValue"});
+                             {"X@GRAD", "FillValue@GRAD"});
     }
   } else {
     if (ctx.HasInput("IndexTensor")) {
       return KernelSignature("index_fill_tensor_grad",
                              {"Out@GRAD"},
                              {"IndexTensor", "axis"},
-                             {"X@GRAD", "FillValue"});
+                             {"X@GRAD", "FillValue@GRAD"});
     } else {
       return KernelSignature("index_fill_tensor_grad",
                              {"Out@GRAD"},
                              {"index", "axis"},
-                             {"X@GRAD", "FillValue"});
+                             {"X@GRAD", "FillValue@GRAD"});
     }
   }
 }

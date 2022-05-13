@@ -16,7 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/gpu/index_fill_funcs.h"
-#include "paddle/phi/kernels/index_fill_kernel.h"
+#include "paddle/phi/kernels/index_fill_tensor_kernel.h"
 
 namespace phi {
 
@@ -27,34 +27,29 @@ void IndexFillTensorKernel(const Context& dev_ctx,
                            const IntArray& index_arr,
                            const Scalar& axis_scalar,
                            DenseTensor* output) {
-  float fill_value;
-  T fill_tensor_ptr = fill_tensor.data<T>();
-  paddle::memory::Copy(dev_ctx.GetPlace(),
+  PADDLE_ENFORCE_EQ(
+      fill_tensor.numel(),
+      1,
+      phi::errors::OutOfRange(
+          "fill_tensor should be 0-d tensor with one single element, "
+          "But received numel = %d.",
+          fill_tensor.numel()));
+
+  T fill_value = static_cast<T>(0);
+  const T* fill_tensor_ptr = fill_tensor.data<T>();
+  paddle::memory::Copy(phi::CPUPlace(),
                        &fill_value,
-                       phi::CPUPlace(),
+                       dev_ctx.GetPlace(),
                        fill_tensor_ptr,
-                       sizeof(float),
+                       sizeof(T),
                        0);
-
-  IndexFillBaseKernel<T, Context>(
-      dev_ctx, x, index_arr, axis_scalar, fill_value, output, nullptr);
-
-  /*
-phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-
-
-auto axis = axis_scalar.to<int>();
-
-auto index_list = index_arr.GetData();
-int64_t index_size = static_cast<int64_t>(index_list.size());
-DenseTensor index;
-index.Resize(make_ddim({index_size}));
-int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
-paddle::memory::Copy(
-dev_ctx.GetPlace(), index_ptr, phi::CPUPlace(), index_list.data(), index_size *
-sizeof(int64_t), dev_ctx.stream());
-
-index_fill_cuda_impl<T, Context>(dev_ctx, index, axis, fill_value, output);*/
+  IndexFillBaseKernel<T, Context>(dev_ctx,
+                                  x,
+                                  index_arr,
+                                  axis_scalar,
+                                  static_cast<float>(fill_value),
+                                  output,
+                                  nullptr);
 }
 
 }  // namespace phi

@@ -24,16 +24,6 @@ import paddle.fluid.core as core
 
 np.random.seed(102)
 
-# tmp test
-paddle.disable_static()
-data_np = np.random.random((3, 4, 5)).astype(np.float32)
-x_np = paddle.to_tensor(data_np)
-axis = paddle.to_tensor(0)
-fill_value = paddle.to_tensor(11.0)
-index = paddle.to_tensor([1, 2])
-y = paddle.index_fill(x_np, index, axis, fill_value)
-exit()
-
 
 def index_fill_np(data, axis, index, fill_value):
     if isinstance(index, np.ndarray):
@@ -47,7 +37,7 @@ def index_fill_np(data, axis, index, fill_value):
     return x_np_reshape.reshape(data.shape)
 
 
-def index_fill_grad_np(data, axis, index):
+def index_fill_x_grad_np(data, axis, index):
     outer_loop = int(np.prod(data.shape[:axis]))
     x_reshape = [outer_loop] + list(data.shape[axis:])
     x_np_reshape = data.reshape(tuple(x_reshape))
@@ -58,21 +48,23 @@ def index_fill_grad_np(data, axis, index):
     return x_np_reshape.reshape(data.shape)
 
 
+def index_fill_fill_value_grad_np(data, axis, index):
+    outer_loop = int(np.prod(data.shape[:axis]))
+    stride = np.prod(data.shape) / outer_loop / data.shape[axis]
+    dim = data.shape[axis]
+    fill_value_grad = 0
+    for i in range(outer_loop):
+        for j in range(dim):
+            fill_value_grad += 1 if j in index else 0
+    return np.asarray(fill_value_grad * stride)
+
+
 class TestIndexFillOp(OpTest):
     def setUp(self):
-        self.python_api = paddle.index_fill
-        self.op_type = "index_fill"
         self.init_data()
-        self.init_param()
-        self.inputs = {'X': self.x_np}
-        self.attrs = {
-            'index': self.index_np,
-            'axis': self.axis,
-            'fill_value': self.fill_value
-        }
-        self.out_np = index_fill_np(self.x_np, self.axis, self.index_np,
-                                    self.fill_value)
-        self.outputs = {'Out': self.out_np}
+        self.bind_op_values()
+        self.place = self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
 
     def init_data(self):
         self.x_type = np.float64
@@ -81,21 +73,48 @@ class TestIndexFillOp(OpTest):
         self.index_size = 4
         self.fill_value = 9.0
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
-
-    def init_param(self):
         self.axis = 1
         self.index_np = np.random.randint(
             low=0, high=self.x_shape[self.axis], size=self.index_size)
         self.index_np = list(self.index_np)
+        self.out_np = index_fill_np(self.x_np, self.axis, self.index_np,
+                                    self.fill_value)
+        self.outputs = {'Out': self.out_np}
+
+    def bind_op_values(self):
+        self.op_type = "index_fill"
+        self.python_api = paddle.index_fill
+        self.inputs = {'X': self.x_np}
+        self.attrs = {
+            'index': self.index_np,
+            'axis': self.axis,
+            'fill_value': self.fill_value
+        }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
-#todo tensor
+class TestIndexFillTensorOp(TestIndexFillOp):
+    def bind_op_values(self):
+        self.op_type = "index_fill_tensor"
+        self.fill_value = np.asarray([9.0])
+        self.inputs = {'X': self.x_np, 'FillValue': self.fill_value}
+        self.attrs = {'index': self.index_np, 'axis': self.axis}
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'FillValue'], 'Out', max_relative_error=0.5)
+
+    # def test_check_grad_ingore_x(self):
+    #     self.check_grad_with_place(
+    #         self.place, ['X'], 'Out', no_grad_set=set("FillValue"))
+    #
+    # def test_check_grad_ingore_fill_value(self):
+    #     self.check_grad_with_place(
+    #         self.place, ['FillValue'], 'Out', no_grad_set=set('X'), max_relative_error=0.5)
 
 
 class API_IndexFill(unittest.TestCase):
@@ -204,12 +223,23 @@ class API_TestDygraphIndexFill3(API_TestDygraphIndexFill):
 
 
 #todo bool, fill_value_tensor
+class API_TestDygraphIndexFill3(API_TestDygraphIndexFill):
+    def init_data(self):
+        self.data_np = np.random.random((3, 4, 5, 6)) > 0.5
+        self.axis = 2
+        self.fill_value = True
+        self.index = paddle.to_tensor([0, 3])
 
 
 class API_IndexFill2(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
+
+        self.axis = 1
+        self.x_np = np.random.uniform(-1, 1, (2, 3, 4)).astype(np.float64)
+        self.index_np = [0, 2]
+        self.x_grad = index_fill_x_grad_np(self.x_np, self.axis, self.index_np)
 
     def test_errors(self):
         def error_axis_dtype():
@@ -259,16 +289,30 @@ class API_IndexFill2(unittest.TestCase):
 
     def test_check_grad(self):
         paddle.disable_static(place=self.place)
-        axis = 1
-        x_np = np.random.uniform(-1, 1, (2, 3, 4)).astype(np.float64)
-        index_np = [0, 2]
-        x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
-        idx_tensor = paddle.to_tensor(index_np)
-
-        y = paddle.index_fill(x_tensor, idx_tensor, axis=axis, fill_value=0.5)
+        x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+        idx_tensor = paddle.to_tensor(self.index_np)
+        y = paddle.index_fill(
+            x_tensor, index=idx_tensor, axis=self.axis, fill_value=0.5)
         dx = paddle.grad(y, x_tensor)[0].numpy()
-        np_grad = index_fill_grad_np(x_np, axis, index_np)
-        self.assertTrue(np.allclose(np_grad, dx, equal_nan=True))
+        self.assertTrue(np.allclose(self.x_grad, dx, equal_nan=True))
+
+    def test_check_grad2(self):
+        paddle.disable_static(place=self.place)
+        x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+        fill_tensor = paddle.to_tensor(
+            0.9999, stop_gradient=False, dtype=x_tensor.dtype)
+        y = paddle.index_fill(
+            x_tensor,
+            index=self.index_np,
+            axis=self.axis,
+            fill_value=fill_tensor)
+        dx, df = paddle.grad(y, [x_tensor, fill_tensor])
+        self.assertTrue(np.allclose(self.x_grad, dx.numpy(), equal_nan=True))
+        fill_value_grad = index_fill_fill_value_grad_np(self.x_np, self.axis,
+                                                        self.index_np)
+        self.assertTrue(
+            np.allclose(
+                fill_value_grad, df.numpy(), equal_nan=True))
 
 
 if __name__ == "__main__":

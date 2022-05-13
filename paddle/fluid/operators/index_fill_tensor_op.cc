@@ -57,7 +57,6 @@ class IndexFillTensorOpMaker : public framework::OpProtoAndCheckerMaker {
         "index",
         "(list<int>) Starting indices of corresponding axis in `axes`");
     AddAttr<int>("axis", "(int), the dimension in which we index.");
-    AddAttr<float>("fill_value", "(float), The value to be filled.");
     AddOutput(
         "Out",
         "(Tensor, default Tensor<float>),"

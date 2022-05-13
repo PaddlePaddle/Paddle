@@ -27,23 +27,6 @@ void IndexFillKernel(const Context& dev_ctx,
                      DenseTensor* output) {
   IndexFillBaseKernel<T, Context>(
       dev_ctx, x, index_arr, axis_scalar, fill_value, output, nullptr);
-
-  /*
-phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-
-
-auto axis = axis_scalar.to<int>();
-
-auto index_list = index_arr.GetData();
-int64_t index_size = static_cast<int64_t>(index_list.size());
-DenseTensor index;
-index.Resize(make_ddim({index_size}));
-int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
-paddle::memory::Copy(
-dev_ctx.GetPlace(), index_ptr, phi::CPUPlace(), index_list.data(), index_size *
-sizeof(int64_t), dev_ctx.stream());
-
-index_fill_cuda_impl<T, Context>(dev_ctx, index, axis, fill_value, output);*/
 }
 
 }  // namespace phi

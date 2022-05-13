@@ -1191,14 +1191,6 @@ void IndexFillTensorInferMeta(const MetaTensor& x,
   auto axis = axis_scalar.to<int>();
 
   PADDLE_ENFORCE_EQ(
-      fill_tensor.numel(),
-      1,
-      phi::errors::OutOfRange(
-          "fill_tensor should be 0-d tensor with one single element, "
-          "But received numel = %d.",
-          fill_tensor.numel()));
-
-  PADDLE_ENFORCE_EQ(
       fill_tensor.dtype() == x.dtype(),
       true,
       phi::errors::InvalidArgument(
@@ -1231,13 +1223,17 @@ void IndexFillTensorGradInferMeta(const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
                                   MetaTensor* fill_tensor_grad) {
   auto do_dims = out_grad.dims();
-  x_grad->set_dims(do_dims);
-  x_grad->set_dtype(out_grad.dtype());
-  x_grad->set_layout(out_grad.layout());
-  x_grad->share_lod(out_grad);
+  if (x_grad) {
+    x_grad->set_dims(do_dims);
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->set_layout(out_grad.layout());
+    x_grad->share_lod(out_grad);
+  }
 
-  fill_tensor_grad->set_dims(phi::make_ddim({1}));
-  fill_tensor_grad->set_dtype(out_grad.dtype());
+  if (fill_tensor_grad) {
+    fill_tensor_grad->set_dims(phi::make_ddim({1}));
+    fill_tensor_grad->set_dtype(out_grad.dtype());
+  }
 }
 
 void IndexSampleInferMeta(const MetaTensor& x,

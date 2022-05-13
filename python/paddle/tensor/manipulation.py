@@ -4317,9 +4317,9 @@ def index_fill(x, index, axis, fill_value):
             return _C_ops.index_fill(x, "index", index, "axis", _axis,
                                      "fill_value", fill_value)
 
-    check_variable_and_dtype(x, 'x',
-                             ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.manipulation.index_fill')
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_fill')
 
     if isinstance(fill_value, Variable):
         helper = LayerHelper("index_fill_tensor", **locals())

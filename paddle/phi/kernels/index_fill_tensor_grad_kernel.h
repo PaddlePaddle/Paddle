@@ -21,11 +21,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillGradKernel(const Context& ctx,
-                         const DenseTensor& out_grad,
-                         const IntArray& index_arr,
-                         const Scalar& axis_scalar,
-                         float fill_value,
-                         DenseTensor* x_grad);
+void IndexFillTensorGradKernel(const Context& ctx,
+                               const DenseTensor& out_grad,
+                               const DenseTensor& index,
+                               const Scalar& axis_scalar,
+                               DenseTensor* x_grad,
+                               DenseTensor* fill_tensor_grad);
 
 }  // namespace phi

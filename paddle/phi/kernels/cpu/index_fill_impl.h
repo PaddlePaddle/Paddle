@@ -107,11 +107,10 @@ void IndexFillBaseKernel(const Context& dev_ctx,
                        0);
 
   int axis = axis_scalar.to<int>();
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+  if (output) phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
   if (axis < 0) {
     axis += x.dims().size();
   }
-
   IndexFillInner<Context, T>(
       dev_ctx, index, output, axis, static_cast<T>(fill_value), fill_grad);
 }

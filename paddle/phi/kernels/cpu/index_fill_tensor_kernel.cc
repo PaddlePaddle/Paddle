@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/index_fill_tensor_kernel.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/cpu/index_fill_impl.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/index_fill_kernel.h"
 
 namespace phi {
 
@@ -29,16 +29,20 @@ void IndexFillTensorKernel(const Context& dev_ctx,
                            const IntArray& index_arr,
                            const Scalar& axis_scalar,
                            DenseTensor* output) {
-  float fill_value;
-  T fill_tensor_ptr = fill_tensor.data<T>();
-  paddle::memory::Copy(dev_ctx.GetPlace(),
+  T fill_value = static_cast<T>(0);
+  const T* fill_tensor_ptr = fill_tensor.data<T>();
+  paddle::memory::Copy(phi::CPUPlace(),
                        &fill_value,
-                       phi::CPUPlace(),
+                       dev_ctx.GetPlace(),
                        fill_tensor_ptr,
-                       sizeof(float),
-                       0);
-  IndexFillBaseKernel<T, Context>(
-      dev_ctx, x, index_arr, axis_scalar, fill_value, output, nullptr);
+                       sizeof(T));
+  IndexFillBaseKernel<T, Context>(dev_ctx,
+                                  x,
+                                  index_arr,
+                                  axis_scalar,
+                                  static_cast<float>(fill_value),
+                                  output,
+                                  nullptr);
 }
 
 }  // namespace phi

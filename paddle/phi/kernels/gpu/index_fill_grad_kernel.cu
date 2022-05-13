@@ -30,19 +30,6 @@ void IndexFillGradKernel(const Context& dev_ctx,
   float fill_val = 0.0;
   IndexFillBaseKernel<T, Context>(
       dev_ctx, out_grad, index_arr, axis_scalar, fill_val, x_grad, nullptr);
-  /*
-  auto index_list = index_arr.GetData();
-  int64_t index_size = static_cast<int64_t>(index_list.size());
-  DenseTensor index;
-  index.Resize(make_ddim({index_size}));
-  int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
-  paddle::memory::Copy(
-      dev_ctx.GetPlace(), index_ptr, phi::CPUPlace(), index_list.data(),
-  index_size * sizeof(int64_t), dev_ctx.stream());
-
-  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-  auto axis = axis_scalar.to<int>();
-  index_fill_cuda_impl<T, Context>(dev_ctx, index, axis, 0, x_grad);*/
 }
 
 }  // namespace phi

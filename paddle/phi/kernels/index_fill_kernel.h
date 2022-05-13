@@ -27,13 +27,4 @@ void IndexFillKernel(const Context& ctx,
                      const Scalar& axis_scalar,
                      float fill_value,
                      DenseTensor* output);
-
-template <typename T, typename Context>
-void IndexFillTensorKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& fill_tensor,
-                           const IntArray& index_arr,
-                           const Scalar& axis_scalar,
-                           DenseTensor* output);
-
 }  // namespace phi
