@@ -872,7 +872,7 @@ class OpTest(unittest.TestCase):
             eager_tensor_outputs = egr_oups if egr_oups else self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
-            # prepare attrbutes
+            # prepare attributes
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
@@ -906,7 +906,7 @@ class OpTest(unittest.TestCase):
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
-            # prepare attrbutes
+            # prepare attributes
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
@@ -2016,7 +2016,7 @@ class OpTest(unittest.TestCase):
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
-            # prepare attrbutes
+            # prepare attributes
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:

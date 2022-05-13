@@ -328,6 +328,8 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::INT64, XPUPlace())})},
       {"scatter", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                                 pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sgd", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                            pOpKernelType(vartype::FP16, XPUPlace())})},
       {"sigmoid_cross_entropy_with_logits_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sigmoid_cross_entropy_with_logits",

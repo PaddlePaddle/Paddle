@@ -77,7 +77,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The last value of 'Target LoD''s last level LoD should be equal "
             "to the first dimension of Input(X). But received the 'Target LoD' "
-            "is %s, Input(X)'s shape is is %s.",
+            "is %s, Input(X)'s shape is %s.",
             phi::make_ddim(level0), in->dims()));
     for (size_t i = 0; i < level0.size() - 1; ++i) {
       PADDLE_ENFORCE_GE(level0[i + 1], level0[i],

@@ -361,12 +361,33 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static void IncreaseTensorReferenceCountUntilCopyComplete(
+    const paddle::experimental::Tensor& tensor, const platform::Place& place) {
+  auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
+
+  auto tracer = egr::Controller::Instance().GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(dev): This is an empty callback, the only way is to "reference"
+  // inner memory Holder, so it will not be destructed until the kernels
+  // launched at current stream of given place is finished, such as
+  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  auto callback = [tensor, place_]() {
+    VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
+            << place_;
+  };
+  gc->DirectClearCallback(callback);
+}
+
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor = self->tensor.copy_to(place, blocking);
+  if (!blocking) {
+    IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+  }
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
