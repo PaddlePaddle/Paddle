@@ -105,7 +105,7 @@ void index_add_cuda_impl(const Context& dev_ctx,
   // to make it run faster
   const auto* index_data = index.GetData().data();
   index_add_cuda_kernel<T><<<grid_dim, block_dim, 0, stream>>>(
-        out_data, index_data, numel, stride, size, delta, added_val);
+        out_data, index_data, numel, stride, size, delta, add_val);
 
 }
 
