@@ -58,13 +58,16 @@ void BindTCPStore(py::module *m) {
 
   py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
       .def(py::init([](std::string hostname, uint16_t port, bool is_master,
-                       size_t world_size, std::chrono::seconds timeout) {
+                       size_t world_size, std::chrono::seconds timeout,
+                       int stop_check_timeout) {
              return std::make_shared<TCPStore>(hostname, port, is_master,
-                                               world_size, timeout);
+                                               world_size, timeout,
+                                               stop_check_timeout);
            }),
            py::arg("hostname"), py::arg("port"), py::arg("is_master"),
            py::arg("world_size"),
            py::arg("timeout") = distributed::tcputils::kNoTimeout,
+           py::arg("stop_check_timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
 }
 
