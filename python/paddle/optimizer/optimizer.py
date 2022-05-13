@@ -80,11 +80,12 @@ class Optimizer(object):
     Returns:
        Base class for optimizer. 
     
-    Examples:
+    Example:
         .. code-block:: python
 
             #Take the subclass adam as an example
             import paddle
+
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             out = linear(inp)
