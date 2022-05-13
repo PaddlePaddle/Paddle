@@ -78,8 +78,8 @@ class SplitOpConverter : public OpConverter {
 
       // input : [N,C,H,W]
       for (size_t i = 0; i < output_num; i++) {
-
-        auto i_tensor = Add1DConstantLayer({i}, s + "_add_split_op_" + "i");
+        std::vector<int32_t> i_vec(1, i);
+        auto i_tensor = Add1DConstantLayer(i_vec, s + "_add_split_op_" + "i");
 
         auto start_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *i_tensor, *each_len_tensor,
             nvinfer1::ElementWiseOperation::kPROD)->getOutput(0);
@@ -102,7 +102,7 @@ class SplitOpConverter : public OpConverter {
         
         auto output_name = op_desc.Output("Out")[i];
         layer->getOutput(0)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput());
+        engine_->SetITensor(output_name, layer->getOutput(0));
         std::string layer_name = "split (Output: ";
         layer_name += output_name;
         if (test_mode) {
