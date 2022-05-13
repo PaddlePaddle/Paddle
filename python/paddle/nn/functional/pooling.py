@@ -1160,22 +1160,21 @@ def max_pool3d(x,
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             # max pool3d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-            output = F.max_pool2d(x,
+            x = paddle.uniform([1, 3, 32, 32, 32])
+            output = F.max_pool3d(x,
                                   kernel_size=2,
                                   stride=2, padding=0)
-            output.shape [1, 3, 16, 16, 16]
+            # output.shape [1, 3, 16, 16, 16]
             # for return_mask=True
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+            x = paddle.uniform([1, 3, 32, 32, 32])
             output, max_indices = paddle.nn.functional.max_pool3d(x,
                                           kernel_size = 2,
                                           stride = 2,
                                           padding=0,
                                           return_mask=True)
-            # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
+            # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
     """
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
