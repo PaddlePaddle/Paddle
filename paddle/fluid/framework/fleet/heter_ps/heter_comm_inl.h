@@ -193,7 +193,9 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     memory_copy(dst_place, node.key_storage, src_place,
                 reinterpret_cast<char*>(src_key + h_left[i]),
                 node.key_bytes_len, node.in_stream);
+#if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
     cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
+#endif
 
     if (need_copy_val) {
       memory_copy(dst_place, node.val_storage, src_place,
@@ -340,7 +342,6 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
   return resource_->get_index_by_devid(devid);
 }
 
-#if defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
@@ -356,7 +357,6 @@ void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
     table->set_embedx_sgd(optimizer_config);
   }
 }
-#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(
@@ -584,7 +584,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
-    if (shard_len == 0) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     create_storage(num, i, shard_len * sizeof(KeyType),
@@ -630,6 +630,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   sync_stream(stream);
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(num, i);
   }
 }
@@ -747,6 +750,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
@@ -862,6 +868,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }

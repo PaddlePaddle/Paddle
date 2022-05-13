@@ -223,9 +223,17 @@ class ConvMKLDNNHandlerT
       float sum_scale = 1.0f;
       float activation_scale = 1.0f;
       std::vector<float> output_shift_scale;
-      if (platform::is_int8<T>())
-        std::tie(sum_scale, output_shift_scale, activation_scale) =
-            get_int8_scales(ctx);
+      if (platform::is_int8<T>()) {
+        if (ctx.HasAttr("Sum_scale")) {
+          sum_scale = ctx.Attr<float>("Sum_scale");
+          activation_scale = ctx.Attr<float>("Activation_scale");
+          output_shift_scale =
+              ctx.Attr<std::vector<float>>("Output_shift_scale");
+        } else {
+          std::tie(sum_scale, output_shift_scale, activation_scale) =
+              get_int8_scales(ctx);
+        }
+      }
 
       const dnnl::primitive_attr conv_attr = CreatePostOps(
           fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
@@ -872,8 +880,18 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
-
+      std::vector<float> bias_scales;
+      auto p_scales_tuple =
+          std::make_shared<std::tuple<float, std::vector<float>>>(
+              std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      if (ctx.HasAttr("Bias_scales")) {
+        bias_scales = ctx.Attr<std::vector<float>>("Bias_scales");
+        p_scales_tuple =
+            std::make_shared<std::tuple<float, std::vector<float>>>(
+                std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      } else {
+        p_scales_tuple = handler.get_int8_bias_scales(ctx);
+      }
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
           bias, true, std::get<1>(*p_scales_tuple),
           std::get<0>(*p_scales_tuple));
