@@ -212,9 +212,11 @@ following codes there.
   dnnl::memory::desc mem_desc_;
 #endif
 
+
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
+
 };
 
 }  // namespace phi
