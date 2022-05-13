@@ -33,7 +33,7 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
-void CheckScaleResult(const experimental::Tensor* out) {
+void CheckScaleResult(const Tensor* out) {
   ASSERT_EQ(out->dims().size(), 2);
   ASSERT_EQ(out->dims()[0], 3);
   ASSERT_EQ(out->dims()[1], 4);
@@ -67,7 +67,7 @@ TEST(API, scale_sr) {
   auto dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
       experimental::full({3, 4}, 1.0, phi::DataType::FLOAT32).impl());
   *(selected_rows->mutable_value()) = *dense_tensor;
-  experimental::Tensor x(selected_rows);
+  Tensor x(selected_rows);
   auto out = experimental::scale(x, 2.0, 1.0, true);
 
   ASSERT_EQ(out.dims().size(), 2);

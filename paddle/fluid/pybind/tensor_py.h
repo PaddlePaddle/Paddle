@@ -629,9 +629,8 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::experimental::Tensor> &self,
-    const py::array_t<T> &array, int device_id) {
+void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
+                             const py::array_t<T> &array, int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =

@@ -24,17 +24,17 @@
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
- * choice is to use paddle::experimental::Tensor directly. However, we have a
+ * choice is to use paddle::Tensor directly. However, we have a
  * punch of nested kernel code, and
  * they use paddle::framework::Variable in inner logic code. So, we have to
  * provide variable in
  * paddle::framework::ExecutionContext to support it. We should remove this as
  * soon as we finish our latest
- * Phi Lib, and use paddle::experimental::Tensor instead.
+ * Phi Lib, and use paddle::Tensor instead.
  *
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in
- * paddle::experimental::Tensor with access method of
+ * paddle::Tensor with access method of
  * paddle::framework::Variable no more members are acceptable.
  * **/
 
@@ -47,8 +47,7 @@ class EagerVariable final {
 
   explicit EagerVariable(const std::string& name) : name_(name) {}
 
-  explicit EagerVariable(const paddle::experimental::Tensor& tensor)
-      : name_(tensor.name()) {
+  explicit EagerVariable(const paddle::Tensor& tensor) : name_(tensor.name()) {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
@@ -105,7 +104,7 @@ class EagerVariable final {
   }
 
   template <typename VarType>
-  void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
+  void ConstructVariableFromTensor(const paddle::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
     // Contruct framework::Tensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());

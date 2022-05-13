@@ -55,7 +55,7 @@ def ParseArguments():
 ## Code Gen Templates ##
 ########################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
+"""  void SetTensorWrapper{}(const paddle::Tensor& {}) {{
     {} = egr::TensorWrapper({}, {});
   }}
 """
@@ -69,7 +69,7 @@ CLEAR_TENSOR_WRAPPER_TEMPLATE = \
 """
 
 SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}) {{
+"""  void SetTensorWrapper{}(const std::vector<paddle::Tensor>& {}) {{
     for(const auto& eager_tensor : {}) {{
       {}.emplace_back(egr::TensorWrapper(eager_tensor, {}));
     }};
@@ -109,8 +109,8 @@ class {} : public egr::GradNodeBase {{
       egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {{}}
   ~{}() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> operator()(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
+  virtual paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> operator()(
+      paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
   std::string name() override {{ return \"{}\"; }}
 
   void ClearTensorWrappers() override {{
@@ -136,7 +136,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = \
 """
-paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -316,7 +316,7 @@ AMP_LOGIC_TEMPLATE = \
 """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
     {}
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
     {}
     {}
     {}
@@ -329,14 +329,14 @@ AMP_LOGIC_TEMPLATE = \
 
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
-    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-    if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+    paddle::optional<const paddle::Tensor&> {}_optional = paddle::none;
+    if({}.initialized()) {}_optional = paddle::make_optional<const paddle::Tensor&>({});
 """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
-    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-    if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+    paddle::optional<const paddle::Tensor&> {}_optional = paddle::none;
+    if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::Tensor&>({});
 """
 
 
@@ -844,33 +844,33 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
-                    arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
+                    arg_str = f"const paddle::optional<const paddle::Tensor&> {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::experimental::Tensor();\n"
+                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::Tensor();\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
+                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
                     if is_inplaced and inplace_map and name in inplace_map.keys(
                     ):
-                        arg_str = f"paddle::experimental::Tensor& {name}"
+                        arg_str = f"paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
                             f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
                     else:
-                        arg_str = f"const paddle::experimental::Tensor& {name}"
+                        arg_str = f"const paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
                             f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
             else:
                 assert IsVectorTensorType(ttype)
-                arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                arg_str = f"const std::vector<paddle::Tensor>& {name}"
                 amp_tensors_vector_list.append(f"{name}")
                 amp_autocast_list.append(
                     f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
@@ -923,11 +923,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):
-                returns_type_list[pos] = "paddle::experimental::Tensor"
+                returns_type_list[pos] = "paddle::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
-                returns_type_list[
-                    pos] = "std::vector<paddle::experimental::Tensor>"
+                returns_type_list[pos] = "std::vector<paddle::Tensor>"
 
         if num_outputs == 1:
             returns_str = returns_list[0]
@@ -1310,8 +1309,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_api_namespace = f"paddle::experimental::{namespace}"
         grad_function_call_str = f"""
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
-  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
+  paddle::small_vector<std::vector<paddle::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
     returns[i].resize(out_metas[i].size());
     if(returns[i].size() == 0) {{

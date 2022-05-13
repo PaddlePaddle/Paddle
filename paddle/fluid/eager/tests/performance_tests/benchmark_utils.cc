@@ -44,9 +44,8 @@ namespace egr {
 /* --------------------- */
 /* ---- Eager Scale ---- */
 /* --------------------- */
-void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
-                           bool accuracy_check) {
-  paddle::experimental::Tensor input_tensor = tensor;
+void benchmark_eager_scale(const paddle::Tensor& tensor, bool accuracy_check) {
+  paddle::Tensor input_tensor = tensor;
   float scale = 2.0;
   float bias = 3.0;
 
@@ -57,7 +56,7 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
                    true /*trace_backward*/);
   }
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
+  std::vector<paddle::Tensor> target_tensors = {input_tensor};
   Backward(target_tensors, {});
 
   if (accuracy_check) {
@@ -68,10 +67,9 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
   }
 }
 
-void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
-                            const paddle::experimental::Tensor& Y,
+void benchmark_eager_matmul(const paddle::Tensor& X, const paddle::Tensor& Y,
                             bool accuracy_check) {
-  paddle::experimental::Tensor input_tensor0 = X;
+  paddle::Tensor input_tensor0 = X;
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
@@ -79,7 +77,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
         matmul_final_state_dygraph_function(input_tensor0, Y, false, false);
   }
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
+  std::vector<paddle::Tensor> target_tensors = {input_tensor0};
   Backward(target_tensors, {});
 
   if (accuracy_check) {
@@ -94,10 +92,10 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
 /* ----------------------------------- */
 /* ---- Eager Intermediate Matmul ---- */
 /* ----------------------------------- */
-void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
-                                         const paddle::experimental::Tensor& Y,
+void benchmark_eager_intermediate_matmul(const paddle::Tensor& X,
+                                         const paddle::Tensor& Y,
                                          bool accuracy_check) {
-  paddle::experimental::Tensor input_tensor0 = X;
+  paddle::Tensor input_tensor0 = X;
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
@@ -105,7 +103,7 @@ void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
         input_tensor0, Y, {{"trans_x", false}, {"trans_y", false}});
   }
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
+  std::vector<paddle::Tensor> target_tensors = {input_tensor0};
   Backward(target_tensors, {});
 
   if (accuracy_check) {
@@ -120,23 +118,23 @@ void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
 /* -------------------------------- */
 /* ---- Eager Intermediate MLP ---- */
 /* -------------------------------- */
-void benchmark_eager_intermediate_mlp(
-    const paddle::experimental::Tensor& X,
-    const std::vector<paddle::experimental::Tensor>& Ws,
-    const std::vector<paddle::experimental::Tensor>& Bs, bool accuracy_check) {
-  paddle::experimental::Tensor input0 = X;
+void benchmark_eager_intermediate_mlp(const paddle::Tensor& X,
+                                      const std::vector<paddle::Tensor>& Ws,
+                                      const std::vector<paddle::Tensor>& Bs,
+                                      bool accuracy_check) {
+  paddle::Tensor input0 = X;
 
   for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
-    paddle::experimental::Tensor Out = matmul_v2_dygraph_function(
+    paddle::Tensor Out = matmul_v2_dygraph_function(
         input0, Ws[i], {{"trans_x", false}, {"trans_y", false}});
 
     input0 = elementwise_add_dygraph_function(Out, Bs[i], {});
   }
 
-  paddle::experimental::Tensor Out =
+  paddle::Tensor Out =
       reduce_sum_dygraph_function(input0, {{"reduce_all", true}});
 
-  std::vector<paddle::experimental::Tensor> target_tensors = {Out};
+  std::vector<paddle::Tensor> target_tensors = {Out};
   Backward(target_tensors, {});
 
   if (accuracy_check) {

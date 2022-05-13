@@ -102,7 +102,7 @@ static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
   EAGER_TRY
   // TODO(jiabin): Sync Tensor and Variable here when we support
-  paddle::experimental::Tensor ret = egr::scale(
+  paddle::Tensor ret = egr::scale(
       reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor,
       CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
       CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
@@ -135,7 +135,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self, PyObject* args,
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
 
-  std::vector<paddle::experimental::Tensor> result =
+  std::vector<paddle::Tensor> result =
       egr::Grad(tensors, inputs, grad_tensors, retain_graph, create_graph,
                 only_inputs, allow_unused, no_grad_vars);
   VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
@@ -146,9 +146,9 @@ static PyObject* eager_api_run_partial_grad(PyObject* self, PyObject* args,
 static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
                                        PyObject* kwargs) {
   EAGER_TRY
-  paddle::experimental::Tensor& src =
+  paddle::Tensor& src =
       reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor;
-  paddle::experimental::Tensor& dst =
+  paddle::Tensor& dst =
       reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 1))->tensor;
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
@@ -167,11 +167,10 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self, PyObject* args,
   EAGER_TRY
   auto tensor_base_list =
       CastPyArg2VectorOfTensorBase(PyTuple_GET_ITEM(args, 0), 0);
-  std::vector<paddle::experimental::Tensor> tensor_list;
+  std::vector<paddle::Tensor> tensor_list;
   tensor_list.reserve(tensor_base_list.size());
   auto func = [](framework::Tensor& tensor_base) {
-    paddle::experimental::Tensor tensor(
-        egr::Controller::Instance().GenerateUniqueName());
+    paddle::Tensor tensor(egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(true);
@@ -399,9 +398,8 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     // Prepare Grad outputs
     size_t no_grad_cnt = 0;
     for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& in_tensors =
-          ctx.InputsBetween(ctx.InputRangeAt(i).first,
-                            ctx.InputRangeAt(i).second);
+      const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
+          ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
       if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
         grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
@@ -413,9 +411,8 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
     // Prepare Grad inputs with grad of fwd outputs
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& out_tensors =
-          ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
-                              ctx.OutputRangeAt(i).second);
+      const std::vector<paddle::Tensor>& out_tensors = ctx.OutputsBetweeen(
+          ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second);
 
       egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
       egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
@@ -480,7 +477,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self, PyObject* args,
   std::shared_ptr<phi::SparseCooTensor> coo_tensor =
       std::make_shared<phi::SparseCooTensor>(*dense_indices, *dense_elements,
                                              phi::make_ddim(dense_shape));
-  paddle::experimental::Tensor tensor;
+  paddle::Tensor tensor;
   tensor.set_impl(coo_tensor);
   auto name =
       egr::Controller::Instance().GenerateUniqueName("generated_tensor");
@@ -525,7 +522,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self, PyObject* args,
       std::make_shared<phi::SparseCsrTensor>(*dense_crows, *dense_cols,
                                              *dense_elements,
                                              phi::make_ddim(dense_shape));
-  paddle::experimental::Tensor tensor;
+  paddle::Tensor tensor;
   tensor.set_impl(csr_tensor);
   auto name =
       egr::Controller::Instance().GenerateUniqueName("generated_tensor");
@@ -665,9 +662,9 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
   }
 
   // Select the index data to the buffer
-  auto index_select = [](const paddle::experimental::Tensor& src_tensor,
-                         const paddle::experimental::Tensor& index_tensor,
-                         paddle::experimental::Tensor* buffer_tensor) {
+  auto index_select = [](const paddle::Tensor& src_tensor,
+                         const paddle::Tensor& index_tensor,
+                         paddle::Tensor* buffer_tensor) {
     auto* src_data = src_tensor.data<float>();
     auto* index_data = index_tensor.data<int64_t>();
     auto* buffer_data = buffer_tensor->data<float>();
@@ -776,9 +773,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in eager_api_to_uva_tensor.";
-  auto new_tensor = std::shared_ptr<paddle::experimental::Tensor>(
-      new paddle::experimental::Tensor(
-          egr::Controller::Instance().GenerateUniqueName()));
+  auto new_tensor = std::shared_ptr<paddle::Tensor>(
+      new paddle::Tensor(egr::Controller::Instance().GenerateUniqueName()));
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 

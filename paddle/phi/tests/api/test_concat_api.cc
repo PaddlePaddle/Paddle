@@ -56,10 +56,10 @@ TEST(API, concat) {
     }
   }
 
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
-  std::vector<paddle::experimental::Tensor> inputs{x, y};
+  std::vector<paddle::Tensor> inputs{x, y};
 
   // 2. test API
   auto out = paddle::experimental::concat(inputs, 0);

@@ -59,8 +59,8 @@ TEST(API, dot) {
     }
   }
 
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::dot(x, y);

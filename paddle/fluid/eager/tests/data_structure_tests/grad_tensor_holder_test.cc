@@ -43,10 +43,9 @@ TEST(GradTensorHolder, Constructor) {
           paddle::platform::CPUPlace())
           .get(),
       meta);
-  paddle::experimental::Tensor et = paddle::experimental::Tensor(dt);
+  paddle::Tensor et = paddle::Tensor(dt);
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       inputs;
   inputs.push_back({et});
 
@@ -63,7 +62,7 @@ TEST(GradTensorHolder, Interfaces) {
           .get(),
       meta);
   dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
-  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
+  paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -71,7 +70,7 @@ TEST(GradTensorHolder, Interfaces) {
           .get(),
       meta);
   dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] = 20.0;
-  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
+  paddle::Tensor et1 = paddle::Tensor(dt1);
 
   // Constructor empty GradTensorHolder
   std::vector<GradSlotMeta> slot_meta(1);
@@ -135,8 +134,8 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
     }
   }
   // new 2 phi::Tensor
-  paddle::experimental::Tensor t1(sr1);
-  paddle::experimental::Tensor t2(sr2);
+  paddle::Tensor t1(sr1);
+  paddle::Tensor t2(sr2);
 
   // Constructor empty GradTensorHolder
   std::vector<GradSlotMeta> slot_meta(1);

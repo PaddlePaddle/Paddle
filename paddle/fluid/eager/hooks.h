@@ -24,8 +24,7 @@ namespace egr {
 class TensorHook {
  public:
   virtual ~TensorHook() = default;
-  virtual paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) = 0;
+  virtual paddle::Tensor operator()(const paddle::Tensor& var) = 0;
 };
 
 class TensorVoidHook {
@@ -36,19 +35,16 @@ class TensorVoidHook {
 
 class CppTensorHook : public TensorHook {
  public:
-  explicit CppTensorHook(std::function<paddle::experimental::Tensor(
-                             const paddle::experimental::Tensor&)>&& fn)
+  explicit CppTensorHook(
+      std::function<paddle::Tensor(const paddle::Tensor&)>&& fn)
       : fn_(std::move(fn)) {}
 
-  paddle::experimental::Tensor operator()(
-      const paddle::experimental::Tensor& var) override {
+  paddle::Tensor operator()(const paddle::Tensor& var) override {
     return fn_(var);
   }
 
  private:
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      fn_;
+  std::function<paddle::Tensor(const paddle::Tensor&)> fn_;
 };
 
 class CppTensorVoidHook : public TensorVoidHook {

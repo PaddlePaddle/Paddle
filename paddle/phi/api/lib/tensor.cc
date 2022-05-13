@@ -36,7 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
-namespace experimental {
+
+using experimental::DefaultAllocator;
+
 namespace detail {
 static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
   auto alloc_type = place_type.GetType();
@@ -410,5 +412,4 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
-}  // namespace experimental
 }  // namespace paddle

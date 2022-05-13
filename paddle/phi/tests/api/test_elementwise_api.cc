@@ -62,8 +62,8 @@ TEST(API, add) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::add(x, y);
@@ -117,8 +117,8 @@ TEST(API, subtract) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::subtract(x, y);
@@ -173,8 +173,8 @@ TEST(API, divide) {
     dense_y_data[i] = i * 2.0 + 1;
   }
 
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::divide(x, y);
@@ -227,8 +227,8 @@ TEST(API, multiply) {
   for (size_t i = 0; i < 10; ++i) {
     dense_y_data[i] = i * 2.0;
   }
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::multiply(x, y);

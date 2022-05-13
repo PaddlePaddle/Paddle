@@ -50,11 +50,11 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
                                                               ssize_t arg_pos);
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+paddle::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
-std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
-    PyObject* obj, ssize_t arg_pos);
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
+                                                     ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
@@ -75,10 +75,10 @@ PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx, PyObject* args, ssize_t arg_idx);
+PyObject* ToPyObject(const paddle::Tensor& value, ssize_t value_idx,
+                     PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
@@ -86,7 +86,7 @@ PyObject* ToPyObject(const std::vector<size_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
@@ -181,36 +181,34 @@ paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
 paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
                                     ssize_t arg_pos);
 
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
-                                                const std::string& arg_name,
-                                                PyObject* args, ssize_t arg_idx,
-                                                bool dispensable = false);
+paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
+                                  const std::string& arg_name, PyObject* args,
+                                  ssize_t arg_idx, bool dispensable = false);
 
-std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
+std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
+                                                  const std::string& arg_name,
+                                                  PyObject* args,
+                                                  ssize_t arg_idx,
+                                                  bool dispensable = false);
+
+paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
+                                     const std::string& arg_name,
+                                     PyObject* args, ssize_t arg_idx,
+                                     bool dispensable = false);
+
+std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
-                                                   const std::string& arg_name,
-                                                   PyObject* args,
-                                                   ssize_t arg_idx,
-                                                   bool dispensable = false);
+std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
-std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
 
-std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
-    PyObject* obj);
-
-std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
-    PyObject* obj);
-
-paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
+paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

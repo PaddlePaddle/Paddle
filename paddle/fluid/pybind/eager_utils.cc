@@ -201,7 +201,7 @@ bool IsEagerTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
+paddle::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
       PyObject_IsInstance(obj,
                           reinterpret_cast<PyObject*>(p_string_tensor_type))) {
@@ -219,9 +219,9 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
 }
 
-std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
-    PyObject* obj, ssize_t arg_pos) {
-  std::vector<paddle::experimental::Tensor> result;
+std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
+                                                     ssize_t arg_pos) {
+  std::vector<paddle::Tensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -513,7 +513,7 @@ PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize) {
   if (return_py_none_if_not_initialize && !value.initialized()) {
     RETURN_PY_NONE
@@ -528,7 +528,7 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   }
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
+    new (&(v->tensor)) paddle::Tensor();
     v->tensor = value;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
@@ -537,8 +537,8 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   return obj;
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+PyObject* ToPyObject(const paddle::Tensor& value, ssize_t value_idx,
+                     PyObject* args, ssize_t arg_idx) {
   // For inplace op, directly return the input PyObject of the inplace tensor.
   // [Parameter]
   // value: Useless parameter.
@@ -621,7 +621,7 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
@@ -633,7 +633,7 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
       PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
       if (obj) {
         auto v = reinterpret_cast<TensorObject*>(obj);
-        new (&(v->tensor)) paddle::experimental::Tensor();
+        new (&(v->tensor)) paddle::Tensor();
         v->tensor = value[i];
       } else {
         PADDLE_THROW(platform::errors::Fatal(
@@ -721,7 +721,7 @@ PyObject* ToPyObject(
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
@@ -740,7 +740,7 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
-    return paddle::make_optional<const paddle::experimental::Tensor&>(
+    return paddle::make_optional<const paddle::Tensor&>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -750,9 +750,10 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
   }
 }
 
-static paddle::experimental::Tensor& GetTensorFromPyObject(
-    const std::string& op_type, const std::string& arg_name, PyObject* obj,
-    ssize_t arg_idx, bool dispensable) {
+static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
+                                             const std::string& arg_name,
+                                             PyObject* obj, ssize_t arg_idx,
+                                             bool dispensable) {
   if (PyTuple_Check(obj)) {
     obj = PyTuple_GET_ITEM(obj, 0);
   }
@@ -763,7 +764,7 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
           op_type, arg_name, arg_idx));
     }
-    static paddle::experimental::Tensor emptytensor;
+    static paddle::Tensor emptytensor;
     return emptytensor;
   }
 
@@ -782,17 +783,18 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
 
 // For Intermediate State Dygraph,
 // we use an uninitialized Tensor to represent dispensable Tensor
-paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
-                                                const std::string& arg_name,
-                                                PyObject* args, ssize_t arg_idx,
-                                                bool dispensable) {
+paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
+                                  const std::string& arg_name, PyObject* args,
+                                  ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
-std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+std::vector<paddle::Tensor> GetTensorListFromArgs(const std::string& op_type,
+                                                  const std::string& arg_name,
+                                                  PyObject* args,
+                                                  ssize_t arg_idx,
+                                                  bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {
@@ -805,7 +807,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     return {};
   }
 
-  std::vector<paddle::experimental::Tensor> result;
+  std::vector<paddle::Tensor> result;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -846,11 +848,10 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
   return result;
 }
 
-paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
-                                                   const std::string& arg_name,
-                                                   PyObject* args,
-                                                   ssize_t arg_idx,
-                                                   bool dispensable) {
+paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
+                                     const std::string& arg_name,
+                                     PyObject* args, ssize_t arg_idx,
+                                     bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -863,7 +864,7 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
           op_type, arg_name, arg_idx));
     }
-    static paddle::experimental::Tensor emptytensor;
+    static paddle::Tensor emptytensor;
     return &emptytensor;
   }
 
@@ -877,7 +878,7 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
   }
 }
 
-std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
+std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
@@ -892,7 +893,7 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     return {};
   }
 
-  std::vector<paddle::experimental::Tensor*> result;
+  std::vector<paddle::Tensor*> result;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -931,9 +932,8 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
   return result;
 }
 
-std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
-    PyObject* obj) {
-  std::vector<paddle::experimental::Tensor*> result;
+std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
+  std::vector<paddle::Tensor*> result;
 
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -965,9 +965,8 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
   return result;
 }
 
-std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
-    PyObject* obj) {
-  std::vector<paddle::experimental::Tensor> result;
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
+  std::vector<paddle::Tensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -1007,7 +1006,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
   return result;
 }
 
-paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
+paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
   if (!IsEagerTensor(obj)) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument must be "
@@ -1081,7 +1080,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     float value = CastPyArg2Float(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (IsEagerTensor(obj)) {
-    paddle::experimental::Tensor& value = GetTensorFromPyObject(
+    paddle::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
   } else if (type_name.find("numpy") != std::string::npos) {
@@ -1124,7 +1123,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     return paddle::experimental::IntArray(value);
 
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
-    paddle::experimental::Tensor& value = GetTensorFromPyObject(
+    paddle::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
 

@@ -136,7 +136,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_NE(vec_x.empty(), true,
                         platform::errors::NotFound(
                             "Input vector<tensor> (%s) is empty.", in_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_in;
+      std::vector<paddle::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
@@ -148,7 +148,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "The %d-th tensor in input vector<tensor> (%s) "
                               "is not initialized.",
                               i, in_name));
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
@@ -160,7 +160,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_EQ(x->IsInitialized(), true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      paddle::experimental::Tensor custom_in;
+      paddle::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (custom_in.is_gpu_pinned()) {
@@ -226,7 +226,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_NE(vec_out.empty(), true,
                         platform::errors::NotFound(
                             "Output vector<tensor> (%s) is empty.", out_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_out;
+      std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
         auto* out = vec_out[j];
         PADDLE_ENFORCE_NOT_NULL(
@@ -235,7 +235,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "The %d-th tensor in output vector<tensor> (%s) is nullptr.", j,
                 out_name));
         true_out_ptrs.emplace_back(out);
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         // here only can copy the output tensor into context
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
@@ -247,7 +247,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
           out, platform::errors::NotFound("Output tensor (%s) is nullptr.",
                                           out_name));
       true_out_ptrs.emplace_back(out);
-      paddle::experimental::Tensor custom_out;
+      paddle::Tensor custom_out;
       // here only can copy the output tensor into context
       custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));

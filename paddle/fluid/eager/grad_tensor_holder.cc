@@ -27,9 +27,9 @@ void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
       paddle::experimental::zeros_like(buffer_[slot_id][rank]);
 }
 
-void GradTensorHolder::CopyValueFromTensor(
-    size_t slot_id, size_t rank, const paddle::experimental::Tensor& t,
-    bool fill_one) {
+void GradTensorHolder::CopyValueFromTensor(size_t slot_id, size_t rank,
+                                           const paddle::Tensor& t,
+                                           bool fill_one) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -50,7 +50,7 @@ void GradTensorHolder::CopyValueFromTensor(
           "of buffer slot %d, got slot size is: %d rank is: %d",
           slot_id, buffer_[slot_id].size(), rank));
   if (!fill_one) {
-    paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
+    paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
       buffer_tensor.copy_(t, t.place(), false);
@@ -71,8 +71,7 @@ void GradTensorHolder::CopyValueFromTensor(
   }
 }
 
-void GradTensorHolder::add(size_t slot_id, size_t rank,
-                           const paddle::experimental::Tensor& t,
+void GradTensorHolder::add(size_t slot_id, size_t rank, const paddle::Tensor& t,
                            bool create_graph) {
   // TODO(jiabin): We need to deal with empty input_buffer with slot size not
   // empty;
@@ -94,7 +93,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
           "of buffer slot %d, got slot size is: %d rank is: %d",
           slot_id, buffer_[slot_id].size(), rank));
 
-  paddle::experimental::Tensor& buffer_tensor = buffer_[slot_id][rank];
+  paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
   // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
   // remove framework::Variable
   // related code later.
@@ -117,15 +116,14 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         if (create_graph) {
           buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
         } else {
-          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
-              t, &buffer_tensor);
+          paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
         // add_dygraph_function once it's supported
-        paddle::experimental::Tensor new_buffer(
-            std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+        paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
+                                  "tmp_accumulator");
         paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
                                                   &new_buffer);
         buffer_tensor.set_impl(new_buffer.impl());
@@ -138,8 +136,8 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
       } else {
         buffer_tensor =
-            std::move(*paddle::imperative::SelectedRowsMerge<
-                      paddle::experimental::Tensor>(t, buffer_tensor));
+            std::move(*paddle::imperative::SelectedRowsMerge<paddle::Tensor>(
+                t, buffer_tensor));
       }
     }
   }

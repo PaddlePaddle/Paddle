@@ -38,21 +38,21 @@ TEST(Forward, SingleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  paddle::experimental::Tensor& tensor = target_tensors[0];
+  paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward
   float scale = 2.0;
   float bias = 3.0;
-  paddle::experimental::Tensor out = egr::scale(
+  paddle::Tensor out = egr::scale(
       tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output
@@ -84,28 +84,28 @@ TEST(Forward, LinearNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  paddle::experimental::Tensor& tensor = target_tensors[0];
+  paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  paddle::experimental::Tensor out0 =
+  paddle::Tensor out0 =
       egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
                  true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
-  paddle::experimental::Tensor out1 = egr::scale(
+  paddle::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0
@@ -164,34 +164,34 @@ TEST(Forward, BranchedNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor t = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
-  paddle::experimental::Tensor& tensor = target_tensors[0];
+  paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
 
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  paddle::experimental::Tensor out0 =
+  paddle::Tensor out0 =
       egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
                  true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
-  paddle::experimental::Tensor out1 = egr::scale(
+  paddle::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Run Forward Node 2
   float scale2 = 10.0;
   float bias2 = 20.0;
-  paddle::experimental::Tensor out2 = egr::scale(
+  paddle::Tensor out2 = egr::scale(
       out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
 
   // Examine Forward Output 0

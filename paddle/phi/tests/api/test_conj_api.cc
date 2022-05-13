@@ -48,7 +48,7 @@ TEST(API, conj) {
     }
   }
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
 
   // 2. test API
   auto out = paddle::experimental::conj(x);

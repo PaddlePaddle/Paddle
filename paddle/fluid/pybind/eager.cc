@@ -51,7 +51,7 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
+    new (&(v->tensor)) paddle::Tensor();
   }
   return obj;
 }
@@ -177,8 +177,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   }
 }
 
-void InitTensorWithTensor(TensorObject* self,
-                          const paddle::experimental::Tensor& src,
+void InitTensorWithTensor(TensorObject* self, const paddle::Tensor& src,
                           const paddle::platform::Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
@@ -207,8 +206,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
     self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    auto temp =
-        paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
+    auto temp = paddle::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(temp.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
@@ -216,7 +214,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
 }
 
 void InitStringTensorWithStringTensor(TensorObject* self,
-                                      const paddle::experimental::Tensor& src,
+                                      const paddle::Tensor& src,
                                       const paddle::platform::Place& place,
                                       const std::string& name) {
   self->tensor.set_name(name);
@@ -383,7 +381,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (init_by_egr_tensor) {
-    paddle::experimental::Tensor src_tensor;
+    paddle::Tensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor =
           CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -468,7 +466,7 @@ void AutoInitStringTensorByStringTensor(
 
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num,
                        "generated_string_tensor");
-  paddle::experimental::Tensor src_tensor;
+  paddle::Tensor src_tensor;
   if (kw_order_map["value"] <= args_num) {
     src_tensor =
         CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),

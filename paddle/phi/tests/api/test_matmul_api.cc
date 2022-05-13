@@ -68,8 +68,8 @@ TEST(API, matmul_cpu) {
   }
   std::vector<float> sum(9, 6.0);
 
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::matmul(x, y, false, false);
@@ -140,8 +140,8 @@ TEST(API, matmul_cuda) {
   phi::Copy(*dev_ctx, *ref_x.get(), phi::GPUPlace(), false, dense_x.get());
   phi::Copy(*dev_ctx, *ref_y.get(), phi::GPUPlace(), false, dense_y.get());
 
-  paddle::experimental::Tensor x(dense_x);
-  paddle::experimental::Tensor y(dense_y);
+  paddle::Tensor x(dense_x);
+  paddle::Tensor y(dense_y);
 
   // 2. test API
   auto out = paddle::experimental::matmul(x, y, false, false);
@@ -179,8 +179,8 @@ TEST(API, matmul_double_grad) {
   auto dx_grad = paddle::experimental::full({3, 3}, 2.0);
 
   // 2. test API
-  std::vector<std::vector<paddle::experimental::Tensor>> out(
-      3, std::vector<paddle::experimental::Tensor>(1));
+  std::vector<std::vector<paddle::Tensor>> out(3,
+                                               std::vector<paddle::Tensor>(1));
   paddle::experimental::matmul_double_grad(x,
                                            y,
                                            out_grad,

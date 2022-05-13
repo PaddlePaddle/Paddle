@@ -227,7 +227,7 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
   dst->data_.c128 = src.data_.c128;
 }
 
-using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
+using Scalar = paddle::experimental::ScalarBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

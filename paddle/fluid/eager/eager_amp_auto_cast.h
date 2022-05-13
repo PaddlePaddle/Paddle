@@ -18,7 +18,7 @@
 
 namespace egr {
 
-static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
+static inline bool NeedCast(const paddle::Tensor& tensor,
                             const paddle::experimental::DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
@@ -39,14 +39,13 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
   return false;
 }
 
-inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
-    const std::string& inputs_name,
-    const std::vector<paddle::experimental::Tensor>& inputs,
+inline std::vector<paddle::Tensor> EagerAmpAutoCasts(
+    const std::string& inputs_name, const std::vector<paddle::Tensor>& inputs,
     const paddle::experimental::DataType& dst_dtype, std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
-  std::vector<paddle::experimental::Tensor> inputs_casted;
+  std::vector<paddle::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
       inputs_casted.emplace_back(
@@ -58,8 +57,8 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
   return inputs_casted;
 }
 
-inline paddle::experimental::Tensor EagerAmpAutoCast(
-    const std::string& input_name, const paddle::experimental::Tensor& input,
+inline paddle::Tensor EagerAmpAutoCast(
+    const std::string& input_name, const paddle::Tensor& input,
     const paddle::experimental::DataType& dst_dtype, std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("

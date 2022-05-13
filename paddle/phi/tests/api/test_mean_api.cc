@@ -48,7 +48,7 @@ TEST(API, mean) {
     sum += i * 1.0;
   }
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
   std::vector<int64_t> axis = {0, 1};
 
   // 2. test API

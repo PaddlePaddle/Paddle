@@ -54,7 +54,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     py::handle py_tensors,

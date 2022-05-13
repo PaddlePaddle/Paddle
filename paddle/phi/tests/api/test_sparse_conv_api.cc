@@ -63,14 +63,14 @@ void TestConv3dBase(const std::vector<int>& indices,
 
   auto x_tensor = std::make_shared<phi::SparseCooTensor>(
       indices_tensor, features_tensor, x_dims);
-  paddle::experimental::Tensor x(x_tensor);
+  paddle::Tensor x(x_tensor);
 
   auto kernel_tensor = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                            kernel_dims,
                            phi::DataLayout::NHWC));
-  paddle::experimental::Tensor weight(kernel_tensor);
+  paddle::Tensor weight(kernel_tensor);
 
   memcpy(kernel_tensor->mutable_data<T>(paddle::platform::CPUPlace()),
          kernel.data(),

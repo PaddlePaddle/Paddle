@@ -40,16 +40,16 @@ namespace egr {
 TEST(CrossBatchAccumulation, SingleScaleNode) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
-  paddle::experimental::Tensor& target_tensor = target_tensors[0];
+  paddle::Tensor& target_tensor = target_tensors[0];
 
-  paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
+  paddle::Tensor leaf_tensor = paddle::Tensor();
 
   auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
   scale_node_ptr->SetAttributes_scale(5.0 /*scale*/);

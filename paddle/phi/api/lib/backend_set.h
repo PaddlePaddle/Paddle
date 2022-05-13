@@ -18,8 +18,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/backend.h"
+
 namespace paddle {
-namespace experimental {
+
+using experimental::Backend;
 
 /**
  * We use the backend to form a bit set to assist the runtime kernel selection,
@@ -65,5 +67,4 @@ class BackendSet final {
   uint64_t bitset_;
 };
 
-}  // namespace experimental
 }  // namespace paddle

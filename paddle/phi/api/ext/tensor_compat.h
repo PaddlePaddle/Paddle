@@ -17,12 +17,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 
-// Note(chenweihang): In order to be compatible with the original custom
-// operator Tensor interface, only available to external users, the file
-// cannot be includeed in paddle
-
 namespace paddle {
-using Tensor = experimental::Tensor;
 // using several Tensor initialize functions in paddle namespace
 using experimental::abs;
 using experimental::acos;
@@ -133,5 +128,4 @@ using experimental::unbind;
 using experimental::unique;
 using experimental::unsqueeze;
 using experimental::where;
-
 }  // namespace paddle

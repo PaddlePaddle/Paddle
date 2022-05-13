@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
-namespace experimental {
 
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
@@ -299,5 +298,4 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
   return pt_tensors;
 }
 
-}  // namespace experimental
 }  // namespace paddle

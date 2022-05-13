@@ -45,16 +45,14 @@ TEST(Grad, SingleNodeEmptyGrad) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor (output)
-  paddle::experimental::Tensor output_tensor =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
+  paddle::Tensor output_tensor = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
 
   // Create input tensor
-  const paddle::experimental::Tensor leaf_tensor =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
+  const paddle::Tensor leaf_tensor = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
 
   {
     // Create Scale Node
@@ -89,7 +87,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
     std::vector<egr::AutogradMeta*> res = {auto_grad_meta1};
     node0_ptr->SetGradOutMeta(leaf_tensor, 0);
   }
-  std::vector<paddle::experimental::Tensor> outs = {output_tensor};
+  std::vector<paddle::Tensor> outs = {output_tensor};
 
   // Run Grad
   auto result = Grad(outs, {leaf_tensor}, {});
@@ -102,27 +100,25 @@ TEST(Grad, SingleNodeCustomGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
-  std::vector<paddle::experimental::Tensor> grad_tensors;
+  std::vector<paddle::Tensor> grad_tensors;
   // Create Grad Tensor
-  paddle::experimental::Tensor grad_tensor =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
+  paddle::Tensor grad_tensor = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor));
 
-  paddle::experimental::Tensor leaf_tensor =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
+  paddle::Tensor leaf_tensor = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
 
   {
     // Create Scale Node
@@ -171,19 +167,18 @@ TEST(Grad, LinearNodes) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Target Tensor
-  std::vector<paddle::experimental::Tensor> target_tensors;
+  std::vector<paddle::Tensor> target_tensors;
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor tensor = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
 
-  paddle::experimental::Tensor leaf_tensor =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
+  paddle::Tensor leaf_tensor = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 1.0 /*value*/, true /*is_leaf*/);
   {
     // Create Node0
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -207,7 +202,7 @@ TEST(Grad, LinearNodes) {
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     auto_grad_meta->SetStopGradient(false);
     // Connect Node0 -> Node1 via Edge
-    auto tmp_tensor = paddle::experimental::Tensor();
+    auto tmp_tensor = paddle::Tensor();
     auto* meta0 = EagerUtils::autograd_meta(&tmp_tensor);
     meta0->SetStopGradient(false);
     meta0->SetSingleOutRankWithSlot(0, 0);
@@ -249,30 +244,28 @@ TEST(Grad, WithAccumulation) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  std::vector<paddle::experimental::Tensor> target_tensors;
-  paddle::experimental::Tensor tensor0 = egr_utils_api::CreateTensorWithValue(
+  std::vector<paddle::Tensor> target_tensors;
+  paddle::Tensor tensor0 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
-  paddle::experimental::Tensor tensor1 = egr_utils_api::CreateTensorWithValue(
+  paddle::Tensor tensor1 = egr_utils_api::CreateTensorWithValue(
       ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
       phi::DataLayout::NCHW, 1.0 /*value*/, false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor0));
   target_tensors.emplace_back(std::move(tensor1));
 
   // Create Grad Tensor
-  std::vector<paddle::experimental::Tensor> grad_tensors;
-  paddle::experimental::Tensor grad_tensor0 =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
-  paddle::experimental::Tensor grad_tensor1 =
-      egr_utils_api::CreateTensorWithValue(
-          ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-          phi::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
+  std::vector<paddle::Tensor> grad_tensors;
+  paddle::Tensor grad_tensor0 = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::Tensor grad_tensor1 = egr_utils_api::CreateTensorWithValue(
+      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+      phi::DataLayout::NCHW, 10.0 /*value*/, false /*is_leaf*/);
   grad_tensors.emplace_back(std::move(grad_tensor0));
   grad_tensors.emplace_back(std::move(grad_tensor1));
 
-  paddle::experimental::Tensor leaf_tensor;
+  paddle::Tensor leaf_tensor;
   {
     // Create Node0
     auto node0_ptr = std::make_shared<GradNodeScale>(1, 1);
@@ -303,7 +296,7 @@ TEST(Grad, WithAccumulation) {
     auto_grad_meta1->SetStopGradient(false);
 
     // Connect Node0 -> Node2 via Edge
-    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto tmp_tensor0 = paddle::Tensor();
     auto* meta0 = EagerUtils::autograd_meta(&tmp_tensor0);
     meta0->SetStopGradient(false);
     meta0->SetSingleOutRankWithSlot(0, 0);
@@ -311,7 +304,7 @@ TEST(Grad, WithAccumulation) {
     node0_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     // Connect Node1 -> Node2 via Edge
-    auto tmp_tensor1 = paddle::experimental::Tensor();
+    auto tmp_tensor1 = paddle::Tensor();
     auto meta1 = EagerUtils::autograd_meta(&tmp_tensor1);
     meta1->SetStopGradient(false);
     meta1->SetSingleOutRankWithSlot(0, 0);

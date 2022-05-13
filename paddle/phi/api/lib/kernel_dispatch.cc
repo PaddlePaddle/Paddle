@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace experimental {
 namespace detail {
 
 // We need judge whether the allocation is nullptr,
@@ -142,5 +141,4 @@ DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
   return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 
-}  // namespace experimental
 }  // namespace paddle

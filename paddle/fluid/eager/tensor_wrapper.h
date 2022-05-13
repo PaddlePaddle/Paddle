@@ -33,7 +33,7 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
+  explicit TensorWrapper(const paddle::Tensor& tensor,
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
@@ -82,17 +82,17 @@ class TensorWrapper {
     }
   }
 
-  paddle::experimental::Tensor recover() {
+  paddle::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
     if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return paddle::experimental::Tensor();
+      return paddle::Tensor();
     }
 
     check_inplace_version();
 
-    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+    paddle::Tensor recovered_tensor = intermidiate_tensor_;
 
     std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
     if (new_grad_node) {
@@ -155,7 +155,7 @@ class TensorWrapper {
 
  private:
   bool no_need_buffer_ = false;
-  paddle::experimental::Tensor intermidiate_tensor_;
+  paddle::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 };

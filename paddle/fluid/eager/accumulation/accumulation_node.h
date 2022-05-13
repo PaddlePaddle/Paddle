@@ -37,9 +37,9 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
@@ -65,11 +65,9 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
  private:
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  std::weak_ptr<paddle::Tensor> weak_grad_;
 
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      retain_grad_hook_;
+  std::function<paddle::Tensor(const paddle::Tensor&)> retain_grad_hook_;
 
   std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
 };

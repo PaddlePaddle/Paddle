@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
-namespace experimental {
 
 class TransformFlag {
  public:
@@ -81,5 +80,4 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
-}  // namespace experimental
 }  // namespace paddle

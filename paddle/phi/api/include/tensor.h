@@ -45,7 +45,8 @@ class DDim;
 
 namespace paddle {
 
-namespace experimental {
+using experimental::DataType;
+using experimental::DataLayout;
 
 class AbstractAutogradMeta {
  public:
@@ -599,5 +600,4 @@ class PADDLE_API Tensor final {
   std::string name_{""};
 };
 
-}  // namespace experimental
 }  // namespace paddle

@@ -40,7 +40,7 @@ TEST(API, empty_like) {
                            phi::make_ddim({3, 2}),
                            phi::DataLayout::NCHW));
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
 
   // 2. test API
   auto out = paddle::experimental::empty_like(x, phi::DataType::FLOAT32);
@@ -67,7 +67,7 @@ TEST(API, empty1) {
   shape_data[0] = 2;
   shape_data[1] = 3;
 
-  paddle::experimental::Tensor tensor_shape(dense_shape);
+  paddle::Tensor tensor_shape(dense_shape);
 
   // 2. test API
   auto out = paddle::experimental::empty(tensor_shape, phi::DataType::FLOAT32);
@@ -90,10 +90,9 @@ TEST(API, empty2) {
           phi::DataType::INT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
   dense_scalar->mutable_data<int32_t>(paddle::platform::CPUPlace())[0] = 2;
 
-  paddle::experimental::Tensor shape_scalar1(dense_scalar);
-  paddle::experimental::Tensor shape_scalar2(dense_scalar);
-  std::vector<paddle::experimental::Tensor> list_shape{shape_scalar1,
-                                                       shape_scalar2};
+  paddle::Tensor shape_scalar1(dense_scalar);
+  paddle::Tensor shape_scalar2(dense_scalar);
+  std::vector<paddle::Tensor> list_shape{shape_scalar1, shape_scalar2};
 
   auto out = paddle::experimental::empty(list_shape, phi::DataType::FLOAT32);
 

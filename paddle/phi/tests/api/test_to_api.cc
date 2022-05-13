@@ -32,7 +32,7 @@ namespace tests {
 namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
-paddle::experimental::Tensor CreateInputTensor() {
+paddle::Tensor CreateInputTensor() {
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
@@ -46,10 +46,10 @@ paddle::experimental::Tensor CreateInputTensor() {
     dense_x_data[i] = i;
   }
 
-  return paddle::experimental::Tensor(dense_x);
+  return paddle::Tensor(dense_x);
 }
 
-void CheckOutputResult(const paddle::experimental::Tensor& out) {
+void CheckOutputResult(const paddle::Tensor& out) {
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 4);

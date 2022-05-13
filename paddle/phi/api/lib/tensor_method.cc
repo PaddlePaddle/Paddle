@@ -24,17 +24,17 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
-namespace experimental {
+
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
 Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
-  return experimental::cast(*this, target_type);
+  return cast(*this, target_type);
 }
 
 Tensor Tensor::copy_to(const Place &place, bool blocking) const {
-  return experimental::copy_to(*this, place, blocking);
+  return copy_to(*this, place, blocking);
 }
 
 template <typename T>
@@ -79,8 +79,8 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
   // Prepare copy kernel key and outputs
-  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
-  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
+  auto kernel_key_set = experimental::ParseKernelKeyByInputArgs(src);
+  KernelType kernel_type = experimental::ParseKernelTypeByInputArgs(src);
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
   if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
@@ -229,5 +229,4 @@ Tensor Tensor::to_dense() const {
   return experimental::sparse::to_dense(*this);
 }
 
-}  // namespace experimental
 }  // namespace paddle

@@ -22,11 +22,11 @@
 #include "paddle/fluid/eager/utils.h"
 
 inline void run_program_dygraph_function(
-    const std::vector<paddle::experimental::Tensor>& x,
-    const std::vector<paddle::experimental::Tensor>& params,
-    std::vector<paddle::experimental::Tensor*>& out,     // NOLINT
+    const std::vector<paddle::Tensor>& x,
+    const std::vector<paddle::Tensor>& params,
+    std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::experimental::Tensor*>& dout,    // NOLINT
+    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   VLOG(2) << "start run run_program";
   // Call forward function

@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/data_type.h"
+
 namespace paddle {
-namespace experimental {
 
 /* This class is used to store DataType in a bit set*/
 class DataTypeSet final {
@@ -81,5 +81,4 @@ inline DataType PromoteTypes(const DataTypeSet& dtype_set) {
   return promote_type;
 }
 
-}  // namespace experimental
 }  // namespace paddle

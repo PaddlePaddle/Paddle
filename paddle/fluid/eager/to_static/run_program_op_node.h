@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 namespace details {
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 static std::vector<Tensor> DereferenceTensors(
     const std::vector<Tensor *> &tensor_ptr) {
@@ -176,11 +176,11 @@ static void ShareTensorsFromScope(
 }  // namespace details
 
 inline void RunProgramAPI(
-    const std::vector<paddle::experimental::Tensor> &x,
-    const std::vector<paddle::experimental::Tensor> &params,
-    std::vector<paddle::experimental::Tensor *> &out,     // NOLINT
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::experimental::Tensor *> &dout,    // NOLINT
+    std::vector<paddle::Tensor *> &dout,                  // NOLINT
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
   auto start_op_index = BOOST_GET_CONST(int64_t, attrs.at("start_op_index"));
@@ -266,13 +266,13 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::experimental::Tensor> &x,
-    const std::vector<paddle::experimental::Tensor> &params,
-    const std::vector<paddle::experimental::Tensor> &out_grad,
+    const std::vector<paddle::Tensor> &x,
+    const std::vector<paddle::Tensor> &params,
+    const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
-    std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
+    std::vector<paddle::Tensor *> &x_grad,      // NOLINT
+    std::vector<paddle::Tensor *> &params_grad  // NOLINT
     ) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
@@ -364,15 +364,14 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
              bool create_graph,
              bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
                       paddle::platform::errors::InvalidArgument(
@@ -382,12 +381,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     egr::EagerUtils::FillZeroForEmptyGradInputs(&hooked_grads,
                                                 this->InputMeta());
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
-    std::vector<paddle::experimental::Tensor> x_grad;
-    std::vector<paddle::experimental::Tensor> params_grad;
+    std::vector<paddle::Tensor> x_grad;
+    std::vector<paddle::Tensor> params_grad;
     ConstructXGradTensors(x_, &x_grad);
     ConstructParamGradTensors(params_, &params_grad);
-    std::vector<paddle::experimental::Tensor *> x_grad_ptr;
-    std::vector<paddle::experimental::Tensor *> params_grad_ptr;
+    std::vector<paddle::Tensor *> x_grad_ptr;
+    std::vector<paddle::Tensor *> params_grad_ptr;
     for (auto &i : x_grad) {
       x_grad_ptr.emplace_back(&i);
     }
@@ -417,11 +416,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     attrs_ = attrs;
   }
 
-  void SetFwdX(const std::vector<paddle::experimental::Tensor> &tensors) {
-    x_ = tensors;
-  }
+  void SetFwdX(const std::vector<paddle::Tensor> &tensors) { x_ = tensors; }
 
-  void SetFwdParams(const std::vector<paddle::experimental::Tensor> &tensors) {
+  void SetFwdParams(const std::vector<paddle::Tensor> &tensors) {
     params_ = tensors;
   }
 
@@ -434,9 +431,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
  protected:
-  void ConstructXGradTensors(
-      const std::vector<paddle::experimental::Tensor> &x,
-      std::vector<paddle::experimental::Tensor> *x_grad) {
+  void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
+                             std::vector<paddle::Tensor> *x_grad) {
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (auto &t : x) {
@@ -449,9 +445,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     }
   }
 
-  void ConstructParamGradTensors(
-      const std::vector<paddle::experimental::Tensor> &param,
-      std::vector<paddle::experimental::Tensor> *param_grad) {
+  void ConstructParamGradTensors(const std::vector<paddle::Tensor> &param,
+                                 std::vector<paddle::Tensor> *param_grad) {
     for (auto &t : param) {
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
       // In eager mode, the number of param_grad should be the same as
@@ -476,8 +471,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
  private:
   // TensorWrappers
-  std::vector<paddle::experimental::Tensor> x_;
-  std::vector<paddle::experimental::Tensor> params_;
+  std::vector<paddle::Tensor> x_;
+  std::vector<paddle::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
   std::vector<std::string> fwd_out_names_;

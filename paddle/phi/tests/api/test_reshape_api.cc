@@ -47,7 +47,7 @@ TEST(API, reshape) {
     dense_x_data[i] = i;
   }
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
   std::vector<int64_t> shape{12, 3};
   // 2. test API
   auto out = paddle::experimental::reshape(x, shape);
@@ -76,7 +76,7 @@ TEST(API, reshape_) {
       {3, 2, 2, 3}, 1.0, experimental::DataType::FLOAT32);
 
   // 2. test API
-  paddle::experimental::Tensor out = paddle::experimental::reshape_(x, {12, 3});
+  paddle::Tensor out = paddle::experimental::reshape_(x, {12, 3});
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};
   ASSERT_EQ(out.shape()[0], expect_shape[0]);
@@ -90,7 +90,7 @@ TEST(API, reshape_) {
 }
 
 TEST(Tensor, old_reshape) {
-  paddle::experimental::Tensor x(paddle::PlaceType::kCPU);
+  paddle::Tensor x(paddle::PlaceType::kCPU);
   x.reshape({3, 4});
   x.mutable_data<float>(paddle::PlaceType::kCPU);
 

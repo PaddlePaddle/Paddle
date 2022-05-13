@@ -121,8 +121,7 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

@@ -47,7 +47,7 @@ TEST(API, cast) {
     dense_x_data[i] = i;
   }
 
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
   phi::DataType out_dtype = phi::DataType::FLOAT64;
   // 2. test API
   auto out = paddle::experimental::cast(x, out_dtype);

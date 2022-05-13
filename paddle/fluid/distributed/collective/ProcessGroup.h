@@ -32,7 +32,7 @@ namespace paddle {
 namespace distributed {
 
 constexpr int IGNORE_ID = -1;
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 enum class CommType : std::uint8_t {
   BROADCAST = 0,

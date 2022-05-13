@@ -57,13 +57,12 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
     }
   }
   // new 2 phi::Tensor
-  paddle::experimental::Tensor t1(sr1);
-  paddle::experimental::Tensor t2(sr2);
+  paddle::Tensor t1(sr1);
+  paddle::Tensor t2(sr2);
 
   // call SelectedRowsMerge
   auto new_buffer =
-      paddle::imperative::SelectedRowsMerge<paddle::experimental::Tensor>(t1,
-                                                                          t2);
+      paddle::imperative::SelectedRowsMerge<paddle::Tensor>(t1, t2);
   auto* new_buffer_tensor =
       static_cast<phi::SelectedRows*>(new_buffer->impl().get());
   auto* new_buffer_data_sr1 =

@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
-namespace experimental {
 
 namespace detail {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t);
@@ -188,5 +187,4 @@ DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
-}  // namespace experimental
 }  // namespace paddle
