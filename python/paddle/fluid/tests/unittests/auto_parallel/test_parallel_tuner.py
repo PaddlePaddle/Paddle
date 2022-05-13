@@ -19,9 +19,9 @@ import paddle.nn as nn
 import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
 
 from paddle.distributed import fleet
+import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
@@ -29,6 +29,7 @@ from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedA
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
 paddle.enable_static()
 
@@ -121,6 +122,7 @@ def loop_body(i, loop_len, input_array):
 
     output = mlp_while0(pre_input)
     cur_pred = mlp_while1(output)
+
     # 更新循环条件
     i = paddle.increment(x=i, value=1)
     paddle.tensor.array_write(cur_pred, array=input_array, i=i)
@@ -159,13 +161,13 @@ def get_program():
             input,
             dist_attr={
                 "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, -1, -1]
+                "dims_mapping": [0, -1, -1]
             })
         auto.shard_tensor(
             label,
             dist_attr={
                 "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, -1, -1]
+                "dims_mapping": [0, -1, -1]
             })
 
         mlp_start = MLPLayer(
@@ -190,19 +192,154 @@ def get_program():
         pred = mlp_end(end_pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
+        # error_cost = paddle.nn.functional.square_error_cost(end_pred, label)
         loss = paddle.mean(error_cost)
 
-    return train_program, start_program, dataloader, i, loss
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+
+        feed_vars = {"inputs": [input], "labels": [label]}
+        fetch_vars = {"loss": [loss]}
+
+    return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
 
 
-class TestMLP(unittest.TestCase):
-    def test_completer(self):
-        train_program, start_program, dataloader, i, loss = get_program()
-        dist_context = DistributedContext()
-        completer = Completer(dist_context)
-        complete_train_program = completer.complete_forward_annotation(
-            train_program)
-        # print_program_with_dist_attr(complete_train_program, dist_context)
+def get_program_v1():
+    dist_strategy = fleet.DistributedStrategy()
+    dist_strategy.semi_auto = True
+    # fleet.init(is_collective=True, strategy=dist_strategy)
+
+    train_program = static.Program()
+    start_program = static.Program()
+    with static.program_guard(train_program, start_program):
+
+        # input
+        input = static.data(
+            name="input",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32')
+        label = static.data(
+            name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
+        data_holder = [input, label]
+        # dataloader
+        dataloader = paddle.io.DataLoader.from_generator(
+            feed_list=data_holder, capacity=4 * batch_size, iterable=False)
+        dataloader.set_batch_generator(
+            batch_generator_creator(), places=paddle.static.cuda_places())
+        # data dist_attr
+        auto.shard_tensor(
+            input,
+            dist_attr={
+                "process_mesh": _g_process_mesh[0],
+                "dims_mapping": [0, -1, -1]
+            })
+        auto.shard_tensor(
+            label,
+            dist_attr={
+                "process_mesh": _g_process_mesh[0],
+                "dims_mapping": [0, -1, -1]
+            })
+
+        mlp_start = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        pred = mlp_start(input)
+
+        mlp_mid = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        pred = mlp_mid(pred)
+
+        mlp_end = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        pred = mlp_end(pred)
+
+        error_cost = paddle.nn.functional.square_error_cost(pred, label)
+        loss = paddle.mean(error_cost)
+
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+
+        feed_vars = {"inputs": [input], "labels": [label]}
+        fetch_vars = {"loss": [loss]}
+        print("loss hah", loss.name, loss.desc.id(), flush=True)
+
+    return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
+
+
+class TestParallelTuner(unittest.TestCase):
+    def setUp(self):
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        )
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars)
+        dist_context.initialize()
+        dist_context.block_state.parse_forward_blocks(
+            dist_context.serial_main_program)
+        print(
+            "tuner test",
+            id(dist_context.serial_main_program),
+            id(dist_context.serial_startup_program),
+            flush=True)
+
+        self.num_nodes = 1
+        self.device_per_nodes = 8
+        self.parallel_tuner = ParallelTuner(
+            dist_context,
+            num_nodes=self.num_nodes,
+            devices_per_node=self.device_per_nodes)
+
+    def test_generate_process_mesh_candidates(self):
+        process_mesh_candidates = self.parallel_tuner._partition_devices(1, 8)
+        print(process_mesh_candidates)
+
+    def test_generate_dims_mapping_candidates(self):
+        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+            1, 1)
+        print(dims_mapping_candidates, "\n\n")
+        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+            2, 1)
+        print(dims_mapping_candidates, "\n\n")
+        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+            3, 2)
+        print(dims_mapping_candidates, "\n\n")
+        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+            3, 2)
+        print(dims_mapping_candidates, "\n\n")
+        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+            4, 3)
+        print(dims_mapping_candidates, "\n\n")
+
+    def test_construct_space(self):
+        self.parallel_tuner.construct_space()
+
+    def test_create_trial(self):
+        self.parallel_tuner.construct_space()
+        self.parallel_tuner.create_trial()
+
+    def test_eval_trial(self):
+        self.parallel_tuner.construct_space()
+        trail = self.parallel_tuner.create_trial()
+        self.parallel_tuner.eval_trial(trail.id)
+
+    def test_tune(self):
+        self.parallel_tuner.tune()
 
 
 if __name__ == "__main__":

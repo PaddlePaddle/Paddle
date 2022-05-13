@@ -35,15 +35,18 @@ class Parallelizer:
         self._mode = mode
         self._completer = completer
         self._dist_context = dist_context
-        self._dist_context.initialize()
+        assert self._dist_context._is_initialized
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
 
     def parallel_all(self):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
+        self._dist_context._backup()
         for rank in all_ranks:
             self.parallel(rank)
+            self._dist_context._restore()
+            print("finish rank ", rank, flush=True)
 
     def parallel(self, rank):
         serial_main_program = self._dist_context.serial_main_program
@@ -76,6 +79,9 @@ class Parallelizer:
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
         else:
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            print_program_with_dist_attr(serial_main_program,
+                                         self._dist_context)
             # Apply pre optimization passes
             self._apply_pre_optimization(
                 serial_main_program, serial_startup_program, None, None, None)
@@ -86,6 +92,9 @@ class Parallelizer:
             # Do reshard process
             make_data_unshard(dist_main_prog, dist_startup_prog,
                               self._dist_context)
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            print_program_with_dist_attr(dist_main_prog, self._dist_context)
+            # Apply pre optimization passes
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
@@ -98,6 +107,8 @@ class Parallelizer:
         # Store the distributed programs for further usages
         self._dist_context.dist_main_programs[rank] = dist_main_prog
         self._dist_context.dist_startup_programs[rank] = dist_startup_prog
+        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # print_program_with_dist_attr(dist_main_prog, self._dist_context)
 
     def _generate_backward(self, main_program, startup_program, loss):
         with program_guard(main_program, startup_program):

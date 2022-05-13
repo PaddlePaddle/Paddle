@@ -324,10 +324,13 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
                                                 mesh.processes.index(rank))
             break
 
-    assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
-        rank)
-    return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
-                                                        coordinate)]
+    # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
+    #     rank)
+    if coordinate is not None:
+        return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
+                                                            coordinate)]
+    else:
+        return target_mesh.processes[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):

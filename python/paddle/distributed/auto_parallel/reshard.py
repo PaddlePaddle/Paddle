@@ -27,7 +27,7 @@ from .dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from .process_group import new_process_group, ProcessGroup, _g_process_group_map
 
-# NOTE: If op in _g_special_ops, it will not be resharded. 
+# NOTE: If op in _g_special_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
 
 
@@ -519,8 +519,10 @@ class Remover:
     def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
                                dist_params_grads):
         """Remove no need vars and ops in the main program."""
+        print("reshard remove 0", auto_parallel_main_prog, flush=True)
         Remover.remove_no_need_ops(auto_parallel_main_prog, dist_context,
                                    rank_id)
+        print("reshard remove 1", auto_parallel_main_prog, flush=True)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
         Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
@@ -794,6 +796,11 @@ class Resharder:
             sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
             parent_while_op_id = Resharder.while_block_info[sub_block_idx][
                 "op_id"]
+            print(
+                "reshard change 0",
+                Resharder.while_block_info,
+                parent_while_op_id,
+                flush=True)
             parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
 
             sub_block_op_inputs = set()
@@ -810,7 +817,9 @@ class Resharder:
 
             # find the while op
             while_op = None
+            print("reshard change 1", parent_block, flush=True)
             for op in parent_block.ops:
+                print("reshard change 2", op.type, op.desc.id(), flush=True)
                 if op.desc.id() == parent_while_op_id and op.type == "while":
                     while_op = op
                     break
@@ -891,7 +900,7 @@ class Resharder:
             op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
                 tensor_name)
             if all(
-                    map(lambda x: x is not None, [
+                    map(lambda x: x, [
                         tensor_dims_mapping, tensor_process_mesh,
                         op_input_dims_mapping, op_process_mesh
                     ])):
@@ -900,50 +909,63 @@ class Resharder:
                     if dist_op.serial_op.type == "while":
                         sub_block = self.auto_parallel_main_prog.blocks[
                             dist_op.serial_op.attr("sub_block").id]
-                        for op in sub_block.ops:
-                            for var_name in op.input_arg_names:
-                                if var_name == tensor_name:
-                                    dist_op_attr = self.dist_context.get_dist_op_for_program(
-                                        op).dist_attr
-                                    var_dims_mapping = dist_op_attr.get_input_dims_mapping(
-                                        var_name)
-                                    if var_dims_mapping != tensor_dims_mapping:
-                                        is_reshard = True
-                                        break
+                        is_reshard = True
+                        # for op in sub_block.ops:
+                        #     for var_name in op.input_arg_names:
+                        #         if var_name == tensor_name:
+                        #             dist_op_attr = self.dist_context.get_dist_op_for_program(
+                        #                 op).dist_attr
+                        #             var_dims_mapping = dist_op_attr.get_input_dims_mapping(
+                        #                 var_name)
+                        #             if var_dims_mapping != tensor_dims_mapping:
+                        #                 is_reshard = True
+                        #                 break
                     else:
                         is_reshard = True
                 # process_mesh
                 if tensor_process_mesh != op_process_mesh:
                     # when processes length is not the same, the dims mapping must be replicative now
-                    if len(tensor_process_mesh.processes) != len(
-                            op_process_mesh.processes):
-                        assert self.is_unshard(tensor_dims_mapping)
-                        assert self.is_unshard(op_input_dims_mapping)
-                    else:
-                        if dist_tensor.serial_tensor.dtype == paddle.bool:
-                            raise ValueError(
-                                "Bool var is not supported reshard.")
+                    # if len(tensor_process_mesh.processes) != len(
+                    #         op_process_mesh.processes):
+                    #     assert self.is_unshard(tensor_dims_mapping)
+                    #     assert self.is_unshard(op_input_dims_mapping)
+                    # else:
+                    if dist_tensor.serial_tensor.dtype == paddle.bool:
+                        print(
+                            "reshard 1",
+                            tensor_process_mesh,
+                            op_process_mesh,
+                            flush=True)
+                        print(
+                            "reshard 2",
+                            dist_tensor.serial_tensor.name,
+                            dist_tensor.dist_attr,
+                            dist_op.serial_op.type,
+                            dist_op.dist_attr,
+                            flush=True)
+                        raise ValueError("Bool var is not supported reshard.")
 
-                        # for while op, it should find the process mesh of op actually used the tensor as input
-                        if dist_op.serial_op.type == "while":
-                            sub_block = self.auto_parallel_main_prog.blocks[
-                                dist_op.serial_op.attr("sub_block").id]
-                            for op in sub_block.ops:
-                                for var_name in op.input_arg_names:
-                                    if var_name == tensor_name:
-                                        dist_op_attr = self.dist_context.get_dist_op_for_program(
-                                            op).dist_attr
-                                        process_mesh = dist_op_attr.process_mesh
-                                        if process_mesh == op_process_mesh:
-                                            is_reshard = True
-                                            break
-                        else:
-                            is_reshard = True
+                    # for while op, it should find the process mesh of op actually used the tensor as input
+                    if dist_op.serial_op.type == "while":
+                        sub_block = self.auto_parallel_main_prog.blocks[
+                            dist_op.serial_op.attr("sub_block").id]
+                        is_reshard = True
+                        # for op in sub_block.ops:
+                        #     for var_name in op.input_arg_names:
+                        #         if var_name == tensor_name:
+                        #             dist_op_attr = self.dist_context.get_dist_op_for_program(
+                        #                 op).dist_attr
+                        #             process_mesh = dist_op_attr.process_mesh
+                        #             if process_mesh == op_process_mesh:
+                        #                 is_reshard = True
+                        #                 break
+                    else:
+                        is_reshard = True
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 tensor_name)
             if all(
-                    map(lambda x: x is not None, [
+                    map(lambda x: x, [
                         tensor_dims_mapping, tensor_process_mesh,
                         op_output_dims_mapping, op_process_mesh
                     ])):
@@ -952,6 +974,13 @@ class Resharder:
                         raise ValueError("Bool var is not supported reshard.")
                     is_reshard = True
                 if tensor_dims_mapping != op_output_dims_mapping:
+                    print(
+                        "need_reshard",
+                        dist_tensor.serial_tensor.name,
+                        dist_tensor.dist_attr,
+                        dist_op.serial_op.type,
+                        dist_op.dist_attr,
+                        flush=True)
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
@@ -995,30 +1024,33 @@ class Resharder:
 
         return process_meshes
 
-    def get_while_op_actual_process_mesh(self, op):
+    def get_while_op_actual_process_meshes(self, op, var_name):
         """Get the while op actual Process mesh corresponding to rank"""
         assert op.type == "while"
         while_op_process_mesh = self.dist_context.get_dist_op_for_program(
             op).dist_attr.process_mesh
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         ops = sub_block.ops
-        actual_process_mesh = None
+        actual_process_meshes = []
         for op in ops:
             dist_op = self.dist_context.get_dist_op_for_program(op)
             if not dist_op:
                 continue
-            process_mesh = dist_op.dist_attr.process_mesh
-            if process_mesh == while_op_process_mesh:
-                continue
-            if self.rank_id in process_mesh.processes:
-                raw_process_mesh = process_mesh
-                break
+            for name in op.input_arg_names:
+                if name == var_name:
+                    actual_process_meshes.append(dist_op.dist_attr.process_mesh)
+            # process_mesh = dist_op.dist_attr.process_mesh
+            # if process_mesh == while_op_process_mesh:
+            #     continue
+            # if self.rank_id in process_mesh.processes:
+            #     actual_process_mesh = process_mesh
+            #     break
 
-        if actual_process_mesh is None and self.rank_id in while_op_process_mesh.processes:
-            actual_process_mesh = while_op_process_mesh
+            # if actual_process_mesh is None and self.rank_id in while_op_process_mesh.processes:
+            #     actual_process_mesh = while_op_process_mesh
 
-        assert actual_process_mesh is not None
-        return actual_process_mesh
+            # assert actual_process_mesh is not None
+        return actual_process_meshes
 
     def find_op_desc_seq(self, dist_tensor, dist_op, actual_process_mesh):
         """
@@ -1315,7 +1347,7 @@ class Resharder:
                     target_tensor, tensor_attr)
 
                 if op.type == "while":
-                    # var_reshard_mapping means the while op input need be changed to 
+                    # var_reshard_mapping means the while op input need be changed to
                     if "var_reshard_mapping" not in Resharder.while_block_info[
                             op.attr("sub_block").id].keys():
                         Resharder.while_block_info[op.attr("sub_block").id][
@@ -1331,9 +1363,16 @@ class Resharder:
                         if name == var_name and op_dist_attr is not None:
                             if op.desc.id() == matched_op.desc.id():
                                 op.desc._rename_input(name, target_tensor.name)
+                                old_name = name
+                                new_name = target_tensor.name
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
                                 op_dist_attr.set_input_dims_mapping(
-                                    target_tensor.name, dims_mapping)
-                                op_dist_attr.set_input_dist_attr(name, None)
+                                    new_name, dims_mapping)
+                                op_dist_attr.del_input_dist_attr(old_name)
                                 continue
 
                             # NOTE: For op whose process mesh is a union, its input will not be renamed by other op reshard result now which means that it will have more reshard operation.
@@ -1342,9 +1381,16 @@ class Resharder:
                                 var_name)
                             if op_process_mesh == process_mesh and op_input_dims_mapping == dims_mapping:
                                 op.desc._rename_input(name, target_tensor.name)
+                                old_name = name
+                                new_name = target_tensor.name
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
                                 op_dist_attr.set_input_dims_mapping(
-                                    target_tensor.name, dims_mapping)
-                                op_dist_attr.set_input_dist_attr(name, None)
+                                    new_name, dims_mapping)
+                                op_dist_attr.del_input_dist_attr(old_name)
 
     def reshard(self):
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
@@ -1361,15 +1407,16 @@ class Resharder:
                                 dist_op = self.dist_context.get_dist_op_for_program(
                                     op)
                                 op_dist_attr = dist_op.dist_attr
-                                if op_dist_attr.process_mesh == Resharder.while_block_info[
-                                        block_idx]["actual_process_mesh"]:
-                                    dims_mapping = op_dist_attr.get_input_dims_mapping(
-                                        var_name)
-                                    op_dist_attr.set_input_dims_mapping(
-                                        var_reshard_mapping[var_name],
-                                        dims_mapping)
-                                    op_dist_attr.set_input_dist_attr(var_name,
-                                                                     None)
+                                # if op_dist_attr.process_mesh == Resharder.while_block_info[
+                                #         block_idx]["actual_process_mesh"]:
+                                old_name = var_name
+                                new_name = var_reshard_mapping[var_name]
+                                assert old_name != new_name
+                                op_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_input_dist_attr(
+                                    new_name, op_input_dist_attr)
+                                op_dist_attr.del_input_dist_attr(old_name)
 
                         # the outputs also need to be renamed when the output name is the same with input name
                         for var_name in op.output_arg_names:
@@ -1379,15 +1426,16 @@ class Resharder:
                                 dist_op = self.dist_context.get_dist_op_for_program(
                                     op)
                                 op_dist_attr = dist_op.dist_attr
-                                if op_dist_attr.process_mesh == Resharder.while_block_info[
-                                        block_idx]["actual_process_mesh"]:
-                                    dims_mapping = op_dist_attr.get_output_dims_mapping(
-                                        var_name)
-                                    op_dist_attr.set_output_dims_mapping(
-                                        var_reshard_mapping[var_name],
-                                        dims_mapping)
-                                    op_dist_attr.set_output_dist_attr(var_name,
-                                                                      None)
+                                # if op_dist_attr.process_mesh == Resharder.while_block_info[
+                                #         block_idx]["actual_process_mesh"]:
+                                old_name = var_name
+                                new_name = var_reshard_mapping[var_name]
+                                assert old_name != new_name
+                                op_output_dist_attr = op_dist_attr.get_output_dist_attr(
+                                    old_name)
+                                op_dist_attr.set_output_dist_attr(
+                                    new_name, op_output_dist_attr)
+                                op_dist_attr.del_output_dist_attr(old_name)
 
             idx = 0
             while idx < len(block.ops):
@@ -1406,17 +1454,17 @@ class Resharder:
                             raise ValueError(
                                 "Please check the condition due to the dims mapping is not replicative."
                             )
-                        process_meshes = self.get_process_meshes(op)
-                        assert process_meshes
+                        # process_meshes = self.get_process_meshes(op)
+                        # assert process_meshes
                         if op.attr("sub_block"
                                    ).id not in Resharder.while_block_info:
                             Resharder.while_block_info[op.attr("sub_block")
                                                        .id] = {}
                         Resharder.while_block_info[op.attr("sub_block").id][
                             "op_id"] = op.desc.id()
-                        Resharder.while_block_info[op.attr("sub_block").id][
-                            "actual_process_mesh"] = self.get_while_op_actual_process_mesh(
-                                op)
+                        # Resharder.while_block_info[op.attr("sub_block").id][
+                        #     "actual_process_mesh"] = self.get_while_op_actual_process_mesh(
+                        #         op)
                     else:
                         process_meshes = self.get_op_process_meshes(op)
                     input_vars = None
@@ -1433,6 +1481,10 @@ class Resharder:
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
+                        process_meshes = self.get_while_op_actual_process_meshes(
+                            op, var_name) if op.type == "while" else [
+                                dist_op.dist_attr.process_mesh
+                            ]
                         for process_mesh in process_meshes:
                             if dist_tensor is not None and self.need_reshard(
                                     dist_tensor, dist_op, process_mesh):
