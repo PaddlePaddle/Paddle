@@ -186,9 +186,19 @@ class DeQuantizer final : public Quanter {
   // Checking whether a reorder from BF16 to FP32
   // should be added after the output to the operator
   bool IsNotPermittedName(const std::string& output_name) const override {
-    // XShape is output in transpose2 and reshape2 operators used to store the
-    // shape and lod of X. So this output do not need dequantize before.
-    return (output_name == "XShape");
+    std::unordered_map<std::string, std::vector<std::string>> black_list{
+      {"layer_norm", {"Mean", "Variance"}}}; // not used in inference in MKLDNN
+
+    std::vector<std::string> blacklisted_outputs{"XShape"}; // blacklist for any op
+    auto op_name = op->Name();
+    if (black_list.count(op_name)) {
+      const auto& op_blacklist = black_list[op_name];
+      blacklisted_outputs.insert(blacklisted_outputs.begin(), op_blacklist.begin(), op_blacklist.end());
+    }
+
+    return std::any_of(blacklisted_outputs.begin(),
+                       blacklisted_outputs.end(),
+                       [&output_name](const std::string& name) { return name == output_name; });
   }
 
   std::string get_op_type() const override { return "dequantize"; };
