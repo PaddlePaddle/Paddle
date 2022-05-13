@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -101,8 +102,21 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    using ClockType = std::chrono::steady_clock;
+    std::chrono::time_point<ClockType> start_t, end_t;
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << "Starts to compile at thread " << std::this_thread::get_id();
+      start_t = ClockType::now();
+    }
     const auto& cinn_compiled_object = CinnCompiler::GetInstance()->Compile(
         compilation_key, inputs_name2tensor, target, stream);
+    if (VLOG_IS_ON(1)) {
+      end_t = ClockType::now();
+      auto time_sec = std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_t - start_t);
+      VLOG(1) << "Ends to compile at thread " << std::this_thread::get_id()
+              << " , time cost : " << time_sec.count() << " ms";
+    }
     details::DebugCinnCompiledResult(cinn_compiled_object);
     auto* launch_context = cinn_compiled_object.launch_context.get();
 

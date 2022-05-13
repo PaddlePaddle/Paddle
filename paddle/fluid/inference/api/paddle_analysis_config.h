@@ -410,7 +410,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
-  /// \brief Get the the number of IPU device .
+  /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
   ///

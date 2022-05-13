@@ -58,7 +58,7 @@ class SampleLogitsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Probabilities",
         "(Tensor, default: Tensor<float>), A 2-D tensor with shape [N, NT + S]."
-        "The probabilites of sampled positive and negtive labels.")
+        "The probabilities of sampled positive and negtive labels.")
         .AsIntermediate();
     AddOutput("LogitsDim", "Store dim information of Logits for gradient op")
         .AsIntermediate();
