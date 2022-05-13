@@ -1303,42 +1303,45 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
 
-        # Grad Outputs
-        for name, (ttype, fwd_position,
-                   grad_api_position) in backward_grad_outputs_map.items():
-            transformed_tensor_name = self.TransformToNextGradName(name)
-            if IsPlainTensorType(ttype):
-                grad_api_args.append(f"api_output[{fwd_position}][0]")
-            else:
-                assert IsVectorTensorType(ttype)
-                grad_api_args.append(f"api_output[{fwd_position}]")
-
-        grad_api_args_str = ", ".join(grad_api_args)
-
         # Grad Function Call String
         slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
         grad_api_namespace = f"paddle::experimental::{namespace}"
         grad_function_call_str = f"""
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
-  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
     returns[i].resize(out_metas[i].size());
-    if(returns[i].size() == 0) {{
-      api_output[i].reserve(1);
-      api_output[i].push_back(nullptr);
-      continue;
-    }}
-    api_output[i].reserve(returns[i].size());
-    for (size_t j = 0; j < returns[i].size(); ++j) {{
-      if (out_metas[i][j].IsStopGradient()) {{
-        api_output[i].push_back(nullptr);
-      }} else {{
-        api_output[i].push_back(&returns[i][j]);
-      }}
+  }}
+"""
+
+        # Grad Outputs
+        out_index = -1
+        for name, (ttype, fwd_position,
+                   grad_api_position) in backward_grad_outputs_map.items():
+            transformed_tensor_name = self.TransformToNextGradName(name)
+            out_index = out_index + 1
+            grad_api_args.append(f"api_output_{out_index}")
+
+            if IsPlainTensorType(ttype):
+                grad_function_call_str += f"""
+  auto* api_output_{out_index} = out_metas[{fwd_position}][0].IsStopGradient() ? nullptr : &returns[{fwd_position}][0];
+"""
+
+            else:
+                assert IsVectorTensorType(ttype)
+                grad_function_call_str += f"""
+  std::vector<paddle::experimental::Tensor*> api_output_{out_index};
+  api_output_{out_index}.reserve(returns[{fwd_position}].size());
+  for (size_t i = 0; i < returns[{fwd_position}].size(); ++i) {{
+    if (out_metas[{fwd_position}][i].IsStopGradient()) {{
+      api_output_{out_index}.push_back(nullptr);
+    }} else {{
+      api_output_{out_index}.push_back(&returns[{fwd_position}][i]);
     }}
   }}
 """
+
+        grad_api_args_str = ", ".join(grad_api_args)
 
         grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
 
