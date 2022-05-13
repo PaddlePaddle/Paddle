@@ -88,11 +88,11 @@ class SplitOpConverter : public OpConverter {
         start_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
                  *zeros_tensor,
                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs1.data() ,2)->getOutput(0),
-                0);
+                0)->getOutput(0);
         auto size_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
                  *shape_tensor,
                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs2.data() ,2)->getOutput(0),
-                0);
+                0)->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
                                      trt_step_dims, trt_step_dims);
