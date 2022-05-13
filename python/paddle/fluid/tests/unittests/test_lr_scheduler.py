@@ -325,7 +325,7 @@ def one_cycle_lr(epoch_num,
                  max_learning_rate,
                  total_steps,
                  divide_factor=25,
-                 end_lr=0.0001,
+                 end_learning_rate=0.0001,
                  phase_pct=0.3,
                  anneal_strategy='cos',
                  three_phase=False,
@@ -347,7 +347,7 @@ def one_cycle_lr(epoch_num,
             },
             {
                 'start_lr': initial_lr,
-                'end_lr': end_lr,
+                'end_lr': end_learning_rate,
             },
         ]
     else:
@@ -359,7 +359,7 @@ def one_cycle_lr(epoch_num,
             },
             {
                 'start_lr': max_learning_rate,
-                'end_lr': end_lr,
+                'end_lr': end_learning_rate,
             },
         ]
 
@@ -539,10 +539,10 @@ class TestLRScheduler(unittest.TestCase):
                 max_learning_rate=-1.5, total_steps=20)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, total_steps=20, end_lr='test')
+                max_learning_rate=0.1, total_steps=20, end_learning_rate='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.OneCycleLR(
-                max_learning_rate=0.1, total_steps=20, end_lr=-1)
+                max_learning_rate=0.1, total_steps=20, end_learning_rate=-1)
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.OneCycleLR(
                 max_learning_rate=0.1, total_steps='test')
@@ -622,7 +622,7 @@ class TestLRScheduler(unittest.TestCase):
             "max_learning_rate": 0.1,
             "total_steps": 20,
             "divide_factor": 5,
-            "end_lr": 0.0001,
+            "end_learning_rate": 0.0001,
             "anneal_strategy": 'cos',
             "phase_pct": 0.3,
             "three_phase": False,
@@ -630,7 +630,7 @@ class TestLRScheduler(unittest.TestCase):
             "max_learning_rate": 0.5,
             "total_steps": 20,
             "divide_factor": 10,
-            "end_lr": 0.001,
+            "end_learning_rate": 0.001,
             "anneal_strategy": 'linear',
             "phase_pct": 0.4,
             "three_phase": False,
@@ -638,7 +638,7 @@ class TestLRScheduler(unittest.TestCase):
             "max_learning_rate": 1.0,
             "total_steps": 20,
             "divide_factor": 9,
-            "end_lr": 0.0001,
+            "end_learning_rate": 0.0001,
             "anneal_strategy": 'cos',
             "phase_pct": 0.3,
             "three_phase": True,
@@ -646,7 +646,7 @@ class TestLRScheduler(unittest.TestCase):
             "max_learning_rate": 0.3,
             "total_steps": 20,
             "divide_factor": 25,
-            "end_lr": 0.0005,
+            "end_learning_rate": 0.0005,
             "anneal_strategy": 'linear',
             "phase_pct": 0.2,
             "three_phase": True,

@@ -1613,7 +1613,7 @@ class OneCycleLR(LRScheduler):
              Functionally, it defines the initial learning rate by ``divide_factor`` .
         total_steps (int): Number of total training steps.
         divide_factor (float): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
-        end_lr (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
+        end_learning_rate (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
         phase_pct (float): The percentage of total steps which used to increasing learning rate. Default: 0.3.
         anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
             'linear' for linear annealing. Default: 'cos'.
@@ -1682,7 +1682,7 @@ class OneCycleLR(LRScheduler):
                  max_learning_rate,
                  total_steps,
                  divide_factor=25.,
-                 end_lr=0.0001,
+                 end_learning_rate=0.0001,
                  phase_pct=0.3,
                  anneal_strategy='cos',
                  three_phase=False,
@@ -1696,13 +1696,13 @@ class OneCycleLR(LRScheduler):
         if max_learning_rate < 0:
             raise ValueError("'max_learning_rate' must be a positive integer.")
 
-        # Check type and value of end_lr
-        if not isinstance(end_lr, (float, int)):
+        # Check type and value of end_learning_rate
+        if not isinstance(end_learning_rate, (float, int)):
             raise TypeError(
-                "'end_lr' must be 'float' or 'int', but received {}".format(
-                    type(total_steps)))
-        if end_lr < 0:
-            raise ValueError("'end_lr' must be a positive integer.")
+                "'end_learning_rate' must be 'float' or 'int', but received {}".
+                format(type(total_steps)))
+        if end_learning_rate < 0:
+            raise ValueError("'end_learning_rate' must be a positive integer.")
 
         # Check type and value of total_steps
         if not isinstance(total_steps, int):
@@ -1728,7 +1728,7 @@ class OneCycleLR(LRScheduler):
                 format(type(divide_factor)))
 
         initial_lr = max_learning_rate / float(divide_factor)
-        min_lr = float(end_lr)
+        min_lr = float(end_learning_rate)
 
         if three_phase:
             if phase_pct >= 0.5:
