@@ -25,29 +25,53 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Attn",
              "(Tensor)"
-             "The input of fused_token_prune op, whole shape should be [bsz, 12, max_seq_len, max_seq_len] and dtype should be float32/float64"
-             "Attn is attention scores of input sequences which will be used to sort another input tensor: X's ");
+             "The input of fused_token_prune op, whose shape should be [bsz, "
+             "12, max_seq_len, max_seq_len] and dtype should be "
+             "float32/float64,"
+             "Attn is attention scores of input sequences which will be used "
+             "to sort another input tensor: X's indices so that "
+             "some elements of X with lower attention score will not be "
+             "considered after this op.");
 
     AddInput("X",
              "(Tensor)"
-             "[bsz, max_seq_len, 768] float 32 layer_norm_3.tmp_2");
-
-    AddInput("Mask",
-             "(Tensor)"
-             "[bsz, 12, max_seq_len, max_seq_len] float32 stack_0.tmp_0");
+             "The input of fused_token_prune op, whose shape should be [bsz, "
+             "max_seq_len, 768] and dtype should be float32/float64.");
 
     AddInput(
-        "NewMask",
+        "Mask",
         "(Tensor)"
-        "[bsz, 12, slimmed_seq_len, slimmed_seq_len] float32 stack_0.tmp_0");
+        "The input of fused_token_prune op, whose shape should be [bsz, 12, "
+        "max_seq_len, max_seq_len] and dtype should be float32/float64."
+        "Mask is corresponding to Attn's elemnts one by one. Elements of Attn "
+        "will be set to zero if their corresponding mask is smaller than 0."
+        "This process happens before sorting X by attn.");
 
-    AddOutput("SlimmedX",
-              "(Tensor)"
-              "[bsz, max_seq_len * factor, C = 768]");
+    AddInput("NewMask",
+             "(Tensor)"
+             "The input of fused_token_prune op, whose shape should be [bsz, "
+             "12, slimmed_seq_len, slimmed_seq_len]."
+             "NewMask is just used to get slimmed_seq_len, so the value of "
+             "this input is not important in this op.");
+
+    AddOutput(
+        "SlimmedX",
+        "(Tensor)"
+        "The output of fused_token_prune op, whose shape should be  [bsz, "
+        "slimmed_seq_len, C]."
+        "The second dimension of X will be sorted by Attn firstly and then the "
+        "last (max_seq_len - slimmed_seq_len)"
+        "lines will be pruned. SlimmedX is the remainning part of sorted X. "
+        "");
 
     AddComment(R"DOC(
-                            Operator.
-                        )DOC");
+        fused_token_prune op is used to optimize inference performance of ernie model.
+        In this op:
+            1. Elements of Attn will be set to zero if their corresponding mask is smaller than 0. 
+            2. The second dimension of X will be sorted by Attn.
+            3. The last (max_seq_len - slimmed_seq_len) lines of X will be pruned.
+            4. The remainning part of sorted X will output.
+             )DOC");
   }
 };
 
