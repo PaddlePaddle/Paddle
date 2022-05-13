@@ -1057,6 +1057,14 @@ class ReorderMKLDNNHandler {
     return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
   }
 
+  std::shared_ptr<dnnl::reorder> AcquireReorder(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p,
+      const dnnl::primitive_attr& attrs) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p),
+                                           attrs);
+  }
+
  private:
   std::vector<int64_t> dims_;
   framework::proto::VarType::Type vtype_, vtype_dst_;
