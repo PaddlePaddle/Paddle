@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
+import paddle
 
 
 class TestQuantizeOp(OpTest):
@@ -104,19 +105,6 @@ class TestQuantizeOp2(TestQuantizeOp):
         self.is_nagative = False
 
 
-class TestQuantizeOp_ZeroScale(TestQuantizeOp):
-    def set_scale(self):
-        self.scale = 0.0
-
-    def prepare_output(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Quantization scale cannot be 0.0')
-
-
 # 2-dim input
 # P - positive input
 class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
@@ -201,34 +189,6 @@ class TestQuantizeOpShift_NHWC_4_N(TestQuantizeOpShift_NCHW_4_N):
         self.output_format = 'NHWC'
 
 
-class TestQuantizeOp_NegativeShift(TestQuantizeOp):
-    def set_is_negative(self):
-        self.is_nagative = False
-
-    def set_scale(self):
-        self.scale = 100.0
-
-    def set_shift(self):
-        self.shift = -10.0
-
-    def prepare_output(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Quantization shift must be nonnegative.')
-
-
-class TestQuantizeOp_TooBigShift(TestQuantizeOp_NegativeShift):
-    def set_shift(self):
-        self.shift = 300.0
-
-    def test_check_output(self):
-        self.assertRaises(
-            AttributeError, self.check_raise_error,
-            'Quantization shift must be less than or equal to 255.')
-
-
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

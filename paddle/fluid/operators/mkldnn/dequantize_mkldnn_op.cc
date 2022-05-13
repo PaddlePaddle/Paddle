@@ -49,7 +49,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(
         quantization_shift <= 255 && quantization_shift >= 0,
         platform::errors::InvalidArgument(
-            "Dequantization shift must be lower or equal to",
+            "Dequantization shift must be lower or equal to ",
             "255 and greater or equal to 0, but got %f", quantization_shift));
 
     auto& dev_ctx =
