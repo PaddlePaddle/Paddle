@@ -1633,6 +1633,7 @@ class OpTest(unittest.TestCase):
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
+            print("===== check_eager for ", self.op_type, " in op test. =====")
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
