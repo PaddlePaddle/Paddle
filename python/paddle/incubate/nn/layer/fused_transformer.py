@@ -97,7 +97,8 @@ class FusedMultiHeadAttention(Layer):
                  weight_attr=None,
                  bias_attr=None,
                  epsilon=1e-5,
-                 name=None):
+                 name=None,
+                 dtype="float16"):
         super(FusedMultiHeadAttention, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
@@ -120,6 +121,7 @@ class FusedMultiHeadAttention(Layer):
         assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
         assert need_weights == False, "Only support need_weight is False now."
 
+        self._dtype = dtype
         self.qkv_weight = self.create_parameter(
             shape=[3, num_heads, self.head_dim, embed_dim],
             attr=self._weight_attr,
@@ -141,18 +143,29 @@ class FusedMultiHeadAttention(Layer):
             dtype=self._dtype,
             is_bias=True)
 
-        self.pre_ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.pre_ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
-        self.ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        if normalize_before:
+            self.pre_ln_scale = self.create_parameter(
+                attr=self._weight_attr,
+                shape=[embed_dim],
+                default_initializer=Constant(value=1.0))
+            self.pre_ln_bias = self.create_parameter(
+                attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+
+            self.pre_ln_scale.name = "layer_norm_" + self.pre_ln_scale.name
+            self.pre_ln_bias.name = "layer_bias.b_0_" + self.pre_ln_bias.name
+            self.ln_scale = None
+            self.ln_bias = None
+        else:
+            self.pre_ln_scale = None
+            self.pre_ln_bias = None
+            self.ln_scale = self.create_parameter(
+                attr=self._weight_attr,
+                shape=[embed_dim],
+                default_initializer=Constant(value=1.0))
+            self.ln_bias = self.create_parameter(
+                attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+            self.ln_scale.name = "layer_norm_" + self.ln_scale.name
+            self.ln_bias.name = "layer_bias.b_0_" + self.ln_bias.name
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -215,7 +228,8 @@ class FusedMultiHeadAttention(Layer):
             dropout_rate=self.dropout_rate,
             attn_dropout_rate=self.attn_dropout_rate,
             ln_epsilon=self._epsilon,
-            training=self.training,
+            training=True,
+            # training=self.training,
             name=self.name)
         return out
 
