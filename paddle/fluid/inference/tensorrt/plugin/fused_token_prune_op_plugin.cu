@@ -19,8 +19,8 @@
 #include "paddle/fluid/operators/fused_token_prune_op.cu.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace inference {
@@ -57,120 +57,62 @@ __global__ void FillIndex(int* indices, int num_rows, int num_cols) {
 }
 
 template <typename T>
-__global__ void ReduceSum(const T* src, T* dst, int bsz, int nb_head,
-                          int max_seq_len) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid >= bsz * max_seq_len) return;
-  int batch = tid / max_seq_len, col = tid % max_seq_len;
-  auto* src_start = src + batch * (nb_head * max_seq_len * max_seq_len) + col;
-  auto* dst_addr = dst + batch * max_seq_len + col;
-  *dst_addr = 0;
-  for (int i = 0; i < nb_head * max_seq_len; ++i) {
-    *dst_addr += *(src_start + i * max_seq_len);
-  }
-}
-
-template <typename T>
-__global__ void ReduceSum2<half>(const half* src, half* dst, int bsz, int nb_head,
-                          int max_seq_len) {
+__global__ void ReduceSum2(const T* src, T* dst, int bsz, int nb_head,
+                           int max_seq_len) {
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   int batch = bid / (nb_head * max_seq_len);
   int col = bid % max_seq_len;
-  int head = (bid / max_seq_len) % nb_head;        
-  extern __shared__ half res_half[];
-  res_half[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+  int head = (bid / max_seq_len) % nb_head;
+
+  extern __shared__ T res_float[];
+  res_float[tid] =
+      src[batch * (nb_head * max_seq_len * max_seq_len) +
+          head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
   __syncthreads();
 
   for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-      if (tid < offset)
-      {
-        res_half[tid] += res_half[tid + offset];
-      }
-      __syncthreads();
-  }
-
-  if (tid == 0) {
-    // auto* dst_addr = dst + batch * max_seq_len + col;
-    platform::fastAtomicAdd(dst, batch * max_seq_len + col, bsz * max_seq_len, res_half[0])
-    // atomicAdd(dst_addr, res_half[0]);
-  }
-}
-
-template <typename T>
-__global__ void ReduceSum2<float>(const float* src, float* dst, int bsz, int nb_head,
-                          int max_seq_len) {
-  int tid = threadIdx.x;
-  int bid = blockIdx.x;
-  int batch = bid / (nb_head * max_seq_len);
-  int col = bid % max_seq_len;
-  int head = (bid / max_seq_len) % nb_head;  
-
-  extern __shared__ float res_float[];
-  res_float[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
-  __syncthreads();
-
-  for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-      if (tid < offset)
-      {
-        res_float[tid] += res_float[tid + offset];
-      }
-      __syncthreads();
+    if (tid < offset) {
+      res_float[tid] += res_float[tid + offset];
+    }
+    __syncthreads();
   }
 
   if (tid == 0) {
     auto* dst_addr = dst + batch * max_seq_len + col;
     atomicAdd(dst_addr, res_float[0]);
   }
-
 }
 
+template <>
+__global__ void ReduceSum2<half>(const half* src, half* dst, int bsz,
+                                 int nb_head, int max_seq_len) {
+  int tid = threadIdx.x;
+  int bid = blockIdx.x;
+  int batch = bid / (nb_head * max_seq_len);
+  int col = bid % max_seq_len;
+  int head = (bid / max_seq_len) % nb_head;
+  extern __shared__ half res_half[];
+  res_half[tid] =
+      src[batch * (nb_head * max_seq_len * max_seq_len) +
+          head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+  __syncthreads();
 
-// template <typename T>
-// __global__ void ReduceSum2(const T* src, T* dst, int bsz, int nb_head,
-//                           int max_seq_len) {
-//   int tid = threadIdx.x;
-//   int bid = blockIdx.x;
-//   int batch = bid / (nb_head * max_seq_len);
-//   int col = bid % max_seq_len;
-//   int head = (bid / max_seq_len) % nb_head;
-//   if (sizeof(T) == 2) {
-//     extern __shared__ half res_half[];
-//     res_half[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
-//     __syncthreads();
-  
-//     for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-//         if (tid < offset)
-//         {
-//           res_half[tid] += res_half[tid + offset];
-//         }
-//         __syncthreads();
-//     }
-  
-//     if (tid == 0) {
-//       // auto* dst_addr = dst + batch * max_seq_len + col;
-//       fastAtomicAdd(dst, batch * max_seq_len + col, bsz * max_seq_len, res_half[0])
-//       // atomicAdd(dst_addr, res_half[0]);
-//     }
-//   } else {
-//     extern __shared__ float res_float[];
-//     res_float[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
-//     __syncthreads();
-  
-//     for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-//         if (tid < offset)
-//         {
-//           res_float[tid] += res_float[tid + offset];
-//         }
-//         __syncthreads();
-//     }
-  
-//     if (tid == 0) {
-//       auto* dst_addr = dst + batch * max_seq_len + col;
-//       atomicAdd(dst_addr, res_float[0]);
-//     }
-//   }
-// }
+  for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+    if (tid < offset) {
+      res_half[tid] += res_half[tid + offset];
+    }
+    __syncthreads();
+  }
+
+  if (tid == 0) {
+    platform::fastAtomicAdd<platform::float16>(
+        reinterpret_cast<platform::float16*>(dst),
+        static_cast<size_t>(batch * max_seq_len + col),
+        static_cast<size_t>(bsz * max_seq_len),
+        static_cast<platform::float16>(res_half[0]));
+  }
+}
 
 template <typename T>
 __global__ void SlicedArgsort(T* data, int* indices, int num_rows,
@@ -279,51 +221,33 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   const T* x_data = static_cast<const T*>(inputs[1]);
   const T* mask_data = static_cast<const T*>(inputs[2]);
   T* output_data = static_cast<T*>(outputs[0]);
-
   int total = bsz * nb_head * max_seq_len * max_seq_len;
   int block = operators::ComputeBlockSize(max_seq_len);
   int grid = operators::CeilDivide(total, block);
 
   ElementwiseMask<T><<<grid, block, 0, stream>>>(
       attn_data, mask_data, attn_tmp_data, grid, max_seq_len);
-  
-  total = bsz * max_seq_len; 
+
+  total = bsz * max_seq_len;
   block = max_seq_len;
   grid = operators::CeilDivide(total, block);
   FillZero<T><<<grid, block, 0, stream>>>(attn_accu_data, total);
-  auto* device_ctx = static_cast<platform::CUDADeviceContext*>(
-    platform::DeviceContextPool::Instance().Get(
-        platform::CUDAPlace(device_id)));
-  const platform::CUDADeviceContext& dev_ctx = *device_ctx;
-  int compute_capability = dev_ctx->GetComputeCapability();
-  if (compute_capability < 70) {
-    total = bsz * max_seq_len; 
-    block = max_seq_len;
-    grid = operators::CeilDivide(total, block);
-    ReduceSum<T><<<grid, block, 0, stream>>>(attn_tmp_data, attn_accu_data, bsz,
-                                               nb_head, max_seq_len);
-  } else {
-    total = bsz * nb_head * max_seq_len * max_seq_len; 
-    block = max_seq_len;
-    grid = operators::CeilDivide(total, block);
-    ReduceSum2<T><<<grid, block, block * sizeof(T), stream>>>(attn_tmp_data, attn_accu_data, bsz,
-                                               nb_head, max_seq_len);
-  }
 
-  
-
-
-
+  total = bsz * nb_head * max_seq_len * max_seq_len;
+  block = max_seq_len;
+  grid = operators::CeilDivide(total, block);
+  ReduceSum2<T><<<grid, block, block * sizeof(T), stream>>>(
+      attn_tmp_data, attn_accu_data, bsz, nb_head, max_seq_len);
   framework::Tensor attn_accu_indices;
   attn_accu_indices.Resize({bsz, max_seq_len});
   auto* attn_accu_indices_data =
       attn_accu_indices.mutable_data<int>(platform::CUDAPlace(device_id));
 
-  FillIndex<<<grid, block, 0, stream>>>(attn_accu_indices_data, bsz, max_seq_len);
+  FillIndex<<<grid, block, 0, stream>>>(attn_accu_indices_data, bsz,
+                                        max_seq_len);
 
-  SlicedArgsort<T><<<bsz, 1, 0, stream>>>(attn_accu_data, attn_accu_indices_data,
-                                          bsz, max_seq_len);
-                                          
+  SlicedArgsort<T><<<bsz, 1, 0, stream>>>(
+      attn_accu_data, attn_accu_indices_data, bsz, max_seq_len);
   int slimmed_x_len = new_mask_dims.d[2];
   block = operators::ComputeBlockSize(slimmed_x_len);
   TakeAlongLastAxis2D<T><<<grid, block, 0, stream>>>(
@@ -342,8 +266,6 @@ int FusedTokenPrunePluginDynamic::enqueue(
        max_seq_len = attn_dims.d[2];
   int device_id;
   cudaGetDevice(&device_id);
-
- 
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp32";
