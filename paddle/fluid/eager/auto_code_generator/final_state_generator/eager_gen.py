@@ -946,7 +946,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_type_str = ", ".join(returns_type_list)
             returns_type_str = f"std::tuple<{returns_type_str}>"
             returns_str = ", ".join(returns_list)
-            returns_str = f"{{{returns_str}}}"
+            returns_str = f"{returns_type_str}{{{returns_str}}}"
 
         # Node Creation Pre-Processing
         # 1. Get Input AutoGradMeta
