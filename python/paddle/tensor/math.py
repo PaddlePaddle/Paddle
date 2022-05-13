@@ -2971,9 +2971,15 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):
-    """
-    The the logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
+    r"""
+    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
 
+    For summation index j given by dim and other indices i, the result is
+
+    .. math::
+
+        logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
+    
     **Note**:
     The first element of the result is the same of the first element of the input. 
 

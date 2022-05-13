@@ -115,8 +115,8 @@ class TestLogcumsumexp(unittest.TestCase):
         z = np_logcumsumexp(data_np, axis=-1)
         self.assertTrue(np.allclose(z, y.numpy()))
 
-        y = paddle.logcumsumexp(data, dtype='float64')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
+        y = paddle.logcumsumexp(data, dtype='float32')
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)

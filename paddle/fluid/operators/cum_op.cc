@@ -97,7 +97,7 @@ class LogcumsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Returns the logarithm of the cumulative summation of the exponentiation of elements of input along the given axis.
 By default, the first element of the result is the same of the first element of
-the input. If exclusive is true, the first element of the result is the the lowest finite value of the dtype of output tensor.
+the input. If exclusive is true, the first element of the result is the lowest finite value of the dtype of output tensor.
 )DOC");
   }
 };
