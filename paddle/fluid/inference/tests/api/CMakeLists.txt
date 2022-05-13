@@ -579,6 +579,15 @@ if(WITH_MKLDNN)
   set(QUANT2_RESNET50_MODEL ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise)
   inference_analysis_api_quant_test_run(test_analyzer_quant2_resnet50_channelwise_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL} ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
 
+  # Quant2 VGG16
+  set(QUANT2_VGG16_MODEL_DIR "${QUANT_DATA_DIR}/VGG16_quant")
+  set(QUANT2_VGG16_MODEL_ARCHIVE "VGG16_qat_model.tar.gz")
+  if(NOT LINUX)
+      download_quant_data_without_verify(${QUANT2_VGG16_MODEL_DIR} ${QUANT2_VGG16_MODEL_ARCHIVE})
+  endif(NOT LINUX)
+  set(QUANT2_VGG16_MODEL ${QUANT2_VGG16_MODEL_DIR}/model)
+  inference_analysis_api_quant_test_run(test_analyzer_quant2_vgg16_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_VGG16_MODEL} ${QUANT2_VGG16_MODEL} ${IMAGENET_DATA_PATH} true)
+
   ### Other tests
  
   # MKLDNN quantizer config
@@ -799,6 +808,7 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant2_vgg16_mkldnn PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
