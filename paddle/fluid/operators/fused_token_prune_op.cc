@@ -25,7 +25,8 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Attn",
              "(Tensor)"
-             "[bsz, 12, max_seq_len, max_seq_len] float32 softmax_1.tmp_0");
+             "The input of fused_token_prune op, whole shape should be [bsz, 12, max_seq_len, max_seq_len] and dtype should be float32/float64"
+             "Attn is attention scores of input sequences which will be used to sort another input tensor: X's ");
 
     AddInput("X",
              "(Tensor)"

@@ -28,37 +28,31 @@ struct AttnMaskFunctor {
   }
 };
 
-__global__ void FillIndex(int* indices, int num_rows, int num_cols) {
+__global__ void FillIndex(int* indices, int num_raws, int num_cols) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid >= num_rows * num_cols) return;
+  if (tid >= num_raws * num_cols) return;
 
   int col = tid % num_cols;
-  int row = tid / num_cols;
 
-  // for (int j = row; j < num_rows; j += num_cols) {
-  //     for (int i = col; i < num_cols; i += num_rows) {
-  //     indices[j * num_cols + i] = i;
-  //     }
-  // }
   indices[tid] = col;
 }
 
 template <typename T>
-__global__ void SlicedArgsort(T* data, int* indices, int num_rows,
+__global__ void SlicedArgsort(T* data, int* indices, int num_raws,
                               int num_cols) {
   auto raw = blockIdx.x * blockDim.x + threadIdx.x;
-  if (raw >= num_rows) return;
+  if (raw >= num_raws) return;
   thrust::sort_by_key(thrust::seq, data + raw * num_cols + 1,
                       data + (raw + 1) * num_cols, indices + raw * num_cols + 1,
                       thrust::greater<T>());
 }
 
 template <typename T>
-__global__ void TakeAlongAxis(const T* src, T* dst, int* indices, int num_rows,
+__global__ void TakeAlongAxis(const T* src, T* dst, int* indices, int num_raws,
                               int src_num_cols, int dst_num_cols,
                               int num_elements) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid >= num_rows * dst_num_cols) return;
+  if (tid >= num_raws * dst_num_cols) return;
 
   int raw = tid / dst_num_cols;
   int col = tid % dst_num_cols;
@@ -93,39 +87,33 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         context.cuda_device_context(), ins, &outs, -1, AttnMaskFunctor<T>());
 
-    // VLOG(4) << "attn after mask = " << attn_tmp;
-    Tensor attn_by;
-    attn_by.Resize({attn_dims[0], attn_dims[3]});
-    auto* attn_by_data = attn_by.mutable_data<T>(context.GetPlace());
+    Tensor attn_accu;
+    attn_accu.Resize({attn_dims[0], attn_dims[3]});
+    auto* attn_accu_data = attn_accu.mutable_data<T>(context.GetPlace());
     const std::vector<int64_t> reduce_dims{1, 2};
     phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
         context.cuda_device_context(), attn_tmp, false, reduce_dims, false,
-        attn_by.dtype(), &attn_by);
+        attn_accu.dtype(), &attn_accu);
 
-    // VLOG(4) << "attn after sum reduce = " << attn_by;
-
-    Tensor attn_by_indices;
-    attn_by_indices.Resize(attn_by.dims());
-    auto* attn_by_indices_data =
-        attn_by_indices.mutable_data<int>(context.GetPlace());
+    Tensor attn_accu_indices;
+    attn_accu_indices.Resize(attn_accu.dims());
+    auto* attn_accu_indices_data =
+        attn_accu_indices.mutable_data<int>(context.GetPlace());
 
     int grid_size = attn_dims[0], block_size = ComputeBlockSize(attn_dims[3]);
     FillIndex<<<grid_size, block_size, 0,
                 context.cuda_device_context().stream()>>>(
-        attn_by_indices_data, attn_dims[0], attn_dims[3]);
+        attn_accu_indices_data, attn_dims[0], attn_dims[3]);
 
-    // VLOG(4) << "before argsort attn indices = " << attn_by_indices;
     SlicedArgsort<
         T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
-        attn_by_data, attn_by_indices_data, attn_dims[0], attn_dims[3]);
-    // VLOG(4) << "after argsort attn indices = " << attn_by_indices;
+        attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
 
     auto new_mask_dims = new_mask->dims();
     int slimmed_x_len = new_mask_dims[2];
     Tensor slimmed_indices =
-        phi::funcs::Slice<int>(context.cuda_device_context(), attn_by_indices,
+        phi::funcs::Slice<int>(context.cuda_device_context(), attn_accu_indices,
                                {1}, {0}, {slimmed_x_len});
-    // VLOG(4) << "after slice attn indices = " << slimmed_indices;
 
     auto x_dims = x->dims();
     block_size = ComputeBlockSize(slimmed_x_len);

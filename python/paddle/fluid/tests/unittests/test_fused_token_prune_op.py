@@ -31,10 +31,10 @@ from paddle.framework import core
 #     attn *= mask
 
 #     attn = np.sum(attn, axis=1)
-#     attn_by = np.sum(attn, axis=1)  #shape is (B, N)
+#     attn_accu = np.sum(attn, axis=1)  #shape is (B, N)
 #     # print("===========")
-#     # print("attn_by: ", attn_by)
-#     inds = np.argsort(attn_by[:, 1:], axis=-1) + 1
+#     # print("attn_accu: ", attn_accu)
+#     inds = np.argsort(attn_accu[:, 1:], axis=-1) + 1
 #     inds = inds[:, ::-1]
 
 #     cls_ind = np.zeros(tensor_shape[0], dtype=np.int64)
@@ -52,7 +52,8 @@ from paddle.framework import core
 #     slimmed_x = np.take_along_axis(x, cls_inds, axis=1)
 #     return slimmed_x
 
-
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFusedTokenPruneOp(OpTest):
     def setUp(self):
         self.op_type = 'fused_token_prune'

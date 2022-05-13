@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace inference {
@@ -69,53 +70,107 @@ __global__ void ReduceSum(const T* src, T* dst, int bsz, int nb_head,
   }
 }
 
-
 template <typename T>
-__global__ void ReduceSum2(const T* src, T* dst, int bsz, int nb_head,
+__global__ void ReduceSum2<half>(const half* src, half* dst, int bsz, int nb_head,
                           int max_seq_len) {
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   int batch = bid / (nb_head * max_seq_len);
   int col = bid % max_seq_len;
-  int head = (bid / max_seq_len) % nb_head;
-  if (sizeof(T) == 2) {
-    extern __shared__ half res_half[];
-    res_half[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
-    __syncthreads();
-  
-    for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-        if (tid < offset)
-        {
-          res_half[tid] += res_half[tid + offset];
-        }
-        __syncthreads();
-    }
-  
-    if (tid == 0) {
-      auto* dst_addr = dst + batch * max_seq_len + col;
-      atomicAdd(dst_addr, res_half[0]);
-    }
-  } else {
-    extern __shared__ float res_float[];
-    res_float[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
-    __syncthreads();
-  
-    for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
-        if (tid < offset)
-        {
-          res_float[tid] += res_float[tid + offset];
-        }
-        __syncthreads();
-    }
-  
-    if (tid == 0) {
-      auto* dst_addr = dst + batch * max_seq_len + col;
-      atomicAdd(dst_addr, res_float[0]);
-    }
+  int head = (bid / max_seq_len) % nb_head;        
+  extern __shared__ half res_half[];
+  res_half[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+  __syncthreads();
+
+  for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+      if (tid < offset)
+      {
+        res_half[tid] += res_half[tid + offset];
+      }
+      __syncthreads();
   }
-  
+
+  if (tid == 0) {
+    // auto* dst_addr = dst + batch * max_seq_len + col;
+    platform::fastAtomicAdd(dst, batch * max_seq_len + col, bsz * max_seq_len, res_half[0])
+    // atomicAdd(dst_addr, res_half[0]);
+  }
+}
+
+template <typename T>
+__global__ void ReduceSum2<float>(const float* src, float* dst, int bsz, int nb_head,
+                          int max_seq_len) {
+  int tid = threadIdx.x;
+  int bid = blockIdx.x;
+  int batch = bid / (nb_head * max_seq_len);
+  int col = bid % max_seq_len;
+  int head = (bid / max_seq_len) % nb_head;  
+
+  extern __shared__ float res_float[];
+  res_float[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+  __syncthreads();
+
+  for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+      if (tid < offset)
+      {
+        res_float[tid] += res_float[tid + offset];
+      }
+      __syncthreads();
+  }
+
+  if (tid == 0) {
+    auto* dst_addr = dst + batch * max_seq_len + col;
+    atomicAdd(dst_addr, res_float[0]);
+  }
 
 }
+
+
+// template <typename T>
+// __global__ void ReduceSum2(const T* src, T* dst, int bsz, int nb_head,
+//                           int max_seq_len) {
+//   int tid = threadIdx.x;
+//   int bid = blockIdx.x;
+//   int batch = bid / (nb_head * max_seq_len);
+//   int col = bid % max_seq_len;
+//   int head = (bid / max_seq_len) % nb_head;
+//   if (sizeof(T) == 2) {
+//     extern __shared__ half res_half[];
+//     res_half[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+//     __syncthreads();
+  
+//     for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+//         if (tid < offset)
+//         {
+//           res_half[tid] += res_half[tid + offset];
+//         }
+//         __syncthreads();
+//     }
+  
+//     if (tid == 0) {
+//       // auto* dst_addr = dst + batch * max_seq_len + col;
+//       fastAtomicAdd(dst, batch * max_seq_len + col, bsz * max_seq_len, res_half[0])
+//       // atomicAdd(dst_addr, res_half[0]);
+//     }
+//   } else {
+//     extern __shared__ float res_float[];
+//     res_float[tid] = src[batch * (nb_head * max_seq_len * max_seq_len) + head * (max_seq_len * max_seq_len) + col + tid * max_seq_len];
+//     __syncthreads();
+  
+//     for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
+//         if (tid < offset)
+//         {
+//           res_float[tid] += res_float[tid + offset];
+//         }
+//         __syncthreads();
+//     }
+  
+//     if (tid == 0) {
+//       auto* dst_addr = dst + batch * max_seq_len + col;
+//       atomicAdd(dst_addr, res_float[0]);
+//     }
+//   }
+// }
 
 template <typename T>
 __global__ void SlicedArgsort(T* data, int* indices, int num_rows,
@@ -212,7 +267,7 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
     void* const* outputs, void* workspace, cudaStream_t stream,
-    T* attn_tmp_data, T* attn_by_data, int device_id) {
+    T* attn_tmp_data, T* attn_accu_data, int device_id) {
   auto attn_dims = input_desc[0].dims;
   auto x_dims = input_desc[1].dims;
   auto new_mask_dims = input_desc[3].dims;
@@ -235,31 +290,44 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   total = bsz * max_seq_len; 
   block = max_seq_len;
   grid = operators::CeilDivide(total, block);
-  FillZero<T><<<grid, block, 0, stream>>>(attn_by_data, total);
+  FillZero<T><<<grid, block, 0, stream>>>(attn_accu_data, total);
+  auto* device_ctx = static_cast<platform::CUDADeviceContext*>(
+    platform::DeviceContextPool::Instance().Get(
+        platform::CUDAPlace(device_id)));
+  const platform::CUDADeviceContext& dev_ctx = *device_ctx;
+  int compute_capability = dev_ctx->GetComputeCapability();
+  if (compute_capability < 70) {
+    total = bsz * max_seq_len; 
+    block = max_seq_len;
+    grid = operators::CeilDivide(total, block);
+    ReduceSum<T><<<grid, block, 0, stream>>>(attn_tmp_data, attn_accu_data, bsz,
+                                               nb_head, max_seq_len);
+  } else {
+    total = bsz * nb_head * max_seq_len * max_seq_len; 
+    block = max_seq_len;
+    grid = operators::CeilDivide(total, block);
+    ReduceSum2<T><<<grid, block, block * sizeof(T), stream>>>(attn_tmp_data, attn_accu_data, bsz,
+                                               nb_head, max_seq_len);
+  }
+
+  
 
 
-  total = bsz * nb_head * max_seq_len * max_seq_len; 
-  block = max_seq_len;
-  grid = operators::CeilDivide(total, block);
-  ReduceSum2<T><<<grid, block, block * sizeof(T), stream>>>(attn_tmp_data, attn_by_data, bsz,
-                                             nb_head, max_seq_len);
 
+  framework::Tensor attn_accu_indices;
+  attn_accu_indices.Resize({bsz, max_seq_len});
+  auto* attn_accu_indices_data =
+      attn_accu_indices.mutable_data<int>(platform::CUDAPlace(device_id));
 
+  FillIndex<<<grid, block, 0, stream>>>(attn_accu_indices_data, bsz, max_seq_len);
 
-  framework::Tensor attn_by_indices;
-  attn_by_indices.Resize({bsz, max_seq_len});
-  auto* attn_by_indices_data =
-      attn_by_indices.mutable_data<int>(platform::CUDAPlace(device_id));
-
-  FillIndex<<<grid, block, 0, stream>>>(attn_by_indices_data, bsz, max_seq_len);
-
-  SlicedArgsort<T><<<bsz, 1, 0, stream>>>(attn_by_data, attn_by_indices_data,
+  SlicedArgsort<T><<<bsz, 1, 0, stream>>>(attn_accu_data, attn_accu_indices_data,
                                           bsz, max_seq_len);
                                           
   int slimmed_x_len = new_mask_dims.d[2];
   block = operators::ComputeBlockSize(slimmed_x_len);
   TakeAlongLastAxis2D<T><<<grid, block, 0, stream>>>(
-      x_data, output_data, attn_by_indices_data, bsz, max_seq_len,
+      x_data, output_data, attn_accu_indices_data, bsz, max_seq_len,
       slimmed_x_len, c);
   return cudaGetLastError() != cudaSuccess;
 }
@@ -275,10 +343,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
   int device_id;
   cudaGetDevice(&device_id);
 
-  // auto* device_ctx = static_cast<platform::CUDADeviceContext*>(
-  //   platform::DeviceContextPool::Instance().Get(
-  //       platform::CUDAPlace(device_id)));
-  // const platform::CUDADeviceContext& dev_ctx = *device_ctx;
+ 
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp32";
@@ -287,17 +352,14 @@ int FusedTokenPrunePluginDynamic::enqueue(
     attn_tmp.Resize({bsz, nb_head, max_seq_len, max_seq_len});
     auto* attn_tmp_data =
         attn_tmp.mutable_data<float>(platform::CUDAPlace(device_id));
-    // phi::funcs::SetConstant<platform::CUDADeviceContext, float> setter;
-    // setter(dev_ctx, &attn_tmp,
-    //         static_cast<float>(0));
 
-    framework::Tensor attn_by;
-    attn_by.Resize({bsz, max_seq_len});
-    auto* attn_by_data =
-        attn_by.mutable_data<float>(platform::CUDAPlace(device_id));
+    framework::Tensor attn_accu;
+    attn_accu.Resize({bsz, max_seq_len});
+    auto* attn_accu_data =
+        attn_accu.mutable_data<float>(platform::CUDAPlace(device_id));
 
     return enqueueImpl<float>(input_desc, output_desc, inputs, outputs,
-                              workspace, stream, attn_tmp_data, attn_by_data,
+                              workspace, stream, attn_tmp_data, attn_accu_data,
                               device_id);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
@@ -309,18 +371,15 @@ int FusedTokenPrunePluginDynamic::enqueue(
     auto* attn_tmp_data_tmp = attn_tmp.mutable_data<int16_t>(
         platform::CUDAPlace(device_id));  // NOLINT
     auto* attn_tmp_data = reinterpret_cast<half*>(attn_tmp_data_tmp);
-    // phi::funcs::SetConstant<platform::CUDADeviceContext, half> setter;
-    // setter(dev_ctx, &attn_tmp,
-    //         static_cast<half>(0));
 
-    framework::Tensor attn_by;
-    attn_by.Resize({bsz, max_seq_len});
-    auto* attn_by_data_tmp =
-        attn_by.mutable_data<int16_t>(platform::CUDAPlace(device_id));
-    auto* attn_by_data = reinterpret_cast<half*>(attn_by_data_tmp);
+    framework::Tensor attn_accu;
+    attn_accu.Resize({bsz, max_seq_len});
+    auto* attn_accu_data_tmp =
+        attn_accu.mutable_data<int16_t>(platform::CUDAPlace(device_id));
+    auto* attn_accu_data = reinterpret_cast<half*>(attn_accu_data_tmp);
 
     return enqueueImpl<half>(input_desc, output_desc, inputs, outputs,
-                             workspace, stream, attn_tmp_data, attn_by_data,
+                             workspace, stream, attn_tmp_data, attn_accu_data,
                              device_id);
 
 #else

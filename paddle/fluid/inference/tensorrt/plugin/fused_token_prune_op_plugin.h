@@ -87,7 +87,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
                   const nvinfer1::PluginTensorDesc* output_desc,
                   const void* const* inputs, void* const* outputs,
                   void* workspace, cudaStream_t stream, T* attn_tmp_data,
-                  T* attn_by_data, int device_id);
+                  T* attn_accu_data, int device_id);
 };
 
 class FusedTokenPrunePluginDynamicCreator : public nvinfer1::IPluginCreator {
