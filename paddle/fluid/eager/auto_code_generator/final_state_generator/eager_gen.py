@@ -329,14 +329,14 @@ AMP_LOGIC_TEMPLATE = \
 
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
-    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-    if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+  paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
+  if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
 """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
-    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
-    if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+  paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
+  if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
 """
 
 
@@ -1236,7 +1236,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Fill Grad Ins with Zero
         fill_zero_str = ""
         if backward_api_name in ops_to_fill_zero_for_empty_grads:
-            fill_zero_str = f"{indent}egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
+            fill_zero_str = f"{indent}const auto& input_metas = this->InputMeta();\n"
+            for name, (ttype, fwd_position,
+                       grad_api_position) in backward_grad_inputs_map.items():
+                if name in self.optional_inputs:
+                    if IsPlainTensorType(ttype):
+                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                else:
+                    if IsPlainTensorType(ttype):
+                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                    else:
+                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
         # Grad Ins from TensorWrappers
         for name, (_, is_fwd_input,
