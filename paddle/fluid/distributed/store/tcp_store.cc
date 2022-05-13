@@ -21,8 +21,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"
 
-DECLARE_int32(stop_check_timeout);
-
 namespace paddle {
 namespace distributed {
 
@@ -30,13 +28,16 @@ namespace detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
-                                                  int nranks) {
-  return std::make_unique<MasterDaemon>(socket, nranks);
+std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket, int nranks,
+                                                  int stop_check_timeout) {
+  return std::make_unique<MasterDaemon>(socket, nranks, stop_check_timeout);
 }
 
-MasterDaemon::MasterDaemon(SocketType socket, int nranks)
-    : _listen_socket(socket), _nranks(nranks) {
+MasterDaemon::MasterDaemon(SocketType socket, int nranks,
+                           int stop_check_timeout)
+    : _listen_socket(socket),
+      _nranks(nranks),
+      _stop_check_timeout(stop_check_timeout) {
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
@@ -127,7 +128,7 @@ void MasterDaemon::run() {
       std::chrono::duration<double> diff = end_time - _stop_time;
       int elapsed_seconds = static_cast<int>(diff.count());
       PADDLE_ENFORCE_LT(
-          elapsed_seconds, FLAGS_stop_check_timeout,
+          elapsed_seconds, _stop_check_timeout,
           platform::errors::Fatal(
               "%d seconds elapsed after the first worker "
               "stopped, so we think there may be something wrong and will "
@@ -194,10 +195,12 @@ void MasterDaemon::run() {
   }
 }
 
-std::unique_ptr<TCPServer> TCPServer::create(uint16_t port, int nranks) {
+std::unique_ptr<TCPServer> TCPServer::create(uint16_t port, int nranks,
+                                             int stop_check_timeout) {
   int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
   auto server = std::make_unique<TCPServer>();
-  server->_master_daemon = MasterDaemon::start(socket, nranks);
+  server->_master_daemon =
+      MasterDaemon::start(socket, nranks, stop_check_timeout);
   return server;
 }
 
@@ -240,10 +243,11 @@ std::vector<T> TCPClient::receive_vector() {
 }  // namespace detail
 
 TCPStore::TCPStore(std::string host, uint16_t port, bool is_master,
-                   size_t num_workers, std::chrono::seconds timeout)
+                   size_t num_workers, std::chrono::seconds timeout,
+                   int stop_check_timeout)
     : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
   if (_is_master) {
-    _server = detail::TCPServer::create(port, num_workers);
+    _server = detail::TCPServer::create(port, num_workers, stop_check_timeout);
   }
 
   _client = detail::TCPClient::connect(host, port);
