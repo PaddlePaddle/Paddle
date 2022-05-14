@@ -162,7 +162,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
                 "gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}".
                 format(u, v, u - v))
 
-    # test whether the ouput is right when use 'set_gradient_clip'
+    # test whether the output is right when use 'set_gradient_clip'
     def test_old_gradient_clip(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
@@ -172,7 +172,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
 
-    # test whether the ouput is right when use grad_clip
+    # test whether the output is right when use grad_clip
     def test_new_gradient_clip(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
@@ -181,7 +181,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
 
-    # test whether the ouput is right when use grad_clip under float64
+    # test whether the output is right when use grad_clip under float64
     def test_new_gradient_clip_fp64(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
@@ -267,7 +267,7 @@ class TestGradientClipByNorm(TestGradientClip):
                     a=u, b=v, rtol=1e-5, atol=1e-8),
                 "gradient clip by norm has wrong results!")
 
-    # test whether the ouput is right when use grad_clip
+    # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByNorm(clip_norm=self.clip_norm)
@@ -311,7 +311,7 @@ class TestGradientClipByValue(TestGradientClip):
                     a=u, b=v, rtol=1e-6, atol=1e-8),
                 "gradient clip by value has wrong results!")
 
-    # test whether the ouput is right when use grad_clip
+    # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByValue(max=self.max, min=self.min)
@@ -397,7 +397,7 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
         self.assertTrue(
             np.isclose(
                 a=a, b=b, rtol=1e-6, atol=1e-8),
-            "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+            "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
             % (a, b))
 
 
@@ -426,7 +426,7 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
             self.assertTrue(
                 np.isclose(
                     a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by norm has wrong results, expetcd:%f, but recieved:%f"
+                "gradient clip by norm has wrong results, expetcd:%f, but received:%f"
                 % (a, b))
 
 
@@ -517,7 +517,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 self.assertTrue(
                     np.isclose(
                         a=a, b=b, rtol=1e-3, atol=1e-8),
-                    "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+                    "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
                     % (a, b))
 
 
@@ -563,7 +563,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
             self.assertTrue(
                 np.isclose(
                     a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+                "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
                 % (a, b))
 
 

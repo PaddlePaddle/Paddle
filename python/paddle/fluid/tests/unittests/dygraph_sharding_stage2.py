@@ -42,7 +42,6 @@ strategy.hybrid_configs = {
     "pp_degree": 1,
     "sharding_degree": 1
 }
-fleet.init(is_collective=True, strategy=strategy)
 
 np.random.seed(seed)
 paddle.seed(seed)
@@ -225,4 +224,5 @@ def test_dp_stage2():
 if __name__ == '__main__':
     with _test_eager_guard():
         pass
+    fleet.init(is_collective=True, strategy=strategy)
     test_dp_stage2()

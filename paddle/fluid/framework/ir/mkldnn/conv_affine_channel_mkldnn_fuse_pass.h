@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,29 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/pass.h"
+#include <string>
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class TransferCastOpPass : public Pass {
+/*
+ * Fuse the Conv and ConvAffineChannel.
+ */
+class Graph;
+
+class ConvAffineChannelFusePass : public FusePassBase {
+ public:
+  ConvAffineChannelFusePass();
+  virtual ~ConvAffineChannelFusePass() {}
+
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph*) const override;
+  const std::string name_scope_{"conv_affine_channel_mkldnn_fuse"};
 };
 
 }  // namespace ir

@@ -134,7 +134,6 @@ class TestMLPAutoParallelizer(unittest.TestCase):
             for op in block.ops:
                 for attr_name in op.attr_names:
                     self.assertTrue(suffix not in attr_name)
-        # print_program_with_dist_attr(distributed_main_program)
         self.assertIsNotNone(distributed_startup_program)
         self.assertIsNotNone(distributed_main_program)
 

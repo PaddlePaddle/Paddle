@@ -95,6 +95,16 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
   return KernelSignature("floor_divide_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ElementwiseHeavisideOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("elementwise_heaviside", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature(
+      "elementwise_heaviside_raw", {"X", "Y"}, {"axis"}, {"Out"});
+}
+
 KernelSignature ElementwisePowOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
@@ -208,6 +218,15 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
   return KernelSignature(
       "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
 }
+
+KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_heaviside_grad",
+                         {"X", "Y", "Out@GRAD"},
+                         {"axis"},
+                         {"X@GRAD", "Y@GRAD"});
+}
+
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("elementwise_pow_grad",
@@ -258,6 +277,8 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_mod,
                            phi::ElementwiseModOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_floordiv,
                            phi::ElementwiseFloorDivOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside,
+                           phi::ElementwiseHeavisideOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow,
                            phi::ElementwisePowOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
@@ -292,5 +313,7 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_max_grad,
                            phi::ElementwiseMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_min_grad,
                            phi::ElementwiseMinGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
+                           phi::ElementwiseHeavisideGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
                            phi::ElementwisePowGradOpArgumentMapping);
