@@ -33,10 +33,10 @@ void IndexFillInner(const Context& ctx,
   auto output_dim_size = output_dim.size();
   auto index_size = index.dims()[0];
 
-//  DenseTensor index_cpu_copy;
-//  if (!paddle::platform::is_cpu_place(index.place())) {
-//    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
-//  }
+  //  DenseTensor index_cpu_copy;
+  //  if (!paddle::platform::is_cpu_place(index.place())) {
+  //    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+  //  }
   const int64_t* index_data = index.data<int64_t>();
 
   auto slice_size = 1;
