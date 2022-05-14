@@ -484,7 +484,7 @@ int QkvToContextAndQkPluginDynamic::enqueue(
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContextAndQk-->fp32";
     auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
         platform::CUDAPlace(device_id));
     auto *qkptr = static_cast<float *>(outputs[1]);
@@ -528,7 +528,7 @@ int QkvToContextAndQkPluginDynamic::enqueue(
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContextAndQk-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));
