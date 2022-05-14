@@ -49,7 +49,7 @@ TEST(IntArray, ConstructFromCPUDenseTensorVector) {
   const auto* dev_ctx =
       static_cast<const phi::CPUContext*>(pool.Get(CPUPlace()));
   phi::DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
-  phi::DenseTensor shape1 = Full<int>(*dev_ctx, {1}, 3);
+  phi::DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
   std::vector<phi::DenseTensor> shape{shape0, shape1};
   phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
@@ -115,7 +115,7 @@ TEST(IntArray, ConstructFromGPUDenseTensorVector) {
   const auto* dev_ctx =
       static_cast<const phi::GPUContext*>(pool.Get(GPUPlace()));
   phi::DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
-  phi::DenseTensor shape1 = Full<int>(*dev_ctx, {1}, 3);
+  phi::DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
   std::vector<phi::DenseTensor> shape{shape0, shape1};
   phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
