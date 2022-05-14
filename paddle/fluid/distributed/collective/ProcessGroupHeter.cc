@@ -256,9 +256,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
     std::vector<phi::DenseTensor>& in_tensors, int peer) {
 #if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  if (!CheckTensorsInCudaPlace(in_tensors)) {
+    VLOG(3) << "Inputs not on CUDAPlace for heter send.";
+  }
 #endif
 
   PADDLE_ENFORCE_EQ(
@@ -269,6 +269,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   auto start = std::chrono::high_resolution_clock::now();
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = in_tensors[0];
+
+  // TODO(Yuang): can be optimized if same place
   framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
   PADDLE_ENFORCE_EQ(with_switch_, true,
                     platform::errors::PreconditionNotMet(
@@ -300,9 +302,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
     std::vector<phi::DenseTensor>& out_tensors, int peer) {
 #if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  if (!CheckTensorsInCudaPlace(out_tensors)) {
+    VLOG(3) << "Inputs not on CUDAPlace for heter recv.";
+  }
 #endif
 
   PADDLE_ENFORCE_EQ(
@@ -339,11 +341,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
                    framework::DataTypeSize(cpu_tensor.dtype()) / diff.count();
   VLOG(2) << "Goodput: " << goodput << "B/s" << std::endl;
   start = std::chrono::high_resolution_clock::now();
+
+  // TODO(Yuang): can be optimized if same place:
   framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
   end = std::chrono::high_resolution_clock::now();
   diff = end - start;
   VLOG(2) << "Time to copy tensor of dims(" << cpu_tensor.dims()
-          << ") from gpu to cpu for recv " << std::setw(9)
+          << ") from cpu to gpu for recv " << std::setw(9)
           << " is: " << diff.count() << " s" << std::endl;
   return CreateTask(rank_, CommType::RECV, out_tensors);
 }

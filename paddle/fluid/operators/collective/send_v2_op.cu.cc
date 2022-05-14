@@ -46,8 +46,40 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensor;
       auto x = ctx.Input<framework::LoDTensor>("X");
+
+      if (dynamic_shape) {
+        // dynamic shape for switch send/recv
+        VLOG(3) << "send_v2 will use dynamic shape with recv_v2 for switch";
+        paddle::experimental::DataType shape_dytpe =
+            paddle::experimental::DataType::INT32;
+        auto dims = x->dims();
+        int shape_size = dims.size();
+
+        // step1: send the shape size
+        std::vector<framework::Tensor> shape_size_tensor;
+        framework::Tensor cpu_shape_size_tensor(shape_dytpe);
+        cpu_shape_size_tensor.Resize({1});
+        cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+        auto* cpu_data = cpu_shape_size_tensor.data<int>();
+        cpu_data[0] = shape_size;
+        shape_size_tensor.template emplace_back(cpu_shape_size_tensor);
+        auto shape_size_task = pg->Send(shape_size_tensor, peer);
+
+        // step2: send the shape
+        std::vector<framework::Tensor> shape_tensor;
+        framework::Tensor cpu_shape_tensor(shape_dytpe);
+        cpu_shape_tensor.Resize({shape_size});
+        cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+        auto* cpu_shape_data = cpu_shape_tensor.data<int>();
+        for (int i = 0; i < shape_size; ++i) {
+          cpu_shape_data[i] = dims[i];
+        }
+        shape_tensor.template emplace_back(cpu_shape_tensor);
+        auto shape_task = pg->Send(shape_tensor, peer);
+      }
+
+      std::vector<phi::DenseTensor> in_tensor;
       in_tensor.push_back(*x);
       auto task = pg->Send(in_tensor, peer);
       return;
@@ -93,11 +125,11 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (dynamic_shape) {
       VLOG(3) << "send_v2 will use dynamic shape with recv_v2";
       paddle::experimental::DataType shape_dytpe =
-          paddle::experimental::DataType::INT64;
+          paddle::experimental::DataType::INT32;
       ncclDataType_t nccl_dtype =
           platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
       auto dims = x->dims();
-      int64_t shape_size = dims.size();
+      int shape_size = dims.size();
 
       // step1: send the shape size
 
@@ -105,7 +137,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       framework::Tensor cpu_shape_size_tensor(shape_dytpe);
       cpu_shape_size_tensor.Resize({1});
       cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
-      auto* cpu_data = cpu_shape_size_tensor.data<int64_t>();
+      auto* cpu_data = cpu_shape_size_tensor.data<int>();
       cpu_data[0] = shape_size;
 
       // copy the shape size tensor to gpu and send
@@ -116,7 +148,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       framework::TensorCopySync(cpu_shape_size_tensor, place,
                                 gpu_shape_size_tensor);
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclSend(gpu_shape_size_tensor->data<int64_t>(), 1,
+          platform::dynload::ncclSend(gpu_shape_size_tensor->data<int>(), 1,
                                       nccl_dtype, peer, comm->comm(), stream));
       VLOG(3) << "send the shape size: " << shape_size << " to peer";
 
@@ -126,7 +158,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       framework::Tensor cpu_shape_tensor(shape_dytpe);
       cpu_shape_tensor.Resize({shape_size});
       cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
-      auto* cpu_shape_data = cpu_shape_tensor.data<int64_t>();
+      auto* cpu_shape_data = cpu_shape_tensor.data<int>();
       for (int i = 0; i < shape_size; ++i) {
         cpu_shape_data[i] = dims[i];
       }
@@ -136,9 +168,9 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       gpu_shape_tensor->Resize({shape_size});
       gpu_shape_tensor->mutable_data(place, shape_dytpe);
       framework::TensorCopySync(cpu_shape_tensor, place, gpu_shape_tensor);
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-          gpu_shape_tensor->data<int64_t>(), shape_size, nccl_dtype, peer,
-          comm->comm(), stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::ncclSend(gpu_shape_tensor->data<int>(), shape_size,
+                                      nccl_dtype, peer, comm->comm(), stream));
       VLOG(3) << "send the shape: (" << dims << ") to peer";
     }
 
