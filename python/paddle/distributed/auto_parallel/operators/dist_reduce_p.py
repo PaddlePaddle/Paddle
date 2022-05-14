@@ -31,7 +31,6 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
-from paddle.fluid.incubate.ad_transform.primx import prim_enabled
 
 
 class DistributedReducePrimtive(DistributedOperatorImplContainer):
