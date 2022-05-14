@@ -14,8 +14,8 @@
 
 import numpy as np
 
-from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+from line_search import strong_wolfe
+from utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
 
@@ -24,7 +24,7 @@ def minimize_bfgs(objective_func,
                   initial_position,
                   max_iters=50,
                   tolerance_grad=1e-7,
-                  tolerance_change=1e-9,
+                  tolerance_change=1e-20,
                   initial_inverse_hessian_estimate=None,
                   line_search_fn='strong_wolfe',
                   max_line_search_iters=50,
@@ -118,12 +118,14 @@ def minimize_bfgs(objective_func,
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
     def cond(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
-        return (k < max_iters) & ~done
+        return (k < 10) & ~done
 
     def body(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
         #############    compute pk    #############
         pk = -paddle.matmul(Hk, g1)
-
+        print("g1: ", g1)
+        initial_step_length = 1. / pk.abs().sum()
+        print("initinitial_step_length: ", initial_step_length.item())
         #############    compute alpha by line serach    #############
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
@@ -137,11 +139,12 @@ def minimize_bfgs(objective_func,
                 "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
                 format(line_search_fn))
         num_func_calls += ls_func_calls
-
+        print("alpha: ", alpha.item())
         #############    update Hk    #############
+        print("pk: ", pk)
         sk = alpha * pk
         yk = g2 - g1
-
+        print("sk: ", sk)
         xk = xk + sk
         g1 = g2
 
@@ -166,7 +169,7 @@ def minimize_bfgs(objective_func,
                       (pk_norm < tolerance_change), done)
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
-        paddle.assign(done | (alpha == 0.), done)
+        paddle.assign(done | (alpha < tolerance_change), done)
         return [k, done, is_converge, num_func_calls, xk, value, g1, Hk]
 
     paddle.static.nn.while_loop(
