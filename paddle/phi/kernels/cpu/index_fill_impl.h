@@ -24,11 +24,12 @@ namespace phi {
 template <typename Context, typename T>
 void IndexFillInner(const Context& ctx,
                     const DenseTensor& index,
+                    const DenseTensor& x,
                     DenseTensor* output,
                     int axis,
                     T fill_val,
                     DenseTensor* fill_grad) {
-  auto output_dim = output->dims();
+  auto output_dim = x.dims();
   auto output_dim_size = output_dim.size();
   auto index_size = index.dims()[0];
 
@@ -63,27 +64,27 @@ void IndexFillInner(const Context& ctx,
             index_data[i]));
   }
 
-  output->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
-
-  auto output_tensor = EigenTensor<T, 3>::From(*output);
   auto& place = *ctx.eigen_device();
   if (fill_grad) {
+    auto x_tensor = EigenTensor<T, 3>::From(x);
     auto fill_grad_tensor = EigenTensor<T, 3>::From(*fill_grad);
     for (auto j = 0; j < index_size; j++) {
       int64_t index_value = index_data[j];
-      auto output_t = output_tensor.chip(index_value, 1);
       auto fill_grad_t = fill_grad_tensor.chip(index_value, 1);
-      fill_grad_t.device(place) = output_tensor.chip(index_value, 1);
-      output_t.device(place) = output_t.constant(fill_val);
+      fill_grad_t.device(place) = x_tensor.chip(index_value, 1);
     }
-  } else {
+  }
+
+  if (output) {
+    output->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
+    auto output_tensor = EigenTensor<T, 3>::From(*output);
     for (auto j = 0; j < index_size; j++) {
       int64_t index_value = index_data[j];
       auto output_t = output_tensor.chip(index_value, 1);
       output_t.device(place) = output_t.constant(fill_val);
     }
+    output->Resize(output_dim);
   }
-  output->Resize(output_dim);
 }
 
 template <typename T, typename Context>
@@ -112,7 +113,7 @@ void IndexFillBaseKernel(const Context& dev_ctx,
     axis += x.dims().size();
   }
   IndexFillInner<Context, T>(
-      dev_ctx, index, output, axis, static_cast<T>(fill_value), fill_grad);
+      dev_ctx, index, x, output, axis, static_cast<T>(fill_value), fill_grad);
 }
 
 }  // namespace phi

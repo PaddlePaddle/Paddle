@@ -25,7 +25,8 @@ namespace phi {
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void index_fill_cuda_kernel(T* output,
+__global__ void index_fill_cuda_kernel(const T* x_ptr,
+                                       T* output,
                                        T* fill_grad,
                                        const int64_t* index,
                                        int64_t N,
@@ -39,10 +40,8 @@ __global__ void index_fill_cuda_kernel(T* output,
     int64_t src_dim_idx = index[dim_idx];
     int64_t output_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    if (fill_grad) {
-      fill_grad[output_idx] = output[output_idx];
-    }
-    output[output_idx] = fill_val;
+    if (fill_grad) fill_grad[output_idx] = x_ptr[output_idx];
+    if (output) output[output_idx] = fill_val;
   }
 }
 
@@ -54,7 +53,7 @@ void IndexFillBaseKernel(const Context& dev_ctx,
                          float fill_value,
                          DenseTensor* output,
                          DenseTensor* fill_grad) {
-  phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+  if (output) phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
 
   auto axis = axis_scalar.to<int>();
   auto index_list = index_arr.GetData();
@@ -70,14 +69,14 @@ void IndexFillBaseKernel(const Context& dev_ctx,
                        index_size * sizeof(int64_t),
                        dev_ctx.stream());
 
-  auto output_dim = output->dims();
+  auto output_dim = input.dims();
   axis = axis >= 0 ? axis : axis + output_dim.size();
   auto stride_dim = phi::stride(output_dim);
   int64_t stride = stride_dim[axis];
   int64_t size = index.dims()[0];
   int64_t delta = output_dim[axis] - size;
 
-  auto* out_data = output->data<T>();
+  auto* out_data = output ? output->data<T>() : nullptr;
   auto* fill_grad_data = fill_grad ? fill_grad->data<T>() : nullptr;
   output_dim[axis] = size;
   int64_t numel = phi::product(output_dim);
@@ -91,7 +90,9 @@ void IndexFillBaseKernel(const Context& dev_ctx,
   paddle::platform::LimitGridDim(dev_ctx, &grid_dim);
 
   T fill_val = static_cast<T>(fill_value);
-  index_fill_cuda_kernel<T><<<grid_dim, block_dim, 0, stream>>>(out_data,
+  const T* x_ptr = input.data<T>();
+  index_fill_cuda_kernel<T><<<grid_dim, block_dim, 0, stream>>>(x_ptr,
+                                                                out_data,
                                                                 fill_grad_data,
                                                                 index_data,
                                                                 numel,

@@ -30,6 +30,7 @@ void IndexFillTensorGradKernel(const Context& dev_ctx,
                                const Scalar& axis_scalar,
                                DenseTensor* x_grad,
                                DenseTensor* fill_tensor_grad) {
+  //  printf("IndexFillTensorGradKernel---->");
   DenseTensor raw_fill_tensor_grad;
   raw_fill_tensor_grad.Resize(out_grad.dims());
   dev_ctx.template Alloc<T>(&raw_fill_tensor_grad);
@@ -44,7 +45,6 @@ void IndexFillTensorGradKernel(const Context& dev_ctx,
                                   fill_val,
                                   x_grad,
                                   &raw_fill_tensor_grad);
-
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(dev_ctx,
                                                      raw_fill_tensor_grad,
                                                      true,

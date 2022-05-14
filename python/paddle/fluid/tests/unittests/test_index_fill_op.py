@@ -101,20 +101,25 @@ class TestIndexFillOp(OpTest):
 class TestIndexFillTensorOp(TestIndexFillOp):
     def bind_op_values(self):
         self.op_type = "index_fill_tensor"
-        self.fill_value = np.asarray([9.0])
+        fill_var = 1e-8
+        self.fill_value = np.asarray([fill_var])
         self.inputs = {'X': self.x_np, 'FillValue': self.fill_value}
         self.attrs = {'index': self.index_np, 'axis': self.axis}
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'FillValue'], 'Out', max_relative_error=0.5)
+        self.out_np = index_fill_np(self.x_np, self.axis, self.index_np,
+                                    fill_var)
+        self.outputs = {'Out': self.out_np}
 
-    # def test_check_grad_ingore_x(self):
-    #     self.check_grad_with_place(
-    #         self.place, ['X'], 'Out', no_grad_set=set("FillValue"))
-    #
-    # def test_check_grad_ingore_fill_value(self):
-    #     self.check_grad_with_place(
-    #         self.place, ['FillValue'], 'Out', no_grad_set=set('X'), max_relative_error=0.5)
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'FillValue'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set("FillValue"))
+
+    def test_check_grad_ingore_fill_value(self):
+        self.check_grad_with_place(
+            self.place, ['FillValue'], 'Out', no_grad_set=set('X'))
 
 
 class API_IndexFill(unittest.TestCase):
@@ -222,12 +227,19 @@ class API_TestDygraphIndexFill3(API_TestDygraphIndexFill):
         self.index = paddle.to_tensor([0, 1, 2, 3])
 
 
-#todo bool, fill_value_tensor
 class API_TestDygraphIndexFill3(API_TestDygraphIndexFill):
     def init_data(self):
         self.data_np = np.random.random((3, 4, 5, 6)) > 0.5
         self.axis = 2
         self.fill_value = True
+        self.index = paddle.to_tensor([0, 3])
+
+
+class API_TestDygraphIndexFill3(API_TestDygraphIndexFill):
+    def init_data(self):
+        self.data_np = np.random.random((3, 4, 5, 6)).astype(np.float32)
+        self.axis = 2
+        self.fill_value = paddle.to_tensor(9, dtype=self.data_np.dtype)
         self.index = paddle.to_tensor([0, 3])
 
 
