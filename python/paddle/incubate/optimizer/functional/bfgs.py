@@ -14,10 +14,11 @@
 
 import numpy as np
 
-from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+from line_search import strong_wolfe
+from utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
+from paddle.fluid.optimizer import Optimizer
 
 
 def minimize_bfgs(objective_func,
@@ -174,3 +175,117 @@ def minimize_bfgs(objective_func,
         body=body,
         loop_vars=[k, done, is_converge, num_func_calls, xk, value, g1, Hk])
     return is_converge, num_func_calls, xk, value, g1, Hk
+
+
+class LossAndFlatGradient:
+    """A helper class to create a function required by tfp.optimizer.lbfgs_minimize.
+    Args:
+        trainable_variables: Trainable variables.
+        build_loss: A function to build the loss function expression.
+    """
+
+    def __init__(self, trainable_variables, build_loss):
+        self.trainable_variables = trainable_variables
+        print("trainable_variables[0].name", trainable_variables[0].name)
+        print("self.trainable_variable[0].name:",
+              self.trainable_variables[0].name)
+        self.build_loss = build_loss
+
+        # Shapes of all trainable parameters
+        self.shapes = [
+            paddle.shape(trainable_variable)
+            for trainable_variable in trainable_variables
+        ]
+        self.n_tensors = len(self.shapes)
+
+        # Information for tf.dynamic_stitch and tf.dynamic_partition later
+        count = 0
+        self.indices = []  # stitch indices
+        self.partitions = []  # partition indices
+        for i, shape in enumerate(self.shapes):
+
+            n = paddle.prod(shape).item()
+            self.indices.append(
+                paddle.reshape(
+                    paddle.arange(
+                        count, count + n, dtype='float32'), shape))
+            self.partitions.append(n)
+            count += n
+
+    # @tf.function(jit_compile=True) has an error.
+    def __call__(self, weights_1d):
+        """A function that can be used by tfp.optimizer.lbfgs_minimize.
+        Args:
+           weights_1d: a 1D tf.Tensor.
+        Returns:
+            A scalar loss and the gradients w.r.t. the `weights_1d`.
+        """
+        # Set the weights
+        self.set_flat_weights(weights_1d)
+
+        # Calculate the loss
+        loss = self.build_loss()
+        print(loss)
+        print(self.trainable_variables)
+        grads = paddle.grad(
+            [loss],
+            self.trainable_variables,
+            create_graph=False,
+            allow_unused=True)[0]
+        grad = self.dynamic_stitch(grads)
+        print("grad:", grad)
+        return loss, grad
+
+    def dynamic_stitch(self, inputs):
+        flattened_weights = [paddle.flatten(weight) for weight in inputs]
+        concat_weights = paddle.concat(flattened_weights)
+        return concat_weights
+
+    def dynamic_partition(self, weights_1d, partitions, n_tensors):
+        split_weights = paddle.split(weights_1d, self.partitions)
+        original_weights = [
+            paddle.reshape(weight, shape)
+            for weight, shape in zip(split_weights, self.shapes)
+        ]
+        return original_weights
+
+    def set_flat_weights(self, weights_1d):
+        """Sets the weights with a 1D tf.Tensor.
+        Args:
+            weights_1d: a 1D tf.Tensor representing the trainable variables.
+        """
+        weights = self.dynamic_partition(weights_1d, self.partitions,
+                                         self.n_tensors)
+        for i, (shape, param) in enumerate(zip(self.shapes, weights)):
+            self.trainable_variables[i] = (paddle.reshape(param, shape))
+        print("self.trainable_variable[0].name:",
+              self.trainable_variables[0].name)
+
+    def to_flat_weights(self, weights):
+        """Returns a 1D tf.Tensor representing the `weights`.
+        Args:
+            weights: A list of tf.Tensor representing the weights.
+        Returns:
+            A 1D tf.Tensor representing the `weights`.
+        """
+        return self.dynamic_stitch(weights)
+
+
+def bfgs_minimize(trainable_variables,
+                  build_loss,
+                  previous_optimizer_results=None):
+    """TensorFlow interface for tfp.optimizer.lbfgs_minimize.
+    Args:
+        trainable_variables: Trainable variables, also used as the initial position.
+        build_loss: A function to build the loss function expression.
+        previous_optimizer_results
+    """
+    func = LossAndFlatGradient(trainable_variables, build_loss)
+    initial_position = None
+    if previous_optimizer_results is None:
+        initial_position = func.to_flat_weights(trainable_variables)
+    results = minimize_bfgs(func, initial_position=initial_position)
+    # The final optimized parameters are in results.position.
+    # Set them back to the variables.
+    func.set_flat_weights(results.position)
+    return results

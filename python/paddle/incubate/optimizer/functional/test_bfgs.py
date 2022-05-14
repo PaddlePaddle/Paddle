@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
+from bfgs import bfgs_minimize
 from paddle.fluid.framework import _test_eager_guard
 
 from paddle.fluid.framework import _enable_legacy_dygraph
@@ -172,28 +172,32 @@ class TestBfgs(unittest.TestCase):
 
 class Net(paddle.nn.Layer):
     def __init__(self):
-        self.linear_1 = paddle.nn.Linear(16, 8)
+        super(Net, self).__init__()
+        self.linear_1 = paddle.nn.Linear(1, 8)
         self.linear_2 = paddle.nn.Linear(8, 1)
         self.relu = paddle.nn.ReLU()
 
     def forward(self, inputs):
-        y = self.linear_1(y)
+        y = self.linear_1(inputs)
         y = self.relu(y)
         y = self.linear_2(y)
         return y
 
 
+paddle.disable_static()
 net = Net()
 optim = paddle.optimizer.Adam(parameters=net.parameters())
-loss_fn = paddle.nn.CrossEntropyLoss()
-for epoch in range(epochs):
-    x_data = data[0]  # 训练数据
-    y_data = data[1]  # 训练数据标签
-    predicts = mnist(x_data)  # 预测结果
+loss_fn = paddle.nn.L1Loss()
+for epoch in range(1):
+    x_data = paddle.rand([16]).unsqueeze(1)  # 训练数据
+    y_data = paddle.multiply(x_data, x_data)  # 训练数据标签
+    predicts = net(x_data)  # 预测结果
 
     # 计算损失 等价于 prepare 中loss的设置
-    loss = loss_fn(predicts, y_data)
+    def loss():
+        return loss_fn(net(x_data), y_data)
 
+    bfgs_minimize(net.parameters(), loss)
     # 计算准确率 等价于 prepare 中metrics的设置
     acc = paddle.metric.accuracy(predicts, y_data)
 
