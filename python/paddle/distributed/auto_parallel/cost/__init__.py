@@ -37,6 +37,8 @@ from .comp_op_cost import MatmulOpCost
 from .comp_op_cost import MatmulGradOpCost
 from .comp_op_cost import MatmulV2OpCost
 from .comp_op_cost import MatmulV2GradOpCost
+from .comp_op_cost import MulOpCost
+from .comp_op_cost import MulGradOpCost
 from .comp_op_cost import Reshape2OpCost
 from .comp_op_cost import Reshape2GradOpCost
 from .comp_op_cost import SliceOpCost
@@ -45,6 +47,8 @@ from .comp_op_cost import SoftmaxOpCost
 from .comp_op_cost import SoftmaxGradOpCost
 from .comp_op_cost import Transpose2OpCost
 from .comp_op_cost import Transpose2GradOpCost
+from .comp_op_cost import FillConstantBatchSizeLikeOpCost
+from .comp_op_cost import FillConstantBatchSizeLikeGradOpCost
 
 from .tensor_cost import TensorCost
 
