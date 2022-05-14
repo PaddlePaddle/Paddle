@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SET(PADDLE_BFLOAT_COMMIT_HASH 8369a58f21158546817751b728dabb94e6b9fe62)
+SET(PADDLE_BFLOAT_COMMIT_HASH 58ccd641c0df5b4b74d50201ac9a08ec603e8f01)
 
 file(DOWNLOAD
     https://raw.githubusercontent.com/jakpiase/paddle_bfloat/${PADDLE_BFLOAT_COMMIT_HASH}/bfloat16.cc
