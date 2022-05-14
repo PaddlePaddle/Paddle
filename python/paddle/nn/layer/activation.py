@@ -438,20 +438,41 @@ class PReLU(Layer):
 
 class RReLU(Layer):
     """
-    rrelu activation.
+    RReLU activation layer.
 
-    `Empirical Evaluation of Rectified Activations in Convolutional Network`: https://arxiv.org/abs/1505.00853
+    Applies the randomized leaky rectified liner unit function to improve generalization performance,
+    as described in the paper:
+    `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`_
+
+    During training, randomly samples the negative slope for activation values as described below:
 
     .. math::
 
-        \text{RReLU}(x) =
-                \begin{cases}
-                x & \text{if } x \geq 0 \\
-                ax & \text{ otherwise }
-                \end{cases}
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    a * x, & & otherwise \\
+                \end{array}
+            \right.
 
     where :math:`x` is the input tensor,
     :math:`a` is randomly sampled from uniform distribution in range (:math:`lower`, :math:`upper`),
+
+    In the test phase, the negative slope will take the average value of :math:`lower` and :math:`upper`:
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    (lower + upper) * 0.5 * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`lower` and :math:`upper` are the bounds of uniform distribution.
 
     Parameters:
         lower (float, optional): The lower bound of uniform distribution. Default: 0.125.

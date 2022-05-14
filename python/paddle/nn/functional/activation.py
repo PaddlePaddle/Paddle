@@ -552,7 +552,8 @@ def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
     """
     rrelu activation.
 
-    Applies the randomized leaky rectified liner unit function, as described in the paper:
+    Applies the randomized leaky rectified liner unit function to improve generalization performance,
+    as described in the paper:
     `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`_
 
     During training, randomly samples the negative slope for activation values as described below:
