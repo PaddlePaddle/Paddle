@@ -37,6 +37,10 @@ from paddle import in_dynamic_mode
 from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 __all__ = []
 
@@ -197,7 +201,7 @@ class RNNCellBase(Layer):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, collections.Sequence) and
+            return (isinstance(seq, Sequence) and
                     not isinstance(seq, six.string_types))
 
         class Shape(object):

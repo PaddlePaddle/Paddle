@@ -19,6 +19,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -665,7 +666,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  // step2: remove unneccessary downstream ops
+  // step2: remove unnecessary downstream ops
   // for example, a->b->c
   // a: b, c
   // b: c
@@ -740,7 +741,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  return std::move(downstream);
+  return downstream;
 }
 
 std::map<int, std::list<int>> build_op_downstream_map(
@@ -994,7 +995,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
               std::ostream_iterator<int>(oss, " "));
     VLOG(10) << oss.str();
   }
-  return std::move(get_downstream_map(op2dependences, op_happens_before));
+  return get_downstream_map(op2dependences, op_happens_before);
 }
 
 }  // namespace interpreter
