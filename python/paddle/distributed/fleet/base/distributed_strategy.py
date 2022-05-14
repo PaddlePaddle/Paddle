@@ -1168,9 +1168,9 @@ class DistributedStrategy(object):
 
             dp_degree(int, optional): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelsim for the inner parallelsim. User is responsible to ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
 
-            mp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
+            mp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
 
-            pp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
+            pp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
 
             pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
@@ -1485,7 +1485,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             k_steps(int) The local steps for training before parameter synchronization. Default 1.
-            begin_step(int) The step of begining training by localsgd. Default 1.
+            begin_step(int) The step of beginning training by localsgd. Default 1.
 
         Examples:
 
@@ -1544,7 +1544,7 @@ class DistributedStrategy(object):
             init_k_steps(int) The initial steps for training before adaptive localsgd.
                               Then, the adaptive localsgd method will modify init_k_steps automatically.
                               Default 1.
-            begin_step(int) The step of begining training by adaptive localsgd. Default 1.
+            begin_step(int) The step of beginning training by adaptive localsgd. Default 1.
 
         Examples:
 

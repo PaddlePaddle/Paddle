@@ -306,7 +306,7 @@ class FP16State(object):
                     in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                         in_var.name)
                     assert in_var_dist_attr is not None
-                    # truely insert cast op
+                    # truly insert cast op
                     if cast_var is None or cast_var.dtype != dst_dtype:
                         # NOTE we make the cast op and var's dist attr as the op that consume the
                         # cast var instead of the op which generates the var

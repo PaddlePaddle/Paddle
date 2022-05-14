@@ -6,4 +6,5 @@ elseif(WITH_ROCM)
   hip_library(phi_gpu_info SRCS gpu_info.cc DEPS phi_rocm_info gflags glog enforce phi_dynload_cuda)
 endif()
 
-cc_library(gpu_context SRCS gpu_context.cc DEPS phi_device_context phi_gpu_info eigen3)
+cc_library(gpu_resources SRCS gpu_resources.cc DEPS phi_device_context phi_gpu_info)
+cc_library(gpu_context SRCS gpu_context.cc DEPS phi_device_context phi_gpu_info eigen3 gpu_resources)

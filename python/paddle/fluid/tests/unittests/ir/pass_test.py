@@ -167,7 +167,7 @@ class PassTest(unittest.TestCase):
 
     def _check_fused_ops(self, program):
         '''
-        Check the number of specified fused op is equal to the the expected
+        Check the number of specified fused op is equal to the expected
         number.
         '''
         if self.fused_op_type is None or self.num_fused_ops < 0:
