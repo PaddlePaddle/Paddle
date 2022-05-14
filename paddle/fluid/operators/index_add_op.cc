@@ -48,12 +48,14 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
     //          "the 1-D tensor containing the indices to index, "
     //          "dtype should be int32, int64");
 
-    AddAttr<phi::IntArray>("index",
+    // AddAttr<phi::IntArray>("index",
+    AddAttr<std::vector<int64_t>>("index",
           "(list of ints), "
           "containing the indices to index, "
           "dtype should be int32, int64");
 
-    AddAttr<phi::Scalar>("add_value",
+    AddAttr<float>("add_value",
+    // AddAttr<phi::Scalar>("add_value",
                    "(a scalar), The value to add.");
         // .SetDefault(0.0f);
     AddOutput("Out",
