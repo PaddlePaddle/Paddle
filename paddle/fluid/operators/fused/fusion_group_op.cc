@@ -52,7 +52,7 @@ class FusionGroupOp : public framework::OperatorWithKernel {
             x_dims[0], x_dims[i],
             platform::errors::InvalidArgument(
                 "All the inputs' dims is expected to be the same. "
-                "But recieved [%s] (name: %s) vs [%s] (name: %s).",
+                "But received [%s] (name: %s) vs [%s] (name: %s).",
                 x_dims[0], input_names[0], x_dims[i], input_names[i]));
       }
       std::vector<framework::DDim> out_dims;

@@ -107,6 +107,8 @@ XPUOpMap& get_kp_ops() {
       {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_all", XPUKernelSet({pOpKernelType(vartype::BOOL, XPUPlace())})},
       {"reduce_any", XPUKernelSet({pOpKernelType(vartype::BOOL, XPUPlace())})},
+      {"pull_box_sparse",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amin", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };

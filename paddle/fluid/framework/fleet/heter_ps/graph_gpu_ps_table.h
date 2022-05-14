@@ -30,6 +30,11 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int, int> {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();
+    for (int i = 0; i < gpu_num; i++) {
+      gpu_graph_list.push_back(GpuPsCommGraph());
+      sample_status.push_back(NULL);
+      tables_.push_back(NULL);
+    }
     cpu_table_status = -1;
     if (topo_aware) {
       int total_gpu = resource_->total_device();
@@ -82,6 +87,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int, int> {
     //   end_graph_sampling();
     // }
   }
+  void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id);
+  void clear_graph_info(int gpu_id);
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,

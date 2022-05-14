@@ -171,19 +171,16 @@ class HeterClient {
   // switch client singleton
   static std::shared_ptr<HeterClient> GetSwitchInstance(
       const std::vector<std::string>& peer_endpoints, int32_t peer_role) {
+    std::unique_lock<std::mutex> lock(mtx_);
+    if (peer_endpoints.empty()) {
+      VLOG(4) << "init switch client failed, null peer_endpoints";
+    }
+    VLOG(4) << "peer role is: " << peer_role
+            << ", addr is: " << peer_endpoints[0];
     if (switch_s_instance_ == nullptr) {
-      std::unique_lock<std::mutex> lock(mtx_);
-      if (peer_endpoints.empty()) {
-        VLOG(4) << "init switch client failed, null peer_endpoints";
-      }
-      VLOG(4) << "peer role is: " << peer_role
-              << ", addr is: " << peer_endpoints[0];
-      if (switch_s_instance_ == nullptr) {
-        switch_s_instance_.reset(new HeterClient());
-        switch_s_instance_->SetPeerSwitchList(peer_endpoints);
-        switch_s_instance_->InitClientChannels(false, peer_endpoints,
-                                               peer_role);
-      }
+      switch_s_instance_.reset(new HeterClient());
+      switch_s_instance_->SetPeerSwitchList(peer_endpoints);
+      switch_s_instance_->InitClientChannels(false, peer_endpoints, peer_role);
     }
     return switch_s_instance_;
   }
