@@ -74,8 +74,6 @@ def np_logcumsumexp_grad(
         flatten: Optional[bool]=None,
         reverse: bool=False,
         exclusive: bool=False, ):
-    # Reference:
-    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/math_grad.py
     out = np_logcumsumexp(x, axis, flatten, reverse, exclusive)
     log_grad_positive = np.where(dout > 0, np.log(dout), np.finfo(x.dtype).min)
     log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
