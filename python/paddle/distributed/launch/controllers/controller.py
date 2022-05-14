@@ -21,6 +21,7 @@ from paddle.distributed.launch.job.pod import Pod
 from paddle.distributed.launch.job.container import Container
 
 from .master import Master
+from .watcher import Watcher
 
 import time
 
@@ -38,6 +39,8 @@ class ControllerBase(object):
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
+
+        self.watcher = Watcher(self.ctx)
 
         self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.run_mode,
@@ -114,6 +117,9 @@ class ControllerBase(object):
 
     def stop(self, sigint=None):
         self.ctx.logger.debug("Controller stop")
+
+        self.watcher.stop()
+
         self.master.stop()
         self.pod.stop(sigint)
 
@@ -128,14 +134,15 @@ class ControllerBase(object):
         self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         if hasattr(self, 'sigint'):
-            time.sleep(5)
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            time.sleep(11)
             sys.exit(sigint)
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
-        self.ctx.logger.debug("Exit with signal {}".format(sigint))
+        self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 

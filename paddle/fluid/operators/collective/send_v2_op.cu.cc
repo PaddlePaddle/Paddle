@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -39,6 +41,16 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         peer, 0,
         platform::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      auto x = ctx.Input<framework::LoDTensor>("X");
+      in_tensor.push_back(*x);
+      auto task = pg->Send(in_tensor, peer);
+      return;
+    }
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
@@ -97,4 +109,5 @@ REGISTER_OP_CUDA_KERNEL(send_v2, ops::SendOpV2CUDAKernel<float>,
                         ops::SendOpV2CUDAKernel<double>,
                         ops::SendOpV2CUDAKernel<int>,
                         ops::SendOpV2CUDAKernel<int64_t>,
+                        ops::SendOpV2CUDAKernel<int8_t>,
                         ops::SendOpV2CUDAKernel<plat::float16>);

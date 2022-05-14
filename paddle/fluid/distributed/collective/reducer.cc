@@ -398,7 +398,7 @@ void EagerReducer::InitializeDenseGroups(
                           "GRAD is SelectedRows",
                           tensor_name));
 
-    PADDLE_ENFORCE_EQ(tensor.is_initialized(), true,
+    PADDLE_ENFORCE_EQ(tensor.initialized(), true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
@@ -414,20 +414,13 @@ void EagerReducer::InitializeDenseGroups(
     p_group->dense_tensors_.push_back(phi::DenseTensor());
 
     const auto &dtype = tensor.dtype();
-    const auto &place = tensor.place();
     const auto &inner_place = tensor.impl()->place();
     if (index > 0) {
       PADDLE_ENFORCE_EQ(dtype, p_group->dtype_,
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has unexpected dtype.", tensor_name));
-      PADDLE_ENFORCE_EQ(place, place_,
-                        platform::errors::PreconditionNotMet(
-                            "Tensor %s has different place. Expected place is "
-                            "%s, but actual place is %s",
-                            tensor_name, inner_place_, inner_place));
     } else {
       p_group->dtype_ = dtype;
-      place_ = place;
       inner_place_ = inner_place;
     }
   }
@@ -454,10 +447,12 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   while (!queue.empty()) {
     egr::GradNodeBase *node = queue.front();
     queue.pop();
-    const std::vector<std::vector<egr::Edge>> &edges = node->GetEdges();
-    for (size_t i = 0; i < edges.size(); i++) {
-      for (size_t j = 0; j < edges[i].size(); j++) {
-        const egr::Edge &edge = edges[i][j];
+    const paddle::small_vector<std::vector<egr::GradSlotMeta>,
+                               egr::kSlotSmallVectorSize> &metas =
+        node->OutputMeta();
+    for (size_t i = 0; i < metas.size(); i++) {
+      for (size_t j = 0; j < metas[i].size(); j++) {
+        const egr::Edge &edge = metas[i][j].GetEdge();
         auto next_node_shared = edge.GetMutableGradNode();
         if (!next_node_shared || !next_node_shared.get()) {
           continue;
@@ -717,7 +712,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
 
 bool EagerReducer::HasGrad(size_t var_index) {
   auto grad = egr::EagerUtils::mutable_grad(tensors_[var_index]);
-  if (grad && grad->is_initialized()) {
+  if (grad && grad->initialized()) {
     return true;
   } else {
     return false;
@@ -741,7 +736,11 @@ void EagerReducer::ProcessUnusedDenseVars() {
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {global_used_vars_};
-  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
+  std::vector<phi::DenseTensor> in_out;
+  for (auto &t : reduce_tensors) {
+    in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
 
   framework::TensorToVector<int>(*global_used_tensor, *dev_ctx,
                                  &local_used_vars_);
@@ -827,7 +826,11 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
 
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
-  group->task = process_group_->AllReduce(reduce_tensors, opts);
+  std::vector<phi::DenseTensor> in_out;
+  for (auto &t : reduce_tensors) {
+    in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  group->task = process_group_->AllReduce(in_out, in_out, opts);
 
   // split in FinalizeBackward()
 }
@@ -878,7 +881,11 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {rows_num_tensor};
-  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
+  std::vector<phi::DenseTensor> in_out;
+  for (auto &t : reduce_tensors) {
+    in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
 
   framework::TensorToVector<int64_t>(*rows_num_dense_tensor, *dev_ctx,
                                      &rows_num_vector);
@@ -893,6 +900,9 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
           << ", height: " << src->height();
 
   dev_ctx->Wait();
+
+  Tensor src_value_tensor(std::make_shared<phi::DenseTensor>(src->value()));
+  std::vector<int64_t> dst_shape = src_value_tensor.shape();
 
   if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
                   [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
@@ -915,8 +925,15 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     std::vector<Tensor> src_rows_tensors = {src_rows_tensor};
     std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
-    process_group_->AllGather(src_rows_tensors, dst_rows_tensors)
-        ->Synchronize();
+    std::vector<phi::DenseTensor> in;
+    std::vector<phi::DenseTensor> out;
+    for (auto &t : src_rows_tensors) {
+      in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+    }
+    for (auto &t : dst_rows_tensors) {
+      out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+    }
+    process_group_->AllGather(in, out)->Synchronize();
 
     framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
@@ -926,8 +943,6 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
                                        &dst_rows_vector);
     dev_ctx->Wait();
 
-    Tensor src_value_tensor(std::make_shared<phi::DenseTensor>(src->value()));
-    std::vector<int64_t> dst_shape = src_value_tensor.shape();
     dst_shape[dst_shape.size() - 2] = rows_num;
     auto dst_dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
         paddle::experimental::full(IntArray(dst_shape), 0,
@@ -941,15 +956,74 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     std::vector<Tensor> src_value_tensors = {src_value_tensor};
     std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
-    process_group_->AllGather(src_value_tensors, dst_value_tensors)
-        ->Synchronize();
+    std::vector<phi::DenseTensor> src_dense;
+    std::vector<phi::DenseTensor> dst_dense;
+    for (auto &t : src_value_tensors) {
+      src_dense.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+    }
+    for (auto &t : dst_value_tensors) {
+      dst_dense.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+    }
+    process_group_->AllGather(src_dense, dst_dense)->Synchronize();
 
     src->set_rows(dst_rows_vector);
     *(src->mutable_value()) =
         *(std::dynamic_pointer_cast<phi::DenseTensor>(dst_value_tensor.impl()));
   } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("This case is not supported."));
+    std::vector<Tensor> rows_tensors;
+    std::vector<Tensor> values_tensors;
+
+    for (int i = 0; i < size_; ++i) {
+      std::vector<int64_t> value_tensor_shape = {
+          cpu_rows_num_ptr[i], dst_shape[dst_shape.size() - 1]};
+      Tensor rows_tensor = paddle::experimental::full(
+          IntArray({static_cast<int64_t>(cpu_rows_num_ptr[i])}), 0,
+          DataType::INT64, inner_place_);
+      Tensor values_tensor = paddle::experimental::full(
+          IntArray(value_tensor_shape), 0, src->value().dtype(), inner_place_);
+      std::vector<phi::DenseTensor> rows_dense_vector;
+      std::vector<phi::DenseTensor> values_dense_vector;
+
+      if (i == rank_) {
+        auto *rows_dense_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(rows_tensor.impl())
+                .get();
+        framework::TensorFromVector<int64_t>(src_rows, *dev_ctx,
+                                             rows_dense_tensor);
+        values_tensor.set_impl(
+            std::make_shared<phi::DenseTensor>(src->value()));
+      }
+      rows_dense_vector.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(rows_tensor.impl()));
+      values_dense_vector.push_back(
+          *std::dynamic_pointer_cast<phi::DenseTensor>(values_tensor.impl()));
+
+      auto b_opts = BroadcastOptions();
+      b_opts.source_rank = i;
+      process_group_->Broadcast(rows_dense_vector, rows_dense_vector, b_opts);
+      process_group_
+          ->Broadcast(values_dense_vector, values_dense_vector, b_opts)
+          ->Wait();
+      rows_tensors.push_back(rows_tensor);
+      values_tensors.push_back(values_tensor);
+    }
+
+    Tensor dst_rows_tensor =
+        paddle::experimental::concat(rows_tensors, phi::Scalar(0));
+    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    auto *dst_rows_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
+            .get();
+    framework::TensorToVector<int64_t>(*dst_rows_dense_tensor, *dev_ctx,
+                                       &dst_rows_vector);
+    src->set_rows(dst_rows_vector);
+
+    Tensor dst_values_tensor =
+        paddle::experimental::concat(values_tensors, phi::Scalar(0));
+    *(src->mutable_value()) = *(
+        std::dynamic_pointer_cast<phi::DenseTensor>(dst_values_tensor.impl()));
   }
 }
 

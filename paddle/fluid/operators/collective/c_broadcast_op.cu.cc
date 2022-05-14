@@ -41,7 +41,12 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      pg->Broadcast(x, out);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*x);
+      out_tensor.push_back(*out);
+      auto task = pg->Broadcast(in_tensor, out_tensor);
+      task->Wait();
       return;
     }
 
@@ -72,7 +77,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
 

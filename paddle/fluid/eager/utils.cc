@@ -157,7 +157,7 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
     if (autograd_meta->GradNode()) {
       VLOG(7) << "Should not set grad node twice, original node is:"
               << autograd_meta->GradNode()->name()
-              << "current is: " << grad_node->name();
+              << " current is: " << grad_node->name();
     }
     autograd_meta->SetGradNode(grad_node);
   }
@@ -360,16 +360,15 @@ void EagerUtils::Output2Result(
 }
 
 paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
-    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
-  return tw->recover(grad_node);
+    TensorWrapper* tw) {
+  return tw->recover();
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
-    std::vector<TensorWrapper>* tw,
-    const std::shared_ptr<GradNodeBase>& grad_node) {
+    std::vector<TensorWrapper>* tw) {
   std::vector<paddle::experimental::Tensor> ret;
   for (auto& t : *tw) {
-    ret.emplace_back(t.recover(grad_node));
+    ret.emplace_back(t.recover());
   }
   return ret;
 }
@@ -442,12 +441,14 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
 }
 
 void EagerUtils::FillZeroForEmptyGradInputs(
-    std::vector<std::vector<paddle::experimental::Tensor>>* in_grads,
-    const std::vector<std::vector<GradSlotMeta>>& grad_in_metas) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>* in_grads,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
     for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
       paddle::experimental::Tensor& grad = (*in_grads)[i][j];
-      if (!grad.is_initialized()) {
+      if (!grad.initialized()) {
         const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
         PADDLE_ENFORCE(
             grad_in_meta.HasTensorMeta(),

@@ -720,7 +720,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(), true,
       platform::errors::InvalidArgument(
-          "First parameter of function HasOuput must be Node::Op"));
+          "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -2665,41 +2665,8 @@ PDNode *patterns::UnsupportedBfloat16::operator()() {
   return op;
 }
 
-PDNode *patterns::LastBfloat16Ops::operator()() {
-  auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
-  op->LinksTo({op_out});
-  return op_out;
-}
-
-PDNode *patterns::FirstBfloat16Ops::operator()() {
-  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
-
-  auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-
-  op->LinksFrom({op_in});
-  return op;
-}
-
-PDNode *patterns::DuplicatedInputs::operator()() {
-  auto op = pattern->NewNode(op_repr())->assert_is_ops({"concat", "sum"});
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  return op;
-}
-
-PDNode *patterns::DuplicatedOutputs::operator()() {
-  auto op = pattern->NewNode(op_repr())->assert_is_ops({"split"});
+PDNode *patterns::Bloat16Ops::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";

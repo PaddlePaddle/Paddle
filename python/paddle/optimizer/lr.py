@@ -1361,6 +1361,8 @@ class ReduceOnPlateau(LRScheduler):
         if not _in_legacy_dygraph():
             tmp = core.eager.Tensor
         else:
+            # need to declarate explicitly
+            from paddle.framework import VarBase as Tensor
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (tmp, numpy.ndarray)):
@@ -1586,10 +1588,10 @@ class MultiplicativeDecay(LRScheduler):
                                                   verbose)
 
     def get_lr(self):
-        if self.last_epoch > 0:
-            return self.last_lr * self.lr_lambda(self.last_epoch)
-        else:
-            return self.base_lr
+			  cur_lr = self.base_lr
+        for epoch in range(1, self.last_epoch + 1):
+            cur_lr = cur_lr * self.lr_lambda(epoch)
+        return cur_lr
 
 
 class CyclicLR(LRScheduler):
@@ -1758,3 +1760,4 @@ class CyclicLR(LRScheduler):
             lr = self.base_lr + base_height * self.scale_fn(self.last_epoch)
 
         return lr
+	

@@ -21,7 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors) {
   std::vector<DDim> dims;
   dims.reserve(tensors.size());
   for (const MetaTensor* tensor : tensors) {
@@ -279,7 +280,7 @@ void AdamwInferMeta(const MetaTensor& param,
                 master_param_outs);
 }
 
-void AddNInferMeta(const std::vector<MetaTensor*>& x,
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config) {
   auto N = x.size();
@@ -457,7 +458,7 @@ void BatchNormInferMeta(const MetaTensor& x,
         true,
         phi::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but recieved %d. Input's shape is [%s].",
+            "positive number, but received %d. Input's shape is [%s].",
             x_dims[i],
             x_dims));
   }
@@ -642,7 +643,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
   const auto& input_dims = GetMetaTensorsDim(x);
@@ -696,7 +697,7 @@ void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
   }
 }
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -754,7 +755,7 @@ inline int ConvOutputSize(
       0,
       phi::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
-          "But recieved: output's size is %d. The output's size is computed by "
+          "But received: output's size is %d. The output's size is computed by "
           "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
           "stride + 1), where input_size is %d, padding is %d, "
           "filter_size is %d, dilation is %d, stride is %d.",
@@ -1488,7 +1489,44 @@ void InterpolateInferMeta(
   }
 }
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto num_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (num_dims.size() == 1) && (num_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   num_dims));
+  auto b_dims = base.dims();
+  PADDLE_ENFORCE_EQ(
+      (b_dims.size() == 1) && (b_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Base) must be [1],"
+                                   "but received input shape is [%s].",
+                                   b_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 
@@ -1551,7 +1589,8 @@ void MomentumInferMeta(const MetaTensor& param,
   }
 }
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
   const size_t inputs_num = inputs_dims.size();
@@ -1624,7 +1663,7 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -1803,8 +1842,8 @@ void RmspropInferMeta(const MetaTensor& param,
 }
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
                   paddle::optional<const MetaTensor&> sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
@@ -1887,7 +1926,7 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
-void SGDInferMeta(const MetaTensor& param,
+void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
                   paddle::optional<const MetaTensor&> master_param,
@@ -1910,7 +1949,7 @@ void SGDInferMeta(const MetaTensor& param,
   param_out->set_dtype(param.dtype());
 }
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out) {
   PADDLE_ENFORCE_GT(x.size(),
@@ -1956,10 +1995,12 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
-void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
   for (size_t i = 0; i < x.size(); ++i) {
-    out[i]->share_meta(*x[i]);
+    if (out[i]) {
+      out[i]->share_meta(*x[i]);
+    }
   }
 }
 

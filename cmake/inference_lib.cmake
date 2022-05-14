@@ -249,13 +249,22 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
 copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
-        copy(inference_lib_dist
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
@@ -398,7 +407,8 @@ function(version version_file)
             "WITH_GPU: ${WITH_GPU}\n"
             "WITH_ROCM: ${WITH_ROCM}\n"
             "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
-            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n"
+            "WITH_IPU: ${WITH_IPU}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -406,13 +416,17 @@ function(version version_file)
     endif()
     if(WITH_ROCM)
         file(APPEND ${version_file}
-                "HIP version: ${HIP_VERSION}\n"
+                "HIP version: v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     if(WITH_ASCEND_CL)
         file(APPEND ${version_file}
                 "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
                 "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
+    endif()
+    if(WITH_IPU)
+        file(APPEND ${version_file}
+                "PopART version: ${POPART_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

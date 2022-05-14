@@ -39,8 +39,8 @@ KernelSignature RnnGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "Out",
                           "DropoutState",
                           "Reserve",
-                          GradVarName("Out"),
-                          GradVarName("State")},
+                          "Out@GRAD",
+                          "State@GRAD"},
                          {"dropout_prob",
                           "is_bidirec",
                           "input_size",
@@ -49,9 +49,7 @@ KernelSignature RnnGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "mode",
                           "seed",
                           "is_test"},
-                         {GradVarName("Input"),
-                          GradVarName("PreState"),
-                          GradVarName("WeightList")});
+                         {"Input@GRAD", "PreState@GRAD", "WeightList@GRAD"});
 }
 
 }  // namespace phi

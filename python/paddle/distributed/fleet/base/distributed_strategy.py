@@ -404,7 +404,7 @@ class DistributedStrategy(object):
     def adam_d2sum(self):
         """
         set adam_d2sum
-        Default value: True
+        Default value: False
 
         Examples:
 
@@ -415,7 +415,7 @@ class DistributedStrategy(object):
             fleet.init(role_maker)
 
             strategy = fleet.DistributedStrategy()
-            strategy.adam_d2sum = True  # by default this is True
+            strategy.adam_d2sum = True  # by default this is False
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
@@ -611,18 +611,26 @@ class DistributedStrategy(object):
                                         "DownpourCtrAccessor")
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
-                    "support sparse_accessor_class: [''DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
+                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
                     % (accessor_class))
 
-            if configs.get("use_cvm", True):
-                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+            if accessor_class.find("Double") >= 0:
+                table_data.accessor.accessor_class = 'CtrDoubleAccessor'
             else:
+                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+
+            if not configs.get("use_cvm", True):
                 table_data.accessor.accessor_class = 'SparseAccessor'
 
             table_data.accessor.embedx_dim = config.get('sparse_embedx_dim', 8)
             table_data.accessor.fea_dim = table_data.accessor.embedx_dim + 3
             table_data.accessor.embedx_threshold = config.get(
                 'sparse_embedx_threshold', 10)
+
+            if accessor_class == 'DownpourUnitAccessor':
+                table_data.accessor.ctr_accessor_param.show_scale = False
+            else:
+                table_data.accessor.ctr_accessor_param.show_scale = True
 
             table_data.accessor.ctr_accessor_param.nonclk_coeff = config.get(
                 'sparse_nonclk_coeff', 0.1)
@@ -1160,9 +1168,9 @@ class DistributedStrategy(object):
 
             dp_degree(int, optional): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelsim for the inner parallelsim. User is responsible to ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
 
-            mp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
+            mp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
 
-            pp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
+            pp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
 
             pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
@@ -1477,7 +1485,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             k_steps(int) The local steps for training before parameter synchronization. Default 1.
-            begin_step(int) The step of begining training by localsgd. Default 1.
+            begin_step(int) The step of beginning training by localsgd. Default 1.
 
         Examples:
 
@@ -1536,7 +1544,7 @@ class DistributedStrategy(object):
             init_k_steps(int) The initial steps for training before adaptive localsgd.
                               Then, the adaptive localsgd method will modify init_k_steps automatically.
                               Default 1.
-            begin_step(int) The step of begining training by adaptive localsgd. Default 1.
+            begin_step(int) The step of beginning training by adaptive localsgd. Default 1.
 
         Examples:
 

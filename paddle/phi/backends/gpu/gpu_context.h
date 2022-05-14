@@ -74,7 +74,7 @@ class DnnWorkspaceHandle {
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class GPUContext : public DeviceContext {
+class PADDLE_API GPUContext : public DeviceContext {
  public:
   GPUContext();
   GPUContext(GPUContext&&);
@@ -198,6 +198,10 @@ class GPUContext : public DeviceContext {
   void SetEigenDevice(Eigen::GpuDevice*);
 
   void SetBlasHandle(blasHandle_t);
+
+  void SetBlasTensorCoreHandle(blasHandle_t);
+
+  void SetBlasTF32Handle(blasHandle_t);
 
   void SetBlasLtHandle(blasLtHandle_t);
 
