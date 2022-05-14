@@ -4338,7 +4338,8 @@ def index_fill(x, index, axis, fill_value):
 
     if isinstance(fill_value, Variable):
         check_variable_and_dtype(
-            fill_value, 'fill_value', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            fill_value, 'fill_value',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.manipulation.index_fill')
 
         inputs["FillValue"] = fill_value
@@ -4356,10 +4357,7 @@ def index_fill(x, index, axis, fill_value):
         helper = LayerHelper("index_fill", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
-            type='index_fill',
-            inputs=inputs,
-            outputs={'Out': out},
-            attrs=attrs)
+            type='index_fill', inputs=inputs, outputs={'Out': out}, attrs=attrs)
         return out
 
 
