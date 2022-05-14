@@ -104,6 +104,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, int64_t, int> {
   void free_sample_status();
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
+  void display_sample_res(void *key, void *val, int len, int sample_len);
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,
                                                  int *h_right,

@@ -135,6 +135,18 @@ int32_t GraphTable::add_node_to_ssd(int type_id, int idx, int64_t src_id,
     //   VLOG(0)<<"get an id "<<*((int64_t *)(x.c_str() + i));
     // }
     //}
+    // if(src_id == 429){
+    //   str = "";
+    //   _db->get(src_id % shard_num % task_pool_size_, ch,
+    //            sizeof(int) * 2 + sizeof(int64_t), str);
+    //   int64_t *stored_data = ((int64_t *)str.c_str());
+    //   int n = str.size() / sizeof(int64_t);
+    //   VLOG(0)<<"429 has "<<n<<"neighbors";
+    //   for(int i =0;i< n;i++){
+    //     VLOG(0)<<"get an id "<<*((int64_t *)(str.c_str() +
+    //     i*sizeof(int64_t)));
+    //   }
+    // }
   }
   return 0;
 }
@@ -146,6 +158,7 @@ char *GraphTable::random_sample_neighbor_from_ssd(
     return NULL;
   }
   std::string str;
+  VLOG(2) << "sample ssd for key " << id;
   char ch[sizeof(int) * 2 + sizeof(int64_t)];
   memset(ch, 0, sizeof(int));
   memcpy(ch + sizeof(int), &idx, sizeof(int));
@@ -177,6 +190,9 @@ char *GraphTable::random_sample_neighbor_from_ssd(
       m.erase(n - i - 1);
       memcpy(buff + i * Node::id_size, &data[pos], Node::id_size);
       // res.push_back(data[pos]);
+    }
+    for (int i = 0; i < actual_size; i += 8) {
+      VLOG(2) << "sampled an neighbor " << *(int64_t *)&buff[i];
     }
     return buff;
   }
@@ -387,9 +403,9 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
         [&, i, this]() -> int64_t {
           int64_t cost = 0;
           std::vector<Node *> &v = shards[i]->get_bucket();
-          std::vector<int64_t> s;
           size_t ind = i % this->task_pool_size_;
           for (size_t j = 0; j < v.size(); j++) {
+            std::vector<int64_t> s;
             for (int k = 0; k < v[j]->get_neighbor_size(); k++) {
               s.push_back(v[j]->get_neighbor_id(k));
             }
@@ -1262,9 +1278,10 @@ int32_t GraphTable::random_sample_neighbors(
               char *buffer_addr = random_sample_neighbor_from_ssd(
                   idx, node_id, sample_size, rng, actual_size);
               if (actual_size != 0) {
-                std::shared_ptr<char> &buffer = buffers[idx];
+                std::shared_ptr<char> &buffer = buffers[idy];
                 buffer.reset(buffer_addr, char_del);
               }
+              VLOG(2) << "actual sampled size from ssd = " << actual_sizes[idy];
               continue;
             }
 #endif
