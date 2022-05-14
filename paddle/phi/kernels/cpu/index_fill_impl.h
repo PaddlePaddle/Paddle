@@ -102,8 +102,7 @@ void IndexFillBaseKernel(const Context& dev_ctx,
                        index_ptr,
                        dev_ctx.GetPlace(),
                        index_list.data(),
-                       index_size * sizeof(int64_t),
-                       0);
+                       index_size * sizeof(int64_t));
 
   int axis = axis_scalar.to<int>();
   if (output) phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
