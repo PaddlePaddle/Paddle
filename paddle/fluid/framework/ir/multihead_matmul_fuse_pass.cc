@@ -1068,7 +1068,7 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
 }
 
 int MultiHeadMatmulWithAttentionFusePass::BuildFusionWithAttention(
-        Graph* graph, const std::string& name_scope, Scope* scope) const {
+    Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -1235,8 +1235,8 @@ int MultiHeadMatmulWithAttentionFusePass::BuildFusionWithAttention(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING)
-          << "Op compat check in multihead_matmul_with_attention_fuse_pass failed.";
+      LOG(WARNING) << "Op compat check in "
+                      "multihead_matmul_with_attention_fuse_pass failed.";
       return;
     }
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
@@ -1324,48 +1324,20 @@ int MultiHeadMatmulWithAttentionFusePass::BuildFusionWithAttention(
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 softmax_qk_out, eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv);
+                 softmax_qk_out, eltadd0, eltadd1, eltadd2, matmul_qk,
+                 reshape2_qkv);
 
-    std::unordered_set<const Node*> marked_nodes({eltadd0,
-                                                  eltadd1,
-                                                  eltadd2,
-                                                  eltadd1_b,
-                                                  eltadd2_b,
-                                                  eltadd0_out,
-                                                  eltadd1_out,
-                                                  eltadd2_out,
-                                                  reshape2_0,
-                                                  reshape2_1,
-                                                  reshape2_2,
-                                                  reshape2_0_out,
-                                                  reshape2_1_out,
-                                                  reshape2_2_out,
-                                                  transpose2_0,
-                                                  transpose2_1,
-                                                  transpose2_2,
-                                                  transpose2_0_out,
-                                                  transpose2_1_out,
-                                                  transpose2_2_out,
-                                                  matmul_qk,
-                                                  matmul_qk_out,
-                                                  eltadd_qk,
-                                                  eltadd_qk_out,
-                                                  softmax_qk,
-                                                  // softmax_qk_out,
-                                                  transpose2_qkv,
-                                                  transpose2_qkv_out,
-                                                  matmul_qkv,
-                                                  matmul_qkv_out,
-                                                  mul0,
-                                                  mul1,
-                                                  mul2,
-                                                  mul0_out,
-                                                  mul1_out,
-                                                  mul2_out,
-                                                  mul1_w,
-                                                  mul2_w,
-                                                  reshape2_qkv,
-                                                  scale});
+    std::unordered_set<const Node*> marked_nodes(
+        {eltadd0, eltadd1, eltadd2, eltadd1_b, eltadd2_b, eltadd0_out,
+         eltadd1_out, eltadd2_out, reshape2_0, reshape2_1, reshape2_2,
+         reshape2_0_out, reshape2_1_out, reshape2_2_out, transpose2_0,
+         transpose2_1, transpose2_2, transpose2_0_out, transpose2_1_out,
+         transpose2_2_out, matmul_qk, matmul_qk_out, eltadd_qk, eltadd_qk_out,
+         softmax_qk,
+         // softmax_qk_out,
+         transpose2_qkv, transpose2_qkv_out, matmul_qkv, matmul_qkv_out, mul0,
+         mul1, mul2, mul0_out, mul1_out, mul2_out, mul1_w, mul2_w, reshape2_qkv,
+         scale});
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;

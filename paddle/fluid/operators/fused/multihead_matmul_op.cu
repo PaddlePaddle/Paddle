@@ -249,8 +249,9 @@ class MultiHeadMatMulWithAttentionKernel : public framework::OpKernel<T> {
     auto *input = context.Input<framework::Tensor>("Input");
     auto *w = context.Input<framework::Tensor>("W");
     auto *bias = context.Input<framework::Tensor>("Bias");
-    auto &bias_qk = GET_DATA_SAFELY(context.Input<framework::Tensor>("BiasQK"),
-                          "Input", "BiasQK", "MultiHeadMatMulWithAttention");
+    auto &bias_qk =
+        GET_DATA_SAFELY(context.Input<framework::Tensor>("BiasQK"), "Input",
+                        "BiasQK", "MultiHeadMatMulWithAttention");
 
     auto *input_d = input->data<T>();
     auto *w_d = w->data<T>();
@@ -349,6 +350,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     multihead_matmul,
     ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    multihead_matmul_with_attention,
-    ops::MultiHeadMatMulWithAttentionKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(multihead_matmul_with_attention,
+                        ops::MultiHeadMatMulWithAttentionKernel<
+                            paddle::platform::CUDADeviceContext, float>);

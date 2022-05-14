@@ -169,7 +169,8 @@ class MultiHeadMatMulWithAttentionOp : public framework::OperatorWithKernel {
   }
 };
 
-class MultiHeadMatMulWithAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
+class MultiHeadMatMulWithAttentionOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "The input of MultiHeadMatMul op");
@@ -213,5 +214,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(multihead_matmul, ops::MultiHeadMatMulV2Op,
                              ops::MultiHeadMatMulV2OpMaker);
 REGISTER_OP_WITHOUT_GRADIENT(multihead_matmul_with_attention,
-      ops::MultiHeadMatMulWithAttentionOp,
-      ops::MultiHeadMatMulWithAttentionOpMaker);
+                             ops::MultiHeadMatMulWithAttentionOp,
+                             ops::MultiHeadMatMulWithAttentionOpMaker);

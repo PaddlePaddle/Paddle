@@ -164,8 +164,9 @@ class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
 
 class QkvToContextAndQkPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit QkvToContextAndQkPluginDynamic(int hidden, int head_number, int head_size,
-                                     float scale, bool with_fp16)
+  explicit QkvToContextAndQkPluginDynamic(int hidden, int head_number,
+                                          int head_size, float scale,
+                                          bool with_fp16)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
@@ -173,7 +174,8 @@ class QkvToContextAndQkPluginDynamic : public DynamicPluginTensorRT {
     with_fp16_ = with_fp16;
   }
 
-  QkvToContextAndQkPluginDynamic(void const* serial_data, size_t serial_length) {
+  QkvToContextAndQkPluginDynamic(void const* serial_data,
+                                 size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &hidden_);
     DeserializeValue(&serial_data, &serial_length, &head_number_);
     DeserializeValue(&serial_data, &serial_length, &head_size_);
@@ -182,7 +184,7 @@ class QkvToContextAndQkPluginDynamic : public DynamicPluginTensorRT {
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new QkvToContextAndQkPluginDynamic(hidden_, head_number_, head_size_,
-                                         scale_, with_fp16_);
+                                              scale_, with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -265,7 +267,8 @@ class QkvToContextAndQkPluginDynamicCreator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* deserializePlugin(
       const char* name, const void* serial_data,
       size_t serial_length) TRT_NOEXCEPT override {
-    auto plugin = new QkvToContextAndQkPluginDynamic(serial_data, serial_length);
+    auto plugin =
+        new QkvToContextAndQkPluginDynamic(serial_data, serial_length);
     return plugin;
   }
 

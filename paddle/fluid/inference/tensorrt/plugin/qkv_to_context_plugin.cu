@@ -303,10 +303,11 @@ bool QkvToContextAndQkPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType QkvToContextAndQkPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_LE(
-      index, 1, platform::errors::InvalidArgument(
-            "The EmbEltwiseLayernorm Plugin only has 2 outputs, so "
-            "the index value should be 0 or 1, but get %d.", index));
+  PADDLE_ENFORCE_LE(index, 1,
+                    platform::errors::InvalidArgument(
+                        "The EmbEltwiseLayernorm Plugin only has 2 outputs, so "
+                        "the index value should be 0 or 1, but get %d.",
+                        index));
   return input_types[0];
 }
 

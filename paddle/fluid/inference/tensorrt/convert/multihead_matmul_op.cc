@@ -539,8 +539,8 @@ class MultiheadMatMulWithAttentionOpConverter : public OpConverter {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::QkvToContextAndQkPluginDynamic(hidden_in, head_number,
-                                                  head_size, scale, with_fp16);
+            new plugin::QkvToContextAndQkPluginDynamic(
+                hidden_in, head_number, head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
     } else {
