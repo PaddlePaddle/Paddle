@@ -34,9 +34,11 @@ namespace detail {
 class MasterDaemon {
  public:
   static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
-                                             int nranks);
+                                             int nranks,
+                                             int stop_check_timeout);
   MasterDaemon() = delete;
-  explicit MasterDaemon(SocketType listen_socket, int nranks);
+  explicit MasterDaemon(SocketType listen_socket, int nranks,
+                        int stop_check_timeout);
   ~MasterDaemon();
 
  private:
@@ -51,13 +53,17 @@ class MasterDaemon {
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
   int _nranks;
-  bool _stop = false;
+  int _stop_check_timeout;
+  bool _stop = false;  // all workers stopped
+  std::chrono::time_point<std::chrono::system_clock> _stop_time;
+  bool _has_stop = false;  // at least one worker stopped
 };
 
 class TCPServer {
  public:
   TCPServer() = default;
-  static std::unique_ptr<TCPServer> create(std::uint16_t port, int nranks);
+  static std::unique_ptr<TCPServer> create(std::uint16_t port, int nranks,
+                                           int stop_check_timeout);
 
  private:
   std::unique_ptr<MasterDaemon> _master_daemon;
@@ -93,7 +99,8 @@ class TCPStore : public Store {
   static constexpr std::uint16_t kDefaultPort = 6170;
   explicit TCPStore(std::string host, uint16_t port = kDefaultPort,
                     bool is_master = false, size_t num_workers = 1,
-                    std::chrono::seconds timeout = tcputils::kDefaultTimeout);
+                    std::chrono::seconds timeout = tcputils::kDefaultTimeout,
+                    int stop_check_timeout = 900);
 
   ~TCPStore();
 
