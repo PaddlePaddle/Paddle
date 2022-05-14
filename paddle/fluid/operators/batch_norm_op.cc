@@ -64,7 +64,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
         (x_dims[i] == -1) || (x_dims[i] > 0), true,
         platform::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but recieved %d. Input's shape is [%s].",
+            "positive number, but received %d. Input's shape is [%s].",
             x_dims[i], x_dims));
   }
 

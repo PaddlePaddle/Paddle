@@ -473,7 +473,11 @@ struct ReduceConfig {
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif
     if (reduce_last_dim && (reduce_rank == 1)) {
+#ifdef PADDLE_WITH_XPU_KP
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+#else
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+#endif
     } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       if (rank == 3 && not_higher) {
@@ -588,7 +592,7 @@ struct ReduceConfig {
   void SetBlockDim() {
     // init
     should_reduce_again = false;
-    dim3 block_dim;
+    dim3 block_dim(1, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
 

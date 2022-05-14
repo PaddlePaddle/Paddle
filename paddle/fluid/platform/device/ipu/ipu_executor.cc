@@ -96,6 +96,7 @@ Executor::~Executor() {
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
+  compile_only_ = GetBoolEnv("IPU_COMPILE_ONLY");
 
   AcquireDevice();
   executor_resources_ = std::make_unique<ExecutorResources>();
@@ -122,9 +123,18 @@ void Executor::Prepare(const std::string &proto) {
   }
   VLOG(10) << "Creating session from Onnx Model...done";
 
-  VLOG(10) << "Preparing session device...";
-  session_->prepareDevice();
-  VLOG(10) << "Preparing session device...done";
+  if (compile_only_) {
+    LOG(INFO)
+        << "Save the offline cache as offline_cache.popart in current path.";
+    VLOG(10) << "Compile only...";
+    session_->compileAndExport("./offline_cache.popart");
+    VLOG(10) << "Compile only...done";
+    return;
+  } else {
+    VLOG(10) << "Preparing session device...";
+    session_->prepareDevice();
+    VLOG(10) << "Preparing session device...done";
+  }
 
   SetWeightsIO();
 
@@ -141,6 +151,11 @@ void Executor::Prepare(const std::string &proto) {
 void Executor::Run(const std::vector<const Tensor *> &inputs,
                    const std::vector<Tensor *> &outputs,
                    const framework::ExecutionContext &ctx) {
+  if (compile_only_) {
+    LOG(INFO) << "If IPU_COMPILE_ONLY=True, skip exe.run";
+    return;
+  }
+
   VLOG(10) << "enter Executor::Run";
   // inputs
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
@@ -200,7 +215,12 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
   VLOG(10) << "Running...";
-  session_->run(stepio);
+  if (ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+      ipu_strategy_->runtime_options.enable_eval) {
+    session_->run("implicitPipeliningFwdOnly", stepio);
+  } else {
+    session_->run(stepio);
+  }
   VLOG(10) << "Running...done";
 }
 
@@ -222,6 +242,7 @@ void Executor::AcquireDevice() {
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   bool enable_distribution = ipu_strategy_->enable_distribution;
   if (use_ipu_model) {
+    VLOG(10) << "Create IPU model device...";
     std::map<std::string, std::string> deviceOpts{
         {
             "numIPUs", std::to_string(ipu_strategy_->num_ipus),
@@ -230,7 +251,21 @@ void Executor::AcquireDevice() {
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
+    VLOG(10) << "Create IPU model device...done";
+  } else if (compile_only_) {
+    VLOG(10) << "Create offline device...";
+    std::map<std::string, std::string> deviceOpts{
+        {
+            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+        },
+        {"ipuVersion", "ipu2"},
+    };
+    device_ =
+        popart::DeviceManager::createDeviceManager().createOfflineIPUDevice(
+            deviceOpts);
+    VLOG(10) << "Create offline device...done";
   } else if (enable_distribution) {
+    VLOG(10) << "Create distribution device...";
     auto ipus_per_replica = ipu_strategy_->num_ipus /
                             ipu_strategy_->popart_options.replicatedGraphCount;
     auto device_id = popdist_get_device(ipus_per_replica);
@@ -240,13 +275,16 @@ void Executor::AcquireDevice() {
         device_,
         errors::Unavailable("Can't attach IPU in distribution, ipu_num = %d.",
                             RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create distribution device...done";
   } else {
+    VLOG(10) << "Create IPU device...";
     device_ =
         popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
             RequestIpus(ipu_strategy_->num_ipus));
     PADDLE_ENFORCE_NOT_NULL(
         device_, errors::Unavailable("Can't attach IPU, ipu_num = %d.",
                                      RequestIpus(ipu_strategy_->num_ipus)));
+    VLOG(10) << "Create IPU device...done";
   }
   VLOG(10) << "leave Executor::AcquireDevice";
 }

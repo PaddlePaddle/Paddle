@@ -367,7 +367,7 @@ class PReLU(Layer):
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
             1 - a single parameter `alpha` is used for all input channels;
-            Number of channels - a seperate `alpha` is used for each input channel.
+            Number of channels - a separate `alpha` is used for each input channel.
             Default is 1.
         init (float, optional): Init value of learnable `weight`. Default is 0.25.
         weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`.

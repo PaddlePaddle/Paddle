@@ -55,8 +55,8 @@ def ParseArguments():
 ## Code Gen Templates ##
 ########################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{
-    {} = egr::TensorWrapper({}, full_reserved, {});
+"""  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
+    {} = egr::TensorWrapper({}, {});
   }}
 """
 
@@ -69,9 +69,9 @@ CLEAR_TENSOR_WRAPPER_TEMPLATE = \
 """
 
 SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = \
-"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
+"""  void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}) {{
     for(const auto& eager_tensor : {}) {{
-      {}.emplace_back(egr::TensorWrapper(eager_tensor, full_reserved, {}));
+      {}.emplace_back(egr::TensorWrapper(eager_tensor, {}));
     }};
   }}
 """
@@ -146,10 +146,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 {}
 
   // Call grad_api function
-  VLOG(3) << \"Final State Running: \" << \"{}\";
-{}
-
-  // Get Output
+  VLOG(3) << \"Final State Running: {}\";
 {}
   // Get GradIn autograd_meta
 {}
@@ -551,12 +548,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.backward_inputs_list, self.backward_attrs_list, self.backward_returns_list = ParseYamlBackward(
             backward_args_str, backward_returns_str)
 
-        logging.info(
-            f"Parsed Backward Inputs List: {self.backward_inputs_list}")
-        logging.info(f"Prased Backward Attrs List: {self.backward_attrs_list}")
-        logging.info(
-            f"Parsed Backward Returns List: {self.backward_returns_list}")
-
     def CollectForwardInfoFromBackwardContents(self):
 
         backward_forward_str = self.backward_forward_str
@@ -628,15 +619,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 backward_output_type, matched_forward_input_pos,
                 backward_output_pos
             ]
-        logging.info(
-            f"Generated Backward Fwd Input Map: {self.backward_forward_inputs_map}"
-        )
-        logging.info(
-            f"Generated Backward Grad Input Map: {self.backward_grad_inputs_map}"
-        )
-        logging.info(
-            f"Generated Backward Grad Output Map: {self.backward_grad_outputs_map}"
-        )
 
     def GenerateNodeCreationCodes(self):
         forward_api_name = self.forward_api_name
@@ -656,7 +638,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             pass_stop_gradient_args_list.append(output_autograd_meta_name)
         pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
 
-        # Node Construction        
+        # Node Construction
         num_backward_inputs = len(forward_outputs_position_map.keys())
         num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
@@ -694,9 +676,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             if is_fwd_input:
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, true);"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:
                 if num_fwd_outputs > 1:
@@ -706,9 +688,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     fwd_output_pos = forward_outputs_position_map[name][1]
 
                 if is_optional:
-                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
                 else:
-                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
             set_input_tensor_wrappers_list)
@@ -716,6 +698,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_output_tensor_wrappers_list)
 
         # SetGradOutMeta & SetEdges
+        grad_node_out_list = []
         set_grad_out_meta_list = []
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
@@ -728,7 +711,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             if not has_corresponding_grad_output:
                 continue
 
-            input_autograd_meta_name = GetAutoGradMetaName(name)
+            grad_node_out_list.append(name)
             is_optional = (name in self.optional_inputs)
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
@@ -770,6 +753,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_input_tensor_wrappers_str, set_grad_out_meta_str,
             set_out_rank_str, set_history_str, set_grad_in_meta_str,
             set_retain_grad_str, set_output_tensor_wrappers_str)
+        self.grad_node_out_list = grad_node_out_list
 
     def run(self):
         # Basic Validation Check
@@ -865,7 +849,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name)) : {name};\n"
+                        f"auto NEW_{name}_temp_tensor = ({name}.get_ptr() != nullptr) ? egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name) : paddle::experimental::Tensor();\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
                     if is_inplaced and inplace_map and name in inplace_map.keys(
@@ -1041,11 +1028,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
-        logging.info(
-            f"Generated Forward Definition: {self.forward_definition_str}")
-        logging.info(
-            f"Generated Forward Declaration: {self.forward_declaration_str}")
-
     def GenerateInplacedForwardDygraphFunctions(self):
         # Inplaced Version Dygraph Function Generation
         forward_api_name = self.forward_api_name
@@ -1157,6 +1139,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         next_grad_api_contents = self.next_grad_api_contents
 
         grad_node_creation_str = ""
+        grad_node_out_list = []
         if next_grad_api_contents:
             forward_api_contents = grad_api_contents
             forward_api_contents['api'] = forward_api_contents['backward_api']
@@ -1167,10 +1150,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             next_node_generator.run()
             next_node_generator.GenerateNodeCreationCodes()
             grad_node_creation_str = next_node_generator.node_creation_str
+            grad_node_out_list = next_node_generator.grad_node_out_list
 
             self.RecordGrad2NextGradNameMapping(next_node_generator)
 
-        return grad_node_creation_str
+        return grad_node_creation_str, grad_node_out_list
 
     def GenerateNodeDeclaration(self):
         forward_op_name = self.forward_api_name
@@ -1231,9 +1215,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             set_attribute_methods_str, tensor_wrapper_members_str,
             attribute_members_str)
 
-        logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
-
-    def GenerateNodeDefinition(self, grad_node_creation_str):
+    def GenerateNodeDefinition(self, grad_node_creation_str,
+                               grad_node_out_list):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
@@ -1309,28 +1292,41 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(get_attr_str)
 
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
-        grad_api_args_str = ", ".join(grad_api_args)
 
-        # Grad Function Call String
-        grad_api_namespace = f"paddle::experimental::{namespace}"
-        grad_function_call_str = f"{indent}auto grad_api_result = {grad_api_namespace}{backward_api_name}({grad_api_args_str});"
-
-        # Get Grad Outputs
-        get_outputs_str = ""
-        num_outputs = len(backward_grad_outputs_map.keys())
+        # Grad Outputs
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
-
-            if num_outputs == 1:
-                get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result;"
+            if IsPlainTensorType(ttype):
+                grad_api_args.append(f"api_output[{fwd_position}][0]")
             else:
-                if IsPlainTensorType(ttype):
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}][0];"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}];"
-            get_outputs_str += get_tensor_str + "\n"
+                assert IsVectorTensorType(ttype)
+                grad_api_args.append(f"api_output[{fwd_position}]")
+
+        grad_api_args_str = ", ".join(grad_api_args)
+
+        # Grad Function Call String
+        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
+        grad_api_namespace = f"paddle::experimental::{namespace}"
+        grad_function_call_str = f"""
+  const auto& out_metas = OutputMeta();
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});
+  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output({slot_num_bwd_outputs});
+  for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
+    returns[i].resize(out_metas[i].size());
+    if(returns[i].size() == 0) {{
+      api_output[i].reserve(1);
+      api_output[i].push_back(nullptr);
+      continue;
+    }}
+    api_output[i].reserve(returns[i].size());
+    for (size_t j = 0; j < returns[i].size(); ++j) {{
+      api_output[i].push_back(&returns[i][j]);
+    }}
+  }}
+"""
+
+        grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
 
         # Prepare for Node Creation if Necessary
         inputs_autograd_meta_str = ""
@@ -1343,38 +1339,41 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             for name, (ttype, pos,
                        grad_api_position) in backward_grad_inputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
-
-                input_autograd_meta_name = GetAutoGradMetaName(
-                    transformed_tensor_name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                if transformed_tensor_name in grad_node_out_list:
+                    input_autograd_meta_name = GetAutoGradMetaName(
                         transformed_tensor_name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            transformed_tensor_name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
 
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                compute_require_grad_args_list.append(input_autograd_meta_name)
+                    inputs_autograd_meta_list.append(input_autograd_meta)
+                    compute_require_grad_args_list.append(
+                        input_autograd_meta_name)
 
             # 2. Get TensorWrapper AutoGradMeta
             for name, (ttype, _, pos), in backward_forward_inputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
-
-                input_autograd_meta_name = GetAutoGradMetaName(
-                    transformed_tensor_name)
-                if IsPlainTensorType(ttype):
-                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                if transformed_tensor_name in grad_node_out_list:
+                    input_autograd_meta_name = GetAutoGradMetaName(
                         transformed_tensor_name)
-                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
-                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                    if IsPlainTensorType(ttype):
+                        input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});"
+                    else:
+                        assert IsVectorTensorType(ttype)
+                        input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                            transformed_tensor_name)
+                        input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({transformed_tensor_name});\n"
+                        input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
 
-                inputs_autograd_meta_list.append(input_autograd_meta)
-                compute_require_grad_args_list.append(input_autograd_meta_name)
+                    inputs_autograd_meta_list.append(input_autograd_meta)
+                    compute_require_grad_args_list.append(
+                        input_autograd_meta_name)
+
             inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
             compute_require_grad_args_str = ",".join(
                 compute_require_grad_args_list)
@@ -1382,28 +1381,26 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             # 3. Get Output AutoGradMeta
             outputs_autograd_meta_list = []
             num_fwd_outputs = len(backward_grad_outputs_map.keys())
-            for name, (rtype, pos, _) in backward_grad_outputs_map.items():
+            for name, (rtype, pos,
+                       grad_api_position) in backward_grad_outputs_map.items():
                 transformed_tensor_name = self.TransformToNextGradName(name)
 
                 output_autograd_meta_name = GetAutoGradMetaName(
                     transformed_tensor_name)
                 output_autograd_meta_vec_name = GetAutoGradMetaVectorName(
                     transformed_tensor_name)
-                if num_fwd_outputs == 1:
-                    if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"
-                    else:
-                        assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});\n"
-                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                if IsPlainTensorType(rtype):
+                    output_autograd_meta = f"""
+  auto& {transformed_tensor_name} = returns[{pos}][0];
+  egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"""
+
                 else:
-                    # Tuple api_result
-                    if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});"
-                    else:
-                        assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});\n"
-                        output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
+                    assert IsVectorTensorType(rtype)
+                    output_autograd_meta = f"""
+  auto& {transformed_tensor_name} = returns[{pos}];
+  std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});
+  std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};
+"""
 
                 outputs_autograd_meta_list.append(output_autograd_meta)
             outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
@@ -1411,32 +1408,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             compute_require_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
             compute_require_grad_str += f"{indent}bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});"
 
-        # Construct grad_api returns
-        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
-        returns_str = f"{indent}paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns({slot_num_bwd_outputs});\n"
-        for name, (ttype, fwd_position,
-                   grad_api_position) in backward_grad_outputs_map.items():
-            transformed_tensor_name = self.TransformToNextGradName(name)
-
-            # Rearrange output order accordingly
-            if IsPlainTensorType(ttype):
-                returns_str += f"{indent}returns[{fwd_position}] = {{ {transformed_tensor_name} }};\n"
-            else:
-                assert IsVectorTensorType(ttype)
-                returns_str += f"{indent}returns[{fwd_position}] = {transformed_tensor_name};\n"
-
-        returns_str += f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
+        returns_str = f"{indent}if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
-            grad_function_call_str, get_outputs_str, inputs_autograd_meta_str,
+            grad_function_call_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
-
-        logging.info(f"Generated Node Definition: {self.node_definition_str}")
 
     def run(self):
         super().run()
@@ -1447,16 +1428,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         ## Code Generation ##
         #####################
         # Higher-order GradNode generation
-        grad_node_creation_str = self.GenerateHigherOrderNodeCreationCode()
+        grad_node_creation_str, grad_node_out_list = self.GenerateHigherOrderNodeCreationCode(
+        )
 
         self.GenerateNodeDeclaration()
 
-        self.GenerateNodeDefinition(grad_node_creation_str)
+        self.GenerateNodeDefinition(grad_node_creation_str, grad_node_out_list)
 
 
 class DygraphYamlGenerator(YamlGeneratorBase):
     def __init__(self, api_yaml_path, backward_yaml_path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list

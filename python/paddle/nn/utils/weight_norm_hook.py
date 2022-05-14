@@ -213,15 +213,21 @@ def remove_weight_norm(layer, name='weight'):
     Examples:
         .. code-block:: python
           
-          import paddle
-          from paddle.nn import Conv2D
-          from paddle.nn.utils import weight_norm, remove_weight_norm
+            import paddle
+            from paddle.nn import Conv2D
+            from paddle.nn.utils import weight_norm, remove_weight_norm
 
-          conv = Conv2D(3, 5, 3)
-          wn = weight_norm(conv)
-          remove_weight_norm(conv)
-          print(conv.weight_g)
-          # AttributeError: 'Conv2D' object has no attribute 'weight_g'
+            conv = Conv2D(3, 5, 3)
+            wn = weight_norm(conv)
+            print(conv.weight_g)
+            # Parameter containing:
+            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [0., 0., 0., 0., 0.])
+            # Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
+
+            remove_weight_norm(conv)
+            # print(conv.weight_g)
+            # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
     for k, hook in layer._forward_pre_hooks.items():
         if isinstance(hook, WeightNorm) and hook.name == name:
