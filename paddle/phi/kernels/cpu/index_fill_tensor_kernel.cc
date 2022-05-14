@@ -31,7 +31,7 @@ void IndexFillTensorKernel(const Context& dev_ctx,
                            DenseTensor* output) {
   T fill_value = static_cast<T>(0);
   const T* fill_tensor_ptr = fill_tensor.data<T>();
-  paddle::memory::Copy(phi::CPUPlace(),
+  paddle::memory::Copy(dev_ctx.GetPlace(),
                        &fill_value,
                        dev_ctx.GetPlace(),
                        fill_tensor_ptr,

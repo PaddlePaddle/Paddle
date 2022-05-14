@@ -4321,29 +4321,45 @@ def index_fill(x, index, axis, fill_value):
         x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
         'paddle.tensor.manipulation.index_fill')
 
+    inputs = {}
+    attrs = {}
+    inputs["X"] = x
+    if isinstance(axis, Variable):
+        axis.stop_gradient = True
+        inputs['AxisTensor'] = axis
+    else:
+        attrs['axis'] = int(axis)
+
+    if isinstance(index, Variable):
+        index.stop_gradient = True
+        inputs['IndexTensor'] = index
+    elif isinstance(index, (list, tuple)):
+        attrs['index'] = index
+
     if isinstance(fill_value, Variable):
+        check_variable_and_dtype(
+            fill_value, 'fill_value', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'paddle.tensor.manipulation.index_fill')
+
+        inputs["FillValue"] = fill_value
         helper = LayerHelper("index_fill_tensor", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='index_fill_tensor',
-            inputs={'X': x,
-                    'FillValue': fill_value},
+            inputs=inputs,
             outputs={'Out': out},
-            attrs={'index': index,
-                   'axis': axis})
+            attrs=attrs)
+        return out
 
     else:
+        attrs['fill_value'] = fill_value
         helper = LayerHelper("index_fill", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='index_fill',
-            inputs={'X': x},
+            inputs=inputs,
             outputs={'Out': out},
-            attrs={
-                'index': index,
-                'axis': axis,
-                'fill_value': float(fill_value)
-            })
+            attrs=attrs)
         return out
 
 

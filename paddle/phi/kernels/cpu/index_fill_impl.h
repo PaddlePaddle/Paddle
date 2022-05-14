@@ -33,13 +33,11 @@ void IndexFillInner(const Context& ctx,
   auto output_dim_size = output_dim.size();
   auto index_size = index.dims()[0];
 
-  DenseTensor index_cpu_copy;
-  if (!paddle::platform::is_cpu_place(index.place())) {
-    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
-  }
-  const int64_t* index_data = paddle::platform::is_cpu_place(index.place())
-                                  ? index.data<int64_t>()
-                                  : index_cpu_copy.data<int64_t>();
+//  DenseTensor index_cpu_copy;
+//  if (!paddle::platform::is_cpu_place(index.place())) {
+//    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+//  }
+  const int64_t* index_data = index.data<int64_t>();
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < output_dim_size; i++) {
@@ -102,7 +100,7 @@ void IndexFillBaseKernel(const Context& dev_ctx,
   int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        index_ptr,
-                       phi::CPUPlace(),
+                       dev_ctx.GetPlace(),
                        index_list.data(),
                        index_size * sizeof(int64_t),
                        0);
