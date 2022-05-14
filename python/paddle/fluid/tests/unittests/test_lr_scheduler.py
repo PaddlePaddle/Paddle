@@ -327,7 +327,7 @@ def cyclic_lr(epoch_num,
               step_size_up,
               step_size_down,
               mode,
-              gamma=0.1,
+              exp_gamma=0.1,
               scale_fn=None,
               scale_mode='cycle',
               verbose=False):
@@ -349,11 +349,12 @@ def cyclic_lr(epoch_num,
         elif mode == 'exp_range':
 
             def scale_fn(x):
-                return gamma**x
+                return exp_gamma**x
 
             scale_mode = 'iterations'
 
     cycle = math.floor(1 + epoch_num / total_steps)
+    iterations = epoch_num
     x = 1. + epoch_num / total_steps - cycle
 
     if x <= step_ratio:
@@ -363,12 +364,7 @@ def cyclic_lr(epoch_num,
 
     base_height = (max_learning_rate - base_learning_rate) * scale_factor
 
-    if scale_mode == 'cycle':
-        lr = base_learning_rate + base_height * scale_fn(cycle)
-    else:
-        lr = base_learning_rate + base_height * scale_fn(epoch_num)
-
-    return lr
+    return base_learning_rate + base_height * scale_fn(eval(scale_mode))
 
 
 class TestLRScheduler(unittest.TestCase):
@@ -517,9 +513,28 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5,
+                max_learning_rate='test',
+                step_size_up=10)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5, max_learning_rate=-1, step_size_up=10)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5,
+                max_learning_rate=1.0,
+                step_size_up='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=-1)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.CyclicLR(
+                base_learning_rate=0.5,
+                max_learning_rate=1.0,
+                step_size_up=500,
+                step_size_down='test')
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
@@ -606,7 +621,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_up": 15,
             "step_size_down": 5,
             "mode": 'triangular',
-            "gamma": 1.,
+            "exp_gamma": 1.,
             "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
@@ -616,7 +631,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_up": 15,
             "step_size_down": 5,
             "mode": 'triangular2',
-            "gamma": 1.,
+            "exp_gamma": 1.,
             "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
@@ -626,7 +641,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_up": 15,
             "step_size_down": 5,
             "mode": 'exp_range',
-            "gamma": 0.8,
+            "exp_gamma": 0.8,
             "scale_fn": None,
             "scale_mode": 'cycle',
             "verbose": False
@@ -636,8 +651,8 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_up": 15,
             "step_size_down": 5,
             "mode": 'exp_range',
-            "gamma": 1.,
-            "scale_fn": lambda x: 0.85**x,
+            "exp_gamma": 1.,
+            "scale_fn": lambda x: 0.95**x,
             "scale_mode": 'cycle',
             "verbose": False
         }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
@@ -646,7 +661,7 @@ class TestLRScheduler(unittest.TestCase):
             "step_size_up": 15,
             "step_size_down": 5,
             "mode": 'exp_range',
-            "gamma": 1.,
+            "exp_gamma": 1.,
             "scale_fn": lambda x: 0.95,
             "scale_mode": 'iterations',
             "verbose": False

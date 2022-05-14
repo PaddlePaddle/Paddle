@@ -1588,7 +1588,7 @@ class MultiplicativeDecay(LRScheduler):
                                                   verbose)
 
     def get_lr(self):
-			  cur_lr = self.base_lr
+        cur_lr = self.base_lr
         for epoch in range(1, self.last_epoch + 1):
             cur_lr = cur_lr * self.lr_lambda(epoch)
         return cur_lr
@@ -1596,8 +1596,9 @@ class MultiplicativeDecay(LRScheduler):
 
 class CyclicLR(LRScheduler):
     r"""
-
-    Set the learning rate using a cyclic learning rate scheduler, which cycles the learning rate between two boundaries with a constant frequrncy.
+    Set the learning rate according to a cyclic learning rate scheduler.
+    The scheduler regards the process of learning rate adjustment as one cycle after another.
+    It cycles the learning rate between two boundaries with a constant frequency.
     The distance between the two boundaries can be scaled on a per-iteration or per-cycle basis.
 
     It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
@@ -1611,19 +1612,23 @@ class CyclicLR(LRScheduler):
     The initial amplitude is defined as max_learning_rate - base_learning_rate.
 
     Args:
-        base_learning_rate (float): Initial learning rate which is the lower boundary in the cycle.
-        max_learning_rate (float): Upper learning rate in the cycle.
-            Functionally, it defines the cycle amplitude (max_learning_rate - base_learning_rate).
-            The lr at any cycle is the sum of base_lr and some scaling of the amplitude;
-            therefore max_learning_rate may not actually be reached depending on scaling function.
-        step_size_up (int): Step number of training iterations in the increasing half of a cycle.
-        step_size_down (int): Step number of training iterations in the decreasing half of a cycle.
-        mode (str): one of 'triangular', 'triangular2' or 'exp_range'.Values correspond to policies detailed above.
-            If scale_fn is not None, this argument is ignored. Default: 'triangular'
-        gamma (float): Constant in 'exp_range' scaling function: gamma**(cycle iterations) Default: 1.0
-        scale_fn (function, optional): Custom scaling policy defined by a single argument lambda function, 
-            where 0 <= scale_fn(x) <= 1 for all x >= 0.
-            If specified, then 'mode' is ignored. Default: None
+        base_learning_rate (float): Initial learning rate, which is the lower boundary in the cycle. The paper recommends
+            that set the base_learning_rate to 1/3 or 1/4 of max_learning_rate.
+        max_learning_rate (float): Upper learning rate in the cycle. It defines the cycle amplitude.
+            Since there is some scaling operation during process of learning rate adjustment,
+            max_learning_rate may not actually be reached.
+        step_size_up (int): Number of training steps, which is used to increase learning rate in a cycle.
+            The step size of one cycle will be defined by step_size_up + step_size_down. According to the paper, step
+            size should be set as at least 3 or 4 times steps in one epoch.
+        step_size_down (int, optional): Number of training steps, which is used to decrease learning rate in a cycle.
+            If not specified, it's value will initialize to `` step_size_up `` . Default: None
+        mode (str, optional): one of 'triangular', 'triangular2' or 'exp_range'.
+            If scale_fn is specified, this argument will be ignored. Default: 'triangular'
+        exp_gamma (float): Constant in 'exp_range' scaling function: gamma**(cycle iterations).
+            Used only when mode = 'exp_range'. Default: 1.0
+        scale_fn (function, optional): A custom scaling function, which is used to replace three build-in methods.
+            It should only have one argument. For all x >= 0, 0 <= scale_fn(x) <= 1.
+            If specified, then 'mode' will be ignored. Default: None
         scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle
             number or cycle iterations (total iterations since start of training). Default: 'cycle'
         last_epoch (int, optional): The index of last epoch. Can be set to restart training.
@@ -1688,36 +1693,68 @@ class CyclicLR(LRScheduler):
                  step_size_up,
                  step_size_down=None,
                  mode='triangular',
-                 gamma=1.,
+                 exp_gamma=1.,
                  scale_fn=None,
                  scale_mode='cycle',
                  last_epoch=-1,
                  verbose=False):
-        self.max_lr = max_learning_rate
+        # check type and value of max_learning_rate
+        if not isinstance(max_learning_rate, (float, int)):
+            raise TypeError(
+                "'max_learning_rate' must be 'float' or 'int', but received {}".
+                format(type(max_learning_rate)))
+        if max_learning_rate < 0:
+            raise ValueError(
+                "'max_learning_rate' must be a positive integer, but received {}".
+                format(max_learning_rate))
+
+        # check type and value of step_size_up
+        if not isinstance(step_size_up, int):
+            raise TypeError(
+                "The type of 'step_size_up' must be int, but received {}".
+                format(type(step_size_up)))
+        if step_size_up <= 0:
+            raise ValueError(
+                "'step_size_up' must be a positive integer, but received {}".
+                format(step_size_up))
+
+        # check type and value of step_size_down
+        if step_size_down is not None:
+            if not isinstance(step_size_down, int):
+                raise TypeError(
+                    "The type of 'step_size_up' must be int, but received {}".
+                    format(type(step_size_down)))
+            if step_size_down <= 0:
+                raise ValueError(
+                    "'step_size_up' must be a positive integer, but received {}".
+                    format(step_size_down))
+
+        # check type of exp_gamma
+        if not isinstance(exp_gamma, float):
+            raise TypeError(
+                "The type of 'exp_gamma' must be int, but received {}".format(
+                    type(exp_gamma)))
 
         step_size_up = float(step_size_up)
         step_size_down = float(
             step_size_down) if step_size_down is not None else step_size_up
 
-        if step_size_up <= 0:
-            raise ValueError("'step_size_up' must be a positive integer.")
-        if step_size_down <= 0:
-            raise ValueError("'step_size_down' must be a positive integer.")
-
-        self.total_size = step_size_up + step_size_down
-        self.step_ratio = step_size_up / self.total_size
+        self.cycle_size = step_size_up + step_size_down
+        self.step_up_pct = step_size_up / self.cycle_size
+        self.max_lr = float(max_learning_rate)
+        self.amplitude = self.max_lr - base_learning_rate
 
         if mode not in ['triangular', 'triangular2', 'exp_range'
                         ] and scale_fn is None:
             raise ValueError(
-                "'mode' is invalid and 'scale_fn' is None, make sure one of 'mode' or 'scale_fn' is valid"
+                "'mode' is invalid and 'scale_fn' is not specified, make sure one of 'mode' or 'scale_fn' is valid"
             )
         if scale_mode not in ['cycle', 'iterations']:
             raise ValueError(
                 "'scale_mode' must be one of 'cycle' or 'iterations")
 
         self.mode = mode
-        self.gamma = gamma
+        self.gamma = exp_gamma  # only for exp_range mode
 
         if scale_fn is None:
             if self.mode == 'triangular':
@@ -1744,20 +1781,18 @@ class CyclicLR(LRScheduler):
         return self.gamma**x
 
     def get_lr(self):
-        cycle = math.floor(1 + self.last_epoch / self.total_size)
-        x = 1. + self.last_epoch / self.total_size - cycle
+        iterations = self.last_epoch
 
-        if x <= self.step_ratio:
-            scale_factor = x / self.step_ratio
+        cycle = 1 + iterations // self.cycle_size
+        pct_per_cycle = 1. + iterations / self.cycle_size - cycle
+
+        if pct_per_cycle <= self.step_up_pct:
+            scale_factor = pct_per_cycle / self.step_up_pct
         else:
-            scale_factor = (x - 1) / (self.step_ratio - 1)
+            scale_factor = (1 - pct_per_cycle) / (1 - self.step_up_pct)
 
-        base_height = (self.max_lr - self.base_lr) * scale_factor
+        base_height = self.amplitude * scale_factor
 
-        if self.scale_mode == 'cycle':
-            lr = self.base_lr + base_height * self.scale_fn(cycle)
-        else:
-            lr = self.base_lr + base_height * self.scale_fn(self.last_epoch)
+        lr = self.base_lr + base_height * self.scale_fn(eval(self.scale_mode))
 
         return lr
-	
