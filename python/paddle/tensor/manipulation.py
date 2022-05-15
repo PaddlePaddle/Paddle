@@ -4251,11 +4251,10 @@ def _index_add_params_check(x, axis, index, add_value):
             raise ValueError(
                 "axis should be int and should be in range [-rank(x), rank(x)).")
     elif isinstance(axis, Variable):
-        if not (len(axis.shape) == 1 
-            and axis.shape[0] == 1 
-            and axis.dtype not in (paddle.int32, paddle.int64)):
+        if not ((axis.dtype in [paddle.int16, paddle.int32, paddle.int64])
+                and (axis.numel() == 1)):
             raise ValueError(
-                "'axis' should be 1-D tensor with only one element and have int dtype."
+                "'axis' should be a tensor with only one element and have int dtype."
             )
     else:
         raise TypeError(
@@ -4272,9 +4271,8 @@ def _index_add_params_check(x, axis, index, add_value):
     # if len(index.shape) != 1:
     #     raise ValueError("The index should be a 1-D Tensor.")
     if isinstance(index, Variable):
-        if index.dtype != paddle.int64 and index.dtype != paddle.int32:
-            raise TypeError("The dtype of tensor 'index' should be int32 or int64.")
-
+        if index.dtype not in [paddle.int64, paddle.int32, paddle.int16]:
+            raise TypeError("The dtype of tensor 'index' should be int16, int32 or int64.")
         if len(index.shape) != 1:
             raise ValueError("The 'index' tensor should be a 1-D Tensor.")
     elif isinstance(index, (list, tuple)):
@@ -4290,8 +4288,8 @@ def _index_add_params_check(x, axis, index, add_value):
                          ", but the received 'index' is {}".format(index))
 
     if isinstance(add_value, Variable):
-        if not (len(add_value.shape) == 1 and add_value.shape[0] == 1):
-            raise ValueError("'add_value' attr should be a tensor with only element.")
+        if add_value.numel() != 1:
+            raise ValueError("'add_value' attr should be a tensor with only one element.")
     elif not isinstance(add_value, (float, int)):
         raise TypeError(
             "The 'add_value' attr should be a float or an int."
@@ -4330,8 +4328,6 @@ def index_add(x, axis, index, add_value):
             #  [3. 1. 3. 1.]
             #  [3. 1. 3. 1.]]
     """
-
-
     _index_add_params_check(x, axis, index, add_value)
     axis = int(axis)
     add_value = float(add_value)
@@ -4369,7 +4365,6 @@ def index_add_(x, axis, index, add_value):
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_index_add`.
     """
-
 
     _index_add_params_check(x, axis, index, add_value)
     axis = int(axis)
