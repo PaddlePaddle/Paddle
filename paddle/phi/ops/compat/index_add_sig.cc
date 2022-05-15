@@ -16,22 +16,55 @@
 
 namespace phi {
 
-KernelSignature IndexAddOpArgumentMapping(
-  const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "index_add", 
-      {"X"}, 
-      {"axis", "index", "add_value"}, 
-      {"Out"}
-  );
+KernelSignature IndexAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("AxisTensor")) {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_add",
+                             {"X"},
+                             {"IndexTensor", "AxisTensor", "add_value"},
+                             {"Out"});
+    } else {
+      return KernelSignature(
+          "index_add", {"X"}, {"index", "AxisTensor", "add_value"}, {"Out"});
+    }
+  } else {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature(
+          "index_add", {"X"}, {"IndexTensor", "axis", "add_value"}, {"Out"});
+    } else {
+      return KernelSignature(
+          "index_add", {"X"}, {"index", "axis", "add_value"}, {"Out"});
+    }
+  }
 }
 
 KernelSignature IndexAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_add_grad",
-                         {"Out@GRAD"},
-                         {},
-                         {"X@GRAD"});
+  if (ctx.HasInput("AxisTensor")) {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_add_grad",
+                             {"Out@GRAD"},
+                             {"IndexTensor", "AxisTensor", "add_value"},
+                             {"X@GRAD"});
+    } else {
+      return KernelSignature("index_add_grad",
+                             {"Out@GRAD"},
+                             {"index", "AxisTensor", "add_value"},
+                             {"X@GRAD"});
+    }
+  } else {
+    if (ctx.HasInput("IndexTensor")) {
+      return KernelSignature("index_add_grad",
+                             {"Out@GRAD"},
+                             {"IndexTensor", "axis", "add_value"},
+                             {"X@GRAD"});
+    } else {
+      return KernelSignature("index_add_grad",
+                             {"Out@GRAD"},
+                             {"index", "axis", "add_value"},
+                             {"X@GRAD"});
+    }
+  }
 }
 
 }  // namespace phi
