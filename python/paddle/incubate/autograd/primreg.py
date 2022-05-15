@@ -178,7 +178,7 @@ def REGISTER_ORIG2PRIM(op_type):
         .. code-block:: python
             @REGISTER_ORIG2PRIM('tanh')
             def tanh_orig2prim(op):
-                x = get_input_var_list(op)
+                x, = get_input_var_list(op)
                 return primops.tanh(x)
 
     """
@@ -209,7 +209,7 @@ def REGISTER_PRIM2ORIG(op_type):
         .. code-block:: python
             @REGISTER_PRIM2ORIG('tanh_p')
             def tanh_prim2orig(op):
-                x = get_input_var_list(op)
+                x, = get_input_var_list(op)
                 return paddle.tanh(x)
 
     """
