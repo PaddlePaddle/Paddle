@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/index_add_kernel.h"
+#include "paddle/phi/kernels/index_add_tensor_kernel.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -23,22 +23,34 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& index_arr,
-                     const Scalar& axis_scalar,
-                     float add_value,
-                     DenseTensor* output) {
-  IndexAddBaseKernel<T, Context>(
-      dev_ctx, x, index_arr, axis_scalar, add_value, output, nullptr);
+void IndexAddTensorKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& add_tensor,
+                           const IntArray& index_arr,
+                           const Scalar& axis_scalar,
+                           DenseTensor* output) {
+  T add_value = static_cast<T>(0);
+  const T* add_tensor_ptr = add_tensor.data<T>();
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       &add_value,
+                       dev_ctx.GetPlace(),
+                       add_tensor_ptr,
+                       sizeof(T));
+  IndexAddBaseKernel<T, Context>(dev_ctx,
+                                  x,
+                                  index_arr,
+                                  axis_scalar,
+                                  static_cast<float>(add_value),
+                                  output,
+                                  nullptr);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_add,
+PD_REGISTER_KERNEL(index_add_tensor,
                    CPU,
                    ALL_LAYOUT,
-                   phi::IndexAddKernel,
+                   phi::IndexAddTensorKernel,
                    bool,
                    float,
                    phi::dtype::float16,

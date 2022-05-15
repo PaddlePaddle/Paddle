@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -22,26 +21,23 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
 template <typename Context, typename T>
-void IndexAddCPUImpl(const Context& ctx,
-                     const IntArray& index,
-                     DenseTensor* output,
-                     int axis,
-                     T add_val) {
-  auto output_dim = output->dims();
+void IndexAddInner(const Context& ctx,
+                    const DenseTensor& index,
+                    const DenseTensor& x,
+                    DenseTensor* output,
+                    int axis,
+                    T add_val,
+                    DenseTensor* add_grad) {
+  auto output_dim = x.dims();
   auto output_dim_size = output_dim.size();
-  // auto index_size = index.dims()[0];
-  auto index_size = index.size();
+  auto index_size = index.dims()[0];
 
-  // DenseTensor index_cpu_copy;
-  // if (!paddle::platform::is_cpu_place(index.place())) {
-  //   phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
-  // }
-  // const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
-  //                                ? index.data<IndexT>()
-  //                                : index_cpu_copy.data<IndexT>();
-  const auto& index_data = index.GetData();
+  //  DenseTensor index_cpu_copy;
+  //  if (!paddle::platform::is_cpu_place(index.place())) {
+  //    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+  //  }
+  const int64_t* index_data = index.data<int64_t>();
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < output_dim_size; i++) {
@@ -53,17 +49,68 @@ void IndexAddCPUImpl(const Context& ctx,
     outer_nums *= output_dim[i];
   }
 
-  output->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
-
-  auto output_tensor = EigenTensor<T, 3>::From(*output);
-  auto& place = *ctx.eigen_device();
-  for (size_t j = 0; j < index_size; j++) {
-    auto index_value = index_data[j];
-    auto output_t = output_tensor.chip(index_value, 1);
-    // output_t.device(place) = output_t.constant(fill_val);
-    output_t.device(place) += output_t.constant(add_val);
+  for (int i = 0; i < index_size; i++) {
+    bool check_index = index_data[i] >= 0 && index_data[i] < output_dim[axis];
+    PADDLE_ENFORCE_GE(
+        check_index,
+        true,
+        phi::errors::InvalidArgument(
+            "Variable value (index) of OP(index_add) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            output_dim[axis],
+            index_data[i]));
   }
-  output->Resize(output_dim);
+
+  auto& place = *ctx.eigen_device();
+  if (add_grad) {
+    auto x_tensor = EigenTensor<T, 3>::From(x);
+    auto add_grad_tensor = EigenTensor<T, 3>::From(*add_grad);
+    for (auto j = 0; j < index_size; j++) {
+      int64_t index_value = index_data[j];
+      auto add_grad_t = add_grad_tensor.chip(index_value, 1);
+      add_grad_t.device(place) = x_tensor.chip(index_value, 1);
+    }
+  }
+
+  if (output) {
+    output->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
+    auto output_tensor = EigenTensor<T, 3>::From(*output);
+    for (auto j = 0; j < index_size; j++) {
+      int64_t index_value = index_data[j];
+      auto output_t = output_tensor.chip(index_value, 1);
+      output_t.device(place) = output_t.constant(add_val);
+    }
+    output->Resize(output_dim);
+  }
+}
+
+template <typename T, typename Context>
+void IndexAddBaseKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const IntArray& index_arr,
+                         const Scalar& axis_scalar,
+                         float add_value,
+                         DenseTensor* output,
+                         DenseTensor* add_grad) {
+  auto index_list = index_arr.GetData();
+  int64_t index_size = static_cast<int64_t>(index_list.size());
+  DenseTensor index;
+  index.Resize(make_ddim({index_size}));
+  int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       index_ptr,
+                       dev_ctx.GetPlace(),
+                       index_list.data(),
+                       index_size * sizeof(int64_t));
+
+  int axis = axis_scalar.to<int>();
+  if (output) phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+  if (axis < 0) {
+    axis += x.dims().size();
+  }
+  IndexAddInner<Context, T>(
+      dev_ctx, index, x, output, axis, static_cast<T>(add_value), add_grad);
 }
 
 }  // namespace phi
