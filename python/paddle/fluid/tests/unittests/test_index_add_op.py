@@ -63,9 +63,8 @@ class TestIndexAddOp(OpTest):
         self.init_data()
         self.inputs = {'X': self.x_np}
         self.attrs = {'axis': self.axis, 
-                        'index': self.index,
-                        'add_value': self.add_value,
-                        }
+                      'index': self.index,
+                      'add_value': self.add_value}
         self.outputs = {'Out': self.out_np}
 
     def init_data(self):
