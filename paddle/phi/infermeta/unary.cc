@@ -722,7 +722,7 @@ void IndexAddInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument(
           "The attr(index) must have at least one element, "
-          "But received attr(index) is [%s], "
+          "But received attr(index) is [%s], ",
           index.GetData()));
 
   if (axis < 0) {
