@@ -20,7 +20,7 @@ from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
-from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
+from .utils import get_input_var_list, get_output_var_list, to_tensors, flatten, flatten_and_remove_none
 from collections import OrderedDict
 
 
@@ -400,6 +400,178 @@ class Transform(object):
         return ys_bar, xs_bar
 
 
+def _lower(block, reverse):
+    # Some functions which are only used in _lower.
+    def bind(args, to_bind, value_table):
+        for i in range(len(args)):
+            if isinstance(args[i], list):
+                bind(args[i], to_bind, value_table)
+            elif args[i] is not None and args[i].name in to_bind:
+                args[i] = value_table[to_bind[args[i].name]]
+
+    def bind_name(names, to_bind):
+        return_list = []
+        for name in names:
+            if isinstance(name, list):
+                return_list.append(bind_name(name, to_bind))
+            else:
+                return_list.append(to_bind[name] if name in to_bind else name)
+        return return_list
+
+    def expand_nested_list(xs):
+        return_list = []
+        for x in xs:
+            if isinstance(x, list):
+                return_list = return_list + expand_nested_list(x)
+            else:
+                return_list.append(x)
+        return return_list
+
+    # Step1: Do some preparatory work for lower
+    lower_fn = _prim2orig if reverse else _orig2prim
+    lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
+    if block is None:
+        program = default_main_program()
+        assert program.num_blocks == 1, "The lower transform is designed to process only one block."
+        block = program.current_block()
+
+    value_table = {}
+    to_bind = {}
+    to_bind_rev = {}
+    for var in block.desc.all_vars():
+        value_table[var.name()] = block.var(var.name())
+
+    ops_to_remove = []
+    vars_to_remove = set()
+
+    # Step2: Process all ops in the target block
+    for op_idx in range(len(block.ops)):
+        op = block.ops[op_idx]
+        ops_to_remove.append(op_idx)
+        if lookup_fn(op.type) is not None:
+            input_args = get_input_var_list(op)
+            bind(input_args, to_bind, value_table)
+
+            for orig_out, new_out in zip(
+                    expand_nested_list(get_output_var_list(op)),
+                    expand_nested_list(to_tensors(lower_fn(op, *input_args)))):
+                assert not (orig_out is None) ^ (
+                    new_out is None), "orig_out and new_out should match."
+                vars_to_remove.add(new_out.name)
+                value_table[new_out.name] = new_out
+                to_bind[orig_out.name] = new_out.name
+                to_bind_rev[new_out.name] = orig_out.name
+        else:
+            inputs = {}
+            for i in range(len(op.input_names)):
+                inputs[op.input_names[i]] = bind_name(
+                    op.input(op.input_names[i]), to_bind)
+
+            outputs = {}
+            for i in range(len(op.output_names)):
+                outputs[op.output_names[i]] = op.output(op.output_names[i])
+
+            attrs = {}
+            for name in sorted(op.attr_names):
+                attrs[name] = op.attr(name)
+            from paddle.fluid.dygraph.base import param_guard
+            new_op_desc = block.desc.append_op()
+            with param_guard(inputs), param_guard(outputs):
+                op = Operator(
+                    block=block,
+                    desc=new_op_desc,
+                    type=op.type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs)
+            block.ops.append(op)
+
+    # Step3: Do some post-processing work
+    for op_idx in reversed(ops_to_remove):
+        block.desc._remove_op(op_idx, op_idx + 1)
+        del block.ops[op_idx]
+    block._sync_with_cpp()
+
+    for op_idx in range(len(block.ops)):
+        op = block.ops[op_idx]
+        for in_name in op.input_arg_names:
+            if in_name in to_bind_rev:
+                op._rename_input(in_name, to_bind_rev[in_name])
+
+        for out_name in op.output_arg_names:
+            if out_name in to_bind_rev:
+                op._rename_output(out_name, to_bind_rev[out_name])
+
+    for var_name in sorted(vars_to_remove):
+        assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
+            var_name)
+        if var_name != to_bind_rev[var_name]:
+            block.desc._remove_var(cpt.to_bytes(var_name))
+            del block.vars[var_name]
+    block._sync_with_cpp()
+
+
+@framework.static_only
+def orig2prim(block=None):
+    """ 
+    .. note::
+        **This API is ONLY available in the static mode.**
+
+    All operators in the target block are processed as follows.
+    If it is an original operator, it will be transformed into
+    one or a series of automatic differential basic operators with
+    equivalent function.
+    
+    Args:
+        block(paddle.fluid.framework.Variable|None, optional): The
+            target block to process on. Default None, and will
+            process on the current block of main program.
+    
+    Returns:
+        None
+    """
+    _lower(block, reverse=False)
+
+
+@framework.static_only
+def prim2orig(block=None):
+    """
+    .. note::
+        **This API is ONLY available in the static mode.**
+
+    All operators in the target block are processed as follows.
+    If it is an automatic differential basic operator, it will be
+    transformed into one or a series of original operators with
+    equivalent function to support execution.
+    
+    Args:
+        block(paddle.fluid.framework.Variable|None, optional): The
+            target block to process on. Default None, and will
+            process on the current block of main program.
+    
+    Returns:
+        None
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle.incubate.autograd import enable_prim, prim_enabled, prim2orig
+            
+            paddle.enable_static()
+            enable_prim()
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradients = False
+            y = x * x
+            dy_dx = paddle.static.gradients(y, x)
+            if prim_enabled():
+                prim2orig()
+    """
+    _lower(block, reverse=True)
+
+
 def _gradients(ys, xs, ys_bar=None):
     """ A drop-in replacement of paddle.gradients but instead computing
     on primitive ops.
@@ -440,142 +612,3 @@ def _gradients(ys, xs, ys_bar=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar
-
-
-def orig2prim(block=None):
-    """ 
-    Convert all orig OP to prim OP in the bolck.
-    
-    Args:
-        block: The block where all orig OP is loacted.
-    
-    Returns:
-        None
-    """
-    _lower(block, reverse=False)
-
-
-def prim2orig(block=None):
-    """ 
-    Convert all prim OP to orig OP in the bolck.
-    
-    Args:
-        block: The block where all prim OP is loacted.
-    
-    Returns:
-        None
-    """
-    _lower(block, reverse=True)
-
-
-def to_tensors(xs):
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
-
-
-def _lower(block, reverse):
-    def bind(args, to_bind, value_table):
-        for i in range(len(args)):
-            if isinstance(args[i], list):
-                bind(args[i], to_bind, value_table)
-            elif args[i] is not None and args[i].name in to_bind:
-                args[i] = value_table[to_bind[args[i].name]]
-
-    def bind_name(names, to_bind):
-        return_list = []
-        for name in names:
-            if isinstance(name, list):
-                return_list.append(bind_name(name, to_bind))
-            else:
-                return_list.append(to_bind[name] if name in to_bind else name)
-        return return_list
-
-    def single_layer_list(xs):
-        return_list = []
-        for x in xs:
-            if isinstance(x, list):
-                return_list = return_list + single_layer_list(x)
-            else:
-                return_list.append(x)
-        return return_list
-
-    lower_fn = _prim2orig if reverse else _orig2prim
-    lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
-    if block is None:
-        program = default_main_program()
-        assert program.num_blocks == 1, "The lower transform is designed to process only one block."
-        block = program.current_block()
-
-    value_table = {}
-    to_bind = {}
-    to_bind_rev = {}
-    for var in block.desc.all_vars():
-        value_table[var.name()] = block.var(var.name())
-
-    ops_to_remove = []
-    vars_to_remove = set()
-    for op_idx in range(len(block.ops)):
-        op = block.ops[op_idx]
-        ops_to_remove.append(op_idx)
-        if lookup_fn(op.type) is not None:
-            input_args = get_input_var_list(op)
-            bind(input_args, to_bind, value_table)
-
-            for orig_out, new_out in zip(
-                    single_layer_list(get_output_var_list(op)),
-                    single_layer_list(to_tensors(lower_fn(op, *input_args)))):
-                assert not (orig_out is None) ^ (
-                    new_out is None), "orig_out and new_out should match."
-                vars_to_remove.add(new_out.name)
-                value_table[new_out.name] = new_out
-                to_bind[orig_out.name] = new_out.name
-                to_bind_rev[new_out.name] = orig_out.name
-        else:
-            inputs = {}
-            for i in range(len(op.input_names)):
-                inputs[op.input_names[i]] = bind_name(
-                    op.input(op.input_names[i]), to_bind)
-
-            outputs = {}
-            for i in range(len(op.output_names)):
-                outputs[op.output_names[i]] = op.output(op.output_names[i])
-
-            attrs = {}
-            for name in sorted(op.attr_names):
-                attrs[name] = op.attr(name)
-            from paddle.fluid.dygraph.base import param_guard
-            new_op_desc = block.desc.append_op()
-            with param_guard(inputs), param_guard(outputs):
-                op = Operator(
-                    block=block,
-                    desc=new_op_desc,
-                    type=op.type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs)
-            block.ops.append(op)
-
-    for op_idx in reversed(ops_to_remove):
-        block.desc._remove_op(op_idx, op_idx + 1)
-        del block.ops[op_idx]
-    block._sync_with_cpp()
-
-    for op_idx in range(len(block.ops)):
-        op = block.ops[op_idx]
-        for in_name in op.input_arg_names:
-            if in_name in to_bind_rev:
-                op._rename_input(in_name, to_bind_rev[in_name])
-
-        for out_name in op.output_arg_names:
-            if out_name in to_bind_rev:
-                op._rename_output(out_name, to_bind_rev[out_name])
-
-    for var_name in sorted(vars_to_remove):
-        assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
-            var_name)
-        if var_name != to_bind_rev[var_name]:
-            block.desc._remove_var(cpt.to_bytes(var_name))
-            del block.vars[var_name]
-    block._sync_with_cpp()

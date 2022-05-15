@@ -13,6 +13,117 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import framework as framework
+
+
+class PrimOption(object):
+    def __init__(self):
+        self.enable_prim = False
+
+    def get_status(self):
+        return self.enable_prim
+
+    def set_status(self, flag):
+        self.enable_prim = flag
+
+
+prim_option = PrimOption()
+
+
+@framework.static_only
+def prim_enabled():
+    """
+    .. note::
+        **This API is ONLY available in the static mode.**
+
+    This API shows whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
+    
+    Args:
+        None
+    
+    Returns:
+        flag(bool): whether the automatic differentiation mechanism based on automatic differential basic operators is ON. 
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            
+            paddle.enable_static()
+            enable_prim()
+
+            print(prim_enabled()) # True
+
+            disable_prim()
+
+            print(prim_enabled()) # False
+    """
+    return prim_option.get_status()
+
+
+@framework.static_only
+def enable_prim():
+    """
+    .. note::
+        **This API is ONLY available in the static mode.**
+
+    This API turns ON automatic differentiation mechanism based on automatic differential basic operators.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle.incubate.autograd import enable_prim, prim_enabled
+            
+            paddle.enable_static()
+            enable_prim()
+
+            print(prim_enabled()) # True
+    """
+    prim_option.set_status(True)
+
+
+@framework.static_only
+def disable_prim():
+    """
+    .. note::
+        **This API is ONLY available in the static mode.**
+
+    This API turns OFF automatic differentiation mechanism based on automatic differential basic operators.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            
+            paddle.enable_static()
+            enable_prim()
+
+            print(prim_enabled()) # True
+
+            disable_prim()
+
+            print(prim_enabled()) # False
+    """
+    prim_option.set_status(False)
+
 
 INT_DTYPE_2_STRING = {
     int(0): 'bool',
@@ -58,30 +169,11 @@ def get_output_var_list(op):
         ]
 
 
-class PrimOption(object):
-    def __init__(self):
-        self.enable_prim = False
-
-    def get_status(self):
-        return self.enable_prim
-
-    def set_status(self, flag):
-        self.enable_prim = flag
-
-
-prim_option = PrimOption()
-
-
-def prim_enabled():
-    return prim_option.get_status()
-
-
-def enable_prim():
-    prim_option.set_status(True)
-
-
-def disable_prim():
-    prim_option.set_status(False)
+def to_tensors(xs):
+    if isinstance(xs, paddle.fluid.framework.Variable):
+        return [xs]
+    else:
+        return xs
 
 
 def flatten(inp):
