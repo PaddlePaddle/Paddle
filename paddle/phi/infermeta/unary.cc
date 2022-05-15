@@ -722,8 +722,8 @@ void IndexAddInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument(
           "The attr(index) must have at least one element, "
-          "But received attr(index) is [%s], ",
-          index.GetData()));
+          "But the numel in received attr(index) is [%s], ",
+          index.size()));
 
   if (axis < 0) {
     axis += input_dim.size();
