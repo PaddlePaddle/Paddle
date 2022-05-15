@@ -949,7 +949,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
         thrust::raw_pointer_cast(cumsum_actual_sample_size.data()), sample_size,
         len);
   }
-  std::cerr << "compress data done\n\n";
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
