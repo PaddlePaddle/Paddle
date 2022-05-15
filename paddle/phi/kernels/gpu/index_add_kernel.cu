@@ -31,11 +31,10 @@ namespace phi {
 template <typename T, typename Context>
 void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    // const DenseTensor& index,
-                    const IntArray& index,
                     int axis,
-                    // float add_value,
-                    const Scalar& add_value,
+                    const IntArray& index,
+                    float add_value,
+                    // const Scalar& add_value,
                     DenseTensor* output) {
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
   index_add_cuda_impl<T, Context>(dev_ctx, index, axis, add_value, output);

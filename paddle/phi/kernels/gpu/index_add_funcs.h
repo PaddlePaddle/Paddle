@@ -51,8 +51,8 @@ void index_add_cuda_impl(const Context& dev_ctx,
                         //  const DenseTensor& index,
                          const IntArray& index,
                          int axis,
-                        //  float added_value,
-                         const Scalar& add_value,
+                         float add_value,
+                        //  const Scalar& add_value,
                          DenseTensor* output) {
   auto output_dim = output->dims();
   axis = axis >= 0 ? axis : axis + output_dim.size();
@@ -88,8 +88,8 @@ void index_add_cuda_impl(const Context& dev_ctx,
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
   paddle::platform::LimitGridDim(dev_ctx, &grid_dim);
 
-  // T added_val = static_cast<T>(added_value);
-  T add_val = add_value.to<T>();
+  T add_val = static_cast<T>(add_value);
+  // T add_val = add_value.to<T>();
 
   // if (index_type == phi::DataType::INT64) {
   //   const int64_t* index_data = index.data<int64_t>();
