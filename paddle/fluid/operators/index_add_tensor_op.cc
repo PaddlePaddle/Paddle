@@ -14,12 +14,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
 
-class IndexAddOp : public framework::OperatorWithKernel {
+class IndexAddTensorOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -30,13 +30,17 @@ class IndexAddOp : public framework::OperatorWithKernel {
   }
 };
 
-class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
+class IndexAddTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default input Tensor<float>), "
-             "the input feature data of IndexAddOp, dtype should be"
+             "(Tensor), "
+             "the input feature data of IndexAddTensorOp, dtype should be"
              "bool, int32, int64, float16, float32, float64.");
+    AddInput("AddValue",
+             "(Tensor>), "
+             "the input tensor of IndexAddTensorOp, dtype should be"
+             "the same as input tensor X");
     AddInput("IndexTensor",
              "(Tensor, optional) If provided, index add will use this."
              "It has the highest priority of IndexTensor and attr(index).")
@@ -50,13 +54,13 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
         "index",
         "(list<int>) Starting indices of corresponding axis in `axes`");
     AddAttr<int>("axis", "(int), the dimension in which we index.");
-    AddAttr<float>("add_value", "(float) The value to add.");
-    AddOutput("Out",
-              "(Tensor, default Tensor<float>),"
-              " the output of  IndexAddOp, whose dtype is the same as X.");
+    AddOutput(
+        "Out",
+        "(Tensor, default Tensor<float>),"
+        " the output of  IndexAddTensorOp, whose dtype is the same as X.");
     AddComment(R"DOC(
-                IndexAdd operator
-                Fills the elements of the input tensor with value
+                IndexAddTensor operator
+                Add the elements of the input tensor with value
                 by selecting the indices in the order given in index.
                 This operator also supports inplace modification.
         )DOC");
@@ -64,12 +68,12 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename T>
-class IndexAddGradMaker : public framework::SingleGradOpMaker<T> {
+class IndexAddTensorGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("index_add_grad");
+    op->SetType("index_add_tensor_grad");
     if (this->HasInput("AxisTensor")) {
       op->SetInput("AxisTensor", this->Input("AxisTensor"));
     }
@@ -78,11 +82,13 @@ class IndexAddGradMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("AddValue"),
+                  this->InputGrad("AddValue"));
     op->SetAttrMap(this->Attrs());
   }
 };
 
-class IndexAddGradOp : public framework::OperatorWithKernel {
+class IndexAddTensorGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -95,8 +101,8 @@ class IndexAddGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
+DECLARE_INPLACE_OP_INFERER(IndexAddTensorInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(IndexAddTensorGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
@@ -104,17 +110,20 @@ DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(index_add, IndexAddInferShapeFunctor,
-                            PD_INFER_META(phi::IndexAddInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_add_tensor, IndexAddTensorInferShapeFunctor,
+                            PD_INFER_META(phi::IndexAddTensorInferMeta));
 
-REGISTER_OPERATOR(index_add, ops::IndexAddOp, ops::IndexAddOpMaker,
-                  ops::IndexAddGradMaker<paddle::framework::OpDesc>,
-                  ops::IndexAddGradMaker<paddle::imperative::OpBase>,
-                  ops::IndexAddInplaceInferer, IndexAddInferShapeFunctor);
+REGISTER_OPERATOR(index_add_tensor, ops::IndexAddTensorOp,
+                  ops::IndexAddTensorOpMaker,
+                  ops::IndexAddTensorGradMaker<paddle::framework::OpDesc>,
+                  ops::IndexAddTensorGradMaker<paddle::imperative::OpBase>,
+                  ops::IndexAddTensorInplaceInferer,
+                  IndexAddTensorInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,
-                            PD_INFER_META(phi::IndexAddGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_add_tensor_grad,
+                            IndexAddTensorGradInferShapeFunctor,
+                            PD_INFER_META(phi::IndexAddTensorGradInferMeta));
 
-REGISTER_OPERATOR(index_add_grad, ops::IndexAddGradOp,
-                  ops::IndexAddGradInplaceInferer,
-                  IndexAddGradInferShapeFunctor);
+REGISTER_OPERATOR(index_add_tensor_grad, ops::IndexAddTensorGradOp,
+                  ops::IndexAddTensorGradInplaceInferer,
+                  IndexAddTensorGradInferShapeFunctor);
