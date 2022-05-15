@@ -2802,7 +2802,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The dims of X should be larger than that of kernel_sizes "
           "by a number of 2, due to the batch size and input channel dim. "
-          "But recieved dims(X:%u) - dims(kernel_sizes:%u) != 2",
+          "But received dims(X:%u) - dims(kernel_sizes:%u) != 2",
           in_dims.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2810,7 +2810,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       kernel_sizes.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of kernel_sizes. "
-          "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
+          "But received dims(strides: %u) != dims(kernel_sizes: %u).",
           strides.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2818,7 +2818,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       2 * strides.size(),
       phi::errors::InvalidArgument(
           "The dims of paddings should be 2 times of that of strides. "
-          "But recieved dims(paddings: %u) != 2*dims(strides: %u).",
+          "But received dims(paddings: %u) != 2*dims(strides: %u).",
           paddings.size(),
           strides.size()));
   PADDLE_ENFORCE_EQ(
@@ -2826,7 +2826,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       dilations.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of dilations. "
-          "But recieved dims(strides: %u) != dims(dilations: %u).",
+          "But received dims(strides: %u) != dims(dilations: %u).",
           strides.size(),
           dilations.size()));
 
@@ -2835,14 +2835,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but recieved kernel_height: %d kernel_width: %d.",
+                        "but received kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   PADDLE_ENFORCE_GT(kernel_sizes[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but recieved kernel_height: %d kernel_width: %d.",
+                        "but received kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   // check strides
@@ -2850,14 +2850,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but recieved strides_height: %d strides_width: %d.",
+                        "but received strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   PADDLE_ENFORCE_GT(strides[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but recieved strides_height: %d strides_width: %d.",
+                        "but received strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   // check dilations
@@ -2866,7 +2866,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but recieved dilations_height: %d dilations_width: %d.",
+          "but received dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
   PADDLE_ENFORCE_GT(
@@ -2874,7 +2874,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but recieved dilations_height: %d dilations_width: %d.",
+          "but received dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
 
