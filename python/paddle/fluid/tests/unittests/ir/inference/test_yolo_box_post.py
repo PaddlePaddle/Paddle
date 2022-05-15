@@ -74,6 +74,7 @@ def yolo_box_post(box0,
                  "only support cuda kernel.")
 class TestYoloBoxPost(unittest.TestCase):
     def test_yolo_box_post(self):
+        place = paddle.CUDAPlace(0)
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):

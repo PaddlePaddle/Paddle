@@ -235,13 +235,23 @@ static void YoloTensorParseCuda(
 
   // Estimate how many boxes will be choosed
   int bbox_count = 0;
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(bbox_count_device_ptr, &bbox_count, sizeof(int),
+            hipMemcpyHostToDevice);
+#else
   cudaMemcpy(bbox_count_device_ptr, &bbox_count, sizeof(int),
              cudaMemcpyHostToDevice);
+#endif
   YoloBoxNum<<<number_of_blocks, threads_per_block, 0>>>(
       input_data, bbox_count_device_ptr, grid_size, class_num, anchors_num,
       prob_thresh);
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(&bbox_count, bbox_count_device_ptr, sizeof(int),
+            hipMemcpyDeviceToHost);
+#else
   cudaMemcpy(&bbox_count, bbox_count_device_ptr, sizeof(int),
              cudaMemcpyDeviceToHost);
+#endif
 
   // Record actual bbox number
   *bbox_count_host = bbox_count;
@@ -250,23 +260,34 @@ static void YoloTensorParseCuda(
   float* bbox_tensor = *bboxes_tensor_ptr;
   // Update previous maximum bbox number
   if (bbox_count > *bbox_count_max_alloc) {
+#ifdef PADDLE_WITH_HIP
+    hipFree(bbox_tensor);
+    hipMalloc(&bbox_tensor, bbox_count * (5 + class_num) * sizeof(float));
+#else
     cudaFree(bbox_tensor);
     cudaMalloc(&bbox_tensor, bbox_count * (5 + class_num) * sizeof(float));
+#endif
     *bbox_count_max_alloc = bbox_count;
     *bboxes_tensor_ptr = bbox_tensor;
   }
 
   // Now generate bboxes
   int bbox_index = 0;
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(bbox_index_device_ptr, &bbox_index, sizeof(int),
+            hipMemcpyHostToDevice);
+#else
   cudaMemcpy(bbox_index_device_ptr, &bbox_index, sizeof(int),
              cudaMemcpyHostToDevice);
+#endif
   YoloTensorParseKernel<<<number_of_blocks, threads_per_block, 0>>>(
       input_data, image_shape_data, image_scale_data, bbox_tensor,
       bbox_index_device_ptr, grid_size, class_num, anchors_num, netw, neth,
       biases_device, prob_thresh);
 }
 
-class YoloBoxPostKernel : public framework::OpKernel<float> {
+template <typename T>
+class YoloBoxPostKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     using Tensor = framework::Tensor;
@@ -300,10 +321,17 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
     anchors.insert(anchors.end(), anchors1.begin(), anchors1.end());
     anchors.insert(anchors.end(), anchors2.begin(), anchors2.end());
     int* device_anchors;
+#ifdef PADDLE_WITH_HIP
+    hipMalloc(reinterpret_cast<void**>(&device_anchors),
+              anchors.size() * sizeof(int));
+    hipMemcpy(device_anchors, anchors.data(), anchors.size() * sizeof(int),
+              hipMemcpyHostToDevice);
+#else
     cudaMalloc(reinterpret_cast<void**>(&device_anchors),
                anchors.size() * sizeof(int));
     cudaMemcpy(device_anchors, anchors.data(), anchors.size() * sizeof(int),
                cudaMemcpyHostToDevice);
+#endif
     int* device_anchors_ptr[3];
     device_anchors_ptr[0] = device_anchors;
     device_anchors_ptr[1] = device_anchors_ptr[0] + anchors0.size();
@@ -324,19 +352,34 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
     int batch = context.Input<framework::Tensor>("ImageShape")->dims()[0];
     TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
     for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {
+#ifdef PADDLE_WITH_HIP
+      hipMalloc(
+          reinterpret_cast<void**>(&ts_info[i].bboxes_dev_ptr),
+          ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float));
+#else
       cudaMalloc(
           reinterpret_cast<void**>(&ts_info[i].bboxes_dev_ptr),
           ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float));
+#endif
       ts_info[i].bboxes_host_ptr = reinterpret_cast<float*>(malloc(
           ts_info[i].bbox_count_max_alloc * (5 + class_num) * sizeof(float)));
+#ifdef PADDLE_WITH_HIP
+      hipMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
+                sizeof(int));
+#else
       cudaMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
                  sizeof(int));
+#endif
     }
 
     // Box index counter in gpu memory
     // *bbox_index_device_ptr used by atomicAdd
     int* bbox_index_device_ptr;
+#ifdef PADDLE_WITH_HIP
+    hipMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
+#else
     cudaMalloc(reinterpret_cast<void**>(&bbox_index_device_ptr), sizeof(int));
+#endif
 
     int total_bbox = 0;
     for (int batch_id = 0; batch_id < batch; batch_id++) {
@@ -369,11 +412,18 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
               realloc(ts_info[ts_id].bboxes_host_ptr,
                       bbox_count_max_alloc * (5 + class_num) * sizeof(float)));
         }
-        // we need copy bbox_count_host boxes to cpu memory
+// we need copy bbox_count_host boxes to cpu memory
+#ifdef PADDLE_WITH_HIP
+        hipMemcpyAsync(
+            ts_info[ts_id].bboxes_host_ptr, ts_info[ts_id].bboxes_dev_ptr,
+            ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
+            hipMemcpyDeviceToHost);
+#else
         cudaMemcpyAsync(
             ts_info[ts_id].bboxes_host_ptr, ts_info[ts_id].bboxes_dev_ptr,
             ts_info[ts_id].bbox_count_host * (5 + class_num) * sizeof(float),
             cudaMemcpyDeviceToHost);
+#endif
         total_bbox += ts_info[ts_id].bbox_count_host;
       }
     }
@@ -443,10 +493,19 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
       boxes_num_data[batch_id] = bbox_det_vec.size();
     }
 
+#ifdef PADDLE_WITH_HIP
+    hipFree(bbox_index_device_ptr);
+#else
     cudaFree(bbox_index_device_ptr);
+#endif
     for (int i = 0; i < batch * boxes_input.size(); i++) {
+#ifdef PADDLE_WITH_HIP
+      hipFree(ts_info[i].bboxes_dev_ptr);
+      hipFree(ts_info[i].bbox_count_device_ptr);
+#else
       cudaFree(ts_info[i].bboxes_dev_ptr);
       cudaFree(ts_info[i].bbox_count_device_ptr);
+#endif
       free(ts_info[i].bboxes_host_ptr);
     }
     delete[] ts_info;
@@ -457,4 +516,4 @@ class YoloBoxPostKernel : public framework::OpKernel<float> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(yolo_box_post, ops::YoloBoxPostKernel);
+REGISTER_OP_CUDA_KERNEL(yolo_box_post, ops::YoloBoxPostKernel<float>);

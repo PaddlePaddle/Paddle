@@ -19,11 +19,13 @@
 namespace paddle {
 namespace operators {
 
-inline __device__ float SigmoidGPU(const float& x) {
+template <typename T>
+inline __device__ T SigmoidGPU(const T& x) {
   return 1.0f / (1.0f + __expf(-x));
 }
 
-__global__ void YoloBoxHeadCudaKernel(const float* input, float* output,
+template <typename T>
+__global__ void YoloBoxHeadCudaKernel(const T* input, T* output,
                                       const int grid_size_x,
                                       const int grid_size_y,
                                       const int class_num,
@@ -60,7 +62,8 @@ __global__ void YoloBoxHeadCudaKernel(const float* input, float* output,
   }
 }
 
-class YoloBoxHeadKernel : public framework::OpKernel<float> {
+template <typename T>
+class YoloBoxHeadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     using Tensor = framework::Tensor;
@@ -77,8 +80,8 @@ class YoloBoxHeadKernel : public framework::OpKernel<float> {
     const int grid_size_x = w;
     const int grid_size_y = h;
     const int anchors_num = anchors.size() / 2;
-    const float* input_data = x->data<float>();
-    float* output_data = out->mutable_data<float>(context.GetPlace());
+    const T* input_data = x->data<T>();
+    T* output_data = out->mutable_data<T>(context.GetPlace());
     auto stream = device_ctx.stream();
     const int volume = x_dims[1] * h * w;
     dim3 block(16, 16, 4);
@@ -96,4 +99,4 @@ class YoloBoxHeadKernel : public framework::OpKernel<float> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(yolo_box_head, ops::YoloBoxHeadKernel);
+REGISTER_OP_CUDA_KERNEL(yolo_box_head, ops::YoloBoxHeadKernel<float>);
