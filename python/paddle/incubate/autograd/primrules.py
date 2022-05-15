@@ -54,14 +54,14 @@ def linear_jvp(op, *args, **kwargs):
 These original ops are fully supported:
 
 elementwise_add
+elementwise_sub
+elementwise_mul
 tanh
 fill_zeros_like
 sum
 index_select
-elementwise_sub
 scale
 assign
-elementwise_mul
 sqrt
 
 These original ops are partially supported:
@@ -79,16 +79,58 @@ def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x') - 1.0 > 1e-5:
-        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = mul(x, tmp)
+        scale_x = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
     if op.attr('Scale_y') - 1.0 > 1e-5:
-        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = mul(y, tmp)
+        scale_y = fill_const(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
     z = add(x, y)
     if op.attr('Scale_out') - 1.0 > 1e-5:
-        tmp = fill_const(
+        scale_out = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = mul(z, tmp)
+        z = mul(z, scale_out)
+    return z
+
+
+@REGISTER_ORIG2PRIM('elementwise_sub')
+def elementwise_sub_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    if op.attr('Scale_x') - 1.0 > 1e-5:
+        scale_x = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        scale_y = fill_const(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
+    z = sub(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        scale_out = fill_const(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = mul(z, scale_out)
+    return z
+
+
+@REGISTER_ORIG2PRIM('elementwise_mul')
+def elementwise_mul_orig2prim(op, x, y):
+    if x.shape != y.shape:
+        y = broadcast(y, shape=x.shape)
+    if op.attr('Scale_x') - 1.0 > 1e-5:
+        scale_x = fill_const(
+            shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        scale_y = fill_const(
+            shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
+    z = mul(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        scale_out = fill_const(
+            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
+        z = mul(z, scale_out)
     return z
 
 
@@ -115,24 +157,6 @@ def index_select_orig2prim(op, index_t, x):
     return gather(x, indextensor=index_t, axis=op.attr('dim'))
 
 
-@REGISTER_ORIG2PRIM('elementwise_sub')
-def elementwise_sub_orig2prim(op, x, y):
-    if x.shape != y.shape:
-        y = broadcast(y, shape=x.shape)
-    if op.attr('Scale_x') - 1.0 > 1e-5:
-        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = mul(x, tmp)
-    if op.attr('Scale_y') - 1.0 > 1e-5:
-        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = mul(y, tmp)
-    z = sub(x, y)
-    if op.attr('Scale_out') - 1.0 > 1e-5:
-        tmp = fill_const(
-            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = mul(z, tmp)
-    return z
-
-
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op, scale_t, x):
     if scale_t is None:
@@ -149,24 +173,6 @@ def scale_orig2prim(op, scale_t, x):
 def assign_orig2prim(op, x):
     zero_t = fill_const(shape=x.shape, dtype=x.dtype, value=0.0)
     return add(x, zero_t)
-
-
-@REGISTER_ORIG2PRIM('elementwise_mul')
-def elementwise_mul_orig2prim(op, x, y):
-    if x.shape != y.shape:
-        y = broadcast(y, shape=x.shape)
-    if op.attr('Scale_x') - 1.0 > 1e-5:
-        tmp = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x'))
-        x = mul(x, tmp)
-    if op.attr('Scale_y') - 1.0 > 1e-5:
-        tmp = fill_const(shape=y.shape, dtype=y.dtype, value=op.attr('Scale_y'))
-        y = mul(y, tmp)
-    z = mul(x, y)
-    if op.attr('Scale_out') - 1.0 > 1e-5:
-        tmp = fill_const(
-            shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out'))
-        z = mul(z, tmp)
-    return z
 
 
 @REGISTER_ORIG2PRIM('sqrt')
