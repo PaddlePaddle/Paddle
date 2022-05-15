@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/gpu/index_add_funcs.h"
 #include "paddle/phi/kernels/index_add_grad_kernel.h"
-
-// DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
 template <typename T, typename Context>
 void IndexAddGradKernel(const Context& dev_ctx,
-                        const DenseTensor& out_grad,
-                        // int axis,
-                        // float added_value,
-                        DenseTensor* x_grad) {
-  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+                         const DenseTensor& out_grad,
+                         const IntArray& index_arr,
+                         const Scalar& axis_scalar,
+                         float add_value,
+                         DenseTensor* x_grad) {
+  float add_val = 0.0;
+  IndexAddBaseKernel<T, Context>(
+      dev_ctx, out_grad, index_arr, axis_scalar, add_val, x_grad, nullptr);
 }
 
 }  // namespace phi
@@ -35,7 +38,10 @@ PD_REGISTER_KERNEL(index_add_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexAddGradKernel,
+                   bool,
                    float,
-                   double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                     phi::dtype::bfloat16,
+                   double,
+                   int,
+                   int64_t) {}

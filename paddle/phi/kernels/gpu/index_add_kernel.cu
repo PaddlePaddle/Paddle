@@ -12,32 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/gpu/index_add_funcs.h"
 #include "paddle/phi/kernels/index_add_kernel.h"
 
 namespace phi {
 
-// template <typename T, typename Context>
-// void IndexAddKernel(const Context& dev_ctx,
-//                     const DenseTensor& x,
-//                     const DenseTensor& index,
-//                     int axis,
-//                     float added_value,
-//                     DenseTensor* output) {
 template <typename T, typename Context>
 void IndexAddKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    int axis,
-                    const IntArray& index,
-                    float add_value,
-                    // const Scalar& add_value,
-                    DenseTensor* output) {
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-  index_add_cuda_impl<T, Context>(dev_ctx, index, axis, add_value, output);
+                     const DenseTensor& x,
+                     const IntArray& index_arr,
+                     const Scalar& axis_scalar,
+                     float add_value,
+                     DenseTensor* output) {
+  IndexAddBaseKernel<T, Context>(
+      dev_ctx, x, index_arr, axis_scalar, add_value, output, nullptr);
 }
 
 }  // namespace phi
@@ -48,8 +37,8 @@ PD_REGISTER_KERNEL(index_add,
                    phi::IndexAddKernel,
                    bool,
                    float,
-                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   double,
                    int,
                    int64_t) {}
