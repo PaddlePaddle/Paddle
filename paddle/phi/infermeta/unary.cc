@@ -436,8 +436,6 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
           << paddle::string::join_strings(output_dims, ",");
   VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
   VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
-  out->set_dims(make_ddim(output_dims));
-  out->set_dtype(inputs[0]->dtype());
 }
 
 void ExpandInferMeta(const MetaTensor& x,
@@ -700,6 +698,64 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void IndexAddInferMeta(const MetaTensor& x,
+                       int axis,
+                       const IntArray& index,
+                       float add_value,
+                       MetaTensor* output) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= - input_dim.size(),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [-%d, %d). But received Attr(axis) = %d.",
+          input_dim.size(),
+          input_dim.size(),
+          axis));
+
+  PADDLE_ENFORCE_EQ(
+      index.size() > 0,
+      true,
+      phi::errors::InvalidArgument(
+          "The attr(index) must have at least one element, "
+          "But received attr(index) is [%s], "
+          index.GetData()));
+
+  if (axis < 0) {
+    axis += input_dim.size();
+  }
+  const auto& index_data = index.GetData();        
+  for (size_t i = 0; i < index.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        index_data[i] >= 0 && index_data[i] < input_dim[axis],
+        true,
+        phi::errors::InvalidArgument(
+            "(elements of index of OP(index_add)) "
+            "expected >= 0 and < %ld, but got %ld. Please check index "
+            "value.",
+            input_dim[axis],
+            index_data[i]));
+  }
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
+void IndexAddGradInferMeta(const MetaTensor& out_grad,
+                           int axis,
+                           const IntArray& index,
+                           float add_value,
+                           MetaTensor* x_grad) {
+  x_grad->set_dims(out_grad.dims());
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->set_layout(out_grad.layout());
+  x_grad->share_lod(out_grad);
 }
 
 static phi::DDim ValidateShape(const std::vector<int64_t> shape,
