@@ -4239,75 +4239,52 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
 
 
 def _index_add_params_check(x, axis, index, add_value):
+    dims = len(x.shape)
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
 
-    dims = len(x.shape)
-    # if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-    #     raise ValueError(
-    #         "axis should be int and should be in range [-rank(x), rank(x)).")
-    if isinstance(axis, int):
-        if not (axis < dims and axis >= -dims):
+    if not isinstance(axis, (int, Variable)):
+        raise TypeError("The axis should be a Tensor or int constant")
+
+    check_axis = axis
+    if isinstance(axis, Variable):
+        if axis.dtype != paddle.int64 and axis.dtype != paddle.int32:
+            raise TypeError("The axis dtype should be int32 or int64.")
+        if axis.numel() != 1:
             raise ValueError(
-                "axis should be int and should be in range [-rank(x), rank(x)).")
-    elif isinstance(axis, Variable):
-        if not ((axis.dtype in [paddle.int16, paddle.int32, paddle.int64])
-                and (axis.numel() == 1)):
-            raise ValueError(
-                "'axis' should be a tensor with only one element and have int dtype."
-            )
-    else:
+                "The numel of axis must be one when it is a tensor.")
+        check_axis = axis.numpy().item(0)
+    if check_axis > dims or check_axis <= -dims:
+        raise ValueError(
+            "Axis should be int, element should in range [-rank(x), rank(x)).")
+
+    if not isinstance(index, (list, tuple, Variable)):
         raise TypeError(
-            "'axis' should an int or a tensor, but received 'axis' is {}".format(axis)
-        )
+            "The index should be a Tensor, list of int, or tuple of int.")
 
-
-    # if not isinstance(index, Variable):
-    #     raise TypeError("The index should be a Tensor.")
-
-    # if index.dtype != paddle.int64 and index.dtype != paddle.int32:
-    #     raise TypeError("The index dtype should be int32 or int64.")
-
-    # if len(index.shape) != 1:
-    #     raise ValueError("The index should be a 1-D Tensor.")
     if isinstance(index, Variable):
-        if index.dtype not in [paddle.int64, paddle.int32, paddle.int16]:
-            raise TypeError("The dtype of tensor 'index' should be int16, int32 or int64.")
+        if index.dtype != paddle.int64 and index.dtype != paddle.int32:
+            raise TypeError("The index dtype should be int32 or int64.")
         if len(index.shape) != 1:
-            raise ValueError("The 'index' tensor should be a 1-D Tensor.")
-    elif isinstance(index, (list, tuple)):
-        if len(index) <= 0:
-            raise ValueError("The 'index' list or tuple should have at least one element.")
-        for idx in index:
-            if not isinstance(idx, int):
-                raise TypeError("The all elements of 'index' list or tuple should be int.")
-        if len(set(index)) != len(index):
-            raise ValueError("The 'index' list or tuple should have unique elements.")
-    else:
-        raise TypeError("The 'index' attr should be a 1-D tensor or a list or tuple of ints,"
-                         ", but the received 'index' is {}".format(index))
+            raise ValueError("The index should be a 1-D Tensor.")
 
-    if isinstance(add_value, Variable):
-        if add_value.numel() != 1:
-            raise ValueError("'add_value' attr should be a tensor with only one element.")
-    elif not isinstance(add_value, (float, int)):
-        raise TypeError(
-            "The 'add_value' attr should be a float or an int."
-            ", but the received 'add_value' is {}".format(add_value))
+    if isinstance(add_value, Variable) and add_value.numel() != 1:
+        raise ValueError(
+            "The numel of add_value must be one when it is a tensor.")
 
 
-def index_add(x, axis, index, add_value):
+def index_add(x, index, axis, add_value):
     """
-    Add the elements of the input tensor with value by selecting the indices in the order given in index.
+    Adds the elements of the input tensor with value by selecting the indices in the order given in index.
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
-        added_value(float|int|Tensor): The constant value
-            used to add to the elements along the target axis.
-            If ``added_value`` is an Tensor, it must be an 1-D Tensor.
-            Default: if None, the ``added_value`` is 0.0.
+        add_value(float|int|Tensor): The constant value
+            used to add the elements along the target axis.
+            If ``add_value`` is an Tensor, it must be an 1-D Tensor.
+            Default: if None, the ``add_value`` is 0.0.
     Returns :
         Tensor: same dimention and dtype with x
     Examples:
@@ -4316,72 +4293,95 @@ def index_add(x, axis, index, add_value):
             import paddle
             input_tensor = paddle.ones((3, 4))
             index = paddle.to_tensor([0, 2])
-            outplace_res = paddle.index_add(input_tensor, index, axis=0, added_value=0.5)
+            outplace_res = paddle.index_add(input_tensor, index, axis=0, fill_value=0.5)
             print(outplace_res.numpy())
-            # [[1.5 1.5 1.5 1.5]
+            # [[0.5 0.5 0.5 0.5]
             #  [1.  1.  1.  1. ]
-            #  [1.5 1.5 1.5 1.5]]
-            added_value_tensor = paddle.to_tensor([2.0])
-            inplace_res = paddle.index_add_(input_tensor, index, axis=1, added_value=added_value_tensor)
+            #  [0.5 0.5 0.5 0.5]]
+            add_value_tensor = paddle.to_tensor([2.0])
+            inplace_res = paddle.index_add_(input_tensor, index, axis=1, fill_value=fill_value_tensor)
             print(inplace_res.numpy())
-            # [[3. 1. 3. 1.]
-            #  [3. 1. 3. 1.]
-            #  [3. 1. 3. 1.]]
+            # [[2. 1. 2. 1.]
+            #  [2. 1. 2. 1.]
+            #  [2. 1. 2. 1.]]
     """
     _index_add_params_check(x, axis, index, add_value)
-    axis = int(axis)
-    add_value = float(add_value)
-
-    if axis < 0:
-        axis += len(x.shape)
-
-    # added_value = float(added_value)
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_add(x, index, axis, added_value)
 
     if _non_static_mode():
-        return _C_ops.index_add(x, "axis", axis, "index", index, "add_value",
-                                 add_value)
+        _axis = axis.numpy().item(0) if isinstance(axis, Variable) else axis
+        if isinstance(add_value, Variable):
+            return _C_ops.index_add_tensor(x, add_value, "index", index,
+                                            "axis", _axis)
+        else:
+            add_value = float(add_value)
+            return _C_ops.index_add(x, "index", index, "axis", _axis,
+                                     "add_value", add_value)
 
-    helper = LayerHelper("index_add", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.manipulation.index_add')
-    # check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-    #                          'paddle.tensor.manipulation.index_add')
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='index_add',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'axis': axis,
-               'index': index, 
-               'add_value': add_value})
-    return out
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.index_add')
+
+    inputs = {}
+    attrs = {}
+    inputs["X"] = x
+    if isinstance(axis, Variable):
+        axis.stop_gradient = True
+        inputs['AxisTensor'] = axis
+    else:
+        attrs['axis'] = int(axis)
+
+    if isinstance(index, Variable):
+        index.stop_gradient = True
+        inputs['IndexTensor'] = index
+    elif isinstance(index, (list, tuple)):
+        attrs['index'] = index
+
+    if isinstance(add_value, Variable):
+        check_variable_and_dtype(
+            add_value, 'add_value',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'paddle.tensor.manipulation.index_add')
+
+        inputs["AddValue"] = add_value
+        helper = LayerHelper("index_add_tensor", **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='index_add_tensor',
+            inputs=inputs,
+            outputs={'Out': out},
+            attrs=attrs)
+        return out
+
+    else:
+        attrs['add_value'] = add_value
+        helper = LayerHelper("index_add", **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='index_add', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+        return out
 
 
 @inplace_apis_in_dygraph_only
-def index_add_(x, axis, index, add_value):
+def index_add_(x, index, axis, add_value):
     r"""
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_index_add`.
     """
 
     _index_add_params_check(x, axis, index, add_value)
-    axis = int(axis)
-    add_value = float(add_value)
-
-    if axis < 0:
-        axis += len(x.shape)
-
-    # added_value = float(added_value)
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_index_add_(x, index, axis, added_value)
 
     if _non_static_mode():
-        return _C_ops.index_add_(x, "axis", axis, "index", index, "add_value",
-                                  add_value)
+        if isinstance(add_value, Variable):
+            return _C_ops.index_add_tensor_(x, add_value, "index", index,
+                                             "axis", axis)
+        else:
+            return _C_ops.index_add_(x, "index", index, "axis", axis,
+                                      "add_value", add_value)
 
     raise ValueError("This inplace op index_add_ should only work in dygraph.")
+
+
+
 
 
 # TODO(dev): We need avoid implementing it by this way.
