@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexFillKernel(const Context& ctx,
+void IndexAddKernel(const Context& ctx,
                      const DenseTensor& x,
                      const IntArray& index_arr,
                      const Scalar& axis_scalar,
