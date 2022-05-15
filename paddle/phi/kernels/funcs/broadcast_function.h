@@ -524,7 +524,7 @@ void BroadcastKernelForDifferentVecSize(
       ins.size(),
       2,
       phi::errors::InvalidArgument(
-          "XPU only support inputs is 2, but recieved %d", ins.size()));
+          "XPU only support inputs is 2, but received %d", ins.size()));
   configs[0] = kps::details::BroadcastConfig(merge_dims.out_dims,
                                              merge_dims.in_dims[0],
                                              merge_dims.in_dims[1],
