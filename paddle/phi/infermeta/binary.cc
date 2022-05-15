@@ -1181,6 +1181,62 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void IndexAddTensorInferMeta(const MetaTensor& x,
+                              const MetaTensor& add_tensor,
+                              const IntArray& index_arr,
+                              const Scalar& axis_scalar,
+                              MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index = index_arr.GetData();
+  auto axis = axis_scalar.to<int>();
+
+  PADDLE_ENFORCE_EQ(
+      add_tensor.dtype() == x.dtype(),
+      true,
+      phi::errors::InvalidArgument(
+          "The dtype of add_tensor should be same as input tensor."));
+
+  PADDLE_ENFORCE_EQ(
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Axis is out of range, It's expected "
+          "to be in range of [-%d, %d). But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          axis));
+
+  PADDLE_ENFORCE_EQ(
+      index.size() > 0,
+      true,
+      phi::errors::InvalidArgument("The index array should not be empty."));
+
+  output->set_dims(x.dims());
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
+void IndexAddTensorGradInferMeta(const MetaTensor& out_grad,
+                                  const IntArray& index_arr,
+                                  const Scalar& axis_scalar,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* add_tensor_grad) {
+  auto do_dims = out_grad.dims();
+  if (x_grad) {
+    x_grad->set_dims(do_dims);
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->set_layout(out_grad.layout());
+    x_grad->share_lod(out_grad);
+  }
+
+  if (add_tensor_grad) {
+    add_tensor_grad->set_dims(phi::make_ddim({1}));
+    add_tensor_grad->set_dtype(out_grad.dtype());
+  }
+}
+
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -1534,7 +1590,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                     phi::errors::InvalidArgument(
                         "X's second dimension is expected to be equal to "
                         "Vec's first dimension"
-                        "but received X'shape = [%s], Vec's shape = [%s]",
+                        "but recieved X'shape = [%s], Vec's shape = [%s]",
                         dim_x,
                         dim_vec));
 

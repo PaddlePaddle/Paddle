@@ -701,18 +701,20 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
 }
 
 void IndexAddInferMeta(const MetaTensor& x,
-                       int axis,
-                       const IntArray& index,
-                       float add_value,
-                       MetaTensor* output) {
+                        const IntArray& index_arr,
+                        const Scalar& axis_scalar,
+                        float add_value,
+                        MetaTensor* output) {
   auto input_dim = x.dims();
+  auto index = index_arr.GetData();
+  auto axis = axis_scalar.to<int>();
 
   PADDLE_ENFORCE_EQ(
-      axis < input_dim.size() && axis >= - input_dim.size(),
+      axis < input_dim.size() && axis >= (0 - input_dim.size()),
       true,
       phi::errors::OutOfRange(
-          "Attr(axis) is out of range, It's expected "
-          "to be in range of [-%d, %d). But received Attr(axis) = %d.",
+          "Axis is out of range, It's expected "
+          "to be in range of [-%d, %d). But received Attr(dim) = %d.",
           input_dim.size(),
           input_dim.size(),
           axis));
@@ -720,26 +722,7 @@ void IndexAddInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       index.size() > 0,
       true,
-      phi::errors::InvalidArgument(
-          "The attr(index) must have at least one element, "
-          "But the numel in received attr(index) is [%s], ",
-          index.size()));
-
-  if (axis < 0) {
-    axis += input_dim.size();
-  }
-  const auto& index_data = index.GetData();        
-  for (size_t i = 0; i < index.size(); i++) {
-    PADDLE_ENFORCE_EQ(
-        index_data[i] >= 0 && index_data[i] < input_dim[axis],
-        true,
-        phi::errors::InvalidArgument(
-            "(elements of index of OP(index_add)) "
-            "expected >= 0 and < %ld, but got %ld. Please check index "
-            "value.",
-            input_dim[axis],
-            index_data[i]));
-  }
+      phi::errors::InvalidArgument("The index array should not be empty."));
 
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
@@ -748,11 +731,12 @@ void IndexAddInferMeta(const MetaTensor& x,
 }
 
 void IndexAddGradInferMeta(const MetaTensor& out_grad,
-                           int axis,
-                           const IntArray& index,
-                           float add_value,
-                           MetaTensor* x_grad) {
-  x_grad->set_dims(out_grad.dims());
+                            const IntArray& index_arr,
+                            const Scalar& axis_scalar,
+                            float add_value,
+                            MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  x_grad->set_dims(do_dims);
   x_grad->set_dtype(out_grad.dtype());
   x_grad->set_layout(out_grad.layout());
   x_grad->share_lod(out_grad);
@@ -2802,7 +2786,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The dims of X should be larger than that of kernel_sizes "
           "by a number of 2, due to the batch size and input channel dim. "
-          "But received dims(X:%u) - dims(kernel_sizes:%u) != 2",
+          "But recieved dims(X:%u) - dims(kernel_sizes:%u) != 2",
           in_dims.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2810,7 +2794,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       kernel_sizes.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of kernel_sizes. "
-          "But received dims(strides: %u) != dims(kernel_sizes: %u).",
+          "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
           strides.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2818,7 +2802,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       2 * strides.size(),
       phi::errors::InvalidArgument(
           "The dims of paddings should be 2 times of that of strides. "
-          "But received dims(paddings: %u) != 2*dims(strides: %u).",
+          "But recieved dims(paddings: %u) != 2*dims(strides: %u).",
           paddings.size(),
           strides.size()));
   PADDLE_ENFORCE_EQ(
@@ -2826,7 +2810,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       dilations.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of dilations. "
-          "But received dims(strides: %u) != dims(dilations: %u).",
+          "But recieved dims(strides: %u) != dims(dilations: %u).",
           strides.size(),
           dilations.size()));
 
@@ -2835,14 +2819,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but received kernel_height: %d kernel_width: %d.",
+                        "but recieved kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   PADDLE_ENFORCE_GT(kernel_sizes[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but received kernel_height: %d kernel_width: %d.",
+                        "but recieved kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   // check strides
@@ -2850,14 +2834,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but received strides_height: %d strides_width: %d.",
+                        "but recieved strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   PADDLE_ENFORCE_GT(strides[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but received strides_height: %d strides_width: %d.",
+                        "but recieved strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   // check dilations
@@ -2866,7 +2850,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but received dilations_height: %d dilations_width: %d.",
+          "but recieved dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
   PADDLE_ENFORCE_GT(
@@ -2874,7 +2858,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but received dilations_height: %d dilations_width: %d.",
+          "but recieved dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
 
