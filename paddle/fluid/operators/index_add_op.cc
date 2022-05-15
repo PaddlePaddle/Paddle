@@ -40,24 +40,13 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
              "the input feature data of IndexAddOp, dtype should be"
              "int32, int64, float16, float32, float64.");
     AddAttr<int>("axis",
-              "(int), the dimension in which we index.");
-    // .SetDefault(0);
-
-    // AddInput("Index",
-    //          "(Tensor, default 1-d Tensor<int>), "
-    //          "the 1-D tensor containing the indices to index, "
-    //          "dtype should be int32, int64");
-
-    // AddAttr<phi::IntArray>("index",
+                 "(int), the dimension in which we index.");
     AddAttr<std::vector<int64_t>>("index",
-          "(list of ints), "
+          "(list or tuple of ints), "
           "containing the indices to index, "
           "dtype should be int32, int64");
-
     AddAttr<float>("add_value",
-    // AddAttr<phi::Scalar>("add_value",
                    "(a scalar), The value to add.");
-        // .SetDefault(0.0f);
     AddOutput("Out",
               "(Tensor, default Tensor<float>),"
               " the output of  IndexAddOp, whose dtype and shape is the same as X.");
@@ -102,7 +91,6 @@ DECLARE_INPLACE_OP_INFERER(IndexAddInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(IndexAddGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-// DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexAddGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -121,5 +109,4 @@ DECLARE_INFER_SHAPE_FUNCTOR(index_add_grad, IndexAddGradInferShapeFunctor,
 
 REGISTER_OPERATOR(index_add_grad, ops::IndexAddGradOp,
                   ops::IndexAddGradInplaceInferer,
-                  // ops::IndexAddGradNoNeedBufferVarsInferer,
                   IndexAddGradInferShapeFunctor);
