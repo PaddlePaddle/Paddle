@@ -58,7 +58,7 @@ def compute_accuracy(pred, gt):
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestDistTraning(unittest.TestCase):
-    def test_static_multiple_gpus(self):
+    def test_dynamic_multiple_gpus(self):
         device = set_device('gpu')
 
         im_shape = (-1, 1, 28, 28)

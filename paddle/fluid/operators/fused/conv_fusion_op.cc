@@ -80,7 +80,7 @@ class Conv2DFusionOp : public operators::ConvOp {
         data_format, "NHWC",
         platform::errors::PermissionDenied(
             "Operator(Conv2DFusion) only supports data format of "
-            "channel first (NCHW) now. But recieved: data_format = '%s'.",
+            "channel first (NCHW) now. But received: data_format = '%s'.",
             data_format));
 
     std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
@@ -113,7 +113,7 @@ class Conv2DFusionOp : public operators::ConvOp {
           split_channels_sum, output_shape[1],
           platform::errors::InvalidArgument(
               "The sum of Attr(split_channels) is expected to be equal to the "
-              "total output channels. But recieved: the sum of "
+              "total output channels. But received: the sum of "
               "Attr(split_channels) = %d, the total output channels = %d.",
               split_channels_sum, output_shape[1]));
 
