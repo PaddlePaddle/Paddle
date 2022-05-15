@@ -28,6 +28,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/fluid/framework/data_set.h"
 #endif
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
@@ -101,6 +102,10 @@ class PSGPUWrapper {
     hbm_thread_pool_.resize(thread_keys_shard_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
     }
   }
 
@@ -381,15 +386,18 @@ class PSGPUWrapper {
       std::cout << s << " | ";
     }
     std::cout << " end " <<std::endl;
+    std::cout << "slot_dim_map_: ";
     for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
+      std::cout << std::to_string(slot_vector_[i]) << " | " <<  slot_mf_dim_vector_[i] << " ;";
     }
-
+    std::cout << " end " <<std::endl;
     std::unordered_set<int> dims_set;
     for (auto& it : slot_dim_map_) {
       dims_set.insert(it.second);
     }
     size_t num_of_dim = dims_set.size();
+    std::cout << "num_of_dim: " << num_of_dim << std::endl;
     index_dim_vec_.resize(num_of_dim);
     index_dim_vec_.assign(dims_set.begin(), dims_set.end());
     std::sort(index_dim_vec_.begin(), index_dim_vec_.end());
@@ -401,6 +409,8 @@ class PSGPUWrapper {
     mem_pools_.resize(resource_->total_device() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
+    std::cout << "multi_mf_dim_: " << multi_mf_dim_ << std::endl;
+    std::cout << "max_mf_dim_: " << max_mf_dim_ << std::endl;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
     slot_index_vec_.resize(slot_mf_dim_vector_.size());
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
@@ -501,7 +511,8 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
-  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
+  std::vector<std::shared_ptr<::ThreadPool>> hbm_thread_pool_;
+  std::vector<std::shared_ptr<::ThreadPool>> pull_thread_pool_;
 
  protected:
   static bool is_initialized_;

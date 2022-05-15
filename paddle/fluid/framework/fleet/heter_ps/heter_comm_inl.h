@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
@@ -23,71 +24,21 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-
-template <typename KeyType, typename GradType, typename T>
-__global__ void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                       GradType* d_shard_grads,
-                                       GradType* d_grads, T* idx, size_t len,
-                                       size_t grad_value_size) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-    *(GradType*)((char*)d_shard_grads + i * grad_value_size) =
-        *(GradType*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
-  }
-}
-
-__global__ void merge_gradient_kernel(const uint32_t* offset,
-                                      const uint32_t* fea_num,
-                                      const uint32_t* index, const char* input,
-                                      char* output, int n,
-                                      size_t grad_value_size,
-                                      CustomGradMerger& merger_) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  
-  if (i < n) {
-    uint32_t start = offset[i];
-    uint32_t num = fea_num[i];
-    int ori_index = index[start];
-
-    FeaturePushValue& lhs = *(FeaturePushValue*)(output + i * grad_value_size);
-    FeaturePushValue& in =
-        *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-    merger_.copy_basic_field(lhs, in);
-    
-    for (int j = 1; j < num; ++j) {
-      ori_index = index[start + j];
-      in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.add_basic_field(lhs, in);
-    }
-  }
-  
-}
-
-
-template <typename ValType, typename T>
-__global__ void dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                                 size_t len, size_t val_size) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    uint64_t new_offset = uint64_t(idx[i]) * val_size;
-    *(ValType*)((char*)d_vals + new_offset) =
-        *(ValType*)((char*)d_shard_vals + i * val_size);
-  }
-}
-
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
   VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
   storage_.resize(resource_->total_device());
-  multi_mf_dim_ = resource->multi_mf();
+  multi_mf_dim_ = resource_->multi_mf();
   for (int i = 0; i < resource_->total_device(); ++i) {
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    // allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
+    //     2, 1, 20, (size_t)-1, false, false));  // NOLINT
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-        2, 1, 20, (size_t)-1, false, false));  // NOLINT
+        8, 1, (unsigned int)-1, (size_t)-1, false, false));
+
 #endif
     if (!multi_mf_dim_) {
       VLOG(0) << "yxf:: using table";
@@ -95,7 +46,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
       tables_.push_back(table);
     } else {
       // VLOG(0) << "yxf:: using ptrtable";
-      max_mf_dim_ = resource->max_mf_dim();
+      max_mf_dim_ = resource_->max_mf_dim();
       size_t val_type_size =
       TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
       // VLOG(0) << "yxf:: using ptrtable val size: " << val_type_size << " max mf dim: " << max_mf_dim_;
@@ -111,14 +62,14 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
       storage_[i].init(feanum_, resource_->dev_id(i));
     }
   }
-  mg_time_1 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_2 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_3 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_4 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_5 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_6 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_7 = std::vector<double>(resource_->total_gpu(), 0.0);
-  mg_time_8 = std::vector<double>(resource_->total_gpu(), 0.0);
+  mg_time_1 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_2 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_3 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_4 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_5 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_6 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_7 = std::vector<double>(resource_->total_device(), 0.0);
+  mg_time_8 = std::vector<double>(resource_->total_device(), 0.0);
   heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
 }
@@ -371,6 +322,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
   }
 }
 
+template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
                                                         int num, int* h_left,
                                                         int* h_right,
@@ -496,7 +448,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(
                       cudaMemcpyDefault,
                       cur_task.path->nodes_[cur_step - 1].out_stream);
     } else if (cur_step == 0) {
-      int end_index = cur_task.path->nodes_.back().gpu_num;
+      int end_index = cur_task.path->nodes_.back().dev_num;
       // if (h_left[end_index] * val_size < 0) {
       //   VLOG(0) << "yxf:::offset wrong11:: " << h_left[end_index] * val_size;
       // } 
@@ -910,10 +862,8 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
 
   //VLOG(0) << "yxf111";
 
-  grid_size = (uniq_len - 1) / block_size_ + 1;
-  merge_gradient_kernel<<<grid_size, block_size_, 0, stream>>>(
-      d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
-      (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_);
+  heter_comm_kernel_->merge_gradient(d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
+      (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_, stream);
   // grid_size = (len - 1) / block_size_ + 1;
   // shared_merge_gradient_kernel<<<grid_size, block_size_, len * grad_value_size, stream>>>(
   //     d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
@@ -1031,7 +981,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(num, 0);
 
-  // int grid_size = (len - 1) / block_size_ + 1;
+  int grid_size = (len - 1) / block_size_ + 1;
 
   int h_left[total_device];   // NOLINT
   int h_right[total_device];  // NOLINT
@@ -1096,9 +1046,13 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
-    if (shard_len == 0) {
+    // VLOG(0) << "pullsparse num:" << num << " to " << i << " h_right[i]:" << h_right[i] << "  h_left[i]:" << h_left[i];
+    if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
+    // if (shard_len == 0) {
+    //     continue;
+    // }
     create_storage(num, i, shard_len * sizeof(KeyType),
                    shard_len * val_type_size);
   }
@@ -1114,13 +1068,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
       continue;
     }
     auto& node = path_[num][i].nodes_.back();
-    cudaStreamSynchronize(node.in_stream);
-    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    sync_stream(node.in_stream);
+    AnyDeviceGuard guard(resource_->dev_id(i));
     if (!multi_mf_dim_) {
-      sync_stream(node.in_stream);
-
-      AnyDeviceGuard guard(resource_->dev_id(i));
-
       tables_[i]->rwlock_->RDLock();
       tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                       reinterpret_cast<ValType*>(node.val_storage),
@@ -1168,12 +1118,15 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                                 stream);
   } else {
     // grid_size = (len - 1) / 2048 + 1;
-    dy_mf_fill_dvals<<<grid_size, block_size_, 0, stream>>>(
-        d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size);
+    heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr,
+                                len, val_type_size, stream);
   }
   sync_stream(stream);
   // VLOG(0) << "yxf::finish walk to fill: " << num;
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(num, i);
     // VLOG(0) << "yxf::end get device: " << num << "from device: " << i;
   }
@@ -1246,9 +1199,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   int uniq_len = len;
-  merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
+  merge_grad(dev_num, d_keys, d_grads, NULL, len, uniq_len);
 
-  // int grid_size = (uniq_len - 1) / block_size_ + 1;
+  int grid_size = (uniq_len - 1) / block_size_ + 1;
 
   split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr,
                        dev_num);
@@ -1258,9 +1211,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                        d_shard_grads_ptr, d_grads, d_idx_ptr,
                                        uniq_len, stream);
   } else {
-    dy_mf_fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
-        d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
-        uniq_len, grad_value_size);
+    heter_comm_kernel_->dy_mf_fill_shard_grads(d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
+        uniq_len, grad_value_size, stream);
   }
 
   sync_stream(stream);
@@ -1290,12 +1242,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
                d_shard_grads_ptr);
   } else {
-    walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr,
+    walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
                reinterpret_cast<char*>(d_shard_grads_ptr), grad_value_size);
   }
 
   std::vector<platform::Timer> time_lines;
-  time_lines.resize(total_gpu);
+  time_lines.resize(total_device);
 
   for (int i = 0; i < total_device; ++i) {
     time_lines[i].Start();
@@ -1312,7 +1264,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
       tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                          reinterpret_cast<GradType*>(node.val_storage),
                          h_right[i] - h_left[i] + 1, sgd,
-                         resource_->remote_stream(i, gpu_num));
+                         resource_->remote_stream(i, dev_num));
     } else {
       /*
       char* test_grad_values =
@@ -1330,10 +1282,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                 << " show: " << cur->show << " mf_g: " << cur->mf_g;
       }
       */
+      AnyDeviceGuard guard(resource_->dev_id(i));
       ptr_tables_[i]->rwlock_->WRLock();
       ptr_tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                              node.val_storage, h_right[i] - h_left[i] + 1, sgd,
-                             resource_->remote_stream(i, gpu_num));
+                             resource_->remote_stream(i, dev_num));
     }
   }
 
@@ -1351,6 +1304,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
     destroy_storage(dev_num, i);
   }
 }
@@ -1673,7 +1629,7 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
   };
 
   if (!multi_mf_dim_) {
-    for (int i = 0; i < total_gpu; ++i) {
+    for (int i = 0; i < total_device; ++i) {
       threads.push_back(std::thread(dump_to_cpu_func, i));
     }
     for (auto& t : threads) {

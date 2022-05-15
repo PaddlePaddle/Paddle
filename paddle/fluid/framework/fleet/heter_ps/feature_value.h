@@ -24,50 +24,6 @@ namespace framework {
 
 typedef uint64_t FeatureKey;
 
-/*
-struct FeatureValue {
-  float delta_score;
-  float show;
-  float clk;
-  int slot;
-  float lr;
-  float lr_g2sum;
-  int mf_size;
-  float mf[MF_DIM + 1];
-  uint64_t cpu_ptr;
-
-  friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
-    out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
-        << " lr: " << val.lr << " mf_size: " << val.mf_size << " mf:";
-    for (int i = 0; i < val.mf_size; ++i) {
-      out << " " << val.mf[i];
-    }
-    return out;
-  }
-};
-
-struct FeaturePushValue {
-  float show;
-  float clk;
-  int slot;
-  float lr_g;
-  float mf_g[MF_DIM];
-
-  // __device__ __forceinline__ FeaturePushValue
-  // operator+(const FeaturePushValue& a) const {
-  //  FeaturePushValue out;
-  //  out.slot = a.slot;
-  //  out.show = a.show + show;
-  //  out.clk = a.clk + clk;
-  //  out.lr_g = a.lr_g + lr_g;
-  //  for (int i = 0; i < MF_DIM; ++i) {
-  //    out.mf_g[i] = a.mf_g[i] + mf_g[i];
-  //  }
-  //  return out;
-  // }
-};
-*/
-
 struct FeatureValue {
   float delta_score;
   float show;

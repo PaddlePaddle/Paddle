@@ -34,8 +34,10 @@ class GraphGpuWrapper {
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
-  NeighborSampleResult* graph_neighbor_sample(int gpu_id, int64_t* key,
-                                              int sample_size, int len);
+  // NeighborSampleResult* graph_neighbor_sample(int gpu_id, int64_t* key,
+  //                                             int sample_size, int len);
+  std::vector<int64_t> graph_neighbor_sample(int gpu_id, std::vector<int64_t>& key,
+                                              int sample_size);
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;

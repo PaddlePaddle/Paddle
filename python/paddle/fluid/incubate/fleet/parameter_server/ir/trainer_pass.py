@@ -99,6 +99,7 @@ def delete_optimizer_pass(program, config):
 
 
 def distributed_ops_pass(program, config, use_ps_gpu=False):
+    print("into distributed_ops_pass")
     trainer_id = config.get_role_id()
     send_ctx = config.get_the_one_send_context(
         split_dense_table=config.is_heter_ps_mode)
@@ -291,17 +292,29 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     distributed_idx = max(inputs_idxs) + 1
 
                 if use_ps_gpu:
+                    print(" into trainer_pass insert pull_gpups_sparse")
                     program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
+                        type="pull_gpups_sparse",
                         inputs={"Ids": inputs,
                                 'W': w},
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1]],
                             "is_distributed": True,
                             "is_sparse": True
                         })
+                    # program.global_block()._insert_op(
+                    #     index=distributed_idx,
+                    #     type="pull_box_sparse",
+                    #     inputs={"Ids": inputs,
+                    #             'W': w},
+                    #     outputs={"Out": outputs},
+                    #     attrs={
+                    #         "size": w.shape[1],
+                    #         "is_distributed": True,
+                    #         "is_sparse": True
+                    #     })
                 else:
                     program.global_block()._insert_op(
                         index=distributed_idx,
@@ -576,11 +589,12 @@ def ps_gpu_pass(program):
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         for op in program.global_block().ops:
-            if op.type != "pull_box_sparse":
+            if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(set()), [])
             for op_desc in grad_op_desc:
+                print("op_desc:", op_desc)
                 new_op_desc = program.global_block().desc.append_op()
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
@@ -599,7 +613,7 @@ def ps_gpu_pass(program):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):

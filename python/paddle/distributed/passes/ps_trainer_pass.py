@@ -373,17 +373,29 @@ class DistributedOpsPass(PassBase):
                     distributed_idx = max(inputs_idxs) + 1
 
                 if attrs['use_ps_gpu']:
+                    print(" into ps_trainer_pass insert pull_gpups_sparse")
                     _program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
+                        type="pull_gpups_sparse",
                         inputs={"Ids": inputs,
                                 'W': w},
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1]],
                             "is_distributed": True,
                             "is_sparse": True
                         })
+                    # _program.global_block()._insert_op(
+                    #     index=distributed_idx,
+                    #     type="pull_box_sparse",
+                    #     inputs={"Ids": inputs,
+                    #             'W': w},
+                    #     outputs={"Out": outputs},
+                    #     attrs={
+                    #         "size": w.shape[1],
+                    #         "is_distributed": True,
+                    #         "is_sparse": True
+                    #     })
                 else:
                     _program.global_block()._insert_op(
                         index=distributed_idx,
@@ -435,6 +447,7 @@ class DistributedOpsPass(PassBase):
                 ids = pull_sparse_ids.get(param_name, [])
                 ids.append(op.input("Ids")[0])
                 pull_sparse_ids[param_name] = ids
+
             if op.type == 'cvm':
                 use_cvm_op = True
 
@@ -615,7 +628,7 @@ class PsGpuPass(PassBase):
 
     def _add_push_box_sparse_op(self, program):
         for op in program.global_block().ops:
-            if op.type != "pull_box_sparse":
+            if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(set()), [])
@@ -670,7 +683,7 @@ class PsGpuPass(PassBase):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):

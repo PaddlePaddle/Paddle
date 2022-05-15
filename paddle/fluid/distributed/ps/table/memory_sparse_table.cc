@@ -494,6 +494,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
   size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+  // VLOG(0) << "value_size:" << value_size << " mf_value_size:" << mf_value_size;
 
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -502,6 +503,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
     int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
     task_keys[shard_id].push_back({keys[i], i});
   }
+  // VLOG(0)<< "_shards_task_pool" << _shards_task_pool.size();
   // std::atomic<uint32_t> missed_keys{0};
   for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     tasks[shard_id] =
@@ -512,6 +514,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
               auto& local_shard = _local_shards[shard_id];
               float data_buffer[value_size];
               float* data_buffer_ptr = data_buffer;
+              // VLOG(0) << "shard_id:" << shard_id  << " begin";
               for (int i = 0; i < keys.size(); ++i) {
                 uint64_t key = keys[i].first;
                 auto itr = local_shard.find(key);
@@ -519,18 +522,22 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
                 FixedFeatureValue* ret = NULL;
                 if (itr == local_shard.end()) {
                   // ++missed_keys;
+                  // VLOG(0) << "shard_id:" << shard_id << " missed_key:" << key;
                   auto& feature_value = local_shard[key];
                   feature_value.resize(data_size);
                   float* data_ptr = feature_value.data();
                   _value_accesor->Create(&data_buffer_ptr, 1);
                   memcpy(data_ptr, data_buffer_ptr, data_size * sizeof(float));
                   ret = &feature_value;
+                  // VLOG(0) << "shard_id:" << shard_id << " missed_key:" << key << " value: " << (char*)ret;
                 } else {
                   ret = itr.value_ptr();
+                  // VLOG(0) << "shard_id:" << shard_id << " key:" << key << " value:" << (char*)ret;
                 }
                 int pull_data_idx = keys[i].second;
                 pull_values[pull_data_idx] = (char*)ret;
               }
+              // VLOG(0) << "shard_id:" << shard_id  << " end";
               return 0;
             });
   }

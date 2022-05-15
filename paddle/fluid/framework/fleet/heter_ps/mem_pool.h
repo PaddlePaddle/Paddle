@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+// #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+
 #ifdef PADDLE_WITH_HETERPS
 // #include
 // "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"

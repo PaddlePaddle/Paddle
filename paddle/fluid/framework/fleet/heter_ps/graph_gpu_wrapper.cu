@@ -256,12 +256,48 @@ void GraphGpuWrapper::test() {
     }
   }
 }
-NeighborSampleResult *GraphGpuWrapper::graph_neighbor_sample(int gpu_id,
-                                                             int64_t *key,
-                                                             int sample_size,
-                                                             int len) {
-  return ((GpuPsGraphTable *)graph_table)
-      ->graph_neighbor_sample(gpu_id, key, sample_size, len);
+std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(int gpu_id,
+  std::vector<int64_t>& key,
+  int sample_size) {
+
+int64_t * cuda_key;
+platform::CUDADeviceGuard guard(gpu_id);
+
+cudaMalloc(&cuda_key, key.size() * sizeof(int64_t));
+cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t), cudaMemcpyHostToDevice);
+
+auto neighbor_sample_res = ((GpuPsGraphTable *)graph_table)
+->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
+
+int *actual_sample_size = new int[key.size()];
+cudaMemcpy(actual_sample_size, neighbor_sample_res->actual_sample_size,
+key.size() * sizeof(int),
+cudaMemcpyDeviceToHost);  // 3, 1, 3
+int cumsum = 0;
+for (int i = 0; i < key.size(); i++) {
+cumsum += actual_sample_size[i];
+}
+/* VLOG(0) << "cumsum " << cumsum; */
+
+std::vector<int64_t > res;
+res.resize(cumsum * 2);
+int count = 0;
+for (int i = 0; i < key.size(); i++) {
+for (int j = 0; j < actual_sample_size[i]; j++) {
+res[count] = key[i];
+count += 1;
+}
+}
+
+cudaMemcpy(res.data() + cumsum, neighbor_sample_res->val, cumsum * sizeof(int64_t),
+cudaMemcpyDeviceToHost);
+/* for(int i = 0;i < res.size();i ++) { */
+/*     VLOG(0) << i << " " << res[i]; */
+/* } */
+
+cudaFree(cuda_key);
+return res;
+
 }
 #endif
 }
