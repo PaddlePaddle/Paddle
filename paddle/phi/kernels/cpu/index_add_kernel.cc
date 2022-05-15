@@ -26,40 +26,16 @@ namespace phi {
 template <typename T, typename Context>
 void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    // const DenseTensor& index,
-                    const IntArray& index,
                     int axis,
-                    // float added_value,
-                    const Scalar& add_value,
+                    const IntArray& index,
+                    float add_value,
                     DenseTensor* output) {
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
   if (axis < 0) {
     axis += x.dims().size();
   }
-  // const auto& index_type = index.dtype();
-
-  // bool index_type_match =
-  //     index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
-  // PADDLE_ENFORCE_EQ(index_type_match,
-  //                   true,
-  //                   phi::errors::InvalidArgument(
-  //                       "Input(Index) holds the wrong type, it holds %s, but "
-  //                       "desires to be %s or %s",
-  //                       index_type,
-  //                       phi::DataType::INT32,
-  //                       phi::DataType::INT64));
-
-  // auto added_val = static_cast<T>(added_value);
-  auto add_val = add_value.to<T>();
-
-
-  // if (index_type == phi::DataType::INT32) {
-  //   IndexAddInner<Context, T, int>(dev_ctx, index, output, axis, added_val);
-  // } else if (index_type == phi::DataType::INT64) {
-  //   IndexAddInner<Context, T, int64_t>(dev_ctx, index, output, axis, added_val);
-  // }
+  auto add_val = static_cast<T>(add_value);
   IndexAddCPUImpl<Context, T>(dev_ctx, index, output, axis, add_val);
-
 }
 
 }  // namespace phi

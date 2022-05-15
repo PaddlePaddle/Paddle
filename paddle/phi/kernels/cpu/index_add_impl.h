@@ -22,14 +22,13 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-// template <typename Context, typename T, typename IndexT = int>
+
 template <typename Context, typename T>
 void IndexAddCPUImpl(const Context& ctx,
-                  //  const DenseTensor& index,
-                   const IntArray& index,
-                   DenseTensor* output,
-                   int axis,
-                   T add_val) {
+                     const IntArray& index,
+                     DenseTensor* output,
+                     int axis,
+                     T add_val) {
   auto output_dim = output->dims();
   auto output_dim_size = output_dim.size();
   // auto index_size = index.dims()[0];
@@ -52,27 +51,6 @@ void IndexAddCPUImpl(const Context& ctx,
   auto outer_nums = 1;
   for (auto i = 0; i < axis; i++) {
     outer_nums *= output_dim[i];
-  }
-
-  for (size_t i = 0; i < index_size; i++) {
-    PADDLE_ENFORCE_GE(
-        index_data[i],
-        0,
-        phi::errors::InvalidArgument(
-            "(elements of index of OP(index_add)) "
-            "expected >= 0 and < %ld, but got %ld. Please check index "
-            "value.",
-            output_dim[axis],
-            index_data[i]));
-    PADDLE_ENFORCE_LT(
-        index_data[i],
-        output_dim[axis],
-        phi::errors::InvalidArgument(
-            "(elements of index of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check index "
-            "value.",
-            output_dim[axis],
-            index_data[i]));
   }
 
   output->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
