@@ -476,30 +476,30 @@ def to_tensors(xs):
 
 
 def _lower(block, reverse):
-    def bind(args, to_bind, vlt):
+    def bind(args, to_bind, value_table):
         for i in range(len(args)):
             if isinstance(args[i], list):
-                bind(args[i], to_bind, vlt)
+                bind(args[i], to_bind, value_table)
             elif args[i] is not None and args[i].name in to_bind:
-                args[i] = vlt[to_bind[args[i].name]]
+                args[i] = value_table[to_bind[args[i].name]]
 
     def bind_name(names, to_bind):
-        rt_l = []
+        return_list = []
         for name in names:
             if isinstance(name, list):
-                rt_l.append(bind_name(name, to_bind))
+                return_list.append(bind_name(name, to_bind))
             else:
-                rt_l.append(to_bind[name] if name in to_bind else name)
-        return rt_l
+                return_list.append(to_bind[name] if name in to_bind else name)
+        return return_list
 
     def single_layer_list(xs):
-        rt_l = []
+        return_list = []
         for x in xs:
             if isinstance(x, list):
-                rt_l = rt_l + single_layer_list(x)
+                return_list = return_list + single_layer_list(x)
             else:
-                rt_l.append(x)
-        return rt_l
+                return_list.append(x)
+        return return_list
 
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
@@ -508,11 +508,11 @@ def _lower(block, reverse):
         assert program.num_blocks == 1, "The lower transform is designed to process only one block."
         block = program.current_block()
 
-    vlt = {}
+    value_table = {}
     to_bind = {}
     to_bind_rev = {}
     for var in block.desc.all_vars():
-        vlt[var.name()] = block.var(var.name())
+        value_table[var.name()] = block.var(var.name())
 
     ops_to_remove = []
     vars_to_remove = set()
@@ -521,7 +521,7 @@ def _lower(block, reverse):
         ops_to_remove.append(op_idx)
         if lookup_fn(op.type) is not None:
             input_args = get_input_var_list(op)
-            bind(input_args, to_bind, vlt)
+            bind(input_args, to_bind, value_table)
 
             for orig_out, new_out in zip(
                     single_layer_list(get_output_var_list(op)),
@@ -529,7 +529,7 @@ def _lower(block, reverse):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
                 vars_to_remove.add(new_out.name)
-                vlt[new_out.name] = new_out
+                value_table[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
                 to_bind_rev[new_out.name] = orig_out.name
         else:
