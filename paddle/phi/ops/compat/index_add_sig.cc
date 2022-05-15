@@ -16,16 +16,20 @@
 
 namespace phi {
 
-KernelSignature IndexAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature IndexAddOpArgumentMapping(
+  const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "index_add", {"X"}, {"axis", "index", "add_value"}, {"Out"});
+      "index_add", 
+      {"X"}, 
+      {"axis", "index", "add_value"}, 
+      {"Out"}
+  );
 }
 
 KernelSignature IndexAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("index_add_grad",
                          {"Out@GRAD"},
-                        //  {"axis", "added_value"},
                          {},
                          {"X@GRAD"});
 }
