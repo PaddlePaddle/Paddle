@@ -186,7 +186,7 @@ template <typename VarType>
 static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      // NOTE(zhiqu): The output may be NULL because of pruning.
       if (var) {
         SetForwardDataTypeOfGradVar(var);
       }

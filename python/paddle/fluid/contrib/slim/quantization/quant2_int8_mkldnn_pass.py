@@ -426,6 +426,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_affine_channel_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_transpose_bn_fuse_pass')
         graph = self._apply_pass(graph,
                                  'conv_transpose_eltwiseadd_bn_fuse_pass')
@@ -667,4 +668,5 @@ class Quant2Int8MkldnnPass(object):
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout(graph)])
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
+        graph = self._apply_pass(graph, 'int8_scale_calculation_mkldnn_pass')
         return graph

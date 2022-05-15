@@ -1086,12 +1086,12 @@ inline void SimplifyDimsAndperm(size_t rank, const std::vector<int32_t>& perm,
       (*movement_size / pre_simplified_movement_size);
 }
 
-template <typename T>
-inline void SimplifyThenLaunch(const phi::GPUContext& ctx,
-                               const std::vector<int>& src_dims,
-                               const std::vector<int32_t>& perm, size_t rank,
-                               const T* src, T* dst) {
+template <typename DeviceContext, typename T>
+inline void SimplifyThenLaunch(const size_t rank, const DeviceContext& ctx,
+                               const Tensor& in, Tensor* out,
+                               const std::vector<int32_t>& perm) {
   size_t simplified_rank = 0;
+  auto src_dims = phi::vectorize<int>(in.dims());
   int64_t simplified_dims[phi::DDim::kMaxRank];
   int simplified_perm[phi::DDim::kMaxRank];
   size_t movement_size = 0;
@@ -1102,13 +1102,13 @@ inline void SimplifyThenLaunch(const phi::GPUContext& ctx,
   }
 
   // float32时为4, float16时为2
-
   SimplifyDimsAndperm<T, /*kMaxMovementSize=*/16>(
       rank, perm, new_src_dims, &simplified_rank, simplified_dims,
-      simplified_perm, sizeof(T), src, dst, &movement_size);
+      simplified_perm, sizeof(T), in.data<T>(), out->data<T>(), &movement_size);
 
   LaunchWithSimplifiedDispatch<T>(ctx, movement_size, simplified_rank,
-                                  simplified_dims, simplified_perm, src, dst);
+                                  simplified_dims, simplified_perm,
+                                  in.data<T>(), out->data<T>());
 }
 
 template <typename T>
@@ -1127,9 +1127,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
     if (ndims > 5) {
       TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
     } else {
-      auto src_dims = phi::vectorize<int>(in.dims());
-      SimplifyThenLaunch<T>(dev_ctx, src_dims, perm, ndims, in.data<T>(),
-                            out->data<T>());
+      SimplifyThenLaunch<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
     }
   }
 }

@@ -45,13 +45,13 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(
         input_shape.size(), 4U,
         platform::errors::InvalidArgument(
-            "The size of input_shape is expected to 4. But recieved "
+            "The size of input_shape is expected to 4. But received "
             "input_shape's size is %d, input_shape is [%s].",
             input_shape.size(), phi::make_ddim(input_shape)));
     PADDLE_ENFORCE_EQ(
         filter_shape.size(), 4U,
         platform::errors::InvalidArgument(
-            "The size of filter_shape is expected to 4. But recieved "
+            "The size of filter_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             filter_shape.size(), phi::make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
@@ -59,20 +59,20 @@ struct NormConvolutionArgs {
                       true,
                       platform::errors::InvalidArgument(
                           "The filter_shape is expected to store as nhwc, and "
-                          "h = w = 1 or 3. But recieved filter_shape is [%s].",
+                          "h = w = 1 or 3. But received filter_shape is [%s].",
                           phi::make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
                       true,
                       platform::errors::InvalidArgument(
                           "The input channel is expected to be multiple of 8, "
                           "and the output channel is expected to be multiple "
-                          "of 32. But recieved input channel is %d, output "
+                          "of 32. But received input channel is %d, output "
                           "channel is %d.",
                           filter_shape[3], filter_shape[0]));
     PADDLE_ENFORCE_EQ(
         output_shape.size(), 4U,
         platform::errors::InvalidArgument(
-            "The size of output_shape is expected to 4. But recieved "
+            "The size of output_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(), phi::make_ddim(output_shape)));
     is_support = IsSupport(ctx, filter_shape, stride, dilation, group);
@@ -83,7 +83,7 @@ struct NormConvolutionArgs {
             "compatiblity greater than or equal to 70 and the kernel size "
             "must be equal to 1 or 3. When the kernel size is 1, "
             "the stride must be 1 if the compatiblity is equal to 70. "
-            "Besides, the dilation and group must be equal to 1. But recieved "
+            "Besides, the dilation and group must be equal to 1. But received "
             "compatiblity is %d, kernel size is %d, stride is %d, "
             "dilation is %d, group is %d",
             ctx.GetComputeCapability(), filter_shape[1], stride, dilation,
