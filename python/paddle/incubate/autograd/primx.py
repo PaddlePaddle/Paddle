@@ -227,7 +227,7 @@ class Transform(object):
 
         if isinstance(dots, paddle.fluid.framework.Variable):
             bar = self.dot2bar.lookup(dots)
-            assert bar is not None, 'bar is None.'
+            assert bar is not None, 'bar must be not None'
             return bar
 
         bars = [self.dot2bar_rec(dot) for dot in dots]
