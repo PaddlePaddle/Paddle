@@ -37,7 +37,6 @@ NEED_TO_FIX_OP_LIST = [
     'dot',
     'elementwise_add',
     'elementwise_div',
-    'elementwise_heaviside',
     'elementwise_max',
     'elementwise_min',
     'elementwise_mul',
@@ -71,5 +70,6 @@ NEED_TO_FIX_OP_LIST = [
     'smooth_l1_loss',
     'spectral_norm',
     'complex',
+    'index_add_tensor'
 ]
 # yapf: enable
