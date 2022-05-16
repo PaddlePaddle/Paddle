@@ -42,17 +42,17 @@ class IndexAddTensorOpMaker : public framework::OpProtoAndCheckerMaker {
              "the input tensor of IndexAddTensorOp, dtype should be"
              "the same as input tensor X");
     AddInput("IndexTensor",
-             "(Tensor, optional) If provided, index add will use this."
-             "It has the highest priority of IndexTensor and attr(index).")
+             "(Tensor, optional) If provided, index_add will use this."
+             "It has higher priority than attr(index).")
         .AsDispensable();
     AddInput("AxisTensor",
              "(Tensor) If provided, use this as "
              "axis, this has a higher priority than "
-             "attr(axis), the shape of this tensor MUST BE 1.")
+             "attr(axis), the shape of this tensor MUST BE (1,).")
         .AsDispensable();
-    AddAttr<std::vector<int>>(
+    AddAttr<std::vector<int64_t>>(
         "index",
-        "(list<int>) Starting indices of corresponding axis in `axes`");
+        "(list<int>) indices of corresponding axis in `axis`");
     AddAttr<int>("axis", "(int), the dimension in which we index.");
     AddOutput(
         "Out",

@@ -38,25 +38,25 @@ class IndexAddOpMaker : public framework::OpProtoAndCheckerMaker {
              "the input feature data of IndexAddOp, dtype should be"
              "bool, int32, int64, float16, float32, float64.");
     AddInput("IndexTensor",
-             "(Tensor, optional) If provided, index add will use this."
-             "It has the highest priority of IndexTensor and attr(index).")
+             "(Tensor, optional) If provided, index_add will use this."
+             "It has higher priority than attr(index).")
         .AsDispensable();
     AddInput("AxisTensor",
              "(Tensor) If provided, use this as "
              "axis, this has a higher priority than "
-             "attr(axis), the shape of this tensor MUST BE 1.")
+             "attr(axis), the numel of this tensor MUST BE 1.")
         .AsDispensable();
-    AddAttr<std::vector<int>>(
+    AddAttr<std::vector<int64_t>>(
         "index",
-        "(list<int>) Starting indices of corresponding axis in `axes`");
+        "(list<int>) indices of corresponding axis in `axis`");
     AddAttr<int>("axis", "(int), the dimension in which we index.");
     AddAttr<float>("add_value", "(float) The value to add.");
     AddOutput("Out",
               "(Tensor, default Tensor<float>),"
-              " the output of  IndexAddOp, whose dtype is the same as X.");
+              " the output of  IndexAddOp, whose dtype and shape are the same as X.");
     AddComment(R"DOC(
                 IndexAdd operator
-                Fills the elements of the input tensor with value
+                Add the elements of the input tensor with value
                 by selecting the indices in the order given in index.
                 This operator also supports inplace modification.
         )DOC");
