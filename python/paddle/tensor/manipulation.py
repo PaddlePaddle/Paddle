@@ -4239,35 +4239,36 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
 
 
 def _index_add_params_check(x, axis, index, add_value):
-    dims = len(x.shape)
     if not isinstance(x, Variable):
         raise TypeError("The input x should be a Tensor.")
+    dims = len(x.shape)
 
     if not isinstance(axis, (int, Variable)):
-        raise TypeError("The axis should be a Tensor or int constant")
+        raise TypeError("The axis should be a Tensor or int ")
 
     check_axis = axis
     if isinstance(axis, Variable):
-        if axis.dtype != paddle.int64 and axis.dtype != paddle.int32:
+        if axis.dtype not in [paddle.int64, paddle.int32]:
             raise TypeError("The axis dtype should be int32 or int64.")
         if axis.numel() != 1:
             raise ValueError(
                 "The numel of axis must be one when it is a tensor.")
         check_axis = axis.numpy().item(0)
-    if check_axis > dims or check_axis <= -dims:
+    if check_axis >= dims or check_axis < -dims:
         raise ValueError(
-            "Axis should be int, element should in range [-rank(x), rank(x)).")
+            "Axis should be in range [-rank(x), rank(x)).")
 
     if not isinstance(index, (list, tuple, Variable)):
         raise TypeError(
             "The index should be a Tensor, list of int, or tuple of int.")
 
     if isinstance(index, Variable):
-        if index.dtype != paddle.int64 and index.dtype != paddle.int32:
+        if index.dtype not in [paddle.int64, paddle.int32]:
             raise TypeError("The index dtype should be int32 or int64.")
         if len(index.shape) != 1:
             raise ValueError("The index should be a 1-D Tensor.")
-
+    #TODO: add_value can be in any shape
+    # as long as it can be broadcast to the shape of sliced x
     if isinstance(add_value, Variable) and add_value.numel() != 1:
         raise ValueError(
             "The numel of add_value must be one when it is a tensor.")
@@ -4379,9 +4380,6 @@ def index_add_(x, index, axis, add_value):
                                       "add_value", add_value)
 
     raise ValueError("This inplace op index_add_ should only work in dygraph.")
-
-
-
 
 
 # TODO(dev): We need avoid implementing it by this way.
