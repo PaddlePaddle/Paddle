@@ -640,10 +640,11 @@ void CastPyArg2AttrBlock(PyObject* obj,
 void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
     ssize_t attr_end, paddle::framework::AttributeMap& attrs) {  // NOLINT
-  PADDLE_ENFORCE_EQ(
-      (attr_end - attr_start) % 2, 0,
-      platform::errors::InvalidArgument(
-          "The number of arguments for attributes should be even."));
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2, 0,
+                    platform::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start, attr_end));
 
   auto attr_type_map = &(OpAttrTypeMap::Instance().Map()[op_type]);
 

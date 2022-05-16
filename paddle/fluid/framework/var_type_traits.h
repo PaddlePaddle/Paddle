@@ -87,9 +87,7 @@ namespace operators {
 
 class CudnnRNNCache;
 
-#ifdef PADDLE_WITH_CUDA
 class CUDAGraphWithInOuts;
-#endif
 
 namespace reader {
 class LoDTensorBlockingQueueHolder;
@@ -193,10 +191,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_CNCL)
     cnclCliqueId,
 #endif
-#ifdef PADDLE_WITH_CUDA
-    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
-#endif
-    int, float, Vocab>;
+    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>, int, float,
+    Vocab>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

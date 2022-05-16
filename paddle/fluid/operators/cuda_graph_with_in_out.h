@@ -15,11 +15,14 @@
 #pragma once
 
 #include "paddle/fluid/framework/tensor.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_CUDA
 class CUDAGraphWithInOuts {
  public:
   template <typename Callable>
@@ -145,6 +148,9 @@ static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,
     }
   }
 }
+#else
+class CUDAGraphWithInOuts {};
+#endif
 
 }  // namespace operators
 }  // namespace paddle

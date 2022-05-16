@@ -104,7 +104,7 @@ class TestRunProgram(unittest.TestCase):
                      'is_test', False, 'program_id', _hash_with_id(program))
 
             _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
-                               [fake_var], *attrs)
+                               [fake_var], None, *attrs)
 
             loss = paddle.mean(out_t)
             loss.backward()
