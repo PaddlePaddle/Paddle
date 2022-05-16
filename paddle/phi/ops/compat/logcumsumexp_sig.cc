@@ -35,4 +35,5 @@ KernelSignature LogcumsumexpGradOpArgumentMapping(
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(logcumsumexp, phi::LogcumsumexpOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(logcumsumexp_grad, phi::LogcumsumexpGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(logcumsumexp_grad,
+                           phi::LogcumsumexpGradOpArgumentMapping);
