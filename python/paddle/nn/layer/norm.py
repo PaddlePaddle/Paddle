@@ -49,6 +49,7 @@ from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+import paddle.distributed as dist
 
 __all__ = []
 
@@ -1062,10 +1063,14 @@ class SyncBatchNorm(_BatchNormBase):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 name=None):
+                 name=None,
+                 group=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
                              bias_attr, data_format, None, name)
+
+        self._group = dist.new_group(dist.collective._get_global_group()
+                                     .ranks) if group is None else group
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
@@ -1084,6 +1089,7 @@ class SyncBatchNorm(_BatchNormBase):
         mean_out = self._mean
         # variance and variance out share the same memory
         variance_out = self._variance
+        ring_id = self._group.id
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
@@ -1092,7 +1098,7 @@ class SyncBatchNorm(_BatchNormBase):
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
-                     False)
+                     False, "ring_id", ring_id)
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
@@ -1111,6 +1117,7 @@ class SyncBatchNorm(_BatchNormBase):
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,
+            "ring_id": rind_id,
         }
 
         inputs = {
@@ -1141,7 +1148,7 @@ class SyncBatchNorm(_BatchNormBase):
         return sync_batch_norm_out
 
     @classmethod
-    def convert_sync_batchnorm(cls, layer):
+    def convert_sync_batchnorm(cls, layer, group=None):
         """
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
@@ -1162,6 +1169,9 @@ class SyncBatchNorm(_BatchNormBase):
 
         """
         layer_output = layer
+        group = dist.new_group(dist.collective._get_global_group()
+                               .ranks) if group is None else group
+
         if isinstance(layer, _BatchNormBase):
             if layer._weight_attr != None and not isinstance(
                     layer._weight_attr,
@@ -1174,7 +1184,7 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
                                          layer._epsilon, layer._weight_attr,
                                          layer._bias_attr, layer._data_format,
-                                         layer._name)
+                                         layer._name, group)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():
@@ -1184,8 +1194,8 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output._variance = layer._variance
 
         for name, sublayer in layer.named_children():
-            layer_output.add_sublayer(name,
-                                      cls.convert_sync_batchnorm(sublayer))
+            layer_output.add_sublayer(
+                name, cls.convert_sync_batchnorm(sublayer, group))
         del layer
         return layer_output
 

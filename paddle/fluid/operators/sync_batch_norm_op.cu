@@ -29,6 +29,7 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
+    const int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_EQ(use_global_stats, false,
                       platform::errors::InvalidArgument(
                           "sync_batch_norm doesn't support "
@@ -52,7 +53,7 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     SyncBatchNormFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
         saved_mean, saved_inv_variance, epsilon, momentum, test_mode,
-        use_global_stats);
+        use_global_stats, ring_id);
   }
 };
 
@@ -66,6 +67,7 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
+    const int ring_id = ctx.Attr<int>("ring_id");
 
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
@@ -82,7 +84,7 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
 
     SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, scale, bias, d_x, d_y, d_scale, d_bias, saved_mean,
-        saved_inv_var, epsilon);
+        saved_inv_var, epsilon, ring_id);
   }
 };
 
