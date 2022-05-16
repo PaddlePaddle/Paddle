@@ -53,7 +53,6 @@ if (WITH_GPU OR WITH_ROCM)
     op_library(fused_fc_elementwise_layernorm_op)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
-    op_library(vit_attention_op)
     op_library(skip_layernorm_op)
     op_library(fused_embedding_eltwise_layernorm_op)
     # fusion_group
@@ -75,6 +74,7 @@ if (WITH_GPU OR WITH_ROCM)
 
         op_library(fused_feedforward_op)
         # fused_attention_op
+        op_library(vit_attention_op)
         op_library(fused_attention_op)
         op_library(fused_multi_transformer_op)
     endif()
