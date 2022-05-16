@@ -37,10 +37,14 @@ limitations under the License. */
 #include <execinfo.h>
 #endif
 
+#include "gflags/gflags.h"
+
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
+
+DECLARE_int32(call_stack_level);
 
 namespace phi {
 class ErrorSummary;
@@ -171,6 +175,22 @@ struct BinaryCompareMessageConverter<false> {
 }  // namespace details
 
 std::string GetCurrentTraceBackString(bool for_signal = false);
+std::string SimplifyErrorTypeFormat(const std::string& str);
+
+template <typename StrType>
+static std::string GetErrorSumaryString(StrType&& what,
+                                        const char* file,
+                                        int line) {
+  std::ostringstream sout;
+  if (FLAGS_call_stack_level > 1) {
+    sout << "\n----------------------\nError Message "
+            "Summary:\n----------------------\n";
+  }
+  sout << paddle::string::Sprintf(
+              "%s (at %s:%d)", std::forward<StrType>(what), file, line)
+       << std::endl;
+  return sout.str();
+}
 
 template <typename StrType>
 std::string GetCompleteTraceBackString(StrType&& what,
@@ -183,6 +203,18 @@ std::string GetCompleteTraceBackString(StrType&& what,
               "%s (at %s:%d)", std::forward<StrType>(what), file, line)
        << std::endl;
   return GetCurrentTraceBackString() + sout.str();
+}
+
+template <typename StrType>
+static std::string GetTraceBackString(StrType&& what,
+                                      const char* file,
+                                      int line) {
+  if (FLAGS_call_stack_level > 1) {
+    // FLAGS_call_stack_level>1 means showing c++ call stack
+    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+  } else {
+    return GetErrorSumaryString(what, file, line);
+  }
 }
 
 inline bool is_error(bool stat) { return !stat; }
@@ -199,13 +231,37 @@ inline bool is_error(bool stat) { return !stat; }
 
 struct EnforceNotMet : public std::exception {
  public:
-  EnforceNotMet(std::exception_ptr e, const char* file, int line);
+  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
+    try {
+      std::rethrow_exception(e);
+    } catch (EnforceNotMet& e) {
+      code_ = e.code();
+      err_str_ = GetTraceBackString(e.what(), file, line);
+      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+    } catch (std::exception& e) {
+      err_str_ = GetTraceBackString(e.what(), file, line);
+      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+    }
+  }
 
-  EnforceNotMet(const std::string& str, const char* file, int line);
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {
+    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+  }
 
-  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line);
+  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
+      : code_(error.code()),
+        err_str_(GetTraceBackString(error.to_string(), file, line)) {
+    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+  }
 
-  const char* what() const noexcept override;
+  const char* what() const noexcept override {
+    if (FLAGS_call_stack_level > 1) {
+      return err_str_.c_str();
+    } else {
+      return simple_err_str_.c_str();
+    }
+  }
 
   phi::ErrorCode code() const { return code_; }
 
@@ -213,7 +269,15 @@ struct EnforceNotMet : public std::exception {
 
   const std::string& simple_error_str() const { return simple_err_str_; }
 
-  void set_error_str(std::string str);
+  void set_error_str(std::string str) {
+    if (FLAGS_call_stack_level > 1) {
+      err_str_ = str;
+    } else {
+      simple_err_str_ = str;
+    }
+  }
+
+  ~EnforceNotMet() override = default;
 
  private:
   // Used to determine the final type of exception thrown

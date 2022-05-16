@@ -14,12 +14,76 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-#include "gflags/gflags.h"
+#include <map>
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
-// Note: these headers for simplify demangle type string
-#include "paddle/phi/core/compat/type_defs.h"
+#include <boost/variant.hpp>
 
-DECLARE_int32(call_stack_level);
+// <boost/variant.hpp> is not suitable to be placed in the header file,
+// it will introduce a large number of unnecessary includes, and these type
+// declarations that depend on boost are also not suitable for the phi header
+// file. Do some repeated forward declarations here to avoid
+// <boost/variant.hpp> spreading to a large number of phi kernel files
+namespace egr {
+class EagerVariable;
+}
+namespace paddle {
+namespace framework {
+class BlockDesc;
+using Attribute = boost::variant<boost::blank,
+                                 int,
+                                 float,
+                                 std::string,
+                                 std::vector<int>,
+                                 std::vector<float>,
+                                 std::vector<std::string>,
+                                 bool,
+                                 std::vector<bool>,
+                                 BlockDesc*,
+                                 int64_t,
+                                 std::vector<BlockDesc*>,
+                                 std::vector<int64_t>,
+                                 std::vector<double>>;
+using AttributeMap = std::unordered_map<std::string, Attribute>;
+}  // namespace framework
+namespace imperative {
+class VariableWrapper;
+class SavedVariableWrapperList;
+class VarBase;
+
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
+
+template <>
+struct NameVarMapTrait<VarBase> {
+  using Type = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+};
+
+template <>
+struct NameVarMapTrait<VariableWrapper> {
+  using Type = std::map<std::string, SavedVariableWrapperList>;
+};
+
+template <>
+struct NameVarMapTrait<egr::EagerVariable> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>>;
+};
+
+}  // namespace details
+
+template <typename T>
+using NameVarMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameVarBaseMap = NameVarMap<VarBase>;
+using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+using NameTensorMap = NameVarMap<egr::EagerVariable>;
+
+}  // namespace imperative
+}  // namespace paddle
 
 namespace phi {
 namespace enforce {
@@ -49,11 +113,12 @@ static std::string SimplifyDemangleStr(std::string str) {
   __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::Attribute, str);
   __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVariableWrapperMap, str);
   __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVarBaseMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameTensorMap, str);
   __REPLACE_COMPLEX_TYPE_STR__(std::string, str);
   return str;
 }
 
-std::string GetCurrentTraceBackString(bool for_signal = false) {
+std::string GetCurrentTraceBackString(bool for_signal) {
   std::ostringstream sout;
 
   if (!for_signal) {
@@ -92,34 +157,7 @@ std::string GetCurrentTraceBackString(bool for_signal = false) {
   return sout.str();
 }
 
-template <typename StrType>
-static std::string GetErrorSumaryString(StrType&& what,
-                                        const char* file,
-                                        int line) {
-  std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
-    sout << "\n----------------------\nError Message "
-            "Summary:\n----------------------\n";
-  }
-  sout << paddle::string::Sprintf(
-              "%s (at %s:%d)", std::forward<StrType>(what), file, line)
-       << std::endl;
-  return sout.str();
-}
-
-template <typename StrType>
-static std::string GetTraceBackString(StrType&& what,
-                                      const char* file,
-                                      int line) {
-  if (FLAGS_call_stack_level > 1) {
-    // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
-  } else {
-    return GetErrorSumaryString(what, file, line);
-  }
-}
-
-static std::string SimplifyErrorTypeFormat(const std::string& str) {
+std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
   size_t type_end_pos = str.find(":", 0);
   if (type_end_pos == std::string::npos) {
@@ -130,48 +168,6 @@ static std::string SimplifyErrorTypeFormat(const std::string& str) {
          << str.substr(type_end_pos + 1);
   }
   return sout.str();
-}
-
-EnforceNotMet::EnforceNotMet(std::exception_ptr e, const char* file, int line) {
-  try {
-    std::rethrow_exception(e);
-  } catch (EnforceNotMet& e) {
-    code_ = e.code();
-    err_str_ = GetTraceBackString(e.what(), file, line);
-    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-  } catch (std::exception& e) {
-    err_str_ = GetTraceBackString(e.what(), file, line);
-    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-  }
-}
-
-EnforceNotMet::EnforceNotMet(const std::string& str, const char* file, int line)
-    : err_str_(GetTraceBackString(str, file, line)) {
-  simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-}
-
-EnforceNotMet::EnforceNotMet(const phi::ErrorSummary& error,
-                             const char* file,
-                             int line)
-    : code_(error.code()),
-      err_str_(GetTraceBackString(error.to_string(), file, line)) {
-  simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-}
-
-const char* EnforceNotMet::what() const {
-  if (FLAGS_call_stack_level > 1) {
-    return err_str_.c_str();
-  } else {
-    return simple_err_str_.c_str();
-  }
-}
-
-void EnforceNotMet::set_error_str(std::string str) {
-  if (FLAGS_call_stack_level > 1) {
-    err_str_ = str;
-  } else {
-    simple_err_str_ = str;
-  }
 }
 
 }  // namespace enforce
