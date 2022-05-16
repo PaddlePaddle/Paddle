@@ -1045,7 +1045,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.int64") {
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (type_name == "numpy.int32") {
+  } else if (type_name == "numpy.int32" || type_name == "numpy.intc") {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else {

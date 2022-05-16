@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
@@ -61,13 +62,14 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     const auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
     void* stream = details::GetStream<DeviceContext>(ctx);
+    platform::RecordEvent record_event_1(
+        "Step 1. Find graph object and prepare input");
     // Step 1. Find graph object and prepare input
     PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey), true,
                       platform::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
-    const auto& compilation_key =
-        ctx.template Attr<std::string>(kCompilationKey);
+    const auto& compilation_key = ctx.template Attr<int64_t>(kCompilationKey);
     VLOG(4) << "CinnLaunchOp attribute(" << kCompilationKey << ") "
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
@@ -100,6 +102,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                          input_no_need_buffer_tensors);
     }
 
+    platform::RecordEvent record_event_2(
+        "Step 2. Get compilation result of the graph");
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
     using ClockType = std::chrono::steady_clock;
@@ -120,17 +124,22 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     details::DebugCinnCompiledResult(cinn_compiled_object);
     auto* launch_context = cinn_compiled_object.launch_context.get();
 
+    platform::RecordEvent record_event_3("Step 3. Set CINN runtime FLAGS.");
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order
     if (FLAGS_enable_pe_launch_cinn) {
+      platform::RecordEvent record_event_4(
+          "Step 4. Execute the runtime graph by PE.");
       VLOG(4) << "Execute the runtime graph by PE";
       framework::Scope& exec_scope = scope.NewScope();
       auto* pe = launch_context->InitializePE(place, &exec_scope);
       pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
     } else {
+      platform::RecordEvent record_event_4(
+          "Step 4. Execute the compiled executable program.");
       VLOG(4) << "Execute the compiled executable program";
       launch_context->UpdateCapturedEnv(scope, place);
       LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);

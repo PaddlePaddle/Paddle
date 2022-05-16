@@ -31,11 +31,8 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_kernel_backend_select(self):
         return BackwardAPI.gene_kernel_backend_select(self)
 
-    def get_return_type(self, out_type_list):
-        return BackwardAPI.get_return_type(self, out_type_list)
-
-    def gene_return_type_code(self):
-        return self.outputs['return_type']
+    def get_return_type(self, inplace_flag=False):
+        return BackwardAPI.get_return_type(self)
 
     def gene_return_code(self):
         return ""
@@ -43,10 +40,10 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_api_declaration(self):
         return SparseAPI.gene_api_declaration(self)
 
-    def get_declare_args(self):
+    def get_declare_args(self, inplace_flag=False):
         return BackwardAPI.get_declare_args(self)
 
-    def get_define_args(self):
+    def get_define_args(self, inplace_flag=False):
         return BackwardAPI.get_define_args(self)
 
     def gene_output(self,
