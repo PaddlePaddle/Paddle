@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/autotune/auto_tune_base.h"
 
 namespace paddle {
 namespace operators {
@@ -719,6 +720,22 @@ struct PermuteParams {
   NdIdxAndOffset<IndexT, Rank> dst_index_helper;
   int perm[Rank]{};
   IndexT count{};
+
+  explicit PermuteParams(const size_t* in_dims, const int* _perm,
+                         size_t _count) {
+    src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims);
+    size_t dst_dims[Rank];
+
+    for (size_t i = 0; i < Rank; ++i) {
+      dst_dims[i] = in_dims[_perm[i]];
+    }
+    dst_index_helper = NdIdxAndOffset<IndexT, Rank>(dst_dims);
+
+    for (size_t i = 0; i < Rank; ++i) {
+      perm[i] = _perm[i];
+    }
+    count = static_cast<IndexT>(_count);
+  }
 };
 
 template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
@@ -824,55 +841,31 @@ inline void LaunchBatchTransposeKernel(
 }
 
 template <size_t Rank, typename IndexT>
-inline PermuteParams<Rank, IndexT> MakeParams(const size_t* in_dims,
-                                              const int* perm, size_t count) {
-  PermuteParams<Rank, IndexT> params;
-  params.src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims);
-  size_t dst_dims[Rank];
-
-  for (size_t i = 0; i < Rank; ++i) {
-    dst_dims[i] = in_dims[perm[i]];
-  }
-  params.dst_index_helper = NdIdxAndOffset<IndexT, Rank>(dst_dims);
-
-  for (size_t i = 0; i < Rank; ++i) {
-    params.perm[i] = perm[i];
-  }
-  params.count = static_cast<IndexT>(count);
-  return params;
-}
-
-template <size_t Rank, typename IndexT>
 inline bool CheckLaunchBatchTranspose(const int* perm,
                                       const IndexT& num_batches,
                                       const IndexT& rows, const IndexT& cols) {
+  bool result = false;
   bool greater_than_tile =
       (rows < kMov4TileSize || cols < kMov4TileSize) ? false : true;
+
   if (greater_than_tile) {
     if (num_batches == 1 && perm[1] == 0 && perm[0] == 1) {
       // 2d tensor case: (0, 1) -> (1, 0)
-      return true;
+      result = true;
     } else if (Rank == 3 && perm[2] == 1 && perm[1] == 2) {
       // 3d tensor case: (0, 1, 2) -> (0, 2, 1)
       return true;
-    } else {
-      return false;
     }
   }
-  return false;
+  return result;
 }
 
 template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
 inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
                                   const size_t* in_dims, const T* src,
                                   const int* perm, T* dst, size_t count) {
-  PermuteParams<Rank, IndexT> params =
-      MakeParams<Rank, IndexT>(in_dims, perm, count);
-
-  int32_t threads = 512;
-  IndexT max_block_num = kCudaMaxBlocksNum;
-  int32_t blocks =
-      std::min((params.count + threads - 1) / threads, max_block_num);
+  auto params = PermuteParams<Rank, IndexT>(in_dims, perm, count);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, params.count);
 
   if (Rank == 2 || Rank == 3) {
     IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
@@ -884,13 +877,13 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
       LaunchBatchTransposeKernel<T, Rank, MovementSize, IndexT>(
           ctx, params, num_batches, rows, cols, src, dst);
     } else {
-      GeneralPermuteKernel<T, Rank, MovementSize,
-                           IndexT><<<blocks, threads, 0, ctx.stream()>>>(
+      GeneralPermuteKernel<T, Rank, MovementSize, IndexT><<<
+          config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
           params, src, dst);
     }
   } else {
-    GeneralPermuteKernel<T, Rank, MovementSize,
-                         IndexT><<<blocks, threads, 0, ctx.stream()>>>(
+    GeneralPermuteKernel<T, Rank, MovementSize, IndexT><<<
+        config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
         params, src, dst);
   }
 }
@@ -1101,11 +1094,11 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    // if (ndims > 5) {
-    //   TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
-    // } else {
-    SimplifyThenLaunch<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
-    // }
+    auto tuner = phi::autotune::MakeAutoTuner(TransCompute<phi::GPUContext, T>);
+    tuner.AddCallBack(
+        phi::autotune::MakeCallback(SimplifyThenLaunch<phi::GPUContext, T>));
+    auto index = tuner.PickBestKernel(dev_ctx, ndims, dev_ctx, in, out, perm);
+    tuner.RunBestKernel(index, ndims, dev_ctx, in, out, perm);
   }
 }
 

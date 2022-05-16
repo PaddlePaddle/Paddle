@@ -73,7 +73,7 @@ float Algo(const phi::GPUContext& ctx,
 }
 
 TEST(AutoTune, sum) {
-  int64_t N = 1 << 22;
+  int64_t N = 1 << 20;
   size_t blocks = 512;
   size_t threads = 256;
   size_t size = sizeof(float) * N;
@@ -139,14 +139,14 @@ TEST(AutoTune, sum) {
 
   /* The 1st ctx works for ctx.Wait(),
      the 2nd is just the param of call_back. */
-  auto best_call_back = tuner.PickBestKernel(
+  auto best_index = tuner.PickBestKernel(
       *dev_ctx, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
 
   dev_ctx->Wait();
   phi::GpuTimer timer;
   timer.Start(0);
-  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
+  tuner.RunBestKernel(
+      best_index, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
   timer.Stop(0);
   VLOG(3) << "Best CallBackKernel time cost is " << timer.ElapsedTime();
 #endif

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stdio.h>
 #include <type_traits>
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
@@ -60,7 +61,7 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
-  KernelType PickBestKernel(const Context& ctx, Args&&... args) {
+  int PickBestKernel(const Context& ctx, Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
@@ -68,29 +69,60 @@ class AutoTuneBase {
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     int idx = 0;
     phi::GpuTimer timer;
+    constexpr int total_tests = 2;
     float min_time = std::numeric_limits<float>::max();
 
+    // Warm up step.
     ctx.Wait();
-    for (int i = 0; i < kernels_.size(); ++i) {
-      // Timer test shall be estabulished in default stream.
-      timer.Start(0);
-      kernels_[i].Call(args...);
-      timer.Stop(0);
-      auto time = timer.ElapsedTime();
-      VLOG(3) << "kernel[" << i << "]: time cost is " << time;
+    auto time = KernelCall</*HasTimer=*/true>(&timer, 0, args...);
 
-      if (time < min_time) {
-        min_time = time;
+    // Timer test estabulished in default stream.
+    for (int i = 0; i < kernels_.size(); ++i) {
+      float total_time = 0;
+      for (int j = 0; j < total_tests; ++j) {
+        time = KernelCall</*HasTimer=*/true>(&timer, i, args...);
+        total_time += time;
+        VLOG(3) << "loop[" << j << "] time cost is " << time;
+      }
+      float avg_time = total_time / total_tests;
+      VLOG(3) << "kernel[" << i << "] time cost is " << avg_time;
+
+      if (avg_time < min_time) {
+        min_time = avg_time;
         idx = i;
       }
     }
     VLOG(3) << "best kernel idx is " << idx;
-    return kernels_[idx];
+    return idx;
+  }
+
+  template <typename... Args>
+  void RunBestKernel(const int idx, Args&&... args) {
+    KernelCall</*HasTimer=*/false>(nullptr, idx, args...);
+  }
+
+  template <typename... Args>
+  void RunDefaultKernel(Args&&... args) {
+    KernelCall</*HasTimer=*/false>(nullptr, 0, args...);
   }
 
  private:
   KernelType default_kernel_;
   std::vector<KernelType> kernels_;
+
+  template <bool HasTimer, typename... Args>
+  float KernelCall(phi::GpuTimer* timer, const int idx, Args&&... args) {
+    float time_cost = 0;
+    if (HasTimer) {
+      timer->Start(0);
+      kernels_[idx].Call(args...);
+      timer->Stop(0);
+      time_cost = timer->ElapsedTime();
+    } else {
+      kernels_[idx].Call(args...);
+    }
+    return time_cost;
+  }
 };
 
 template <typename RetureType, typename... Args>
