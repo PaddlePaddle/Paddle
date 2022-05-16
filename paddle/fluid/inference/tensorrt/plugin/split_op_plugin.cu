@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-int global_i = 0;
+
 template <typename T>
 __device__ int upper_bound(T const* vals, int n, T const& key) {
   int i = 0;
@@ -56,19 +56,6 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
   return output_dims;
 }
 
-bool SplitPlugin::supportsFormat(
-    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
-  if (with_fp16_) {
-    return ((type == nvinfer1::DataType::kFLOAT ||
-             type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::TensorFormat::kLINEAR ||
-             format == nvinfer1::TensorFormat::kHWC8));
-  } else {
-    return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
-  }
-}
-
 void SplitPlugin::shareData(const SplitPlugin* another) {
   outer_rows_ = another->outer_rows_;
   inner_cols_ = another->inner_cols_;
@@ -87,13 +74,6 @@ int SplitPlugin::initialize() TRT_NOEXCEPT {
                         axis_, nvinfer1::Dims::MAX_DIMS));
   // notice input dims is [C, H, W]
   nvinfer1::Dims dims = this->getInputDims(0);
-  if (data_format_ == nvinfer1::TensorFormat::kHWC8) {
-    nvinfer1::Dims tmp_dims = dims;
-    dims.d[0] = tmp_dims.d[1];
-    dims.d[1] = tmp_dims.d[2];
-    dims.d[2] = tmp_dims.d[0];
-    axis_ = 2;
-  }
   outer_rows_ = 1;
   inner_cols_ = 1;
   for (int i = 0; i < axis_; ++i) {
@@ -123,49 +103,23 @@ void SplitPlugin::terminate() TRT_NOEXCEPT {}
 // The following part of the code refers to onnx-tensorrt
 // https://github.com/onnx/onnx-tensorrt/blob/master/Split.cu
 template <typename T>
-__global__ void split_kernel1(int nsegment,
-                              int const* __restrict__ segment_offsets,
-                              T const* __restrict__ idata, T* const* odatas,
-                              int inner_cols, int axis_shape, int outer_rows) {
+__global__ void split_kernel(int nsegment,
+                             int const* __restrict__ segment_offsets,
+                             T const* __restrict__ idata, T* const* odatas,
+                             int inner_cols, int axis_shape, int outer_rows) {
   int x0 = threadIdx.x + blockIdx.x * blockDim.x;
   int src_y0 = threadIdx.y + blockIdx.y * blockDim.y;
   int z0 = threadIdx.z + blockIdx.z * blockDim.z;
-
   for (int z = z0; z < outer_rows; z += blockDim.z * gridDim.z) {
     for (int src_y = src_y0; src_y < axis_shape;
          src_y += blockDim.y * gridDim.y) {
       for (int x = x0; x < inner_cols; x += blockDim.x * gridDim.x) {
-        int segment =
-            src_y / segment_offsets[1];  // upper_bound(segment_offsets,
-                                         // nsegment, src_y) - 1;
-
+        int segment = upper_bound(segment_offsets, nsegment, src_y) - 1;
         int dst_y = src_y - segment_offsets[segment];
         int dst_ny = segment_offsets[segment + 1] - segment_offsets[segment];
         odatas[segment][x + inner_cols * (dst_y + dst_ny * z)] =
             idata[x + inner_cols * (src_y + axis_shape * z)];
       }
-    }
-  }
-}
-
-template <typename T>
-__global__ void split_kernel(int nsegment,
-                             int const* __restrict__ segment_offsets,
-                             T const* __restrict__ idata, T* const* odatas,
-                             int inner_cols, int axis_shape, int outer_rows) {
-  // int x0 = threadIdx.x + blockIdx.x * blockDim.x;
-  int src_y0 = threadIdx.x + blockIdx.x * blockDim.x;
-  int z0 = threadIdx.y + blockIdx.y * blockDim.y;
-  for (int z = z0; z < outer_rows; z += blockDim.y * gridDim.y) {
-    for (int src_y = src_y0; src_y < axis_shape;
-         src_y += blockDim.x * gridDim.x) {
-      int segment = src_y / segment_offsets[1];  // upper_bound(segment_offsets,
-                                                 // nsegment, src_y) - 1;
-
-      int dst_y = src_y - segment_offsets[segment];
-      int dst_ny = segment_offsets[segment + 1] - segment_offsets[segment];
-      odatas[segment][inner_cols * (dst_y + dst_ny * z)] =
-          idata[inner_cols * (src_y + axis_shape * z)];
     }
   }
 }
@@ -177,11 +131,8 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
                          void* const* outputs, void* workspace,
                          cudaStream_t stream) TRT_NOEXCEPT {
 #endif
-  printf("data_formats_:%d\n ", (int)data_format_);
-
   const int* d_segment_offsets_ptr =
       thrust::raw_pointer_cast(&d_segment_offsets_[0]);
-  auto input_type = getDataType();
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
   float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
   float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
@@ -190,99 +141,15 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
       cudaMemcpyHostToDevice, stream));
 
   int outer_rows = outer_rows_ * batchSize;
+
   dim3 block(32, 16);
-  if (data_format_ == nvinfer1::TensorFormat::kHWC8) {
-    block.x = 16;
-    block.y = 64;
-    block.z = 1;
-  }
-  std::cout << inner_cols_ << std::endl;
-  dim3 grid(std::min((axis_shape_ - 1) / block.x + 1, 65535u),
-            std::min((outer_rows_ - 1) / block.y + 1, 65535u),
-            std::min((1 - 1) / block.z + 1, 65535u));
+  dim3 grid(std::min((inner_cols_ - 1) / block.x + 1, 65535u),
+            std::min((axis_shape_ - 1) / block.y + 1, 65535u),
+            std::min((outer_rows_ - 1) / block.z + 1, 65535u));
 
-  if (global_i > 600 * 100) {
-    if (input_type == nvinfer1::DataType::kFLOAT) {
-      cudaStreamSynchronize(stream);
-      int total = inner_cols_ * axis_shape_ * outer_rows;
-      float* host = new float[total];
-      std::string name =
-          "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
-          std::to_string(global_i);
-      std::ofstream outputOs(name);
-      cudaMemcpy(host, inputs[0], total * sizeof(float),
-                 cudaMemcpyDeviceToHost);
-      for (int i = 0; i < total; i++) outputOs << host[i] << std::endl;
-      delete[] host;
-    }
-
-    else if (input_type == nvinfer1::DataType::kHALF) {
-      cudaStreamSynchronize(stream);
-      int total = inner_cols_ * axis_shape_ * outer_rows;
-      half* host = new half[total];
-      std::string name =
-          "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
-          std::to_string(global_i);
-      std::ofstream outputOs(name);
-      cudaMemcpy(host, inputs[0], total * sizeof(half), cudaMemcpyDeviceToHost);
-      for (int i = 0; i < total; i++)
-        outputOs << __half2float(host[i]) << std::endl;
-      delete[] host;
-    }
-  }
-  global_i++;
-  printf("\n");
-  printf("%d\n", global_i);
-
-  if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(1) << "TRT Plugin DataType selected. Split-->fp32";
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr,
-        output_ptrs, inner_cols_, axis_shape_, outer_rows);
-  } else if (input_type == nvinfer1::DataType::kHALF) {
-    VLOG(1) << "TRT Plugin DataType selected. Split-->fp16";
-    split_kernel<<<grid, block, 0, stream>>>(
-        d_segment_offsets_.size(), d_segment_offsets_ptr,
-        (half const*)input_ptr, (half**)output_ptrs, inner_cols_, axis_shape_,
-        outer_rows);
-  }
-
-  if (global_i > 600 * 100) {
-    if (input_type == nvinfer1::DataType::kFLOAT) {
-      cudaStreamSynchronize(stream);
-      int total =
-          inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
-      float* host = new float[total];
-      std::string name =
-          "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
-          std::to_string(global_i);
-      std::ofstream outputOs(name);
-      cudaMemcpy(host, outputs[3], total * sizeof(float),
-                 cudaMemcpyDeviceToHost);
-      for (int i = 0; i < total; i++) outputOs << host[i] << std::endl;
-      delete[] host;
-    }
-
-    else if (input_type == nvinfer1::DataType::kHALF) {
-      cudaStreamSynchronize(stream);
-      int total =
-          inner_cols_ * axis_shape_ * outer_rows / d_output_ptrs_.size();
-      half* host = new half[total];
-      std::string name =
-          "/zhoukangkang/2022-04-28inference_model_try/benchmark/output" +
-          std::to_string(global_i);
-      std::ofstream outputOs(name);
-      cudaMemcpy(host, outputs[3], total * sizeof(half),
-                 cudaMemcpyDeviceToHost);
-      for (int i = 0; i < total; i++)
-        outputOs << __half2float(host[i]) << std::endl;
-      delete[] host;
-    }
-  }
-  global_i++;
-  printf("\n");
-  printf("%d\n", global_i);
-
+  split_kernel<<<grid, block, 0, stream>>>(
+      d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
+      inner_cols_, axis_shape_, outer_rows);
   return cudaGetLastError() != cudaSuccess;
 }
 
