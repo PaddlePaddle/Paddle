@@ -228,7 +228,7 @@ struct ParamsToInt8PassTest {
 Data GenericInput() { return Data({1, 4, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}); }
 Data GenericOutput() { return GenericInput(); }
 
-TEST(ParamToInt8Pass, conv_without_bias_1weight) {
+TEST(ParamToInt8Pass, conv_without_bias_o1i1h1w1) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
       std::vector<float>{2.f});
@@ -236,15 +236,34 @@ TEST(ParamToInt8Pass, conv_without_bias_1weight) {
   test.RunPassTest();
 }
 
-TEST(ParamToInt8Pass, conv_without_bias_2weights) {
+TEST(ParamToInt8Pass, conv_without_bias_2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
-      std::vector<float>{2.f, 2.f});
+      std::vector<float>{2.f, 4.f});
   ParamsToInt8PassTest test{std::move(program)};
   test.RunPassTest();
 }
 
-TEST(ParamToInt8Pass, conv_without_bias_4weights_2groups) {
+TEST(ParamToInt8Pass, conv_without_bias_2o2i2h2w) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(),
+      Data({2, 2, 2, 2}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f,
+                          1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(), std::vector<float>{2.f, 4.f});
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_without_bias_2g2o2i1h1w) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(),
+      Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_without_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
@@ -252,7 +271,7 @@ TEST(ParamToInt8Pass, conv_without_bias_4weights_2groups) {
   test.RunPassTest();
 }
 
-TEST(ParamToInt8Pass, conv_with_bias_1weight) {
+TEST(ParamToInt8Pass, conv_with_bias_1o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
       std::vector<float>{2.f}, 1, Data({1, 1, 1, 1}, {1.5f}),
@@ -261,11 +280,32 @@ TEST(ParamToInt8Pass, conv_with_bias_1weight) {
   test.RunPassTest();
 }
 
-TEST(ParamToInt8Pass, conv_with_bias_2weights) {
+TEST(ParamToInt8Pass, conv_with_bias_2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
-      std::vector<float>{2.f, 2.f}, 1, Data({2, 1, 1, 1}, {1.5f, 1.5f}),
-      std::vector<float>{2.f, 2.f});
+      std::vector<float>{2.f, 4.f}, 1, Data({2, 1, 1, 1}, {1.5f, 1.5f}),
+      std::vector<float>{2.f, 4.f});
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_with_bias_2g2o1i1h1w) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
+      Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f});
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_with_bias_2g2o2i1h1w) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(),
+      Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
+      Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f});
   ParamsToInt8PassTest test{std::move(program)};
   test.RunPassTest();
 }
