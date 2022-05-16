@@ -29,7 +29,6 @@ class SplitOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
@@ -152,7 +151,7 @@ class SplitOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16);
-      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, 1, plugin);
 
       std::string layer_name = "split (Output: ";
       for (size_t i = 0; i < output_num; i++) {

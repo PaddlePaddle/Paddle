@@ -114,10 +114,11 @@ class SliceOpConverter : public OpConverter {
 
         nvinfer1::Dims trt_size_dims;
         trt_size_dims.nbDims = nchw_input_dims.nbDims;
-        
+
         nvinfer1::Dims trt_end_dims;
         trt_end_dims.nbDims = nchw_input_dims.nbDims;
-        for (int i = 0; i < trt_end_dims.nbDims; i++) trt_end_dims.d[i] = 10000000;
+        for (int i = 0; i < trt_end_dims.nbDims; i++)
+          trt_end_dims.d[i] = 10000000;
 
         nvinfer1::Dims trt_step_dims;
         trt_step_dims.nbDims = nchw_input_dims.nbDims;
@@ -128,18 +129,18 @@ class SliceOpConverter : public OpConverter {
           int trt_axis = axes[i];
           trt_start_dims.d[trt_axis] = starts[i];
           trt_end_dims.d[trt_axis] = ends[i];
-
-        PADDLE_ENFORCE_GE(
-            starts[i], 0,
-            platform::errors::InvalidArgument(
-                "Attr(starts) should be >= 0 in slice op in TensorRT dynamic shape,"
-                "but received starts = %d.", starts[i]));
-
-        PADDLE_ENFORCE_GE(
-            ends[i], 0,
-            platform::errors::InvalidArgument(
-                "Attr(ends) should be >= 0 in slice op in TensorRT dynamic shape,"
-                "but received ends = %d.", ends[i]));
+          PADDLE_ENFORCE_GE(starts[i], 0,
+                            platform::errors::InvalidArgument(
+                                "Attr(starts) should be >= 0 in slice op in "
+                                "TensorRT dynamic shape,"
+                                "but received starts = %d.",
+                                starts[i]));
+          PADDLE_ENFORCE_GE(ends[i], 0,
+                            platform::errors::InvalidArgument(
+                                "Attr(ends) should be >= 0 in slice op in "
+                                "TensorRT dynamic shape,"
+                                "but received ends = %d.",
+                                ends[i]));
         }
 
         auto start_tensor = Add1DConstantLayer(
@@ -147,18 +148,44 @@ class SliceOpConverter : public OpConverter {
         auto end_tensor = Add1DConstantLayer(
             trt_end_dims, output_name + "_add_slice_op_" + "ends");
 
-        auto shape_tensor = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+        auto shape_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+        auto real_end_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *shape_tensor,
+                                 *end_tensor,
+                                 nvinfer1::ElementWiseOperation::kMIN)
+                ->getOutput(0);
 
-        auto real_end_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *shape_tensor, *end_tensor,
-            nvinfer1::ElementWiseOperation::kMIN)->getOutput(0);
-
-        auto size_tensor = TRT_ENGINE_ADD_LAYER(
-            engine_, ElementWise, *real_end_tensor, *start_tensor,
-            nvinfer1::ElementWiseOperation::kSUB)->getOutput(0);
+        auto size_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *real_end_tensor,
+                                 *start_tensor,
+                                 nvinfer1::ElementWiseOperation::kSUB)
+                ->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_size_dims, trt_step_dims);
+        layer->setInput(1, *start_tensor);
         layer->setInput(2, *size_tensor);
+        if (decrease_axises.size() > 0) {
+          int decrease_axis = decrease_axises[0];
+          std::vector<int32_t> gather_indices;
+          for (int i = 0; i < trt_size_dims.nbDims; i++) {
+            if (i == decrease_axis) continue;
+            gather_indices.push_back(i);
+          }
+          auto gather_indices_tensor = Add1DConstantLayer(
+              gather_indices,
+              output_name + "_add_slice_op_" + "gather_indices");
+          auto shape_tensor =
+              TRT_ENGINE_ADD_LAYER(engine_, Shape, *layer->getOutput(0))
+                  ->getOutput(0);
+          auto real_size_tensor =
+              TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
+                                   *gather_indices_tensor, 0)
+                  ->getOutput(0);
+          layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+          layer->setInput(1, *real_size_tensor);
+        }
       }
     } else {
 #if IS_TRT_VERSION_GE(7130)
