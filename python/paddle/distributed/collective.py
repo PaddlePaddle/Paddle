@@ -1861,7 +1861,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def send(tensor, dst=0, group=None, use_calc_stream=True, dynamic_shape=False):
+def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
 
@@ -1871,9 +1871,6 @@ def send(tensor, dst=0, group=None, use_calc_stream=True, dynamic_shape=False):
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
-        dynamic_shape(bool, optional): Whether the send/recv will use dynamic shape or not. Default: False.
-                                       If set True, this op will first send the shape info of the tensor to the dst.
-                                       Then send the tensor to the dst.
     
     Returns:
         None.
@@ -1910,8 +1907,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True, dynamic_shape=False):
 
     if _non_static_mode():
         return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
-                              'ring_id', ring_id, 'peer', dst, 'dynamic_shape',
-                              dynamic_shape)
+                              'ring_id', ring_id, 'peer', dst)
     op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1924,12 +1920,11 @@ def send(tensor, dst=0, group=None, use_calc_stream=True, dynamic_shape=False):
         attrs={
             'ring_id': ring_id,
             'peer': dst,
-            'use_calc_stream': use_calc_stream,
-            'dynamic_shape': dynamic_shape
+            'use_calc_stream': use_calc_stream
         })
 
 
-def recv(tensor, src=0, group=None, use_calc_stream=True, dynamic_shape=False):
+def recv(tensor, src=0, group=None, use_calc_stream=True):
     """
     Receive a tensor to the sender.
 
@@ -1939,9 +1934,6 @@ def recv(tensor, src=0, group=None, use_calc_stream=True, dynamic_shape=False):
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
-        dynamic_shape (bool, optional): Whether the send/recv will use dynamic shape or not. Default: False.
-                                        If set True, this op will first receive the shape info from the src.
-                                        Then receive tensor from the src based on the received shape info.
     
     Returns:
         None.
@@ -1979,8 +1971,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True, dynamic_shape=False):
     if _non_static_mode():
         return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
                               'ring_id', ring_id, 'peer', src, 'dtype',
-                              tensor.dtype, 'out_shape', tensor.shape,
-                              'dynamic_shape', dynamic_shape)
+                              tensor.dtype, 'out_shape', tensor.shape)
     op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1994,6 +1985,5 @@ def recv(tensor, src=0, group=None, use_calc_stream=True, dynamic_shape=False):
             'peer': src,
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
-            'use_calc_stream': use_calc_stream,
-            'dynamic_shape': dynamic_shape
+            'use_calc_stream': use_calc_stream
         })
