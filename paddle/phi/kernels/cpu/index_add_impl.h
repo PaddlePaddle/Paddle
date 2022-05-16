@@ -24,7 +24,8 @@ namespace phi {
 template <typename Context, typename T>
 void IndexAddInner(const Context& ctx,
                     const DenseTensor& index,
-                    const DenseTensor& x,
+                    // const DenseTensor& x,
+                    DenseTensor& x,
                     DenseTensor* output,
                     int axis,
                     T add_val,
@@ -75,7 +76,7 @@ void IndexAddInner(const Context& ctx,
       auto add_grad_t = add_grad_tensor.chip(index_value, 1);
       add_grad_t.device(place) = x_tensor.chip(index_value, 1);
     }
-    
+
     add_grad->Resize(output_dim);
     x.Resize(output_dim);
   }
