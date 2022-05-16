@@ -81,7 +81,7 @@ void IndexAddInner(const Context& ctx,
     }
 
     add_grad->Resize(output_dim);
-    x.Resize(output_dim);
+    // x.Resize(output_dim);
   }
 
   if (output) {
