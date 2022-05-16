@@ -235,5 +235,6 @@ class TestFuseGemmEpilogueGradOpDXYFP64(TestFuseGemmEpilogueGradOpDXYFP16):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     np.random.seed(0)
     unittest.main()
