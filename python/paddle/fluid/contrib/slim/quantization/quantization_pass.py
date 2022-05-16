@@ -1505,7 +1505,7 @@ class OutScaleForTrainingPass(object):
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s.scale" % (var_name)
+        return "%s@scale" % (var_name)
 
 
 class OutScaleForInferencePass(object):
@@ -1564,7 +1564,7 @@ class OutScaleForInferencePass(object):
         """
         Return the scale name for the var named `var_name`.
         """
-        return "%s.scale" % (var_name)
+        return "%s@scale" % (var_name)
 
 
 class AddQuantDequantPass(object):
