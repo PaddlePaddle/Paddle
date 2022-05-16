@@ -37,6 +37,10 @@ namespace egr {
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in framework::Variable and
  * necessary overridden methods.
+ *
+ * Note: This class is only used to support types that cannot be supported by
+ * the phi Tensor system temporarily. You CANNOT use this class to handle types
+ * such as DenseTensor, SelectedRows, etc.
  **/
 class VariableCompatTensor
     : public phi::TensorBase,
