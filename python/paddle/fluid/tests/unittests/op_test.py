@@ -1637,6 +1637,8 @@ class OpTest(unittest.TestCase):
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
+        if not check_eager:
+            print("===== not check_eager for ", self.op_type, " in op test. =====")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
