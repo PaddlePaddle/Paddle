@@ -28,9 +28,11 @@ void IndexAddGradKernel(const Context& dev_ctx,
                          const Scalar& axis_scalar,
                          float add_value,
                          DenseTensor* x_grad) {
-  float add_val = 0.0;
-  IndexAddBaseKernel<T, Context>(
-      dev_ctx, out_grad, index_arr, axis_scalar, add_val, x_grad, nullptr);
+  // float add_val = 0.0;
+  // IndexAddBaseKernel<T, Context>(
+  //     dev_ctx, out_grad, index_arr, axis_scalar, add_val, x_grad, nullptr);
+
+  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 }
 
 }  // namespace phi

@@ -51,12 +51,13 @@ void IndexAddInner(const Context& ctx,
 
   for (int i = 0; i < index_size; i++) {
     bool check_index = index_data[i] >= 0 && index_data[i] < output_dim[axis];
-    PADDLE_ENFORCE_GE(
+    // PADDLE_ENFORCE_GE(
+    PADDLE_ENFORCE_EQ(
         check_index,
         true,
         phi::errors::InvalidArgument(
             "Variable value (index) of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= 0 and < %ld, but got %ld. Please check input or index"
             "value.",
             output_dim[axis],
             index_data[i]));
@@ -64,6 +65,9 @@ void IndexAddInner(const Context& ctx,
 
   auto& place = *ctx.eigen_device();
   if (add_grad) {
+    add_grad->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
+    x.Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
+
     auto x_tensor = EigenTensor<T, 3>::From(x);
     auto add_grad_tensor = EigenTensor<T, 3>::From(*add_grad);
     for (auto j = 0; j < index_size; j++) {
@@ -71,6 +75,9 @@ void IndexAddInner(const Context& ctx,
       auto add_grad_t = add_grad_tensor.chip(index_value, 1);
       add_grad_t.device(place) = x_tensor.chip(index_value, 1);
     }
+    
+    add_grad->Resize(output_dim);
+    x.Resize(output_dim);
   }
 
   if (output) {
@@ -79,7 +86,8 @@ void IndexAddInner(const Context& ctx,
     for (auto j = 0; j < index_size; j++) {
       int64_t index_value = index_data[j];
       auto output_t = output_tensor.chip(index_value, 1);
-      output_t.device(place) = output_t.constant(add_val);
+      // output_t.device(place) = output_t.constant(add_val);
+      output_t.device(place) += output_t.constant(add_val);
     }
     output->Resize(output_dim);
   }
@@ -95,6 +103,8 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                          DenseTensor* add_grad) {
   auto index_list = index_arr.GetData();
   int64_t index_size = static_cast<int64_t>(index_list.size());
+  // TODO:why create a DenseTensor for "index" and copy the data,
+  // is this necessary ?
   DenseTensor index;
   index.Resize(make_ddim({index_size}));
   int64_t* index_ptr = dev_ctx.template Alloc<int64_t>(&index);

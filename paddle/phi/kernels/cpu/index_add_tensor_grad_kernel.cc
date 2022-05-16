@@ -19,7 +19,8 @@
 #include "paddle/phi/kernels/cpu/index_add_impl.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/index_add_grad_kernel.h"
+// #include "paddle/phi/kernels/index_add_grad_kernel.h"
+#include "paddle/phi/kernels/index_add_tensor_grad_kernel.h"
 
 namespace phi {
 
@@ -37,14 +38,23 @@ void IndexAddTensorGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, &raw_add_tensor_grad, static_cast<T>(0));
 
+  //TODO: this part can be simplified:
+  // what this part does: 
+  // 1. copy out_grad to x_grad,
+  // 2. copy sliced out_grad part to raw_add_tensor_grad 
+  // (while other parts in raw_add_tensor_grad  remain to be 0)
+  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   float add_val = 0.0;
   IndexAddBaseKernel<T, Context>(dev_ctx,
                                   out_grad,
                                   index_arr,
                                   axis_scalar,
                                   add_val,
-                                  x_grad,
+                                //   x_grad,
+                                  nullptr, 
                                   &raw_add_tensor_grad);
+
+                                  
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(dev_ctx,
                                                      raw_add_tensor_grad,
                                                      true,
