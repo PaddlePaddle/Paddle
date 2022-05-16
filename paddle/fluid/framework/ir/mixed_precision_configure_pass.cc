@@ -40,7 +40,7 @@ void MixedPrecisionConfigurePass::InsertCastOps(
 
   auto cast_input = [&](Graph* graph, Node* op_node,
                         const StringSet& cast_list) {
-    auto inlinks = op_node->inputs;
+    const auto inlinks = op_node->inputs;
     for (auto* pre_node : inlinks) {
       if (pre_node->IsVar()) {
         const auto is_persistable = pre_node->Var()->Persistable();
@@ -50,7 +50,8 @@ void MixedPrecisionConfigurePass::InsertCastOps(
             pre_node->Var()->GetDataType() == proto::VarType::FP64;
         if (!is_persistable && is_float) {
           int suffix = 0;
-          for (auto* pre_node_input : pre_node->inputs) {
+          const auto pre_node_inlinks = pre_node->inputs;
+          for (auto* pre_node_input : pre_node_inlinks) {
             if (!pre_node_input->IsOp()) continue;
             const auto& type = pre_node_input->Op()->Type();
             if (!cast_list.count(type) && type != "cast") {
@@ -81,7 +82,7 @@ void MixedPrecisionConfigurePass::InsertCastOps(
 
   auto cast_output = [&](Graph* graph, Node* op_node,
                          const StringSet& cast_list) {
-    auto outlinks = op_node->outputs;
+    const auto outlinks = op_node->outputs;
     for (auto* next_node : outlinks) {
       if (next_node->IsVar()) {
         const auto is_persistable = next_node->Var()->Persistable();
@@ -91,7 +92,8 @@ void MixedPrecisionConfigurePass::InsertCastOps(
             next_node->Var()->GetDataType() == proto::VarType::FP64;
         if (!is_persistable && is_float) {
           int suffix = 0;
-          for (auto* next_node_output : next_node->outputs) {
+          const auto next_node_outlinks = next_node->outputs;
+          for (auto* next_node_output : next_node_outlinks) {
             if (!next_node_output->IsOp()) continue;
 
             const auto& type = next_node_output->Op()->Type();
@@ -121,8 +123,20 @@ void MixedPrecisionConfigurePass::InsertCastOps(
     }
   };
 
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+  std::vector<Node*> all_nodes =
+      TopologyVarientSort(*graph, static_cast<SortKind>(0));
+
+  for (auto* op_node : all_nodes) {
+    if (!op_node->IsOp()) continue;
+    if (op_node->Op()->Type() == "cast") {
+      const auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
+      if (out_dtype == 5) {
+        op_node->Op()->SetAttr("out_dtype", 4);
+      }
+    }
+  }
+
+  for (auto* op_node : all_nodes) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
         op_node->Op()->Type() == "fetch")
       continue;
@@ -130,6 +144,10 @@ void MixedPrecisionConfigurePass::InsertCastOps(
     const auto& type = op_node->Op()->Type();
     if (blacklist.count(type)) {
       cast_input(graph, op_node, blacklist);
+      cast_output(graph, op_node, blacklist);
+    }
+
+    if (type == "fill_any_like" || type == "fill_constant") {
       cast_output(graph, op_node, blacklist);
     }
   }
