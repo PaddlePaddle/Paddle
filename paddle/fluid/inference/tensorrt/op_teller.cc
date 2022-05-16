@@ -184,7 +184,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
-      "multiclass_nms3"};
+      "multiclass_nms3",
+      "squeeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -782,6 +783,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+    }
+
+    if (op_type == "squeeze2") {
     }
 
     if (op_type == "batch_norm") {
