@@ -1600,11 +1600,15 @@ class OneCycleLR(LRScheduler):
     Sets the learning rate according to the one cycle learning rate scheduler.
     The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
     from that maximum learning rate to the minimum learning rate, which is much less than the initial learning rate.
+
     It has been proposed in `Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates <https://arxiv.org/abs/1708.07120>`_.
+
     Please note that the default behaviour of this scheduler follows the fastai implementation of one cycle,
     which claims that “unpublished work has shown even better results by using only two phases”.
     If you want the behaviour of this scheduler to be consistent with the paper, please set ``three_phase=True`` .
+
     Also note that you should update learning rate each step.
+
     Args:
         max_learning_rate (float): The maximum learning rate. It is a python float number.
              Functionally, it defines the initial learning rate by ``divide_factor`` .
@@ -1624,12 +1628,16 @@ class OneCycleLR(LRScheduler):
                 2. Then it will directly decrease to minimum learning rate.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
     Returns:
         ``OneCycleLR`` instance to schedule learning rate.
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
+
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
@@ -1643,6 +1651,7 @@ class OneCycleLR(LRScheduler):
                     sgd.step()
                     sgd.clear_gradients()
                     scheduler.step()        # You should update learning rate each step
+
             # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
@@ -1655,6 +1664,7 @@ class OneCycleLR(LRScheduler):
                 scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
+
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(5):
@@ -1800,12 +1810,17 @@ class CyclicLR(LRScheduler):
     The scheduler regards the process of learning rate adjustment as one cycle after another.
     It cycles the learning rate between two boundaries with a constant frequency.
     The distance between the two boundaries can be scaled on a per-iteration or per-cycle basis.
+
     It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
+
     According to the paper, the cyclic learning rate schedule has three build-in scale methods:
+
     * "triangular": A basic triangular cycle without amplitude scaling.
     * "triangular2": A basic triangular cycle that scales initial amplitude by half each cycle.
     * "exp_range": A cycle that scales initial amplitude by half each cycle.
+
     The initial amplitude is defined as max_learning_rate - base_learning_rate.
+
     Args:
         base_learning_rate (float): Initial learning rate, which is the lower boundary in the cycle. The paper recommends
             that set the base_learning_rate to 1/3 or 1/4 of max_learning_rate.
@@ -1829,12 +1844,16 @@ class CyclicLR(LRScheduler):
         last_epoch (int, optional): The index of last epoch. Can be set to restart training.
             Default: -1, means initial learning rate.
         verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
     Returns:
     ``CyclicLR`` instance to schedule learning rate.
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
+
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
@@ -1848,6 +1867,7 @@ class CyclicLR(LRScheduler):
                     sgd.step()
                     sgd.clear_gradients()
                     scheduler.step()        # You should update learning rate each step
+
             # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
@@ -1861,6 +1881,7 @@ class CyclicLR(LRScheduler):
                     max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
+
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(5):
