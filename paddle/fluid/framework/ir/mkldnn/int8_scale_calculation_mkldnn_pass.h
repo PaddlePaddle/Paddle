@@ -14,10 +14,6 @@
 
 #pragma once
 
-// #include <memory>
-// #include <string>
-// #include <unordered_map>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
