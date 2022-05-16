@@ -1920,7 +1920,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         attrs={
             'ring_id': ring_id,
             'peer': dst,
-            'use_calc_stream': use_calc_stream
+            'use_calc_stream': use_calc_stream,
         })
 
 
@@ -1985,5 +1985,5 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'peer': src,
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
-            'use_calc_stream': use_calc_stream
+            'use_calc_stream': use_calc_stream,
         })

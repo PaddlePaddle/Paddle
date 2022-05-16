@@ -26,10 +26,10 @@ class TestCollectiveSendRecvAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    # def test_sendrecv_nccl(self):
-    #     if paddle.fluid.core.is_compiled_with_cuda():
-    #         self.check_with_place("collective_sendrecv_api.py", "sendrecv",
-    #                               "nccl")
+    #def test_sendrecv_nccl(self):
+    #    if paddle.fluid.core.is_compiled_with_cuda():
+    #        self.check_with_place("collective_sendrecv_api.py", "sendrecv",
+    #                              "nccl")
 
     def test_sendrecv_nccl_dygraph(self):
         if paddle.fluid.core.is_compiled_with_cuda():
