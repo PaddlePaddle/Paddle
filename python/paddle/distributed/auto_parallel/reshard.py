@@ -519,10 +519,10 @@ class Remover:
     def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
                                dist_params_grads):
         """Remove no need vars and ops in the main program."""
-        print("reshard remove 0", auto_parallel_main_prog, flush=True)
+        # print("reshard remove 0", auto_parallel_main_prog, flush=True)
         Remover.remove_no_need_ops(auto_parallel_main_prog, dist_context,
                                    rank_id)
-        print("reshard remove 1", auto_parallel_main_prog, flush=True)
+        # print("reshard remove 1", auto_parallel_main_prog, flush=True)
         Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
                                                    dist_context)
         Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)

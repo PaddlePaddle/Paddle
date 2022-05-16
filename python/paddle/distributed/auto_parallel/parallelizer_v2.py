@@ -79,9 +79,9 @@ class Parallelizer:
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
         else:
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            print_program_with_dist_attr(serial_main_program,
-                                         self._dist_context)
+            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            # print_program_with_dist_attr(serial_main_program,
+            #                              self._dist_context)
             # Apply pre optimization passes
             self._apply_pre_optimization(
                 serial_main_program, serial_startup_program, None, None, None)
@@ -92,8 +92,8 @@ class Parallelizer:
             # Do reshard process
             make_data_unshard(dist_main_prog, dist_startup_prog,
                               self._dist_context)
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            print_program_with_dist_attr(dist_main_prog, self._dist_context)
+            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
             # Apply pre optimization passes
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)

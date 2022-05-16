@@ -31,6 +31,11 @@ from paddle.distributed.auto_parallel.operators import find_compatible_distribut
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
+import sys
+sys.path.append("..")
+import auto_parallel_gpt_model as modeling
+from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
+
 paddle.enable_static()
 
 batch_size = 4
@@ -129,7 +134,7 @@ def loop_body(i, loop_len, input_array):
     return i, loop_len, input_array
 
 
-def get_program():
+def get_program_v1():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
     # fleet.init(is_collective=True, strategy=dist_strategy)
@@ -208,7 +213,7 @@ def get_program():
     return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
 
 
-def get_program_v1():
+def get_program():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
     # fleet.init(is_collective=True, strategy=dist_strategy)
@@ -277,9 +282,77 @@ def get_program_v1():
 
         feed_vars = {"inputs": [input], "labels": [label]}
         fetch_vars = {"loss": [loss]}
-        print("loss hah", loss.name, loss.desc.id(), flush=True)
 
     return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
+
+
+def get_program_v3():
+    dist_strategy = fleet.DistributedStrategy()
+    dist_strategy.semi_auto = True
+    # fleet.init(is_collective=True, strategy=dist_strategy)
+    place = paddle.set_device("gpu")
+    gpus = [0, 1]
+    batch_size = 8
+    sequence_len = 512
+    vocab_size = 1000
+
+    train_program = static.Program()
+    start_program = static.Program()
+    modeling.init_global()
+    with static.program_guard(train_program, start_program):
+        tokens = paddle.static.data(
+            name="tokens", shape=[batch_size, sequence_len], dtype='int64')
+        position_ids = paddle.static.data(
+            name="position_ids",
+            shape=[batch_size, sequence_len],
+            dtype='int64')
+        attention_mask = paddle.static.data(
+            name="attention_mask",
+            shape=[batch_size, 1, sequence_len, sequence_len],
+            dtype='float32')
+        labels = paddle.static.data(
+            name="labels", shape=[batch_size, sequence_len], dtype='int64')
+        loss_mask = paddle.static.data(
+            name="loss_mask", shape=[batch_size, sequence_len], dtype='float32')
+        data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
+
+        gpt = GPTModel(
+            vocab_size=1000,
+            hidden_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=8,
+            intermediate_size=256,
+            hidden_act="gelu",
+            hidden_dropout_prob=0.0,
+            attention_probs_dropout_prob=0.0,
+            max_position_embeddings=1024,
+            type_vocab_size=1,
+            initializer_range=0.02,
+            pad_token_id=0,
+            eos_token_id=7,
+            bos_token_id=0,
+            eol_token_id=3)
+
+        model = GPTForPretraining(
+            gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02)
+        preds = model(tokens, position_ids, attention_mask)
+        criterion = GPTPretrainingCriterion()
+        loss = criterion(preds, labels, loss_mask)
+
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+
+        feed_vars = {
+            "inputs": [tokens, position_ids, attention_mask, loss_mask],
+            "labels": [labels]
+        }
+        fetch_vars = {"loss": [loss]}
+
+    return train_program, start_program, None, loss, optimizer, feed_vars, fetch_vars
 
 
 class TestParallelTuner(unittest.TestCase):
@@ -292,11 +365,6 @@ class TestParallelTuner(unittest.TestCase):
         dist_context.initialize()
         dist_context.block_state.parse_forward_blocks(
             dist_context.serial_main_program)
-        print(
-            "tuner test",
-            id(dist_context.serial_main_program),
-            id(dist_context.serial_startup_program),
-            flush=True)
 
         self.num_nodes = 1
         self.device_per_nodes = 8

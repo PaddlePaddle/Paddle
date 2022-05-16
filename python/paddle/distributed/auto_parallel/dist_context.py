@@ -57,8 +57,8 @@ class DistributedContext:
                  serial_startup_prog=None,
                  serial_optimizer=None,
                  serial_loss=None,
-                 feed_vars=None,
-                 fetch_vars=None,
+                 feed_vars={},
+                 fetch_vars={},
                  strategy=None):
         # Data members related to original programs (unchanged)
         self._original_serial_main_program = serial_main_prog
@@ -68,12 +68,12 @@ class DistributedContext:
         self._original_serial_feed_vars = feed_vars
         self._original_serial_fetch_vars = fetch_vars
         self._original_serial_optimizer = serial_optimizer
-        if self._original_serial_main_program is None:
-            self._original_serial_main_program = paddle.fluid.default_main_program(
-            )
-        if self._original_serial_startup_program is None:
-            self._original_serial_startup_program = paddle.fluid.default_startup_program(
-            )
+        # if self._original_serial_main_program is None:
+        #     self._original_serial_main_program = paddle.fluid.default_main_program(
+        #     )
+        # if self._original_serial_startup_program is None:
+        #     self._original_serial_startup_program = paddle.fluid.default_startup_program(
+        #     )
 
         # Data members related to programs (changed)
         self._serial_main_program = None
@@ -200,17 +200,22 @@ class DistributedContext:
             self._dist_ops_for_program)
 
     def _restore(self):
-        self._serial_main_program = self._original_serial_main_program.clone()
-        self._serial_startup_program = self._original_serial_startup_program.clone(
-        )
+        if self._original_serial_main_program is not None:
+            self._serial_main_program = self._original_serial_main_program.clone(
+            )
+
+        if self._original_serial_startup_program is not None:
+            self._serial_startup_program = self._original_serial_startup_program.clone(
+            )
 
         self._serial_optimizer = self._original_serial_optimizer
 
-        block_idx = self._original_serial_loss.block.idx
-        var_name = self._original_serial_loss.name
-        var = self._serial_main_program.blocks[block_idx]._var_recursive(
-            var_name)
-        self._serial_loss = var
+        if self._original_serial_loss is not None:
+            block_idx = self._original_serial_loss.block.idx
+            var_name = self._original_serial_loss.name
+            var = self._serial_main_program.blocks[block_idx]._var_recursive(
+                var_name)
+            self._serial_loss = var
 
         for key, var_list in self._original_serial_feed_vars.items():
             new_var_list = []
@@ -709,16 +714,20 @@ class DistributedContext:
                         dist_tensor.serial_tensor.name)
                 if (dist_tensor is not None) and (
                         not dist_tensor.validate_dist_attr()):
-                    assert False, "Tensor {} has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name, dist_tensor.dist_attr)
+                    assert False, "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
+                        dist_tensor.serial_tensor.name,
+                        dist_tensor.desc.id(),
+                        dist_tensor.desc.original_id(), dist_tensor.dist_attr)
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
                 assert dist_op is not None, \
                     "Operator {} does not have a distributed attribute.".format(
                         dist_op.serial_op.type)
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
-                    assert False, "Operator {} has a wrong distributed attributes {}.".format(
-                        dist_op.serial_op.type, dist_op.dist_attr)
+                    assert False, "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
+                        dist_op.serial_op.type,
+                        dist_op.serial_op.desc.id(),
+                        dist_op.serial_op.desc.original_id(), dist_op.dist_attr)
         return True
 
     def __deepcopy__(self, memo):

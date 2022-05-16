@@ -1000,14 +1000,18 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        # print("col in 1", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
+        # print("col in 2", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
                 -1]):
             return False
+        # print("col in 3", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("col in 4", x_name, y_name, x_dims_mapping, y_dims_mapping, flush=True)
         return True
 
     def is_output_compatible(self, dist_op):
@@ -1015,20 +1019,25 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        # print("col out 1", out_name, out_dims_mapping, flush=True)
         if is_dim_replicate(out_dims_mapping[-1]):
             return False
+        # print("col out 2", out_name, out_dims_mapping, flush=True)
         for mapping in out_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("col out 3", out_name, out_dims_mapping, flush=True)
         return True
 
     def is_auto_compatible(self, dist_op):
+        # print("auto out 0", flush=True)
         if (not self.is_input_compatible(dist_op)) or \
             (not self.is_output_compatible(dist_op)):
             return False
-
+        # print("auto out 1", flush=True)
         if not _is_auto_compatible_for_matmul(dist_op):
             return False
+        # print("auto out 2", flush=True)
 
         return True
 
@@ -1081,6 +1090,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[-1]
+        if matmul_col_dim_mapping < 0:
+            print(op_dist_attr, flush=True)
         assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_col_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology
@@ -1300,6 +1311,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[-2]
+        if matmul_row_dim_mapping < 0:
+            print(op_dist_attr, flush=True)
         assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             matmul_row_dim_mapping)
         process_mesh_shape = op_dist_attr.process_mesh.topology

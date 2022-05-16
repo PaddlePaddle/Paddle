@@ -62,6 +62,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
+        assert len(x_dims_mapping) == len(perm)
         for i in range(len(x_dims_mapping)):
             new_dims_mapping[i] = x_dims_mapping[perm[i]]
 

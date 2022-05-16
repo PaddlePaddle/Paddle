@@ -775,6 +775,9 @@ class Completer:
 
         self._dist_context.initialize()
 
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+        # self._dist_context.validate_dist_attr_for_program()
+
         self._prepare()
 
         self._update_process_mesh()

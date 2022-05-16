@@ -57,7 +57,7 @@ class ParallelTuner:
         self._max_trials = 10
         self._tuner_id = tuner_id
         self._seed = seed or np.random.randint(1, 10000)
-        self._seed = 7987
+        # self._seed = 7987
         print("seed", self._seed, flush=True)
         self._seed_state = self._seed
         self._logger = logger
@@ -69,7 +69,7 @@ class ParallelTuner:
 
         self._op_id_to_dist_attr_candidates = defaultdict(list)
         self._cached_dims_mapping_candidates = {}
-        self._cached_dist_attr_candidates = defaultdict(list)
+        self._cached_candidates_info = defaultdict(list)
 
         self._special_ops = [
             "create_py_reader", "create_double_buffer_reader", "read", "while",
@@ -146,13 +146,11 @@ class ParallelTuner:
         elements = [pow(2, i) for i in range(log2_target)]
         if pow(2, log2_target) == target:
             elements.append(target)
-        print(elements, flush=True)
         seed_candidates = []
         num_seed_candidates = 1000
         partial_results = []
         self._generate_combination(elements, target, 0, partial_results,
                                    seed_candidates, num_seed_candidates)
-        print(seed_candidates, flush=True)
 
         candidates = []
         for seed_candidate in seed_candidates:
@@ -167,9 +165,7 @@ class ParallelTuner:
             self._permute_combination(seed_candidate, target, check, [],
                                       cur_candidates, num_cur_candidates,
                                       skip_prob)
-            print(cur_candidates, flush=True)
             candidates.extend(cur_candidates)
-        print(candidates, flush=True)
         return candidates
 
     def _partition_devices(self, num_nodes, devices_per_node):
@@ -249,8 +245,12 @@ class ParallelTuner:
         op_dist_attr = dist_op.dist_attr
         if serial_op.type in self._special_ops:
             return [copy.deepcopy(op_dist_attr)]
-
-        print("\n\n", op_id, serial_op.type, flush=True)
+        print(
+            "~~~~~~~~~~~~~~~~~~~~~~~",
+            serial_op.type,
+            serial_op.desc.id(),
+            serial_op.desc.original_id(),
+            flush=True)
         key = []
         key.append(serial_op.type)
         for input_name in serial_op.input_names:
@@ -258,21 +258,51 @@ class ParallelTuner:
             for input_arg_name in serial_op.input(input_name):
                 key.append(
                     len(op_dist_attr.get_input_dims_mapping(input_arg_name)))
-                # print("key 0", key)
         for output_name in serial_op.output_names:
             key.append(output_name)
             for output_arg_name in serial_op.output(output_name):
                 key.append(
                     len(op_dist_attr.get_output_dims_mapping(output_arg_name)))
-                # print("key 1", key)
         key = tuple(key)
-        # print("key 2", key)
-        if key in self._cached_dist_attr_candidates:
-            # print("cached dist attr", key)
-            return self._cached_dist_attr_candidates[key]
-        else:
-            pass
-            # print("uncached dist attr", key)
+
+        if key in self._cached_candidates_info:
+            cached_dist_attr_candidates = []
+            cached_input_arg_names = self._cached_candidates_info[key][0]
+            cached_output_arg_names = self._cached_candidates_info[key][1]
+            for cached_dist_attr in self._cached_candidates_info[key][2]:
+                new_op_dist_attr = copy.deepcopy(dist_op.dist_attr)
+                i = 0
+                for input_name in serial_op.input_names:
+                    for input_arg_name in serial_op.input(input_name):
+                        cached_dims_mapping = cached_dist_attr.get_input_dims_mapping(
+                            cached_input_arg_names[i])
+                        new_op_dist_attr.set_input_dims_mapping(
+                            input_arg_name, cached_dims_mapping)
+                        i += 1
+                i = 0
+                for output_name in serial_op.output_names:
+                    for output_arg_name in serial_op.output(output_name):
+                        cached_dims_mapping = cached_dist_attr.get_output_dims_mapping(
+                            cached_output_arg_names[i])
+                        new_op_dist_attr.set_output_dims_mapping(
+                            output_arg_name, cached_dims_mapping)
+                        i += 1
+                cached_dist_attr_candidates.append(new_op_dist_attr)
+            return cached_dist_attr_candidates
+
+        cached_candidates_info = []
+        input_arg_names = []
+        for input_name in serial_op.input_names:
+            for input_arg_name in serial_op.input(input_name):
+                input_arg_names.append(input_arg_name)
+        self._cached_candidates_info[key].append(input_arg_names)
+        # cached_candidates_info.append(input_arg_names)
+        output_arg_names = []
+        for output_name in serial_op.output_names:
+            for output_arg_name in serial_op.output(output_name):
+                output_arg_names.append(output_arg_name)
+        self._cached_candidates_info[key].append(output_arg_names)
+        # cached_candidates_info.append(output_arg_names)
 
         new_op_dist_attr = copy.deepcopy(dist_op.dist_attr)
         # Find valid dims_mapping candidates for inputs
@@ -290,7 +320,6 @@ class ParallelTuner:
                 dims_mapping_generated.append(
                     self._generate_dims_mapping_candidates(dims_mapping_len,
                                                            process_mesh_len))
-        # print("inputs generated", dims_mapping_generated, len(list(itertools.product(*dims_mapping_generated))), flush=True)
         input_dims_mapping_candidates = []
         for dims_mapping_list in itertools.product(*dims_mapping_generated):
             dims_mapping_list = list(dims_mapping_list)
@@ -304,7 +333,6 @@ class ParallelTuner:
                 new_dist_op, fwd=True)
             if dist_op_impls is not None:
                 input_dims_mapping_candidates.append(dims_mapping_list)
-        # print("inputs candidates", input_dims_mapping_candidates, len(input_dims_mapping_candidates), flush=True)
 
         # Find valid dims_mapping candidates for outputs
         output_names = []
@@ -321,7 +349,6 @@ class ParallelTuner:
                 dims_mapping_generated.append(
                     self._generate_dims_mapping_candidates(dims_mapping_len,
                                                            process_mesh_len))
-        # print("outputs generated", dims_mapping_generated, len(list(itertools.product(*dims_mapping_generated))), flush=True)
         output_dims_mapping_candidates = []
         for dims_mapping_list in itertools.product(*dims_mapping_generated):
             dims_mapping_list = list(dims_mapping_list)
@@ -335,7 +362,6 @@ class ParallelTuner:
                 new_dist_op, fwd=False)
             if dist_op_impls is not None:
                 output_dims_mapping_candidates.append(dims_mapping_list)
-        # print("outputs candidates", output_dims_mapping_candidates, len(output_dims_mapping_candidates), flush=True)
 
         if not input_dims_mapping_candidates and output_dims_mapping_candidates:
             inout_dims_mapping_generated = [[[[-2]]],
@@ -350,9 +376,8 @@ class ParallelTuner:
             inout_dims_mapping_generated = [
                 input_dims_mapping_candidates, output_dims_mapping_candidates
             ]
-        inout_dims_mapping_candidates = []
         # Find valid dims_mapping generated for both inputs and outputs
-        # print("inouts generated", inout_dims_mapping_generated, list(itertools.product(*inout_dims_mapping_generated)), flush=True)
+        cached_dist_attr_candidates = []
         for inout_dims_mapping_list in itertools.product(
                 *inout_dims_mapping_generated):
             assert len(inout_dims_mapping_list) == 2
@@ -379,15 +404,12 @@ class ParallelTuner:
             for dist_op_impl in dist_op_impls:
                 new_op_dist_attr.impl_type = dist_op_impl.type
                 new_op_dist_attr.impl_idx = dist_op_impl.idx
-                inout_dims_mapping_candidates.append(inout_dims_mapping_list)
-                self._cached_dist_attr_candidates[key].append(
+                cached_dist_attr_candidates.append(
                     copy.deepcopy(new_op_dist_attr))
-        # print("inouts candidates", inout_dims_mapping_candidates, len(inout_dims_mapping_candidates), flush=True)
-        # for dist_attr in self._cached_dist_attr_candidates[key]:
-        #     print(dist_attr, flush=True)
-        # print("\n\n")
-        # return self._op_id_to_dist_attr_candidates[op_id]
-        return self._cached_dist_attr_candidates[key]
+        self._cached_candidates_info[key].append(cached_dist_attr_candidates)
+        return self._cached_candidates_info[key][2]
+        # cached_candidates_info.append(cached_dist_attr_candidates)
+        # return cached_candidates_info[2]
 
     def construct_space(self):
         inter_node_partitions, intra_node_partitions = self._partition_devices(
@@ -482,49 +504,78 @@ class ParallelTuner:
             else:
                 start += 1
                 op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
-        print(
-            "pipeline partition",
-            total_ops,
-            total_stages,
-            ops_per_stages,
-            pipeline_starts,
-            op_id_to_process_mesh,
-            flush=True)
+        # print(
+        #     "pipeline partition",
+        #     total_ops,
+        #     total_stages,
+        #     ops_per_stages,
+        #     pipeline_starts,
+        #     op_id_to_process_mesh,
+        #     flush=True)
         return op_id_to_process_mesh
 
     def _amend_dist_attr(self):
-        # Reshape the process mesh of [1, x] to [x] or [x, 1] to [x] and amend the corresponding dims_mapping
+        # Reshape the process mesh of [1, x] to [x] or [x, 1] to [x],
+        # and amend the corresponding dims_mapping
         for dist_op in self._dist_context._dist_ops_for_program.values():
             dist_attr = dist_op.dist_attr
             process_mesh = dist_attr.process_mesh
             if process_mesh is None:
                 continue
-            if process_mesh.ndim == 2 and process_mesh.topology[0] == 1:
-                dist_attr.process_mesh = ProcessMesh(process_mesh.processes)
-            if process_mesh.ndim == 2 and process_mesh.topology[1] == 1:
-                dist_attr.process_mesh = ProcessMesh(process_mesh.processes)
-            if process_mesh.ndim == 1 or \
-                (process_mesh.ndim == 2 and process_mesh.topology[0] == 1) or \
-                (process_mesh.ndim == 2 and process_mesh.topology[1] == 1):
+            assert process_mesh.ndim == 2
+            dim_of_one = None
+            dim_of_other = None
+            if process_mesh.topology[0] == 1:
+                dim_of_one = 0
+                dim_of_other = 1
+            elif process_mesh.topology[1] == 1:
+                dim_of_one = 1
+                dim_of_other = 0
+            if dim_of_one is None:
+                continue
+
+            dist_attr.process_mesh = ProcessMesh(process_mesh.processes)
+            for arg_name in dist_attr.inputs_dist_attrs.keys():
+                new_dims_mapping = []
+                dims_mapping = dist_attr.get_input_dims_mapping(arg_name)
+                for dim_mapping in dims_mapping:
+                    if dim_mapping == dim_of_one:
+                        new_dims_mapping.append(-1)
+                    elif dim_mapping == dim_of_other:
+                        new_dims_mapping.append(0)
+                    else:
+                        new_dims_mapping.append(dim_mapping)
+                dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+            for arg_name in dist_attr.outputs_dist_attrs.keys():
+                new_dims_mapping = []
+                dims_mapping = dist_attr.get_output_dims_mapping(arg_name)
+                for dim_mapping in dims_mapping:
+                    if dim_mapping == dim_of_one:
+                        new_dims_mapping.append(-1)
+                    elif dim_mapping == dim_of_other:
+                        new_dims_mapping.append(0)
+                    else:
+                        new_dims_mapping.append(dim_mapping)
+                dist_attr.set_output_dims_mapping(arg_name, new_dims_mapping)
+
+            dist_op_impls = find_compatible_distributed_operator_impls(
+                dist_op, partial=False)
+            if dist_op_impls is not None:
+                # Select the first compatible dist op impl
+                dist_op.dist_attr.impl_type = dist_op_impls[0].type
+                dist_op.dist_attr.impl_idx = dist_op_impls[0].idx
+            else:
+                # Use the default dist op impl
                 for arg_name in dist_attr.inputs_dist_attrs.keys():
-                    new_dims_mapping = []
                     dims_mapping = dist_attr.get_input_dims_mapping(arg_name)
-                    for i, dim_mapping in enumerate(dims_mapping):
-                        if dim_mapping == 1:
-                            new_dims_mapping.append(0)
-                        else:
-                            new_dims_mapping.append(-1)
-                    dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                    for i, _ in enumerate(dims_mapping):
+                        dims_mapping[i] = -1
                 for arg_name in dist_attr.outputs_dist_attrs.keys():
-                    new_dims_mapping = []
                     dims_mapping = dist_attr.get_output_dims_mapping(arg_name)
-                    for i, dim_mapping in enumerate(dims_mapping):
-                        if dim_mapping == 1:
-                            new_dims_mapping.append(0)
-                        else:
-                            new_dims_mapping.append(-1)
-                    dist_attr.set_output_dims_mapping(arg_name,
-                                                      new_dims_mapping)
+                    for i, _ in enumerate(dims_mapping):
+                        dims_mapping[i] = -1
+                dist_op.dist_attr.impl_type = "default"
+                dist_op.dist_attr.impl_idx = 0
 
     def eval_trial(self, trial):
         self._dist_context._reset()
@@ -534,12 +585,11 @@ class ParallelTuner:
         intra_node_partition = trial.space.values["intra_node_partitions"]
         process_mesh_list = self._generate_process_mesh_list(
             inter_node_partition, intra_node_partition)
-        print(
-            "process_mesh_list",
-            inter_node_partition,
-            intra_node_partition,
-            process_mesh_list,
-            flush=True)
+        # print("process_mesh_list",
+        #       inter_node_partition,
+        #       intra_node_partition,
+        #       process_mesh_list,
+        #       flush=True)
         op_id_to_process_mesh = self._apply_pipeline_partition(
             process_mesh_list)
         if op_id_to_process_mesh is None:
@@ -560,14 +610,21 @@ class ParallelTuner:
             dist_op = self._dist_context._dist_ops_for_program[op_id]
             # if not is_elementwise_op(dist_op.serial_op.type):
             dist_op.dist_attr = copy.deepcopy(op_id_to_dist_attr[op_id])
+            assert dist_op.dist_attr.impl_type == op_id_to_dist_attr[
+                op_id].impl_type
+            assert dist_op.dist_attr.impl_idx == op_id_to_dist_attr[
+                op_id].impl_idx
             # skip_dist_ops[op_id] = True
             dist_op.dist_attr.process_mesh = process_mesh
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         self._amend_dist_attr()
+
         self._completer.complete_forward_annotation()
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
-        self._parallelizer.parallel_all()
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+        self._parallelizer.parallel_all()
+
         # print("after reset dist context",
         #       self._dist_context._dist_ops_for_program.keys(),
         #       self._dist_context._dist_tensors_for_program.keys(), flush=True)
@@ -584,8 +641,8 @@ class ParallelTuner:
         #               "op original_id",
         #               op.desc.original_id(),
         #               flush=True)
-        # print("$$$$$$$$$$$$$$ eval", flush=True)
         # print_program_with_dist_attr(completed_main_program, self._dist_context)
+
         # TODO: eval the partiton strategy by calling the cost model
         return results
 
@@ -596,6 +653,7 @@ class ParallelTuner:
         return trial.status
 
     def tune(self):
+        self.times = 0
         self.construct_space()
         while True:
             print("tune 1", flush=True)
@@ -607,5 +665,6 @@ class ParallelTuner:
             print("tune 3", flush=True)
             results = self.eval_trial(trial)
             print("tune 4", flush=True)
+            self.times += 1
             # self.update_trial(trial.id, results)
             # print("5")
