@@ -233,7 +233,7 @@ class BaseTestCases:
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
         return np.arange(
-            200, dtype=np.float64).reshape(20, 10), {
+            100, dtype=np.float64).reshape(10, 10), {
                 'axis': 0,
                 'flatten': True,
                 'reverse': True
@@ -243,7 +243,7 @@ class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
 class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
         return np.arange(
-            200, dtype=np.float64).reshape(20, 10), {
+            100, dtype=np.float64).reshape(10, 10), {
                 'axis': 1,
                 'reverse': True
             }
@@ -251,13 +251,13 @@ class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
 
 class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
-        return np.arange(200, dtype=np.float64).reshape(20, 10), {'axis': 1}
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {'axis': 1}
 
 
 class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
     def input_and_attrs(self):
         return np.arange(
-            200, dtype=np.float64).reshape(20, 10), {
+            100, dtype=np.float64).reshape(10, 10), {
                 'axis': 0,
                 'flatten': True,
                 'reverse': True,

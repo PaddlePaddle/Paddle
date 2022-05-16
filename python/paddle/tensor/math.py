@@ -3035,13 +3035,11 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             return _C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
-    locals_var = locals().copy()
-    kwargs = dict()
-    for name, val in locals_var.items():
-        if val is not None:
-            kwargs[name] = val
-    _logcumsumexp_ = generate_layer_fn('logcumsumexp')
-    return _logcumsumexp_(**kwargs)
+
+    helper = LayerHelper('logcumsumexp', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logcumsumexp', inputs={'X': x}, outputs={'Out': out}, attrs={'axis': axis, 'flatten': flatten})
+    return out
 
 
 def cumprod(x, dim=None, dtype=None, name=None):
