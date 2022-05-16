@@ -255,12 +255,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
     std::vector<phi::DenseTensor>& in_tensors, int peer) {
-#if defined(PADDLE_WITH_NCCL)
-  if (!CheckTensorsInCudaPlace(in_tensors)) {
-    VLOG(3) << "Inputs not on CUDAPlace for heter send.";
-  }
-#endif
-
   PADDLE_ENFORCE_EQ(
       in_tensors.size(), 1,
       platform::errors::PreconditionNotMet(
@@ -269,7 +263,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   auto start = std::chrono::high_resolution_clock::now();
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = in_tensors[0];
-
   framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
   PADDLE_ENFORCE_EQ(with_switch_, true,
                     platform::errors::PreconditionNotMet(
@@ -300,12 +293,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
     std::vector<phi::DenseTensor>& out_tensors, int peer) {
-#if defined(PADDLE_WITH_NCCL)
-  if (!CheckTensorsInCudaPlace(out_tensors)) {
-    VLOG(3) << "Inputs not on CUDAPlace for heter recv.";
-  }
-#endif
-
   PADDLE_ENFORCE_EQ(
       out_tensors.size(), 1,
       platform::errors::PreconditionNotMet(
@@ -340,7 +327,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
                    framework::DataTypeSize(cpu_tensor.dtype()) / diff.count();
   VLOG(2) << "Goodput: " << goodput << "B/s" << std::endl;
   start = std::chrono::high_resolution_clock::now();
-
   framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
   end = std::chrono::high_resolution_clock::now();
   diff = end - start;
