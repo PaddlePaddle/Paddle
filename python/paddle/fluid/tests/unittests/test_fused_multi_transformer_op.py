@@ -109,6 +109,7 @@ class TestFusedMultiTransformerOp(OpTest):
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
+        #self.attn_mask_type = np.bool
         self.pre_layer_norm = True
         self.has_attn_mask = True
 
@@ -168,6 +169,11 @@ class TestFusedMultiTransformerOp(OpTest):
                     self.attn_mask = (self.attn_mask - 1.0) * 1e4
                 else:
                     self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
+            elif self.attn_mask_type == np.bool:
+                if self.has_cache_kv and not self.gen_cache_kv:
+                    self.attn_mask[:, :, :, -2] = 0
+                else:
+                    self.attn_mask = np.tril(self.attn_mask)
             else:
                 raise ValueError(
                     "'attn_mask_type' should be 'int64' or 'float64'.")
@@ -394,7 +400,7 @@ class TestFusedMultiTransformerOp(OpTest):
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
-        if attn_mask is not None:
+        if attn_mask is not None and self.attn_mask_type != np.bool:
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
         qkv_weights, qkv_biases = [], []
