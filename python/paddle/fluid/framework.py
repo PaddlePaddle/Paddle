@@ -2864,10 +2864,9 @@ class Operator(object):
                 continue
 
             # it is bytes of serialized protobuf 
-            if is_compiled_with_cinn(
-            ) and self.type == 'cinn_launch' and name == 'compilation_key':
-                key = self.desc.attr(name)
-                v = core.get_serialize_comile_key(key)
+            if self.type == 'cinn_launch' and name == 'compilation_key':
+                # value = core.get_readable_comile_key(self.desc)
+                v = self.desc.attr(name)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()

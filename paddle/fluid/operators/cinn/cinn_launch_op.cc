@@ -136,7 +136,7 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
         .AsDuplicable();
-    AddAttr<int64_t>(
+    AddAttr<std::string>(
         kCompilationKey,
         "(string)"
         "a hash key used to get the graph object or its computation result.");
