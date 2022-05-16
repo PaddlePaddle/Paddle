@@ -74,6 +74,7 @@ add_custom_command(
   COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
                  --api_yaml_path ${api_yaml_file}
                  --api_header_path ${api_header_file_tmp}
+                 --api_header_path ${api_header_file_tmp}
                  --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
@@ -175,3 +176,4 @@ cc_library(strings_api SRCS ${strings_api_source_file} DEPS phi_tensor_raw phi k
 cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api api_gen_utils kernel_dispatch infermeta sparse_api strings_api)
 cc_library(tensor_copy SRCS tensor_copy.cc DEPS phi_tensor_raw copy_kernel kernel_dispatch api_gen_utils)
 cc_library(api_scalar SRCS scalar.cc DEPS tensor_copy)
+cc_library(api_int_array SRCS int_array.cc DEPS tensor_copy)

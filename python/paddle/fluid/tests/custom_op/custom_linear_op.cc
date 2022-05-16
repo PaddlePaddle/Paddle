@@ -23,6 +23,16 @@ std::vector<paddle::Tensor> PhiLinearForward(const paddle::Tensor& x,
   return {paddle::add(paddle::matmul(x, weight), bias)};
 }
 
+std::vector<paddle::Tensor> PhiLinearBackward(const paddle::Tensor& x,
+                                              const paddle::Tensor& weight,
+                                              const paddle::Tensor& bias,
+                                              const paddle::Tensor& out_grad) {
+  auto x_grad = paddle::matmul(out_grad, weight, false, true);
+  auto weight_grad = paddle::matmul(x, out_grad, true, false);
+  auto bias_grad = paddle::experimental::sum(out_grad, {0});
+  return {x_grad, weight_grad, bias_grad};
+}
+
 std::vector<std::vector<int64_t>> LinearInferShape(
     const std::vector<int64_t>& x_shape,
     const std::vector<int64_t>& weight_shape,
@@ -86,9 +96,14 @@ std::vector<paddle::DataType> LinearInferDtype(
   return {x_dtype};
 }
 
-PD_BUILD_OP(pten_linear)
+PD_BUILD_OP(phi_linear)
     .Inputs({"X", "Weight", "Bias"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(PhiLinearForward))
     .SetInferShapeFn(PD_INFER_SHAPE(LinearInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(LinearInferDtype));
+
+PD_BUILD_GRAD_OP(phi_linear)
+    .Inputs({"X", "Weight", "Bias", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X"), paddle::Grad("Weight"), paddle::Grad("Bias")})
+    .SetKernelFn(PD_KERNEL(PhiLinearBackward));

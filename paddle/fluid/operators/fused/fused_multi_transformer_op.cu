@@ -1084,11 +1084,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *qk_out_data =
         qk_out.mutable_data<T>({bsz, num_head, seq_len, out_seq_len}, place);
 
-    Tensor src_mask_out, softmax_out;
+    Tensor softmax_out;
     Tensor attn_dropout_mask_out, attn_dropout_out;
     Tensor qktv_out, fmha_out;
-    auto *src_mask_out_data = src_mask_out.mutable_data<T>(
-        {bsz, num_head, seq_len, out_seq_len}, place);
     auto *softmax_out_data = softmax_out.mutable_data<T>(
         {bsz, num_head, seq_len, out_seq_len}, place);
 
@@ -1219,10 +1217,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         // TODO(wangxi): can remove dropout in inference
-        fmha_compute.ComputeForward(
-            qkv_out, nullptr, src_mask, &transpose_out_2, nullptr, &qk_out,
-            &src_mask_out, &softmax_out, &attn_dropout_mask_out,
-            &attn_dropout_out, &qktv_out, &fmha_out);
+        fmha_compute.ComputeForward(qkv_out, nullptr, src_mask,
+                                    &transpose_out_2, nullptr, &qk_out, nullptr,
+                                    &softmax_out, &attn_dropout_mask_out,
+                                    &attn_dropout_out, &qktv_out, &fmha_out);
         // [3, bsz, num_head, seq_len, head_dim]
         T *qkv_data = transpose_out_2_data;
         int64_t q_size = bsz * seq_len * num_head * dim_head;
@@ -1245,7 +1243,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         // TODO(wangxi): can remove dropout in inference
         fmha_compute.ComputeForward(
             qkv_out, cache_kv, src_mask, &transpose_out_2, cache_kv_out,
-            &qk_out, &src_mask_out, &softmax_out, &attn_dropout_mask_out,
+            &qk_out, nullptr, &softmax_out, &attn_dropout_mask_out,
             &attn_dropout_out, &qktv_out, &fmha_out);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
