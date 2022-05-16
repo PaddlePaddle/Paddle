@@ -819,7 +819,6 @@ inline void LaunchBatchTransposeKernel(
   IndexT num_tile_cols = (cols + kMov4TileSize - 1) / kMov4TileSize;
   const int32_t block_nums = num_batches * num_tile_rows * num_tile_cols;
   int32_t blocks = std::min(block_nums, kCudaMaxBlocksNum);
-
   BatchTransposeKernel<
       T, MovementSize,
       IndexT><<<blocks, dim3(kMov4TileSize, kBlockRows), 0, ctx.stream()>>>(
@@ -827,14 +826,14 @@ inline void LaunchBatchTransposeKernel(
 }
 
 template <size_t Rank, typename IndexT>
-inline PermuteParams<Rank, IndexT> MakeParams(const int64_t* src_dims,
+inline PermuteParams<Rank, IndexT> MakeParams(const size_t* in_dims,
                                               const int* perm, size_t count) {
   PermuteParams<Rank, IndexT> params;
-  params.src_index_helper = NdIdxAndOffset<IndexT, Rank>(src_dims);
-  int64_t dst_dims[Rank];
+  params.src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims);
+  size_t dst_dims[Rank];
 
   for (size_t i = 0; i < Rank; ++i) {
-    dst_dims[i] = src_dims[perm[i]];
+    dst_dims[i] = in_dims[perm[i]];
   }
   params.dst_index_helper = NdIdxAndOffset<IndexT, Rank>(dst_dims);
 
@@ -844,28 +843,6 @@ inline PermuteParams<Rank, IndexT> MakeParams(const int64_t* src_dims,
   params.count = static_cast<IndexT>(count);
   return params;
 }
-
-template <size_t Rank, typename IndexT>
-inline void InferBatchTransposeShape(const int64_t* src_dims,
-                                     IndexT* num_batches, IndexT* rows,
-                                     IndexT* cols) {
-  if (Rank == 2) {
-    *num_batches = 1;
-    *rows = src_dims[0];
-    *cols = src_dims[1];
-  } else {
-    *num_batches = src_dims[0];
-    *rows = src_dims[1];
-    *cols = src_dims[2];
-  }
-}
-
-// template<size_t kMov4TileSize, typename IndexT>
-// bool CheckIfGreaterEqualThanTileSize(const IndexT& rows, const IndexT& cols)
-// {
-//     if (rows < kMov4TileSize || cols < kMov4TileSize) { return false; }
-//     return true;
-// }
 
 template <size_t Rank, typename IndexT>
 inline bool CheckLaunchBatchTranspose(const int* perm,
@@ -889,10 +866,10 @@ inline bool CheckLaunchBatchTranspose(const int* perm,
 
 template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
 inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
-                                  const int64_t* src_dims, const T* src,
+                                  const size_t* in_dims, const T* src,
                                   const int* perm, T* dst, size_t count) {
   PermuteParams<Rank, IndexT> params =
-      MakeParams<Rank, IndexT>(src_dims, perm, count);
+      MakeParams<Rank, IndexT>(in_dims, perm, count);
 
   int32_t threads = 512;
   IndexT max_block_num = kCudaMaxBlocksNum;
@@ -900,11 +877,9 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
       std::min((params.count + threads - 1) / threads, max_block_num);
 
   if (Rank == 2 || Rank == 3) {
-    IndexT num_batches = (Rank == 2) ? 1 : src_dims[0];
-    IndexT rows = (Rank == 2) ? src_dims[0] : src_dims[1];
-    IndexT cols = (Rank == 2) ? src_dims[1] : src_dims[2];
-    // InferBatchTransposeShape<Rank, IndexT>(src_dims, &num_batches, &rows,
-    // &cols);
+    IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
+    IndexT rows = (Rank == 2) ? in_dims[0] : in_dims[1];
+    IndexT cols = (Rank == 2) ? in_dims[1] : in_dims[2];
 
     if (CheckLaunchBatchTranspose<Rank, IndexT>(params.perm, num_batches, rows,
                                                 cols)) {
@@ -923,30 +898,29 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T, size_t Rank, size_t MovementSize>
-inline void DispatchIndexType(const phi::GPUContext& ctx,
-                              const int64_t* src_dims, const int* perm,
-                              const T* src, T* dst) {
+inline void DispatchIndexType(const phi::GPUContext& ctx, const size_t* in_dims,
+                              const int* perm, const T* src, T* dst) {
   size_t count = 1;
   for (size_t i = 0; i < Rank; ++i) {
-    count *= src_dims[i];
+    count *= in_dims[i];
   }
 
   if (count < std::numeric_limits<int32_t>::max()) {
-    LaunchTransposeKernel<T, Rank, MovementSize, int32_t>(ctx, src_dims, src,
+    LaunchTransposeKernel<T, Rank, MovementSize, int32_t>(ctx, in_dims, src,
                                                           perm, dst, count);
   } else {
-    LaunchTransposeKernel<T, Rank, MovementSize, int64_t>(ctx, src_dims, src,
+    LaunchTransposeKernel<T, Rank, MovementSize, int64_t>(ctx, in_dims, src,
                                                           perm, dst, count);
   }
 }
 
 template <typename T, size_t Rank>
 inline void DispatchMovementSize(const phi::GPUContext& ctx,
-                                 size_t movement_size, const int64_t* src_dims,
+                                 size_t movement_size, const size_t* in_dims,
                                  const int* perm, const T* src, T* dst) {
-#define CALL_DISPATCH_INDEX_TYPE_FUNC(size)                          \
-  case size: {                                                       \
-    DispatchIndexType<T, Rank, size>(ctx, src_dims, perm, src, dst); \
+#define CALL_DISPATCH_INDEX_TYPE_FUNC(size)                         \
+  case size: {                                                      \
+    DispatchIndexType<T, Rank, size>(ctx, in_dims, perm, src, dst); \
   } break;
 
   switch (movement_size) {
@@ -961,14 +935,14 @@ inline void DispatchMovementSize(const phi::GPUContext& ctx,
 
 template <typename T>
 inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
-                                         size_t movement_size, size_t rank,
-                                         const int64_t* src_dims,
-                                         const int* perm, const T* src,
-                                         T* dst) {
-#define CALL_DISPATCH_MOVEMENT_SIZE_FUNC(rank)                             \
-  case rank: {                                                             \
-    DispatchMovementSize<T, rank>(ctx, movement_size, src_dims, perm, src, \
-                                  dst);                                    \
+                                         const size_t movement_size,
+                                         const size_t rank,
+                                         const size_t* in_dims, const int* perm,
+                                         const T* src, T* dst) {
+#define CALL_DISPATCH_MOVEMENT_SIZE_FUNC(rank)                            \
+  case rank: {                                                            \
+    DispatchMovementSize<T, rank>(ctx, movement_size, in_dims, perm, src, \
+                                  dst);                                   \
   } break;
 
   switch (rank) {
@@ -987,16 +961,18 @@ inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
 
 template <typename T, size_t kMaxMovementSize>
 inline size_t GetMovementSize(size_t elem_size, size_t num_dims,
-                              const int64_t* src_dims, const int* perm,
-                              const void* src, void* dst) {
+                              const size_t* in_dims, const int* perm,
+                              const T* src, T* dst) {
   static_assert(
       kMaxMovementSize > 0 && (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
-      "");
+      "The kMaxMovementSize shall be power of 2.");
+
   if (perm[num_dims - 1] == num_dims - 1) {
-    const int64_t last_dim_size = src_dims[num_dims - 1] * elem_size;
+    const size_t last_dim_size = in_dims[num_dims - 1] * elem_size;
     auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
     auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
-    for (size_t size = kMaxMovementSize; size > elem_size; size >> 1) {
+
+    for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
       if (last_dim_size % size == 0 && src_ptr % size == 0 &&
           dst_ptr % size == 0) {
         return size;
@@ -1006,22 +982,23 @@ inline size_t GetMovementSize(size_t elem_size, size_t num_dims,
   return elem_size;
 }
 
-inline void Simplifyperm(size_t num_dims, const int64_t* src_dims,
+inline void Simplifyperm(const size_t num_dims, const size_t* in_dims,
                          const std::vector<int32_t>& perm,
-                         size_t* simplified_rank, int64_t* simplified_dims,
+                         size_t* simplified_rank, size_t* simplified_dims,
                          int* simplified_perm) {
-  int64_t coalesced_dims[phi::DDim::kMaxRank];
+  size_t coalesced_dims[phi::DDim::kMaxRank];
   size_t start_perm_index = 0;
 
-  // Merge consecutive dims for src_dims.
+  // Merge consecutive dims for in_dims.
   while (start_perm_index < num_dims) {
     const size_t start_dim_index = perm[start_perm_index];
-    coalesced_dims[start_dim_index] = src_dims[start_dim_index];
+    coalesced_dims[start_dim_index] = in_dims[start_dim_index];
     size_t end_perm_index = start_perm_index + 1;
+
     while (end_perm_index < num_dims &&
            perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
       const size_t end_dim_index = perm[end_perm_index];
-      coalesced_dims[start_dim_index] *= src_dims[end_dim_index];
+      coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
       coalesced_dims[end_dim_index] = 1;
       end_perm_index += 1;
     }
@@ -1061,50 +1038,53 @@ inline void Simplifyperm(size_t num_dims, const int64_t* src_dims,
 }
 
 template <typename T, size_t kMaxMovementSize>
-inline void SimplifyDimsAndperm(size_t rank, const std::vector<int32_t>& perm,
-                                const int64_t* src_dims,
-                                size_t* simplified_rank,
-                                int64_t* simplified_dims, int* simplified_perm,
-                                size_t elem_size, const T* src, T* dst,
-                                size_t* movement_size) {
-  const size_t pre_simplified_movement_size =
-      GetMovementSize<T, kMaxMovementSize>(elem_size, rank, src_dims,
-                                           perm.data(), src, dst);
-
-  int64_t tmp_dims[phi::DDim::kMaxRank];
+inline size_t SimplifyDimsAndperm(const size_t rank,
+                                  const std::vector<int32_t>& perm,
+                                  const size_t* in_dims,
+                                  size_t* simplified_rank,
+                                  size_t* simplified_dims, int* simplified_perm,
+                                  size_t elem_size, const T* src, T* dst) {
+  size_t movement_size = 0;
+  const size_t simplified_movement_size = GetMovementSize<T, kMaxMovementSize>(
+      elem_size, rank, in_dims, perm.data(), src, dst);
+  size_t tmp_dims[phi::DDim::kMaxRank];
   for (size_t i = 0; i < rank; ++i) {
-    tmp_dims[i] = src_dims[i];
+    tmp_dims[i] = in_dims[i];
   }
-  tmp_dims[rank - 1] /= (pre_simplified_movement_size / elem_size);
+  tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
 
   Simplifyperm(rank, tmp_dims, perm, simplified_rank, simplified_dims,
                simplified_perm);
-  *movement_size = GetMovementSize<T, kMaxMovementSize>(
-      pre_simplified_movement_size, *simplified_rank, simplified_dims,
+
+  movement_size = GetMovementSize<T, kMaxMovementSize>(
+      simplified_movement_size, *simplified_rank, simplified_dims,
       simplified_perm, src, dst);
+
   simplified_dims[*simplified_rank - 1] /=
-      (*movement_size / pre_simplified_movement_size);
+      (movement_size / simplified_movement_size);
+
+  return movement_size;
 }
 
 template <typename DeviceContext, typename T>
 inline void SimplifyThenLaunch(const size_t rank, const DeviceContext& ctx,
                                const Tensor& in, Tensor* out,
                                const std::vector<int32_t>& perm) {
-  size_t simplified_rank = 0;
-  auto src_dims = phi::vectorize<int>(in.dims());
-  int64_t simplified_dims[phi::DDim::kMaxRank];
-  int simplified_perm[phi::DDim::kMaxRank];
   size_t movement_size = 0;
+  size_t simplified_rank = 0;
+  size_t simplified_dims[phi::DDim::kMaxRank];
+  size_t new_src_dims[phi::DDim::kMaxRank];
+  int simplified_perm[phi::DDim::kMaxRank];
 
-  int64_t new_src_dims[phi::DDim::kMaxRank];
   for (size_t i = 0; i < rank; ++i) {
-    new_src_dims[i] = src_dims[i];
+    new_src_dims[i] = in.dims()[i];
   }
 
-  // float32时为4, float16时为2
-  SimplifyDimsAndperm<T, /*kMaxMovementSize=*/16>(
+  // kMaxMovementSize is for vectorized load, for fp32, the vec_size
+  // is (kMaxMovementSize)/sizeof(fp32) = 4, for fp16 is 8.
+  movement_size = SimplifyDimsAndperm<T, /*kMaxMovementSize=*/16>(
       rank, perm, new_src_dims, &simplified_rank, simplified_dims,
-      simplified_perm, sizeof(T), in.data<T>(), out->data<T>(), &movement_size);
+      simplified_perm, sizeof(T), in.data<T>(), out->data<T>());
 
   LaunchWithSimplifiedDispatch<T>(ctx, movement_size, simplified_rank,
                                   simplified_dims, simplified_perm,
@@ -1124,11 +1104,11 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    if (ndims > 5) {
-      TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
-    } else {
-      SimplifyThenLaunch<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
-    }
+    // if (ndims > 5) {
+    //   TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
+    // } else {
+    SimplifyThenLaunch<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
+    // }
   }
 }
 

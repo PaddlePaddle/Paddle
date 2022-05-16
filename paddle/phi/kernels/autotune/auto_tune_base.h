@@ -70,8 +70,9 @@ class AutoTuneBase {
     phi::GpuTimer timer;
     float min_time = std::numeric_limits<float>::max();
 
+    ctx.Wait();
     for (int i = 0; i < kernels_.size(); ++i) {
-      ctx.Wait();
+      // Timer test shall be estabulished in default stream.
       timer.Start(0);
       kernels_[i].Call(args...);
       timer.Stop(0);
