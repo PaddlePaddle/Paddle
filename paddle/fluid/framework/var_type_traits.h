@@ -87,6 +87,10 @@ namespace operators {
 
 class CudnnRNNCache;
 
+#ifdef PADDLE_WITH_CUDA
+class CUDAGraphWithInOuts;
+#endif
+
 namespace reader {
 class LoDTensorBlockingQueueHolder;
 class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
@@ -188,6 +192,9 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #endif
 #if defined(PADDLE_WITH_CNCL)
     cnclCliqueId,
+#endif
+#ifdef PADDLE_WITH_CUDA
+    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
 #endif
     int, float, Vocab>;
 template <typename T>

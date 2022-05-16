@@ -13,12 +13,78 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include <queue>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace paddle {
 namespace platform {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
+
+static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
+  size_t num_nodes;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
+  std::vector<cudaGraphNode_t> nodes(num_nodes);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
+
+  size_t num_edges;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, nullptr, nullptr, &num_edges));
+  std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, from.data(), to.data(), &num_edges));
+
+  std::unordered_map<cudaGraphNode_t, std::unordered_set<cudaGraphNode_t>>
+      in_edges, out_edges;
+  for (auto node : nodes) {
+    in_edges[node];
+    out_edges[node];
+  }
+
+  for (size_t i = 0; i < num_edges; ++i) {
+    in_edges[to[i]].insert(from[i]);
+    out_edges[from[i]].insert(to[i]);
+  }
+
+  std::queue<cudaGraphNode_t> q;
+  for (const auto &pair : in_edges) {
+    if (pair.second.empty()) {
+      q.push(pair.first);
+    }
+  }
+
+  nodes.clear();
+  while (!q.empty()) {
+    auto cur = q.front();
+    q.pop();
+    nodes.push_back(cur);
+
+    for (auto out_node : out_edges.at(cur)) {
+      auto &in_nodes = in_edges.at(out_node);
+      in_nodes.erase(cur);
+      if (in_nodes.empty()) {
+        q.push(out_node);
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      nodes.size(), num_nodes,
+      phi::errors::InvalidArgument("Toposort error, this may be a bug."));
+  return nodes;
+}
+
+CUDAGraphID CUDAGraph::UniqueID() {
+  static std::atomic<CUDAGraphID> id;
+  return id.fetch_add(1);
+}
+
+int64_t CUDAGraph::UniqueMemoryPoolID() {
+  static std::atomic<int64_t> id(CUDAGraph::kDefaultPoolID + 1);
+  return id.fetch_add(1);
+}
 
 void CUDAGraph::Reset() {
   if (is_reset_) return;
@@ -46,9 +112,16 @@ void CUDAGraph::Replay() {
   PADDLE_ENFORCE_EQ(is_reset_, false,
                     errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
-  for (auto exec_graph : exec_graphs_) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphLaunch(exec_graph, stream_));
+  size_t n = exec_graphs_.size();
+  for (size_t i = 0; i < n; ++i) {
+    if (!is_first_run_) {
+      for (auto &hook : pre_hooks_[i]) {
+        hook(exec_graphs_[i]);
+      }
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphLaunch(exec_graphs_[i], stream_));
   }
+  is_first_run_ = false;
 #endif
 }
 
@@ -72,7 +145,8 @@ void CUDAGraph::BeginSegmentCapture() {
                     platform::errors::PermissionDenied(
                         "CUDA Graph should not be invalidated."));
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
-           << ", segment id " << capturing_graph_->graphs_.size();
+           << ", segment id " << capturing_graph_->graphs_.size()
+           << ", memory pool id " << capturing_graph_->pool_id_;
 #endif
 }
 
@@ -112,15 +186,57 @@ void CUDAGraph::EndSegmentCapture() {
   if (num_nodes == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(graph));
     VLOG(10) << "Skip empty CUDA Graph with ID " << capturing_graph_->id_
-             << ", segment id " << capturing_graph_->graphs_.size();
+             << ", segment id " << capturing_graph_->graphs_.size()
+             << ", memory pool id " << capturing_graph_->pool_id_;
     return;
   }
+
+  auto sorted_nodes = ToposortCUDAGraph(graph);
+  capturing_graph_->pre_hooks_.emplace_back();
+  std::unordered_set<cudaGraphNode_t> visited;
+  VLOG(10) << "SetSeedFunc number : "
+           << capturing_graph_->set_seed_funcs_.size();
+  for (const auto &set_seed_func : capturing_graph_->set_seed_funcs_) {
+    bool found = false;
+    for (auto node : sorted_nodes) {
+      if (visited.count(node) > 0) continue;
+      cudaGraphNodeType type;
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphNodeGetType(node, &type));
+      if (type == cudaGraphNodeTypeKernel) {
+        cudaKernelNodeParams params;
+        auto err = cudaGraphKernelNodeGetParams(node, &params);
+        if (err == cudaErrorInvalidDeviceFunction) {
+          continue;
+        } else {
+          PADDLE_ENFORCE_GPU_SUCCESS(err);
+        }
+        CUDAKernelParams kernel_params(&params);
+        if (set_seed_func(&kernel_params, true)) {
+          capturing_graph_->pre_hooks_.back().push_back(
+              [set_seed_func, node, params](cudaGraphExec_t exec_graph) {
+                CUDAKernelParams kernel_params(&params);
+                set_seed_func(&kernel_params, false);
+                PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphExecKernelNodeSetParams(
+                    exec_graph, node, &params));
+              });
+          visited.insert(node);
+          found = true;
+          break;
+        }
+      }
+    }
+    PADDLE_ENFORCE_EQ(found, true,
+                      phi::errors::InvalidArgument(
+                          "Cannot find the corresponding random CUDA kernel."));
+  }
+  capturing_graph_->set_seed_funcs_.clear();
 
   cudaGraphExec_t exec_graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
-           << ", segment id " << capturing_graph_->graphs_.size();
+           << ", segment id " << capturing_graph_->graphs_.size()
+           << ", memory pool id " << capturing_graph_->pool_id_;
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
 #endif
