@@ -714,6 +714,7 @@
     backend : x
   inplace : (x -> out)
   view : (x -> out)
+  # intermediate : xshape
   backward : flatten_grad
 
 # flip
