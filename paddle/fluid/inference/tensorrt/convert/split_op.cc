@@ -62,58 +62,70 @@ class SplitOpConverter : public OpConverter {
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = input->getDimensions().nbDims;
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
-      auto shape_tensor = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+
+      auto shape_tensor =
+          TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
 
       std::vector<int32_t> gather_indices;
       gather_indices.resize(trt_step_dims.nbDims);
       std::iota(gather_indices.begin(), gather_indices.end(), 0);
       gather_indices[axis] = gather_indices.size();
       std::string name = "_add_split_op_";
-      auto gather_indices_tensor = Add1DConstantLayer(gather_indices, name + "gather_indices");
+      auto gather_indices_tensor =
+          Add1DConstantLayer(gather_indices, name + "gather_indices");
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
       auto zeros_tensor = Add1DConstantLayer(zeros, name + "zeros");
-      
-      //std::vector<int32_t> avg_len(1, output_lengths[0]);
-      //auto avg_len_tensor = Add1DConstantLayer(avg_len, name + "avg_len");
 
-      //auto axis_tensor = Add1DConstantLayer(axis, name + "axis_tensor");
-      //auto output_num_tensor  = Add1DConstantLayer(output_num, name + "output_num_tensor");
-      //auto avg_len_tensor = 
-	//      TRT_ENGINE_ADD_LAYER(engine_, ElementWise, 
-	//		                    *TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor, *axis_tensor,0)->getOutput(0),
-          //                                  *output_num_tensor,  
-	//				    nvinfer1::ElementWiseOperation::kFLOOR_DIV)->getOutput(0);
-
+      // auto axis_tensor = Add1DConstantLayer(axis, name + "axis_tensor");
+      // auto output_num_tensor  = Add1DConstantLayer(output_num, name +
+      // "output_num_tensor");
+      // auto avg_len_tensor =
+      //      TRT_ENGINE_ADD_LAYER(engine_, ElementWise,
+      //		                    *TRT_ENGINE_ADD_LAYER(engine_,
+      // Gather, *shape_tensor, *axis_tensor,0)->getOutput(0),
+      //                                  *output_num_tensor,
+      //				    nvinfer1::ElementWiseOperation::kFLOOR_DIV)->getOutput(0);
 
       // input : [N,C,H,W]
       // auto i_init_tensot
       for (size_t i = 0; i < output_num; i++) {
-        //auto i_tensor = Add1DConstantLayer(i, name + "i");
+        // auto i_tensor = Add1DConstantLayer(i, name + "i");
 
-       // auto one_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *i_tensor, *avg_len_tensor,
-       //     nvinfer1::ElementWiseOperation::kPROD)->getOutput(0);
+        // auto one_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise,
+        // *i_tensor, *avg_len_tensor,
+        //     nvinfer1::ElementWiseOperation::kPROD)->getOutput(0);
 
+        auto this_len_tensor =
+            Add1DConstantLayer(output_lengths[i], name + "this_len_tensor");
+        auto start_point_tensor =
+            Add1DConstantLayer(std::accumulate(output_lengths.begin(),
+                                               output_lengths.begin() + i, 0),
+                               name + "start_point_tensor");
 
-        auto avg_len_tensor  = Add1DConstantLayer(output_lengths[i], name + "avg_len_tensor");
-        auto one_tensor  = Add1DConstantLayer(std::accumulate(output_lengths.begin(), output_lengths.begin() + i, 0), name + "one_tensor");
-        
-	std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor, one_tensor};
-        std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor, avg_len_tensor};
-        auto start_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs1.data() ,2)->getOutput(0),
-                *gather_indices_tensor,
-                0)->getOutput(0);
-        auto size_tensor = TRT_ENGINE_ADD_LAYER(engine_, Gather,
-                *TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs2.data() ,2)->getOutput(0),
-                *gather_indices_tensor,
-                0)->getOutput(0);
+        std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor,
+                                                          start_point_tensor};
+        std::vector<nvinfer1::ITensor*> concat_inputs2 = {shape_tensor,
+                                                          this_len_tensor};
+        auto start_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Gather,
+                                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
+                                                       concat_inputs1.data(), 2)
+                                      ->getOutput(0),
+                                 *gather_indices_tensor, 0)
+                ->getOutput(0);
+        auto size_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Gather,
+                                 *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
+                                                       concat_inputs2.data(), 2)
+                                      ->getOutput(0),
+                                 *gather_indices_tensor, 0)
+                ->getOutput(0);
 
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
                                      trt_step_dims, trt_step_dims);
         layer->setInput(1, *start_tensor);
         layer->setInput(2, *size_tensor);
 
-        
         auto output_name = op_desc.Output("Out")[i];
         layer->getOutput(0)->setName(output_name.c_str());
         engine_->SetITensor(output_name, layer->getOutput(0));
@@ -124,7 +136,7 @@ class SplitOpConverter : public OpConverter {
         }
         layer->setName((layer_name + ")").c_str());
       }
-      printf("%ld\n",input_num);
+      printf("%ld\n", input_num);
 
     } else {
 #if IS_TRT_VERSION_GE(7130)
@@ -146,8 +158,8 @@ class SplitOpConverter : public OpConverter {
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_size_dims, trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
-        layer->getOutput(i)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput(i));
+        layer->getOutput(0)->setName(output_name.c_str());
+        engine_->SetITensor(output_name, layer->getOutput(0));
         std::string layer_name = "split (Output: ";
         layer_name += output_name;
         if (test_mode) {

@@ -319,19 +319,17 @@ class OpConverter {
 
   nvinfer1::ITensor* Add1DConstantLayer(nvinfer1::Dims data,
                                         const std::string& weight_name) {
-          std::vector<int> tmp_data;
-          for (int i = 0; i < data.nbDims; i++)
-          tmp_data.push_back(data.d[i]);
-        return Add1DConstantLayer(tmp_data, weight_name);
+    std::vector<int> tmp_data;
+    for (int i = 0; i < data.nbDims; i++) tmp_data.push_back(data.d[i]);
+    return Add1DConstantLayer(tmp_data, weight_name);
   }
 
   nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
                                         const std::string& weight_name) {
-          std::vector<int> tmp_data;
-          tmp_data.push_back(data);
-        return Add1DConstantLayer(tmp_data, weight_name);
+    std::vector<int> tmp_data;
+    tmp_data.push_back(data);
+    return Add1DConstantLayer(tmp_data, weight_name);
   }
-
 
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer, const std::string& layer_type,
