@@ -32,8 +32,7 @@ import six
 from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-from ...framework import get_default_dtype, set_default_dtype
-
+from ...framework import get_default_dtype, set_default_dtype, in_dygraph_mode
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
@@ -49,7 +48,7 @@ from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
-import paddle.distributed as dist
+from paddle.distributed.collective import new_group, _get_default_group, _get_global_group
 
 __all__ = []
 
@@ -1069,8 +1068,12 @@ class SyncBatchNorm(_BatchNormBase):
               self).__init__(num_features, momentum, epsilon, weight_attr,
                              bias_attr, data_format, None, name)
 
-        self._group = dist.new_group(dist.collective._get_global_group()
-                                     .ranks) if group is None else group
+        if in_dygraph_mode():
+            self._group = new_group(_get_default_group()
+                                    .ranks) if group is None else group
+        else:
+            self._group = new_group(_get_global_group()
+                                    .ranks) if group is None else group
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
@@ -1169,10 +1172,15 @@ class SyncBatchNorm(_BatchNormBase):
 
         """
         layer_output = layer
-        group = dist.new_group(dist.collective._get_global_group()
-                               .ranks) if group is None else group
+        if in_dygraph_mode():
+            group = new_group(_get_default_group()
+                              .ranks) if group is None else group
+        else:
+            group = new_group(_get_global_group()
+                              .ranks) if group is None else group
 
-        if isinstance(layer, _BatchNormBase):
+        if isinstance(layer, _BatchNormBase) and not isinstance(layer,
+                                                                SyncBatchNorm):
             if layer._weight_attr != None and not isinstance(
                     layer._weight_attr,
                     bool) and layer._weight_attr.name != None:

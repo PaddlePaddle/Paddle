@@ -191,8 +191,6 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     const auto &place = ctx.GetPlace();
     platform::NCCLComm *comm =
         platform::NCCLCommContext::Instance().Get(ring_id, place);
-    gpuStream_t comm_stream = comm->stream();
-
     if (comm) {
       platform::GpuStreamSync(stream);
       int dtype = platform::ToNCCLDataType(
@@ -200,8 +198,8 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
       // In-place operation
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-          comm->comm(), comm_stream));
-      platform::GpuStreamSync(comm_stream);
+          comm->comm(), comm->stream()));
+      platform::GpuStreamSync(comm->stream());
     }
 #endif
 
@@ -472,7 +470,6 @@ void SyncBatchNormGradFunctor(
   const auto &place = ctx.GetPlace();
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
-  gpuStream_t comm_stream = comm->stream();
   if (comm) {
     platform::GpuStreamSync(stream);
     int dtype = platform::ToNCCLDataType(
@@ -480,8 +477,8 @@ void SyncBatchNormGradFunctor(
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm->comm(), comm_stream));
-    platform::GpuStreamSync(comm_stream);
+        comm->comm(), comm->stream()));
+    platform::GpuStreamSync(comm->stream());
   }
 #endif
 
