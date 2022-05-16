@@ -181,12 +181,14 @@ void Tensor::CopyFromCpu(const T *data) {
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+
     paddle::platform::CUDAPlace gpu_place(device_);
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        device_contexs_);
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     auto *t_data = tensor->mutable_data<T>(gpu_place);
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
 
     paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
                          paddle::platform::CPUPlace(), data, ele_size,
@@ -358,11 +360,12 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 #endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
     auto gpu_place = t_place;
-    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        device_contexs_);
+    auto *dev_ctx =
+        static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data), gpu_place, t_data,
                          ele_num * sizeof(T), dev_ctx->stream());
@@ -546,7 +549,8 @@ template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {}
+Tensor::Tensor(void *scope, const void *device_contexts)
+    : scope_{scope}, device_contexs_(device_contexts) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {

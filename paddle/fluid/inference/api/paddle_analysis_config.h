@@ -586,6 +586,25 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_allow_build_at_runtime();
 
   ///
+  /// \brief Set execution stream. If not set a stream will be created
+  /// internally.
+  ///
+  void SetExecStream(void* stream);
+
+  ///
+  /// \brief Get execution stream. The user needs to explicitly cast into a
+  /// stream type such as cudaStream_t, hipStream_t, etc.
+  ///
+  void* GetExecStream() const;
+
+  ///
+  /// \brief Whether the external stream is used, if True, the predictor clone
+  /// operation must use the external stream, otherwise the framework manages
+  /// the stream internally.
+  ///
+  bool UseExternalStream() const;
+
+  ///
   /// \brief Collect shape info of all tensors in compute graph.
   ///
   /// \param shape_range_info_path the path to save shape info.
@@ -919,6 +938,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "multiclass_nms3", "matrix_nms"};
 
   bool use_cudnn_{false};
+  bool use_external_stream_{false};
+  void* exec_stream_{nullptr};
 
   // NPU related
   bool use_npu_{false};

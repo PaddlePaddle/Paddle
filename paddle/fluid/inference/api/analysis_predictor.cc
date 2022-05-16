@@ -27,6 +27,7 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -37,6 +38,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/infer_context.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -198,6 +200,9 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
+
+  InitPlace();
+
   if (!CreateExecutor()) {
     return false;
   }
@@ -213,56 +218,32 @@ bool AnalysisPredictor::Init(
     return true;
   }
 
-  return true;
-}
-
-bool AnalysisPredictor::PrepareScope(
-    const std::shared_ptr<framework::Scope> &parent_scope) {
-  if (parent_scope) {
-    PADDLE_ENFORCE_NOT_NULL(
-        parent_scope,
-        platform::errors::PreconditionNotMet(
-            "Both program and parent_scope should be set in Clone mode."));
-    scope_ = parent_scope;
-    status_is_cloned_ = true;
-  } else {
-    paddle::framework::InitDevices();
-    paddle::framework::InitDefaultKernelSignatureMap();
-    // TODO(wilber): we need to release memory occupied by weights.
-    scope_.reset(new paddle::framework::Scope());
-    status_is_cloned_ = false;
+  // TODO(inference): Now only gpu support private device_context.
+  if (config_.use_gpu_) {
+    private_context_ = true;
   }
-  sub_scope_ = &scope_->NewScope();
-  return true;
-}
-bool AnalysisPredictor::PrepareProgram(
-    const std::shared_ptr<framework::ProgramDesc> &program) {
-  if (!program) {
-    if (!LoadProgramDesc()) return false;
-    // If not cloned, the parameters should be loaded.
-    // If config_.ir_optim() is True, parameters is loaded in
-    // OptimizeInferenceProgram(), but other persistable variables
-    // (like RAW type var) are not created in scope.
-    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
-    // still need to create other persistable variables.
-    // So in both case, create persistable variables at first.
-    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
-
-    // if enable_ir_optim_ is false,
-    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
-    // not be executed.
-    OptimizeInferenceProgram();
-  } else {
-    // If the program is passed from external, no need to optimize it, this
-    // logic is used in the clone scenario.
-    inference_program_ = program;
+  if (private_context_) {
+    if (!status_is_cloned_) {
+      if (config_.use_external_stream_) {
+        InitResourceManager(config_.GetExecStream());
+      } else {
+        InitResourceManager(nullptr);
+      }
+    } else {
+      // clone case.
+      if (config_.use_external_stream_) {
+        InitResourceManager(clone_stream_);
+      } else {
+        InitResourceManager(nullptr);
+      }
+    }
+    InitDeviceContexts();
   }
 
-  executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-
   return true;
 }
-bool AnalysisPredictor::CreateExecutor() {
+
+void AnalysisPredictor::InitPlace() {
   if (config_.use_gpu()) {
     PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
                       platform::errors::InvalidArgument(
@@ -345,6 +326,176 @@ bool AnalysisPredictor::CreateExecutor() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+}
+
+void AnalysisPredictor::InitResourceManager(void *stream) {
+  resource_.reset(new ResourceManager(place_, stream));
+}
+
+void AnalysisPredictor::InitDeviceContexts() {
+  // Init CPUContext.
+  phi::CPUPlace cpu_place;
+  device_contexts_.emplace(
+      cpu_place, std::async(std::launch::deferred, [=] {
+        auto *cpu_context = new InferCPUContext();
+        cpu_context->SetAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(cpu_place)
+                .get());
+        cpu_context->SetHostAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(cpu_place)
+                .get());
+        cpu_context->SetZeroAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetZeroAllocator(cpu_place)
+                .get());
+        cpu_context->SetGenerator(framework::DefaultCPUGenerator().get());
+        cpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+
+        cpu_context->SetEigenDevice(resource_->GetCpuEigenDevice());
+        return std::unique_ptr<phi::DeviceContext>(cpu_context);
+      }));
+
+// Init GPUContext.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (place_.GetType() == phi::AllocationType::GPU) {
+    device_contexts_.emplace(
+        place_, std::async(std::launch::deferred, [=] {
+          auto *gpu_context = new InferGPUContext();
+          gpu_context->SetAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(place_)
+                  .get());
+          gpu_context->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+          gpu_context->SetHostAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(cpu_place)
+                  .get());
+          gpu_context->SetZeroAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetZeroAllocator(place_)
+                  .get());
+          gpu_context->SetGenerator(
+              framework::GetDefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+
+          gpu_context->SetStream(resource_->GetStream());
+          gpu_context->SetBlasHandle(resource_->GetBlasHandle());
+          gpu_context->SetBlasTensorCoreHandle(
+              resource_->GetBlasTensorCoreHandle());
+          gpu_context->SetBlasTF32Handle(resource_->GetBlasTF32Handle());
+          gpu_context->SetDnnHandle(resource_->GetDnnHandle());
+          gpu_context->SetSolverHandle(resource_->GetSolverDnHandle());
+          gpu_context->SetSparseHandle(resource_->GetSparseHandle());
+          gpu_context->SetEigenDevice(resource_->GetGpuEigenDevice());
+          gpu_context->SetComputeCapability(
+              resource_->GetGpuComputeCapability());
+          gpu_context->SetMaxThreadsPerBlock(
+              resource_->GetGpuMaxThreadsPerBlock());
+          gpu_context->SetMaxThreadsPerMultiProcessor(
+              resource_->GetGpuMaxThreadsPerMp());
+          gpu_context->SetMaxGridDimSize(resource_->GetGpuMaxGridDimSize());
+          gpu_context->SetMultiProcessors(resource_->GetGPUMultiProcessors());
+          gpu_context->SetDriverVersion(resource_->GetGpuDriverVersion());
+          gpu_context->SetRuntimeVersion(resource_->GetGpuRuntimeVersion());
+          return std::unique_ptr<phi::DeviceContext>(gpu_context);
+        }));
+  }
+#endif
+  // TODO(Inference): Support other backends.
+}
+
+void *AnalysisPredictor::GetExecStream() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (place_.GetType() == phi::AllocationType::GPU) {
+    if (private_context_) {
+      if (status_is_cloned_) {
+        return clone_stream_;
+      } else {
+        return reinterpret_cast<const phi::GPUContext *>(
+                   device_contexts_.at(place_).get().get())
+            ->stream();
+      }
+    } else {
+      paddle::platform::DeviceContextPool &pool =
+          paddle::platform::DeviceContextPool::Instance();
+      return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
+          ->stream();
+    }
+  } else {
+    return nullptr;
+  }
+  return nullptr;
+#else
+  // TODO(inference): Support other backends.
+  return nullptr;
+#endif
+}
+
+const void *AnalysisPredictor::GetDeviceContexts() const {
+  if (private_context_) {
+    return &device_contexts_;
+  } else {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    const auto &dev_ctxs = pool.device_contexts();
+    return &dev_ctxs;
+  }
+}
+
+bool AnalysisPredictor::PrepareScope(
+    const std::shared_ptr<framework::Scope> &parent_scope) {
+  if (parent_scope) {
+    PADDLE_ENFORCE_NOT_NULL(
+        parent_scope,
+        platform::errors::PreconditionNotMet(
+            "Both program and parent_scope should be set in Clone mode."));
+    scope_ = parent_scope;
+    status_is_cloned_ = true;
+  } else {
+    paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
+    // TODO(wilber): we need to release memory occupied by weights.
+    scope_.reset(new paddle::framework::Scope());
+    status_is_cloned_ = false;
+  }
+  sub_scope_ = &scope_->NewScope();
+  return true;
+}
+
+bool AnalysisPredictor::PrepareProgram(
+    const std::shared_ptr<framework::ProgramDesc> &program) {
+  if (!program) {
+    if (!LoadProgramDesc()) return false;
+    // If not cloned, the parameters should be loaded.
+    // If config_.ir_optim() is True, parameters is loaded in
+    // OptimizeInferenceProgram(), but other persistable variables
+    // (like RAW type var) are not created in scope.
+    // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
+    // still need to create other persistable variables.
+    // So in both case, create persistable variables at first.
+    executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
+    // if enable_ir_optim_ is false,
+    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // not be executed.
+    OptimizeInferenceProgram();
+  } else {
+    // If the program is passed from external, no need to optimize it, this
+    // logic is used in the clone scenario.
+    inference_program_ = program;
+  }
+
+  executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+
+  return true;
+}
+
+bool AnalysisPredictor::CreateExecutor() {
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
   return true;
 }
@@ -1225,8 +1376,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       platform::errors::PreconditionNotMet(
           "The variable named %s is not found in the scope of the executor.",
           name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope)));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
+      static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1280,8 +1431,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       platform::errors::PreconditionNotMet(
           "The variable named %s is not found in the scope of the executor.",
           name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope)));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(
+      static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1330,6 +1481,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
     return true;
   }
 #endif
+  if (private_context_)
+    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
@@ -1355,6 +1509,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+  paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
@@ -1666,11 +1821,19 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
     memory::Release(place_);
   }
+  device_contexts_.clear();
 }
 
-std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
+std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
+  x->status_is_cloned_ = true;
+  if (config_.use_external_stream_ && stream == nullptr) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "config has been configured to use external stream, but the Clone "
+        "function has not received a valid stream parameter."));
+  }
+  x->clone_stream_ = stream;
   x->Init(scope_, inference_program_);
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
@@ -1858,6 +2021,10 @@ void Predictor::ClearIntermediateTensor() {
 }
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
+
+const void *Predictor::GetExecStream() const {
+  return predictor_->GetExecStream();
+}
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

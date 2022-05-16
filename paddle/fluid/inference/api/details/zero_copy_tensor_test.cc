@@ -25,14 +25,19 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle_infer {
 
 struct TensorWrapper : public Tensor {
-  TensorWrapper(paddle_infer::PlaceType place, paddle::framework::Scope* scope,
-                const std::string& name)
-      : Tensor{static_cast<void*>(scope)} {
+  TensorWrapper(
+      paddle_infer::PlaceType place, paddle::framework::Scope* scope,
+      const std::map<phi::Place,
+                     std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+          dev_ctxs,
+      const std::string& name)
+      : Tensor{static_cast<void*>(scope), dev_ctxs} {
     SetPlace(place, 0 /*device_id*/);
     SetName(name);
     input_or_output_ = true;
@@ -42,7 +47,11 @@ struct TensorWrapper : public Tensor {
 std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
                                      paddle::framework::Scope* scope,
                                      const std::string& name) {
-  return std::unique_ptr<Tensor>(new TensorWrapper{place, scope, name});
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto& dev_ctxs = pool.device_contexts();
+  return std::unique_ptr<Tensor>(
+      new TensorWrapper{place, scope, &dev_ctxs, name});
 }
 
 template <typename T>
