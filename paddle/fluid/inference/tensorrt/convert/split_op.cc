@@ -75,26 +75,8 @@ class SplitOpConverter : public OpConverter {
           Add1DConstantLayer(gather_indices, name + "gather_indices");
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
       auto zeros_tensor = Add1DConstantLayer(zeros, name + "zeros");
-
-      // auto axis_tensor = Add1DConstantLayer(axis, name + "axis_tensor");
-      // auto output_num_tensor  = Add1DConstantLayer(output_num, name +
-      // "output_num_tensor");
-      // auto avg_len_tensor =
-      //      TRT_ENGINE_ADD_LAYER(engine_, ElementWise,
-      //		                    *TRT_ENGINE_ADD_LAYER(engine_,
-      // Gather, *shape_tensor, *axis_tensor,0)->getOutput(0),
-      //                                  *output_num_tensor,
-      //				    nvinfer1::ElementWiseOperation::kFLOOR_DIV)->getOutput(0);
-
       // input : [N,C,H,W]
-      // auto i_init_tensot
       for (size_t i = 0; i < output_num; i++) {
-        // auto i_tensor = Add1DConstantLayer(i, name + "i");
-
-        // auto one_tensor = TRT_ENGINE_ADD_LAYER(engine_, ElementWise,
-        // *i_tensor, *avg_len_tensor,
-        //     nvinfer1::ElementWiseOperation::kPROD)->getOutput(0);
-
         auto this_len_tensor =
             Add1DConstantLayer(output_lengths[i], name + "this_len_tensor");
         auto start_point_tensor =
@@ -136,8 +118,6 @@ class SplitOpConverter : public OpConverter {
         }
         layer->setName((layer_name + ")").c_str());
       }
-      printf("%ld\n", input_num);
-
     } else {
 #if IS_TRT_VERSION_GE(7130)
 
