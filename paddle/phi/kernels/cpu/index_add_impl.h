@@ -24,8 +24,10 @@ namespace phi {
 template <typename Context, typename T>
 void IndexAddInner(const Context& ctx,
                     const DenseTensor& index,
-                    // const DenseTensor& x,
-                    DenseTensor& x,
+                    const DenseTensor& x,
+                    // if you want to Resize x, maybe 
+                    // you should delete 'const'
+                    // DenseTensor& x,
                     DenseTensor* output,
                     int axis,
                     T add_val,
@@ -67,7 +69,8 @@ void IndexAddInner(const Context& ctx,
   auto& place = *ctx.eigen_device();
   if (add_grad) {
     add_grad->Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
-    x.Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
+    // if x is const, the line of code may be a bug
+    // x.Resize(phi::make_ddim({outer_nums, output_dim[axis], slice_size}));
 
     auto x_tensor = EigenTensor<T, 3>::From(x);
     auto add_grad_tensor = EigenTensor<T, 3>::From(*add_grad);
@@ -97,6 +100,7 @@ void IndexAddInner(const Context& ctx,
 template <typename T, typename Context>
 void IndexAddBaseKernel(const Context& dev_ctx,
                          const DenseTensor& x,
+                        //  DenseTensor& x,
                          const IntArray& index_arr,
                          const Scalar& axis_scalar,
                          float add_value,
