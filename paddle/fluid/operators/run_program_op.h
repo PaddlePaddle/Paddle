@@ -194,12 +194,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
     auto is_test = ctx.Attr<bool>("is_test");
-#ifdef PADDLE_WITH_CUDA
     if (capture_mode.empty()) {
       ComputeImpl(ctx, is_test, false);
       return;
     }
 
+#ifdef PADDLE_WITH_CUDA
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
@@ -236,11 +236,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
                        inner_graphs[graph_idx].get());
     }
 #else
-    if (!capture_mode.empty()) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
-                                       "valid when using NVIDIA GPU."));
-    }
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
 #endif
   }
 
@@ -361,12 +359,12 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
-#ifdef PADDLE_WITH_CUDA
     if (capture_mode.empty()) {
       ComputeImpl(ctx, false);
       return;
     }
 
+#ifdef PADDLE_WITH_CUDA
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
@@ -402,11 +400,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       VLOG(10) << "Run Backward CUDA Graph directly";
     }
 #else
-    if (!capture_mode.empty()) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
-                                       "valid when using NVIDIA GPU."));
-    }
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
 #endif
   }
 
