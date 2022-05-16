@@ -47,6 +47,7 @@ struct Pow {
     return static_cast<T>(::powf(static_cast<float>(a), static_cast<float>(b)));
   }
 };
+
 }  // namespace details
 
 template <typename T, typename Operator>

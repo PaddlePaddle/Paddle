@@ -55,26 +55,25 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     auto fill_constant_out_desc = fill_constant_out_node->Var();
     fill_constant_out_desc->SetShape(shape);
     fill_constant_out_desc->SetPersistable(true);
-    auto* fill_constant_out_new_tensor =
+    auto* fill_constant_out_tensor =
         scope->Var(fill_constant_out_desc->Name())->GetMutable<LoDTensor>();
     auto dtype =
         framework::TransToPhiDataType(fill_constant_out_desc->GetDataType());
-    fill_constant_out_new_tensor->Resize(phi::make_ddim(shape));
+    fill_constant_out_tensor->Resize(phi::make_ddim(shape));
     switch (dtype) {
       case paddle::experimental::DataType::BOOL:
-        FillConstData<bool>(fill_constant_out_new_tensor,
-                            static_cast<bool>(value));
+        FillConstData<bool>(fill_constant_out_tensor, static_cast<bool>(value));
         break;
       case paddle::experimental::DataType::INT32:
-        FillConstData<int32_t>(fill_constant_out_new_tensor,
+        FillConstData<int32_t>(fill_constant_out_tensor,
                                static_cast<int32_t>(value));
         break;
       case paddle::experimental::DataType::INT64:
-        FillConstData<int64_t>(fill_constant_out_new_tensor,
+        FillConstData<int64_t>(fill_constant_out_tensor,
                                static_cast<int64_t>(value));
         break;
       case paddle::experimental::DataType::FLOAT32:
-        FillConstData<float>(fill_constant_out_new_tensor,
+        FillConstData<float>(fill_constant_out_tensor,
                              static_cast<float>(value));
         break;
       default:

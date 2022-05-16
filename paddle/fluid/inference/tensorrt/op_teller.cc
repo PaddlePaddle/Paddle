@@ -943,6 +943,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "strided_slice") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
@@ -1039,11 +1042,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
-        if (y_shape.size() != 1 && y_shape.size() != x_shape.size()) {
-          return false;
-        }
-      }
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;

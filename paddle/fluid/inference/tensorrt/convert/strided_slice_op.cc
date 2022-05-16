@@ -137,6 +137,7 @@ class StridedSliceOpConverter : public OpConverter {
           *const_layer->getOutput(0), nvinfer1::ElementWiseOperation::kSUB);
       layer->setInput(2, *size_layer->getOutput(0));
     }
+
     RreplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
   }
 };
