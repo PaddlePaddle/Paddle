@@ -190,13 +190,12 @@ class DeQuantizer final : public Quanter {
         {"layer_norm",
          {"Mean", "Variance"}}};  // not used in inference in MKLDNN
 
-    std::vector<std::string> blocked_outputs{
-        "XShape"};  // blocklist for any op
+    std::vector<std::string> blocked_outputs{"XShape"};  // blocklist for any op
     auto op_name = op->Name();
     if (block_list.count(op_name)) {
       const auto& op_blocklist = block_list[op_name];
-      blocked_outputs.insert(blocked_outputs.begin(),
-                             op_blocklist.begin(), op_blocklist.end());
+      blocked_outputs.insert(blocked_outputs.begin(), op_blocklist.begin(),
+                             op_blocklist.end());
     }
 
     return std::any_of(blocked_outputs.begin(), blocked_outputs.end(),
