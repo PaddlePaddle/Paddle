@@ -140,6 +140,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
+{}
   auto hooked_grads = ApplyGradientHooks(grads);
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
@@ -396,6 +397,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         #self.no_need_buffers
         #self.intermediate_outputs
         #self.inplace_map
+        #self.backward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.grad_api_contents = grad_api_contents
@@ -762,7 +764,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ##########################
         ## Parsing Raw Contents ##
         ##########################
-        # Parse inplace_map
+        # Parse forward and backward inplace_map
         self.ParseInplaceInfo()
 
         # Parse no_need_buffer
@@ -1234,6 +1236,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
+        backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
 
         # Construct grad_api function args
@@ -1248,6 +1251,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if backward_api_name in ops_to_fill_zero_for_empty_grads:
             fill_zero_str = f"{indent}egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
 
+        inplace_grad_input_str = ""
         # Grad Ins from TensorWrappers
         for name, (_, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
@@ -1256,6 +1260,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = (name in self.optional_inputs)
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
+            if backward_inplace_map and name in backward_inplace_map.keys():
+                tensor_wrapper_recover_str += f"""
+{indent}bool can_be_inplaced = false;
+{indent}VLOG(10) << {transformed_tensor_name}.name() << "({name}) use_count: " << {transformed_tensor_name}.impl().use_count();
+{indent}if ({transformed_tensor_name}.initialized() && {transformed_tensor_name}.impl().use_count() == 2) {{
+{indent}  can_be_inplaced = true;
+{indent}}}
+"""
+
+                inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
@@ -1270,12 +1284,23 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
+        inplace_for_grad_ins_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_inputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
             if IsPlainTensorType(ttype):
+                if backward_inplace_map and name in backward_inplace_map.keys():
+                    inplace_for_grad_ins_str = f"""
+{indent}bool can_be_inplaced = false;
+{indent}VLOG(10) << grads[{fwd_position}][0].name() << "({name}) use_count: " << grads[{fwd_position}][0].impl().use_count();
+{indent}if (grads[{fwd_position}][0].initialized() && grads[{fwd_position}][0].impl().use_count() == 1) {{
+{indent}  can_be_inplaced = true;
+{indent}}}
+"""
+
+                    inplace_grad_input_str = transformed_tensor_name
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
 
                 if is_optional:
@@ -1304,10 +1329,19 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
 
         # Grad Outputs
+        inplace_for_grad_outs_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
             if IsPlainTensorType(ttype):
+                if backward_inplace_map and name in backward_inplace_map.values(
+                ):
+                    inplace_for_grad_outs_str = f"""
+{indent}if (can_be_inplaced) {{
+{indent}  egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output[{fwd_position}][0]);
+{indent}}}
+"""
+
                 grad_api_args.append(f"api_output[{fwd_position}][0]")
             else:
                 assert IsVectorTensorType(ttype)
@@ -1334,6 +1368,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
       api_output[i].push_back(&returns[i][j]);
     }}
   }}
+{inplace_for_grad_outs_str}
 """
 
         grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
@@ -1424,13 +1459,15 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(forward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
-            grad_function_call_str, inputs_autograd_meta_str,
-            outputs_autograd_meta_str, compute_require_grad_str,
-            grad_node_creation_str, returns_str)
+            grad_node_name, fill_zero_str, inplace_for_grad_ins_str,
+            get_grad_in_args_str, grad_node_name, grad_function_call_str,
+            inputs_autograd_meta_str, outputs_autograd_meta_str,
+            compute_require_grad_str, grad_node_creation_str, returns_str)
 
     def run(self):
         super().run()
+
+        self.ParseInplaceGradInfo()
 
         self.ResetOptionalInputs()
 
