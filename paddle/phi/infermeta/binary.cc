@@ -1201,9 +1201,9 @@ void IndexAddTensorInferMeta(const MetaTensor& x,
       true,
       phi::errors::OutOfRange(
           "Axis is out of range, It's expected "
-          "to be in range of [-%d, %d). But received Attr(dim) = %d.",
+          "to be in range of [-%d, %d). But received Attr(axis) = %d.",
           input_dim.size(),
-          input_dim.size() - 1,
+          input_dim.size(),
           axis));
 
   PADDLE_ENFORCE_EQ(

@@ -710,11 +710,11 @@ void IndexAddInferMeta(const MetaTensor& x,
   auto axis = axis_scalar.to<int>();
 
   PADDLE_ENFORCE_EQ(
-      axis < input_dim.size() && axis >= (0 - input_dim.size()),
+      axis < input_dim.size() && axis >= - input_dim.size(),
       true,
       phi::errors::OutOfRange(
           "Axis is out of range, It's expected "
-          "to be in range of [-%d, %d). But received Attr(dim) = %d.",
+          "to be in range of [-%d, %d). But received Attr(axis) = %d.",
           input_dim.size(),
           input_dim.size(),
           axis));
@@ -735,8 +735,7 @@ void IndexAddGradInferMeta(const MetaTensor& out_grad,
                             const Scalar& axis_scalar,
                             float add_value,
                             MetaTensor* x_grad) {
-  auto do_dims = out_grad.dims();
-  x_grad->set_dims(do_dims);
+  x_grad->set_dims(out_grad.dims());
   x_grad->set_dtype(out_grad.dtype());
   x_grad->set_layout(out_grad.layout());
   x_grad->share_lod(out_grad);
