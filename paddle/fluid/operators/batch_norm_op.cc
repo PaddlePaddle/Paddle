@@ -289,6 +289,8 @@ void BatchNormOpMaker::Make() {
                 "in test mode. If setting true in test mode, mean and variace "
                 "will be calculated by current batch statistics.")
       .SetDefault(false);
+  AddAttr<int>("ring_id", "(int, default 0) Only used in SyncBatchNorm")
+      .SetDefault(0);
   AddComment(R"DOC(
 Batch Normalization.
 
