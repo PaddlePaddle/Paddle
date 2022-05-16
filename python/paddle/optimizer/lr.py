@@ -1722,17 +1722,17 @@ class CyclicLR(LRScheduler):
         if step_size_down is not None:
             if not isinstance(step_size_down, int):
                 raise TypeError(
-                    "The type of 'step_size_up' must be int, but received {}".
+                    "The type of 'step_size_down' must be int, but received {}".
                     format(type(step_size_down)))
             if step_size_down <= 0:
                 raise ValueError(
-                    "'step_size_up' must be a positive integer, but received {}".
+                    "'step_size_down' must be a positive integer, but received {}".
                     format(step_size_down))
 
         # check type of exp_gamma
         if not isinstance(exp_gamma, float):
             raise TypeError(
-                "The type of 'exp_gamma' must be int, but received {}".format(
+                "The type of 'exp_gamma' must be float, but received {}".format(
                     type(exp_gamma)))
 
         step_size_up = float(step_size_up)

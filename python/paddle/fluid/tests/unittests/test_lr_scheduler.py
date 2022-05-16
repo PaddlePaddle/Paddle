@@ -514,34 +514,41 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+        # check type of max_learning_rate
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
                 max_learning_rate='test',
                 step_size_up=10)
+        # check value of max_learning_rate
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5, max_learning_rate=-1, step_size_up=10)
+        # check type of step_size_up
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
                 max_learning_rate=1.0,
                 step_size_up='test')
+        # check value of step_size_up
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=-1)
+        # check type of step_size_down
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
                 max_learning_rate=1.0,
                 step_size_up=500,
                 step_size_down='test')
+        # check type of step_size_down
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
                 max_learning_rate=1.0,
                 step_size_up=500,
                 step_size_down=-1)
+        # check value of mode
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
@@ -549,6 +556,7 @@ class TestLRScheduler(unittest.TestCase):
                 step_size_up=500,
                 step_size_down=500,
                 mode='test')
+        # check type value of scale_mode
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.CyclicLR(
                 base_learning_rate=0.5,
