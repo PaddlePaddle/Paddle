@@ -23,7 +23,8 @@ namespace phi {
 template <typename T, typename Context>
 void IndexAddTensorGradKernel(const Context& ctx,
                                const DenseTensor& out_grad,
-                               const DenseTensor& index,
+                            //    const DenseTensor& index,
+                               const IntArray& index_arr,
                                const Scalar& axis_scalar,
                                DenseTensor* x_grad,
                                DenseTensor* add_tensor_grad);
