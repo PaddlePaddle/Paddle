@@ -548,10 +548,7 @@ def prim2orig(block=None):
         block(paddle.fluid.framework.Variable|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
-    
-    Returns:
-        None
-    
+       
     Examples:
 
         .. code-block:: python

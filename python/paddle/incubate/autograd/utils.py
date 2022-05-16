@@ -36,13 +36,12 @@ def prim_enabled():
     .. note::
         **This API is ONLY available in the static mode.**
 
-    This API shows whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
-    
-    Args:
-        None
-    
+    This API shows whether the automatic differentiation mechanism based on 
+    automatic differential basic operators is ON.
+     
     Returns:
-        flag(bool): whether the automatic differentiation mechanism based on automatic differential basic operators is ON. 
+        flag(bool): whether the automatic differentiation mechanism based on 
+            automatic differential basic operators is ON. 
 
     Examples:
 
@@ -69,14 +68,9 @@ def enable_prim():
     .. note::
         **This API is ONLY available in the static mode.**
 
-    This API turns ON automatic differentiation mechanism based on automatic differential basic operators.
+    This API turns ON automatic differentiation mechanism based on automatic 
+    differential basic operators.
     
-    Args:
-        None
-    
-    Returns:
-        None
-
     Examples:
 
         .. code-block:: python
@@ -98,14 +92,9 @@ def disable_prim():
     .. note::
         **This API is ONLY available in the static mode.**
 
-    This API turns OFF automatic differentiation mechanism based on automatic differential basic operators.
+    This API turns OFF automatic differentiation mechanism based on automatic 
+    differential basic operators.
     
-    Args:
-        None
-    
-    Returns:
-        None
-
     Examples:
 
         .. code-block:: python
