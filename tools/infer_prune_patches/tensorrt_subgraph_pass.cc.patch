@@ -1,5 +1,5 @@
 diff --git a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
-index e4fc52b6fa..bfad0ed358 100644
+index e4fc52b6fa..24b6f73949 100644
 --- a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
 +++ b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
 @@ -384,6 +384,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
@@ -22,7 +22,7 @@ index e4fc52b6fa..bfad0ed358 100644
 +        LOG(INFO) << " ===== Clear param: " << name;
 +        root_scope->FindLocalVar(name)->Clear();
 +      }
-+      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
++      for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
 +          ++dev_id) {
 +        memory::Release(platform::CUDAPlace(dev_id));
 +      }
@@ -49,7 +49,7 @@ index e4fc52b6fa..bfad0ed358 100644
 +    VLOG(4) << "  ===== Clear param: " << name;
 +    root_scope->FindLocalVar(name)->Clear();
 +  }
-+  for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
++  for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
 +       ++dev_id) {
 +    memory::Release(platform::CUDAPlace(dev_id));
 +  }

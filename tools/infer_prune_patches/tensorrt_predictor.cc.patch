@@ -1,9 +1,9 @@
 diff --git a/paddle/fluid/inference/api/tensorrt_predictor.cc b/paddle/fluid/inference/api/tensorrt_predictor.cc
 new file mode 100644
-index 0000000000..2e1cc0900d
+index 0000000000..e13a5ddf12
 --- /dev/null
 +++ b/paddle/fluid/inference/api/tensorrt_predictor.cc
-@@ -0,0 +1,1084 @@
+@@ -0,0 +1,1088 @@
 +// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ index 0000000000..2e1cc0900d
 +#include "paddle/fluid/memory/memcpy.h"
 +#include "paddle/fluid/platform/cpu_helper.h"
 +#include "paddle/fluid/platform/device_context.h"
-+#include "paddle/fluid/platform/gpu_info.h"
++#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 +#include "paddle/fluid/platform/place.h"
 +#include "paddle/fluid/platform/profiler.h"
 +#include "paddle/fluid/platform/init.h"
@@ -60,6 +60,10 @@ index 0000000000..2e1cc0900d
 +#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 +#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 +#endif
++
++#include "paddle/phi/api/ext/op_meta_info.h"
++#include "paddle/phi/common/place.h"
++#include "paddle/utils/string/split.h"
 +
 +namespace paddle {
 +
@@ -84,7 +88,7 @@ index 0000000000..2e1cc0900d
 +
 +bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 +                             const platform::Place &place) {
-+  framework::DDim ddim = framework::make_ddim(pt.shape);
++  framework::DDim ddim = phi::make_ddim(pt.shape);
 +  void *input_ptr;
 +  if (pt.dtype == PaddleDType::INT64) {
 +    input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -115,7 +119,7 @@ index 0000000000..2e1cc0900d
 +    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
 +    auto *dev_ctx =
 +        static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-+    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
++    auto dst_gpu_place = place;
 +    memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
 +                 platform::CPUPlace(), pt.data.data(), pt.data.length(),
 +                 dev_ctx->stream());
@@ -226,7 +230,7 @@ index 0000000000..2e1cc0900d
 +    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
 +      delete scope;
 +#ifdef PADDLE_WITH_CUDA
-+      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
++      for (int dev_id = 0; dev_id < paddle::platform::GetGPUDeviceCount();
 +           ++dev_id) {
 +        memory::Release(platform::CUDAPlace(dev_id));
 +      }
@@ -444,7 +448,7 @@ index 0000000000..2e1cc0900d
 +void TensorRTPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 +                                    PaddleTensor *output) {
 +  // set shape.
-+  auto shape = framework::vectorize(fetch.dims());
++  auto shape = phi::vectorize(fetch.dims());
 +  output->shape.assign(shape.begin(), shape.end());
 +  // set data.
 +  const T *data = fetch.data<T>();
@@ -474,7 +478,7 @@ index 0000000000..2e1cc0900d
 +    framework::FetchType &fetch_var =
 +        framework::GetFetchVariable(*scope, "fetch", idx);
 +    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
-+    auto type = fetch.type();
++    auto type = framework::TransToProtoVarType(fetch.dtype());
 +    auto output = &(outputs->at(i));
 +    output->name = fetches_[idx]->Input("X")[0];
 +    if (type == framework::proto::VarType::FP32) {
@@ -766,7 +770,7 @@ index 0000000000..2e1cc0900d
 +  if (platform::is_cpu_place(place_)) {
 +    res->SetPlace(PaddlePlace::kCPU);
 +  } else {
-+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
++    auto gpu_place = place_;
 +    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
 +  }
 +
@@ -787,7 +791,7 @@ index 0000000000..2e1cc0900d
 +  if (platform::is_cpu_place(place_)) {
 +    res->SetPlace(PaddlePlace::kCPU);
 +  } else {
-+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
++    auto gpu_place = place_;
 +    res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
 +  }
 +  return res;
