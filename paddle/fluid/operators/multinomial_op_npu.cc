@@ -47,7 +47,7 @@ class NPUMultinomialKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(
+REGISTER_OP_NPU_KERNEL(  // CANN5.0.4
     multinomial,
     ops::NPUMultinomialKernel<paddle::platform::NPUDeviceContext, float>,
     ops::NPUMultinomialKernel<paddle::platform::NPUDeviceContext, double>)
