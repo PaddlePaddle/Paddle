@@ -25,6 +25,7 @@
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__
@@ -417,12 +418,30 @@ void DatasetImpl<T>::LoadIntoMemory() {
   platform::Timer timeline;
   timeline.Start();
   std::vector<std::thread> load_threads;
-  for (int64_t i = 0; i < thread_num_; ++i) {
-    load_threads.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
-  }
-  for (std::thread& t : load_threads) {
-    t.join();
+  if (gpu_graph_mode_) {
+    VLOG(0) << "in gpu_graph_mode";
+    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+    gpu_graph_device_keys_ = gpu_graph_ptr->get_all_id(0, 0, thread_num_);
+    
+    for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
+      VLOG(0) << "gpu_graph_device_keys_[" << i << "] = " << gpu_graph_device_keys_[i].size(); 
+      for (size_t j = 0; j < gpu_graph_device_keys_[i].size(); j++) {
+        gpu_graph_total_keys_.push_back(gpu_graph_device_keys_[i][j]);
+      }
+    }
+    for (size_t i = 0; i < readers_.size(); i++) {
+      readers_[i]->SetDeviceKeys(&gpu_graph_device_keys_[i]);
+      readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+    }
+
+  } else {
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
   }
   input_channel_->Close();
   int64_t in_chan_size = input_channel_->Size();

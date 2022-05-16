@@ -331,14 +331,15 @@ void BindNeighborSampleResult(py::module* m) {
 }
 
 void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
+  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(*m, "GraphGpuWrapper")
       // nit<>())
       //.def("test", &GraphGpuWrapper::test)
       //.def(py::init([]() { return framework::GraphGpuWrapper::GetInstance();
       //}))
-      .def(py::init<>())
+      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
-      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("graph_neighbor_sample", py::overload_cast<int, int64_t*, int, int>(&GraphGpuWrapper::graph_neighbor_sample))
+      .def("graph_neighbor_sample", py::overload_cast<int, std::vector<int64_t>&, int>(&GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)

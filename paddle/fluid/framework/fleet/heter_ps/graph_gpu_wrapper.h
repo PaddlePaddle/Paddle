@@ -22,9 +22,13 @@ namespace framework {
 #ifdef PADDLE_WITH_HETERPS
 class GraphGpuWrapper {
  public:
-  static GraphGpuWrapper* GetInstance() {
-    static GraphGpuWrapper wrapper;
-    return &wrapper;
+  static std::shared_ptr<GraphGpuWrapper> GetInstance() {
+    static std::mutex mut;
+    std::lock_guard<std::mutex> guard(mut);
+    if (NULL == s_instance_) {
+      s_instance_.reset(new paddle::framework::GraphGpuWrapper());
+    }
+    return s_instance_;
   }
   void initialize();
   void test();
@@ -49,6 +53,8 @@ class GraphGpuWrapper {
   NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
+  NeighborSampleResult graph_neighbor_sample(
+    int gpu_id, int64_t* device_keys, int walk_degree, int len);
   std::vector<int64_t> graph_neighbor_sample(int gpu_id,
                                              std::vector<int64_t>& key,
                                              int sample_size);
@@ -63,6 +69,7 @@ class GraphGpuWrapper {
   std::vector<int> device_id_mapping;
   int search_level = 1;
   char* graph_table;
+  static std::shared_ptr<GraphGpuWrapper> s_instance_;
 };
 #endif
 }

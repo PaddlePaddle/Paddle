@@ -139,112 +139,140 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   size_t begin = 0;
 
   std::string data_set_name = std::string(typeid(*dataset_).name());
-
-  if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
-    VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
-    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
-    auto input_channel = dataset->GetInputChannel();
-    VLOG(0) << "yxf::buildtask::inputslotchannle size: "
-            << input_channel->Size();
-    const std::deque<SlotRecord>& vec_data = input_channel->GetData();
-    total_len = vec_data.size();
-    len_per_thread = total_len / thread_keys_thread_num_;
-    remain = total_len % thread_keys_thread_num_;
-    VLOG(0) << "total len: " << total_len;
-    auto gen_func = [this](const std::deque<SlotRecord>& total_data,
-                           int begin_index, int end_index, int i) {
-      for (auto iter = total_data.begin() + begin_index;
-           iter != total_data.begin() + end_index; iter++) {
-        const auto& ins = *iter;
-        const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-        for (const auto feasign : feasign_v) {
-          int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_keys_[i][shard_id].insert(feasign);
-        }
-      }
-    };
-    auto gen_dynamic_mf_func = [this](const std::deque<SlotRecord>& total_data,
-                                      int begin_index, int end_index, int i) {
-      for (auto iter = total_data.begin() + begin_index;
-           iter != total_data.begin() + end_index; iter++) {
-        const auto& ins = *iter;
-        const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-        const auto& slot_offset = ins->slot_uint64_feasigns_.slot_offsets;
-        for (size_t slot_idx = 0; slot_idx < slot_offset_vector_.size();
-             slot_idx++) {
-          for (size_t j = slot_offset[slot_offset_vector_[slot_idx]];
-               j < slot_offset[slot_offset_vector_[slot_idx] + 1]; j++) {
-            int shard_id = feasign_v[j] % thread_keys_shard_num_;
-            int dim_id = slot_index_vec_[slot_idx];
-            this->thread_dim_keys_[i][shard_id][dim_id].insert(feasign_v[j]);
+  
+  if (!gpu_graph_mode_) {
+    if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
+      VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
+      SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+      auto input_channel = dataset->GetInputChannel();
+      VLOG(0) << "yxf::buildtask::inputslotchannle size: "
+              << input_channel->Size();
+      const std::deque<SlotRecord>& vec_data = input_channel->GetData();
+      total_len = vec_data.size();
+      len_per_thread = total_len / thread_keys_thread_num_;
+      remain = total_len % thread_keys_thread_num_;
+      VLOG(0) << "total len: " << total_len;
+      auto gen_func = [this](const std::deque<SlotRecord>& total_data,
+                             int begin_index, int end_index, int i) {
+        for (auto iter = total_data.begin() + begin_index;
+             iter != total_data.begin() + end_index; iter++) {
+          const auto& ins = *iter;
+          const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
+          for (const auto feasign : feasign_v) {
+            int shard_id = feasign % thread_keys_shard_num_;
+            this->thread_keys_[i][shard_id].insert(feasign);
           }
         }
-      }
-      /*
-      for (auto iter = total_data.begin() + begin_index;
-           iter != total_data.begin() + end_index; iter++) {
-        const auto& ins = *iter;
-        const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-        for (const auto feasign : feasign_v) {
-          int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_dim_keys_[i][shard_id][0].insert(feasign);
+      };
+      auto gen_dynamic_mf_func = [this](const std::deque<SlotRecord>& total_data,
+                                        int begin_index, int end_index, int i) {
+        for (auto iter = total_data.begin() + begin_index;
+             iter != total_data.begin() + end_index; iter++) {
+          const auto& ins = *iter;
+          const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
+          const auto& slot_offset = ins->slot_uint64_feasigns_.slot_offsets;
+          for (size_t slot_idx = 0; slot_idx < slot_offset_vector_.size();
+               slot_idx++) {
+            for (size_t j = slot_offset[slot_offset_vector_[slot_idx]];
+                 j < slot_offset[slot_offset_vector_[slot_idx] + 1]; j++) {
+              int shard_id = feasign_v[j] % thread_keys_shard_num_;
+              int dim_id = slot_index_vec_[slot_idx];
+              this->thread_dim_keys_[i][shard_id][dim_id].insert(feasign_v[j]);
+            }
+          }
         }
+        /*
+        for (auto iter = total_data.begin() + begin_index;
+             iter != total_data.begin() + end_index; iter++) {
+          const auto& ins = *iter;
+          const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
+          for (const auto feasign : feasign_v) {
+            int shard_id = feasign % thread_keys_shard_num_;
+            this->thread_dim_keys_[i][shard_id][0].insert(feasign);
+          }
+        }
+        */
+      };
+      for (int i = 0; i < thread_keys_thread_num_; i++) {
+        if (!multi_mf_dim_) {
+          VLOG(0) << "yxf::psgpu wrapper genfunc";
+          threads.push_back(
+              std::thread(gen_func, std::ref(vec_data), begin,
+                          begin + len_per_thread + (i < remain ? 1 : 0), i));
+        } else {
+          VLOG(0) << "yxf::psgpu wrapper genfunc with dynamic mf";
+          threads.push_back(
+              std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
+                          begin + len_per_thread + (i < remain ? 1 : 0), i));
+        }
+        begin += len_per_thread + (i < remain ? 1 : 0);
       }
-      */
-    };
-    for (int i = 0; i < thread_keys_thread_num_; i++) {
-      if (!multi_mf_dim_) {
-        VLOG(0) << "yxf::psgpu wrapper genfunc";
+      for (std::thread& t : threads) {
+        t.join();
+      }
+      timeline.Pause();
+      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+    } else {
+      CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
+      VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
+      MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
+      auto input_channel = dataset->GetInputChannel();
+
+      const std::deque<Record>& vec_data = input_channel->GetData();
+      total_len = vec_data.size();
+      len_per_thread = total_len / thread_keys_thread_num_;
+      remain = total_len % thread_keys_thread_num_;
+      auto gen_func = [this](const std::deque<Record>& total_data,
+                             int begin_index, int end_index, int i) {
+        for (auto iter = total_data.begin() + begin_index;
+             iter != total_data.begin() + end_index; iter++) {
+          const auto& ins = *iter;
+          const auto& feasign_v = ins.uint64_feasigns_;
+          for (const auto feasign : feasign_v) {
+            uint64_t cur_key = feasign.sign().uint64_feasign_;
+            int shard_id = cur_key % thread_keys_shard_num_;
+            this->thread_keys_[i][shard_id].insert(cur_key);
+          }
+        }
+      };
+      for (int i = 0; i < thread_keys_thread_num_; i++) {
         threads.push_back(
             std::thread(gen_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
-      } else {
-        VLOG(0) << "yxf::psgpu wrapper genfunc with dynamic mf";
-        threads.push_back(
-            std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
-                        begin + len_per_thread + (i < remain ? 1 : 0), i));
+        begin += len_per_thread + (i < remain ? 1 : 0);
       }
-      begin += len_per_thread + (i < remain ? 1 : 0);
+      for (std::thread& t : threads) {
+        t.join();
+      }
+      timeline.Pause();
+      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
     }
-    for (std::thread& t : threads) {
-      t.join();
-    }
-    timeline.Pause();
-    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   } else {
-    CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
-    VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
-    MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
-    auto input_channel = dataset->GetInputChannel();
-
-    const std::deque<Record>& vec_data = input_channel->GetData();
+    VLOG(0) << "PreBuild in GpuGraph mode";
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    const std::vector<int64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     total_len = vec_data.size();
     len_per_thread = total_len / thread_keys_thread_num_;
+    VLOG(0) << "GpuGraphTotalKeys: " << total_len;
     remain = total_len % thread_keys_thread_num_;
-    auto gen_func = [this](const std::deque<Record>& total_data,
+    auto gen_graph_data_func = [this](const std::vector<int64_t>& total_data,
                            int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
-        const auto& ins = *iter;
-        const auto& feasign_v = ins.uint64_feasigns_;
-        for (const auto feasign : feasign_v) {
-          uint64_t cur_key = feasign.sign().uint64_feasign_;
-          int shard_id = cur_key % thread_keys_shard_num_;
-          this->thread_keys_[i][shard_id].insert(cur_key);
-        }
+        uint64_t cur_key = *iter;
+        int shard_id = cur_key % thread_keys_shard_num_;
+        this->thread_keys_[i][shard_id].insert(cur_key);
       }
     };
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       threads.push_back(
-          std::thread(gen_func, std::ref(vec_data), begin,
+          std::thread(gen_graph_data_func, std::ref(vec_data), begin,
                       begin + len_per_thread + (i < remain ? 1 : 0), i));
       begin += len_per_thread + (i < remain ? 1 : 0);
     }
     for (std::thread& t : threads) {
       t.join();
     }
-    timeline.Pause();
-    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   }
 
   timeline.Start();

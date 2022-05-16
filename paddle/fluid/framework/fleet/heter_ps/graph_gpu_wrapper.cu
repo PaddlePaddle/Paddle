@@ -15,9 +15,11 @@
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include <sstream>
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS
+std::shared_ptr<GraphGpuWrapper> GraphGpuWrapper::s_instance_ = NULL;
 std::string nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
     std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
@@ -301,6 +303,32 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
       ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
+NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
+    int gpu_id, int64_t* device_keys, int walk_degree, int len) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto neighbor_sample_res =
+      ((GpuPsGraphTable *)graph_table)
+          ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len);
+  
+  int64_t *cpu_keys = new int64_t[len];
+  cudaMemcpy(cpu_keys, device_keys,
+             len * sizeof(int64_t),
+             cudaMemcpyDeviceToHost);  // 3, 1, 3
+  int *actual_sample_size = new int[len];
+  cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
+             len * sizeof(int),
+             cudaMemcpyDeviceToHost);  // 3, 1, 3
+  std::stringstream ss;
+  ss << len << "\t";
+  for (int i = 0; i < len; i++) {
+    ss << cpu_keys[i] << ":" << actual_sample_size[i] << ",";
+  }
+  VLOG(0) << ss.str();
+  free(actual_sample_size);
+  free(cpu_keys);
+  return neighbor_sample_res;
+}
+
 // this function is contributed by Liwb5
 std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     int gpu_id, std::vector<int64_t> &key, int sample_size) {
@@ -310,7 +338,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   cudaMalloc(&cuda_key, key.size() * sizeof(int64_t));
   cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-
+  VLOG(0) << "key_size: " << key.size();
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
@@ -323,7 +351,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   for (int i = 0; i < key.size(); i++) {
     cumsum += actual_sample_size[i];
   }
-  /* VLOG(0) << "cumsum " << cumsum; */
+  VLOG(0) << "cumsum " << cumsum;
 
   std::vector<int64_t> cpu_key, res;
   cpu_key.resize(key.size() * sample_size);
@@ -337,9 +365,9 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
       res.push_back(cpu_key[i * sample_size + j]);
     }
   }
-  /* for(int i = 0;i < res.size();i ++) { */
-  /*     VLOG(0) << i << " " << res[i]; */
-  /* } */
+  for(int i = 0;i < res.size();i ++) {
+      VLOG(0) << i << " " << res[i];
+  }
 
   cudaFree(cuda_key);
   return res;
