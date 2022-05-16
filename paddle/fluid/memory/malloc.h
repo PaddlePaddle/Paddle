@@ -50,13 +50,11 @@ extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const platform::CUDAPlace& place,
-                        const gpuStream_t& stream);
+extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
 
-void RecordStream(std::shared_ptr<Allocation> allocation,
-                  const gpuStream_t& stream);
+void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-const gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
+gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 }  // namespace memory
 }  // namespace paddle

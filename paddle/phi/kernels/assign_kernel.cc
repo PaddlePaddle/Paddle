@@ -24,14 +24,21 @@ namespace phi {
 
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,
-                  paddle::optional<const DenseTensor&> x,
+                  const DenseTensor& x,
                   DenseTensor* out) {
-  if (x.get_ptr()) {
-    if (!x.is_initialized()) {
+  Copy<Context>(dev_ctx, x, x.place(), false, out);
+}
+
+template <typename Context>
+void AssignRawKernel(const Context& dev_ctx,
+                     paddle::optional<const DenseTensor&> x,
+                     DenseTensor* out) {
+  if (x) {
+    if (!x->IsInitialized()) {
       return;
     }
     auto& x_tensor = *x.get_ptr();
-    Copy<Context>(dev_ctx, x_tensor, x_tensor.place(), false, out);
+    AssignKernel<Context>(dev_ctx, x_tensor, out);
   }
 }
 
@@ -47,7 +54,7 @@ void AssignArrayKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const Context& dev_ctx,
     const std::vector<Scalar>& values,
     DenseTensor* out) {
@@ -72,10 +79,10 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
 }
 
 template <typename T, typename Context>
-typename std::enable_if<!std::is_same<T, bool>::value>::type
-CopyVecotorToTensor(const Context& dev_ctx,
-                    const std::vector<Scalar>& values,
-                    DenseTensor* out) {
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    DenseTensor* out) {
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
@@ -98,14 +105,20 @@ void AssignValueKernel(const Context& dev_ctx,
                                    "argument dtype is %s, kernel dtype is %s.",
                                    dtype,
                                    template_dtype));
-  CopyVecotorToTensor<T>(dev_ctx, values, out);
+  CopyVectorToTensor<T>(dev_ctx, values, out);
   out->Resize(phi::make_ddim(shape));
 }
 
 }  // namespace phi
 
 PD_REGISTER_GENERAL_KERNEL(
-    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {
+    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {}
+
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::CPUContext>,
+                           ALL_DTYPE) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 PD_REGISTER_GENERAL_KERNEL(assign_array,
@@ -124,7 +137,12 @@ PD_REGISTER_KERNEL(assign_value,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_GENERAL_KERNEL(
-    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {
+    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(assign_raw,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::AssignRawKernel<phi::GPUContext>,
+                           ALL_DTYPE) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 PD_REGISTER_GENERAL_KERNEL(assign_array,

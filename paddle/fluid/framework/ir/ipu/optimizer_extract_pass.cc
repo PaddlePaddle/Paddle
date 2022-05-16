@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -30,9 +31,10 @@ std::set<std::string> ignored_ops = {
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",           // adamax
-    "assign",          // adamw
-    "squared_l2_norm"  // gradient_clip_norm
+    "scale",            // adamax
+    "assign",           // adamw
+    "squared_l2_norm",  // gradient_clip_norm
+    "cast",             // mix-precision support
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {
@@ -67,7 +69,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<float> weight_decay_values{};
 
   // use map store <op_type, op_ptr> ?
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : TopologySortOperations(*graph)) {
     if (!node->IsOp()) {
       continue;
     }

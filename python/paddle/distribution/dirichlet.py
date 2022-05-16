@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import paddle
+from paddle.distribution import exponential_family
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import _non_static_mode
-from ..fluid.layer_helper import LayerHelper
-from .exponential_family import ExponentialFamily
 
-
-class Dirichlet(ExponentialFamily):
+class Dirichlet(exponential_family.ExponentialFamily):
     r"""
     Dirichlet distribution with parameter "concentration".
 

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -32,6 +33,8 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
+        self.python_api = paddle.fluid.layers.huber_loss
+        self.python_out_sig = ["Out"]
         self.delta = 1.0
         self.init_input()
         shape = self.set_shape()
@@ -52,10 +55,10 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -103,4 +106,5 @@ class TestHuberLossOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

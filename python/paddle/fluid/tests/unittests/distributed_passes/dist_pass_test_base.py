@@ -32,15 +32,16 @@ def prepare_python_path_and_return_module(path):
     assert filename.endswith(py_suffix), filename
 
     env_name = 'PYTHONPATH'
-    python_path = env_name
+    python_path = os.environ.get(env_name, '')
     if python_path:
         paths = [p for p in python_path.split(":") if p]
         if dirname not in paths:
             paths.append(dirname)
         python_path = ":".join(paths)
     else:
-        python_path = path
+        python_path = dirname
     os.environ[env_name] = python_path
+    print('GLOG_v=', os.environ.get('GLOG_v', None), flush=1)
     return filename[:-len(py_suffix)]
 
 
@@ -84,9 +85,9 @@ class DistPassTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def check_main(self, model=None, gpus=None, **kwargs):
-        no_pass_rets = self._distributed_launch(
-            model=model, apply_pass=True, gpus=gpus, **kwargs)
         pass_rets = self._distributed_launch(
+            model=model, apply_pass=True, gpus=gpus, **kwargs)
+        no_pass_rets = self._distributed_launch(
             model=model, apply_pass=False, gpus=gpus, **kwargs)
         self.check_results(no_pass_rets, pass_rets)
 

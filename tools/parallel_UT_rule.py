@@ -1174,6 +1174,7 @@ SIXTH_PARALLEL_JOB_NEW = [
 ]
 
 LOWEST_PARALLEL_JOB_NEW = [
+    'heter_cloud_comm_cpu_test',
     'heter_server_test',
     'test_scatter_op',
     'test_trt_convert_hard_sigmoid',

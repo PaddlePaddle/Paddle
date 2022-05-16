@@ -18,18 +18,18 @@ import warnings
 import numpy as np
 import paddle
 from paddle import _C_ops
+from paddle.distribution import distribution
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (check_dtype, check_type,
+                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
+from paddle.tensor import arange, concat, gather_nd, multinomial
 
-from ..fluid import core
-from ..fluid.data_feeder import (check_dtype, check_type,
-                                 check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import _non_static_mode
-from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                            elementwise_mul, elementwise_sub, nn, ops, tensor)
-from ..tensor import arange, concat, gather_nd, multinomial
-from .distribution import Distribution
 
-
-class Categorical(Distribution):
+class Categorical(distribution.Distribution):
     r"""
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
@@ -115,6 +115,8 @@ class Categorical(Distribution):
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
                 self.logits = tensor.cast(self.logits, dtype=self.dtype)
+        dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
+        self._prob = self.logits / dist_sum
 
     def sample(self, shape):
         """Generate samples of the specified shape.
@@ -297,42 +299,21 @@ class Categorical(Distribution):
 
         """
         name = self.name + '_probs'
-
-        dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
-        prob = self.logits / dist_sum
-
-        shape = list(prob.shape)
-        value_shape = list(value.shape)
-        if len(shape) == 1:
-            num_value_in_one_dist = np.prod(value_shape)
-            index_value = paddle.reshape(value, [num_value_in_one_dist, 1])
-            index = index_value
+        if len(self._prob.shape) == 1:  # batch_shape is empty
+            return paddle.gather(
+                self._prob, value.reshape(
+                    [-1], name=name), name=name).reshape(
+                        value.shape, name=name)
         else:
-            num_dist = np.prod(shape[:-1])
-            num_value_in_one_dist = value_shape[-1]
-            prob = paddle.reshape(prob, [num_dist, shape[-1]])
-            if len(value_shape) == 1:
-                value = nn.expand(value, [num_dist])
-                value_shape = shape[:-1] + value_shape
-            index_value = paddle.reshape(value, [num_dist, -1, 1])
-            if shape[:-1] != value_shape[:-1]:
-                raise ValueError(
-                    "shape of value {} must match shape of logits {}".format(
-                        str(value_shape[:-1]), str(shape[:-1])))
-
-            index_prefix = paddle.unsqueeze(
-                arange(
-                    num_dist, dtype=index_value.dtype), axis=-1)
-            index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
-            index_prefix = paddle.unsqueeze(index_prefix, axis=-1)
-
-            if index_value.dtype != index_prefix.dtype:
-                tensor.cast(index_prefix, dtype=index_value.dtype)
-            index = concat([index_prefix, index_value], axis=-1)
-
-        # value is the category index to search for the corresponding probability.
-        select_prob = gather_nd(prob, index)
-        return paddle.reshape(select_prob, value_shape, name=name)
+            if len(value.shape) == 1:
+                return paddle.take_along_axis(
+                    self._prob,
+                    paddle.reshape(
+                        value, (len(self._prob.shape) - 1) * [1] + [-1],
+                        name=name),
+                    axis=-1)
+            else:
+                return paddle.take_along_axis(self._prob, value, axis=-1)
 
     def log_prob(self, value):
         """Log probabilities of the given category. Refer to ``probs`` method.

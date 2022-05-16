@@ -43,6 +43,34 @@ class TrilTriuXPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class TrilTriuGradXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    const auto* dout_data = d_out->data<T>();
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dx_data = d_x->mutable_data<T>(context.GetPlace());
+
+    const int diagonal = context.Attr<int>("diagonal");
+    const bool lower = context.Attr<bool>("lower");
+
+    auto dy_shape = phi::vectorize<int>(d_out->dims());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    int r = 0;
+    if (lower) {
+      r = xpu::tril(dev_ctx.x_context(), dout_data, dx_data, dy_shape,
+                    diagonal);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
+    } else {
+      r = xpu::triu(dev_ctx.x_context(), dout_data, dx_data, dy_shape,
+                    diagonal);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "triu_op");
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -50,4 +78,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     tril_triu, ops::TrilTriuXPUKernel<paddle::platform::XPUDeviceContext, int>,
     ops::TrilTriuXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    tril_triu_grad,
+    ops::TrilTriuGradXPUKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::TrilTriuGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

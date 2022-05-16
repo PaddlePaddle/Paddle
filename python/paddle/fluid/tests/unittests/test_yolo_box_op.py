@@ -31,7 +31,7 @@ def YoloBox(x, img_size, attrs):
     an_num = int((len(anchors) // 2))
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
-    downsample = attrs['downsample']
+    downsample = attrs['downsample_ratio']
     clip_bbox = attrs['clip_bbox']
     scale_x_y = attrs['scale_x_y']
     iou_aware = attrs['iou_aware']
@@ -92,13 +92,14 @@ class TestYoloBoxOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolo_box'
+        self.python_api = paddle.vision.ops.yolo_box
         x = np.random.random(self.x_shape).astype('float32')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
         self.attrs = {
             'anchors': self.anchors,
             'class_num': self.class_num,
             'conf_thresh': self.conf_thresh,
-            'downsample': self.downsample,
+            'downsample_ratio': self.downsample,
             'clip_bbox': self.clip_bbox,
             'scale_x_y': self.scale_x_y,
             'iou_aware': self.iou_aware,

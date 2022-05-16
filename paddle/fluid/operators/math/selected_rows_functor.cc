@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -31,7 +32,7 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, input2.height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height  = "
+                                          "But received first input height  = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2.height()));
     output->set_height(in1_height);
@@ -55,27 +56,27 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
         in1_row_numel, in2_value.numel() / in2_rows.size(),
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, in2_value.numel() / in2_rows.size()));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, out_value->numel() / out_rows.size(),
         platform::errors::InvalidArgument(
             "The input and oupput width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the CPU place."));
+                          "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the CPU place."));
+                          "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(out_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the CPU place."));
+                          "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
@@ -102,14 +103,14 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
     PADDLE_ENFORCE_EQ(
         in1_height, out_dims[0],
         platform::errors::InvalidArgument(
             "The input and output height must be equal."
-            "But recieved input height = [%d], output height = [%d]",
+            "But received input height = [%d], output height = [%d]",
             in1_height, out_dims[0]));
 
     auto& in1_value = input1.value();
@@ -120,13 +121,13 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
         in1_row_numel, input2.numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2.numel() / in1_height));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, output->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The input and output width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
     phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
@@ -160,7 +161,7 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, input2->height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2->height()));
 
@@ -177,11 +178,11 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the CPU place."));
+                          "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the CPU place."));
+                          "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
@@ -210,7 +211,7 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
       PADDLE_ENFORCE_EQ(in1_height, input2->height(),
                         platform::errors::InvalidArgument(
                             "The two inputs height must be equal."
-                            "But recieved first input height = [%d], second "
+                            "But received first input height = [%d], second "
                             "input height = [%d]",
                             in1_height, input2->height()));
     }
@@ -252,7 +253,7 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -264,7 +265,47 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* input2_data = input2->data<T>();
+
+    for (size_t i = 0; i < in1_rows.size(); i++) {
+      for (int64_t j = 0; j < in1_row_numel; j++) {
+        input2_data[in1_rows[i] * in1_row_numel + j] +=
+            in1_data[i * in1_row_numel + j];
+      }
+    }
+  }
+};
+
+template <typename T>
+struct SelectedRowsAddToTensor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
+                  const phi::SelectedRows& input1, framework::Tensor* input2) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
+      LOG(WARNING) << "input selected rows is empty!";
+      return;
+    }
+    auto in1_height = input1.height();
+    auto in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But received first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -286,6 +327,11 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
                                         platform::bfloat16>;
 
+template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, platform::bfloat16>;
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //
@@ -796,7 +842,7 @@ struct UpdateToTensor<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -808,7 +854,7 @@ struct UpdateToTensor<platform::CPUDeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();

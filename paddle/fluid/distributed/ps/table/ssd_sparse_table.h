@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,52 +13,82 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
+
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
-#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
+
 namespace paddle {
 namespace distributed {
-class SSDSparseTable : public CommonSparseTable {
+
+class SSDSparseTable : public MemorySparseTable {
  public:
+  typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
   SSDSparseTable() {}
   virtual ~SSDSparseTable() {}
 
-  virtual int32_t initialize() override;
-
-  void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
-                      const size_t shard_idx, const int64_t total);
-
-  int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-                          std::shared_ptr<::ThreadPool> pool, const int mode,
-                          int shard_id);
-
-  virtual int64_t LoadFromText(
-      const std::string& valuepath, const std::string& metapath,
-      const int pserver_id, const int pserver_num, const int local_shard_num,
-      std::vector<std::shared_ptr<ValueBlock>>* blocks);
-
-  virtual int32_t load(const std::string& path, const std::string& param);
+  int32_t Initialize() override;
+  int32_t InitializeShard() override;
 
   // exchange data
-  virtual int32_t update_table();
+  int32_t UpdateTable();
 
-  virtual int32_t Pull(TableContext& context);
-  virtual int32_t Push(TableContext& context);
+  int32_t Pull(TableContext& context) override {
+    CHECK(context.value_type == Sparse);
+    float* pull_values = context.pull_context.values;
+    const PullSparseValue& pull_value = context.pull_context.pull_value;
+    return PullSparse(pull_values, pull_value.feasigns_, pull_value.numel_);
+  }
 
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  int32_t Push(TableContext& context) override {
+    const uint64_t* keys = context.push_context.keys;
+    const float* values = context.push_context.values;
+    size_t num = context.num;
+    return PushSparse(keys, values, num);
+  }
 
-  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
-                                  size_t num);
+  virtual int32_t PullSparse(float* pull_values, const uint64_t* keys,
+                             size_t num);
+  virtual int32_t PushSparse(const uint64_t* keys, const float* values,
+                             size_t num);
 
-  virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink(const std::string& param) override;
-  virtual void clear() override {}
+  int32_t Flush() override { return 0; }
+  virtual int32_t Shrink(const std::string& param) override;
+  virtual void Clear() override {
+    for (size_t i = 0; i < _real_local_shard_num; ++i) {
+      _local_shards[i].clear();
+    }
+  }
+
+  virtual int32_t Save(const std::string& path,
+                       const std::string& param) override;
+  virtual int32_t SaveCache(
+      const std::string& path, const std::string& param,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+          shuffled_channel) override;
+  virtual double GetCacheThreshold() override { return _local_show_threshold; }
+  virtual int64_t CacheShuffle(
+      const std::string& path, const std::string& param, double cache_threshold,
+      std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
+                                         std::string& msg)>
+          send_msg_func,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+          shuffled_channel,
+      const std::vector<Table*>& table_ptrs) override;
+  //加载path目录下数据
+  virtual int32_t Load(const std::string& path,
+                       const std::string& param) override;
+  //加载path目录下数据[start_idx, end_idx)
+  virtual int32_t Load(size_t start_idx, size_t end_idx,
+                       const std::vector<std::string>& file_list,
+                       const std::string& param);
+  int64_t LocalSize();
 
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
+  double _local_show_threshold{0.0};
 };
 
-}  // namespace ps
+}  // namespace distributed
 }  // namespace paddle
-#endif

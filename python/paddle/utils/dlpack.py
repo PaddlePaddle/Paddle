@@ -48,7 +48,7 @@ def to_dlpack(x):
     """
 
     if _non_static_mode():
-        if not isinstance(x, paddle.Tensor):
+        if not isinstance(x, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
                 " but received {}.".format(type(x)))

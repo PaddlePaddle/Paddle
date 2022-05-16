@@ -363,4 +363,5 @@ class TestRemoveCommentInDy2St(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

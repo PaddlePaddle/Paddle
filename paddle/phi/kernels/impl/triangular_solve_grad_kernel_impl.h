@@ -44,7 +44,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
 
-  ScalarArray y_bst_dims_array(y_bst_dims_vec);
+  IntArray y_bst_dims_array(y_bst_dims_vec);
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims_array);
   if (dy) {
     // calculate x's conjugate for complex
@@ -71,7 +71,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     }
   }
 
-  ScalarArray x_bst_dims_array(x_bst_dims_vec);
+  IntArray x_bst_dims_array(x_bst_dims_vec);
   DenseTensor dx_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
   if (dx) {
     // calculate x's conjugate for complex

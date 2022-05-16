@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import six
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
@@ -27,7 +28,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
-    def test_dim2(self):
+    def func_dim2(self):
         expected_np = np.array(
             [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]).astype('float32')
         expected_grad = np.array(
@@ -54,7 +55,12 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
 
-    def test_dim2_offset_1(self):
+    def test_dim2(self):
+        with _test_eager_guard():
+            self.func_dim2()
+        self.func_dim2()
+
+    def func_dim2_offset_1(self):
         expected_np = np.array(
             [[2, 2, 2], [1, 2, 2], [2, 1, 2], [2, 2, 1]]).astype('float32')
         expected_grad = np.array(
@@ -81,7 +87,12 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
 
-    def test_dim2_offset1(self):
+    def test_dim2_offset_1(self):
+        with _test_eager_guard():
+            self.func_dim2_offset_1()
+        self.func_dim2_offset_1()
+
+    def func_dim2_offset1(self):
         expected_np = np.array(
             [[2, 1, 2], [2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype('float32')
         expected_grad = np.array(
@@ -108,7 +119,12 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
 
-    def test_dim4(self):
+    def test_dim2_offset1(self):
+        with _test_eager_guard():
+            self.func_dim2_offset1()
+        self.func_dim2_offset1()
+
+    def func_dim4(self):
         expected_np = np.array(
             [[[[0, 3], [2, 2], [2, 2]], [[2, 2], [1, 4], [2, 2]],
               [[2, 2], [2, 2], [2, 5]], [[2, 2], [2, 2], [2, 2]]],
@@ -144,7 +160,12 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
 
-    def test_largedim(self):
+    def test_func_dim4(self):
+        with _test_eager_guard():
+            self.func_dim4()
+        self.func_dim4()
+
+    def func_largedim(self):
         #large dim only test on gpu because the cpu version is too slow for ci test, and the memory is limited
         if len(self.places) > 1:
             bsdim = 1024
@@ -167,6 +188,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
                 self.assertEqual((y == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
+
+    def test_largedim(self):
+        with _test_eager_guard():
+            self.func_largedim()
+        self.func_largedim()
 
 
 if __name__ == '__main__':

@@ -49,18 +49,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    float in_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
-    auto weight_scale =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
-    weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
-                                           true, weight_scale);
+    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
-  } else {
-    weight_data =
-        engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
   }
+  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
                     platform::errors::InvalidArgument(
@@ -115,7 +108,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
     bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         bias_tensor_data, false);
+                                         bias_tensor_data);
     bias_size = static_cast<size_t>(bias_tensor_data->numel());
   }
 

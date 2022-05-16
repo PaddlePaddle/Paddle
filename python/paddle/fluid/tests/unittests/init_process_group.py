@@ -37,11 +37,20 @@ class TestProcessGroupFp32(unittest.TestCase):
         pass
 
     def test_init_process_group(self):
-        paddle.distributed.collective._init_parallel_env()
-        paddle.distributed.collective._new_group()
-        with self.assertRaises(ValueError):
-            paddle.distributed.collective._new_group(
-                backend="gloo", group_name="_default_pg")
+        with _test_eager_guard():
+            paddle.distributed.init_parallel_env()
+            paddle.distributed.new_group()
+            group = paddle.distributed.new_group([-1, -2])
+            assert group.process_group == None
+
+            group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
+            ret = paddle.distributed.barrier(group)
+            assert ret == None
+        paddle.enable_static()
+        in_tensor = paddle.empty((1, 2))
+        in_tensor2 = paddle.empty((1, 2))
+        paddle.distributed.broadcast(in_tensor, src=0)
+        paddle.distributed.all_gather([in_tensor, in_tensor2], in_tensor)
         print("test ok\n")
 
 

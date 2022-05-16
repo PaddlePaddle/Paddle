@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -92,6 +92,8 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(np.array_equal(y_grad, loss.gradient() * a))
 
     def test_traced_layer(self):
+        if in_dygraph_mode():
+            return
         with fluid.dygraph.guard():
             layer = TestTracedLayer("test_traced_layer")
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)

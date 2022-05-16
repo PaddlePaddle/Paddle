@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
 import unittest
-from op_test import OpTest
-import numpy as np
-import paddle.fluid.core as core
-from paddle.nn.functional import avg_pool2d, max_pool2d
-import paddle.fluid as fluid
 import paddle
+import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn.functional import avg_pool2d, max_pool2d
+from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
 
 
 class TestPool2D_API(unittest.TestCase):
@@ -324,6 +325,10 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
 
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_pool2d()
+
 
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
@@ -523,6 +528,10 @@ class TestPool2DError_API(unittest.TestCase):
                     data_format='NHWC')
 
         self.assertRaises(ValueError, run_stride_out_of_range)
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_error_api()
 
 
 if __name__ == '__main__':

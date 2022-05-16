@@ -22,21 +22,23 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
 
 class TestDeterminantOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.linalg.det
         self.init_data()
         self.op_type = "determinant"
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'])
+        self.check_grad(['Input'], ['Out'], check_eager=True)
 
     def init_data(self):
         np.random.seed(0)
@@ -88,6 +90,10 @@ class TestDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.det(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
         paddle.enable_static()
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_api_dygraph()
 
 
 class TestSlogDeterminantOp(OpTest):

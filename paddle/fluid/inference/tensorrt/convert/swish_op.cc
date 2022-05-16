@@ -52,7 +52,7 @@ class SwishOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num, 1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT swish op. "
+            "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs
@@ -75,7 +75,7 @@ class SwishOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta, with_fp16);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
