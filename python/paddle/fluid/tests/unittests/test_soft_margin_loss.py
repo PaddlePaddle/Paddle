@@ -108,7 +108,8 @@ def calc_softmarginloss(input_np, label_np, reduction='mean',):
 class TestSoftMarginLoss(unittest.TestCase):
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(10, 10)).astype(np.float64)
-        label_np = np.random.randint(1, size=(10, 10)).astype(np.float64)
+        label_np = np.random.randint(0, 2, size=(10, 10)).astype(np.float64)
+        label_np[label_np==0]=-1
         places = ['cpu']
         if paddle.device.is_compiled_with_cuda():
             places.append('gpu')
@@ -157,7 +158,8 @@ class TestSoftMarginLossOp(OpTest):
         self.init_test_case()
         self.op_type = "soft_margin_loss"
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
-        label_np = np.random.randint(1, self.shape).astype("float64")
+        label_np = np.random.randint(0, 2, self.shape).astype("float64")
+        label_np[label_np==0]=-1
         output_np = soft_margin_loss(input_np, label_np)
 
         self.inputs = {'X': input_np, 'Label': label_np}
@@ -170,7 +172,7 @@ class TestSoftMarginLossOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [5, 5]
+        self.shape = [10, 10]
 
 
 class TestSoftMarginLossOpCase1(OpTest):
