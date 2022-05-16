@@ -1117,7 +1117,7 @@ class SyncBatchNorm(_BatchNormBase):
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,
-            "ring_id": rind_id,
+            "ring_id": ring_id,
         }
 
         inputs = {
