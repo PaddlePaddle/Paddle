@@ -20,7 +20,7 @@
 
 namespace egr {
 
-void CheckTensorHasNanOrInf(const std::string& op_name, const Tensor& tensor) {
+void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
   if (tensor.initialized()) {
     auto& tensor_name = tensor.name();
     const phi::DenseTensor* dense_tensor{nullptr};
@@ -44,7 +44,7 @@ void CheckTensorHasNanOrInf(const std::string& op_name, const Tensor& tensor) {
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       paddle::framework::details::tensor_check<
-          paddle::platform::CUDADeviceContext>(op_name, tensor_name,
+          paddle::platform::CUDADeviceContext>(api_name, tensor_name,
                                                *dense_tensor, place);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -54,55 +54,64 @@ void CheckTensorHasNanOrInf(const std::string& op_name, const Tensor& tensor) {
       return;
     }
     paddle::framework::details::tensor_check<
-        paddle::platform::CPUDeviceContext>(op_name, tensor_name, *dense_tensor,
-                                            place);
+        paddle::platform::CPUDeviceContext>(api_name, tensor_name,
+                                            *dense_tensor, place);
   }
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TwoTensorTuple& tensors) {
-  CheckTensorHasNanOrInf(op_name, std::get<0>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const ThreeTensorTuple& tensors) {
-  CheckTensorHasNanOrInf(op_name, std::get<0>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<1>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<2>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const FourTensorTuple& tensors) {
-  CheckTensorHasNanOrInf(op_name, std::get<0>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<1>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<2>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<3>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<3>(tensors));
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const FiveTensorTuple& tensors) {
-  CheckTensorHasNanOrInf(op_name, std::get<0>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<1>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<2>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<3>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<4>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<3>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<4>(tensors));
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const SixTensorTuple& tensors) {
-  CheckTensorHasNanOrInf(op_name, std::get<0>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<1>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<2>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<3>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<4>(tensors));
-  CheckTensorHasNanOrInf(op_name, std::get<5>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<3>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<4>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<5>(tensors));
 }
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors) {
   for (auto& tensor : tensors) {
-    CheckTensorHasNanOrInf(op_name, tensor);
+    CheckTensorHasNanOrInf(api_name, tensor);
+  }
+}
+
+void CheckTensorHasNanOrInf(
+    const std::string& api_name,
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>& tensors) {
+  for (auto& tensor_vector : tensors) {
+    CheckTensorHasNanOrInf(api_name, tensor_vector);
   }
 }
 

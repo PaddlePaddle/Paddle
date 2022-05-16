@@ -18,7 +18,9 @@
 #include <tuple>
 #include <vector>
 
+#include "paddle/fluid/eager/type_defs.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/small_vector.h"
 
 namespace egr {
 
@@ -30,24 +32,29 @@ using FiveTensorTuple = std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>;
 using SixTensorTuple =
     std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor>;
 
-void CheckTensorHasNanOrInf(const std::string& op_name, const Tensor& tensor);
+void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TwoTensorTuple& tensors);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const ThreeTensorTuple& tensors);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const FourTensorTuple& tensors);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const FiveTensorTuple& tensors);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const SixTensorTuple& tensors);
 
-void CheckTensorHasNanOrInf(const std::string& op_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors);
+
+void CheckTensorHasNanOrInf(
+    const std::string& api_name,
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>& tensors);
 
 }  // namespace egr
