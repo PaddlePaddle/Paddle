@@ -952,9 +952,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           << "strided_slice converter does not support trt versions below 7.0";
       return false;
 #endif
-      if (!with_dynamic_shape) {
-        return false;
-      }
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
