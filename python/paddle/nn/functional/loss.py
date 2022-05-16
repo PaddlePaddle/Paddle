@@ -2265,13 +2265,14 @@ def soft_margin_loss(input, label,reduction='mean',
         .. code-block:: python
 
             import paddle
-            input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
-            label = paddle.to_tensor([1.0, -1.0, 1.0], 'float32')
+            input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
+            label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
 
             shape = (5, 5)
             input = np.random.uniform(0, 2, shape).astype('float32')
-            label = np.random.randint(1, shape).astype('float32')
+            label = np.random.randint(0, 2, shape).astype('float32')
+	    label[label==0]=-1
             output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -2293,7 +2294,7 @@ def soft_margin_loss(input, label,reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['int32','int64','float32', 'float64'], 'soft_margin_loss')
 
-    sub_name = name if reduction == 'none' else None
+    sub_name = name
     helper = LayerHelper("soft_margin_loss", name=sub_name)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
