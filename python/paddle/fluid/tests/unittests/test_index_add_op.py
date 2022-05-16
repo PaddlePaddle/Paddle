@@ -27,6 +27,7 @@ np.random.seed(102)
 
 def index_add_np(data, axis, index, add_value):
     # Is there a need to copy 'data' first in case in-place operation ?
+    data = np.copy(data)
     if isinstance(index, np.ndarray):
         index = list(index.flatten())
     # Is there a need to consider the case when 'axis' is 0 ??
@@ -57,6 +58,7 @@ def index_add_add_value_grad_np(data, axis, index):
     # shape[axis] = len(index)
     # return int(np.prod(shape))
     # so can be simplified
+    data = np.copy(data)
     outer_loop = int(np.prod(data.shape[:axis]))
     stride = np.prod(data.shape) / outer_loop / data.shape[axis]
     dim = data.shape[axis]
@@ -76,9 +78,9 @@ class TestIndexAddOp(OpTest):
 
     def init_data(self):
         self.x_type = np.float64
-        self.index_type = np.int64
+        # self.index_type = np.int64
         self.x_shape = (4, 5, 6)
-        self.index_size = 4
+        # self.index_size = 4
         # self.add_value = 9.0
         self.add_value = 5.0
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
