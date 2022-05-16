@@ -94,10 +94,10 @@ class ForwardAPI(BaseAPI):
 {code_indent}  {self.outputs['return_type']} api_output{inplace_assign};"""
 
             if self.outputs['return_type'] == 'std::vector<Tensor>':
-                assert self.outputs['out_size_expr'] is not None, \
+                assert self.outputs['out_size_expr'][0] is not None, \
                      f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr']}, kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
 
             else:
                 output_create = output_create + f"""

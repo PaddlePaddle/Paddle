@@ -401,7 +401,8 @@ void EighInferMeta(const MetaTensor& x,
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache) {
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
