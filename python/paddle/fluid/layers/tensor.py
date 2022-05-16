@@ -760,8 +760,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             place = _current_expected_place()
             if force_cpu:
                 place = core.CPUPlace()
+            if isinstance(shape, (list, tuple)):
+                for item in shape:
+                    if not isinstance(item, Variable):
+                        shape = list(
+                            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
+                                shape))
+                        break
 
-            shape = utils.convert_shape_to_list(shape)
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             out = _C_ops.final_state_full(shape, float(value), dtype, place)
