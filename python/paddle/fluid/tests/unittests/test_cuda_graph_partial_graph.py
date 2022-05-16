@@ -37,14 +37,10 @@ class SimpleModel(nn.Layer):
         return x
 
 
-def simple_func(x):
-    return nn.Dropout(0.9)(x) * x
-
-
 class TestSimpleModel(unittest.TestCase):
     def run_base(self, func, use_cuda_graph, memory_pool="default", seed=10):
         paddle.seed(seed)
-        func = SimpleModel(10, 20)
+        is_layer = isinstance(func, paddle.nn.Layer)
         if use_cuda_graph:
             func = wrap_cuda_graph(func, memory_pool=memory_pool)
 
@@ -54,6 +50,8 @@ class TestSimpleModel(unittest.TestCase):
             y = x * x + 100
             loss = func(y).mean()
             loss.backward()
+            if is_layer:
+                func.clear_gradients()
 
         return func, x.grad.numpy()
 
@@ -71,9 +69,6 @@ class TestSimpleModel(unittest.TestCase):
 
     def test_layer(self):
         self.check(SimpleModel(10, 20))
-
-    def test_func(self):
-        self.check(simple_func)
 
 
 if __name__ == "__main__":

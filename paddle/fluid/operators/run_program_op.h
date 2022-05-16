@@ -203,13 +203,13 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
-        phi::errors::InvalidArgument("The cuda_graph_capture_mode >= 0 is only "
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
     auto *graph_var = ctx.OutputVar("CUDAGraph");
     PADDLE_ENFORCE_NOT_NULL(
         graph_var,
-        phi::errors::InvalidArgument(
-            "Output(CUDAGraph) must exist when cuda_graph_capture_mode >= 0."));
+        phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+                                     "cuda_graph_capture_mode is valid."));
     using GraphVecType = std::vector<std::unique_ptr<CUDAGraphWithInOuts>>;
     auto &inner_graphs = *(graph_var->GetMutable<GraphVecType>());
     inner_graphs.resize(std::max<size_t>(3, inner_graphs.size()));
@@ -236,10 +236,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
                        inner_graphs[graph_idx].get());
     }
 #else
-    PADDLE_ENFORCE_LT(
-        capture_mode, 0,
-        phi::errors::InvalidArgument("The cuda_graph_capture_mode >= 0 is only "
-                                     "valid when using NVIDIA GPU."));
+    if (!capture_mode.empty()) {
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                       "valid when using NVIDIA GPU."));
+    }
 #endif
   }
 
@@ -369,14 +370,14 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
-        phi::errors::InvalidArgument("The cuda_graph_capture_mode >= 0 is only "
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
     auto *graph_var =
         const_cast<framework::Variable *>(ctx.InputVar("CUDAGraph"));
     PADDLE_ENFORCE_NOT_NULL(
         graph_var,
-        phi::errors::InvalidArgument(
-            "Output(CUDAGraph) must exist when cuda_graph_capture_mode >= 0."));
+        phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+                                     "cuda_graph_capture_mode is valid."));
     auto &inner_graphs = *(
         graph_var
             ->GetMutable<std::vector<std::unique_ptr<CUDAGraphWithInOuts>>>());
@@ -401,10 +402,11 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       VLOG(10) << "Run Backward CUDA Graph directly";
     }
 #else
-    PADDLE_ENFORCE_LT(
-        capture_mode, 0,
-        phi::errors::InvalidArgument("The cuda_graph_capture_mode >= 0 is only "
-                                     "valid when using NVIDIA GPU."));
+    if (!capture_mode.empty()) {
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                       "valid when using NVIDIA GPU."));
+    }
 #endif
   }
 
