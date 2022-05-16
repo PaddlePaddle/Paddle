@@ -52,7 +52,7 @@ class TestTakeAlongAxisOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(['Input'], 'Result')
+        self.check_grad_with_place(self.place, ['Input'], 'Result')
 
     def init_data(self):
         self.x_type = "float64"
