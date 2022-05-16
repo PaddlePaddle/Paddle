@@ -27,7 +27,6 @@ np.random.seed(102)
 
 
 def index_add_np(data: np.array, axis: int, index: List[int], add_value: float):
-    # Is there a need to copy 'data' first in case in-place operation ?
     data = np.copy(data)
     # if isinstance(index, np.ndarray):
     #     index = list(index.flatten())
