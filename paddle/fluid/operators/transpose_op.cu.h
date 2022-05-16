@@ -653,11 +653,6 @@ struct TransposeSimple {
   }
 };
 
-#define CUDA_1D_KERNEL_LOOP_T(type, i, n)              \
-  for (type i = blockIdx.x * blockDim.x + threadIdx.x, \
-            step = blockDim.x * gridDim.x;             \
-       i < (n); i += step)
-
 constexpr int32_t kCudaMaxBlocksNum = 8192;
 constexpr int32_t kMov4TileSize = 32;
 constexpr int32_t kBlockRows = 8;
@@ -737,8 +732,10 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   const Type* src = reinterpret_cast<const Type* __restrict__>(src_data);
   Type* dst = reinterpret_cast<Type*>(dst_data);
 
-  CUDA_1D_KERNEL_LOOP_T(IndexT, i, params.count) {
+  for (IndexT i = blockIdx.x * blockDim.x + threadIdx.x; i < params.count;
+       i += blockDim.x * gridDim.x) {
     params.dst_index_helper.OffsetToNdIndex(i, dst_index);
+
 #pragma unroll
     for (size_t dim = 0; dim < Rank; ++dim) {
       src_index[params.perm[dim]] = dst_index[dim];
@@ -748,7 +745,7 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   }
 }
 
-// refer from
+// Refer from
 // https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
 template <typename T, size_t MovementSize, typename IndexT>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
@@ -819,6 +816,7 @@ inline void LaunchBatchTransposeKernel(
   IndexT num_tile_cols = (cols + kMov4TileSize - 1) / kMov4TileSize;
   const int32_t block_nums = num_batches * num_tile_rows * num_tile_cols;
   int32_t blocks = std::min(block_nums, kCudaMaxBlocksNum);
+
   BatchTransposeKernel<
       T, MovementSize,
       IndexT><<<blocks, dim3(kMov4TileSize, kBlockRows), 0, ctx.stream()>>>(
@@ -935,8 +933,8 @@ inline void DispatchMovementSize(const phi::GPUContext& ctx,
 
 template <typename T>
 inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
-                                         const size_t movement_size,
                                          const size_t rank,
+                                         const size_t movement_size,
                                          const size_t* in_dims, const int* perm,
                                          const T* src, T* dst) {
 #define CALL_DISPATCH_MOVEMENT_SIZE_FUNC(rank)                            \
@@ -960,135 +958,134 @@ inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
 }
 
 template <typename T, size_t kMaxMovementSize>
-inline size_t GetMovementSize(size_t elem_size, size_t num_dims,
-                              const size_t* in_dims, const int* perm,
-                              const T* src, T* dst) {
-  static_assert(
-      kMaxMovementSize > 0 && (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
-      "The kMaxMovementSize shall be power of 2.");
+class DimsAndPermSimplifier {
+ public:
+  explicit DimsAndPermSimplifier(const int rank, const int elem_size,
+                                 const std::vector<int32_t>& perm,
+                                 const size_t* in_dims, size_t* simplified_dims,
+                                 int* simplified_perm, const T* src, T* dst) {
+    const size_t simplified_movement_size =
+        GetMovementSize(rank, elem_size, in_dims, perm.data(), src, dst);
+    size_t tmp_dims[phi::DDim::kMaxRank];
+    for (size_t i = 0; i < rank; ++i) {
+      tmp_dims[i] = in_dims[i];
+    }
+    tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
 
-  if (perm[num_dims - 1] == num_dims - 1) {
-    const size_t last_dim_size = in_dims[num_dims - 1] * elem_size;
-    auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
-    auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
+    Simplifyperm(rank, tmp_dims, perm, simplified_dims, simplified_perm);
 
-    for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
-      if (last_dim_size % size == 0 && src_ptr % size == 0 &&
-          dst_ptr % size == 0) {
-        return size;
+    movement_size = GetMovementSize(rank, simplified_movement_size,
+                                    simplified_dims, simplified_perm, src, dst);
+
+    simplified_dims[simplified_rank - 1] /=
+        (movement_size / simplified_movement_size);
+  }
+
+  size_t GetRank() { return simplified_rank; }
+  size_t GetMovementSize() { return movement_size; }
+
+ private:
+  size_t movement_size;
+  size_t simplified_rank;
+
+  void Simplifyperm(const size_t rank, const size_t* in_dims,
+                    const std::vector<int32_t>& perm, size_t* simplified_dims,
+                    int* simplified_perm) {
+    size_t coalesced_dims[phi::DDim::kMaxRank];
+    size_t start_perm_index = 0;
+
+    // Merge consecutive dims for in_dims.
+    while (start_perm_index < rank) {
+      const size_t start_dim_index = perm[start_perm_index];
+      coalesced_dims[start_dim_index] = in_dims[start_dim_index];
+      size_t end_perm_index = start_perm_index + 1;
+
+      while (end_perm_index < rank &&
+             perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
+        const size_t end_dim_index = perm[end_perm_index];
+        coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
+        coalesced_dims[end_dim_index] = 1;
+        end_perm_index += 1;
+      }
+      start_perm_index = end_perm_index;
+    }
+
+    // Merge value `1` dim for perm.
+    size_t valid_num_dims = 0;
+    int mapping[phi::DDim::kMaxRank];
+    for (size_t i = 0; i < rank; ++i) {
+      const int src_dim = coalesced_dims[i];
+      if (src_dim == 1) {
+        mapping[i] = -1;
+      } else {
+        mapping[i] = valid_num_dims;
+        simplified_dims[valid_num_dims] = src_dim;
+        valid_num_dims += 1;
       }
     }
-  }
-  return elem_size;
-}
 
-inline void Simplifyperm(const size_t num_dims, const size_t* in_dims,
-                         const std::vector<int32_t>& perm,
-                         size_t* simplified_rank, size_t* simplified_dims,
-                         int* simplified_perm) {
-  size_t coalesced_dims[phi::DDim::kMaxRank];
-  size_t start_perm_index = 0;
-
-  // Merge consecutive dims for in_dims.
-  while (start_perm_index < num_dims) {
-    const size_t start_dim_index = perm[start_perm_index];
-    coalesced_dims[start_dim_index] = in_dims[start_dim_index];
-    size_t end_perm_index = start_perm_index + 1;
-
-    while (end_perm_index < num_dims &&
-           perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
-      const size_t end_dim_index = perm[end_perm_index];
-      coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
-      coalesced_dims[end_dim_index] = 1;
-      end_perm_index += 1;
-    }
-    start_perm_index = end_perm_index;
-  }
-
-  // Merge value `1` dim for perm.
-  size_t valid_num_dims = 0;
-  int mapping[phi::DDim::kMaxRank];
-  for (size_t i = 0; i < num_dims; ++i) {
-    const int src_dim = coalesced_dims[i];
-    if (src_dim == 1) {
-      mapping[i] = -1;
+    // Acquire simplified perm.
+    if (valid_num_dims == 0) {
+      simplified_rank = 1;
+      simplified_dims[0] = 1;
+      simplified_perm[0] = 0;
     } else {
-      mapping[i] = valid_num_dims;
-      simplified_dims[valid_num_dims] = src_dim;
-      valid_num_dims += 1;
-    }
-  }
-
-  // Acquire simplified perm.
-  if (valid_num_dims == 0) {
-    *simplified_rank = 1;
-    simplified_dims[0] = 1;
-    simplified_perm[0] = 0;
-  } else {
-    *simplified_rank = valid_num_dims;
-    size_t perm_index = 0;
-    for (size_t i = 0; i < num_dims; ++i) {
-      const int mapped = mapping[perm[i]];
-      if (mapped >= 0) {
-        simplified_perm[perm_index] = mapped;
-        perm_index += 1;
+      size_t perm_index = 0;
+      simplified_rank = valid_num_dims;
+      for (size_t i = 0; i < rank; ++i) {
+        const int mapped = mapping[perm[i]];
+        if (mapped >= 0) {
+          simplified_perm[perm_index] = mapped;
+          perm_index += 1;
+        }
       }
     }
   }
-}
 
-template <typename T, size_t kMaxMovementSize>
-inline size_t SimplifyDimsAndperm(const size_t rank,
-                                  const std::vector<int32_t>& perm,
-                                  const size_t* in_dims,
-                                  size_t* simplified_rank,
-                                  size_t* simplified_dims, int* simplified_perm,
-                                  size_t elem_size, const T* src, T* dst) {
-  size_t movement_size = 0;
-  const size_t simplified_movement_size = GetMovementSize<T, kMaxMovementSize>(
-      elem_size, rank, in_dims, perm.data(), src, dst);
-  size_t tmp_dims[phi::DDim::kMaxRank];
-  for (size_t i = 0; i < rank; ++i) {
-    tmp_dims[i] = in_dims[i];
+  size_t GetMovementSize(const size_t rank, const size_t elem_size,
+                         const size_t* in_dims, const int* perm, const T* src,
+                         T* dst) {
+    static_assert(kMaxMovementSize > 0 &&
+                      (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
+                  "The kMaxMovementSize shall be power of 2.");
+
+    if (perm[rank - 1] == rank - 1) {
+      const size_t last_dim_size = in_dims[rank - 1] * elem_size;
+      auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
+      auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
+
+      for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
+        if (last_dim_size % size == 0 && src_ptr % size == 0 &&
+            dst_ptr % size == 0) {
+          return size;
+        }
+      }
+    }
+    return elem_size;
   }
-  tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
-
-  Simplifyperm(rank, tmp_dims, perm, simplified_rank, simplified_dims,
-               simplified_perm);
-
-  movement_size = GetMovementSize<T, kMaxMovementSize>(
-      simplified_movement_size, *simplified_rank, simplified_dims,
-      simplified_perm, src, dst);
-
-  simplified_dims[*simplified_rank - 1] /=
-      (movement_size / simplified_movement_size);
-
-  return movement_size;
-}
+};
 
 template <typename DeviceContext, typename T>
-inline void SimplifyThenLaunch(const size_t rank, const DeviceContext& ctx,
+inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
                                const Tensor& in, Tensor* out,
                                const std::vector<int32_t>& perm) {
-  size_t movement_size = 0;
-  size_t simplified_rank = 0;
   size_t simplified_dims[phi::DDim::kMaxRank];
   size_t new_src_dims[phi::DDim::kMaxRank];
   int simplified_perm[phi::DDim::kMaxRank];
 
-  for (size_t i = 0; i < rank; ++i) {
+  for (int i = 0; i < rank; ++i) {
     new_src_dims[i] = in.dims()[i];
   }
 
   // kMaxMovementSize is for vectorized load, for fp32, the vec_size
   // is (kMaxMovementSize)/sizeof(fp32) = 4, for fp16 is 8.
-  movement_size = SimplifyDimsAndperm<T, /*kMaxMovementSize=*/16>(
-      rank, perm, new_src_dims, &simplified_rank, simplified_dims,
-      simplified_perm, sizeof(T), in.data<T>(), out->data<T>());
+  auto dims_simplifier = DimsAndPermSimplifier<T, /*kMaxMovementSize=*/16>(
+      rank, sizeof(T), perm, new_src_dims, simplified_dims, simplified_perm,
+      in.data<T>(), out->data<T>());
 
-  LaunchWithSimplifiedDispatch<T>(ctx, movement_size, simplified_rank,
-                                  simplified_dims, simplified_perm,
-                                  in.data<T>(), out->data<T>());
+  LaunchWithSimplifiedDispatch<T>(
+      ctx, dims_simplifier.GetRank(), dims_simplifier.GetMovementSize(),
+      simplified_dims, simplified_perm, in.data<T>(), out->data<T>());
 }
 
 template <typename T>
