@@ -33,6 +33,13 @@ class ParamsToInt8Pass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
   void Conv(Graph* graph) const;
+
+  VarDesc CreatePersistableVarDesc(const std::string& name,
+                                   const proto::VarType_Type& type,
+                                   const std::vector<int64_t>& shape) const;
+
+ private:
+  const std::string name_scope = "params_to_int8_pass";
 };
 
 }  // namespace ir

@@ -23,30 +23,48 @@ using LoDTensor = phi::DenseTensor;
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace {
+struct Data {
+  Data() {}
 
-struct TestScope {
-  float* CreateTensorInScope(const std::string& var_name) {
-    auto variable = scope.Var(var_name);
-    auto tensor = variable->GetMutable<LoDTensor>();
-    tensor->Resize({1});
-    return tensor->mutable_data<float>(place, 1);
+  Data(std::vector<int64_t>&& data_shape, std::vector<float>&& raw_data)
+      : shape(std::move(data_shape)), data(std::move(raw_data)) {
+    PADDLE_ENFORCE_EQ(shape.size(), 4, platform::errors::InvalidArgument(
+                                           "Expected 4 dimensions"));
+
+    auto size_from_shape = std::accumulate(shape.begin(), shape.end(), 1,
+                                           std::multiplies<int64_t>());
+    PADDLE_ENFORCE_EQ(
+        size_from_shape, data.size(),
+        platform::errors::InvalidArgument("Shape and data don't match."));
   }
 
-  template <typename T>
-  const T* GetTensorPtr(const std::string& input) const {
-    Variable* var = scope.FindVar(input);
-    auto tensor = var->Get<LoDTensor>();
-    return tensor.data<T>();
-  }
-
-  std::unique_ptr<Graph> CreateGraphFromProgram(const ProgramDesc& program) {
-    auto graph = std::make_unique<ir::Graph>(program);
-    graph->SetNotOwned(kParamScopeAttr, &scope);
-    return graph;
-  }
+  const std::vector<int64_t>& getShape() const { return shape; }
+  const std::vector<float>& getData() const { return data; }
 
  private:
-  Scope scope;
+  const std::vector<int64_t> shape;
+  const std::vector<float> data;
+};
+
+struct TestScope {
+  void CreateTensor(const std::string& var_name, const Data& data) {
+    auto variable = scope.Var(var_name);
+    auto tensor = variable->GetMutable<LoDTensor>();
+    tensor->Resize(phi::make_ddim(data.getShape()));
+    auto dptr = tensor->mutable_data<float>(place);
+    std::copy(data.getData().begin(), data.getData().end(), dptr);
+  }
+
+  const LoDTensor& GetTensor(const std::string& input) const {
+    Variable* var = scope.FindVar(input);
+    return var->Get<LoDTensor>();
+  }
+
+  framework::Scope* Scope() { return &scope; }
+
+ private:
+  framework::Scope scope;
   CPUPlace place;
 };
 
@@ -55,7 +73,9 @@ struct ProgramStrategy {
 
   std::unique_ptr<Graph> CreateGraph() {
     CreateProgram();
-    return test_scope.CreateGraphFromProgram(program);
+    auto graph = std::make_unique<ir::Graph>(program);
+    graph->SetNotOwned(kParamScopeAttr, test_scope.Scope());
+    return graph;
   }
 
   void CheckGraph(const std::unique_ptr<ir::Graph>& graph) const {
@@ -66,8 +86,26 @@ struct ProgramStrategy {
     }
   }
 
+ protected:
   virtual void CreateProgram() = 0;
+
   virtual void CheckOp(const OpDesc& op) const = 0;
+
+  VarDesc* AddInput(OpDesc* op, std::string input_name, const Data& data) {
+    const std::string var_name = input_name + "_var";
+    op->SetInput(input_name, {var_name});
+    auto var = program.MutableBlock(0)->Var(var_name);
+    var->SetShape(data.getShape());
+    test_scope.CreateTensor(var_name, data);
+    return var;
+  }
+
+  void AddOutput(OpDesc* op, std::string output_name, const Data& data) {
+    const std::string var_name = output_name + "_var";
+    op->SetOutput(output_name, {var_name});
+    program.MutableBlock(0)->Var(var_name);
+    test_scope.CreateTensor(var_name, data);
+  }
 
  protected:
   TestScope test_scope;
@@ -75,6 +113,18 @@ struct ProgramStrategy {
 };
 
 struct ConvProgramStrategy : public ProgramStrategy {
+  ConvProgramStrategy(Data&& input, Data&& filter, Data&& output,
+                      std::vector<float>&& scale_weights, int groups = 1,
+                      Data&& bias = Data(),
+                      std::vector<float>&& scale_bias = {})
+      : input(std::move(input)),
+        filter(std::move(filter)),
+        output(std::move(output)),
+        scale_weights(std::move(scale_weights)),
+        groups(std::move(groups)),
+        bias(std::move(bias)),
+        scale_bias(std::move(scale_bias)) {}
+
  protected:
   OpDesc* CreateBasicConvOp() {
     auto op = program.MutableBlock(0)->AppendOp();
@@ -83,104 +133,144 @@ struct ConvProgramStrategy : public ProgramStrategy {
     op->SetAttr("name", std::string{"Conv1"});
     op->SetAttr("mkldnn_data_type", std::string{"int8"});
     op->SetAttr("data_format", std::string{"NCHW"});
-    op->SetAttr("groups", 1);
     op->SetAttr("dilations", std::vector<int>({1, 1}));
     op->SetAttr("paddings", std::vector<int>({1, 1}));
     op->SetAttr("strides", std::vector<int>({1, 1}));
-    op->SetAttr("Scale_weights", std::vector<float>{2});
-    op->SetAttr("Scale_in", 1.0f);
-
-    AddInputToOp(op, "Input");
-    AddInputToOp(op, "Filter")->SetPersistable(true);
-    SetOutput(op, "Output");
     return op;
   }
 
  protected:
-  VarDesc* AddInputToOp(OpDesc* op, std::string input) {
-    const std::string var_name = input + "_var";
-    op->SetInput(input, {var_name});
-    auto var = program.MutableBlock(0)->Var(var_name);
-    test_scope.CreateTensorInScope(var_name)[0] = 1.5f;
-    return var;
+  void CreateProgram() override {
+    OpDesc* op = CreateBasicConvOp();
+    AddInput(op, "Input", input);
+    AddInput(op, "Filter", filter)->SetPersistable(true);
+    AddOutput(op, "Output", output);
+
+    op->SetAttr("Scale_weights", scale_weights);
+    op->SetAttr("Scale_in", 1.0f);
+    op->SetAttr("groups", groups);
+
+    if (HasBias()) {
+      AddInput(op, "Bias", bias);
+      op->SetAttr("Bias_scales", scale_bias);
+    }
   }
 
-  void SetOutput(OpDesc* op, std::string output) {
-    const std::string var_name = output + "_var";
-    op->SetOutput("Output", {var_name});
-    program.MutableBlock(0)->Var(var_name);
-    test_scope.CreateTensorInScope(var_name)[0] = 1.5f;
+  void CheckOp(const OpDesc& op) const override {
+    CheckFilter(op);
+    if (HasBias()) {
+      CheckBias(op);
+    }
   }
 
-  void CheckFilterScaleAndDType(const OpDesc& op) const {
+  bool HasBias() const { return !bias.getData().empty(); }
+
+  void CheckFilter(const OpDesc& op) const {
     EXPECT_EQ(op.GetAttrIfExists<std::vector<float>>("Scale_weights"),
               std::vector<float>(1, 1));
 
-    auto filter = op.Input("Filter");
-    EXPECT_EQ(filter.size(), 1ul);
-    const auto* filter_ptr = test_scope.GetTensorPtr<int8_t>(filter[0]);
+    auto filter_inputs = op.Input("Filter");
+    ASSERT_EQ(filter_inputs.size(), 1ul);
+
+    auto tensor = test_scope.GetTensor(filter_inputs[0]);
+    ASSERT_EQ(tensor.dtype(), phi::DataType::INT8);
+
+    auto filter_ptr = tensor.data<int8_t>();
     ASSERT_NE(filter_ptr, nullptr);
-    EXPECT_EQ(filter_ptr[0], int8_t{3});
-  }
-};
-
-struct ConvWithBiasProgram : public ConvProgramStrategy {
-  void CreateProgram() override {
-    OpDesc* op = CreateBasicConvOp();
-    AddInputToOp(op, "Bias");
-    op->SetAttr("Bias_scales", std::vector<float>{2});
+    auto length = tensor.numel() / scale_weights.size();
+    for (int64_t i = 0; i < tensor.numel(); i++) {
+      EXPECT_EQ(filter_ptr[i],
+                static_cast<int8_t>(std::round(filter.getData()[i] *
+                                               scale_weights[i / length])));
+    }
   }
 
-  void CheckOp(const OpDesc& op) const override {
-    CheckFilterScaleAndDType(op);
-    CheckBiasScaleAndDType(op);
-  }
-
-  void CheckBiasScaleAndDType(const OpDesc& op) const {
+  void CheckBias(const OpDesc& op) const {
     EXPECT_EQ(op.GetAttrIfExists<std::vector<float>>("Bias_scales"),
               std::vector<float>(1, 1));
-    auto bias = op.Input("Bias");
-    EXPECT_EQ(bias.size(), 1ul);
-    const auto* bias_ptr = test_scope.GetTensorPtr<int32_t>(bias[0]);
-    EXPECT_NE(bias_ptr, nullptr);
-    EXPECT_EQ(bias_ptr[0], 3);
+
+    auto bias_inputs = op.Input("Bias");
+    ASSERT_EQ(bias_inputs.size(), 1ul);
+
+    auto tensor = test_scope.GetTensor(bias_inputs[0]);
+    auto bias_ptr = tensor.data<int32_t>();
+    ASSERT_NE(bias_ptr, nullptr);
+    auto length = tensor.numel() / scale_bias.size();
+    for (int64_t i = 0; i < tensor.numel(); i++) {
+      EXPECT_EQ(bias_ptr[i], static_cast<int32_t>(std::round(
+                                 bias.getData()[i] * scale_bias[i / length])));
+    }
   }
+
+ private:
+  const Data input;
+  const Data filter;
+  const Data output;
+  const std::vector<float> scale_weights;
+  const int groups;
+
+  const Data bias;
+  const std::vector<float> scale_bias;
 };
 
-struct ConvWithoutBiasProgram : public ConvProgramStrategy {
-  void CreateProgram() override { CreateBasicConvOp(); }
-
-  void CheckOp(const OpDesc& op) const override {
-    CheckFilterScaleAndDType(op);
-  }
-};
-
-template <typename Program>
 struct ParamsToInt8PassTest {
   void RunPassTest() {
-    graph = program.CreateGraph();
+    auto graph = program->CreateGraph();
 
     auto pass = PassRegistry::Instance().Get("params_to_int8_pass");
     graph.reset(pass->Apply(graph.release()));
 
-    program.CheckGraph(graph);
+    program->CheckGraph(graph);
   }
-
- private:
-  std::unique_ptr<Graph> graph;
-  Program program;
+  std::unique_ptr<ProgramStrategy> program;
 };
 
-TEST(ParamToInt8Pass, conv_without_bias) {
-  ParamsToInt8PassTest<ConvWithoutBiasProgram> test;
+Data GenericInput() { return Data({1, 4, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}); }
+Data GenericOutput() { return GenericInput(); }
+
+TEST(ParamToInt8Pass, conv_without_bias_1weight) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
+      std::vector<float>{2.f});
+  ParamsToInt8PassTest test{std::move(program)};
   test.RunPassTest();
 }
 
-TEST(ParamToInt8Pass, conv_with_bias) {
-  ParamsToInt8PassTest<ConvWithBiasProgram> test;
+TEST(ParamToInt8Pass, conv_without_bias_2weights) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
+      std::vector<float>{2.f, 2.f});
+  ParamsToInt8PassTest test{std::move(program)};
   test.RunPassTest();
 }
 
+TEST(ParamToInt8Pass, conv_without_bias_4weights_2groups) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_with_bias_1weight) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
+      std::vector<float>{2.f}, 1, Data({1, 1, 1, 1}, {1.5f}),
+      std::vector<float>{2.f});
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+TEST(ParamToInt8Pass, conv_with_bias_2weights) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
+      std::vector<float>{2.f, 2.f}, 1, Data({2, 1, 1, 1}, {1.5f, 1.5f}),
+      std::vector<float>{2.f, 2.f});
+  ParamsToInt8PassTest test{std::move(program)};
+  test.RunPassTest();
+}
+
+}  // namespace
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
