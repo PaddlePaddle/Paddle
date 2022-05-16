@@ -17,8 +17,15 @@ from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDA
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
     from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
+
+    def is_cuda_graph_supported():
+        return True
 else:
     CoreCUDAGraph = None
+
+    def is_cuda_graph_supported():
+        return False
+
 
 ALL_MODES = ["global", "thread_local", "relaxed"]
 
