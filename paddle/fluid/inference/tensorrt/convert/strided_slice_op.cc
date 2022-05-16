@@ -49,77 +49,94 @@ class StridedSliceOpConverter : public OpConverter {
     std::vector<int> strides =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
 
-    nvinfer1::Dims start;
-    start.nbDims = input_dims.nbDims;
+    nvinfer1::Dims new_starts_dims;
+    nvinfer1::Dims new_steps_dims;
     int axes_size = axes.size();
-    for (int i = 0; i < start.nbDims; i++) {
-      start.d[i] = 0;
-    }
-    for (int i = 0; i < axes_size; i++) {
-      start.d[axes[i]] = starts[i];
+    auto dims_count = input_dims.nbDims;
+    new_starts_dims.nbDims = dims_count;
+    new_steps_dims.nbDims = dims_count;
+    int j = 0;
+    for (int i = 0; i < dims_count; i++) {
+      if (std::find(axes.begin(), axes.end(), i) == axes.end()) {
+        new_starts_dims.d[i] = 0;
+        new_steps_dims.d[i] = 1;
+      } else {
+        new_starts_dims.d[i] =
+            starts[j] < 0 ? starts[j] + input_dims.d[i] : starts[j];
+        new_steps_dims.d[i] = strides[j];
+        j++;
+      }
     }
 
-    nvinfer1::Dims stride;
-    stride.nbDims = input_dims.nbDims;
-    for (int i = 0; i < stride.nbDims; i++) {
-      stride.d[i] = 1;
+    nvinfer1::Dims out_dims;
+    out_dims.nbDims = dims_count;
+    for (int i = 0; i < input_dims.nbDims; i++) {
+      out_dims.d[i] = input_dims.d[i];
     }
-    for (int i = 0; i < axes_size; i++) {
-      stride.d[axes[i]] = strides[i];
-    }
-
-    nvinfer1::Dims size;
-    size.nbDims = input_dims.nbDims;
-    for (int i = 0; i < size.nbDims; i++) {
-      size.d[i] = 1;
+    for (int i = 0; i < axes_size; ++i) {
+      int dim = out_dims.d[axes[i] - 1];
+      if (dim > 0) {
+        int start = starts[i] < 0 ? (starts[i] + dim) : starts[i];
+        int end = ends[i] < 0 ? (ends[i] + dim) : ends[i];
+        start = std::max(start, 0);
+        end = std::max(end, 0);
+        end = std::min(end, dim);
+        out_dims.d[axes[i] - 1] = end - start;
+      }
     }
 
     auto output_name = op_desc.Output("Out")[0];
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, new_starts_dims,
+                                       out_dims, new_steps_dims);
 
-    auto create_weights = [&](const std::vector<int>& data,
-                              const std::string& type) -> int* {
-      std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
-      int data_size = data.size();
-      tmp_tensor->Resize({data_size});
-      auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());
-      for (int i = 0; i < data_size; i++) {
-        tmp_data[i] = data[i];
+    if (engine_->with_dynamic_shape()) {
+      auto create_weights = [&](const std::vector<int>& data,
+                                const std::string& type) -> int* {
+        std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+        int data_size = data.size();
+        tmp_tensor->Resize({data_size});
+        auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());
+        for (int i = 0; i < data_size; i++) {
+          tmp_data[i] = data[i];
+        }
+
+        engine_->SetWeights(output_name + "_add_slice_op_" + type,
+                            std::move(tmp_tensor));
+        return tmp_data;
+      };
+
+      std::vector<int> const_weight(input_dims.nbDims, 0);
+      for (int i = 0; i < axes_size; i++) {
+        int dim = input_dims.d[axes[i]];
+        int start = starts[i] < 0 ? (starts[i] + dim) : starts[i];
+        int end = ends[i] < 0 ? (ends[i] + dim) : ends[i];
+        start = std::max(start, 0);
+        end = std::max(end, 0);
+        end = std::min(end, dim);
+        const_weight[axes[i]] = (dim - ends[i]) + starts[i];
       }
 
-      engine_->SetWeights(output_name + "_add_slice_op_" + type,
-                          std::move(tmp_tensor));
-      return tmp_data;
-    };
+      int* weight_data = create_weights(const_weight, "size");
 
-    std::vector<int> const_weight(input_dims.nbDims, 1);
-    for (int i = 0; i < axes_size; i++) {
-      const_weight[axes[i]] = strides[i];
+      TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
+                                    static_cast<void*>(weight_data),
+                                    static_cast<size_t>(input_dims.nbDims)};
+
+      int input_dim_size = input_dims.nbDims;
+      nvinfer1::Dims input_shape;
+      input_shape.nbDims = 1;
+      input_shape.d[0] = input_dim_size;
+
+      auto const_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
+
+      auto shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
+
+      auto size_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, ElementWise, *shape_layer->getOutput(0),
+          *const_layer->getOutput(0), nvinfer1::ElementWiseOperation::kSUB);
+      layer->setInput(2, *size_layer->getOutput(0));
     }
-
-    int* weight_data = create_weights(const_weight, "size");
-
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
-                                  static_cast<void*>(weight_data),
-                                  static_cast<size_t>(input_dims.nbDims)};
-
-    int input_dim_size = input_dims.nbDims;
-    nvinfer1::Dims input_shape;
-    input_shape.nbDims = 1;
-    input_shape.d[0] = input_dim_size;
-
-    auto const_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
-
-    auto shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
-
-    auto size_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *shape_layer->getOutput(0),
-        *const_layer->getOutput(0), nvinfer1::ElementWiseOperation::kDIV);
-
-    auto* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, start, size, stride);
-    layer->setInput(2, *size_layer->getOutput(0));
-
     RreplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
   }
 };

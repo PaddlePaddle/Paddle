@@ -53,16 +53,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     weight_data = engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t);
     nvinfer1::Dims dims_x = X->getDimensions();
-
     auto regist_eltwise_weight = [&](nvinfer1::ScaleMode scale_mode) {
-      TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
-                                           static_cast<void*>(weight_data),
-                                           static_cast<size_t>(Y_t->numel())};
-      TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                           0};
-      TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                           0};
-
       nvinfer1::IShuffleLayer* expand_layer = nullptr;
       nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
       int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
@@ -85,17 +76,115 @@ class ElementwiseWeightOpConverter : public OpConverter {
         expand_layer->setName(
             ("Elewise: Shuffle: (Output: " + output_name + ")").c_str());
       }
-      if (op_type_ == "add") {
-        nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
-            scale_weights.get(), power_weights.get(), dynamic_shape_offset);
-        layer = scale_layer;
-      } else if (op_type_ == "mul") {
-        nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Scale, *X, scale_mode, scale_weights.get(),
-            shift_weights.get(), power_weights.get());
-        layer = scale_layer;
+
+      if (Y_t->dims().size() == 1 && Y_t->dims()[0] == dims_x.d[1]) {
+        scale_mode = nvinfer1::ScaleMode::kCHANNEL;
+        TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
+                                             static_cast<void*>(weight_data),
+                                             static_cast<size_t>(Y_t->numel())};
+        TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        if (op_type_ == "add") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
+              scale_weights.get(), power_weights.get(), dynamic_shape_offset);
+          layer = scale_layer;
+        } else if (op_type_ == "mul") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Scale, *X, scale_mode, scale_weights.get(),
+              shift_weights.get(), power_weights.get());
+          layer = scale_layer;
+        }
+      } else if (Y_t->dims().size() == 1 && Y_t->dims()[0] == 1) {
+        scale_mode = nvinfer1::ScaleMode::kUNIFORM;
+        if (op_type_ == "add") {
+          TensorRTEngine::Weight shift_weights{
+              nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+              static_cast<size_t>(Y_t->numel())};
+          TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
+              scale_weights.get(), power_weights.get(), dynamic_shape_offset);
+          layer = scale_layer;
+        } else if (op_type_ == "sub") {
+          auto value = -weight_data[0];
+          weight_data[0] = value;
+          TensorRTEngine::Weight shift_weights{
+              nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+              static_cast<size_t>(Y_t->numel())};
+          TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, scale_mode, shift_weights.get(),
+              scale_weights.get(), power_weights.get(), dynamic_shape_offset);
+          layer = scale_layer;
+        } else if (op_type_ == "mul") {
+          TensorRTEngine::Weight shift_weights{
+              nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+              static_cast<size_t>(Y_t->numel())};
+          TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, scale_mode, scale_weights.get(),
+              shift_weights.get(), power_weights.get(), dynamic_shape_offset);
+          layer = scale_layer;
+        } else if (op_type_ == "div") {
+          TensorRTEngine::Weight shift_weights{
+              nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+              static_cast<size_t>(Y_t->numel())};
+          TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Scale, *X, scale_mode, scale_weights.get(),
+              shift_weights.get(), power_weights.get());
+          layer = scale_layer;
+        } else if (op_type_ == "pow") {
+          TensorRTEngine::Weight shift_weights{
+              nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+              static_cast<size_t>(Y_t->numel())};
+          TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                               nullptr, 0};
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, scale_mode, scale_weights.get(),
+              scale_weights.get(), shift_weights.get(), dynamic_shape_offset);
+          layer = scale_layer;
+        }
+      } else {
+        TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
+                                             static_cast<void*>(weight_data),
+                                             static_cast<size_t>(Y_t->numel())};
+        TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        if (op_type_ == "add") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, nvinfer1::ScaleMode::kELEMENTWISE,
+              shift_weights.get(), scale_weights.get(), power_weights.get(),
+              dynamic_shape_offset);
+          layer = scale_layer;
+        } else if (op_type_ == "mul") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, nvinfer1::ScaleMode::kELEMENTWISE,
+              scale_weights.get(), shift_weights.get(), power_weights.get(),
+              dynamic_shape_offset);
+          layer = scale_layer;
+        }
       }
+
       if (input_dim.nbDims < 3 + dynamic_shape_offset) {
         nvinfer1::Dims squeeze_shape;
         squeeze_shape.nbDims = input_dim.nbDims;
@@ -115,17 +204,42 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (Y_t->dims().size() == 1) {
-        auto scale_mode = nvinfer1::ScaleMode::kCHANNEL;
-        PADDLE_ENFORCE_EQ(Y_t->dims()[0], dims_x.d[1],
-                          platform::errors::InvalidArgument(
-                              "The Bias's size(%d) should be equal to the "
-                              "first dim(%d) of the Input.",
-                              Y_t->dims()[0], dims_x.d[1]));
-        regist_eltwise_weight(scale_mode);
+        if (Y_t->dims()[0] == dims_x.d[1]) {
+          auto scale_mode = nvinfer1::ScaleMode::kCHANNEL;
+          regist_eltwise_weight(scale_mode);
+        } else if (Y_t->dims()[0] == 1) {
+          auto scale_mode = nvinfer1::ScaleMode::kUNIFORM;
+          regist_eltwise_weight(scale_mode);
+        }
+      } else if (Y_t->dims().size() == dims_x.nbDims) {
+        int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
+        TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
+                                             static_cast<void*>(weight_data),
+                                             static_cast<size_t>(Y_t->numel())};
+        TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT,
+                                             nullptr, 0};
+        if (op_type_ == "add") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, nvinfer1::ScaleMode::kELEMENTWISE,
+              shift_weights.get(), scale_weights.get(), power_weights.get(),
+              dynamic_shape_offset);
+          RreplenishLayerAndOutput(scale_layer, "elementwise_" + op_type_,
+                                   {output_name}, test_mode);
+        } else if (op_type_ == "mul") {
+          nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, ScaleNd, *X, nvinfer1::ScaleMode::kELEMENTWISE,
+              scale_weights.get(), shift_weights.get(), power_weights.get(),
+              dynamic_shape_offset);
+          RreplenishLayerAndOutput(scale_layer, "elementwise_" + op_type_,
+                                   {output_name}, test_mode);
+        }
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "The size of input bias's dims is %d, but TensorRT dynamic shape "
-            "only support size = 1 for Elementwise op!",
+            "The size of input_y's dims is %d, but TensorRT dynamic shape "
+            "only support size = 1 or size = input_x.size() for Elementwise "
+            "op!",
             Y_t->dims().size()));
       }
       return;
@@ -143,40 +257,39 @@ class ElementwiseWeightOpConverter : public OpConverter {
     if (dims_y.size() == no_batch_dims.size() + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }
-
-    if (dims_y.size() == 1 && dims_y[0] == no_batch_dims[0]) {
-      scale_mode = nvinfer1::ScaleMode::kCHANNEL;
-    } else if (dims_y.size() == no_batch_dims.size() &&
-               dims_y[0] == no_batch_dims[0]) {
-      scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
-      for (size_t i = 1; i < no_batch_dims.size(); i++) {
-        if (dims_y[i] != no_batch_dims[i]) {
-          scale_mode = nvinfer1::ScaleMode::kCHANNEL;
-          break;
-        }
-      }
-      if (scale_mode == nvinfer1::ScaleMode::kCHANNEL) {
-        for (size_t i = 1; i < no_batch_dims.size(); i++) {
-          if (dims_y[i] != 1)
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "The bias's %d dim is %d, but TensorRT dynamic shape only "
-                "support it equals to 1 for Elementwise op!",
-                i, dims_y[i]));
-        }
-      }
-    } else {
-      if (dims_y.size() >= 1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The size of bias's dims is %d and bias's size is %d. TensorRT "
-            "doesn't support this shape for Elementwise op!",
-            dims_y.size(), dims_y[0]));
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The size of bias's dims is %d. TensorRT doesn't support "
-            "this shape for Elementwise op!",
-            dims_y.size()));
-      }
-    }
+    // if (dims_y.size() == 1 && dims_y[0] == no_batch_dims[0]) {
+    //   scale_mode = nvinfer1::ScaleMode::kCHANNEL;
+    // } else if (dims_y.size() == no_batch_dims.size() &&
+    //            dims_y[0] == no_batch_dims[0]) {
+    //   scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
+    //   for (size_t i = 1; i < no_batch_dims.size(); i++) {
+    //     if (dims_y[i] != no_batch_dims[i]) {
+    //       scale_mode = nvinfer1::ScaleMode::kCHANNEL;
+    //       break;
+    //     }
+    //   }
+    //   if (scale_mode == nvinfer1::ScaleMode::kCHANNEL) {
+    //     for (size_t i = 1; i < no_batch_dims.size(); i++) {
+    //       if (dims_y[i] != 1)
+    //         PADDLE_THROW(platform::errors::InvalidArgument(
+    //             "The bias's %d dim is %d, but TensorRT dynamic shape only "
+    //             "support it equals to 1 for Elementwise op!",
+    //             i, dims_y[i]));
+    //     }
+    //   }
+    // } else {
+    // if (dims_y.size() >= 1) {
+    //   PADDLE_THROW(platform::errors::InvalidArgument(
+    //       "The size of bias's dims is %d and bias's size is %d. TensorRT "
+    //       "doesn't support this shape for Elementwise op!",
+    //       dims_y.size(), dims_y[0]));
+    // } else {
+    //   PADDLE_THROW(platform::errors::InvalidArgument(
+    //       "The size of bias's dims is %d. TensorRT doesn't support "
+    //       "this shape for Elementwise op!",
+    //       dims_y.size()));
+    // }
+    // }
     regist_eltwise_weight(scale_mode);
   }
 
@@ -215,7 +328,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto common_func = [&](nvinfer1::ILayer* layer) {
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     };
-
     if (dims_x.nbDims == dims_y.nbDims) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
@@ -244,7 +356,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
         auto* plugin_layer = engine_->AddPlugin(
             inputs.data(), inputs.size(),
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
-
         layer = plugin_layer;
       }
     }
@@ -276,6 +387,21 @@ class ElementwiseWeightAddOpConverter : public ElementwiseWeightOpConverter {
 class ElementwiseWeightMulOpConverter : public ElementwiseWeightOpConverter {
  public:
   ElementwiseWeightMulOpConverter() { op_type_ = "mul"; }
+};
+
+class ElementwiseWeightSubOpConverter : public ElementwiseWeightOpConverter {
+ public:
+  ElementwiseWeightSubOpConverter() { op_type_ = "sub"; }
+};
+
+class ElementwiseWeightDivOpConverter : public ElementwiseWeightOpConverter {
+ public:
+  ElementwiseWeightDivOpConverter() { op_type_ = "div"; }
+};
+
+class ElementwiseWeightPowOpConverter : public ElementwiseWeightOpConverter {
+ public:
+  ElementwiseWeightPowOpConverter() { op_type_ = "pow"; }
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -321,6 +447,12 @@ REGISTER_TRT_OP_CONVERTER(elementwise_add_weight,
                           ElementwiseWeightAddOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_mul_weight,
                           ElementwiseWeightMulOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_sub_weight,
+                          ElementwiseWeightSubOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_div_weight,
+                          ElementwiseWeightDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
+                          ElementwiseWeightPowOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);

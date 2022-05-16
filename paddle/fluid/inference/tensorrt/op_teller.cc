@@ -77,6 +77,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_sub",
       "elementwise_mul",
       "elementwise_div",
+      "elementwise_pow",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -140,6 +141,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_sub",
       "elementwise_mul",
       "elementwise_div",
+      "elementwise_pow",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -941,9 +943,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "strided_slice") {
-      if (!with_dynamic_shape) {
-        return false;
-      }
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
@@ -1009,7 +1008,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
-        op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        op_type == "elementwise_sub" || op_type == "elementwise_div" ||
+        op_type == "elementwise_pow") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1040,10 +1040,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
       if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
-        if (y_shape.size() != 1) {
-          return false;
-        }
-        if (y_shape[0] != x_shape[1]) {
+        if (y_shape.size() != 1 && y_shape.size() != x_shape.size()) {
           return false;
         }
       }
@@ -1051,20 +1048,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
-      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
-        if (x_var_desc->Persistable()) {
-          VLOG(3) << "Input X is a parameter which is not supported for "
-                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                     "y will work";
-          return false;
-        }
-      }
-      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
-        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
-          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
-                     "for elementwise_sub/elementwise_div in tensorrt";
-          return false;
-        }
+      if (x_var_desc->Persistable()) {
+        VLOG(3) << "Input X is a parameter which is not supported for "
+                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                   "y will work";
+        return false;
       }
     }
 
