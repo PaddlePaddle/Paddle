@@ -27,6 +27,8 @@ void IndexAddTensorKernel(const Context& dev_ctx,
                            const IntArray& index_arr,
                            const Scalar& axis_scalar,
                            DenseTensor* output) {
+    // TODO: add_tensor should be in any shape as long as
+    // it can be broadcast to the shape of indexed slice
   PADDLE_ENFORCE_EQ(
       add_tensor.numel(),
       1,

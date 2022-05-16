@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -41,7 +42,7 @@ __global__ void index_add_cuda_kernel(const T* x_ptr,
     int64_t output_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     if (add_grad) add_grad[output_idx] = x_ptr[output_idx];
-    if (output) output[output_idx] = add_val;
+    if (output) output[output_idx] += add_val;
   }
 }
 
