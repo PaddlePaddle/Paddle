@@ -2259,7 +2259,7 @@ def soft_margin_loss(input, label,reduction='mean',
     Returns:
 
         Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+            same as ``input`` , else the shape of output is [1].
 
     Examples:
         .. code-block:: python
