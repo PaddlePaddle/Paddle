@@ -79,20 +79,6 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
       }
     }
 
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
-    }
-
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
