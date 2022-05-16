@@ -38,25 +38,33 @@ DLManager& global_dlmanager_pool() {
   return manager;
 }
 
-void GraphDataGenerator::AllocResource(const paddle::platform::Place& place, std::vector<LoDTensor*> feed_vec, std::vector<int64_t>* h_device_keys) {
+void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
+                                       std::vector<LoDTensor*> feed_vec,
+                                       std::vector<int64_t>* h_device_keys) {
   place_ = place;
   gpuid_ = place_.GetDeviceId();
-  VLOG(2) << "gpuid " << gpuid_;
+  VLOG(3) << "gpuid " << gpuid_;
   stream_ = dynamic_cast<platform::CUDADeviceContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
   feed_vec_ = feed_vec;
   h_device_keys_ = h_device_keys;
   device_key_size_ = h_device_keys_->size();
-  d_device_keys_ = memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
-  CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(), device_key_size_ * sizeof(int64_t),
+  d_device_keys_ =
+      memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
+  CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
+                             device_key_size_ * sizeof(int64_t),
                              cudaMemcpyHostToDevice, stream_));
-  d_prefix_sum_ = memory::AllocShared(place_, (sample_key_size_ + 1) * sizeof(int64_t));
+  d_prefix_sum_ =
+      memory::AllocShared(place_, (sample_key_size_ + 1) * sizeof(int64_t));
+  int64_t* d_prefix_sum_ptr = reinterpret_cast<int64_t*>(d_prefix_sum_->ptr());
+  cudaMemsetAsync(d_prefix_sum_ptr, 0, (sample_key_size_ + 1) * sizeof(int64_t),
+                  stream_);
   cursor_ = 0;
-  device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());;
+  device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());
+  ;
   cudaStreamSynchronize(stream_);
 }
-
 
 class BufferedLineFileReader {
   typedef std::function<bool()> SampleFunc;
@@ -2610,7 +2618,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
-  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_, h_device_keys_);
+  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_,
+                                          h_device_keys_);
 #endif
   return true;
 }
