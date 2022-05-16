@@ -2272,7 +2272,7 @@ def soft_margin_loss(input, label,reduction='mean',
             shape = (5, 5)
             input = np.random.uniform(0, 2, shape).astype('float32')
             label = np.random.randint(0, 2, shape).astype('float32')
-	    label[label==0]=-1
+            label[label==0]=-1
             output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
     """
     if reduction not in ['sum', 'mean', 'none']:

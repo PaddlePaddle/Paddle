@@ -1341,14 +1341,15 @@ class SoftMarginLoss(Layer):
         .. code-block:: python
 
             import paddle
-            input = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
-            label = paddle.to_tensor([1, -1, 1], dtype="float32")
+            input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
+            label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
 
             shape = (5, 5)
             input = np.random.uniform(0, 2, shape).astype('float32')
-            label = np.random.randint(1, shape).astype('float32')
+            label = np.random.randint(0, 2, shape).astype('float32')
+            label[label==0]=-1
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label,reduction='none')
     """

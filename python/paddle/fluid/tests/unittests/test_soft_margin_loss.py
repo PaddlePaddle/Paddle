@@ -107,30 +107,32 @@ def calc_softmarginloss(input_np, label_np, reduction='mean',):
 
 class TestSoftMarginLoss(unittest.TestCase):
     def test_SoftMarginLoss(self):
-        input_np = np.random.uniform(0.1, 0.8, size=(10, 10)).astype(np.float64)
-        label_np = np.random.randint(0, 2, size=(10, 10)).astype(np.float64)
-        label_np[label_np==0]=-1
+        input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        types = ['int32','int64','float32','float64']
         places = ['cpu']
         if paddle.device.is_compiled_with_cuda():
             places.append('gpu')
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                static_result = test_static_layer(place, input_np, label_np,
-                                                  reduction)
-                dy_result = test_dygraph_layer(place, input_np, label_np,
-                                               reduction)
-                expected = calc_softmarginloss(input_np, label_np, reduction)
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
-                static_functional = test_static_functional(place, input_np,
-                                                           label_np, reduction)
-                dy_functional = test_dygraph_functional(place, input_np,
-                                                        label_np, reduction)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                for _type in types:
+                    label_np = np.random.randint(0, 2, size=(5, 5)).astype(_type)
+                    label_np[label_np == 0] = -1
+                    static_result = test_static_layer(place, input_np, label_np,
+                                                      reduction)
+                    dy_result = test_dygraph_layer(place, input_np, label_np,
+                                                   reduction)
+                    expected = calc_softmarginloss(input_np, label_np, reduction)
+                    self.assertTrue(np.allclose(static_result, expected))
+                    self.assertTrue(np.allclose(static_result, dy_result))
+                    self.assertTrue(np.allclose(dy_result, expected))
+                    static_functional = test_static_functional(place, input_np,
+                                                               label_np, reduction)
+                    dy_functional = test_dygraph_functional(place, input_np,
+                                                            label_np, reduction)
+                    self.assertTrue(np.allclose(static_functional, expected))
+                    self.assertTrue(np.allclose(static_functional, dy_functional))
+                    self.assertTrue(np.allclose(dy_functional, expected))
 
     def test_SoftMarginLoss_error(self):
         paddle.disable_static()
