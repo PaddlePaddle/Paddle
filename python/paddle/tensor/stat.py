@@ -223,7 +223,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 def numel(x, name=None):
     """
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
-    or a scalar value in imperative mode
+    or a scalar value in imperative mode.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
@@ -280,21 +280,26 @@ def median(x, axis=None, keepdim=False, name=None):
             import paddle
 
             x = paddle.arange(12).reshape([3, 4])
-            # x is [[0 , 1 , 2 , 3 ],
-            #       [4 , 5 , 6 , 7 ],
-            #       [8 , 9 , 10, 11]]
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0 , 1 , 2 , 3 ],
+            #         [4 , 5 , 6 , 7 ],
+            #         [8 , 9 , 10, 11]])
 
             y1 = paddle.median(x)
-            # y1 is [5.5]
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [5.50000000])
 
             y2 = paddle.median(x, axis=0)
-            # y2 is [4., 5., 6., 7.]
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [4., 5., 6., 7.])
 
             y3 = paddle.median(x, axis=1)
-            # y3 is [1.5, 5.5, 9.5]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1.50000000, 5.50000000, 9.50000000])
 
             y4 = paddle.median(x, axis=0, keepdim=True)
-            # y4 is [[4., 5., 6., 7.]]
+            # Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[4., 5., 6., 7.]])
 
     """
     if not isinstance(x, Variable):

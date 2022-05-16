@@ -970,7 +970,7 @@ def tolist(x):
 def concat(x, axis=0, name=None):
     """
 
-    This OP concatenates the input along the axis.
+    Concatenates the input along the axis.
 
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
@@ -1330,13 +1330,11 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     r"""
-    **Flatten op**
-
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
-    Note that the output Tensor will share data with origin Tensor and doesn't have a 
-    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, please 
-    use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+    Note:
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode. 
+        If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
 
     For Example:
 
@@ -1560,7 +1558,7 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-    This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
+    Stacks all the input tensors ``x`` along ``axis`` dimemsion. 
     All tensors must be of the same shape and same dtype.
     
     For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked 
@@ -1616,7 +1614,7 @@ def stack(x, axis=0, name=None):
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
-        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         
     Returns:
         Tensor: The stacked tensor with same data type as input.
@@ -2928,8 +2926,7 @@ def broadcast_to(x, shape, name=None):
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
 
@@ -3358,8 +3355,7 @@ def gather_nd(x, index, name=None):
         x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name` .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]

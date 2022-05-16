@@ -1083,9 +1083,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
         otherwise it's data type is the same as `x`.
 
-    Raises:
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
-
     Examples:
         .. code-block:: python
 
@@ -1830,7 +1827,7 @@ def outer(x, y, name=None):
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
     r"""
-    This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -2543,9 +2540,9 @@ def clip(x, min=None, max=None, name=None):
 
     Args:
         x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
-        min (float|int|Tensor): The lower bound with type ``float`` , ``int`` or a ``Tensor``
+        min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
+        max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2865,15 +2862,12 @@ def kron(x, y, name=None):
 ${comment}
 
     Args:
-        x (Tensor): the fist operand of kron op, data type: float16, float32,
-            float64, int32 or int64.
-        y (Tensor): the second operand of kron op, data type: float16,
-            float32, float64, int32 or int64. Its data type should be the same
-            with x.
+        x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
+        y (Tensor): the second operand of kron op, data type: float16, float32, float64, int32 or int64. Its data type should be the same with x.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+        Tensor: The output of kron, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
 
     Examples:
         .. code-block:: python
@@ -3135,12 +3129,12 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
             int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
-            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
