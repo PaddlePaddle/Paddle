@@ -633,6 +633,11 @@ void AnalysisConfig::Update() {
           (pass == "conv_bn_fuse_pass")) {
         continue;
       }
+      // delete_fill_constant_op_pass is not used under trt dynamic shape
+      if ((!min_input_shape_.empty() || trt_tuned_dynamic_shape_) &&
+          pass == "delete_fill_constant_op_pass") {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }

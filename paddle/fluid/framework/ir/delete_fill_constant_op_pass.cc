@@ -32,7 +32,11 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector detector;
   auto fill_constant_op = detector.mutable_pattern()
                               ->NewNode("fill_constant")
-                              ->assert_is_op("fill_constant");
+                              ->assert_is_op("fill_constant")
+                              ->assert_is_not_op_input("ValueTensor")
+                              ->assert_is_not_op_input("str_value")
+                              ->assert_is_not_op_input("ShapeTensor")
+                              ->assert_is_not_op_input("ShapeTensorList");
   auto fill_constant_out =
       detector.mutable_pattern()
           ->NewNode("fill_constant_out")
