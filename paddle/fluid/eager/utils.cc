@@ -165,14 +165,12 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-  if (autograd_meta) {
-    if (autograd_meta->GradNode()) {
-      VLOG(7) << "Should not set grad node twice, original node is:"
-              << autograd_meta->GradNode()->name()
-              << "current is: " << grad_node->name();
-    }
-    autograd_meta->SetGradNode(grad_node);
+  if (autograd_meta->GradNode()) {
+    VLOG(7) << "Should not set grad node twice, original node is:"
+            << autograd_meta->GradNode()->name()
+            << "current is: " << grad_node->name();
   }
+  autograd_meta->SetGradNode(grad_node);
 }
 
 void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
@@ -183,7 +181,7 @@ void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
   }
 }
 void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
-  if (target) target->SetSingleOutRankWithSlot(slot_id, 0);
+  target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
 std::shared_ptr<egr::EagerVariable> EagerUtils::TrySyncToVar(

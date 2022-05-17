@@ -729,8 +729,13 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         num_outputs = len(forward_outputs_position_map.keys())
         for name, (_, pos) in forward_outputs_position_map.items():
             output_autograd_meta_name = GetAutoGradMetaName(name)
-            set_out_rank = f"{indent}egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
-            set_history = f"{indent}egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
+            set_out_rank = f"""{indent}if ({output_autograd_meta_name}) {{
+{indent}  egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});
+{indent}}}"""
+
+            set_history = f"""{indent}if ({output_autograd_meta_name}) {{
+{indent}  egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);
+{indent}}}"""
 
             set_retain_grad = f"{indent}egr::EagerUtils::CheckAndRetainGrad({name});"
             set_grad_in_meta = f"{indent}grad_node->SetGradInMeta({name}, {pos});"
@@ -1341,7 +1346,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         grad_api_args_str = ", ".join(grad_api_args)
 
-        grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
+        grad_function_call_str = grad_function_call_str + f"""
+{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
         # Prepare for Node Creation if Necessary
         inputs_autograd_meta_str = ""
