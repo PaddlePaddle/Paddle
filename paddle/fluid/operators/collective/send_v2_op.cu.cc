@@ -28,19 +28,13 @@ namespace operators {
     NCCL_VERSION_CODE >= 2703
 void send_shape_info(const framework::Tensor& x, const platform::Place& place,
                      const gpuStream_t& stream, platform::NCCLComm* comm,
-                     const int& peer, bool with_switch,
-                     distributed::ProcessGroup* pg) {
-  if (with_switch) {
-    PADDLE_ENFORCE_NE(pg, nullptr, platform::errors::InvalidArgument(
-                                       "Process group should be provided if "
-                                       "use switch to send shape info."));
-  } else {
+                     const int& peer, distributed::ProcessGroup* group) {
+  if (!group) {
     PADDLE_ENFORCE_EQ((stream != nullptr && comm != nullptr), true,
                       platform::errors::InvalidArgument(
                           "NCCLComm and Stream should be provided if use NCCL "
                           "to send the shape info."));
   }
-
   paddle::experimental::DataType shape_dytpe =
       paddle::experimental::DataType::INT32;
   ncclDataType_t nccl_dtype =
@@ -55,10 +49,10 @@ void send_shape_info(const framework::Tensor& x, const platform::Place& place,
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
-  if (with_switch) {
+  if (group) {
     std::vector<framework::Tensor> shape_size_tensor;
     shape_size_tensor.template emplace_back(cpu_shape_size_tensor);
-    auto shape_size_task = pg->Send(shape_size_tensor, peer);
+    auto shape_size_task = group->Send(shape_size_tensor, peer);
   } else {
     // copy the shape size tensor to gpu and send
     framework::Tensor* gpu_shape_size_tensor =
@@ -82,10 +76,10 @@ void send_shape_info(const framework::Tensor& x, const platform::Place& place,
     cpu_shape_data[i] = dims[i];
   }
 
-  if (with_switch) {
+  if (group) {
     std::vector<framework::Tensor> shape_tensor;
     shape_tensor.template emplace_back(cpu_shape_tensor);
-    auto shape_task = pg->Send(shape_tensor, peer);
+    auto shape_task = group->Send(shape_tensor, peer);
   } else {
     // copy the shape tensor to gpu and send
     framework::Tensor* gpu_shape_tensor = new framework::Tensor(shape_dytpe);
@@ -129,8 +123,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "send_v2 will use dynamic shape with recv_v2 for switch";
         send_shape_info(*x, ctx.GetPlace(),
                         /* gpuStream_t */ nullptr,
-                        /* NCCLComm* */ nullptr, peer,
-                        /* use_switch */ true, pg);
+                        /* NCCLComm* */ nullptr, peer, pg);
       }
 
       std::vector<phi::DenseTensor> in_tensor;
@@ -179,7 +172,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (dynamic_shape) {
       VLOG(3) << "send_v2 will use dynamic shape with recv_v2";
       send_shape_info(*x, place, stream, comm, peer,
-                      /* use_switch */ false,
                       /* ProcessGroup* */ nullptr);
     }
 

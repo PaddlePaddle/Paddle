@@ -30,13 +30,8 @@ namespace operators {
 framework::DDim recv_shape_info(const platform::Place &place,
                                 const gpuStream_t &stream,
                                 platform::NCCLComm *comm, const int &peer,
-                                bool with_switch,
-                                distributed::ProcessGroup *pg) {
-  if (with_switch) {
-    PADDLE_ENFORCE_NE(pg, nullptr, platform::errors::InvalidArgument(
-                                       "Process group should be provided if "
-                                       "use switch to send shape info."));
-  } else {
+                                distributed::ProcessGroup *group) {
+  if (!group) {
     PADDLE_ENFORCE_EQ((stream != nullptr && comm != nullptr), true,
                       platform::errors::InvalidArgument(
                           "NCCLComm and Stream should be provided if use NCCL "
@@ -50,7 +45,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
 
   // step1: recv the shape size
   framework::Tensor gpu_shape_size_tensor(shape_dytpe);
-  if (!with_switch) {
+  if (!group) {
     gpu_shape_size_tensor.Resize({1});
     gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
     auto *gpu_data = gpu_shape_size_tensor.data<int>();
@@ -62,10 +57,10 @@ framework::DDim recv_shape_info(const platform::Place &place,
   framework::Tensor *cpu_shape_size_tensor = new framework::Tensor(shape_dytpe);
   cpu_shape_size_tensor->Resize({1});
   cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
-  if (with_switch) {
+  if (group) {
     std::vector<framework::Tensor> shape_size_tensor;
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
-    auto shape_size_task = pg->Recv(shape_size_tensor, peer);
+    auto shape_size_task = group->Recv(shape_size_tensor, peer);
   } else {
     framework::TensorCopySync(gpu_shape_size_tensor, platform::CPUPlace(),
                               cpu_shape_size_tensor);
@@ -76,7 +71,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
 
   // step2: recv the shape
   framework::Tensor gpu_shape_tensor(shape_dytpe);
-  if (!with_switch) {
+  if (!group) {
     gpu_shape_tensor.Resize({shape_size});
     gpu_shape_tensor.mutable_data(place, shape_dytpe);
     auto *gpu_shape_data = gpu_shape_tensor.data<int>();
@@ -88,10 +83,10 @@ framework::DDim recv_shape_info(const platform::Place &place,
   framework::Tensor *cpu_shape_tensor = new framework::Tensor(shape_dytpe);
   cpu_shape_tensor->Resize({shape_size});
   cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
-  if (with_switch) {
+  if (group) {
     std::vector<framework::Tensor> shape_tensor;
     shape_tensor.emplace_back(*cpu_shape_tensor);
-    auto shape_task = pg->Recv(shape_tensor, peer);
+    auto shape_task = group->Recv(shape_tensor, peer);
   } else {
     framework::TensorCopySync(gpu_shape_tensor, platform::CPUPlace(),
                               cpu_shape_tensor);
@@ -141,10 +136,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
       if (dynamic_shape) {
         VLOG(3) << "recv_v2 will use dynamic shape with send_v2 for switch";
-        framework::DDim new_dim = recv_shape_info(ctx.GetPlace(),
-                                                  /* gpuStream_t */ nullptr,
-                                                  /* NCCLComm* */ nullptr, peer,
-                                                  /* use_switch */ true, pg);
+        framework::DDim new_dim =
+            recv_shape_info(ctx.GetPlace(),
+                            /* gpuStream_t */ nullptr,
+                            /* NCCLComm* */ nullptr, peer, pg);
         out->Resize(new_dim);
         out->mutable_data<T>(new_dim, place);
       } else {
@@ -202,7 +197,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     if (dynamic_shape) {
       VLOG(3) << "recv_v2 will use dynamic shape with send_v2";
       framework::DDim new_dim = recv_shape_info(place, stream, comm, peer,
-                                                /* use_switch */ false,
                                                 /* ProcessGroup* */ nullptr);
       out->Resize(new_dim);
       numel = out->numel();
