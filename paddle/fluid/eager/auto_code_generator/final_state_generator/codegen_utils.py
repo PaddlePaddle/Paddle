@@ -418,7 +418,7 @@ class FunctionGeneratorBase:
                 return_name] = [return_type, return_pos]
 
 
-class YamlGeneratorBase:
+class GeneratorBase:
     def __init__(self, api_yaml_path):
         self.namespace = ""
         self.api_yaml_path = api_yaml_path
