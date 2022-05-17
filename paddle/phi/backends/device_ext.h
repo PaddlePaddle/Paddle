@@ -74,6 +74,12 @@ typedef void (*C_Callback)(C_Device device,
                            void* user_data,
                            C_Status* status);
 
+typedef struct C_CCLComm_st* C_CCLComm;
+
+typedef enum { SUM = 0, AVG, MAX, MIN, PRODUCT } C_CCLReduceOp;
+
+typedef enum { INT8 = 0, INT16, INT32, INT64, FP16, FP32, FP64 } C_CCLDataType;
+
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -525,6 +531,88 @@ struct C_DeviceInterface {
   C_Status (*get_driver_version)(size_t* version);
 
   void* reserved_info_api[8];
+
+  //////////////
+  // ccl api //
+  //////////////
+  /**
+   * @brief Get unique id
+   *
+   * @param[size_t*]    unique_id
+   */
+  C_Status (*xccl_get_unique_id)(size_t* unique_id);
+
+  /**
+   * @brief Initialize communicator
+   *
+   * @param[size_t]     ranks
+   * @param[size_t*]    unique_id
+   * @param[size_t]     rank
+   * @param[C_CCLComm*] comm
+   */
+  C_Status (*xccl_comm_inti_rank)(size_t ranks,
+                                  size_t* unique_id,
+                                  size_t rank,
+                                  C_CCLComm* comm);
+
+  /**
+   * @brief Destroy communicator
+   *
+   * @param[C_CCLComm]  comm
+   */
+  C_Status (*xccl_destroy_comm)(C_CCLComm comm);
+
+  C_Status (*xccl_all_reduce)(void* send_buf,
+                              void* recv_buf,
+                              size_t count,
+                              C_CCLDataType data_type,
+                              C_CCLReduceOp op,
+                              C_CCLComm comm,
+                              C_Stream stream);
+
+  C_Status (*xccl_broadcast)(void* buf,
+                             size_t count,
+                             C_CCLDataType data_type,
+                             size_t root,
+                             C_CCLComm comm,
+                             C_Stream stream);
+
+  C_Status (*xccl_reduce)(size_t* unique_id);
+
+  C_Status (*xccl_all_gather)(void* send_buf,
+                              void* recv_buf,
+                              size_t count,
+                              C_CCLDataType data_type,
+                              C_CCLComm comm,
+                              C_Stream stream);
+
+  C_Status (*xccl_reduce_scatter)(void* send_buf,
+                                  void* recv_buf,
+                                  size_t count,
+                                  C_CCLDataType data_type,
+                                  C_CCLReduceOp op,
+                                  C_CCLComm comm,
+                                  C_Stream stream);
+
+  C_Status (*xccl_group_start)();
+
+  C_Status (*xccl_group_end)();
+
+  C_Status (*xccl_send)(void* send_buf,
+                        size_t count,
+                        C_CCLDataType data_type,
+                        size_t dest_rank,
+                        C_CCLComm comm,
+                        C_Stream stream);
+
+  C_Status (*xccl_recv)(void* recv_buf,
+                        size_t count,
+                        C_CCLDataType data_type,
+                        size_t src_rank,
+                        C_CCLComm comm,
+                        C_Stream stream);
+
+  void* reserved_ccl_api[8];
 
   ///////////////
   // other api //

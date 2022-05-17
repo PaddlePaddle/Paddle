@@ -561,6 +561,165 @@ class CustomDevice : public DeviceInterface {
     return version;
   }
 
+  C_CCLDataType ToXCCLDataType(ccl::CCLDataType data_type) {
+#define return_result(in, ret) \
+  case ccl::CCLDataType::in:   \
+    return C_CCLDataType::ret
+    switch (data_type) {
+      return_result(CCL_DATA_TYPE_FP32, FP32);
+      return_result(CCL_DATA_TYPE_FP16, FP16);
+      return_result(CCL_DATA_TYPE_INT64, INT64);
+      return_result(CCL_DATA_TYPE_INT32, INT32);
+      return_result(CCL_DATA_TYPE_INT8, INT8);
+      default: {
+        PADDLE_THROW(phi::errors::Unavailable(
+            "DataType is not supported on %s.", Type()));
+      }
+    }
+#undef return_result
+  }
+
+  C_CCLReduceOp ToXCCLReduceOp(ccl::CCLReduceOp reduce_op) {
+#define return_result(in, ret) \
+  case ccl::CCLReduceOp::in:   \
+    return C_CCLReduceOp::ret
+    switch (reduce_op) {
+      return_result(SUM, SUM);
+      return_result(AVG, AVG);
+      return_result(MAX, MAX);
+      return_result(MIN, MIN);
+      return_result(PRODUCT, PRODUCT);
+      default: {
+        PADDLE_THROW(phi::errors::Unavailable(
+            "ReduceOp is not supported on %s.", Type()));
+      }
+    }
+#undef return_result
+  }
+
+  void CCLGetUniqueId(size_t* unique_id) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_unique_id(unique_id));
+  }
+
+  void CCLCommInitRank(size_t ranks,
+                       size_t* unique_id,
+                       size_t rank,
+                       ccl::CCLComm* comm) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_comm_inti_rank(
+        ranks, unique_id, rank, reinterpret_cast<C_CCLComm*>(comm)));
+  }
+
+  void CCLDestroyComm(ccl::CCLComm& comm) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_destroy_comm(reinterpret_cast<C_CCLComm>(comm)));
+  }
+
+  void CCLAllReduce(void* send_buf,
+                    void* recv_buf,
+                    size_t count,
+                    ccl::CCLDataType data_type,
+                    ccl::CCLReduceOp op,
+                    ccl::CCLComm& comm,
+                    stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_reduce(
+        send_buf,
+        recv_buf,
+        count,
+        ToXCCLDataType(data_type),
+        ToXCCLReduceOp(op),
+        reinterpret_cast<C_CCLComm>(comm),
+        reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLBroadcast(void* buf,
+                    size_t count,
+                    ccl::CCLDataType data_type,
+                    size_t root,
+                    ccl::CCLComm& comm,
+                    stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
+        buf,
+        count,
+        ToXCCLDataType(data_type),
+        root,
+        reinterpret_cast<C_CCLComm>(comm),
+        reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLReduce(size_t* unique_id) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce(unique_id));
+  }
+
+  void CCLAllGather(void* send_buf,
+                    void* recv_buf,
+                    size_t count,
+                    ccl::CCLDataType data_type,
+                    ccl::CCLComm& comm,
+                    stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_gather(
+        send_buf,
+        recv_buf,
+        count,
+        ToXCCLDataType(data_type),
+        reinterpret_cast<C_CCLComm>(comm),
+        reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLReduceScatter(void* send_buf,
+                        void* recv_buf,
+                        size_t count,
+                        ccl::CCLDataType data_type,
+                        ccl::CCLReduceOp op,
+                        ccl::CCLComm& comm,
+                        stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce_scatter(
+        send_buf,
+        recv_buf,
+        count,
+        ToXCCLDataType(data_type),
+        ToXCCLReduceOp(op),
+        reinterpret_cast<C_CCLComm>(comm),
+        reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLGroupStart() override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+  }
+
+  void CCLGroupEnd() override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+  }
+
+  void CCLSend(void* send_buf,
+               size_t count,
+               ccl::CCLDataType data_type,
+               size_t dest_rank,
+               ccl::CCLComm& comm,
+               stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_send(send_buf,
+                          count,
+                          ToXCCLDataType(data_type),
+                          dest_rank,
+                          reinterpret_cast<C_CCLComm>(comm),
+                          reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLRecv(void* recv_buf,
+               size_t count,
+               ccl::CCLDataType data_type,
+               size_t src_rank,
+               ccl::CCLComm& comm,
+               stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_recv(recv_buf,
+                          count,
+                          ToXCCLDataType(data_type),
+                          src_rank,
+                          reinterpret_cast<C_CCLComm>(comm),
+                          reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();
@@ -654,6 +813,18 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_PTR(get_runtime_version, false);
   CHECK_PTR(get_driver_version, false);
 
+  CHECK_PTR(xccl_get_unique_id, false);
+  CHECK_PTR(xccl_comm_inti_rank, false);
+  CHECK_PTR(xccl_destroy_comm, false);
+  CHECK_PTR(xccl_all_reduce, false);
+  CHECK_PTR(xccl_broadcast, false);
+  CHECK_PTR(xccl_reduce, false);
+  CHECK_PTR(xccl_all_gather, false);
+  CHECK_PTR(xccl_reduce_scatter, false);
+  CHECK_PTR(xccl_group_start, false);
+  CHECK_PTR(xccl_group_end, false);
+  CHECK_PTR(xccl_send, false);
+  CHECK_PTR(xccl_recv, false);
   return true;
 #undef CHECK_PTR
 }

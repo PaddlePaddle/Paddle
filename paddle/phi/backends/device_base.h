@@ -16,6 +16,7 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include <vector>
 
+#include "paddle/phi/backends/ccl.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
@@ -164,6 +165,64 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetMaxChunkSize(size_t dev_id);
 
   virtual size_t GetExtraPaddingSize(size_t dev_id);
+
+  // CCL
+  virtual void CCLCommDestroy(ccl::CCLComm ccl_comm);
+
+  virtual void CCLCommInitRank(size_t num_ranks,
+                               ccl::CCLRootId* root_id,
+                               size_t rank_id,
+                               ccl::CCLComm* ccl_comm);
+
+  virtual void CCLGetUniqueId(ccl::CCLRootId* root_id);
+
+  virtual void CCLBroadcast(void* data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            ccl::CCLRootId root_id,
+                            ccl::CCLComm ccl_comm,
+                            const stream::Stream& stream);
+
+  virtual void CCLAllReduce(void* in_data,
+                            void* out_data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            ccl::CCLReduceOp reduce_op,
+                            ccl::CCLComm ccl_comm,
+                            const stream::Stream& stream);
+  virtual void CCLReduce(void* in_data,
+                         void* out_data,
+                         size_t num,
+                         ccl::CCLDataType data_type,
+                         ccl::CCLReduceOp reduce_op,
+                         ccl::CCLComm ccl_comm,
+                         const stream::Stream& stream);
+  virtual void CCLAllGather(void* in_data,
+                            void* out_data,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            ccl::CCLComm ccl_comm,
+                            const stream::Stream& stream);
+  virtual void CCLReduceScatter(void* in_data,
+                                void* out_data,
+                                size_t num,
+                                ccl::CCLDataType data_type,
+                                ccl::CCLComm ccl_comm,
+                                const stream::Stream& stream);
+  virtual void CCLGroupStart();
+  virtual void CCLGroupEnd();
+  virtual void CCLSend(void* sendbuf,
+                       size_t num,
+                       ccl::CCLDataType data_type,
+                       size_t dst_rank,
+                       ccl::CCLComm ccl_comm,
+                       const stream::Stream& stream);
+  virtual void CCLRecv(void* recvbuf,
+                       size_t num,
+                       ccl::CCLDataType data_type,
+                       size_t src_rank,
+                       ccl::CCLComm ccl_comm,
+                       const stream::Stream& stream);
 
  private:
   const std::string type_;
