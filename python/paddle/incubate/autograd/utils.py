@@ -37,10 +37,10 @@ def prim_enabled():
         **ONLY available in the static mode.**
 
     Shows whether the automatic differentiation mechanism based on 
-    automatic differential basic operators is ON.
+    automatic differential basic operators is ON. Defaults to OFF.
      
     Returns:
-        flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON. Defaults to False.
+        flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
 
     Examples:
 
