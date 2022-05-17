@@ -1160,22 +1160,21 @@ def max_pool3d(x,
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             # max pool3d
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-            output = F.max_pool2d(x,
+            x = paddle.uniform([1, 3, 32, 32, 32])
+            output = F.max_pool3d(x,
                                   kernel_size=2,
                                   stride=2, padding=0)
-            output.shape [1, 3, 16, 16, 16]
+            # output.shape [1, 3, 16, 16, 16]
             # for return_mask=True
-            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+            x = paddle.uniform([1, 3, 32, 32, 32])
             output, max_indices = paddle.nn.functional.max_pool3d(x,
                                           kernel_size = 2,
                                           stride = 2,
                                           padding=0,
                                           return_mask=True)
-            # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
+            # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
     """
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
@@ -1267,10 +1266,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     Returns:
             Tensor: The output tensor of adaptive average pooling result. The data type is same
                       as input tensor.
-    Raises:
-            ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+          :name: code-example1
 
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1286,10 +1284,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               #
               import paddle
               import paddle.nn.functional as F
-              import numpy as np
 
-              data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-              pool_out = F.adaptive_average_pool1d(data, output_size=16)
+              data = paddle.uniform([1, 3, 32])
+              pool_out = F.adaptive_avg_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'

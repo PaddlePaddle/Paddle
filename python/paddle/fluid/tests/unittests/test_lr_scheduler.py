@@ -321,6 +321,70 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
     return learning_rate * math.pow(gamma, epoch_num // step_size)
 
 
+def one_cycle_lr(epoch_num,
+                 max_learning_rate,
+                 total_steps,
+                 divide_factor=25,
+                 end_learning_rate=0.0001,
+                 phase_pct=0.3,
+                 anneal_strategy='cos',
+                 three_phase=False,
+                 verbose=False):
+    initial_lr = max_learning_rate / divide_factor
+    if three_phase:
+        _end_steps = [
+            float(phase_pct * total_steps) - 1,
+            float(2 * phase_pct * total_steps) - 2, total_steps - 1
+        ]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': initial_lr,
+            },
+            {
+                'start_lr': initial_lr,
+                'end_lr': end_learning_rate,
+            },
+        ]
+    else:
+        _end_steps = [float(phase_pct * total_steps) - 1, total_steps - 1]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': end_learning_rate,
+            },
+        ]
+
+    if anneal_strategy == 'cos':
+
+        def anneal_func(start, end, pct):
+            cos_out = math.cos(math.pi * pct) + 1
+            return end + (start - end) / 2.0 * cos_out
+    else:
+
+        def anneal_func(start, end, pct):
+            return (end - start) * pct + start
+
+    start_step = 0
+    for i, phase in enumerate(_schedule_phases):
+        end_step = _end_steps[i]
+        if epoch_num <= end_step or i == len(_schedule_phases) - 1:
+            pct = (epoch_num - start_step) / (end_step - start_step)
+            computed_lr = anneal_func(phase['start_lr'], phase['end_lr'], pct)
+            break
+        start_step = end_step
+
+    return computed_lr
+
+
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
@@ -467,6 +531,33 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate='test', total_steps=20)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=-1.5, total_steps=20)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, end_learning_rate='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, end_learning_rate=-1)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=-10)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, anneal_strategy='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1,
+                total_steps=20,
+                phase_pct=0.6,
+                three_phase=True)
 
         func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
             "d_model": 0.01,
@@ -527,6 +618,38 @@ class TestLRScheduler(unittest.TestCase):
             "learning_rate": 0.5,
             "T_max": 10,
             "verbose": False
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.1,
+            "total_steps": 20,
+            "divide_factor": 5,
+            "end_learning_rate": 0.0001,
+            "anneal_strategy": 'cos',
+            "phase_pct": 0.3,
+            "three_phase": False,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.5,
+            "total_steps": 20,
+            "divide_factor": 10,
+            "end_learning_rate": 0.001,
+            "anneal_strategy": 'linear',
+            "phase_pct": 0.4,
+            "three_phase": False,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 1.0,
+            "total_steps": 20,
+            "divide_factor": 9,
+            "end_learning_rate": 0.0001,
+            "anneal_strategy": 'cos',
+            "phase_pct": 0.3,
+            "three_phase": True,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.3,
+            "total_steps": 20,
+            "divide_factor": 25,
+            "end_learning_rate": 0.0005,
+            "anneal_strategy": 'linear',
+            "phase_pct": 0.2,
+            "three_phase": True,
         })]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:

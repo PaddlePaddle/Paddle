@@ -69,9 +69,9 @@ class ParallelFusedMultiHeadAttention(Layer):
         super(ParallelFusedMultiHeadAttention, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
-                               "but recieved {}".format(embed_dim))
+                               "but received {}".format(embed_dim))
         assert num_heads > 0, ("Expected nhead to be greater than 0, "
-                               "but recieved {}".format(num_heads))
+                               "but received {}".format(num_heads))
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()

@@ -1156,28 +1156,20 @@ static std::string GenerateGradNodeCreationContent(
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
-    const std::unordered_set<std::string>& no_need_buffer_ins =
-        iter.GetNoNeedBufferInputs();
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
-      std::string full_reserved = "false";
-      if (fwd_outputs_name_pos_map.find(tensor_wrapper_name) ==
-              fwd_outputs_name_pos_map.end() &&
-          !no_need_buffer_ins.count(tensor_wrapper_name)) {
-        full_reserved = "true";
-      }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "      grad_node->SetTensorWrapper%s(%s, %s);\n";
+          "      grad_node->SetTensorWrapper%s(%s);\n";
       // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(tensor_wrapper_name)) {
         auto inplace_input_name = inplace_map[tensor_wrapper_name];
         grad_node_creation_str += paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_TEMPLATE, LegalizeVarName(tensor_wrapper_name),
-            LegalizeVarName(inplace_input_name), full_reserved);
+            LegalizeVarName(inplace_input_name));
       } else {
         grad_node_creation_str += paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_TEMPLATE, LegalizeVarName(tensor_wrapper_name),
-            LegalizeVarName(tensor_wrapper_name), full_reserved);
+            LegalizeVarName(tensor_wrapper_name));
       }
     }
   }
@@ -2592,7 +2584,6 @@ static std::string GenerateGradNodeHeaderContents(
 
       std::string tensor_wrapper_arg_str;
       std::string tensor_wrapper_body_str;
-      std::string full_reserved_str = "full_reserved";
       std::string no_need_buffer_str = "false";
       if (no_need_buffer_ins.count(tensor_wrapper_name)) {
         no_need_buffer_str = "true";
@@ -2610,12 +2601,12 @@ static std::string GenerateGradNodeHeaderContents(
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
             "for(const auto& eager_tensor : %s) {\n"
-            "          %s.emplace_back( egr::TensorWrapper(eager_tensor, %s "
-            "/*full_reserved*/, %s) );\n"
+            "          %s.emplace_back( egr::TensorWrapper(eager_tensor "
+            ", %s) );\n"
             "      }\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
-            struct_tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
+            struct_tensor_wrapper_name, no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
             "for (auto tw: %s)   {\n"
@@ -2636,22 +2627,20 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/, %s);\n";
+            "%s = egr::TensorWrapper(%s, %s);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved_str, no_need_buffer_str);
+            tensor_wrapper_name, no_need_buffer_str);
 
         const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
         clear_tensor_wrappers_str += paddle::string::Sprintf(
             CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
-      std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "   void SetTensorWrapper%s(%s, %s) {\n     %s\n   }\n";
+          "   void SetTensorWrapper%s(%s) {\n     %s\n   }\n";
       set_tensor_wrappers_str += paddle::string::Sprintf(
           SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name,
-          tensor_wrapper_arg_str, full_reserved_signature_str,
-          tensor_wrapper_body_str);
+          tensor_wrapper_arg_str, tensor_wrapper_body_str);
     }
   }
   VLOG(6) << "Generated TensorWrapper";
