@@ -237,19 +237,20 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
   }
   auto start_end_ns = PosixInNsec();
   HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
-                                               EventRole::kOrdinary, type);
+                                               EventRole::kOrdinary, type,
+                                               mem_events_idx_);
 }
 
-RecordMemEvent::RecordMemEvent(
-    const void *ptr, const Place &place, size_t size,
-    uint64_t current_allocated, uint64_t current_reserved,
-    const TracerMemEventType type = TracerMemEventType::Allocate) {
+RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
+                               uint64_t current_allocated,
+                               uint64_t current_reserved,
+                               const TracerMemEventType type) {
   if (type == TracerMemEventType::Allocate) {
     platform::MemEvenRecorder::Instance().PushMemRecord(
-        ptr, place, size, current_allocated, current_reserved)
+        ptr, place, size, current_allocated, current_reserved);
   } else if (type == TracerMemEventType::Free) {
     platform::MemEvenRecorder::Instance().PopMemRecord(
-        ptr, place, size, current_allocated, current_reserved)
+        ptr, place, size, current_allocated, current_reserved);
   }
 }
 
@@ -272,8 +273,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {
     HostMemEventRecorder::GetInstance().RecordMemEvent(
-        PosixInNsec(), static_cast<uint64_t>(ptr), TracerMemEventType::Allocate,
-        size, place.DebugString(), current_allocated, current_reserved);
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
+        TracerMemEventType::Allocate, size, place.DebugString(),
+        current_allocated, current_reserved);
   }
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr), 0,
@@ -301,8 +303,9 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {
     HostMemEventRecorder::GetInstance().RecordMemEvent(
-        PosixInNsec(), static_cast<uint64_t>(ptr), TracerMemEventType::Free,
-        -size, place.DebugString(), current_allocated, current_reserved);
+        PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
+        TracerMemEventType::Free, -size, place.DebugString(), current_allocated,
+        current_reserved);
   }
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
@@ -381,7 +384,8 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
     HostEventRecorder::GetInstance().RecordEvent(
-        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
+        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined,
+        std::vector<uint64_t>());
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);

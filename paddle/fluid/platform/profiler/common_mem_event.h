@@ -28,16 +28,17 @@ struct CommonMemEvent {
  public:
   CommonMemEvent(std::function<void *(size_t)> arena_allocator, uint64_t id,
                  uint64_t timestamp_ns, uint64_t addr, TracerMemEventType type,
-                 int64_t increase_bytes, const std::string &place,
+                 int64_t increase_bytes, const std::string &place_string,
                  uint64_t current_allocated, uint64_t current_reserved)
       : id(id),
         timestamp_ns(timestamp_ns),
         addr(addr),
         type(type),
-        increase_bytes(increase_bytes) current_allocated(current_allocated)
-            current_reserved(current_reserved) {
-    auto buf = static_cast<char *>(arena_allocator(place.length() + 1));
-    strncpy(buf, place.c_str(), place.length() + 1);
+        increase_bytes(increase_bytes),
+        current_allocated(current_allocated),
+        current_reserved(current_reserved) {
+    auto buf = static_cast<char *>(arena_allocator(place_string.length() + 1));
+    strncpy(buf, place_string.c_str(), place_string.length() + 1);
     place = buf;
   }
 

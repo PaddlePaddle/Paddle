@@ -275,16 +275,16 @@ struct MemTraceEvent {
         current_reserved(current_reserved) {}
 
   uint64_t id;  // not owned, designed for performance
-  // process id of the record
-  uint64_t process_id;
-  // thread id of the record
-  uint64_t thread_id;
   // timestamp of the record
   uint64_t timestamp_ns;
   // memory addr of allocation or free
   uint64_t addr;
   // memory manipulation type
   TracerMemEventType type;
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
   // increase bytes after this manipulation, allocation for sign +, free for
   // sign -
   int64_t increase_bytes;
@@ -294,7 +294,7 @@ struct MemTraceEvent {
   uint64_t current_allocated;
   // current total reserved memory
   uint64_t current_reserved;
-}
+};
 
 }  // namespace platform
 }  // namespace paddle

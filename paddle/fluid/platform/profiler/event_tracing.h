@@ -39,6 +39,9 @@ struct RecordInstantEvent {
    */
   explicit RecordInstantEvent(const char* name, TracerEventType type,
                               uint32_t level = kDefaultTraceLevel);
+
+ private:
+  std::vector<uint64_t> mem_events_idx_;
 };
 
 // Host event tracing. A trace starts when an object of this clas is created and
@@ -125,7 +128,7 @@ class RecordMemEvent {
       const void* ptr, const Place& place, size_t size,
       uint64_t current_allocated, uint64_t current_reserved,
       const TracerMemEventType type = TracerMemEventType::Allocate);
-}
+};
 
 }  // namespace platform
 }  // namespace paddle

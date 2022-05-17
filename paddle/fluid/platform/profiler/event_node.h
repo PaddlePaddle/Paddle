@@ -37,7 +37,7 @@ class MemTraceEventNode {
   ~MemTraceEventNode();
 
   // getter
-  std::string Id() const { return mem_event_.id; }
+  uint64_t Id() const { return mem_event_.id; }
   TracerMemEventType Type() const { return mem_event_.type; }
   uint64_t Addr() const { return mem_event_.addr; }
   uint64_t TimeStampNs() const { return mem_event_.timestamp_ns; }
@@ -51,7 +51,7 @@ class MemTraceEventNode {
  private:
   // data
   MemTraceEvent mem_event_;
-}
+};
 
 class DeviceTraceEventNode {
  public:
@@ -159,8 +159,8 @@ class HostTraceEventNode {
   uint64_t Duration() const {
     return host_event_.end_ns - host_event_.start_ns;
   }
-  std::vector<uint64_t> MemEventIndx() const {
-    return host_event_.mem_event_indx;
+  std::vector<uint64_t> MemEventIdx() const {
+    return host_event_.mem_events_idx;
   }
 
   // member function
@@ -210,8 +210,8 @@ class NodeTrees {
     for (auto it = host_events.begin(); it != host_events.end(); ++it) {
       host_event_nodes.push_back(new HostTraceEventNode(*it));
       auto host_event_node = host_event_nodes.back();
-      for (auto mem_event_idx_it = host_event_node->MemEventIndx().begin();
-           mem_event_idx_it != host_event_node->MemEventIndx().end();
+      for (auto mem_event_idx_it = host_event_node->MemEventIdx().begin();
+           mem_event_idx_it != host_event_node->MemEventIdx().end();
            ++mem_event_idx_it) {
         host_event_node->AddMemNode(mem_event_nodes_map[*mem_event_idx_it]);
       }

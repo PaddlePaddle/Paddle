@@ -25,6 +25,8 @@
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+DECLARE_bool(enable_host_event_recorder_hook);
+
 namespace paddle {
 namespace platform {
 
@@ -282,14 +284,14 @@ class HostEventInfoSupplement {
   }
 
   void PushEventPtr(RecordEvent *event_ptr) {
-    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->_type].push(event_ptr);
+    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->type_].push(event_ptr);
     GetThreadLocalEventInfoSupplementStack()->push(event_ptr);
   }
 
   void PopEventPtr() {
     RecordEvent *event_ptr = GetThreadLocalEventInfoSupplementStack()->top();
     GetThreadLocalEventInfoSupplementStack()->pop();
-    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->_type].pop();
+    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->type_].pop();
   }
 
   void RecordMemoryInfo(uint64_t mem_event_idx) {
@@ -298,7 +300,7 @@ class HostEventInfoSupplement {
     }
     if (!GetThreadLocalEventInfoSupplementStack()->empty()) {
       RecordEvent *event_ptr = GetThreadLocalEventInfoSupplementStack()->top();
-      if (event_ptr->_type != TracerEventType::OperatorInner) {
+      if (event_ptr->type_ != TracerEventType::OperatorInner) {
         event_ptr->mem_events_idx_.push_back(mem_event_idx);
       } else {
         RecordEvent *event_ptr =
@@ -326,7 +328,7 @@ class HostEventInfoSupplement {
     return ThreadEventPtrStackRegistry::GetInstance()
         .GetMutableCurrentThreadData();
   }
-}
+};
 
 }  // namespace platform
 }  // namespace paddle
