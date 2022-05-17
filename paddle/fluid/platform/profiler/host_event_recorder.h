@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <map>
+#include <stack>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -21,6 +23,7 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace platform {
@@ -269,6 +272,61 @@ class HostEventRecorder {
         .GetMutableCurrentThreadData();
   }
 };
+
+class HostEventInfoSupplement {
+ public:
+  // singleton
+  static HostEventInfoSupplement &GetInstance() {
+    static HostEventInfoSupplement instance;
+    return instance;
+  }
+
+  void PushEventPtr(RecordEvent *event_ptr) {
+    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->_type].push(event_ptr);
+    GetThreadLocalEventInfoSupplementStack()->push(event_ptr);
+  }
+
+  void PopEventPtr() {
+    RecordEvent *event_ptr = GetThreadLocalEventInfoSupplementStack()->top();
+    GetThreadLocalEventInfoSupplementStack()->pop();
+    (*GetThreadLocalEventInfoSupplementMap())[event_ptr->_type].pop();
+  }
+
+  void RecordMemoryInfo(uint64_t mem_event_idx) {
+    if (UNLIKELY(!FLAGS_enable_host_event_recorder_hook)) {
+      return;
+    }
+    if (!GetThreadLocalEventInfoSupplementStack()->empty()) {
+      RecordEvent *event_ptr = GetThreadLocalEventInfoSupplementStack()->top();
+      if (event_ptr->_type != TracerEventType::OperatorInner) {
+        event_ptr->mem_events_idx_.push_back(mem_event_idx);
+      } else {
+        RecordEvent *event_ptr =
+            (*GetThreadLocalEventInfoSupplementMap())[TracerEventType::Operator]
+                .top();
+        event_ptr->mem_events_idx_.push_back(mem_event_idx);
+      }
+    }
+  }
+
+ private:
+  using ThreadEventPtrMapRegistry = framework::ThreadDataRegistry<
+      std::map<TracerEventType, std::stack<RecordEvent *>>>;
+  using ThreadEventPtrStackRegistry =
+      framework::ThreadDataRegistry<std::stack<RecordEvent *>>;
+  HostEventInfoSupplement() = default;
+  DISABLE_COPY_AND_ASSIGN(HostEventInfoSupplement);
+
+  std::map<TracerEventType, std::stack<RecordEvent *>>
+      *GetThreadLocalEventInfoSupplementMap() {
+    return ThreadEventPtrMapRegistry::GetInstance()
+        .GetMutableCurrentThreadData();
+  }
+  std::stack<RecordEvent *> *GetThreadLocalEventInfoSupplementStack() {
+    return ThreadEventPtrStackRegistry::GetInstance()
+        .GetMutableCurrentThreadData();
+  }
+}
 
 }  // namespace platform
 }  // namespace paddle

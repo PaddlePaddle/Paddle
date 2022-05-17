@@ -27,6 +27,32 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+class MemTraceEventNode {
+ public:
+  // constructor
+  explicit MemTraceEventNode(const MemTraceEvent& mem_event)
+      : mem_event_(mem_event) {}
+
+  // destructor
+  ~MemTraceEventNode();
+
+  // getter
+  std::string Id() const { return mem_event_.id; }
+  TracerMemEventType Type() const { return mem_event_.type; }
+  uint64_t Addr() const { return mem_event_.addr; }
+  uint64_t TimeStampNs() const { return mem_event_.timestamp_ns; }
+  uint64_t ProcessId() const { return mem_event_.process_id; }
+  uint64_t ThreadId() const { return mem_event_.thread_id; }
+  int64_t IncreaseBytes() const { return mem_event_.increase_bytes; }
+  std::string Place() const { return mem_event_.place; }
+  uint64_t CurrentAllocated() const { return mem_event_.current_allocated; }
+  uint64_t CurrentReserved() const { return mem_event_.current_reserved; }
+
+ private:
+  // data
+  MemTraceEvent mem_event_;
+}
+
 class DeviceTraceEventNode {
  public:
   // constructor
@@ -133,18 +159,25 @@ class HostTraceEventNode {
   uint64_t Duration() const {
     return host_event_.end_ns - host_event_.start_ns;
   }
+  std::vector<uint64_t> MemEventIndx() const {
+    return host_event_.mem_event_indx;
+  }
 
   // member function
   void AddChild(HostTraceEventNode* node) { children_.push_back(node); }
   void AddCudaRuntimeNode(CudaRuntimeTraceEventNode* node) {
     runtime_node_ptrs_.push_back(node);
   }
+  void AddMemNode(MemTraceEventNode* node) { mem_node_ptrs_.push_back(node); }
   const std::vector<HostTraceEventNode*>& GetChildren() const {
     return children_;
   }
   const std::vector<CudaRuntimeTraceEventNode*>& GetRuntimeTraceEventNodes()
       const {
     return runtime_node_ptrs_;
+  }
+  const std::vector<MemTraceEventNode*>& GetMemTraceEventNodes() const {
+    return mem_node_ptrs_;
   }
   void LogMe(BaseLogger* logger) { logger->LogHostTraceEventNode(*this); }
 
@@ -155,6 +188,8 @@ class HostTraceEventNode {
   std::vector<CudaRuntimeTraceEventNode*> runtime_node_ptrs_;
   // host events called by this
   std::vector<HostTraceEventNode*> children_;
+  // memory events happened in this event period
+  std::vector<MemTraceEventNode*> mem_node_ptrs_;
 };
 
 class NodeTrees {
@@ -162,13 +197,24 @@ class NodeTrees {
   // constructor
   NodeTrees(const std::list<HostTraceEvent>& host_events,
             const std::list<RuntimeTraceEvent>& runtime_events,
-            const std::list<DeviceTraceEvent>& device_events) {
+            const std::list<DeviceTraceEvent>& device_events,
+            const std::list<MemTraceEvent>& mem_events) {
     std::vector<HostTraceEventNode*> host_event_nodes;
     std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes;
     std::vector<DeviceTraceEventNode*> device_event_nodes;
+    std::map<uint64_t, MemTraceEventNode*> mem_event_nodes_map;
+    for (auto it = mem_events.begin(); it != mem_events.end(); ++it) {
+      mem_event_nodes_map[(*it).id] = new MemTraceEventNode(*it);
+    }
     // encapsulate event into nodes
     for (auto it = host_events.begin(); it != host_events.end(); ++it) {
       host_event_nodes.push_back(new HostTraceEventNode(*it));
+      auto host_event_node = host_event_nodes.back();
+      for (auto mem_event_idx_it = host_event_node->MemEventIndx().begin();
+           mem_event_idx_it != host_event_node->MemEventIndx().end();
+           ++mem_event_idx_it) {
+        host_event_node->AddMemNode(mem_event_nodes_map[*mem_event_idx_it]);
+      }
     }
     for (auto it = runtime_events.begin(); it != runtime_events.end(); ++it) {
       runtime_event_nodes.push_back(new CudaRuntimeTraceEventNode(*it));

@@ -38,6 +38,8 @@ class TraceEventCollector {
     thread_names_[tid] = name;
   }
 
+  void AddMemEvent(MemTraceEvent&& event) { mem_events_.push_back(event); }
+
   const std::list<HostTraceEvent>& HostEvents() const { return host_events_; }
 
   const std::list<RuntimeTraceEvent>& RuntimeEvents() const {
@@ -47,6 +49,8 @@ class TraceEventCollector {
   const std::list<DeviceTraceEvent>& DeviceEvents() const {
     return device_events_;
   }
+
+  const std::list<MemTraceEvent>& MemEvents() const { return mem_events_; }
 
   const std::unordered_map<uint64_t, std::string>& ThreadNames() const {
     return thread_names_;
@@ -64,6 +68,7 @@ class TraceEventCollector {
   std::list<HostTraceEvent> host_events_;
   std::list<RuntimeTraceEvent> runtime_events_;
   std::list<DeviceTraceEvent> device_events_;
+  std::list<MemTraceEvent> mem_events_;
 };
 
 }  // namespace platform

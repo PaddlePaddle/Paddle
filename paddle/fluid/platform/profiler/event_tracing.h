@@ -46,6 +46,7 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
+  friend class HostEventInfoSupplement;
   /**
    * @param name: If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.
@@ -103,6 +104,7 @@ class RecordEvent {
   TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
+  std::vector<uint64_t> mem_events_idx_;
 };
 
 }  // namespace platform

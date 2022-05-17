@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
+#include "paddle/fluid/platform/profiler/host_mem_event_recorder.h"
 
 // Used to filter events, works like glog VLOG(level).
 // RecordEvent will works if host_trace_level >= level.
@@ -44,7 +45,32 @@ void ProcessHostEvents(const HostEventSection& host_events,
       event.end_ns = evt.end_ns;
       event.process_id = host_events.process_id;
       event.thread_id = tid;
+      event.mem_events_idx = evt.mem_events_idx;
       collector->AddHostEvent(std::move(event));
+    }
+  }
+}
+
+void ProcessHostMemEvents(const HostMemEventSection& host_mem_events,
+                          TraceEventCollector* collector) {
+  for (const auto& thr_sec : host_mem_events.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    if (thr_sec.thread_name != kDefaultThreadName) {
+      collector->AddThreadName(tid, thr_sec.thread_name);
+    }
+    for (const auto& evt : thr_sec.events) {
+      MemTraceEvent event;
+      event.id = evt.id;  // not owned, designed for performance
+      event.timestamp_ns = evt.timestamp_ns;
+      event.addr = evt.addr;
+      event.type = evt.type;
+      event.increase_bytes = evt.increase_bytes;
+      event.place = evt.place;
+      event.current_allocated = evt.current_allocated;
+      event.current_reserved = evt.current_reserved;
+      event.process_id = host_mem_events.process_id;
+      event.thread_id = tid;
+      collector->AddMemEvent(std::move(event));
     }
   }
 }
@@ -62,6 +88,7 @@ void HostTracer::StartTracing() {
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
   HostEventRecorder::GetInstance().GatherEvents();
+  HostMemEventRecorder::GetInstance().GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
@@ -81,6 +108,9 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   HostEventSection host_events =
       HostEventRecorder::GetInstance().GatherEvents();
   ProcessHostEvents(host_events, collector);
+  HostMemEventSection host_mem_events =
+      HostMemEventRecorder::GetInstance().GatherEvents();
+  ProcessHostMemEvents(host_mem_events, collector);
 }
 
 }  // namespace platform

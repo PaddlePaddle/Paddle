@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace paddle {
 namespace platform {
@@ -52,6 +53,15 @@ enum class TracerEventType {
   PythonUserDefined = 14,
   // Used to mark mlu runtime record returned by cnpapi
   MluRuntime = 15,
+  // A flag to denote the number of current types
+  NumTypes
+};
+
+enum class TracerMemEventType {
+  // Used to mark memory allocation
+  Allocate = 0,
+  // Used to mark memory free
+  Free = 1,
   // A flag to denote the number of current types
   NumTypes
 };
@@ -122,13 +132,15 @@ struct HostTraceEvent {
   HostTraceEvent() = default;
   HostTraceEvent(const std::string& name, TracerEventType type,
                  uint64_t start_ns, uint64_t end_ns, uint64_t process_id,
-                 uint64_t thread_id)
+                 uint64_t thread_id,
+                 const std::vector<uint64_t>& mem_events_idx)
       : name(name),
         type(type),
         start_ns(start_ns),
         end_ns(end_ns),
         process_id(process_id),
-        thread_id(thread_id) {}
+        thread_id(thread_id),
+        mem_events_idx(mem_events_idx) {}
   // record name
   std::string name;
   // record type, one of TracerEventType
@@ -141,6 +153,8 @@ struct HostTraceEvent {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
+  // indx of memory record happened
+  std::vector<uint64_t> mem_events_idx;
 };
 
 struct RuntimeTraceEvent {
@@ -241,6 +255,46 @@ struct DeviceTraceEvent {
     MemsetEventInfo memset_info;
   };
 };
+
+struct MemTraceEvent {
+  MemTraceEvent() = default;
+  MemTraceEvent(uint64_t id, uint64_t timestamp_ns, uint64_t addr,
+                TracerMemEventType type, uint64_t process_id,
+                uint64_t thread_id, int64_t increase_bytes,
+                const std::string& place, uint64_t current_allocated,
+                uint64_t current_reserved)
+      : id(id),
+        timestamp_ns(timestamp_ns),
+        addr(addr),
+        type(type),
+        process_id(process_id),
+        thread_id(thread_id),
+        increase_bytes(increase_bytes),
+        place(place),
+        current_allocated(current_allocated),
+        current_reserved(current_reserved) {}
+
+  uint64_t id;  // not owned, designed for performance
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
+  // timestamp of the record
+  uint64_t timestamp_ns;
+  // memory addr of allocation or free
+  uint64_t addr;
+  // memory manipulation type
+  TracerMemEventType type;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  int64_t increase_bytes;
+  // place
+  std::string place;
+  // current total allocated memory
+  uint64_t current_allocated;
+  // current total reserved memory
+  uint64_t current_reserved;
+}
 
 }  // namespace platform
 }  // namespace paddle
