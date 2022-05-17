@@ -23,67 +23,6 @@ paddle.enable_static()
 
 
 class TestGradients(unittest.TestCase):
-    def test_first_order(self):
-        def matmul(x, y):
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                static_x = paddle.static.data('x', x.shape, dtype=x.dtype)
-                static_y = paddle.static.data('y', y.shape, dtype=y.dtype)
-                static_x.stop_gradient = False
-                static_y.stop_gradient = False
-                t = paddle.matmul(static_x, static_y)
-                z = t.tanh()
-                x_grad, y_grad = paddle.static.gradients([z],
-                                                         [static_x, static_y])
-                if prim_enabled():
-                    prim2orig(main.block(0))
-            exe = paddle.static.Executor()
-            exe.run(startup)
-            return exe.run(main,
-                           feed={'x': x,
-                                 'y': y},
-                           fetch_list=[x_grad, y_grad])
-
-        x = np.random.rand(5, 5)
-        y = np.random.rand(5, 5)
-        enable_prim()
-        prims = matmul(x, y)
-        disable_prim()
-        origs = matmul(x, y)
-        for orig, prim in zip(origs, prims):
-            np.testing.assert_allclose(orig, prim)
-
-    def test_second_order(self):
-        def matmul_second_order(x, y):
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                static_x = paddle.static.data('x', shape=x.shape, dtype=x.dtype)
-                static_y = paddle.static.data('y', shape=y.shape, dtype=y.dtype)
-                static_x.stop_gradient = False
-                static_y.stop_gradient = False
-                z = paddle.matmul(static_x, static_x)
-                x_grad, = paddle.static.gradients([z], [static_x])
-                xx_grad, = paddle.static.gradients([x_grad], [static_x])
-                if prim_enabled():
-                    prim2orig(main.block(0))
-            exe = paddle.static.Executor()
-            exe.run(startup)
-            return exe.run(main,
-                           feed={'x': x,
-                                 'y': y},
-                           fetch_list=[x_grad, xx_grad])
-
-        x = np.random.rand(5, 5)
-        y = np.random.rand(5, 5)
-        enable_prim()
-        prims = matmul_second_order(x, y)
-        disable_prim()
-        origs = matmul_second_order(x, y)
-        for orig, prim in zip(origs, prims):
-            np.testing.assert_allclose(orig, prim)
-
     def test_third_order(self):
         enable_prim()
         main = paddle.static.Program()
