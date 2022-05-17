@@ -197,7 +197,9 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
   VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
+  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched &&
+      !(ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+        ipu_strategy_->runtime_options.enable_eval)) {
     popart::Optimizer *optimizer;
     if (ipu_strategy_->runtime_options.enable_eval) {
       VLOG(10) << "Switch optimizer to eval mode";
