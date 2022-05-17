@@ -303,7 +303,8 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        if paddle.is_compiled_with_npu():
+        if paddle.is_compiled_with_npu() or (
+                'ascend' in paddle.fluid.core.get_all_custom_device_type()):
             cls._use_system_allocator = _set_use_system_allocator(False)
         else:
             cls._use_system_allocator = _set_use_system_allocator(True)
@@ -1653,7 +1654,8 @@ class OpTest(unittest.TestCase):
         # Currently not support ParallelExecutor on XPUPlace.
         if not paddle.is_compiled_with_xpu(
         ) and not paddle.is_compiled_with_npu(
-        ) and not paddle.is_compiled_with_mlu():
+        ) and not paddle.is_compiled_with_mlu() and not (
+                'ascend' in paddle.fluid.core.get_all_custom_device_type()):
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
