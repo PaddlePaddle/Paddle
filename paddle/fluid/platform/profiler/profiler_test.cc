@@ -22,6 +22,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -91,4 +92,54 @@ TEST(ProfilerTest, TestCudaTracer) {
 #ifdef PADDLE_WITH_CUPTI
   EXPECT_GT(runtime_events.size(), 0u);
 #endif
+}
+
+TEST(ProfilerTest, TestHostTracerForMem) {
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::Profiler;
+  using paddle::platform::RecordInstantEvent;
+  using paddle::platform::TracerEventType;
+  using paddle::platform::TracerMemEventType;
+  using paddle::platform::ProfilerResult;
+  using paddle::platform::RecordMemEvent;
+  using paddle::platform::CPUPlace;
+  using paddle::platform::MemTraceEventNode;
+  ProfilerOptions options;
+  options.trace_level = 1;
+  options.trace_switch = 3;
+  auto profiler = Profiler::Create(options);
+  EXPECT_TRUE(profiler);
+  profiler->Prepare();
+  profiler->Start();
+  {
+    RecordEvent("TestTracerForMem_phase1", TracerEventType::UserDefined, 1);
+    RecordMemEvent(0, CPUPlace(), 1024, 11024, 11024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(0, CPUPlace(), 1024, 10000, 11024, TracerMemEventType::Free);
+  }
+  {
+    RecordEvent("TestTracerForMem_phase2", TracerEventType::UserDefined, 1);
+    RecordMemEvent(1024, CPUPlace(), 1024, 11024, 11024,
+                   TracerMemEventType::Allocate);
+    RecordMemEvent(1024, CPUPlace(), 1024, 10000, 11024,
+                   TracerMemEventType::Free);
+  }
+  auto profiler_result = profiler->Stop();
+  auto nodetree = profiler_result->GetNodeTrees();
+  std::set<std::string> host_events;
+  std::map<std::string, std::vector<uint64_t>> mem_events_indx_map;
+  std::map<std::string, std::vector<MemTraceEventNode*>> mem_events_map;
+  for (const auto pair : nodetree->Traverse(true)) {
+    for (const auto evt : pair.second) {
+      host_events.insert(evt->Name());
+      mem_events_indx_map[evt->Name()] = evt->MemEventIndx();
+      mem_events_map[evt->Name()] = evt->GetMemTraceEventNodes();
+    }
+  }
+  EXPECT_EQ(host_events.count("TestTracerForMem_phase1"), 1u);
+  EXPECT_EQ(host_events.count("TestTracerForMem_phase2"), 1u);
+  EXPECT_EQ(mem_events_indx_map["TestTracerForMem_phase1"].size(), 2u);
+  EXPECT_EQ(mem_events_indx_map["TestTracerForMem_phase2"].size(), 2u);
+  EXPECT_EQ(mem_events_map["TestTracerForMem_phase1"].size(), 2u);
+  EXPECT_EQ(mem_events_map["TestTracerForMem_phase2"].size(), 2u);
 }

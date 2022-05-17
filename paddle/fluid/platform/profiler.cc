@@ -240,6 +240,19 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
                                                EventRole::kOrdinary, type);
 }
 
+RecordMemEvent::RecordMemEvent(
+    const void *ptr, const Place &place, size_t size,
+    uint64_t current_allocated, uint64_t current_reserved,
+    const TracerMemEventType type = TracerMemEventType::Allocate) {
+  if (type == TracerMemEventType::Allocate) {
+    platform::MemEvenRecorder::Instance().PushMemRecord(
+        ptr, place, size, current_allocated, current_reserved)
+  } else if (type == TracerMemEventType::Free) {
+    platform::MemEvenRecorder::Instance().PopMemRecord(
+        ptr, place, size, current_allocated, current_reserved)
+  }
+}
+
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
   if (g_state == ProfilerState::kDisabled) return;
@@ -289,7 +302,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
   if (FLAGS_enable_host_event_recorder_hook) {
     HostMemEventRecorder::GetInstance().RecordMemEvent(
         PosixInNsec(), static_cast<uint64_t>(ptr), TracerMemEventType::Free,
-        size, place.DebugString(), current_allocated, current_reserved);
+        -size, place.DebugString(), current_allocated, current_reserved);
   }
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);

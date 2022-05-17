@@ -107,5 +107,25 @@ class RecordEvent {
   std::vector<uint64_t> mem_events_idx_;
 };
 
+// Host event tracing. A trace starts when an object of this clas is created and
+// stops when the object is destroyed.
+// Chrome Trace Viewer Format: Duration Event/Complte Event
+class RecordMemEvent {
+  /**
+   * @param ptr:  Pointer address allocated or free.
+   * @param place: Device for this memory event.
+   * @param size: Memory size allocated or free.
+   * @param current_allocated: Current total allocated memory size, which is a
+   * statistic metric.
+   * @param current_reserved: Current total reserved memory size, which is a
+   * statistic metric.
+   * @param type: Denote manipulation type for this memory event.
+   */
+  explicit RecordMemEvent(
+      const void* ptr, const Place& place, size_t size,
+      uint64_t current_allocated, uint64_t current_reserved,
+      const TracerMemEventType type = TracerMemEventType::Allocate);
+}
+
 }  // namespace platform
 }  // namespace paddle
