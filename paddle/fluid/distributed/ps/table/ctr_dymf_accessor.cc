@@ -307,11 +307,9 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 }
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
-  // _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
   auto ret = paddle::string::str_to_float(str.data(), value);
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
-}
 }
 
 }  // namespace distributed
