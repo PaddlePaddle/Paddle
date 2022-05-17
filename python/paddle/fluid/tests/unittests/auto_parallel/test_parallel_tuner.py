@@ -361,7 +361,7 @@ def get_program_v3():
 
 class TestParallelTuner(unittest.TestCase):
     def setUp(self):
-        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v3(
         )
         dist_context = DistributedContext(train_program, start_program,
                                           optimizer, loss, feed_vars,
@@ -383,7 +383,9 @@ class TestParallelTuner(unittest.TestCase):
             dist_context,
             num_nodes=self.num_nodes,
             devices_per_node=self.device_per_nodes,
-            cluster=Cluster)
+            cluster=cluster,
+            loop_count=10,
+            mode="test")
 
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):

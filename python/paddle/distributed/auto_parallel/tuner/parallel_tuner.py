@@ -58,7 +58,7 @@ class ParallelTuner:
         self._objective = "cost"
         self._direction = "min"
         # self._max_trials = max_trials
-        self._max_trials = 3
+        self._max_trials = 2
         self._tuner_id = tuner_id
         self._seed = seed or np.random.randint(1, 10000)
         self._seed = 1585
@@ -659,12 +659,31 @@ class ParallelTuner:
 
     def estimate_trail(self):
         assert self._cluster is not None
-        if self._estimator is None:
+        if self._mode == "test":
             self._estimator = CostEstimator(
                 self._dist_context.serial_main_program,
                 self._cluster,
                 loop_count=self._loop_count)
+            print("parallel_tuner estimate_trail",
+                  self._dist_context._serial_main_program)
+
+        elif self._mode == "train":
+            # get serial main program with backward
+            serial_main_program = self._dist_context.serial_main_program
+            serial_startup_program = self._dist_context.serial_startup_program
+            serial_optimizer = self._dist_context.serial_optimizer
+
+            # Generate backward
+            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
+            params_grads = self._parallelizer._generate_backward(
+                serial_main_program, serial_startup_program, serial_loss)
+
+            self._estimator = CostEstimator(
+                serial_main_program, self._cluster, loop_count=self._loop_count)
+            print("parallel_tuner estimate_trail", self._estimator.program)
+
         global_cost = self._estimator.estimate(self._dist_context)
+        self._dist_context._restore()
         return global_cost.time
 
     def tune(self):
@@ -681,8 +700,8 @@ class ParallelTuner:
             print("tune 3", flush=True)
             results = self.eval_trial(trial)
             print("tune 4 serial program", flush=True)
-            print_program_with_dist_attr(self._dist_context.serial_main_program,
-                                         self._dist_context)
+            # print_program_with_dist_attr(self._dist_context.serial_main_program,
+            #                              self._dist_context)
             time = self.estimate_trail()
             print("exec time: ", time)
             print("----------------------------")
