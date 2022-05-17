@@ -1318,6 +1318,15 @@ class TripletMarginWithDistanceLoss(Layer):
     .. math::
         L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
 
+    where the default `distance_function`
+    
+    .. math::
+    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+    
+    or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference 
+    between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
+    distance of (negative, positive) and change it to the smaller one.
+
     Parameters:
         distance_function (Callable, Optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 	
@@ -1338,7 +1347,7 @@ class TripletMarginWithDistanceLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 	    
-    Call Parameters:
+    Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
 	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
@@ -1347,9 +1356,11 @@ class TripletMarginWithDistanceLoss(Layer):
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
 	The shape of label is the same as the shape of input.
+	
+	output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
-        Tensor. The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+        A callable object of TripletMarginWithDistanceLoss
 
     Examples:
         .. code-block:: python
