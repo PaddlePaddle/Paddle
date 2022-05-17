@@ -223,20 +223,10 @@ bool AnalysisPredictor::Init(
     private_context_ = true;
   }
   if (private_context_) {
-    if (!status_is_cloned_) {
-      if (config_.use_external_stream_) {
-        InitResourceManager(config_.GetExecStream());
-      } else {
-        InitResourceManager(nullptr);
-      }
-    } else {
-      // clone case.
-      if (config_.use_external_stream_) {
-        InitResourceManager(clone_stream_);
-      } else {
-        InitResourceManager(nullptr);
-      }
+    if (config_.use_external_stream_ && !status_is_cloned_) {
+      predictor_stream_ = config_.GetExecStream();
     }
+    InitResourceManager(predictor_stream_);
     InitDeviceContexts();
   }
 
@@ -329,14 +319,18 @@ void AnalysisPredictor::InitPlace() {
 }
 
 void AnalysisPredictor::InitResourceManager(void *stream) {
-  resource_.reset(new ResourceManager(place_, stream));
+  ResourceManager::Instance().InitCPUResource();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  predictor_stream_ =
+      ResourceManager::Instance().InitGPUResource(place_, stream);
+#endif
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
   // Init CPUContext.
   phi::CPUPlace cpu_place;
   device_contexts_.emplace(
-      cpu_place, std::async(std::launch::deferred, [=] {
+      cpu_place, std::async(std::launch::deferred, [&] {
         auto *cpu_context = new InferCPUContext();
         cpu_context->SetAllocator(
             memory::allocation::AllocatorFacade::Instance()
@@ -352,8 +346,8 @@ void AnalysisPredictor::InitDeviceContexts() {
                 .get());
         cpu_context->SetGenerator(framework::DefaultCPUGenerator().get());
         cpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
-
-        cpu_context->SetEigenDevice(resource_->GetCpuEigenDevice());
+        auto *cpu_resource = ResourceManager::Instance().GetCPUResource();
+        cpu_context->SetEigenDevice(cpu_resource->GetCPUEigenDevice());
         return std::unique_ptr<phi::DeviceContext>(cpu_context);
       }));
 
@@ -383,25 +377,28 @@ void AnalysisPredictor::InitDeviceContexts() {
               framework::GetDefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
-          gpu_context->SetStream(resource_->GetStream());
-          gpu_context->SetBlasHandle(resource_->GetBlasHandle());
+          auto *gpu_resource =
+              ResourceManager::Instance().GetGPUResource(predictor_stream_);
+          gpu_context->SetStream(gpu_resource->GetStream());
+          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandle());
           gpu_context->SetBlasTensorCoreHandle(
-              resource_->GetBlasTensorCoreHandle());
-          gpu_context->SetBlasTF32Handle(resource_->GetBlasTF32Handle());
-          gpu_context->SetDnnHandle(resource_->GetDnnHandle());
-          gpu_context->SetSolverHandle(resource_->GetSolverDnHandle());
-          gpu_context->SetSparseHandle(resource_->GetSparseHandle());
-          gpu_context->SetEigenDevice(resource_->GetGpuEigenDevice());
+              gpu_resource->GetBlasTensorCoreHandle());
+          gpu_context->SetBlasTF32Handle(gpu_resource->GetBlasTF32Handle());
+          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandle());
+          gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandle());
+          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandle());
+          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
           gpu_context->SetComputeCapability(
-              resource_->GetGpuComputeCapability());
+              gpu_resource->GetGpuComputeCapability());
           gpu_context->SetMaxThreadsPerBlock(
-              resource_->GetGpuMaxThreadsPerBlock());
+              gpu_resource->GetGpuMaxThreadsPerBlock());
           gpu_context->SetMaxThreadsPerMultiProcessor(
-              resource_->GetGpuMaxThreadsPerMp());
-          gpu_context->SetMaxGridDimSize(resource_->GetGpuMaxGridDimSize());
-          gpu_context->SetMultiProcessors(resource_->GetGPUMultiProcessors());
-          gpu_context->SetDriverVersion(resource_->GetGpuDriverVersion());
-          gpu_context->SetRuntimeVersion(resource_->GetGpuRuntimeVersion());
+              gpu_resource->GetGpuMaxThreadsPerMp());
+          gpu_context->SetMaxGridDimSize(gpu_resource->GetGpuMaxGridDimSize());
+          gpu_context->SetMultiProcessors(
+              gpu_resource->GetGPUMultiProcessors());
+          gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
+          gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
   }
@@ -414,7 +411,7 @@ void *AnalysisPredictor::GetExecStream() const {
   if (place_.GetType() == phi::AllocationType::GPU) {
     if (private_context_) {
       if (status_is_cloned_) {
-        return clone_stream_;
+        return predictor_stream_;
       } else {
         return reinterpret_cast<const phi::GPUContext *>(
                    device_contexts_.at(place_).get().get())
@@ -1817,7 +1814,11 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
   }
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (predictor_stream_ != nullptr) {
+    ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
+  }
+#endif
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
     memory::Release(place_);
   }
@@ -1833,7 +1834,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
         "config has been configured to use external stream, but the Clone "
         "function has not received a valid stream parameter."));
   }
-  x->clone_stream_ = stream;
+  x->predictor_stream_ = stream;
   x->Init(scope_, inference_program_);
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
@@ -2010,8 +2011,8 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
 
-std::unique_ptr<Predictor> Predictor::Clone() {
-  auto analysis_pred = predictor_->Clone();
+std::unique_ptr<Predictor> Predictor::Clone(void *stream) {
+  auto analysis_pred = predictor_->Clone(stream);
   std::unique_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
   return pred;
 }
@@ -2022,9 +2023,7 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-const void *Predictor::GetExecStream() const {
-  return predictor_->GetExecStream();
-}
+void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

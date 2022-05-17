@@ -504,10 +504,9 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   static int clone_num_;
-  void *clone_stream_{nullptr};
 
   bool private_context_{false};
-  std::unique_ptr<ResourceManager> resource_;
+  void *predictor_stream_{nullptr};
   std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
       device_contexts_;
 
