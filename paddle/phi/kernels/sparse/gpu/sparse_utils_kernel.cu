@@ -173,20 +173,12 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   const auto values_dims =
       phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
-  DenseTensorMeta indices_meta(DataType::INT64,
-                               {sparse_dim, static_cast<int64_t>(non_zero_num)},
-                               DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.meta().dtype, values_dims, x.meta().layout);
-  phi::DenseTensor indices(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(indices_meta));
-  phi::DenseTensor values(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(values_meta));
-  int64_t* indices_data = indices.mutable_data<int64_t>(place);
-  T* sparse_data = values.mutable_data<T>(place);
+  phi::DenseTensor indices = phi::Empty<int64_t>(
+      dev_ctx, {sparse_dim, static_cast<int64_t>(non_zero_num)});
+  int64_t* indices_data = indices.data<int64_t>();
+  phi::DenseTensor values;
+  values.Resize(values_dims);
+  T* sparse_data = dev_ctx.template Alloc<T>(&values);
 
   // 3. calc indices by indexs and get values by indexs
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -382,24 +374,13 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
-  const auto place = dev_ctx.GetPlace();
-  DenseTensorMeta crows_meta(
-      DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
-  DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(
-      x.dtype(), {non_zero_num}, x.non_zero_elements().layout());
-  phi::DenseTensor non_zero_crows(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(crows_meta));
-  phi::DenseTensor non_zero_cols(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(cols_meta));
-  phi::DenseTensor non_zero_elements(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-      std::move(values_meta));
-  int64_t* csr_crows_data = non_zero_crows.mutable_data<int64_t>(place);
-  int64_t* csr_cols_data = non_zero_cols.mutable_data<int64_t>(place);
-  T* csr_values_data = non_zero_elements.mutable_data<T>(place);
+  phi::DenseTensor non_zero_crows =
+      phi::Empty<int64_t>(dev_ctx, {batchs * (rows + 1)});
+  phi::DenseTensor non_zero_cols = phi::Empty<int64_t>(dev_ctx, {non_zero_num});
+  phi::DenseTensor non_zero_elements = phi::Empty<T>(dev_ctx, {non_zero_num});
+  int64_t* csr_crows_data = non_zero_crows.data<int64_t>();
+  int64_t* csr_cols_data = non_zero_cols.data<int64_t>();
+  T* csr_values_data = non_zero_elements.data<T>();
 
   const auto& coo_indices = x.non_zero_indices();
   const auto& coo_values = x.non_zero_elements();
@@ -416,10 +397,8 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batchs, 1);
   if (batchs > 1) {
     DenseTensorMeta batchs_meta(DataType::INT64, {batchs}, DataLayout::NCHW);
-    phi::DenseTensor batchs_offset(
-        phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-        std::move(batchs_meta));
-    int64_t* batchs_offset_ptr = batchs_offset.mutable_data<int64_t>(place);
+    phi::DenseTensor batchs_offset = phi::Empty<int64_t>(dev_ctx, {batchs});
+    int64_t* batchs_offset_ptr = batchs_offset.data<int64_t>();
     GetBatchsOffset<<<config.block_per_grid.x,
                       config.thread_per_block.x,
                       0,

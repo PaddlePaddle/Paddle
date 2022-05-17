@@ -46,9 +46,7 @@ paddle::experimental::Tensor hook_function(
   auto place = t_dense->place();
   size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size)),
-      std::move(ret_meta));
+      paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);

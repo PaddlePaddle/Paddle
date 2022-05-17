@@ -84,7 +84,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     } else {
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
-          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }
