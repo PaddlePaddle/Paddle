@@ -2254,7 +2254,7 @@ def triplet_margin_with_distance_loss(input,
     .. math::
         d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
-    or user can defined their own distance functions.`margin` is a nonnegative margin representing the minimum difference 
+    or user can defined their own distance functions. `margin` is a nonnegative margin representing the minimum difference 
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
     distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
 
