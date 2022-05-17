@@ -3849,7 +3849,7 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x, .
+    The inverse error function of x.
 
     Equation:
         .. math::
