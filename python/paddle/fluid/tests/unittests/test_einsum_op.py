@@ -36,8 +36,8 @@ class TestEinsumBinary(OpTest):
         self.attrs = {"equation": self.equation}
         self.outputs = {
             'Out': out,
-            "Cache": [('cache_' + str(i), np.array([1.0]))
-                      for i in range(len(self.operands))]
+            "InnerCache": [('cache_' + str(i), np.array([1.0]))
+                           for i in range(len(self.operands))]
         }
 
     def init_input(self):
@@ -53,7 +53,7 @@ class TestEinsumBinary(OpTest):
 
     def test_check_output(self):
         if not self.disable:
-            self.check_output(no_check_set=["Cache"])
+            self.check_output(no_check_set=["InnerCache"])
 
     def test_grad(self):
         if not self.disable:

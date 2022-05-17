@@ -98,7 +98,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
 template <typename T, typename Context>
 void EinsumGradKernel(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& x,
-                      const std::vector<const DenseTensor*>& forward_cache,
+                      const std::vector<const DenseTensor*>& inner_cache,
                       const DenseTensor& out_grad,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
@@ -172,8 +172,8 @@ void EinsumGradKernel(const Context& dev_ctx,
     DenseTensor before_tile;
 
     std::vector<DenseTensor> cache(3);  // set empty; TA, TB, TdC
-    cache[0].ShareBufferWith(*(forward_cache[0]));
-    cache[1].ShareBufferWith(*(forward_cache[1]));
+    cache[0].ShareBufferWith(*(inner_cache[0]));
+    cache[1].ShareBufferWith(*(inner_cache[1]));
 
     EinsumKernelImpl<T, Context>(dev_ctx,
                                  all_labels,
