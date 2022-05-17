@@ -301,14 +301,18 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             else:
                 layer_state_dict = layer.state_dict()
 
+            summary[m_key]["trainable_params"] = 0
+            trainable_flag = False
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
                 try:
                     if (getattr(getattr(layer, k), 'trainable')) and (
                             not getattr(getattr(layer, k), 'stop_gradient')):
+                        summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
-                    else:
+                        trainable_flag = True
+                    elif not trainable_flag:
                         summary[m_key]["trainable"] = False
                 except:
                     summary[m_key]["trainable"] = True
@@ -427,7 +431,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
-                trainable_params += summary[layer]["nb_params"]
+                trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 
     def _get_input_size(input_size, size):
