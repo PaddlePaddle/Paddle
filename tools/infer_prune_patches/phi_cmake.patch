@@ -1,0 +1,13 @@
+diff --git a/paddle/phi/CMakeLists.txt b/paddle/phi/CMakeLists.txt
+index 58ad42ddd1..8ffdafcf0d 100644
+--- a/paddle/phi/CMakeLists.txt
++++ b/paddle/phi/CMakeLists.txt
+@@ -18,7 +18,7 @@ add_subdirectory(infermeta)
+ # phi operator definitions
+ add_subdirectory(ops)
+ # phi tools
+-add_subdirectory(tools)
++#add_subdirectory(tools)
+ # phi tests
+ add_subdirectory(tests)
+ 
