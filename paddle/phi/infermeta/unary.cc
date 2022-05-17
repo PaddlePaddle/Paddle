@@ -2163,8 +2163,8 @@ void SplitInferMeta(const MetaTensor& x,
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
-                      MetaTensor* xshape,
-                      MetaTensor* out) {
+                      MetaTensor* out,
+                      MetaTensor* xshape) {
   const auto& x_dims = x.dims();
   // Check input tensor dims (<6) Eigen limit.
   PADDLE_ENFORCE_LE(x_dims.size(),
@@ -2964,8 +2964,8 @@ void UniqueRawInferMeta(const MetaTensor& x,
 
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
-                        MetaTensor* xshape,
                         MetaTensor* out,
+                        MetaTensor* xshape,
                         MetaConfig config) {
   const auto& x_dims = x.dims();
   // Validity Check: input tensor dims (<6).
