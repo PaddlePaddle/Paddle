@@ -2649,7 +2649,7 @@ int SlotRecordInMemoryDataFeed::Next() {
             << " batch_offsets: " << batch_offsets_.size()
             << " baych_size: " << this->batch_size_;
   } else {
-    VLOG(0) << "datafeed in gpu graph mode";
+    VLOG(3) << "datafeed in gpu graph mode";
     this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
   }
 

@@ -310,22 +310,22 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len);
   
-  int64_t *cpu_keys = new int64_t[len];
-  cudaMemcpy(cpu_keys, device_keys,
-             len * sizeof(int64_t),
-             cudaMemcpyDeviceToHost);  // 3, 1, 3
-  int *actual_sample_size = new int[len];
-  cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
-             len * sizeof(int),
-             cudaMemcpyDeviceToHost);  // 3, 1, 3
-  std::stringstream ss;
-  ss << len << "\t";
-  for (int i = 0; i < len; i++) {
-    ss << cpu_keys[i] << ":" << actual_sample_size[i] << ",";
-  }
-  VLOG(0) << ss.str();
-  free(actual_sample_size);
-  free(cpu_keys);
+  //int64_t *cpu_keys = new int64_t[len];
+  //cudaMemcpy(cpu_keys, device_keys,
+  //           len * sizeof(int64_t),
+  //           cudaMemcpyDeviceToHost);  // 3, 1, 3
+  //int *actual_sample_size = new int[len];
+  //cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
+  //           len * sizeof(int),
+  //           cudaMemcpyDeviceToHost);  // 3, 1, 3
+  //std::stringstream ss;
+  //ss << len << "\t";
+  //for (int i = 0; i < len; i++) {
+  //  ss << cpu_keys[i] << ":" << actual_sample_size[i] << ",";
+  //}
+  //VLOG(0) << ss.str();
+  //free(actual_sample_size);
+  //free(cpu_keys);
   return neighbor_sample_res;
 }
 
