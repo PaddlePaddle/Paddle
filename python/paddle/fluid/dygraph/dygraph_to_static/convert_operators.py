@@ -167,7 +167,7 @@ def convert_logical_not(x):
     A function representation of a Python ``not`` statement.
 
     Args:
-        x(bool|Tensor): Operand of of ``not`` operator.
+        x(bool|Tensor): Operand of ``not`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.

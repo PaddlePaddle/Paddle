@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// TODO(Aganlengzi): delete this macro control and remove REMOVE_ITEM in
+// cmake/operators.cmake when Paddle supports
+#if (CANN_VERSION_CODE >= 504000)
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -78,3 +82,5 @@ REGISTER_OP_NPU_KERNEL(
                                     int64_t>,
     ops::NPUTakeAlongAxisGradKernel<paddle::platform::NPUDeviceContext, float>,
     ops::NPUTakeAlongAxisGradKernel<paddle::platform::NPUDeviceContext, double>)
+
+#endif

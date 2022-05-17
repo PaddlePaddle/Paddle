@@ -24,6 +24,7 @@ import paddle.fluid.core as core
 import numpy as np
 import os
 import shutil
+import tempfile
 import unittest
 
 
@@ -82,12 +83,17 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_run_with_dump_a.txt", "w") as f:
+
+        temp_dir = tempfile.TemporaryDirectory()
+        dump_a_path = os.path.join(temp_dir.name, 'test_run_with_dump_a.txt')
+        dump_b_path = os.path.join(temp_dir.name, 'test_run_with_dump_b.txt')
+
+        with open(dump_a_path, "w") as f:
             data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_run_with_dump_b.txt", "w") as f:
+        with open(dump_b_path, "w") as f:
             data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -110,8 +116,7 @@ class TestDataset(unittest.TestCase):
             parse_content=True,
             fea_eval=True,
             candidate_size=10000)
-        dataset.set_filelist(
-            ["test_run_with_dump_a.txt", "test_run_with_dump_b.txt"])
+        dataset.set_filelist([dump_a_path, dump_b_path])
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -129,8 +134,7 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
-        os.remove("./test_run_with_dump_a.txt")
-        os.remove("./test_run_with_dump_b.txt")
+        temp_dir.cleanup()
 
     def test_dataset_config(self):
         """ Testcase for dataset configuration. """
