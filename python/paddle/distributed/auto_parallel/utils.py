@@ -1101,6 +1101,10 @@ def is_loss_op(op):
         int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
 
 
+def is_prim_op(op):
+    return op.type.endswith("_p")
+
+
 def get_loss_op(block):
     loss_ops = []
     for op in block.ops:
@@ -1118,6 +1122,9 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     tensor_dist_attr.dims_mapping = dims_mapping
     # TODO get global mesh group
     tensor_dist_attr.process_mesh = process_mesh
+    if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
+        tensor_dist_attr.mark_annotated("dims_mapping")
+        tensor_dist_attr.mark_annotated("process_mesh")
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
 

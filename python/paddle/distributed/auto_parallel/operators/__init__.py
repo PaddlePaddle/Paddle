@@ -32,3 +32,4 @@ from . import dist_pnorm
 from . import dist_slice
 from . import dist_fused_feedforward
 from . import dist_fused_attention
+from . import dist_reduce_p
