@@ -492,11 +492,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         for _, _, pos in forward_inputs_list:
             max_input_position = max(max_input_position, pos)
 
-        # max_attr_position = -1
         for _, _, _, pos in forward_attrs_list:
             assert pos > max_input_position, AssertMessage(pos,
                                                            max_input_position)
-            # max_attr_position = max(max_attr_position, pos)
 
     def BackwardValidationCheck(self):
         backward_forward_inputs_map = self.backward_forward_inputs_map
@@ -685,7 +683,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     # Aligned with forward output position
                     assert name in forward_outputs_position_map.keys(
                     ), AssertMessage(name, forward_outputs_position_map.keys())
-                    # fwd_output_pos = forward_outputs_position_map[name][1]
 
                 if is_optional:
                     set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
@@ -817,16 +814,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         forward_api_name = GetInplacedFunctionName(
             self.forward_api_name) if is_inplaced else self.forward_api_name
 
-        # backward_api_name = self.backward_api_name
-
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
         forward_attrs_list = self.forward_attrs_list
-
-        # backward_forward_inputs_map = self.backward_forward_inputs_map
-        # backward_grad_inputs_map = self.backward_grad_inputs_map
-        # backward_grad_outputs_map = self.backward_grad_outputs_map
-        # backward_attrs_list = self.backward_attrs_list
 
         optional_inputs = self.optional_inputs
         intermediate_outputs = self.intermediate_outputs
