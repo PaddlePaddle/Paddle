@@ -90,9 +90,7 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   size_t bytes_size =
       phi::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size)),
-      std::move(tensor_meta));
+      paddle::memory::Alloc(place, bytes_size), std::move(tensor_meta));
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =
       Controller::Instance().GetExpectedPlace();
