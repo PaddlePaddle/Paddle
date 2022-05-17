@@ -51,8 +51,7 @@ template <typename InT, typename OutT, int ShapeSize, int VecSize,
 __global__ void BroadcastKernelBinary(
     const InT* __restrict__ in0, const InT* __restrict__ in1, OutT* out,
     phi::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    phi::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
-        configlists,
+    phi::Array<kps::details::BroadcastConfig, MAX_INPUT_NUM> configlists,
     int main_tid, int tail_tid, Functor func) {
   int fix = blockIdx.x * blockDim.x * VecSize;
   int num = tail_tid;
@@ -65,14 +64,14 @@ __global__ void BroadcastKernelBinary(
 
   // load in0
   if (use_broadcast[0]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1>(
         arg0, in0, fix, configlists[0], numel);
   } else {
     kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
   }
   // load in1
   if (use_broadcast[1]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1>(
         arg1, in1, fix, configlists[1], numel);
   } else {
     kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
@@ -104,7 +103,7 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   int main_tid = numel / (data_per_thread * vec_size * threads);
   int tail_tid = numel % (data_per_thread * vec_size * threads);
 
-  phi::Array<kps::details::BroadcastConfig<2>, MAX_INPUT_NUM> configlists;
+  phi::Array<kps::details::BroadcastConfig, MAX_INPUT_NUM> configlists;
   phi::Array<bool, MAX_INPUT_NUM> use_broadcast;
 
   use_broadcast[0] = false;
@@ -115,7 +114,7 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   // Here, dims are transposed due to the logic in BroadcastConfig.
   std::vector<int64_t> input1_dims = {n, 1};
   std::vector<int64_t> out_dims = {n, m};
-  configlists[1] = kps::details::BroadcastConfig<2>(out_dims, input1_dims, 2);
+  configlists[1] = kps::details::BroadcastConfig(out_dims, input1_dims, 2);
 
   auto func = AddFunctor<T>();
   auto stream = ctx.stream();

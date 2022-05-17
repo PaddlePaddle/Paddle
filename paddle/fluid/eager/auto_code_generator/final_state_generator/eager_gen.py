@@ -150,6 +150,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
   // Call grad_api function
   VLOG(3) << \"Final State Running: {}\";
 {}
+  // Check NaN and Inf id needed
+{}
   // Get GradIn autograd_meta
 {}
   // Get GradOut autograd_meta
@@ -174,6 +176,8 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
   // Forward API Call
   VLOG(3) << \"Final State Running: \" << \"{}\";
+{}
+  // Check NaN and Inf if needed
 {}
   // Get Outputs
 {}
@@ -234,9 +238,11 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
 
+DECLARE_bool(check_nan_inf);
 {}
 """
 
@@ -261,7 +267,9 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 
+DECLARE_bool(check_nan_inf);
 {}
 {}
 """
@@ -339,6 +347,10 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
     paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
     if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+"""
+
+CHECK_NAN_AND_INF_TEMPLATE = \
+"""  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
 """
 
 
@@ -921,6 +933,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         num_outputs = len(forward_outputs_position_map.keys()) - len(
             intermediate_outputs)
 
+        # Check Nan and Inf
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(function_name,
+                                                              "api_result")
+
         # Get Outputs
         get_outputs_str = ""
         for name, (rtype, pos) in forward_outputs_position_map.items():
@@ -1046,10 +1062,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
             returns_type_str, forward_function_name, inputs_args_definition_str,
             dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
-            forward_function_name, forward_call_str, get_outputs_str,
-            outputs_autograd_meta_str, compute_require_grad_args_str,
-            check_inplace_str, bump_inplace_version_str, node_creation_str,
-            returns_str)
+            forward_function_name, forward_call_str, check_nan_inf_str,
+            get_outputs_str, outputs_autograd_meta_str,
+            compute_require_grad_args_str, check_inplace_str,
+            bump_inplace_version_str, node_creation_str, returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(self):
@@ -1385,6 +1401,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
 
+        # Check Nan and Inf
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(backward_api_name,
+                                                              "returns")
+
         # Prepare for Node Creation if Necessary
         inputs_autograd_meta_str = ""
         outputs_autograd_meta_str = ""
@@ -1473,8 +1493,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, inplace_for_grad_ins_str,
             get_grad_in_args_str, grad_node_name, grad_function_call_str,
-            inputs_autograd_meta_str, outputs_autograd_meta_str,
-            compute_require_grad_str, grad_node_creation_str, returns_str)
+            check_nan_inf_str, inputs_autograd_meta_str,
+            outputs_autograd_meta_str, compute_require_grad_str,
+            grad_node_creation_str, returns_str)
 
     def run(self):
         super().run()
