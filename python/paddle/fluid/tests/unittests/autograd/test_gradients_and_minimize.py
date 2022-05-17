@@ -47,11 +47,10 @@ class TestGradients(unittest.TestCase):
 
         x = np.random.rand(5, 5)
         y = np.random.rand(5, 5)
-        disable_prim()
-        origs = matmul(x, y)
         enable_prim()
         prims = matmul(x, y)
         disable_prim()
+        origs = matmul(x, y)
         for orig, prim in zip(origs, prims):
             np.testing.assert_allclose(orig, prim)
 
@@ -66,7 +65,7 @@ class TestGradients(unittest.TestCase):
                 static_y.stop_gradient = False
                 z = paddle.matmul(static_x, static_x)
                 x_grad, = paddle.static.gradients([z], [static_x])
-                xx_grad, = paddle.static.gradients(x_grad, [static_x])
+                xx_grad, = paddle.static.gradients([x_grad], [static_x])
                 if prim_enabled():
                     prim2orig(main.block(0))
             exe = paddle.static.Executor()
@@ -78,11 +77,10 @@ class TestGradients(unittest.TestCase):
 
         x = np.random.rand(5, 5)
         y = np.random.rand(5, 5)
-        disable_prim()
-        origs = matmul_second_order(x, y)
         enable_prim()
         prims = matmul_second_order(x, y)
         disable_prim()
+        origs = matmul_second_order(x, y)
         for orig, prim in zip(origs, prims):
             np.testing.assert_allclose(orig, prim)
 
@@ -151,6 +149,7 @@ class TestGradients(unittest.TestCase):
 
 class TestMinimize(unittest.TestCase):
     def model(self, x, w, bias, opt):
+        paddle.seed(0)
         place = paddle.CPUPlace()
         if paddle.device.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -170,7 +169,6 @@ class TestMinimize(unittest.TestCase):
             _, grads = opt.minimize(loss)
             if prim_enabled():
                 prim2orig(main.block(0))
-        paddle.seed(0)
         exe.run(startup)
         grads = exe.run(main,
                         feed={'x': x,
@@ -183,11 +181,10 @@ class TestMinimize(unittest.TestCase):
         x = np.random.rand(2, 20)
         w = np.random.rand(20, 2)
         bias = np.random.rand(2)
-        disable_prim()
-        orig_grads = self.model(x, w, bias, paddle.optimizer.Adam(0.01))
         enable_prim()
         prim_grads = self.model(x, w, bias, paddle.optimizer.Adam(0.01))
         disable_prim()
+        orig_grads = self.model(x, w, bias, paddle.optimizer.Adam(0.01))
         for orig, prim in zip(orig_grads, prim_grads):
             np.testing.assert_allclose(orig, prim)
 
@@ -195,11 +192,10 @@ class TestMinimize(unittest.TestCase):
         x = np.random.rand(2, 20)
         w = np.random.rand(20, 2)
         bias = np.random.rand(2)
-        disable_prim()
-        orig_grads = self.model(x, w, bias, paddle.optimizer.SGD(0.01))
         enable_prim()
         prim_grads = self.model(x, w, bias, paddle.optimizer.SGD(0.01))
         disable_prim()
+        orig_grads = self.model(x, w, bias, paddle.optimizer.SGD(0.01))
         for orig, prim in zip(orig_grads, prim_grads):
             np.testing.assert_allclose(orig, prim)
 
