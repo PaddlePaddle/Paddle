@@ -2997,7 +2997,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             
             import paddle
             
-            data = paddle.arange(12)
+            data = paddle.arange(12, dtype='float64')
             data = paddle.reshape(data, (3, 4))
 
             y = paddle.logcumsumexp(data)
