@@ -909,7 +909,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             else:
                 function_name = GetIntermediateAPIFunctionName(function_name)
 
-        forward_call_str = f"{indent}auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+        api_out_type = "auto"
+        if is_inplaced and len(forward_outputs_position_map) == 1:
+            api_out_type = "auto&"
+        forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
         num_outputs = len(forward_outputs_position_map.keys()) - len(
             intermediate_outputs)
 
@@ -930,11 +933,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):
-                returns_type_list[pos] = "paddle::experimental::Tensor"
+                if is_inplaced and inplace_map and name in inplace_map.values():
+                    returns_type_list[pos] = "paddle::experimental::Tensor&"
+                else:
+                    returns_type_list[pos] = "paddle::experimental::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
-                returns_type_list[
-                    pos] = "std::vector<paddle::experimental::Tensor>"
+                if is_inplaced and inplace_map and name in inplace_map.values():
+                    returns_type_list[
+                        pos] = "std::vector<paddle::experimental::Tensor>&"
+                else:
+                    returns_type_list[
+                        pos] = "std::vector<paddle::experimental::Tensor>"
 
         if num_outputs == 1:
             returns_str = returns_list[0]
@@ -943,7 +953,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_type_str = ", ".join(returns_type_list)
             returns_type_str = f"std::tuple<{returns_type_str}>"
             returns_str = ", ".join(returns_list)
-            returns_str = f"std::make_tuple({returns_str})"
+            returns_str = f"{returns_type_str}{{{returns_str}}}"
 
         # Node Creation Pre-Processing
         # 1. Get Input AutoGradMeta
