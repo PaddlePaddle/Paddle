@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
@@ -27,6 +28,16 @@ namespace platform = paddle::platform;
 // paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph
 // paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
 //     std::vector<int64_t> ids)
+
+std::string edges[] = {
+    std::string("0\t1"), std::string("0\t9"), std::string("1\t2"),
+    std::string("1\t0"), std::string("2\t1"), std::string("2\t3"),
+    std::string("3\t2"), std::string("3\t4"), std::string("4\t3"),
+    std::string("4\t5"), std::string("5\t4"), std::string("5\t6"),
+    std::string("6\t5"), std::string("6\t7"), std::string("7\t6"),
+    std::string("7\t8"),
+};
+char edge_file_name[] = "edges1.txt";
 
 std::string nodes[] = {
     std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
@@ -53,12 +64,17 @@ std::vector<std::string> user_feature_dtype = {"float32", "int32", "string",
 std::vector<std::string> item_feature_dtype = {"float32"};
 std::vector<int> user_feature_shape = {1, 2, 1, 1};
 std::vector<int> item_feature_shape = {1};
-void prepare_file(char file_name[]) {
+void prepare_file(char file_name[], bool load_edge) {
   std::ofstream ofile;
   ofile.open(file_name);
-
-  for (auto x : nodes) {
-    ofile << x << std::endl;
+  if (load_edge) {
+    for (auto x : edges) {
+      ofile << x << std::endl;
+    }
+  } else {
+    for (auto x : nodes) {
+      ofile << x << std::endl;
+    }
   }
   ofile.close();
 }
@@ -85,9 +101,10 @@ TEST(TEST_FLEET, test_cpu_cache) {
     g_f1->add_dtype(item_feature_dtype[i]);
     g_f1->add_shape(item_feature_shape[i]);
   }
-  prepare_file(node_file_name);
+  prepare_file(node_file_name, false);
+  prepare_file(edge_file_name, true);
   table_proto.set_shard_num(24);
-
+  table_proto.set_search_level(2);
   std::shared_ptr<HeterPsResource> resource =
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
@@ -120,11 +137,14 @@ TEST(TEST_FLEET, test_cpu_cache) {
   }
   g.cpu_graph_table->build_sampler(0);
   ids1.push_back(5);
+  ids1.push_back(7);
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids0));
   vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids1));
   vec[0].display_on_cpu();
   vec[1].display_on_cpu();
-  g.build_graph_from_cpu(vec);
+  // g.build_graph_from_cpu(vec);
+  g.build_graph_on_single_gpu(vec[0], 0);
+  g.build_graph_on_single_gpu(vec[1], 1);
   int64_t cpu_key[3] = {0, 1, 2};
   /*
   std::vector<std::shared_ptr<char>> buffers(3);
@@ -136,20 +156,89 @@ TEST(TEST_FLEET, test_cpu_cache) {
   }
   */
   void *key;
-  platform::CUDADeviceGuard guard(0);
-  cudaMalloc((void **)&key, 3 * sizeof(int64_t));
-  cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-  auto neighbor_sample_res =
-      g.graph_neighbor_sample_v2(0, (int64_t *)key, 2, 3, true);
-  neighbor_sample_res.display();
-  //{1,9} or {9,1} is expected for key 0
-  //{0,2} or {2,0} is expected for key 1
-  //{1,3} or {3,1} is expected for key 2
-  auto node_query_res = g.query_node_list(0, 0, 4);
-  node_query_res.display();
-  NeighborSampleQuery query;
-  query.initialize(0, node_query_res.get_val(), 2, node_query_res.get_len());
-  query.display();
-  auto c = g.graph_neighbor_sample_v3(query, false);
-  c.display();
+  int device_len = 2;
+  for (int i = 0; i < 2; i++) {
+    // platform::CUDADeviceGuard guard(i);
+    LOG(0) << "query on card " << i;
+    //{1,9} or {9,1} is expected for key 0
+    //{0,2} or {2,0} is expected for key 1
+    //{1,3} or {3,1} is expected for key 2
+    int step = 2;
+    int cur = 0;
+    while (true) {
+      auto node_query_res = g.query_node_list(i, cur, step);
+      node_query_res.display();
+      if (node_query_res.get_len() == 0) {
+        VLOG(0) << "no more ids,break";
+        break;
+      }
+      cur += node_query_res.get_len();
+      NeighborSampleQuery query;
+      query.initialize(i, node_query_res.get_val(), 1,
+                       node_query_res.get_len());
+      query.display();
+      auto c = g.graph_neighbor_sample_v3(query, false);
+      c.display();
+    }
+  }
+  g.cpu_graph_table->set_search_level(2);
+  // g.cpu_graph_table->Load_to_ssd(edge_file_name,"e>u2u");
+  g.cpu_graph_table->Load(edge_file_name, "e>u2u");
+  g.cpu_graph_table->make_partitions(0, 64, 2);
+  int index = 0;
+  while (g.cpu_graph_table->load_next_partition(0) != -1) {
+    auto all_ids = g.cpu_graph_table->get_all_id(0, 0, device_len);
+    for (auto x : all_ids) {
+      for (auto y : x) {
+        VLOG(0) << "part " << index << " " << y;
+      }
+    }
+    for (int i = 0; i < all_ids.size(); i++) {
+      GpuPsCommGraph sub_graph =
+          g.cpu_graph_table->make_gpu_ps_graph(0, all_ids[i]);
+      g.build_graph_on_single_gpu(sub_graph, i);
+      VLOG(2) << "sub graph on gpu " << i << " is built";
+    }
+    VLOG(0) << "start to iterate gpu graph node";
+    g.cpu_graph_table->make_complementary_graph(0, 64);
+    for (int i = 0; i < 2; i++) {
+      // platform::CUDADeviceGuard guard(i);
+      LOG(0) << "query on card " << i;
+      int step = 2;
+      int cur = 0;
+      while (true) {
+        auto node_query_res = g.query_node_list(i, cur, step);
+        node_query_res.display();
+        if (node_query_res.get_len() == 0) {
+          VLOG(0) << "no more ids,break";
+          break;
+        }
+        cur += node_query_res.get_len();
+        NeighborSampleQuery query, q1;
+        query.initialize(i, node_query_res.get_val(), 4,
+                         node_query_res.get_len());
+        query.display();
+        auto c = g.graph_neighbor_sample_v3(query, true);
+        c.display();
+        platform::CUDADeviceGuard guard(i);
+        int64_t *key;
+        VLOG(0) << "sample key 1 globally";
+        g.cpu_graph_table->set_search_level(2);
+        cudaMalloc((void **)&key, sizeof(int64_t));
+        int64_t t_key = 1;
+        cudaMemcpy(key, &t_key, sizeof(int64_t), cudaMemcpyHostToDevice);
+        q1.initialize(i, (int64_t)key, 2, 1);
+        auto d = g.graph_neighbor_sample_v3(q1, true);
+        d.display();
+        cudaFree(key);
+        g.cpu_graph_table->set_search_level(1);
+      }
+    }
+    index++;
+  }
+  auto iter = paddle::framework::GraphGpuWrapper::GetInstance();
+  std::vector<int> device;
+  device.push_back(0);
+  device.push_back(1);
+  iter->set_device(device);
 }

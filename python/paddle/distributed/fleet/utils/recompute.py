@@ -53,18 +53,24 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def swith_rng_state(rng_state):
+def swith_rng_state_tracker(rng_state, tracker):
+    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
+    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
     paddle.set_cuda_rng_state(rng_state)
+    get_rng_state_tracker().set_states_tracker(tracker)
     try:
         yield
     finally:
         paddle.set_cuda_rng_state(orig_cuda_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
 
 
 class EagerRecomputeFunction(EagerPyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         if framework._dygraph_tracer()._has_grad:
             check_recompute_necessary(args)
 
@@ -98,6 +104,8 @@ class EagerRecomputeFunction(EagerPyLayer):
                     "Recompute with RNG perserve is not support current device: {}.".
                     format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -126,6 +134,7 @@ class EagerRecomputeFunction(EagerPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -143,7 +152,8 @@ class EagerRecomputeFunction(EagerPyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
@@ -199,6 +209,7 @@ class EagerRecomputeFunction(EagerPyLayer):
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         if framework._dygraph_tracer()._has_grad:
             check_recompute_necessary(args)
 
@@ -232,6 +243,8 @@ class RecomputeFunction(PyLayer):
                     "Recompute with RNG perserve is not support current device: {}.".
                     format(cur_device))
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+            ).get_states_tracker()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -260,6 +273,7 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -277,7 +291,8 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state(ctx.fw_cuda_rng_state):
+                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
+                                             ctx.fwd_cuda_rng_state_tracker):
                     with paddle.amp.auto_cast(
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,

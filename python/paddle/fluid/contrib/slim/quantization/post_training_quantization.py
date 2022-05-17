@@ -126,6 +126,7 @@ class PostTrainingQuantization(object):
                  onnx_format=False,
                  optimize_model=False,
                  is_use_cache_file=False,
+                 skip_tensor_list=None,
                  cache_dir=None):
         '''
         Constructor.
@@ -198,6 +199,7 @@ class PostTrainingQuantization(object):
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
             onnx_format(bool): Whether to export the quantized model with format of ONNX.
                 Default is False.
+            skip_tensor_list(list): List of skip quant tensor name.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
                 `conv2d/depthwise_conv2d + bn` pass so far. Some targets require the
@@ -301,6 +303,7 @@ class PostTrainingQuantization(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
         self._onnx_format = onnx_format
+        self._skip_tensor_list = skip_tensor_list
         self._is_full_quantize = is_full_quantize
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
@@ -547,6 +550,12 @@ class PostTrainingQuantization(object):
         persistable_var_names = _all_persistable_var_names(self._program)
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
+                # skip quant form self._skip_tensor_list
+                if self._skip_tensor_list is not None:
+                    for inp_name in utils._get_op_input_var_names(op):
+                        if inp_name in self._skip_tensor_list:
+                            op._set_attr("op_namescope", "skip_quant")
+
                 op_type = op.type
                 if self._is_full_quantize and \
                     op_type not in self._quantizable_op_type:

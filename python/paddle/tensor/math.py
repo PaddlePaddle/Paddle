@@ -1388,10 +1388,10 @@ def add_n(inputs, name=None):
         if len(inputs) > 0:
             for input in inputs:
                 check_variable_and_dtype(input, "inputs", \
-                   ['float32', 'float64', 'int32', 'int64'], 'add_n')
+                   ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
     else:
         check_variable_and_dtype(inputs, "inputs", \
-                ['float32', 'float64', 'int32', 'int64'], 'add_n')
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
 
 
     out = helper.create_variable_for_type_inference(
@@ -3346,7 +3346,7 @@ def increment(x, value=1.0, name=None):
 
 def all(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical and`` of tensor elements over the given dimension.
+    Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3442,7 +3442,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical or`` of tensor elements over the given dimension.
+    Computes the ``logical or`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3810,7 +3810,7 @@ def lerp(x, y, weight, name=None):
             x = paddle.arange(1., 5., dtype='float32')
             y = paddle.empty([4], dtype='float32')
             y.fill_(10.)
-            out = paddle.lerp(start, end, 0.5)
+            out = paddle.lerp(x, y, 0.5)
             # out: [5.5., 6., 6.5, 7.]
 
     """
@@ -4260,18 +4260,19 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
         if in_dygraph_mode():
-            input_back = input_front = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
                                             [])
         else:
             input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
                 'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
-            op = getattr(_C_ops, "logical_xor")
-            out = op(input_back, input_front)
+            if in_dygraph_mode():
+                return _C_ops.final_state_logical_xor(input_back, input_front)
+            else:
+                return _C_ops.logical_xor(input_back, input_front)
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
-        return out
+            return elementwise_sub(input_back, input_front, axis=axis)
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
@@ -4379,6 +4380,54 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+def heaviside(x, y, name=None):
+    """
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
+
+    .. math::
+        heaviside(x, y)=
+            \left\{
+                \\begin{array}{lcl}
+                0,& &\\text{if} \ x < 0, \\\\
+                y,& &\\text{if} \ x = 0, \\\\
+                1,& &\\text{if} \ x > 0.
+                \end{array}
+            \\right.
+
+    Notes:
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
+    Args:
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
+
+    Examples:
+        .. code-block:: python
+            :name: heaviside-example
+
+            import paddle
+            x = paddle.to_tensor([-0.5, 0, 0.5])
+            y = paddle.to_tensor([0.1])
+            paddle.heaviside(x, y)
+            #    [0.        , 0.10000000, 1.        ]
+            x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
+            y = paddle.to_tensor([0.1, 0.2, 0.3])
+            paddle.heaviside(x, y)
+            #    [[0.        , 0.20000000, 1.        ],
+            #     [0.        , 1.        , 0.30000001]]
+     """
+    op_type = 'elementwise_heaviside'
+    axis = -1
+    act = None
+    if _non_static_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def frac(x, name=None):
     """
