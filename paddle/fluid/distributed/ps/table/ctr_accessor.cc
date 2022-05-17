@@ -194,7 +194,7 @@ bool CtrCommonAccessor::NeedExtendMF(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool CtrCommonAccessor::HasMF(size_t size) {
+bool CtrCommonAccessor::HasMF(int size) {
   return size > common_feature_value.EmbedxG2SumIndex();
 }
 
