@@ -82,9 +82,9 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
   ASSERT_TRUE(!acc->Shrink(value));
 
   // set unseen_days too long
-  value[1] = 1000;
+  value[0] = 1000;
   // set delta score too small
-  value[2] = 0.001;
+  value[1] = 0.001;
   ASSERT_TRUE(acc->Shrink(value));
 }
 
@@ -163,13 +163,13 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
 
   auto str = acc->ParseToString(value, 0);
 
-  VLOG(3) << str << std::endl;
+  VLOG(0) << "test_string_related" << str << std::endl;
 
   str = "0 1 2 3 4 5 6 7";
   ASSERT_NE(acc->ParseFromString(str, value), 0);
   // make sure init_zero=true
 
-  for (auto i = 8; i < 15; ++i) {
+  for (auto i = 8; i < 16; ++i) {
     ASSERT_FLOAT_EQ(value[i], 0);
   }
 }
