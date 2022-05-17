@@ -39,16 +39,38 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 }
 
 void NaiveExecutor::Run() {
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+  auto stream = ctx->stream();
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
-  for (auto &op : ops_) {
-    VLOG(4) << std::this_thread::get_id() << " run "
-            << op->DebugStringEx(scope_) << " on scope " << scope_;
-    op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+  if (cinn < 100) {
+    cinn++;
+    for (auto &op : ops_) {
+      VLOG(4) << std::this_thread::get_id() << " run "
+              << op->DebugStringEx(scope_) << " on scope " << scope_;
+      op->SetIsCalledByExecutor(false);
+      op->Run(*scope_, place_);
+    }
+    return;
+  }
+  if (!graphCreated) {
+    cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+    for (auto &op : ops_) {
+      VLOG(4) << std::this_thread::get_id() << " run "
+              << op->DebugStringEx(scope_) << " on scope " << scope_;
+      op->SetIsCalledByExecutor(false);
+      op->Run(*scope_, place_);
+    }
+    cudaStreamEndCapture(stream, &graph);
+    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    graphCreated = true;
+  } else {
+    cudaGraphLaunch(instance, stream);
+    cudaStreamSynchronize(stream);
   }
 }
 

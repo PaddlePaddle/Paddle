@@ -73,6 +73,10 @@ class NaiveExecutor {
                  bool with_feed_fetch_ops);
 
  private:
+  int cinn{0};
+  bool graphCreated{false};
+  cudaGraph_t graph;
+  cudaGraphExec_t instance;
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
