@@ -84,7 +84,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
 }
 
-__global__ void CopyKeysKernel(unsigned long long** src_keys,
+__global__ void CopyKeysKernel(unsigned long long* src_keys,
                                unsigned long long* dest_total_keys,
                                const long long* len, int slot_num,
                                int total_len) {
@@ -95,21 +95,27 @@ __global__ void CopyKeysKernel(unsigned long long** src_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  __local__ int64_t local_len[slot_num];
-  GM2LM(len, local_len, slot_num * sizeof(int64_t));
+  __local__ long long local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(long long));
+
+  __global_ptr__ unsigned long long* local_keys[slot_num];
+  GM2LM(src_keys, local_keys,
+        slot_num * sizeof(__global_ptr__ unsigned long long*));
 
   for (int i = thread_id; i < slot_num; i += nthreads) {
     // max core local memory = 8KB
     int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
-    int read_len = min(slot_len, 1024);
+    // int read_len = min(slot_len, 1024);
+    int read_len = 100;
     int dest_len = i ? local_len[i - 1] : 0;
-    __local__ uint64_t local_slot_keys[read_len];
+    __local__ unsigned long long local_slot_keys[read_len];
 
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
-      GM2LM(src_keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      GM2LM(local_keys[i] + k, local_slot_keys,
+            real_read_len * sizeof(unsigned long long));
       LM2GM(local_slot_keys, dest_total_keys + dest_len + k,
-            real_read_len * sizeof(uint64_t));
+            real_read_len * sizeof(unsigned long long));
     }
   }
 }
@@ -199,7 +205,8 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  unsigned long long** o_keys = (unsigned long long**)origin_keys;
+  unsigned long long* o_keys =
+      reinterpret_cast<unsigned long long*>(origin_keys);
   unsigned long long* t_keys = (unsigned long long*)total_keys;
   const long long* c_len = (const long long*)gpu_len;
   CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
@@ -256,13 +263,8 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
                                 float learning_rate, float initial_g2sum,
                                 float initial_range) {
   OptimizerConfig optimizer_config;
-  optimizer_config.nonclk_coeff = nonclk_coeff;
-  optimizer_config.clk_coeff = clk_coeff;
-  optimizer_config.min_bound = min_bound;
-  optimizer_config.max_bound = max_bound;
-  optimizer_config.learning_rate = learning_rate;
-  optimizer_config.initial_g2sum = initial_g2sum;
-  optimizer_config.initial_range = initial_range;
+  optimizer_config.set_sparse_sgd(nonclk_coeff, clk_coeff, min_bound, max_bound,
+                                  learning_rate, initial_g2sum, initial_range);
   HeterPs_->set_sparse_sgd(optimizer_config);
 }
 
@@ -271,12 +273,9 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_initial_range, float mf_min_bound,
                                 float mf_max_bound) {
   OptimizerConfig optimizer_config;
-  optimizer_config.mf_create_thresholds = mf_create_thresholds;
-  optimizer_config.mf_learning_rate = mf_learning_rate;
-  optimizer_config.mf_initial_g2sum = mf_initial_g2sum;
-  optimizer_config.mf_initial_range = mf_initial_range;
-  optimizer_config.mf_min_bound = mf_min_bound;
-  optimizer_config.mf_max_bound = mf_max_bound;
+  optimizer_config.set_embedx_sgd(mf_create_thresholds, mf_learning_rate,
+                                  mf_initial_g2sum, mf_initial_range,
+                                  mf_min_bound, mf_max_bound);
   HeterPs_->set_embedx_sgd(optimizer_config);
 }
 

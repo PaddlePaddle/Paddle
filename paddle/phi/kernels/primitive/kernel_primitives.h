@@ -40,12 +40,15 @@
 #define GRID_NUM_X cluster_num()
 #define GRID_NUM_Y 0
 #define GRID_NUM_Z 0
-
+#define VecSizeL 512
+#define VecSizeM 256
+#define VecSizeS 128
 #else
 
 #define KPStream gpuStream_t
 #define KPDevice phi::GPUContext
 #define _ptr_
+#define __simd__
 
 #define THREAD_ID_X threadIdx.x
 #define THREAD_ID_Y threadIdx.y
@@ -63,6 +66,9 @@
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
 
+#define VecSizeL 4
+#define VecSizeM 2
+#define VecSizeS 1
 #endif
 
 // include file

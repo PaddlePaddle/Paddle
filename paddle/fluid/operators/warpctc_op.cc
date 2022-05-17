@@ -95,7 +95,7 @@ An operator integrating the open-source
 https://arxiv.org/pdf/1512.02595v1.pdf),
 to compute Connectionist Temporal Classification (CTC) loss.
 It can be aliased as softmax with ctc, since a native softmax activation is
-interated to the warp-ctc library, to to normalize values for each row of the
+interated to the warp-ctc library, to normalize values for each row of the
 input tensor.
 
 More detail of CTC loss can be found by referring to

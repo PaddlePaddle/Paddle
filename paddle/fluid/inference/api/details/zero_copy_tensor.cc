@@ -224,8 +224,23 @@ void Tensor::CopyFromCpu(const T *data) {
         "with NPU."));
 #endif
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_type_id =
+        static_cast<size_t>(place_) - static_cast<size_t>(PlaceType::kCUSTOM);
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    paddle::platform::CustomPlace custom_place(
+        phi::GetGlobalDeviceType(device_type_id), device_);
+    auto *t_data = tensor->mutable_data<T>(custom_place);
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    paddle::memory::Copy(custom_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size,
+                         dev_ctx->stream());
+#else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+#endif
   }
 }
 
@@ -398,8 +413,20 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
         "with NPU."));
 #endif
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto custom_place = t_place;
+    auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
+        pool.Get(custom_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), custom_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+// TODO(wangran16): sync_stream
+#else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+#endif
   }
 }
 

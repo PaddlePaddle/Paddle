@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -68,7 +69,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<float> weight_decay_values{};
 
   // use map store <op_type, op_ptr> ?
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : TopologySortOperations(*graph)) {
     if (!node->IsOp()) {
       continue;
     }

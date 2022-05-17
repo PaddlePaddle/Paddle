@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.utils.internal_storage import GradStorage
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
@@ -138,4 +139,6 @@ def train_mlp():
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
     train_mlp()

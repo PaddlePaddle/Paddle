@@ -63,7 +63,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     PADDLE_ENFORCE_EQ(pieces.size(), 2,
                       platform::errors::PreconditionNotMet(
                           "Invalid format of message_and_id argument. "
-                          "Expected \"message:block_id\". Recieved %s",
+                          "Expected \"message:block_id\". Received %s",
                           grad_and_id.c_str()));
     PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0,
                       platform::errors::AlreadyExists(
@@ -82,7 +82,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   PADDLE_ENFORCE_GE(num_blocks, 1,
                     platform::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
-                        "equal or greater than 1. Recieved %zu",
+                        "equal or greater than 1. Received %zu",
                         num_blocks));
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
