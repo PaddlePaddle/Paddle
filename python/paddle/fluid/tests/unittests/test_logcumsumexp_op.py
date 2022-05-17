@@ -139,8 +139,8 @@ class TestLogcumsumexp(unittest.TestCase):
 
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
-            data_np = np.random.random((100, 100)).astype(np.float32)
-            x = paddle.static.data('X', [100, 100])
+            data_np = np.random.random((5, 4)).astype(np.float32)
+            x = paddle.static.data('X', [5, 4])
             y = paddle.logcumsumexp(x)
             y2 = paddle.logcumsumexp(x, axis=0)
             y3 = paddle.logcumsumexp(x, axis=-1)
