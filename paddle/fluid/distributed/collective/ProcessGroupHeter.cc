@@ -263,7 +263,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   auto start = std::chrono::high_resolution_clock::now();
   phi::DenseTensor cpu_tensor;
   auto& gpu_tensor = in_tensors[0];
-  framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
+  if (platform::is_cpu_place(gpu_tensor.place())) {
+    cpu_tensor.ShareDataWith(gpu_tensor);
+  } else {
+    framework::TensorCopySync(gpu_tensor, platform::CPUPlace(), &cpu_tensor);
+  }
   PADDLE_ENFORCE_EQ(with_switch_, true,
                     platform::errors::PreconditionNotMet(
                         "Gloo does not support the send operation."));
@@ -327,7 +331,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
                    framework::DataTypeSize(cpu_tensor.dtype()) / diff.count();
   VLOG(2) << "Goodput: " << goodput << "B/s" << std::endl;
   start = std::chrono::high_resolution_clock::now();
-  framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
+  if (platform::is_cpu_place(gpu_tensor.place())) {
+    gpu_tensor.ShareDataWith(cpu_tensor);
+  } else {
+    framework::TensorCopySync(cpu_tensor, gpu_tensor.place(), &gpu_tensor);
+  }
   end = std::chrono::high_resolution_clock::now();
   diff = end - start;
   VLOG(2) << "Time to copy tensor of dims(" << cpu_tensor.dims()
