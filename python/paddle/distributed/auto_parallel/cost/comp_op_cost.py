@@ -322,7 +322,7 @@ class FillConstantBatchSizeLikeOpCost(CompOpCost):
 
 @register_op_cost
 class FillConstantBatchSizeLikeGradOpCost(CompOpCost):
-    OP_TYPE = "fill_constant_batch_size_like"
+    OP_TYPE = "fill_constant_batch_size_like_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(FillConstantBatchSizeLikeGradOpCost, self).__init__(
@@ -529,11 +529,11 @@ class LogicalAndOpCost(CompOpCost):
 
 
 @register_op_cost
-class LogResetCost(CompOpCost):
+class LodResetOpCost(CompOpCost):
     OP_TYPE = "lod_reset"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(LogResetCost, self).__init__(
+        super(LodResetOpCost, self).__init__(
             op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
