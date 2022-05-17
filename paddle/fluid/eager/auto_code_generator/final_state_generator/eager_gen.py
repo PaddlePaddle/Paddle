@@ -231,6 +231,7 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -349,6 +350,10 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 
 CHECK_NAN_AND_INF_TEMPLATE = \
 """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
+"""
+
+CHECK_CREATE_GRAPH_TEMPLATE = \
+"""  PADDLE_ENFORCE_EQ(create_graph, false, phi::errors::NotFound("The Op %s doesn't have any grad op. If you don't intend calculating higher order derivatives, please set `create_graph` to False.", "{}"));
 """
 
 
@@ -1443,11 +1448,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         grad_node_name = GetGradNodeName(forward_api_name)
 
+        create_graph_check = CHECK_CREATE_GRAPH_TEMPLATE.format(grad_node_name)
+
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
             grad_function_call_str, check_nan_inf_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
-            grad_node_creation_str, returns_str)
+            grad_node_creation_str if len(grad_node_creation_str) > 0 else
+            create_graph_check, returns_str)
 
     def run(self):
         super().run()
