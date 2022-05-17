@@ -498,9 +498,9 @@ tensor_method_func  = [ #noqa
            'put_along_axis',
            'put_along_axis_',
            'exponential_',
+           'heaviside',
            'index_add',
            'index_add_',
-
 ]
 
 #this list used in math_op_patch.py for magic_method bind
