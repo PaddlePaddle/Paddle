@@ -886,11 +886,9 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
     cudaStreamSynchronize(stream);
 
-    int* cpu_index = new int;
-    cudaMemcpy(cpu_index, thrust::raw_pointer_cast(t_index.data()), sizeof(int),
-               cudaMemcpyDeviceToHost);
-    int number_on_cpu = *cpu_index;
-    delete cpu_index;
+    int number_on_cpu = 0;
+    cudaMemcpy(&number_on_cpu, thrust::raw_pointer_cast(t_index.data()),
+               sizeof(int), cudaMemcpyDeviceToHost);
     if (number_on_cpu > 0) {
       int64_t* cpu_keys = new int64_t[number_on_cpu];
       cudaMemcpy(cpu_keys, thrust::raw_pointer_cast(t_cpu_keys.data()),
@@ -923,8 +921,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                       cudaMemcpyHostToDevice, stream);
       cudaMemcpyAsync(gpu_ac_ptr, ac.data(), number_on_cpu * sizeof(int),
                       cudaMemcpyHostToDevice, stream);
-
-      cudaStreamSynchronize(stream);
 
       // Copy gpu_buffers and gpu_ac using kernel.
       // Kernel divide for gpu_ac_ptr.
