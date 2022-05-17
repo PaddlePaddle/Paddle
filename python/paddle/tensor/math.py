@@ -1388,10 +1388,10 @@ def add_n(inputs, name=None):
         if len(inputs) > 0:
             for input in inputs:
                 check_variable_and_dtype(input, "inputs", \
-                   ['float32', 'float64', 'int32', 'int64'], 'add_n')
+                   ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
     else:
         check_variable_and_dtype(inputs, "inputs", \
-                ['float32', 'float64', 'int32', 'int64'], 'add_n')
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'add_n')
 
 
     out = helper.create_variable_for_type_inference(
