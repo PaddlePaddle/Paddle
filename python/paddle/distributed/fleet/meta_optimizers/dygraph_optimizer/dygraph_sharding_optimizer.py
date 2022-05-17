@@ -170,7 +170,7 @@ class DygraphShardingOptimizer(object):
         result = self._inner_optimizer.minimize(loss, startup_program,
                                                 parameters, no_grad_set)
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
         return result
@@ -181,7 +181,7 @@ class DygraphShardingOptimizer(object):
         # actually updating
         self._inner_optimizer.step()
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
     # TODO is it a good way to make _grad_clip a property

@@ -327,16 +327,15 @@ void BindNeighborSampleResult(py::module* m) {
       .def("initialize", &NeighborSampleResult::initialize)
       .def("get_len", &NeighborSampleResult::get_len)
       .def("get_val", &NeighborSampleResult::get_actual_val)
+      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
       .def("display", &NeighborSampleResult::display);
 }
 
 void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
-      // nit<>())
-      //.def("test", &GraphGpuWrapper::test)
-      //.def(py::init([]() { return framework::GraphGpuWrapper::GetInstance();
-      //}))
-      .def(py::init<>())
+  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
+      *m, "GraphGpuWrapper")
+      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
+      // .def(py::init<>())
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -347,6 +346,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)
       .def("get_all_id", &GraphGpuWrapper::get_all_id)
+      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
+      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",

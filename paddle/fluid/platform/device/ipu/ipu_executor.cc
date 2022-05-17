@@ -215,7 +215,12 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
   VLOG(10) << "Running...";
-  session_->run(stepio);
+  if (ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+      ipu_strategy_->runtime_options.enable_eval) {
+    session_->run("implicitPipeliningFwdOnly", stepio);
+  } else {
+    session_->run(stepio);
+  }
   VLOG(10) << "Running...done";
 }
 

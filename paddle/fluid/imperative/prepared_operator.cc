@@ -317,9 +317,11 @@ PreparedOp PrepareImpl(
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, empty_ctx, expected_kernel_key, arg_map_fn,
-                          default_kernel_signature, std::move(kernel_signature),
-                          pt_cpu_kernel, cpu_ctx);
+        return PreparedOp(
+            op, empty_ctx,
+            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+            arg_map_fn, default_kernel_signature, std::move(kernel_signature),
+            pt_cpu_kernel, cpu_ctx);
       }
     }
   }

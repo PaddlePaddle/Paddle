@@ -52,7 +52,7 @@ class SwishOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num, 1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT swish op. "
+            "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs

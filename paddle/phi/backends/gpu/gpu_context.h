@@ -199,6 +199,10 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   void SetBlasHandle(blasHandle_t);
 
+  void SetBlasTensorCoreHandle(blasHandle_t);
+
+  void SetBlasTF32Handle(blasHandle_t);
+
   void SetBlasLtHandle(blasLtHandle_t);
 
   void SetDnnHandle(dnnHandle_t);

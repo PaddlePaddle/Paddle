@@ -30,7 +30,7 @@ class TestResnetGPU(TestResnetBase):
             optimizer=seresnext_net.optimizer,
             use_parallel_executor=False)
         self._compare_result_with_origin_model(
-            check_func, use_device=DeviceType.CUDA, compare_seperately=False)
+            check_func, use_device=DeviceType.CUDA, compare_separately=False)
 
 
 if __name__ == '__main__':

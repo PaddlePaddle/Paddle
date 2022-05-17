@@ -198,7 +198,7 @@ class TestHSigmoidOp(OpTest):
 
 
 @skip_check_grad_ci(
-    reason="For 'TestHSigmoidOpSparse', check_grad is is separately calculated by 'TestHSigmoidOpWithSparseGrad'."
+    reason="For 'TestHSigmoidOpSparse', check_grad is separately calculated by 'TestHSigmoidOpWithSparseGrad'."
 )
 class TestHSigmoidOpSparse(OpTest):
     def setUp(self):
