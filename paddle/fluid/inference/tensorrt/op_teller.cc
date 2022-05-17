@@ -120,7 +120,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "squeeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
