@@ -46,6 +46,8 @@ class RecvOpV2 : public framework::OperatorWithKernel {
               out_shape.size()));
       bool dynamic_shape = ctx->Attrs().Get<bool>("dynamic_shape");
       if (!dynamic_shape) {
+        // No need to check out shape if with dynamic_shape,
+        // since the shape will be recv from send_v2
         for (size_t i = 0; i < out_shape.size(); ++i) {
           PADDLE_ENFORCE_GE(out_shape[i], 1,
                             platform::errors::InvalidArgument(
