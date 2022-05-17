@@ -35,6 +35,12 @@ void AddGradImpl(const Context& dev_ctx,
   phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto* out = &out_grad;
   // Special case when y_grad is not needed and x_grad doesn't reduce
+  VLOG(4) << "yoki: x_grad: " << x_grad;
+  VLOG(4) << "yoki: y_grad: " << y_grad;
+  if (x_grad != nullptr) {
+    VLOG(4) << "yoki: x_grad dims: " << x_grad->dims();
+    VLOG(4) << "yoki: out_grad dims: " << out_grad.dims();
+  }
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
@@ -46,6 +52,7 @@ void AddGradImpl(const Context& dev_ctx,
                "reduce";
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
+    VLOG(4) << "yoki: not special case";
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
 }

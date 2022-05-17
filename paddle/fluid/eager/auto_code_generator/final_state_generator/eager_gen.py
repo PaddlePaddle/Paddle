@@ -140,6 +140,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
+{}
   auto hooked_grads = ApplyGradientHooks(grads);
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
@@ -396,6 +397,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         #self.no_need_buffers
         #self.intermediate_outputs
         #self.inplace_map
+        #self.backward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.grad_api_contents = grad_api_contents
@@ -762,7 +764,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ##########################
         ## Parsing Raw Contents ##
         ##########################
-        # Parse inplace_map
+        # Parse forward and backward inplace_map
         self.ParseInplaceInfo()
 
         # Parse no_need_buffer
@@ -1234,6 +1236,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
+        backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
 
         # Construct grad_api function args
@@ -1248,6 +1251,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if backward_api_name in ops_to_fill_zero_for_empty_grads:
             fill_zero_str = f"{indent}egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
 
+        inplace_grad_input_str = ""
         # Grad Ins from TensorWrappers
         for name, (_, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
@@ -1256,6 +1260,15 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = (name in self.optional_inputs)
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
+            if backward_inplace_map and name in backward_inplace_map.keys():
+                tensor_wrapper_recover_str += f"""
+{indent}bool can_be_inplaced = false;
+{indent}VLOG(10) << {transformed_tensor_name}.name() << "({name}) use_count: " << {transformed_tensor_name}.impl().use_count();
+{indent}if ({transformed_tensor_name}.initialized() && {transformed_tensor_name}.impl().use_count() == 2) {{
+{indent}  can_be_inplaced = true;
+{indent}}}
+"""
+                inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
@@ -1270,13 +1283,22 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
+        inplace_for_grad_ins_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_inputs_map.items():
-            print("yoki backward_grad_inputs_map: name: ", name, "  ttype: ", ttype, "  fwd_position: ", fwd_position, "  grad_api_position: ", grad_api_position)
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
             if IsPlainTensorType(ttype):
+                if backward_inplace_map and name in backward_inplace_map.keys():
+                    inplace_for_grad_ins_str = f"""
+{indent}bool can_be_inplaced = false;
+{indent}VLOG(10) << grads[{fwd_position}][0].name() << "({name}) use_count: " << grads[{fwd_position}][0].impl().use_count();
+{indent}if (grads[{fwd_position}][0].initialized() && grads[{fwd_position}][0].impl().use_count() == 1) {{
+{indent}  can_be_inplaced = true;
+{indent}}}
+"""
+                    inplace_grad_input_str = transformed_tensor_name
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
 
                 if is_optional:
@@ -1302,21 +1324,26 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_api_args[grad_api_position] = name
             get_grad_in_args_list.append(get_attr_str)
 
-        print("yoki: get_grad_in_args_list: ", get_grad_in_args_list)
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
 
         # Grad Outputs
+        inplace_for_grad_outs_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
-            print("yoki backward_grad_outputs_map: name: ", name, "  ttype: ", ttype, "  fwd_position: ", fwd_position, "  grad_api_position: ", grad_api_position)
             transformed_tensor_name = self.TransformToNextGradName(name)
             if IsPlainTensorType(ttype):
+                if backward_inplace_map and name in backward_inplace_map.values():
+                    inplace_for_grad_outs_str = f"""
+{indent}if (can_be_inplaced) {{
+{indent}  egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output[{fwd_position}][0]);
+{indent}}}
+"""
+                    inplace_grad_input_str = transformed_tensor_name
                 grad_api_args.append(f"api_output[{fwd_position}][0]")
             else:
                 assert IsVectorTensorType(ttype)
                 grad_api_args.append(f"api_output[{fwd_position}]")
 
-        print("yoki: grad_api_args: ", grad_api_args)
         grad_api_args_str = ", ".join(grad_api_args)
 
         # Grad Function Call String
@@ -1338,6 +1365,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
       api_output[i].push_back(&returns[i][j]);
     }}
   }}
+{inplace_for_grad_outs_str}
 """
 
         grad_function_call_str = grad_function_call_str + f"{indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"
@@ -1428,33 +1456,39 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(forward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
+            grad_node_name, fill_zero_str, inplace_for_grad_ins_str, get_grad_in_args_str, grad_node_name,
             grad_function_call_str, inputs_autograd_meta_str,
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
         
-        if forward_api_name == 'reshape':
+        if forward_api_name == 'add':
             self.node_definition_str = """
-paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> GradNodereshapeFinal::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> GradNodeaddFinal::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {
   // Fill Zero For GradIn Tensors
 
   // Apply Gradient Hooks
-  VLOG(10) << "yoki: reshape_grad_node use_count1: " << grads[0][0].impl().use_count();
+
+  bool can_be_inplaced = false;
+  VLOG(10) << grads[0][0].name() << "(out_grad) use_count: " << grads[0][0].impl().use_count();
+  if (grads[0][0].initialized() && grads[0][0].impl().use_count() == 1) {
+    can_be_inplaced = true;
+  }
+
   auto hooked_grads = ApplyGradientHooks(grads);
-  VLOG(10) << "yoki: reshape_grad_node hooked_grads use_count2: " << hooked_grads[0][0].impl().use_count();
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto xshape = egr::EagerUtils::RecoverTensorWrapper(&this->xshape_);
+  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+  auto y = egr::EagerUtils::RecoverTensorWrapper(&this->y_);
   auto& grad_out = hooked_grads[0][0];
-  VLOG(10) << "yoki: reshape_grad_node grad_out use_count3: " << grad_out.impl().use_count();
+  auto& axis = this->axis_;
 
   // Call grad_api function
-  VLOG(3) << "Final State Running: GradNodereshapeFinal";
+  VLOG(3) << "Final State Running: GradNodeaddFinal";
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns(1);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output(1);
-  for (int i = 0; i < 1; ++i) {
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns(2);
+  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output(2);
+  for (int i = 0; i < 2; ++i) {
     returns[i].resize(out_metas[i].size());
     if(returns[i].size() == 0) {
       api_output[i].reserve(1);
@@ -1466,37 +1500,50 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
       api_output[i].push_back(&returns[i][j]);
     }
   }
-  VLOG(10) << "yoki: reshape_grad_node use_count4: " << grads[0][0].impl().use_count();
-  VLOG(10) << "yoki: xshape use_count5: " << xshape.impl().use_count();
-  paddle::experimental::reshape_grad(xshape, grad_out, api_output[0][0]);
+
+  if (can_be_inplaced) {
+    egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output[0][0]);
+  }
+  
+  VLOG(4) << "yoki GradNodeadd api_output[0][0]: " << api_output[0][0];
+  VLOG(4) << "yoki GradNodeadd api_output[1][0]: " << api_output[1][0];
+  paddle::experimental::add_grad(x, y, grad_out, axis, api_output[0][0], api_output[1][0]);
   // Get GradIn autograd_meta
   egr::AutogradMeta* grad_out_autograd_meta = egr::EagerUtils::nullable_autograd_meta(grad_out);
   // Get GradOut autograd_meta
 
   auto& grad_x = returns[0][0];
   egr::AutogradMeta* grad_x_autograd_meta = egr::EagerUtils::autograd_meta(&grad_x);
+
+  auto& grad_y = returns[1][0];
+  egr::AutogradMeta* grad_y_autograd_meta = egr::EagerUtils::autograd_meta(&grad_y);
   // Compute Require Grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(trace_backward,grad_out_autograd_meta);
   // Create Grad Node
   if(require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event("reshape_grad node_creation", paddle::platform::TracerEventType::OperatorInner, 1);
+    paddle::platform::RecordEvent node_creation_record_event("add_grad node_creation", paddle::platform::TracerEventType::OperatorInner, 1);
 
-    egr::EagerUtils::PassStopGradient(false,grad_x_autograd_meta);
+    egr::EagerUtils::PassStopGradient(false,grad_x_autograd_meta,grad_y_autograd_meta);
 
     // Node Construction
-    auto grad_node = std::shared_ptr<GradNodereshape_gradFinal>(new GradNodereshape_gradFinal(1, 2));
+    auto grad_node = std::shared_ptr<GradNodeadd_gradFinal>(new GradNodeadd_gradFinal(2, 3));
     // SetAttributes if needed
-
+    grad_node->SetAttributeaxis(axis);
     // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrappery(y);
     grad_node->SetTensorWrappergrad_out(grad_out);
     // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(grad_out, 1);
+    grad_node->SetGradOutMeta(grad_out, 2);
     // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
     egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
+    egr::EagerUtils::SetOutRankWithSlot(grad_y_autograd_meta, 1);
     egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
+    egr::EagerUtils::SetHistory(grad_y_autograd_meta, grad_node);
     grad_node->SetGradInMeta(grad_x, 0);
+    grad_node->SetGradInMeta(grad_y, 1);
     egr::EagerUtils::CheckAndRetainGrad(grad_x);
+    egr::EagerUtils::CheckAndRetainGrad(grad_y);
     // Set TensorWrappers for Forward Outputs if needed
 
   }
@@ -1507,10 +1554,11 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 
 }
 """
-            assert False
 
     def run(self):
         super().run()
+
+        self.ParseInplaceGradInfo()
 
         self.ResetOptionalInputs()
 
