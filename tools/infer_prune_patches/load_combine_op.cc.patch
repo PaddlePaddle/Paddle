@@ -1,0 +1,17 @@
+diff --git a/paddle/fluid/operators/load_combine_op.cc b/paddle/fluid/operators/load_combine_op.cc
+index 374bfa73f2..34da83dc7d 100644
+--- a/paddle/fluid/operators/load_combine_op.cc
++++ b/paddle/fluid/operators/load_combine_op.cc
+@@ -80,10 +80,10 @@ that were saved using the SaveCombine operator.
+ 
+ namespace ops = paddle::operators;
+ 
+-REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
++REGISTER_OPERATOR__(load_combine, ops::LoadCombineOp,
+                   ops::LoadCombineOpProtoMaker);
+ 
+-REGISTER_OP_CPU_KERNEL(
++REGISTER_OP_CPU_KERNEL__(
+     load_combine,
+     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
+     ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,

@@ -1,0 +1,13 @@
+diff --git a/paddle/fluid/operators/load_combine_op.cu b/paddle/fluid/operators/load_combine_op.cu
+index 2a42c0daa7..887cf14479 100644
+--- a/paddle/fluid/operators/load_combine_op.cu
++++ b/paddle/fluid/operators/load_combine_op.cu
+@@ -16,7 +16,7 @@ limitations under the License. */
+ 
+ namespace ops = paddle::operators;
+ 
+-REGISTER_OP_CUDA_KERNEL(
++REGISTER_OP_CUDA_KERNEL__(
+     load_combine,
+     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, float>,
+     ops::LoadCombineOpKernel<paddle::platform::CUDADeviceContext, double>,
