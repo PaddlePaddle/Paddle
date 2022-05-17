@@ -114,6 +114,7 @@ class RecordEvent {
 // stops when the object is destroyed.
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordMemEvent {
+ public:
   /**
    * @param ptr:  Pointer address allocated or free.
    * @param place: Device for this memory event.
