@@ -185,6 +185,7 @@ class CostEstimator:
 
                 # calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
+                print("estimate cost op", op)
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
 
@@ -243,6 +244,7 @@ class CostEstimator:
                               []) if resharder is None else resharder
 
         block = self.program.global_block()
+        # print("estimate_cost", self.program)
         self._estimate_core(dist_context, resharder, block)
 
         return self.global_cost

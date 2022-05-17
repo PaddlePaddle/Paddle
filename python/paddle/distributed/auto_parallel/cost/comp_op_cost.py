@@ -250,6 +250,24 @@ class ElementwiseSubOpCost(CompOpCost):
 
 
 @register_op_cost
+class ElementwiseSubGradOpCost(CompOpCost):
+    OP_TYPE = "elementwise_sub_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(ElementwiseSubGradOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
 class EmbeddingOpCost(CompOpCost):
     OP_TYPE = "c_embedding"
 
@@ -852,6 +870,24 @@ class ReduceMeanOpCost(CompOpCost):
 
 
 @register_op_cost
+class ReduceMeanGradOpCost(CompOpCost):
+    OP_TYPE = "reduce_mean_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(ReduceMeanGradOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
 class SamplingIdOpCost(CompOpCost):
     OP_TYPE = "sampling_id"
 
@@ -1001,6 +1037,24 @@ class SquareOpCost(CompOpCost):
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(SquareOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class SquareGradOpCost(CompOpCost):
+    OP_TYPE = "square_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(SquareGradOpCost, self).__init__(
             op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
