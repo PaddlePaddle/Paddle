@@ -31,13 +31,11 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
-from paddle.fluid.incubate.ad_transform.primx import prim_enabled
 
 __op_not_need_param_init__ = ["while", "cond"]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
-
     dist_op_context = ctx.dist_op_context
     main_block = dist_op_context.work_block
     startup_block = dist_op_context.startup_block
@@ -343,7 +341,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block
@@ -366,7 +363,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
@@ -374,9 +371,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        main_block._sync_with_cpp()
-
         # data parallel synchronization for primtive operators
+        from paddle.incubate.autograd.utils import prim_enabled
         if prim_enabled():
             assert is_prim_op(src_op)
             prim_operator_data_parallel_functor(ctx, src_op)
@@ -429,8 +425,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                                         dims_mapping)
                         op_attr.set_input_dims_mapping(param.name, dims_mapping)
                         ctx.set_op_dist_attr_for_program(new_op, op_attr)
-
-                startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
