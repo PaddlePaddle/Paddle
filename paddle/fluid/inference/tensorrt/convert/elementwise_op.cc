@@ -91,7 +91,9 @@ class ElementwiseWeightOpConverter : public OpConverter {
             nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
             static_cast<size_t>(Y_t->numel()));
       } else if (op_type_ == "sub") {
-        weight_data[0] = -weight_data[0];
+        for (int i = 0; i < Y_t->numel(); i++) {
+          weight_data[i] = -weight_data[i];
+        }
         shift_weights = TensorRTEngine::Weight(
             nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
             static_cast<size_t>(Y_t->numel()));
@@ -100,7 +102,9 @@ class ElementwiseWeightOpConverter : public OpConverter {
             nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
             static_cast<size_t>(Y_t->numel()));
       } else if (op_type_ == "div") {
-        weight_data[0] = 1.f / weight_data[0];
+        for (int i = 0; i < Y_t->numel(); i++) {
+          weight_data[i] = 1.f / weight_data[i];
+        }
         scale_weights = TensorRTEngine::Weight(
             nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
             static_cast<size_t>(Y_t->numel()));
