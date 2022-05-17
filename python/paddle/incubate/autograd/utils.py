@@ -34,14 +34,13 @@ prim_option = PrimOption()
 def prim_enabled():
     """
     .. note::
-        **This API is ONLY available in the static mode.**
+        **ONLY available in the static mode.**
 
-    This API shows whether the automatic differentiation mechanism based on 
+    Shows whether the automatic differentiation mechanism based on 
     automatic differential basic operators is ON.
      
     Returns:
-        flag(bool): whether the automatic differentiation mechanism based on 
-            automatic differential basic operators is ON. 
+        flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON. Defaults to False.
 
     Examples:
 
@@ -66,9 +65,9 @@ def prim_enabled():
 def enable_prim():
     """
     .. note::
-        **This API is ONLY available in the static mode.**
+        **ONLY available in the static mode.**
 
-    This API turns ON automatic differentiation mechanism based on automatic 
+    Turns ON automatic differentiation mechanism based on automatic 
     differential basic operators.
     
     Examples:
@@ -90,9 +89,9 @@ def enable_prim():
 def disable_prim():
     """
     .. note::
-        **This API is ONLY available in the static mode.**
+        **ONLY available in the static mode.**
 
-    This API turns OFF automatic differentiation mechanism based on automatic 
+    Turns OFF automatic differentiation mechanism based on automatic 
     differential basic operators.
     
     Examples:
