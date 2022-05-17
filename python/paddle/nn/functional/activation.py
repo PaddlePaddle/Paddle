@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.layers import sigmoid  # noqa: F401
+from ...tensor.ops import sigmoid  # noqa: F401
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
 
