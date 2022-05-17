@@ -638,7 +638,7 @@ __all__ = [  # noqa
            'renorm',
            'take_along_axis',
            'put_along_axis',
+           'heaviside',
            'index_add',
            'index_add_',
-
 ]
