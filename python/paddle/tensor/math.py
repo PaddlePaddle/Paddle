@@ -2858,7 +2858,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
 def kron(x, y, name=None):
     """
 
-${comment}
+    ${comment}
 
     Args:
         x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
