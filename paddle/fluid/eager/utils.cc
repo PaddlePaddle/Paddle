@@ -165,12 +165,14 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-  if (autograd_meta->GradNode()) {
-    VLOG(7) << "Should not set grad node twice, original node is:"
-            << autograd_meta->GradNode()->name()
-            << "current is: " << grad_node->name();
+  if (autograd_meta) {
+    if (autograd_meta->GradNode()) {
+      VLOG(7) << "Should not set grad node twice, original node is:"
+              << autograd_meta->GradNode()->name()
+              << "current is: " << grad_node->name();
+    }
+    autograd_meta->SetGradNode(grad_node);
   }
-  autograd_meta->SetGradNode(grad_node);
 }
 
 void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
@@ -181,7 +183,7 @@ void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
   }
 }
 void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
-  target->SetSingleOutRankWithSlot(slot_id, 0);
+  if (target) target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
 std::shared_ptr<egr::EagerVariable> EagerUtils::TrySyncToVar(
@@ -479,15 +481,47 @@ void EagerUtils::FillZeroForEmptyGradInputs(
             grad_in_meta.HasTensorMeta(),
             paddle::platform::errors::Fatal(
                 "Unable to fill empty grad inputs due to empty GradSlotMeta"));
-
         const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-        phi::Place place = grad_in_meta.GetPlace();
-
         auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype, place);
+            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype,
+            grad_in_meta.GetPlace());
         grad.set_impl(tensor_with_zero.impl());
       }
     }
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInput(
+    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+  if (!in_grad->initialized()) {
+    PADDLE_ENFORCE(
+        grad_in_meta.HasTensorMeta(),
+        paddle::platform::errors::Fatal(
+            "Unable to fill empty grad inputs due to empty GradSlotMeta"));
+    const auto& tensor_meta = grad_in_meta.GetTensorMeta();
+    auto tensor_with_zero =
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
+                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+    in_grad->set_impl(tensor_with_zero.impl());
+  }
+}
+
+void EagerUtils::FillZeroForEmptyOptionalGradInput(
+    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+  if (!in_grad->initialized() && grad_in_meta.HasTensorMeta()) {
+    const auto& tensor_meta = grad_in_meta.GetTensorMeta();
+    auto tensor_with_zero =
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
+                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+    in_grad->set_impl(tensor_with_zero.impl());
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInput(
+    std::vector<paddle::experimental::Tensor>* in_grads,
+    const std::vector<GradSlotMeta>& grad_in_metas) {
+  for (size_t i = 0; i < in_grads->size(); i++) {
+    FillZeroForEmptyGradInput(&in_grads->at(i), grad_in_metas[i]);
   }
 }
 

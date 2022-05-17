@@ -265,7 +265,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              const DenseTensor& dout,
                              const DenseTensor& ddx,
                              const DenseTensor& d_dout_new,
-                             const DenseTensor& d_ddout,
+                             paddle::optional<const DenseTensor&> d_ddout,
                              DenseTensor* d_out_new,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx) {
@@ -274,11 +274,11 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(d_dout);
   }
   if (d_out_new) {
-    d_dout->Resize(out.dims());
+    d_out_new->Resize(out.dims());
     dev_ctx.template Alloc<T>(d_out_new);
   }
   if (d_ddx) {
-    d_dout->Resize(ddx.dims());
+    d_ddx->Resize(ddx.dims());
     dev_ctx.template Alloc<T>(d_ddx);
   }
   funcs::SigmoidTripleGradFunctor<T> functor;
@@ -286,7 +286,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
           &out,
           &ddx,
           &dout,
-          &d_ddout,
+          d_ddout.get_ptr(),
           &d_dout_new,
           d_dout,
           d_out_new,
