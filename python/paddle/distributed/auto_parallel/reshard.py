@@ -549,6 +549,8 @@ class Remover:
         for var_name in startup_output_vars:
             if var_name in main_input_vars:
                 need_vars.add(var_name)
+            if "learning_rate" in var_name:
+                need_vars.add(var_name)
 
         startup_ops = startup_block.ops
         actual_need_vars = set()
@@ -1294,7 +1296,14 @@ class Resharder:
                     partition_tensor_list) == 1 or not partition_tensor_list
                 to_slice_tensor = partition_tensor_list[0][0] if len(
                     partition_tensor_list) == 1 else source_tensor
-                new_name = unique_name.generate(var_name + "@RESHARD")
+                if "learning_rate" in var_name:
+                    new_name = var_name
+                else:
+                    new_name = unique_name.generate(var_name + "@RESHARD")
+                if var_name in ["input0new", "input1new", "input2new"]:
+                    print(block)
+                    to_slice_tensor = block.vars[var_name[:var_name.find("new")]]
+                    print(to_slice_tensor)
                 target_tensor = Inserter.insert_slice_op(
                     block,
                     idx,
@@ -1346,6 +1355,30 @@ class Resharder:
                                     target_tensor.name, dims_mapping)
                                 op_dist_attr.set_input_dist_attr(name, None)
 
+    def get_op_desc(self, dist_tensor):
+        complete_shape = dist_tensor.serial_tensor.shape
+        target_dims_mapping = [0] + [-1 for _ in range(len(complete_shape))]
+        target_process_shape = [16]
+        target_process_group = list(range(16))
+        op_desc_seq = {}
+
+        slice_starts = []
+        slice_ends = []
+        slices_axes = []
+        target_partition_index = Resharder.compute_partition_index(
+            0, complete_shape, target_dims_mapping,
+            target_process_shape, target_process_group)
+        for idx, item in enumerate(target_partition_index):
+            slice_starts.append(item[0])
+            slice_ends.append(item[1])
+            slices_axes.append(idx)
+
+        slice_op_desc = SliceOpDesc(starts=slice_starts, ends=slice_ends, axes=slices_axes)
+        op_desc_seq[0] = [slice_op_desc]
+
+        return op_desc_seq
+
+
     def reshard(self):
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             if block_idx in Resharder.while_block_info:
@@ -1390,6 +1423,7 @@ class Resharder:
                                                                       None)
 
             idx = 0
+            inputs_name = ["input0new", "input1new", "input2new"]
             while idx < len(block.ops):
                 pre_op_count = len(block.ops)
                 op = block.ops[idx]
@@ -1433,9 +1467,13 @@ class Resharder:
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
+                        # if "input" in var_name:
+                        #     self.slice_input(block, op)
                         for process_mesh in process_meshes:
-                            if dist_tensor is not None and self.need_reshard(
-                                    dist_tensor, dist_op, process_mesh):
+                            if dist_tensor is not None and (self.need_reshard(
+                                    dist_tensor, dist_op, process_mesh) or var_name in inputs_name):
+                                if var_name in inputs_name:
+                                    reshard_op_desc = self.get_op_desc(dist_tensor)
                                 reshard_op_desc = self.find_op_desc_seq(
                                     dist_tensor, dist_op, process_mesh)
                                 self.parse_op_desc(block, reshard_op_desc,

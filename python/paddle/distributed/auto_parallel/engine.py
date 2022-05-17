@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import nvtx
+import time
 import copy
 import logging
 from collections import defaultdict
@@ -88,18 +90,20 @@ class Engine:
                 loss=None,
                 metrics=None,
                 mode='train',
-                all_ranks=False):
+                all_ranks=False,
+                train_data=None):
         self._optimizer = optimizer
         # TODO: check loss type
         self._loss = loss
         self._metrics = to_list(metrics)
         self._mode = mode
-        self._build(mode)  # build forward program
+        dataloader = self._build(mode, train_data)  # build forward program
         self._plan(mode)  # completion & planner
         self._parallel(mode, all_ranks)  # parallel
         self._initialize(mode)  # init comm and startup program
+        return dataloader
 
-    def _build(self, mode):
+    def _build(self, mode, train_data):
         serial_main_prog = self._serial_main_progs.get(mode, None)
         if serial_main_prog is not None:
             return
@@ -109,10 +113,39 @@ class Engine:
         serial_main_prog = self._orig_main_prog.clone()
         serial_startup_prog = self._orig_startup_prog.clone()
         with fluid.program_guard(serial_main_prog, serial_startup_prog):
-            inputs_spec = self.inputs_spec
-            labels_spec = self.labels_spec if self.labels_spec else []
+            inputs_spec_big = self.inputs_spec
+            labels_spec_big = self.labels_spec if self.labels_spec else []
+            inputs_big = [s._create_feed_layer() for s in inputs_spec_big]
+            labels_big = [s._create_feed_layer() for s in labels_spec_big]
+
+            dataloader = NonIterableGeneratorLoader(
+                train_data,
+                inputs_big+labels_big,
+                paddle.static.cuda_places(),
+                1,
+                1,
+                None,
+                sample_generator=False)
+
+            inputs_spec = []
+            for i in range(len(inputs_spec_big)):
+                shape = list(inputs_spec_big[i].shape)
+                shape[0] //= 16
+                name = inputs_spec_big[i].name
+                dtype = inputs_spec_big[i].dtype
+                inputs_spec.append(InputSpec(shape, dtype, name + "new"))
+
+            labels_spec = []
+            for i in range(len(labels_spec_big)):
+                shape = list(labels_spec_big[i].shape)
+                shape[0] //= 16
+                name = labels_spec_big[i].name
+                dtype = labels_spec_big[i].dtype
+                labels_spec.append(InputSpec(shape, dtype, name + "new"))
+
             inputs = [s._create_feed_layer() for s in inputs_spec]
             labels = [s._create_feed_layer() for s in labels_spec]
+
             outputs = to_list(self.model(*inputs))
             if mode != "predict" and self._loss:
                 losses = to_list(self._loss(*(outputs + labels)))
@@ -123,7 +156,7 @@ class Engine:
             labels = [self._set_data_parallel(var) for var in labels]
 
         # print(serial_main_prog)
-        self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+        self._feed_vars[mode] = {"inputs": inputs_big, "labels": labels_big}
 
         self._fetch_vars[mode] = {
             "outputs": flatten(outputs),
@@ -137,6 +170,7 @@ class Engine:
             serial_main_prog, serial_startup_prog, self._dist_main_progs[mode],
             self._dist_startup_progs[mode])
         self._pass_contexts[mode] = PassContext()
+        return dataloader
 
     def _plan(self, mode):
 
@@ -316,7 +350,7 @@ class Engine:
                 self._pass_contexts[self.mode])
 
     def fit(self,
-            train_data,
+            train_dataloader,
             batch_size=1,
             epochs=1,
             steps_per_epoch=None,
@@ -327,15 +361,18 @@ class Engine:
         # TODO: evaluate after training
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, "train model is not ready, please call `engine.prepare(mode='train')` first."
-        train_dataloader = self._create_dataloader(
-            train_data, batch_size, epochs, steps_per_epoch, sample_generator)
+        # train_dataloader = self._create_dataloader(
+        #     train_data, batch_size, epochs, steps_per_epoch, sample_generator)
 
         outputs = []
         for epoch in range(epochs):
             for step, data in enumerate(train_dataloader):
+                n = nvtx.start_range("epoch_" + str(step))
                 logs, loss = self._train_step(data, use_program_cache,
                                               return_numpy)
+                nvtx.end_range(n)
                 outputs.append(loss)
+                logs["epoch"] = step
                 train_logs = {
                     "train_" + name: val
                     for name, val in logs.items()
@@ -389,16 +426,20 @@ class Engine:
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         fetch_var = self._fetch_vars[self.mode]["loss"][0]
+        # print_program_with_dist_attr(dist_main_prog, self.dist_context)
         if fetch_var.name not in dist_main_prog.global_block().vars:
             loss = self._executor.run(dist_main_prog,
                                       use_program_cache=use_program_cache)
             logs["loss"] = None
         else:
+            start_time = time.time()
             loss = self._executor.run(dist_main_prog,
                                       fetch_list=to_list(fetch_var),
                                       use_program_cache=use_program_cache,
                                       return_numpy=return_numpy)
+            end_time = time.time()
             logs["loss"] = loss
+            logs["speed"] = end_time - start_time
         return logs, loss
 
     def _eval_step(self, data, use_program_cache=False, return_numpy=True):
@@ -443,9 +484,10 @@ class Engine:
                            batch_size,
                            epochs=1,
                            steps_per_epoch=None,
-                           sample_generator=True):
-        feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
-            self.mode]["labels"]
+                           sample_generator=True,
+                           feed_list=None):
+        # feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
+        #     self.mode]["labels"]
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
