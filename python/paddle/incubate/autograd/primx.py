@@ -537,7 +537,7 @@ def orig2prim(block=None):
 def prim2orig(block=None):
     """
     .. note::
-        **This API is ONLY available in the static mode.**
+        **ONLY available in the static mode.**
 
     All operators in the target block are processed as follows.
     If it is an automatic differential basic operator, it will be
@@ -545,7 +545,7 @@ def prim2orig(block=None):
     equivalent function to support execution.
     
     Args:
-        block(paddle.fluid.framework.Variable|None, optional): The
+        block(paddle.static.Variable|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
        
