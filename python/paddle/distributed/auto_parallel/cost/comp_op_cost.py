@@ -302,6 +302,7 @@ class FillConstantOpCost(CompOpCost):
         # NOTE: The actual formula will be filled in the future
         return 0
 
+
 @register_op_cost
 class FillConstantBatchSizeLikeOpCost(CompOpCost):
     OP_TYPE = "fill_constant_batch_size_like"
@@ -551,8 +552,7 @@ class LogOpCost(CompOpCost):
     OP_TYPE = "log"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(LogOpCost, self).__init__(
-            op=op, op_desc=op_desc, cluster=cluster)
+        super(LogOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
     def calc_flops(self):
@@ -642,8 +642,6 @@ class MatmulV2OpCost(CompOpCost):
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(MatmulV2OpCost, self).__init__(
-<<<<<<< HEAD
-=======
             op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
@@ -697,8 +695,7 @@ class MulOpCost(CompOpCost):
     OP_TYPE = "mul"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(MulOpCost, self).__init__(
-            op=op, op_desc=op_desc, cluster=cluster)
+        super(MulOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
     def calc_flops(self):
@@ -1038,7 +1035,8 @@ class TopKOpCost(CompOpCost):
     OP_TYPE = "top_k"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(TopKOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
+        super(TopKOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
     def calc_flops(self):
@@ -1048,6 +1046,7 @@ class TopKOpCost(CompOpCost):
     def calc_time(self):
         # NOTE: The actual formula will be filled in the future
         return 0
+
 
 @register_op_cost
 class Transpose2OpCost(CompOpCost):
@@ -1091,7 +1090,6 @@ class Unsqueeze2OpCost(CompOpCost):
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(Unsqueeze2OpCost, self).__init__(
->>>>>>> upodate cost model
             op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided

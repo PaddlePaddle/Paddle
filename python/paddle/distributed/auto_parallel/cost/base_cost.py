@@ -24,26 +24,12 @@ from ..dist_tensor import DistributedTensor
 from ..utils import _get_idx_in_axis
 from ..dist_tensor import DistributedTensor
 
-
 COMM_OP_TYPE = [
     "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum",
     "c_identity"
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
 _g_op_cost_factory = {}
-<<<<<<< HEAD
-
-
-def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
-    desc = {}
-    desc["op"] = op_type
-    desc["group_ranks"] = group_ranks
-    desc["inputs"] = {"X": [(dtype, shape)]}
-    if attrs is not None:
-        desc["attrs"] = attrs
-    return desc
-=======
->>>>>>> upodate cost model
 
 
 def build_comp_desc_from_op(op):
@@ -102,7 +88,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
             var_name_list = op.input(input_name)
             var_desc = []
             for var_name in var_name_list:
-                var = get_var_with_recursion(var_name, op.block, op.block.program)
+                var = get_var_with_recursion(var_name, op.block,
+                                             op.block.program)
                 # use op input_dims_mapping
                 dims_mapping = dist_attr.get_input_dims_mapping(var_name)
                 global_sizes = var.shape
@@ -133,7 +120,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
             var_desc = []
             for var_name in var_name_list:
                 # use op output_dims_mapping
-                var = get_var_with_recursion(var_name, op.block, op.block.program)
+                var = get_var_with_recursion(var_name, op.block,
+                                             op.block.program)
                 dist_attr = dist_op.dist_attr
                 dims_mapping = dist_attr.get_output_dims_mapping(var_name)
                 process_mesh = dist_attr.process_mesh
@@ -155,10 +143,10 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     # modify target shape
                     for idx, axis in enumerate(dims_mapping):
                         if axis >= 0:
-                            shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
+                            shape_list[idx] = shape_list[
+                                idx] // process_mesh_shape[axis]
                     desc["attrs"]["shape"] = shape_list
             output_desc[out_name] = var_desc
-
 
         desc["outputs"] = output_desc
 
@@ -256,7 +244,8 @@ def build_comm_desc_from_dist_op(op_type,
                             has_found = True
                             break
                 assert has_found
-                var = get_var_with_recursion(var_name, serial_op.block, serial_op.block.program)
+                var = get_var_with_recursion(var_name, serial_op.block,
+                                             serial_op.block.program)
 
                 dims_mapping = dist_attr.get_input_dims_mapping(
                     var_name
@@ -391,7 +380,8 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
                 var_name) if dist_attr.get_input_dims_mapping(
                     var_name
                 ) is not None else dist_attr.get_output_dims_mapping(var_name)
-            var = get_var_with_recursion(var_name, dist_op.serial_op.block, dist_op.serial_op.block.program)
+            var = get_var_with_recursion(var_name, dist_op.serial_op.block,
+                                         dist_op.serial_op.block.program)
             global_sizes = var.shape
             shard_sizes = None
             topology = process_mesh.topology
@@ -441,11 +431,8 @@ class CommContext:
             # set default
             self.base_ring = 8.4
             self.base_tree = 0.
-<<<<<<< HEAD
-=======
             # self.base_inter_ring = 9.6
             # self.base_inter_tree = 28
->>>>>>> upodate cost model
             # NVL in default
             self.intra_ring = 3.4
             self.intra_tree = 28
@@ -722,7 +709,8 @@ class CommOpCost(OpCost):
                 vars = self.op.block.vars
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
                 var_name = self.op.input("X")[0]
-                var = get_var_with_recursion(var_name, self.op.block, self.program)
+                var = get_var_with_recursion(var_name, self.op.block,
+                                             self.program)
                 dtype = var.dtype
                 shape = var.shape
             elif self.op_desc is not None:
@@ -816,19 +804,11 @@ def register_op_cost(cls):
 
 
 def calc_time_by_modeling(op=None, desc=None, cluster=None):
-<<<<<<< HEAD
-=======
-    comm_context = CommContext(cluster)
->>>>>>> upodate cost model
     op_type = op.type if op is not None else desc["op"]
     if op_type in COMM_OP_TYPE:
         op_cost = _g_op_cost_factory[op_type](op=op,
                                               op_desc=desc,
-<<<<<<< HEAD
                                               comm_context=CommContext(cluster))
-=======
-                                              comm_context=comm_context)
->>>>>>> upodate cost model
     elif op_type not in NON_COMP_TYPE:
         op_cost = _g_op_cost_factory[op_type](op=op,
                                               op_desc=desc,
