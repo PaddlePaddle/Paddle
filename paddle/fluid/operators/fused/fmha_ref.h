@@ -22,13 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/functors.h"
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/phi/kernels/softmax_grad_kernel.h"
-#include "paddle/phi/kernels/softmax_kernel.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -389,11 +383,11 @@ struct TernaryAddFunctor {
 template <typename T>
 class FMHAGateRef {
  public:
-  FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, bool is_merge,
+  FMHAGateRef(const platform::CUDADeviceContext& dev_ctx, bool merge_qkv,
               int64_t batch_size, int64_t seq_len_m, int64_t seq_len_r,
               int64_t m_size, int64_t num_head, int64_t key_dim)
       : dev_ctx_(dev_ctx),
-        is_merge_(is_merge),
+        merge_qkv_(merge_qkv),
         batch_size_(batch_size),
         seq_len_m_(seq_len_m),
         seq_len_r_(seq_len_r),
@@ -410,7 +404,7 @@ class FMHAGateRef {
     T* q_ptr = nullptr;
     T* k_ptr = nullptr;
     T* v_ptr = nullptr;
-    if (is_merge_) {
+    if (merge_qkv_) {
       ComputeQKVTransposeForward(qkv_out, qkv_transpose_out);
       T* qkv_data = qkv_transpose_out->data<T>();
       int64_t q_size =
@@ -469,19 +463,16 @@ class FMHAGateRef {
     ComputeQKTVTransposeForward(*qktv_out, fmha_out);
   }
 
-  void ComputeBackward(const Tensor& q_transpose_out,
-                       const Tensor& k_transpose_out,
-                       const Tensor& v_transpose_out,
-                       const Tensor& qkv_transpose_out, const Tensor* src_mask,
-                       const Tensor& softmax_out, const Tensor& fmha_out_grad,
-                       const Tensor* nonbatched_bias,
-                       Tensor* nonbatched_bias_grad, Tensor* qktv_out_grad,
-                       Tensor* softmax_out_grad, Tensor* src_mask_grad,
-                       Tensor* q_transpose_out_grad,
-                       Tensor* k_transpose_out_grad,
-                       Tensor* v_transpose_out_grad, Tensor* q_out_grad,
-                       Tensor* k_out_grad, Tensor* v_out_grad,
-                       Tensor* qkv_transpose_out_grad, Tensor* qkv_out_grad) {
+  void ComputeBackward(
+      const Tensor& q_transpose_out, const Tensor& k_transpose_out,
+      const Tensor& v_transpose_out, const Tensor& qkv_transpose_out,
+      const Tensor& softmax_out, const Tensor& fmha_out_grad,
+      const Tensor* nonbatched_bias, Tensor* nonbatched_bias_grad,
+      Tensor* qktv_out_grad, Tensor* softmax_out_grad, Tensor* src_mask_grad,
+      Tensor* q_transpose_out_grad, Tensor* k_transpose_out_grad,
+      Tensor* v_transpose_out_grad, Tensor* q_out_grad, Tensor* k_out_grad,
+      Tensor* v_out_grad, Tensor* qkv_transpose_out_grad,
+      Tensor* qkv_out_grad) {
     ComputeQKTVTransposeBackward(fmha_out_grad, qktv_out_grad);
 
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
@@ -492,7 +483,7 @@ class FMHAGateRef {
     T* k_grad_ptr = nullptr;
     T* v_grad_ptr = nullptr;
 
-    if (is_merge_) {
+    if (merge_qkv_) {
       int q_size = batch_size_ * seq_len_m_ * seq_len_r_ * num_head_ * key_dim_;
       int k_size = q_size;
 
@@ -554,7 +545,7 @@ class FMHAGateRef {
         {batch_size_, seq_len_m_, num_head_, seq_len_r_, m_size_});
     T* qk_out_grad_data = qk_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
 
-    ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out, src_mask,
+    ComputeBiasMaskSoftmaxBackward(softmax_out_grad, &softmax_out,
                                    src_mask_grad, &qk_out_grad,
                                    nonbatched_bias_grad);
 
@@ -583,7 +574,7 @@ class FMHAGateRef {
     blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
                      qk_out_grad_data, k_ptr, beta, q_grad_ptr, gemm_batch_size,
                      stride_a, stride_b);
-    if (is_merge_) {
+    if (merge_qkv_) {
       ComputeQKVTransposeBackward(*qkv_transpose_out_grad, qkv_out_grad);
     } else {
       ComputeQKVTransposeBackward(*q_transpose_out_grad, *k_transpose_out_grad,
@@ -658,84 +649,69 @@ class FMHAGateRef {
                                      const Tensor* nonbatched_bias,
                                      const Tensor* src_mask,
                                      Tensor* softmax_out) {
+    int rank = qk_out->dims().size();
     Tensor src_mask_out;
-    src_mask_out.Resize(qk_out->dims());
-    src_mask_out.mutable_data<T>(dev_ctx_.GetPlace());
+
+    Tensor* softmax_in = softmax_out;
+    if (phi::UseCudnnSoftmax<T>(dev_ctx_, qk_out->dims()[rank - 1], true)) {
+      // Not sure whether cudnn softmax can execute inplace.
+      src_mask_out.Resize(qk_out->dims());
+      src_mask_out.mutable_data<T>(dev_ctx_.GetPlace());
+      softmax_in = &src_mask_out;
+    }
 
     if (nonbatched_bias) {
       std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
-      std::vector<Tensor*> outs = {&src_mask_out};
+      std::vector<Tensor*> outs = {softmax_in};
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
                                                      T, T>(
           dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
-
     } else {
       std::vector<const Tensor*> ins = {qk_out, src_mask};
-      std::vector<Tensor*> outs = {&src_mask_out};
+      std::vector<Tensor*> outs = {softmax_in};
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
                                                      T, T>(dev_ctx_, ins, &outs,
                                                            -1, AddFunctor<T>());
     }
-#ifdef PADDLE_WITH_CUDA
-    phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, src_mask_out, -1,
+    phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *softmax_in, -1,
                                            softmax_out);
-#endif
-#ifdef PADDLE_WITH_HIP
-    phi::SoftmaxKernel<T, phi::GPUContext>(
-        static_cast<const phi::GPUContext&>(dev_ctx_), src_mask_out, -1,
-        softmax_out);
-#endif
   }
 
+  // src_mask_out = qk_out + nonbatched_bias + src_mask
+  // softmax_out = softmax(src_mask_out)
   void ComputeBiasMaskSoftmaxBackward(const Tensor* softmax_out_grad,
                                       const Tensor* softmax_out,
-                                      const Tensor* src_mask,
                                       Tensor* src_mask_grad,
                                       Tensor* qk_out_grad,
                                       Tensor* nonbatched_bias_grad) {
-    Tensor* softmax_x_grad = nullptr;
-    Tensor src_mask_out_grad;
-    if (src_mask) {
-      // src_mask_out = qk_out + src_mask
-      // Special case when dy is not needed and dx doesn't reduce
-      if (qk_out_grad && src_mask_grad == nullptr &&
-          qk_out_grad->dims() == softmax_out->dims()) {
-        VLOG(4) << "Special case when dy is not needed and dx doesn't "
-                   "reduce";
-        softmax_x_grad = qk_out_grad;
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Only used for the backward elementwise_add op when"
-            "dy is not needed and dx is not reduce"));
-        return;
-      }
-    } else {
-      src_mask_out_grad.Resize(softmax_out->dims());
-      src_mask_out_grad.mutable_data<T>(dev_ctx_.GetPlace());
-      softmax_x_grad = &src_mask_out_grad;
-    }
-#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_NOT_NULL(qk_out_grad);
+
+    PADDLE_ENFORCE_EQ(qk_out_grad->dims(), softmax_out->dims(),
+                      platform::errors::InvalidArgument(
+                          "The shape of qk_out_grad and softmax_out is "
+                          "expected to be the same. But recieved qk_out_grad's "
+                          "shape = %s, softmax_out's shape = %s.",
+                          qk_out_grad->dims(), softmax_out->dims()));
+
+    PADDLE_ENFORCE_EQ(src_mask_grad, nullptr,
+                      platform::errors::InvalidArgument(
+                          "src_mask_grad is expected to be nullptr."));
+
     phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, *softmax_out,
                                             *softmax_out_grad, -1, qk_out_grad);
-#endif
-#ifdef PADDLE_WITH_HIP
-    phi::SoftmaxGradKernel<T, phi::GPUContext>(
-        static_cast<const phi::GPUContext&>(dev_ctx_), *softmax_out,
-        *softmax_out_grad, -1, qk_out_grad);
-#endif
 
     // [1, bs, num_head, seq_l, seq_l] -> [bs, num_head, seq_l, seq_l]
     if (nonbatched_bias_grad) {
       gpuStream_t stream = dev_ctx_.stream();
       TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx_, *softmax_x_grad, nonbatched_bias_grad,
+          dev_ctx_, *qk_out_grad, nonbatched_bias_grad,
           kps::IdentityFunctor<T>(), {0, 1}, stream);
     }
   }
 
  private:
   const platform::CUDADeviceContext& dev_ctx_;
-  bool is_merge_;
+  bool merge_qkv_;
   int64_t batch_size_;
   int64_t seq_len_m_;
   int64_t seq_len_r_;

@@ -234,7 +234,7 @@ Tensor *ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
   auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
 
-  auto *out = ctx.Output<Tensor>("Y");
+  auto *out = ctx.Output<Tensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   // out = GEMM(gate_out, out_linear_weight)
@@ -249,16 +249,16 @@ Tensor *ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
 template <typename T>
 Tensor *ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                     const Tensor *fmha_out, Tensor *d_fmha_out,
-                                    int m, int n, int k, bool is_gating) {
-  auto *d_out = ctx.Input<Tensor>(framework::GradVarName("Y"));
+                                    int m, int n, int k, bool has_gating) {
+  auto *d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
-  auto *input = is_gating ? ctx.Input<Tensor>("GateOut") : fmha_out;
+  auto *input = has_gating ? ctx.Input<Tensor>("GateOut") : fmha_out;
 
   auto *d_out_linear_weight =
       ctx.Output<Tensor>(framework::GradVarName("OutLinearWeight"));
   auto *d_out_linear_bias =
       ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
-  auto *d_input = is_gating
+  auto *d_input = has_gating
                       ? ctx.Output<Tensor>(framework::GradVarName("GateOut"))
                       : d_fmha_out;
 
@@ -287,8 +287,8 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *v_out = ctx.Output<Tensor>("ValueOut");
     auto *qkv_out = ctx.Output<Tensor>("QKVOut");
 
-    const auto is_merge = ctx.Attr<bool>("is_merge");
-    const auto is_gating = ctx.Attr<bool>("is_gating");
+    const auto merge_qkv = ctx.Attr<bool>("merge_qkv");
+    const auto has_gating = ctx.Attr<bool>("has_gating");
 
     const auto input_q_dims = query->dims();
     int num_head, key_dim, m_size, kv_dim;
@@ -297,10 +297,10 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     int seq_len_m = input_q_dims[1];
     int seq_len_r = input_q_dims[2];
     int q_dim = input_q_dims[3];
-    if (is_merge) {
+    if (merge_qkv) {
       // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
       // qkv_weight[3, num_head, key_dim, qkv_dim]
-      const auto qkv_w_dims = ctx.Input<Tensor>("QKVWeight")->dims();
+      const auto &qkv_w_dims = ctx.Input<Tensor>("QKVWeight")->dims();
       qkv_out->mutable_data<T>(ctx.GetPlace());
       num_head = qkv_w_dims[1];
       key_dim = qkv_w_dims[2];
@@ -325,7 +325,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     softmax_out->mutable_data<T>(ctx.GetPlace());
 
     Tensor qkv_transpose_out, q_transpose_out, k_transpose_out, v_transpose_out;
-    if (is_merge) {
+    if (merge_qkv) {
       // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
       //    [batch_size * seq_len_m * seq_len_r * 3 * num_head * c]
       int m = batch_size * seq_len_m * seq_len_r;
@@ -335,9 +335,8 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       qkv_transpose_out.Resize(
           {3, batch_size, seq_len_m, num_head, seq_len_r, q_dim});
       qkv_transpose_out.mutable_data<T>(ctx.GetPlace());
-
     } else {
-      // 1. separated QKV Matmul
+      // 1. Separated QKV Matmul
       int q_m = batch_size * seq_len_m * seq_len_r;
       int q_n = num_head * key_dim;
       int q_k = q_dim;
@@ -367,7 +366,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     fmha_out.Resize({batch_size, seq_len_m, seq_len_r, num_head, key_dim});
     fmha_out.mutable_data<T>(ctx.GetPlace());
     auto fmha_compute =
-        FMHAGateRef<T>(ctx.cuda_device_context(), is_merge, batch_size,
+        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, batch_size,
                        seq_len_m, seq_len_r, m_size, num_head, key_dim);
 
     fmha_compute.ComputeForward(
@@ -375,13 +374,12 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
         &q_transpose_out, &k_transpose_out, &v_transpose_out,
         &qkv_transpose_out, softmax_out, qktv_out, &fmha_out);
 
-    int m, n, k;
     // 3. Gating Linear
     Tensor *fmha_or_gate_out = nullptr;
-    if (is_gating) {
-      m = batch_size * seq_len_m * seq_len_r;
-      n = num_head * key_dim;
-      k = q_dim;
+    if (has_gating) {
+      int m = batch_size * seq_len_m * seq_len_r;
+      int n = num_head * key_dim;
+      int k = q_dim;
 
       Tensor gate_bias_out;
       gate_bias_out.Resize(
@@ -394,9 +392,9 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     }
 
     // 4. Output Linear
-    m = batch_size * seq_len_m * seq_len_r;
-    n = q_dim;
-    k = num_head * key_dim;
+    int m = batch_size * seq_len_m * seq_len_r;
+    int n = q_dim;
+    int k = num_head * key_dim;
     ComputeOutputLinearForward<T>(ctx, fmha_or_gate_out, m, n, k);
   }
 };
@@ -405,13 +403,12 @@ template <typename T>
 class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto is_gating = ctx.Attr<bool>("is_gating");
-    const auto is_merge = ctx.Attr<bool>("is_merge");
+    const auto has_gating = ctx.Attr<bool>("has_gating");
+    const auto merge_qkv = ctx.Attr<bool>("merge_qkv");
 
     // forward input
     auto *query = ctx.Input<Tensor>("Query");
     auto *key = ctx.Input<Tensor>("Key");
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
 
     // forward output, backward input
@@ -449,24 +446,24 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       d_key->mutable_data<T>(ctx.GetPlace());
     }
 
-    const auto input_q_dims = query->dims();
+    const auto &input_q_dims = query->dims();
     int num_head, key_dim, m_size, kv_dim;
     int batch_size = input_q_dims[0];
     int seq_len_m = input_q_dims[1];
     int seq_len_r = input_q_dims[2];
     int q_dim = input_q_dims[3];
 
-    if (is_merge) {
+    if (merge_qkv) {
       // qkv_weight[3, n_head, c, qkv_dim]
-      const auto qkv_w_dims = ctx.Input<Tensor>("QKVWeight")->dims();
+      const auto &qkv_w_dims = ctx.Input<Tensor>("QKVWeight")->dims();
       d_qkv_out->mutable_data<T>(ctx.GetPlace());
       num_head = qkv_w_dims[1];
       key_dim = qkv_w_dims[2];
       m_size = seq_len_r;
       kv_dim = q_dim;
     } else {
-      const auto input_k_dims = key->dims();
-      const auto q_w_dims = ctx.Input<Tensor>("QueryWeight")->dims();
+      const auto &input_k_dims = key->dims();
+      const auto &q_w_dims = ctx.Input<Tensor>("QueryWeight")->dims();
       d_q_out->mutable_data<T>(ctx.GetPlace());
       d_k_out->mutable_data<T>(ctx.GetPlace());
       d_v_out->mutable_data<T>(ctx.GetPlace());
@@ -482,7 +479,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     fmha_out.mutable_data<T>(ctx.GetPlace());
 
     auto fmha_compute =
-        FMHAGateRef<T>(ctx.cuda_device_context(), is_merge, batch_size,
+        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, batch_size,
                        seq_len_m, seq_len_r, m_size, num_head, key_dim);
     fmha_compute.ComputeQKTVTransposeForward(*qktv_out, &fmha_out);
 
@@ -496,10 +493,10 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     d_fmha_out.mutable_data<T>(ctx.GetPlace());
 
     Tensor *d_fhma_or_gate_out = ComputeOutputLinearBackward<T>(
-        ctx, &fmha_out, &d_fmha_out, m, n, k, is_gating);
+        ctx, &fmha_out, &d_fmha_out, m, n, k, has_gating);
 
     // 2. Gradient of Gating Linear
-    if (is_gating) {
+    if (has_gating) {
       m = batch_size * seq_len_m * seq_len_r;
       n = num_head * key_dim;
       k = q_dim;
@@ -523,7 +520,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     Tensor qkv_transpose_out, d_qkv_transpose_out;
     Tensor q_transpose_out, k_transpose_out, v_transpose_out, d_q_transpose_out,
         d_k_transpose_out, d_v_transpose_out;
-    if (is_merge) {
+    if (merge_qkv) {
       qkv_transpose_out.Resize(
           {3, batch_size, seq_len_m, num_head, seq_len_r, key_dim});
       qkv_transpose_out.mutable_data<T>(ctx.GetPlace());
@@ -564,17 +561,13 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     // 3. Gradient of FMHA
     fmha_compute.ComputeBackward(
         q_transpose_out, k_transpose_out, v_transpose_out, qkv_transpose_out,
-        src_mask, *softmax_out, d_fmha_out, nonbatched_bias, d_nonbatched_bias,
+        *softmax_out, d_fmha_out, nonbatched_bias, d_nonbatched_bias,
         d_qktv_out, d_softmax_out, nullptr, &d_q_transpose_out,
         &d_k_transpose_out, &d_v_transpose_out, d_q_out, d_k_out, d_v_out,
         &d_qkv_transpose_out, d_qkv_out);
 
-    bool use_addto = false;
-    if (is_gating) {
-      use_addto = true;
-    }
-
-    if (is_merge) {
+    bool use_addto = has_gating ? true : false;
+    if (merge_qkv) {
       // 4. Gradient of Merged QKV Matmul
       m = batch_size * seq_len_m * seq_len_r;
       n = 3 * num_head * key_dim;

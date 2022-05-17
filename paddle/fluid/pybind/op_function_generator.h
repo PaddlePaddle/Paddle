@@ -154,7 +154,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
                          "CacheKVOut",     "Y"}},
     {"fused_gate_attention",
      {"QueryOut", "KeyOut", "ValueOut", "QKVOut", "QKTVOut", "SoftmaxOut",
-      "GateOut", "Y"}},
+      "GateOut", "Out"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
