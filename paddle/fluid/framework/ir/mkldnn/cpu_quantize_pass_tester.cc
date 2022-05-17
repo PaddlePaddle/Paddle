@@ -613,8 +613,12 @@ TEST_P(TestElementwises, elementwise_unsigned_and_signed_input) {
   TestElementwiseUnsignedAndSignedInput(GetParam());
 }
 
-INSTANTIATE_TEST_CASE_P(Elementwises, TestElementwises,
-                        testing::ValuesIn(elementwises));
+INSTANTIATE_TEST_CASE_P(
+    Elementwises, TestElementwises, testing::ValuesIn(elementwises),
+    [](const ::testing::TestParamInfo<TestElementwises::ParamType>& info) {
+      std::string name = info.param[0];
+      return name;
+    });
 
 const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
                                               const std::string& prefix,
