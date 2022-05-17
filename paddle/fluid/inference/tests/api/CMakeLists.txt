@@ -174,7 +174,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
         ARGS --fp32_model=${fp32_model_dir}
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
-             --batch_size=50
+             --batch_size=8
              --enable_int8=true
              --enable_quant_int8=${enable_quant_int8}
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
@@ -808,7 +808,6 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_quant2_vgg16_mkldnn PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
