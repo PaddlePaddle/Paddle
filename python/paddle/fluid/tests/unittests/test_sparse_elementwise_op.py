@@ -108,12 +108,14 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                         equal_nan=True))
 
     def test_support_dtypes_csr(self):
+        paddle.device.set_device('cpu')
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
                 for op in op_list:
                     self.func_test_csr(op)
 
     def test_support_dtypes_coo(self):
+        paddle.device.set_device('cpu')
         if paddle.device.get_device() == "cpu":
             with _test_eager_guard():
                 for op in op_list:
@@ -121,4 +123,5 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.device.set_device('cpu')
     unittest.main()
