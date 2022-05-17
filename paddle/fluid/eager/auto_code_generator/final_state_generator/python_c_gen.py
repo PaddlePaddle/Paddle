@@ -397,7 +397,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         self.ParseDispensable()
 
         # Initialized forward_inplace_map
-        self.ParseInplaceInfo()
+        self.ParseForwardInplaceInfo()
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()

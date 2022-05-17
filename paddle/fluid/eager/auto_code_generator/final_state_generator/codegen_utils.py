@@ -348,7 +348,7 @@ class FunctionGeneratorBase:
         self.intermediate_outputs = []  #[name, ...]    
         self.forward_inplace_map = {}  #{name : name, ...}
 
-    def ParseInplaceInfo(self):
+    def ParseForwardInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
         if 'inplace' not in forward_api_contents.keys(): return
 

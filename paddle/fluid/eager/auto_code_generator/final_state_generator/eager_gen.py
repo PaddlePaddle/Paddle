@@ -774,7 +774,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ## Parsing Raw Contents ##
         ##########################
         # Parse forward and backward inplace_map
-        self.ParseInplaceInfo()
+        self.ParseForwardInplaceInfo()
         self.ParseBackwardInplaceInfo()
 
         # Parse no_need_buffer
