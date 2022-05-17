@@ -118,9 +118,9 @@ TEST(AutoTune, sum) {
 
   // 1. Test call_back.
   VLOG(3) << ">>> [CallBack]: Test case.";
-  auto callback1 = tune::MakeCallback(Algo<4>);
-  auto callback2 = tune::MakeCallback(Algo<2>);
-  auto callback3 = tune::MakeCallback(Algo<1>);
+  auto callback1 = tune::MakeCallback<float>(Algo<4>);
+  auto callback2 = tune::MakeCallback<float>(Algo<2>);
+  auto callback3 = tune::MakeCallback<float>(Algo<1>);
   std::vector<decltype(callback1)> callbacks{callback1, callback2, callback3};
   for (int i = 0; i < callbacks.size(); ++i) {
     dev_ctx->Wait();
@@ -133,9 +133,9 @@ TEST(AutoTune, sum) {
 
   // 2. Test call_back tune.
   VLOG(3) << ">>> [AutoTune]: Test case.";
-  auto tuner = tune::MakeAutoTuner(Algo<4>);
-  tuner.AddCallBack(tune::MakeCallback(Algo<2>));
-  tuner.AddCallBack(tune::MakeCallback(Algo<1>));
+  auto tuner = tune::MakeAutoTuner<float>(Algo<4>);
+  tuner.AddCallBack(tune::MakeCallback<float>(Algo<2>));
+  tuner.AddCallBack(tune::MakeCallback<float>(Algo<1>));
 
   /* The 1st ctx works for ctx.Wait(),
      the 2nd is just the param of call_back. */

@@ -133,7 +133,8 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
-  kAlgorithmCount = 4
+  kTranspose = 4,
+  kAlgorithmCount = 5
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -163,6 +164,8 @@ class AutoTuneCache {
   AlgorithmsCacheMap& GetConvBackwardFilter() {
     return Get(AlgorithmType::kConvBackwardFilter);
   }
+
+  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
     for (auto& v : auto_tune_map_) {

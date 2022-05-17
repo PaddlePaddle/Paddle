@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 
 namespace paddle {
 namespace operators {
@@ -966,10 +967,8 @@ class DimsAndPermSimplifier {
     tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
 
     Simplifyperm(rank, tmp_dims, perm, simplified_dims, simplified_perm);
-
     movement_size = GetMovementSize(rank, simplified_movement_size,
                                     simplified_dims, simplified_perm, src, dst);
-
     simplified_dims[simplified_rank - 1] /=
         (movement_size / simplified_movement_size);
   }
@@ -1082,23 +1081,45 @@ inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
 }
 
 template <typename T>
-void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
+size_t GetTransposeKey(const int rank, const Tensor& in,
+                       const std::vector<int32_t>& perm) {
+  auto in_shape = phi::vectorize(in.dims());
+  return phi::autotune::GetKey(
+      in_shape, perm, rank, paddle::experimental::CppTypeToDataType<T>::Type());
+}
+
+template <typename T>
+void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
                               const Tensor& in,
                               const std::vector<int32_t>& perm, Tensor* out) {
   PADDLE_ENFORCE_LT(
-      ndims, phi::DDim::kMaxRank,
+      rank, phi::DDim::kMaxRank,
       platform::errors::OutOfRange(
           "The maximum dimension rank of "
           "tensor is expected to be less than %d, but here is %d.",
-          phi::DDim::kMaxRank, ndims));
+          phi::DDim::kMaxRank, rank));
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    auto tuner = phi::autotune::MakeAutoTuner(TransCompute<phi::GPUContext, T>);
-    tuner.AddCallBack(
-        phi::autotune::MakeCallback(SimplifyThenLaunch<phi::GPUContext, T>));
-    auto index = tuner.PickBestKernel(dev_ctx, ndims, dev_ctx, in, out, perm);
-    tuner.RunBestKernel(index, ndims, dev_ctx, in, out, perm);
+    auto* tuner =
+        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
+    if (tuner->CheckInit()) {
+      tuner->AddCallBack(phi::autotune::MakeCallback<T>(
+          SimplifyThenLaunch<phi::GPUContext, T>));
+      tuner->FinishInit();
+    }
+
+    auto key = GetTransposeKey<T>(rank, in, perm);
+    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    if (cache.Find(key)) {
+      auto index = cache.Get(key);
+      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    } else {
+      // All avaliable kernels have ran while picking the best kernel, so
+      // there may be no need for another RunBestKernel.
+      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
+      cache.Set(key, index);
+    }
   }
 }
 
