@@ -1926,6 +1926,52 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void AsgdInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& avg_param,
+                   const MetaTensor& current_step,
+                   float t0,
+                   MetaTensor* param_out,
+                   MetaTensor* avg_param_out,
+                   MetaTensor* current_step_out) {
+  PADDLE_ENFORCE_NOT_NULL(param_out,
+                          phi::errors::InvalidArgument(
+                              "Output(ParamOut) of SGDOp should not be null."));
+
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning rate should have 1 element. But received "
+                        "LearningRate dims [%s]",
+                        phi::product(lr_dims)));
+
+  auto current_step_dims = current_step.dims();
+  PADDLE_ENFORCE_EQ(phi::product(current_step_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Current step should have 1 element. But received "
+                        "dims [%s]",
+                        phi::product(current_step_dims)));
+
+  auto param_dims = param.dims();
+  auto avg_param_dims = avg_param.dims();
+  PADDLE_ENFORCE_EQ(param_dims,
+                    avg_param_dims,
+                    phi::errors::InvalidArgument(
+                        "Param and AvgParam should have the same dims. But received "
+                        "[%s] and [%s]",
+                        param_dims, avg_param_dims));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
+  avg_param_out->set_dims(param.dims());
+  avg_param_out->set_dtype(param.dtype());
+  current_step_out->set_dims(current_step.dims());
+  current_step_out->set_dtype(current_step.dtype());
+}
+
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
