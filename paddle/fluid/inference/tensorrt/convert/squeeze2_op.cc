@@ -64,8 +64,8 @@ class Squeeze2OpConverter : public OpConverter {
       gather_indices.push_back(i);
     }
     std::string name = "_add_squeeze2_op_";
-    auto gather_indices_tensor = Add1DConstantLayer(gather_indices, name + "gather_indices");
-
+    auto gather_indices_tensor =
+        Add1DConstantLayer(gather_indices, name + "gather_indices");
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       auto shape_tensor =
