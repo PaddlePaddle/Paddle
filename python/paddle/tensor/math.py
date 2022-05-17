@@ -292,6 +292,7 @@ def multiplex(inputs, index, name=None):
             :name: code-example1
 
             import paddle
+            
             img1 = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
             img2 = paddle.to_tensor([[5, 6], [7, 8]], dtype=paddle.float32)
             inputs = [img1, img2]
@@ -498,6 +499,7 @@ def add(x, y, name=None):
     ..  code-block:: python
 
         import paddle
+
         x = paddle.to_tensor([2, 3, 4], 'float64')
         y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
