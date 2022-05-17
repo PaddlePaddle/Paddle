@@ -178,55 +178,44 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
 
-        # vector * vector
-        x_data = np.random.random([10]).astype(np.float32)
-        y_data = np.random.random([10]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        z = paddle.matmul(x, y)
-        print(z.numpy().shape)
-        # [1]
+            # vector * vector
+            x = paddle.rand([10])
+            y = paddle.rand([10])
+            z = paddle.matmul(x, y)
+            print(z.shape)
+            # [1]
 
-        # matrix * vector
-        x_data = np.random.random([10, 5]).astype(np.float32)
-        y_data = np.random.random([5]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        z = paddle.matmul(x, y)
-        print(z.numpy().shape)
-        # [10]
+            # matrix * vector
+            x = paddle.rand([10, 5])
+            y = paddle.rand([5])
+            z = paddle.matmul(x, y)
+            print(z.shape)
+            # [10]
 
-        # batched matrix * broadcasted vector
-        x_data = np.random.random([10, 5, 2]).astype(np.float32)
-        y_data = np.random.random([2]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        z = paddle.matmul(x, y)
-        print(z.numpy().shape)
-        # [10, 5]
+            # batched matrix * broadcasted vector
+            x = paddle.rand([10, 5, 2])
+            y = paddle.rand([2])
+            z = paddle.matmul(x, y)
+            print(z.shape)
+            # [10, 5]
 
-        # batched matrix * batched matrix
-        x_data = np.random.random([10, 5, 2]).astype(np.float32)
-        y_data = np.random.random([10, 2, 5]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        z = paddle.matmul(x, y)
-        print(z.numpy().shape)
-        # [10, 5, 5]
+            # batched matrix * batched matrix
+            x = paddle.rand([10, 5, 2])
+            y = paddle.rand([10, 2, 5])
+            z = paddle.matmul(x, y)
+            print(z.shape)
+            # [10, 5, 5]
 
-        # batched matrix * broadcasted matrix
-        x_data = np.random.random([10, 1, 5, 2]).astype(np.float32)
-        y_data = np.random.random([1, 3, 2, 5]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        z = paddle.matmul(x, y)
-        print(z.numpy().shape)
-        # [10, 3, 5, 5]
+            # batched matrix * broadcasted matrix
+            x = paddle.rand([10, 1, 5, 2])
+            y = paddle.rand([1, 3, 2, 5])
+            z = paddle.matmul(x, y)
+            print(z.shape)
+            # [10, 3, 5, 5]
 
     """
     if in_dygraph_mode():

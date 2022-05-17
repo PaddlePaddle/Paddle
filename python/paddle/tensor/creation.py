@@ -294,12 +294,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     Returns:
         Tensor: A Tensor constructed from ``data`` .
 
-    Raises:
-        TypeError: If the data type of ``data`` is not scalar, list, tuple, np.ndarray, paddle.Tensor
-        ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
-        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
-
     Examples:
 
     .. code-block:: python
@@ -445,7 +439,6 @@ def full_like(x, fill_value, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
           
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
@@ -528,7 +521,7 @@ def ones(shape, dtype=None, name=None):
 
 def ones_like(x, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with the value 1, with the same shape and
+    Returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
@@ -546,10 +539,6 @@ def ones_like(x, dtype=None, name=None):
         Tensor: A Tensor filled with the value 1, with the same shape and
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
-    Raise:
-        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-        float64, int32 or int64.
-
     Examples:
         .. code-block:: python
 
@@ -565,7 +554,7 @@ def ones_like(x, dtype=None, name=None):
 
 def zeros(shape, dtype=None, name=None):
     """
-    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+    Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
         shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of ``shape`` is int32 or int64.
@@ -621,9 +610,6 @@ def zeros_like(x, dtype=None, name=None):
         Tensor: A Tensor filled with the value 0, with the same shape and
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
-    Raise:
-        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -798,8 +784,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         taken with common difference ``step`` beginning from ``start``. Its
         data type is set by ``dtype``.
 
-    Raises:
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
     Examples:
         .. code-block:: python
@@ -936,9 +920,6 @@ def tril(x, diagonal=0, name=None):
         Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
-    Raises:
-        TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
@@ -1006,10 +987,6 @@ def triu(x, diagonal=0, name=None):
         Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
-    Raises:
-        TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`x` is less than 2.
-
     Examples:
         .. code-block:: python
 
@@ -1054,13 +1031,12 @@ def triu(x, diagonal=0, name=None):
 
 def meshgrid(*args, **kwargs):
     """
-    This op takes a list of N tensors as input *args, each of which is 1-dimensional 
-    vector, and creates N-dimensional grids.
+    Takes a list of N tensors as input *args, each of which is 1-dimensional vector, and creates N-dimensional grids.
     
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        **kwargs (optional): Currently, we only accept name in **kwargs 
+        **kwargs (optional): Currently, only accept name in **kwargs 
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
@@ -1428,7 +1404,7 @@ def empty(shape, dtype=None, name=None):
 
 def empty_like(x, dtype=None, name=None):
     """
-    This Op returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
+    Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
     
     Args:
@@ -1446,7 +1422,6 @@ def empty_like(x, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           paddle.set_device("cpu")  # and use cpu device
 

@@ -711,13 +711,13 @@ def not_equal(x, y, name=None):
 def is_tensor(x):
     """
 
-    This function tests whether input object is a paddle.Tensor.
+    Tests whether input object is a paddle.Tensor.
 
     Args:
         x (object): Object to test.
 
     Returns:
-        A boolean value. True if 'x' is a paddle.Tensor, otherwise False.
+        A boolean value. True if ``x`` is a paddle.Tensor, otherwise False.
 
     Examples:
         .. code-block:: python
