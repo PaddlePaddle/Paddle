@@ -89,19 +89,21 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
       //"graph_viz_pass",                               //
       "trt_map_matmul_v2_to_mul_pass",                //
-      //      "trt_map_matmul_v2_to_matmul_pass",             //
+      //"trt_map_matmul_v2_to_matmul_pass",             //
       "delete_c_identity_op_pass",       //
       //"graph_viz_pass",                  //
       //"transformer_qkv_projection_fuse_pass",         //
       //"graph_viz_pass",                               //
       //"self_attention_fuse_pass",                     //
-      //"graph_viz_pass",                  //
+      "graph_viz_pass",                  //
       "multihead_matmul_fuse_pass_v2",   //
       "graph_viz_pass",                  //
       "transformer_decoder_fuse_pass_v2",   //
-      //"graph_viz_pass",                  //
+      "graph_viz_pass",                  //
+      "kvcache_decoder_fuse_pass",       //
+      "graph_viz_pass",                  //
       "preln_residual_bias_fuse_pass",   //
-      //"graph_viz_pass",                  //
+      "graph_viz_pass",                  //
       "multihead_matmul_fuse_pass_v3",   //
       "skip_layernorm_fuse_pass",        //
       "preln_skip_layernorm_fuse_pass",  //

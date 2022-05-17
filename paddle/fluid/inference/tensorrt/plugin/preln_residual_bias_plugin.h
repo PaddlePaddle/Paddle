@@ -25,7 +25,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
+using half = phi::dtype::float16;
 #if IS_TRT_VERSION_GE(6000)
 template <typename T>
 class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
@@ -64,7 +64,7 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "skip_layernorm_plugin";
+    return "preln_residual_bias_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 2; }
   int initialize() TRT_NOEXCEPT override;
@@ -133,6 +133,25 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
 
   float eps_;
 };
+
+class PrelnResidualBiasPluginDynamicCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "preln_residual_bias_plugin";
+  }
+
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(
+      const char* name, const void* serial_data,
+      size_t serial_length) TRT_NOEXCEPT override {
+    // FIXME(wanghaoshuang): remove template args 
+    return new PrelnResidualBiasPluginDynamic<half>(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(PrelnResidualBiasPluginDynamicCreator);
+
+
 #endif
 
 }  // namespace plugin

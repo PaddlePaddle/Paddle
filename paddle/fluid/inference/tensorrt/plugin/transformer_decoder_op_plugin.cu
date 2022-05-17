@@ -47,7 +47,7 @@ namespace plugin {
     int batch_size;
     int num_head;
     // int dim_head;
-    const int64_t* timestep;  // cache_seq_length
+    int64_t timestep;  // cache_seq_length
     int max_seq_length;
   
     // 1.f / sqrt(Dh)
@@ -561,7 +561,7 @@ namespace plugin {
   
     constexpr int WARP_SIZE = 32;
     constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
-    int timestep = static_cast<int>(params.timestep[0]);
+    int timestep = static_cast<int>(params.timestep);
     extern __shared__ char smem_[];
   
     float *qk_smem = reinterpret_cast<float *>(smem_);
@@ -888,7 +888,7 @@ namespace plugin {
   void fmha(cudaStream_t stream, const T *qkv_tensor,
             const T *qkv_bias_tensor, const T *src_mask_tensor,
             T *cache_k_tensor, T *cache_v_tensor, T *out_tensor, int batch_size,
-            int max_seq_length, int num_head, int dim_head, const int64_t* timestep,
+            int max_seq_length, int num_head, int dim_head, const int64_t timestep,
             float inv_sqrt_dh) {
     Masked_multihead_attention_params<T> params;
     params.out = out_tensor;
@@ -930,6 +930,7 @@ void TransformerDecoderPluginDynamic<T>::terminate() TRT_NOEXCEPT {
 
 template<typename T>
 int TransformerDecoderPluginDynamic<T>::initialize() TRT_NOEXCEPT {
+  VLOG(3) << "initialize: bias_.size(): " << bias_.size();
   cudaMalloc(&p_gpu_bias_, sizeof(T) * bias_.size());
   cudaMemcpy(p_gpu_bias_, bias_.data(), bias_.size() * sizeof(T),
              cudaMemcpyHostToDevice);
@@ -939,6 +940,7 @@ int TransformerDecoderPluginDynamic<T>::initialize() TRT_NOEXCEPT {
 template<typename T>
 TransformerDecoderPluginDynamic<T>::TransformerDecoderPluginDynamic(void const *serialData,
                                        size_t serialLength) {
+  VLOG(3) << "TransformerDecoderPluginDynamic<T>::TransformerDecoderPluginDynamic";
   DeserializeValue(&serialData, &serialLength, &bias_);
   DeserializeValue(&serialData, &serialLength, &head_number_);
   DeserializeValue(&serialData, &serialLength, &head_size_);
@@ -1039,9 +1041,13 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
                                 const void *const *inputs, void *const *outputs,
                                 void *workspace,
                                 cudaStream_t stream) TRT_NOEXCEPT {
+  VLOG(3) << "step1";
   auto input_dims = input_desc[0].dims;
+  VLOG(3) << "step2";
   auto input_type = input_desc[0].type;
+  VLOG(3) << "step3";
   int bsz = input_dims.d[1];
+  VLOG(3) << "step4";
   int max_seq_len = input_desc[2].dims.d[2]; // debugggg
   VLOG(3) << "TransformerDecoderPluginDynamic::enqueue ----- ";
   if (input_type == nvinfer1::DataType::kFLOAT) {
@@ -1058,9 +1064,13 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
     // VLOG(3) << "bsz: " << bsz << "; max_seq_len: " << max_seq_len << "; time_step: " << time_step;
 
     const half *qkv_tensor = static_cast<const half *>(inputs[0]);
+    VLOG(3) << "step4";
     const half *bias_qk = static_cast<const half *>(inputs[1]);
+    VLOG(3) << "step4";
     const half *k_cache = static_cast<const half *>(inputs[2]);
+    VLOG(3) << "step4";
     const half *v_cache = static_cast<const half *>(inputs[3]);
+    VLOG(3) << "step4";
     half *output = static_cast<half *>(outputs[0]);
 
     // void fmha(cudaStream_t stream, const T *qkv_tensor,
@@ -1068,15 +1078,18 @@ int TransformerDecoderPluginDynamic<T>::enqueue(const nvinfer1::PluginTensorDesc
     //   T *cache_kv_tensor, T *out_tensor, int batch_size,
     //   int max_seq_length, int num_head, int dim_head, int timestep,
     //   float inv_sqrt_dh) {
-
+    //VLOG(3)  << "time_step: " << d_time_step[0];
     fmha<half>(stream, qkv_tensor, 
       const_cast<const half*>(p_gpu_bias_), bias_qk, 
       const_cast<half*>(k_cache),const_cast<half*>(v_cache), output, bsz, 
-      max_seq_len, head_number_, head_size_, d_time_step,
+      max_seq_len, head_number_, head_size_, 1,
       scale_);
+    
   }
-  //cudaDeviceSynchronize();
-  return cudaGetLastError() != cudaSuccess;
+  // cudaDeviceSynchronize();
+  bool ret = cudaGetLastError() != cudaSuccess;
+  VLOG(3) << "ret: " << ret;
+  return ret;
 }
 
 template class TransformerDecoderPluginDynamic<half>; 

@@ -137,8 +137,8 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
                       platform::errors::InvalidArgument(
                           "The fc's weight should be a matrix with 2 dims, but "
-                          "it's %d-dimensional.",
-                          Y_t->dims().size()));  // a matrix
+                          "it's %d-dimensional. weight name: %s.",
+                          Y_t->dims().size(), op_desc.Input(w_name).front()));  // a matrix
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
     auto tranpose_weight = [](const float* src, float* dst, int m, int n) {

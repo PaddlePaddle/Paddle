@@ -27,7 +27,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
+using half = phi::dtype::float16;
 template <typename T>
 class TransformerDecoderPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -97,6 +97,23 @@ class TransformerDecoderPluginDynamic : public DynamicPluginTensorRT {
   float scale_;
   bool with_fp16_;
 };
+
+class TransformerDecoderPluginDynamicCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "TransformerDecoder_plugin_dynamic";
+  }
+
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(
+      const char* name, const void* serial_data,
+      size_t serial_length) TRT_NOEXCEPT override {
+    // FIXME(wanghaoshuang): remove template args 
+    return new TransformerDecoderPluginDynamic<half>(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(TransformerDecoderPluginDynamicCreator);
 
 
 }  // namespace plugin

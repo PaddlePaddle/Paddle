@@ -441,6 +441,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
   void RunTrt(const framework::Scope &scope, const platform::Place &dev_place,
               TensorRTEngine *engine) const {
+   
     int runtime_batch = -1;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -479,12 +480,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
-        framework::Tensor out;
-        platform::CUDAPlace dst_place;
-        framework::TransDataDevice(t, dst_place, &out);
-        t.ShareDataWith(out);
+        VLOG(3) << "Set input location as host, input: " <<  x;
+        // auto* i_tensor = engine->GetITensor(x);
+        // i_tensor->setLocation(nvinfer1::TensorLocation::kHOST);
+        // VLOG(3) << "TransData from CPU to GPU, input: " <<  x;
+        // framework::Tensor out;
+        // int device_id_=0;
+        // cudaGetDevice(&device_id_);
+        // platform::CUDAPlace dst_place(device_id_);
+        // framework::TransDataDevice(t, dst_place, &out);
+        // t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
       // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
@@ -664,6 +672,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     engine->Execute(runtime_batch, &buffers, stream);
     // cudaDeviceSynchronize();
     VLOG(3) << "finish tensorrt engine op.";
+    
 
   }
 

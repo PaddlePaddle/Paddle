@@ -931,13 +931,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
-        return false;
-      }
+      // auto x_var_name = desc.Input("X")[0];
+      // auto* x_var_desc = block->FindVar(x_var_name);
+      // const auto x_shape = x_var_desc->GetShape();
+      // if (!with_dynamic_shape && x_shape.size() == 1) {
+      //   VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
+      //   return false;
+      // }
     }
 
     if (op_type == "slice") {

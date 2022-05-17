@@ -48,6 +48,7 @@ constexpr char kEmbEltwiseLayernormPass[] =
     "embedding_eltwise_layernorm_fuse_pass_flag";
 constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
 constexpr char kTransformerDecoderPass[] = "transformer_decoder_fuse_pass_flag";
+constexpr char kKVCacheDecoderPass[] = "kvcache_decoder_fuse_pass_flag";
 constexpr char kSelfAttentionPass[] = "self_attention_fuse_pass_flag";
 constexpr char kTransformerQKVProjectionFusePass[] =
     "transformer_qkv_projection_fuse_pass_flag";
