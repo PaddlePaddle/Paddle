@@ -539,8 +539,8 @@ def subtract(x, y, name=None):
     .. math::
         out = x - y
 
-    **Note**:
-    ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -554,7 +554,6 @@ def subtract(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
@@ -1568,7 +1567,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
     **addmm**
 
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    Perform matrix multiplication for input $x$ and $y$.
     $input$ is added to the final result.
     The equation is:
 
@@ -1581,12 +1580,12 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         input (Tensor): The input Tensor to be added to the final result.
         x (Tensor): The first input Tensor for matrix multiplication.
         y (Tensor): The second input Tensor for matrix multiplication.
-        beta (float): Coefficient of $input$.
-        alpha (float): Coefficient of $x*y$.
+        beta (float, optional): Coefficient of $input$, default is 1.
+        alpha (float, optional): Coefficient of $x*y$, default is 1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor of addmm op.
+        Tensor: The output Tensor of addmm.
 
     Examples:
         ..  code-block:: python
@@ -2658,7 +2657,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
     **trace**
 
-    This OP computes the sum along diagonals of the input tensor x.
+    Computes the sum along diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the sum of diagonal.
 
@@ -3218,7 +3217,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
 def sign(x, name=None):
     """
-    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+    Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
         x (Tensor): The input tensor. The data type can be float16, float32 or float64.

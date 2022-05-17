@@ -905,7 +905,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
 def randperm(n, dtype="int64", name=None):
     """
-    This OP returns a 1-D Tensor filled with random permutation values from 0
+    Returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
     Args:
