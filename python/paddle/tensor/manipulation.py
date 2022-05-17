@@ -1489,9 +1489,10 @@ def roll(x, shifts, axis=None, name=None):
         x (Tensor): The x tensor as input.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
-        axis (int|list|tuple|None): axis(axes) along which to roll.
+        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
+
 
     Returns:
         Tensor: A Tensor with same data type as `x`.
@@ -1514,6 +1515,11 @@ def roll(x, shifts, axis=None, name=None):
             #[[7. 8. 9.]
             # [1. 2. 3.]
             # [4. 5. 6.]]
+            out_z3 = paddle.roll(x, shifts=1, axis=1)
+            print(out_z3)
+            #[[3. 1. 2.]
+            # [6. 4. 5.]
+            # [9. 7. 8.]]
     """
     origin_shape = x.shape
     if type(shifts) == int:
