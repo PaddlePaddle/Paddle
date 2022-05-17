@@ -543,6 +543,7 @@ index 0000000000..e13a5ddf12
 +    argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
 +    argument_.SetTensorRtTunedDynamicShape(config_.tuned_tensorrt_dynamic_shape());
 +    argument_.SetTensorRtAllowBuildAtRuntime(config_.trt_allow_build_at_runtime());
++    argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
 +  }
 +
 +  if (config_.lite_engine_enabled()) {
