@@ -18,11 +18,11 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class Squeeze2OpConverter : public OpConverter {
+class Unsqueeze2OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a fluid squeeze2 op to tensorrt shuffle layer";
+    VLOG(4) << "convert a fluid unsqueeze2 op to tensorrt shuffle layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -36,53 +36,65 @@ class Squeeze2OpConverter : public OpConverter {
     PADDLE_ENFORCE_GT(
         axes.size(), 0,
         platform::errors::InvalidArgument(
-            "Attr(axes).size should be > 0 in squeeze2 op in TensorRT,"
+            "Attr(axes).size should be > 0 in unsqueeze2 op in TensorRT,"
             "but received axes.size() = %d.",
             axes.size()));
 
-    std::vector<bool> should_squeeze(input_dims.nbDims, false);
+    std::vector<bool> should_unsqueeze(input_dims.nbDims + axes.size(), false);
     for (size_t i = 0; i < axes.size(); i++) {
       if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : 0;
+        axes[i] += (axes[i] < 0) ? should_unsqueeze.size() : 0;
 #endif
       } else {
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : -1;
+        axes[i] += (axes[i] < 0) ? should_unsqueeze.size() : -1;
       }
-      if (input_dims.d[axes[i]] == 1) {
-        should_squeeze[axes[i]] = true;
-      }
+      should_unsqueeze[axes[i]] = true;
     }
 
     nvinfer1::Dims trt_out_dims;
-    trt_out_dims.nbDims = 0;
+    trt_out_dims.nbDims = should_unsqueeze.size();
     std::vector<int32_t> gather_indices;
-    for (size_t i = 0; i < should_squeeze.size(); i++) {
-      if (should_squeeze[i]) continue;
-      trt_out_dims.nbDims++;
-      trt_out_dims.d[i] = input_dims.d[i];
-      gather_indices.push_back(i);
+    int in_rank_i = 0;
+    for (size_t i = 0; i < should_unsqueeze.size(); i++) {
+      if (should_unsqueeze[i]) {
+        trt_out_dims.d[i] = 1;
+        gather_indices.push_back(input_dims.nbDims);
+        continue;
+      }
+      trt_out_dims.d[i] = input_dims.d[in_rank_i];
+      gather_indices.push_back(in_rank_i);
+      in_rank_i++;
     }
-    std::string name = "_add_squeeze2_op_";
-    auto gather_indices_tensor = Add1DConstantLayer(gather_indices, name + "gather_indices");
+    std::string name = "_add_unsqueeze2_op_";
+    auto gather_indices_tensor =
+        Add1DConstantLayer(gather_indices, name + "gather_indices");
+    std::vector<int32_t> all_one(axes.size(), 1);
+    auto all_one_tensor = Add1DConstantLayer(all_one, name + "all_one");
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       auto shape_tensor =
           TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+      std::vector<nvinfer1::ITensor*> concat_inputs = {shape_tensor,
+                                                       all_one_tensor};
       auto real_shape_tensor =
-          TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
+          TRT_ENGINE_ADD_LAYER(engine_, Gather,
+                               *TRT_ENGINE_ADD_LAYER(engine_, Concatenation,
+                                                     concat_inputs.data(), 2)
+                                    ->getOutput(0),
                                *gather_indices_tensor, 0)
               ->getOutput(0);
+
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       layer->setInput(1, *real_shape_tensor);
 
     } else {
-      auto squeeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      squeeze_layer->setReshapeDimensions(trt_out_dims);
-      layer = dynamic_cast<nvinfer1::ILayer*>(squeeze_layer);
+      auto unsqueeze_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      unsqueeze_layer->setReshapeDimensions(trt_out_dims);
+      layer = dynamic_cast<nvinfer1::ILayer*>(unsqueeze_layer);
     }
-    RreplenishLayerAndOutput(layer, "squeeze2", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "unsqueeze2", {output_name}, test_mode);
   }
 };
 
@@ -90,4 +102,4 @@ class Squeeze2OpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(squeeze2, Squeeze2OpConverter);
+REGISTER_TRT_OP_CONVERTER(unsqueeze2, Unsqueeze2OpConverter);

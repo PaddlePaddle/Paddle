@@ -121,7 +121,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
       "preln_skip_layernorm",
-      "squeeze2"};
+      "squeeze2",
+      "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -186,7 +187,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "roll",
       "multiclass_nms3",
-      "squeeze2"};
+      "squeeze2",
+      "unsqueeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -786,7 +788,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "squeeze2") {
+    if (op_type == "squeeze2" || op_type == "unsqueeze2") {
     }
 
     if (op_type == "batch_norm") {
