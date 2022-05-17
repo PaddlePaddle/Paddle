@@ -390,10 +390,10 @@ std::vector<size_t> DeviceManager::GetDeviceList(
   return dev_impl->GetDeviceList();
 }
 
-void DeviceManager::CCLCommDestroy(const std::string& device_type,
-                                   ccl::CCLComm ccl_comm) {
+void DeviceManager::CCLDestroyComm(const std::string& device_type,
+                                   ccl::CCLComm& ccl_comm) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  dev_impl->CCLCommDestroy(ccl_comm);
+  dev_impl->CCLDestroyComm(ccl_comm);
 }
 
 void DeviceManager::CCLCommInitRank(const std::string& device_type,
@@ -416,7 +416,7 @@ void DeviceManager::CCLBroadcast(const std::string& device_type,
                                  size_t num,
                                  ccl::CCLDataType data_type,
                                  ccl::CCLRootId root_id,
-                                 ccl::CCLComm ccl_comm,
+                                 ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLBroadcast(data, num, data_type, root_id, ccl_comm, stream);
@@ -428,7 +428,7 @@ void DeviceManager::CCLAllReduce(const std::string& device_type,
                                  size_t num,
                                  ccl::CCLDataType data_type,
                                  ccl::CCLReduceOp reduce_op,
-                                 ccl::CCLComm ccl_comm,
+                                 ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLAllReduce(
@@ -441,7 +441,7 @@ void DeviceManager::CCLReduce(const std::string& device_type,
                               size_t num,
                               ccl::CCLDataType data_type,
                               ccl::CCLReduceOp reduce_op,
-                              ccl::CCLComm ccl_comm,
+                              ccl::CCLComm& ccl_comm,
                               const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLReduce(
@@ -453,7 +453,7 @@ void DeviceManager::CCLAllGather(const std::string& device_type,
                                  void* out_data,
                                  size_t num,
                                  ccl::CCLDataType data_type,
-                                 ccl::CCLComm ccl_comm,
+                                 ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLAllGather(in_data, out_data, num, data_type, ccl_comm, stream);
@@ -464,11 +464,12 @@ void DeviceManager::CCLReduceScatter(const std::string& device_type,
                                      void* out_data,
                                      size_t num,
                                      ccl::CCLDataType data_type,
-                                     ccl::CCLComm ccl_comm,
+                                     ccl::CCLReduceOp op,
+                                     ccl::CCLComm& ccl_comm,
                                      const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLReduceScatter(
-      in_data, out_data, num, data_type, ccl_comm, stream);
+      in_data, out_data, num, data_type, op, ccl_comm, stream);
 }
 
 void DeviceManager::CCLGroupStart(const std::string& device_type) {
@@ -486,7 +487,7 @@ void DeviceManager::CCLSend(const std::string& device_type,
                             size_t num,
                             ccl::CCLDataType data_type,
                             size_t dst_rank,
-                            ccl::CCLComm ccl_comm,
+                            ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLSend(sendbuf, num, data_type, dst_rank, ccl_comm, stream);
@@ -497,7 +498,7 @@ void DeviceManager::CCLRecv(const std::string& device_type,
                             size_t num,
                             ccl::CCLDataType data_type,
                             size_t src_rank,
-                            ccl::CCLComm ccl_comm,
+                            ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);

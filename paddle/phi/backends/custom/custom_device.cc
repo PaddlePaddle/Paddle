@@ -620,7 +620,7 @@ class CustomDevice : public DeviceInterface {
                     ccl::CCLDataType data_type,
                     ccl::CCLReduceOp op,
                     ccl::CCLComm& comm,
-                    stream::Stream& stream) override {
+                    const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_reduce(
         send_buf,
         recv_buf,
@@ -636,7 +636,7 @@ class CustomDevice : public DeviceInterface {
                     ccl::CCLDataType data_type,
                     size_t root,
                     ccl::CCLComm& comm,
-                    stream::Stream& stream) override {
+                    const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
         buf,
         count,
@@ -646,8 +646,21 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
 
-  void CCLReduce(size_t* unique_id) override {
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce(unique_id));
+  void CCLReduce(void* in_data,
+                 void* out_data,
+                 size_t num,
+                 ccl::CCLDataType data_type,
+                 ccl::CCLReduceOp reduce_op,
+                 ccl::CCLComm& comm,
+                 const stream::Stream& stream) override {
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        pimpl_->xccl_reduce(in_data,
+                            out_data,
+                            num,
+                            ToXCCLDataType(data_type),
+                            ToXCCLReduceOp(reduce_op),
+                            reinterpret_cast<C_CCLComm>(comm),
+                            reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
 
   void CCLAllGather(void* send_buf,
@@ -655,7 +668,7 @@ class CustomDevice : public DeviceInterface {
                     size_t count,
                     ccl::CCLDataType data_type,
                     ccl::CCLComm& comm,
-                    stream::Stream& stream) override {
+                    const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_gather(
         send_buf,
         recv_buf,
@@ -669,15 +682,15 @@ class CustomDevice : public DeviceInterface {
                         void* recv_buf,
                         size_t count,
                         ccl::CCLDataType data_type,
-                        ccl::CCLReduceOp op,
+                        ccl::CCLReduceOp reduce_op,
                         ccl::CCLComm& comm,
-                        stream::Stream& stream) override {
+                        const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_reduce_scatter(
         send_buf,
         recv_buf,
         count,
         ToXCCLDataType(data_type),
-        ToXCCLReduceOp(op),
+        ToXCCLReduceOp(reduce_op),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -695,7 +708,7 @@ class CustomDevice : public DeviceInterface {
                ccl::CCLDataType data_type,
                size_t dest_rank,
                ccl::CCLComm& comm,
-               stream::Stream& stream) override {
+               const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_send(send_buf,
                           count,
@@ -710,7 +723,7 @@ class CustomDevice : public DeviceInterface {
                ccl::CCLDataType data_type,
                size_t src_rank,
                ccl::CCLComm& comm,
-               stream::Stream& stream) override {
+               const stream::Stream& stream) override {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_recv(recv_buf,
                           count,

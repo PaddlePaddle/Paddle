@@ -137,7 +137,7 @@ class CustomCCLCommManager {
   ~CustomCCLCommManager() noexcept {
     std::unique_lock<std::mutex> lock(mutex_);
     if (ccl_comm_) {
-      phi::DeviceManager::CCLCommDestroy(device_type_, ccl_comm_);
+      phi::DeviceManager::CCLDestroyComm(device_type_, ccl_comm_);
     }
   }
 

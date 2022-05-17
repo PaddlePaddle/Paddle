@@ -577,7 +577,13 @@ struct C_DeviceInterface {
                              C_CCLComm comm,
                              C_Stream stream);
 
-  C_Status (*xccl_reduce)(size_t* unique_id);
+  C_Status (*xccl_reduce)(void* send_buf,
+                          void* recv_buf,
+                          size_t count,
+                          C_CCLDataType data_type,
+                          C_CCLReduceOp op,
+                          C_CCLComm comm,
+                          C_Stream stream);
 
   C_Status (*xccl_all_gather)(void* send_buf,
                               void* recv_buf,
