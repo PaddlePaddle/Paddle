@@ -34,7 +34,7 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput("Out", "(Tensor), The output tensor of einsum op.");
     AddOutput(
-        "Cache",
+        "InnerCache",
         "(Tensor), The cache of the forward transpose tensors: tA and tB.")
         .AsDuplicable();
     AddAttr<std::string>("equation",
@@ -76,7 +76,7 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("einsum_grad");
     retv->SetInput("Operands", this->Input("Operands"));
-    retv->SetInput("Cache", this->Output("Cache"));
+    retv->SetInput("InnerCache", this->Output("InnerCache"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("Operands"),

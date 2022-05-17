@@ -821,7 +821,7 @@ def gen_einsum_op(equation, *operands):
         type='einsum',
         inputs={'Operands': operands},
         outputs={'Out': out,
-                 "Cache": caches},
+                 "InnerCache": caches},
         attrs=attrs)
     return out
 

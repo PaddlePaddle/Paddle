@@ -18,12 +18,12 @@ namespace phi {
 
 KernelSignature EinsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "einsum", {"Operands"}, {"equation"}, {"Out", "Cache"});
+      "einsum", {"Operands"}, {"equation"}, {"Out", "InnerCache"});
 }
 
 KernelSignature EinsumGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("einsum_grad",
-                         {"Operands", "Cache", "Out@GRAD"},
+                         {"Operands", "InnerCache", "Out@GRAD"},
                          {"equation"},
                          {"Operands@GRAD"});
 }
