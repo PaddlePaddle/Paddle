@@ -196,6 +196,7 @@ void ParamsToInt8Pass::QuantizeConvFilter(Scope* scope, ir::Graph* g,
 
   ConnectNode(conv_op, "Filter", int_weights_node);
   GraphSafeRemoveNodes(g, {conv_filter});
+  scope->EraseVars({conv_filter->Name()});
 
   conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 }
@@ -225,6 +226,7 @@ void ParamsToInt8Pass::QuantizeConvBias(Scope* scope, ir::Graph* g,
 
   ConnectNode(conv_op, "Bias", int_biases_node);
   GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
+  scope->EraseVars({conv_bias_name});
 }
 
 VarDesc ParamsToInt8Pass::CreatePersistableVarDesc(
