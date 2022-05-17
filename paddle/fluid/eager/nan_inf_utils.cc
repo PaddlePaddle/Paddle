@@ -35,11 +35,6 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
       return;
     }
 
-    if (dense_tensor->memory_size() == 0) {
-      VLOG(10) << tensor_name << " is no need to check, its memory size is 0.";
-      return;
-    }
-
     auto& place = dense_tensor->place();
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -60,20 +55,20 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const TwoTensorTuple& tensors) {
+                            const TupleOfTwoTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const ThreeTensorTuple& tensors) {
+                            const TupleOfThreeTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const FourTensorTuple& tensors) {
+                            const TupleOfFourTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
@@ -81,7 +76,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const FiveTensorTuple& tensors) {
+                            const TupleOfFiveTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
@@ -90,7 +85,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const SixTensorTuple& tensors) {
+                            const TupleOfSixTensors& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));

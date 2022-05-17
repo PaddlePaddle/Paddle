@@ -25,29 +25,29 @@
 namespace egr {
 
 using paddle::experimental::Tensor;
-using TwoTensorTuple = std::tuple<Tensor, Tensor>;
-using ThreeTensorTuple = std::tuple<Tensor, Tensor, Tensor>;
-using FourTensorTuple = std::tuple<Tensor, Tensor, Tensor, Tensor>;
-using FiveTensorTuple = std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>;
-using SixTensorTuple =
+using TupleOfTwoTensors = std::tuple<Tensor, Tensor>;
+using TupleOfThreeTensors = std::tuple<Tensor, Tensor, Tensor>;
+using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
+using TupleOfFiveTensors = std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>;
+using TupleOfSixTensors =
     std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor>;
 
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const TwoTensorTuple& tensors);
+                            const TupleOfTwoTensors& tensors);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const ThreeTensorTuple& tensors);
+                            const TupleOfThreeTensors& tensors);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const FourTensorTuple& tensors);
+                            const TupleOfFourTensors& tensors);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const FiveTensorTuple& tensors);
+                            const TupleOfFiveTensors& tensors);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const SixTensorTuple& tensors);
+                            const TupleOfSixTensors& tensors);
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors);

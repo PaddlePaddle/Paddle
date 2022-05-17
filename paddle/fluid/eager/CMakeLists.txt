@@ -18,7 +18,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(backward SRCS backward.cc DEPS grad_tensor_holder utils autograd_meta grad_node_info switch_autotune)
 endif()
 
-cc_library(eager_nan_inf_utils SRCS nan_inf_utils.cc DEPS phi_tensor nan_inf_utils)
+cc_library(eager_nan_inf_utils SRCS nan_inf_utils.cc DEPS phi_tensor nan_inf_utils enforce)
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS phi_api phi_tensor)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS phi_api phi_tensor)
