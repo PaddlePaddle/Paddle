@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
@@ -2368,26 +2369,43 @@ void GraphSendERecvInferMeta(const MetaTensor& x,
           src_index_dims[0],
           e_dims[0]));
 
-  auto dims = x.dims();
-  if (out_size <= 0) {
-    out->set_dims(dims);
-  } else {
-    std::vector<int64_t> dims_ = phi::vectorize(dims);
-    if (dims_.size() > 0) {
-      dims_[0] = out_size;
-    }
-    out->set_dims(phi::make_ddim(dims_));
-  }
-  out->set_dtype(x.dtype());
-
+  auto x_dims = x.dims();
   if (pool_type == "MEAN") {
     if (out_size <= 0) {
-      dst_count->set_dims({dims[0]});
+      dst_count->set_dims({x_dims[0]});
     } else {
       dst_count->set_dims({out_size});
     }
     dst_count->set_dtype(DataType::INT32);
   }
+
+  // Infer out's shape according to x and e(need broadcasting condition)
+  out->set_dtype(x.dtype());
+  // 先假设都要进行broadcast，后面再进行区分
+  std::vector<int> x_dims1 = phi::vectorize(x_dims);
+  std::vector<int> e_dims1 = phi::vectorize(e_dims);
+  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int> e_dims2(e_dims1.begin() + 1, e_dims1.end());
+
+  int max_dim = std::max(x_dims2.size(), e_dims2.size());
+  int axis = std::abs(x_dims2.size() - e_dims2.size());
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> e_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  // Only need to broadcast dimensions other than the 0th dimension.
+  GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
+                         phi::make_ddim(e_dims2),
+                         x_dims_array.data(),
+                         e_dims_array.data(),
+                         out_dims_array.data(),
+                         max_dim,
+                         axis);
+  if (out_size <= 0) {
+    out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
+  } else {
+    out_dims_array.insert(out_dims_array.begin(), out_size);
+  }
+  out->set_dims(phi::make_ddim(out_dims_array));
 }
 
 }  // namespace phi
