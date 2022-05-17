@@ -596,9 +596,9 @@ void TestElementwiseUnsignedAndSignedInput(
 }
 
 const std::vector<std::vector<std::string>> elementwises = {
-    {"elementwise_add", "ElementwiseAdd"},   // 0
-    {"elementwise_mul", "ElementwiseMul"},   // 1
-    {"elementwise_sub", "ElementwiseSub"}};  // 2
+    {"elementwise_add", "ElementwiseAdd"},
+    {"elementwise_mul", "ElementwiseMul"},
+    {"elementwise_sub", "ElementwiseSub"}};
 
 class TestElementwises
     : public testing::TestWithParam<std::vector<std::string>> {};
