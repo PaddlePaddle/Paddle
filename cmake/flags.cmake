@@ -133,7 +133,7 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
-    #-Werror
+    -Werror
     -Wall
     -Wextra
     -Wnon-virtual-dtor
@@ -219,7 +219,7 @@ if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
         -Wextra
-        # -Werror
+        -Werror
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
 
