@@ -150,7 +150,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         for shape in [[4], [4, 32], [2, 64, 32], [1, 8, 16, 32]]:
             for op_type in [
                     "elementwise_add", "elementwise_mul", "elementwise_sub",
-                    "elementwise_div"
+                    "elementwise_div", "elementwise_pow"
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
@@ -309,7 +309,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                 input2_shape = input2_shape_list[j][i]
                 for op_type in [
                         "elementwise_add", "elementwise_mul", "elementwise_sub",
-                        "elementwise_div"
+                        "elementwise_div", "elementwise_pow"
                 ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
@@ -411,7 +411,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                           [batch, 32, 16, 32]]:
                 for op_type in [
                         "elementwise_add", "elementwise_mul", "elementwise_sub",
-                        "elementwise_div"
+                        "elementwise_div", "elementwise_pow"
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -511,18 +511,11 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
             for weight_name in program_config.weights:
                 if weight_name in input_x_names:
                     return True
-            op_type = program_config.ops[0].type
-            if op_type in ["elementwise_sub", "elementwise_div"]:
-                input_y_names = program_config.ops[0].inputs["Y"]
-                for weight_name in program_config.weights:
-                    if weight_name in input_y_names:
-                        return True
             return False
 
         self.add_skip_case(
             teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "Input X should not be parameters in elementwise op and Input Y should not be parameters in elementwise_sub or elementwise_div op"
-        )
+            "Input X should not be parameters in elementwise op.")
 
     def test(self):
         self.add_skip_trt_case()

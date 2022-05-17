@@ -32,15 +32,19 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector detector;
   auto fill_constant_op = detector.mutable_pattern()
                               ->NewNode("fill_constant")
-                              ->assert_is_op("fill_constant")
-                              ->AsIntermediate();
+                              ->assert_is_op("fill_constant");
   auto fill_constant_out =
       detector.mutable_pattern()
           ->NewNode("fill_constant_out")
           ->assert_is_op_output("fill_constant")
           ->assert_more([](Node* x) { return x->outputs.size() == 1UL; });
-
+  auto next_op = detector.mutable_pattern()
+                     ->NewNode("next_op")
+                     ->assert_is_not_op_type("conditional_block")
+                     ->assert_is_not_op_type("while");
+  // Create the topological connections for the above pattern nodes.
   fill_constant_op->LinksTo({fill_constant_out});
+  next_op->LinksFrom({fill_constant_out});
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
