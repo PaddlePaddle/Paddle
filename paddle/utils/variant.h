@@ -13,6 +13,15 @@
 
 #pragma once
 
+// gcc >= 9 has a bug that creates a false positive warning.
+// Reference:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92145
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89381
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+
 /*
    variant synopsis
 
@@ -2691,7 +2700,8 @@ inline constexpr bool all(std::initializer_list<bool> bs) {
 
 template <typename Visitor, typename... Vs>
 inline constexpr decltype(auto) visit(Visitor &&visitor, Vs &&... vs) {
-  return (detail::all({!vs.valueless_by_exception()...})
+  return (detail::all(
+              lib::array<bool, sizeof...(Vs)>{!vs.valueless_by_exception()...})
               ? (void)0
               : throw_bad_variant_access()),
          detail::visitation::variant::visit_value(
@@ -2827,3 +2837,7 @@ struct hash<paddle::monostate> {
 };
 
 }  // namespace std
+
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif

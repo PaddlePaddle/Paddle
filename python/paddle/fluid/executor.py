@@ -75,7 +75,6 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    :api_attr: Static Graph
     
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
@@ -94,6 +93,7 @@ def scope_guard(scope):
         None
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -873,7 +873,7 @@ class Executor(object):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
+                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
                     type(item))
 
         for index, item in enumerate(fetch_list):
@@ -1386,7 +1386,8 @@ class Executor(object):
 
         def _can_use_interpreter_core(program, place):
             if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
-            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu():
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
+            ) or isinstance(place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)

@@ -31,11 +31,20 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_kernel_backend_select(self):
         return BackwardAPI.gene_kernel_backend_select(self)
 
-    def get_return_type(self, out_type_list):
-        return BackwardAPI.get_return_type(self, out_type_list)
+    def get_return_type(self, inplace_flag=False):
+        return BackwardAPI.get_return_type(self)
+
+    def gene_return_code(self):
+        return ""
 
     def gene_api_declaration(self):
         return SparseAPI.gene_api_declaration(self)
+
+    def get_declare_args(self, inplace_flag=False):
+        return BackwardAPI.get_declare_args(self)
+
+    def get_define_args(self, inplace_flag=False):
+        return BackwardAPI.get_define_args(self)
 
     def gene_output(self,
                     output_type_list,
@@ -53,36 +62,21 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} api_output{inplace_assign};
-  auto kernel_out = {set_out_func}(&api_output, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+  auto kernel_out = {set_out_func}({self.outputs['names'][0].split('@')[0]}, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
 
         elif len(output_type_list) > 1:
-            output_create = f"""
-  {self.outputs['return_type']} api_output({len(output_type_list)});"""
+            output_create = ""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
-                if out_type_item == 'Tensor':
-                    get_out_code = f'&api_output[{i}][0]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
-
-                    else:
-                        output_create = output_create + f"""
-  api_output[{i}].emplace_back();"""
-
-                else:
-                    get_out_code = f'&api_output[{i}]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  auto kernel_out_{i} = {set_out_func}({get_out_code}, {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i].split('@')[0]}, {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
 
             kernel_output = kernel_output[:-2]
         else:

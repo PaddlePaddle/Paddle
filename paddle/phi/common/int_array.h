@@ -48,50 +48,10 @@ class IntArrayBase {
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
   // The Tensor must have one dim
-  IntArrayBase(const T& tensor) {  // NOLINT
-    is_from_tensor_ = true;
-    size_t n = tensor.numel();
-    array_.reserve(n);
-    switch (tensor.dtype()) {
-      case DataType::INT32:
-        AssignData(tensor.template data<int32_t>(), n);
-        break;
-      case DataType::INT64:
-        AssignData(tensor.template data<int64_t>(), n);
-        break;
-      default:
-        PD_THROW(
-            "Data type error. Currently, The data type of IntArrayBase "
-            "only supports Tensor with int32 and int64, "
-            "but now received `",
-            tensor.dtype(),
-            "`.");
-    }
-  }
+  IntArrayBase(const T& tensor);  // NOLINT
 
   // The Tensor in vec must have only one element
-  IntArrayBase(const std::vector<T>& tensor_list) {  // NOLINT
-    is_from_tensor_ = true;
-
-    for (size_t i = 0; i < tensor_list.size(); ++i) {
-      DataType data_type = tensor_list[i].dtype();
-      switch (data_type) {
-        case DataType::INT32:
-          array_.push_back(*tensor_list[i].template data<int32_t>());
-          break;
-        case DataType::INT64:
-          array_.push_back(*tensor_list[i].template data<int64_t>());
-          break;
-        default:
-          PD_THROW(
-              "Data type error. Currently, The data type of IntArrayBase "
-              "only supports Tensor with int32 and int64, "
-              "but now received `",
-              data_type,
-              "`.");
-      }
-    }
-  }
+  IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
 
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
@@ -111,6 +71,26 @@ class IntArrayBase {
       }
     } else {
       PD_THROW("The input data pointer is null.");
+    }
+  }
+
+  void AssignDataFromTensor(const T& tensor) {
+    size_t n = tensor.numel();
+    array_.reserve(n);
+    switch (tensor.dtype()) {
+      case DataType::INT32:
+        AssignData(tensor.template data<int32_t>(), n);
+        break;
+      case DataType::INT64:
+        AssignData(tensor.template data<int64_t>(), n);
+        break;
+      default:
+        PD_THROW(
+            "Data type error. Currently, The data type of IntArrayBase "
+            "only supports Tensor with int32 and int64, "
+            "but now received `",
+            tensor.dtype(),
+            "`.");
     }
   }
 

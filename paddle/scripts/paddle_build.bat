@@ -57,7 +57,6 @@ rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
-if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -85,6 +84,10 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
+
+rem ------initialize set git config------
+git config --global core.longpaths true
+
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -225,6 +228,7 @@ set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -239,6 +243,7 @@ set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set ON_INFER=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -255,6 +260,8 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_ONNXRUNTIME=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -273,7 +280,7 @@ rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -284,7 +291,7 @@ rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -295,7 +302,8 @@ rem ------Build windows inference library------
 :CASE_build_inference_lib
 set ON_INFER=ON
 set WITH_PYTHON=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
+
 python %work_dir%\tools\remove_grad_op_and_kernel.py
 if %errorlevel% NEQ 0 exit /b 1
 

@@ -92,13 +92,13 @@ def linspace(start, stop, num, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            tensor_start = fill_constant([1], dtype, start)
+            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
     if not isinstance(stop, Variable):
         with device_guard("cpu"):
-            tensor_stop = fill_constant([1], dtype, stop)
+            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
     if not isinstance(num, Variable):
         with device_guard("cpu"):
-            tensor_num = fill_constant([1], 'int32', num)
+            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if _non_static_mode():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
@@ -827,6 +827,11 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -857,11 +862,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out.stop_gradient = True
         return out
 
-    out_shape = None
-    if not isinstance(start, Variable) and not isinstance(
-            end, Variable) and not isinstance(step, Variable):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
@@ -873,6 +873,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                 'Step': step},
         outputs={'Out': out})
     out.stop_gradient = True
+    if out_shape is not None:
+        out.desc.set_shape(out_shape)
     return out
 
 

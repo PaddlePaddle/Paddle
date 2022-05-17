@@ -63,7 +63,7 @@ class TestPipeline(TestDistBase):
                 "pipeline_mnist_one_device.py",
                 check_error_log=True,
                 log_name=flag_name,
-                need_envs=self.need_envs())
+                need_envs={"PADDLE_MANUAL_PIPELINE_STAGE": "0"})
 
 
 if __name__ == '__main__':

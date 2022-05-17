@@ -516,8 +516,7 @@ PyObject* ToPyObject(const std::string& value) {
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize) {
   if (return_py_none_if_not_initialize && !value.initialized()) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   PyObject* obj = nullptr;
   if (value.initialized() && value.is_string_tensor()) {
@@ -679,8 +678,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value) {
 
 PyObject* ToPyObject(const void* value) {
   if (value == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   PADDLE_THROW(
       platform::errors::Fatal("ToPyObject do not support void* with value."));
@@ -1025,7 +1023,20 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
   VLOG(1) << "type_name: " << type_name;
-  if (type_name == "numpy.float64") {
+  if (type_name == "numpy.ndarray" && PySequence_Check(obj)) {
+    PyObject* item = nullptr;
+    item = PySequence_GetItem(obj, 0);
+    if (PyObject_CheckFloatOrToFloat(&item)) {
+      float value = static_cast<float>(PyFloat_AsDouble(item));
+      return paddle::experimental::Scalar(value);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) is numpy.ndarry, the inner elements "
+          "must be "
+          "numpy.float32/float64 now, but got %s",
+          op_type, arg_pos + 1, type_name));  // NOLINT
+    }
+  } else if (type_name == "numpy.float64") {
     double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (type_name == "numpy.float32") {
@@ -1034,7 +1045,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.int64") {
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (type_name == "numpy.int32") {
+  } else if (type_name == "numpy.int32" || type_name == "numpy.intc") {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else {
