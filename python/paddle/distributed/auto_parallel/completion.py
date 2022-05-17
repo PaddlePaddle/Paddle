@@ -1077,6 +1077,9 @@ class Completer:
                     grad_op_dist_attr.process_mesh = ref_mesh
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr)
+                    grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+                    grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+
                     continue
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -1123,8 +1126,8 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(output_name,
                                                               ref_dims_mapping)
 
-                grad_op_dist_attr.impl_type = forward_op_dist_attr.impl_type
-                grad_op_dist_attr.impl_idx = forward_op_dist_attr.impl_idx
+                grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+                grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 

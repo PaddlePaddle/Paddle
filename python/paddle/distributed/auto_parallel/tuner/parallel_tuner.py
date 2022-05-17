@@ -31,6 +31,7 @@ from ..utils import print_program_with_dist_attr
 from .trial import Trial, TrialStatus
 from .tuner import Tuner
 from .tunable_space import TunableSpace
+from ..cost import CostEstimator
 
 
 class ParallelTuner:
@@ -43,7 +44,10 @@ class ParallelTuner:
                  max_trials=None,
                  tuner_id=None,
                  seed=None,
-                 logger=None):
+                 logger=None,
+                 loop_count=10):
+        self._loop_count = loop_count
+        self._estimator = None
         self._dist_context = dist_context
         assert self._dist_context._is_initialized
         self._mode = mode
@@ -54,10 +58,10 @@ class ParallelTuner:
         self._objective = "cost"
         self._direction = "min"
         # self._max_trials = max_trials
-        self._max_trials = 10
+        self._max_trials = 3
         self._tuner_id = tuner_id
         self._seed = seed or np.random.randint(1, 10000)
-        # self._seed = 7987
+        self._seed = 1585
         print("seed", self._seed, flush=True)
         self._seed_state = self._seed
         self._logger = logger
@@ -245,12 +249,12 @@ class ParallelTuner:
         op_dist_attr = dist_op.dist_attr
         if serial_op.type in self._special_ops:
             return [copy.deepcopy(op_dist_attr)]
-        print(
-            "~~~~~~~~~~~~~~~~~~~~~~~",
-            serial_op.type,
-            serial_op.desc.id(),
-            serial_op.desc.original_id(),
-            flush=True)
+        # print(
+        #     "~~~~~~~~~~~~~~~~~~~~~~~",
+        #     serial_op.type,
+        #     serial_op.desc.id(),
+        #     serial_op.desc.original_id(),
+        #     flush=True)
         key = []
         key.append(serial_op.type)
         for input_name in serial_op.input_names:
@@ -535,6 +539,7 @@ class ParallelTuner:
                 continue
 
             dist_attr.process_mesh = ProcessMesh(process_mesh.processes)
+            self._dist_context.add_process_mesh(dist_attr.process_mesh)
             for arg_name in dist_attr.inputs_dist_attrs.keys():
                 new_dims_mapping = []
                 dims_mapping = dist_attr.get_input_dims_mapping(arg_name)
@@ -652,10 +657,21 @@ class ParallelTuner:
             trial.metrics.update(metric_name, metric_value, step=step)
         return trial.status
 
+    def estimate_trail(self):
+        assert self._cluster is not None
+        if self._estimator is None:
+            self._estimator = CostEstimator(
+                self._dist_context.serial_main_program,
+                self._cluster,
+                loop_count=self._loop_count)
+        global_cost = self._estimator.estimate(self._dist_context)
+        return global_cost.time
+
     def tune(self):
         self.times = 0
         self.construct_space()
         while True:
+            print("times: ", self.times)
             print("tune 1", flush=True)
             # print_program_with_dist_attr(self._dist_context.serial_program, self._dist_context)
             trial = self.create_trial()
@@ -664,7 +680,12 @@ class ParallelTuner:
                 break
             print("tune 3", flush=True)
             results = self.eval_trial(trial)
-            print("tune 4", flush=True)
+            print("tune 4 serial program", flush=True)
+            print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                         self._dist_context)
+            time = self.estimate_trail()
+            print("exec time: ", time)
+            print("----------------------------")
             self.times += 1
             # self.update_trial(trial.id, results)
             # print("5")

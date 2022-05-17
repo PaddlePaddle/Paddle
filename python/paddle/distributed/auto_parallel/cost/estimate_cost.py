@@ -23,7 +23,13 @@ from ..operators.common import get_distributed_operator_impl_container
 
 class CostEstimator:
     _sepical_op_type = ["fused_attention", "fused_feedforward"]
-    def __init__(self, program, cluster, mode="modeling", rank=None, loop_count=10):
+
+    def __init__(self,
+                 program,
+                 cluster,
+                 mode="modeling",
+                 rank=None,
+                 loop_count=10):
         self._program = program
         self._cluster = cluster
         self._check_mode(mode)
@@ -36,7 +42,7 @@ class CostEstimator:
         self._detailed_cost = OrderedDict(
         )  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
         self._bubble_time_mapping = {}
-    
+
     @property
     def loop_count(self):
         return self._loop_count
@@ -122,15 +128,16 @@ class CostEstimator:
                 self._detailed_cost[op.desc.id()] = OrderedDict()
                 # if in the while sub block, the detail of cost is the last cost
                 detail = self._detailed_cost[op.desc.id()]
-                detail["reshard_cost"] = OrderedDict() #
+                detail["reshard_cost"] = OrderedDict()  #
                 detail["dist_op_cost"] = []
                 if int(op.attr('op_role')) == int(OpRole.Optimize):
                     continue
                 if op.type in [
-                        "create_py_reader", "create_double_buffer_reader", "read"
+                        "create_py_reader", "create_double_buffer_reader",
+                        "read"
                 ]:
                     continue
-                
+
                 # NOTE: It does not support nested loop and just supports while op when op has sub block now.
                 if op.type == "while":
                     while_block = self.program.blocks[op.attr("sub_block").id]
@@ -188,7 +195,7 @@ class CostEstimator:
                 dist_op_cost = dist_impl.calc_cost(
                     op.attr('op_role'), dist_op, dist_context, self.cluster)
                 detail["dist_op_cost"] = dist_op_cost
-                
+
                 if dist_op_cost is None:
                     assert dist_op.serial_op.type in CostEstimator._sepical_op_type
                     continue
@@ -222,9 +229,14 @@ class CostEstimator:
                                 continue
                             self.local_cost(rank).time += item[rank].time
 
+    def prepare(self):
+        self._global_cost = Cost()
+        self._local_cost_mapping = {}
+        self._detailed_cost = OrderedDict()
+        self._bubble_time_mapping = {}
 
     def estimate(self, dist_context, resharder=None):
-
+        self.prepare()
 
         from ..reshard import Resharder
         resharder = Resharder(self.program, None, self.rank, dist_context,

@@ -599,8 +599,6 @@ class Cost:
 
 class OpCost:
     def __init__(self, op=None, op_desc=None):
-        assert (op is not None and op_desc is None) or (op is None and
-                                                        op_desc is not None)
         self._op = op
         self._op_desc = op_desc
         self._cost = None
