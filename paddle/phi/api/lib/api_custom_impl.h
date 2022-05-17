@@ -155,6 +155,21 @@ void conv2d_grad_impl(const Tensor& input,
                       Tensor* input_grad,
                       Tensor* filter_grad);
 
+void conv3d_grad_impl(const Tensor& input,
+                      const Tensor& filter,
+                      const Tensor& out_grad,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+                      Tensor* input_grad,
+                      Tensor* filter_grad);
+
 void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
 void real_grad_impl(const Tensor& out_grad, Tensor* x_grad);
