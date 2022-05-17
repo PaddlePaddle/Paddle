@@ -29,6 +29,7 @@ from codegen_utils import RemoveSpecialSymbolsInName, RecoverBaseNameOfInplaceFu
 from codegen_utils import GetInplacedFunctionName
 from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
 from codegen_utils import ParseYamlForward, ParseYamlBackward
+from codegen_utils import ParseYamlInplaceInfo
 from codegen_utils import FunctionGeneratorBase, YamlGeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
 from codegen_utils import AssertMessage, GetIndent
@@ -396,8 +397,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         #self.optional_inputs
         #self.no_need_buffers
         #self.intermediate_outputs
-        #self.inplace_map
-        #self.backward_inplace_map
+        #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.grad_api_contents = grad_api_contents
@@ -427,6 +427,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         }  #{ "name" : [type, fwd_position, orig_position] ...}
         self.backward_grad_outputs_map = {
         }  #{ "name" : [type, fwd_position, orig_position] ...}
+
+        self.backward_inplace_map = {}  #{name : name, ...}
+
+    def ParseBackwardInplaceInfo(self):
+        grad_api_contents = self.grad_api_contents
+        if 'inplace' not in grad_api_contents.keys(): return
+
+        inplace_map_str = grad_api_contents['inplace']
+        self.backward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
 
     def DygraphYamlValidationCheck(self):
         forward_api_contents = self.forward_api_contents
@@ -766,6 +775,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ##########################
         # Parse forward and backward inplace_map
         self.ParseInplaceInfo()
+        self.ParseBackwardInplaceInfo()
 
         # Parse no_need_buffer
         self.ParseNoNeedBuffer()
@@ -826,7 +836,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
         intermediate_outputs = self.intermediate_outputs
-        inplace_map = self.inplace_map if is_inplaced else {}
+        forward_inplace_map = self.forward_inplace_map if is_inplaced else {}
         indent = GetIndent(1)
 
         # Get Function Args
@@ -857,7 +867,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
-                    if is_inplaced and inplace_map and name in inplace_map.keys(
+                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
                     ):
                         arg_str = f"paddle::experimental::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
@@ -928,13 +938,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):
-                if is_inplaced and inplace_map and name in inplace_map.values():
+                if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
+                ):
                     returns_type_list[pos] = "paddle::experimental::Tensor&"
                 else:
                     returns_type_list[pos] = "paddle::experimental::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
-                if is_inplaced and inplace_map and name in inplace_map.values():
+                if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
+                ):
                     returns_type_list[
                         pos] = "std::vector<paddle::experimental::Tensor>&"
                 else:
@@ -998,7 +1010,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         check_inplace_str = ""
         bump_inplace_version_str = ""
         if is_inplaced:
-            for inplace_name in inplace_map.keys():
+            for inplace_name in forward_inplace_map.keys():
                 inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
                 check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
                     inplace_name, inplace_autograd_meta_name)
@@ -1466,8 +1478,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
     def run(self):
         super().run()
-
-        self.ParseInplaceGradInfo()
 
         self.ResetOptionalInputs()
 

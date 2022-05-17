@@ -302,6 +302,23 @@ def ParseYamlBackward(args_str, returns_str):
     return inputs_list, attrs_list, returns_list
 
 
+def ParseYamlInplaceInfo(string):
+    # inplace_map_str: "(x -> out0), (y -> out2)"
+    inplace_map = {}
+    for pair in string.split(","):
+        pair = pair.strip()
+        if pair.startswith("("):
+            pair = pair[1:]
+
+        if pair.endswith(")"):
+            pair = pair[:-1]
+
+        key = pair.split("->")[0].strip()
+        val = pair.split("->")[1].strip()
+        inplace_map[key] = val
+    return inplace_map
+
+
 ########################
 ###  Generator Base  ###
 ########################
@@ -329,70 +346,14 @@ class FunctionGeneratorBase:
         self.optional_inputs = []  #[name, ...]
         self.no_need_buffers = []  #[name, ...]
         self.intermediate_outputs = []  #[name, ...]    
-        self.inplace_map = {}  #{name : name, ...}
-        self.backward_inplace_map = {}  #{name : name, ...}
+        self.forward_inplace_map = {}  #{name : name, ...}
 
     def ParseInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
         if 'inplace' not in forward_api_contents.keys(): return
 
-        # inplace_map_str: "(x -> out0), (y -> out2)"
         inplace_map_str = forward_api_contents['inplace']
-        for pair in inplace_map_str.split(","):
-            pair = pair.strip()
-            if pair.startswith("("):
-                pair = pair[1:]
-
-            if pair.endswith(")"):
-                pair = pair[:-1]
-
-            key = pair.split("->")[0].strip()
-            val = pair.split("->")[1].strip()
-            self.inplace_map[key] = val
-
-    def ParseInplaceGradInfo(self):
-        grad_api_contents = self.grad_api_contents
-        if 'inplace' not in grad_api_contents.keys(): return
-
-        # inplace_map_str: "(x -> out0), (y -> out2)"
-        inplace_map_str = grad_api_contents['inplace']
-        for pair in inplace_map_str.split(","):
-            pair = pair.strip()
-            if pair.startswith("("):
-                pair = pair[1:]
-
-            if pair.endswith(")"):
-                pair = pair[:-1]
-
-            key = pair.split("->")[0].strip()
-            val = pair.split("->")[1].strip()
-            self.backward_inplace_map[key] = val
-
-    # def ParseInplaceInfo(self):
-    #     for mode in ['forward', 'backward']:
-    #         if mode == 'forward':
-    #             api_contents = self.forward_api_contents
-    #             inplace_map = self.forward_inplace_map
-    #         else:
-    #             api_contents = self.grad_api_contents
-    #             inplace_map = self.backward_inplace_map
-
-    #         if 'inplace' not in api_contents.keys(): continue
-
-    #         # inplace_map_str: "(x -> out0), (y -> out2)"
-    #         inplace_map_str = api_contents['inplace']
-
-    #         for pair in inplace_map_str.split(","):
-    #             pair = pair.strip()
-    #             if pair.startswith("("):
-    #                 pair = pair[1:]
-
-    #             if pair.endswith(")"):
-    #                 pair = pair[:-1]
-
-    #             key = pair.split("->")[0].strip()
-    #             val = pair.split("->")[1].strip()
-    #             inplace_map[key] = val
+        self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
