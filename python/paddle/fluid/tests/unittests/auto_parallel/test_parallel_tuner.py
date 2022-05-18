@@ -217,7 +217,7 @@ def get_program_v1():
     return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
 
 
-def get_program():
+def get_program_v2():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
     # fleet.init(is_collective=True, strategy=dist_strategy)
@@ -372,13 +372,8 @@ class TestParallelTuner(unittest.TestCase):
 
         self.num_nodes = 1
         self.device_per_nodes = 8
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
-        cluster_json_object = json.loads(cluster_json)
-        with open(cluster_json_path, "w") as cluster_json_file:
-            json.dump(cluster_json_object, cluster_json_file)
         cluster = Cluster()
-        cluster.build_from_file(cluster_json_path)
+        cluster.gen_default_config_cluster(node_count=1, device_count=8)
         self.parallel_tuner = ParallelTuner(
             dist_context,
             num_nodes=self.num_nodes,
@@ -386,10 +381,6 @@ class TestParallelTuner(unittest.TestCase):
             cluster=cluster,
             loop_count=10,
             mode="test")
-
-        # Remove unnecessary files
-        if os.path.exists(cluster_json_path):
-            os.remove(cluster_json_path)
 
 # def test_generate_process_mesh_candidates(self):
 #     process_mesh_candidates = self.parallel_tuner._partition_devices(1, 8)

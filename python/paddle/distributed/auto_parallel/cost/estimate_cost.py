@@ -185,7 +185,6 @@ class CostEstimator:
 
                 # calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
-                print("estimate cost op", op)
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
 
