@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -21,6 +22,27 @@ namespace tensorrt {
 
 class MultiheadMatMulOpConverter : public OpConverter {
  public:
+
+  plugin::SpmmPluginDynamic* new_spmm_plugin(TensorRTEngine::Weight* weight,
+                                             TensorRTEngine::Weight* bias,
+                                             const std::string& activation_type,
+                                             nvinfer1::DataType type,
+                                             int outdim) {
+    plugin::SpmmPluginDynamic::Activation act =
+        plugin::SpmmPluginDynamic::Activation::kNone;
+    if (activation_type == "relu") {
+      act = plugin::SpmmPluginDynamic::Activation::kRelu;
+    } else if (activation_type == "gelu") {
+      act = plugin::SpmmPluginDynamic::Activation::kGelu;
+    } else if (activation_type != "") {
+      PADDLE_THROW(paddle::platform::errors::Fatal("unknown activation_type %s",
+                                                   activation_type.c_str()));
+    }
+    return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", type,
+                                         outdim, weight->get(), bias->get(),
+                                         act);
+  }
+
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
@@ -306,12 +328,25 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 "The Input dim of the MultiheadMatMul should be 3, "
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
+        bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+        half* half_data = nullptr;
+        void* w_data = nullptr;
+        if (with_fp16) {
+          half_data = new half[weight_t->numel()];
+          for (int i = 0; i < weight_t->numel(); i++) {
+            half_data[i] = static_cast<half>(weight_data[i]);
+          }
+          w_data = static_cast<void*>(half_data);
+        } else {
+          w_data = static_cast<void*>(weight_data);
+        }
+
         // transpose weight_data from m * n to  n * m
         auto* input_bias_qk =
             engine_->GetITensor(op_desc.Input("BiasQK").front());
 
         TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                      static_cast<void*>(weight_data),
+                                      static_cast<void*>(w_data),
                                       static_cast<size_t>(weight_t->numel())};
         weight.dims.assign({n, m});
 
@@ -341,14 +376,21 @@ class MultiheadMatMulOpConverter : public OpConverter {
         // add layer fc
         nvinfer1::ILayer* fc_layer = nullptr;
         if (op_desc.HasAttr("Input_scale")) {
-          nvinfer1::DimsHW nv_ksize(1, 1);
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *reshape_before_fc_layer->getOutput(0), n,
-              nv_ksize, weight.get(), bias.get());
+          plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
+                &weight, &bias, "", nvinfer1::DataType::kINT8, n);
+          std::vector<nvinfer1::ITensor*> plugin_inputs;
+          plugin_inputs.emplace_back(reshape_before_fc_layer->getOutput(0));
+          fc_layer = engine_->network()->addPluginV2(
+              plugin_inputs.data(), plugin_inputs.size(), *plugin);
         } else {
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
-              n, weight.get(), bias.get());
+          plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
+              &weight, &bias, "",
+              with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+              n);
+          std::vector<nvinfer1::ITensor*> plugin_inputs;
+          plugin_inputs.emplace_back(reshape_before_fc_layer->getOutput(0));
+          fc_layer = engine_->network()->addPluginV2(
+              plugin_inputs.data(), plugin_inputs.size(), *plugin);
         }
 
         if (op_desc.HasAttr("fc_out_threshold")) {
@@ -373,8 +415,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
         if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
           with_fp16 = true;
