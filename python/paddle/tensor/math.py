@@ -2980,11 +2980,11 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
 
         logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
     
-    **Note**:
+    Note:
     The first element of the result is the same of the first element of the input. 
 
     Args:
-        x (Tensor): The input tensor
+        x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
         dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
