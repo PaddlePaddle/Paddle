@@ -123,9 +123,10 @@ class DownpourServer(Server):
             # DownpourUnitAccessor        : for ctr task, has cvm, slot, embedding and sgd info
 
             support_accessor_class = [
-                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDymfAccessor',
-                'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor',
-                'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'
+                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
+                'DownpourCtrDymfAccessor', 'DownpourSparseValueAccessor',
+                'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
+                'DownpourDoubleUnitAccessor'
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')

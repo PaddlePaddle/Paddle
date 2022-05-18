@@ -94,7 +94,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse", "pull_gpups_sparse"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse",
+            "pull_gpups_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
@@ -874,7 +875,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
-                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor", "DownpourCtrDymfAccessor"
+                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor",
+                    "DownpourCtrDymfAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[

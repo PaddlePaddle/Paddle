@@ -626,6 +626,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       FeatureValue* val = (FeatureValue*)(mem_pool->mem_address(k));
       float* ptr_val = device_dim_ptrs[k]->data();
       size_t dim = device_dim_ptrs[k]->size();
+#ifdef PADDLE_WITH_PSLIB
       val->delta_score =
           ptr_val[paddle::ps::DownpourCtrDymfAccessor::
                       DownpourCtrDymfFeatureValue::delta_score_index()];
@@ -646,6 +647,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::
                   mf_dim_index()] = float(mf_dim);
       val->mf_dim = mf_dim;
+#endif
       if (dim > 8) {  // CpuPS alreay expand as mf_dim
         val->mf_size = mf_dim + 1;
         for (int x = 0; x < val->mf_dim + 1; x++) {
@@ -814,6 +816,7 @@ void PSGPUWrapper::EndPass() {
                cudaMemcpyDeviceToHost);
 
     CHECK(len == hbm_pool->capacity());
+#ifdef PADDLE_WITH_PSLIB
     uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
     for (size_t i = 0; i < len; ++i) {
       if (device_keys[i] == unuse_key) {
@@ -842,6 +845,7 @@ void PSGPUWrapper::EndPass() {
                   embed_g2sum_index()] = gpu_val->lr_g2sum;
       cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::
                   slot_index()] = gpu_val->slot;
+
       if (gpu_val->mf_size > 0) {
         for (int x = 0; x < gpu_val->mf_dim + 1; x++) {
           if (x + 8 >= int(downpour_value->size())) {
@@ -852,6 +856,7 @@ void PSGPUWrapper::EndPass() {
         }
       }
     }
+#endif
     free(test_build_values);
   };
 

@@ -44,8 +44,8 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths, embedding_size_vec,
-                         0);
+  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
+                         embedding_size_vec, 0);
 #endif
 }
 
