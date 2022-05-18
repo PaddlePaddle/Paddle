@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
@@ -33,7 +34,6 @@ np.random.seed(2022)
 base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -196,4 +196,7 @@ def test_stage3_offload():
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
+    fleet.init(is_collective=True)
     test_stage3_offload()

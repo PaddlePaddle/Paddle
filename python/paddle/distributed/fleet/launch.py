@@ -556,7 +556,7 @@ def launch():
 
         - ``--selected_mlus``: mlus aliases, recommend to use ``--mlus``.
 
-        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 

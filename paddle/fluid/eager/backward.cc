@@ -698,8 +698,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
 
-    VLOG(6) << "Running GradNode:" << node->name();
-
     // Check input
     EnforceGradNodeHasInput(node);
 

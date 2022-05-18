@@ -16,6 +16,10 @@ if(NOT WITH_XPU_KP)
     return()
 endif()
 
+set(LINK_FLAGS    "-Wl,--allow-multiple-definition")
+set(CMAKE_EXE_LINKER_FLAGS    "${LINK_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${LINK_FLAGS}")
+
 if(NOT XPU_TOOLCHAIN)
   set(XPU_TOOLCHAIN /workspace/output/XTDK-ubuntu_x86_64)
   get_filename_component(XPU_TOOLCHAIN ${XPU_TOOLCHAIN} REALPATH)

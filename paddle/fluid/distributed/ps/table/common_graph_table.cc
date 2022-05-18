@@ -1488,7 +1488,7 @@ std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
   }
   for (size_t i = 0; i < tasks.size(); i++) {
     auto ids = tasks[i].get();
-    for (auto &id : ids) res[id % slice_num].push_back(id);
+    for (auto &id : ids) res[(uint64_t)(id) % slice_num].push_back(id);
   }
   return res;
 }
