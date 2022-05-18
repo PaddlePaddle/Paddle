@@ -45,8 +45,6 @@ from .utils import print_program_with_dist_attr, to_list
 from .process_group import get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
-paddle.enable_static()
-
 
 class Engine:
     def __init__(self,

@@ -194,6 +194,10 @@ class DistributedContext:
     def gradient_scale(self):
         return self._gradient_scale
 
+    @gradient_scale.setter
+    def gradient_scale(self, gs):
+        self._gradient_scale = gs
+
     def initialize(self):
         if not self._is_initialized:
             self._serial_main_program = self._original_serial_main_program.clone(
