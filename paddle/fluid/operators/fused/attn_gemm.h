@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
@@ -63,8 +64,8 @@ class AttnMatMul {
       std::vector<const Tensor*> ins = {output, bias};
       std::vector<Tensor*> outs = {bias_out};
       paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(dev_ctx_, ins, &outs,
-                                                           -1, AddFunctor<T>());
+                                                     T, T>(
+          dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
   }
 

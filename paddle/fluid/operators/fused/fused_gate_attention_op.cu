@@ -27,13 +27,10 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/fused/attn_gemm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
+#include "paddle/fluid/operators/fused/fused_gate_attention.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -168,24 +165,27 @@ Tensor *ComputeQKVMatmulBackward(const framework::ExecutionContext &ctx,
 template <typename T>
 Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                    const Tensor *x, const Tensor *fmha_out,
-                                   Tensor *gate_bias_out, int m, int n, int k) {
+                                   int m, int n, int k) {
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
   auto *gate_out = ctx.Output<Tensor>("GateOut");
+  VLOG(3) << "[ComputeGatingLinearForward] gate_out.shape=[" << gate_out->dims()
+          << "], size=" << gate_out->numel() * sizeof(T) / 1.0E6 << " MB.";
   gate_out->mutable_data<T>(ctx.GetPlace());
 
   // The first gate_bias_out stores the result of the multiplication,
   // and the second gate_bias_out stores the result of the multiplication +
   // bias.
-  //   gate_bias_out = GEMM(x, gate_weight)
-  //   gate_bias_out = gate_bias_out + gate_bias
+  //   gate_out = GEMM(x, gate_weight)
+  //   gate_out = gate_out + gate_bias
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  gate_attn_compute.ComputeForward(gate_weight, x, gate_bias, gate_bias_out,
-                                   gate_bias_out);
+  gate_attn_compute.ComputeForward(gate_weight, x, gate_bias, gate_out,
+                                   gate_out);
 
-  std::vector<const Tensor *> ins = {gate_bias_out, fmha_out};
+  // gate_out = sigmoid(gate_out) * fmha_out
+  std::vector<const Tensor *> ins = {gate_out, fmha_out};
   std::vector<Tensor *> outs = {gate_out};
   paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
       ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
@@ -235,6 +235,8 @@ Tensor *ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
 
   auto *out = ctx.Output<Tensor>("Out");
+  VLOG(3) << "[ComputeOutputLinearForward] out.shape=[" << out->dims()
+          << "], size=" << out->numel() * sizeof(T) / 1.0E6 << " MB.";
   out->mutable_data<T>(ctx.GetPlace());
 
   // out = GEMM(gate_out, out_linear_weight)
@@ -277,124 +279,105 @@ template <typename T>
 class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *query = ctx.Input<Tensor>("Query");
-    auto *key = ctx.Input<Tensor>("Key");
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
-    auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
+    const auto *query = ctx.Input<Tensor>("Query");
+    const auto *key = ctx.Input<Tensor>("Key");
+    const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
+    const auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
 
-    auto *q_out = ctx.Output<Tensor>("QueryOut");
-    auto *k_out = ctx.Output<Tensor>("KeyOut");
-    auto *v_out = ctx.Output<Tensor>("ValueOut");
+    const auto *src_mask = ctx.Input<Tensor>("SrcMask");
+    const auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
+
+    auto *query_out = ctx.Output<Tensor>("QueryOut");
+    auto *key_out = ctx.Output<Tensor>("KeyOut");
+    auto *value_out = ctx.Output<Tensor>("ValueOut");
     auto *qkv_out = ctx.Output<Tensor>("QKVOut");
 
-    const auto merge_qkv = ctx.Attr<bool>("merge_qkv");
-    const auto has_gating = ctx.Attr<bool>("has_gating");
-
-    const auto input_q_dims = query->dims();
-    int num_head, key_dim, m_size, kv_dim;
-    // if self-attention seq_len_r = m_size q_dim = kv_dim
-    int batch_size = input_q_dims[0];
-    int seq_len_m = input_q_dims[1];
-    int seq_len_r = input_q_dims[2];
-    int q_dim = input_q_dims[3];
-    if (merge_qkv) {
-      // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
-      // qkv_weight[3, num_head, key_dim, qkv_dim]
-      const auto &qkv_w_dims = ctx.Input<Tensor>("QKVWeight")->dims();
-      qkv_out->mutable_data<T>(ctx.GetPlace());
-      num_head = qkv_w_dims[1];
-      key_dim = qkv_w_dims[2];
-      m_size = seq_len_r;
-      kv_dim = q_dim;
-    } else {
-      const auto input_k_dims = key->dims();
-      q_out->mutable_data<T>(ctx.GetPlace());
-      k_out->mutable_data<T>(ctx.GetPlace());
-      v_out->mutable_data<T>(ctx.GetPlace());
-
-      const auto q_w_dims = ctx.Input<Tensor>("QueryWeight")->dims();
-      num_head = q_w_dims[1];
-      key_dim = q_w_dims[2];
-      m_size = input_k_dims[2];
-      kv_dim = input_k_dims[3];
-    }
     auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
     auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
 
-    qktv_out->mutable_data<T>(ctx.GetPlace());
-    softmax_out->mutable_data<T>(ctx.GetPlace());
+    const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
+    const bool has_gating = ctx.Attr<bool>("has_gating");
 
-    Tensor qkv_transpose_out, q_transpose_out, k_transpose_out, v_transpose_out;
+    // if self-attention seq_len_r = m_size q_dim = kv_dim
+    GateAttentionConfig<T> config(query, key, query_weight, qkv_weight,
+                                  merge_qkv);
+
+    if (merge_qkv) {
+      // x: qkv's input [batch_size, seq_len_m, seq_len_r, qkv_dim]
+      // qkv_weight[3, num_head, key_dim, qkv_dim]
+      VLOG(3) << "[FusedGateAttentionOpKernel] qkv_out.shape=["
+              << qkv_out->dims()
+              << "], size=" << qkv_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+      qkv_out->mutable_data<T>(ctx.GetPlace());
+    } else {
+      VLOG(3) << "[FusedGateAttentionOpKernel] query_out.shape=["
+              << query_out->dims()
+              << "], size=" << query_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+      VLOG(3) << "[FusedGateAttentionOpKernel] key_out.shape=["
+              << key_out->dims()
+              << "], size=" << key_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+      VLOG(3) << "[FusedGateAttentionOpKernel] value_out.shape=["
+              << value_out->dims()
+              << "], size=" << value_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+      query_out->mutable_data<T>(ctx.GetPlace());
+      key_out->mutable_data<T>(ctx.GetPlace());
+      value_out->mutable_data<T>(ctx.GetPlace());
+    }
+
     if (merge_qkv) {
       // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
       //    [batch_size * seq_len_m * seq_len_r * 3 * num_head * c]
-      int m = batch_size * seq_len_m * seq_len_r;
-      int n = 3 * num_head * key_dim;
-      int k = q_dim;
+      int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+      int n = 3 * config.num_heads * config.key_dim;
+      int k = config.query_dim;
+
       ComputeMergedQKVMatmulForward<T>(ctx, query, qkv_out, m, n, k);
-      qkv_transpose_out.Resize(
-          {3, batch_size, seq_len_m, num_head, seq_len_r, q_dim});
-      qkv_transpose_out.mutable_data<T>(ctx.GetPlace());
     } else {
       // 1. Separated QKV Matmul
-      int q_m = batch_size * seq_len_m * seq_len_r;
-      int q_n = num_head * key_dim;
-      int q_k = q_dim;
+      int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
+      int q_n = config.num_heads * config.key_dim;
+      int q_k = config.query_dim;
 
-      int k_m = batch_size * seq_len_m * m_size;
-      int k_n = num_head * key_dim;
-      int k_k = kv_dim;
+      int k_m = config.batch_size * config.seq_len_m * config.m_size;
+      int k_n = config.num_heads * config.key_dim;
+      int k_k = config.kv_dim;
 
-      ComputeQKVMatmulForward<T>(ctx, query, key, q_out, k_out, v_out, q_m, q_n,
-                                 q_k, k_m, k_n, k_k);
-
-      q_transpose_out.Resize(
-          {batch_size, seq_len_m, num_head, seq_len_r, key_dim});
-      q_transpose_out.mutable_data<T>(ctx.GetPlace());
-
-      k_transpose_out.Resize(
-          {batch_size, seq_len_m, num_head, m_size, key_dim});
-      k_transpose_out.mutable_data<T>(ctx.GetPlace());
-
-      v_transpose_out.Resize(
-          {batch_size, seq_len_m, num_head, m_size, key_dim});
-      v_transpose_out.mutable_data<T>(ctx.GetPlace());
+      ComputeQKVMatmulForward<T>(ctx, query, key, query_out, key_out, value_out,
+                                 q_m, q_n, q_k, k_m, k_n, k_k);
     }
 
-    // 2. FMHA
-    Tensor fmha_out;
-    fmha_out.Resize({batch_size, seq_len_m, seq_len_r, num_head, key_dim});
-    fmha_out.mutable_data<T>(ctx.GetPlace());
-    auto fmha_compute =
-        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, batch_size,
-                       seq_len_m, seq_len_r, m_size, num_head, key_dim);
+    VLOG(3) << "[FusedGateAttentionOpKernel] qktv_out.shape=["
+            << qktv_out->dims()
+            << "], size=" << qktv_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+    qktv_out->mutable_data<T>(ctx.GetPlace());
+    VLOG(3) << "[FusedGateAttentionOpKernel] softmax_out.shape=["
+            << softmax_out->dims()
+            << "], size=" << softmax_out->numel() * sizeof(T) / 1.0E6 << " MB.";
+    softmax_out->mutable_data<T>(ctx.GetPlace());
 
-    fmha_compute.ComputeForward(
-        nonbatched_bias, *q_out, *k_out, *v_out, *qkv_out, src_mask,
-        &q_transpose_out, &k_transpose_out, &v_transpose_out,
-        &qkv_transpose_out, softmax_out, qktv_out, &fmha_out);
+    // 2. FMHA
+    auto fmha_compute =
+        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, &config);
+
+    Tensor *fmha_out = config.GetFMHAOut(ctx.cuda_device_context());
+    fmha_compute.ComputeForward(query_out, key_out, value_out, qkv_out,
+                                nonbatched_bias, src_mask, softmax_out,
+                                qktv_out, fmha_out);
 
     // 3. Gating Linear
-    Tensor *fmha_or_gate_out = nullptr;
+    Tensor *fmha_or_gate_out = fmha_out;
     if (has_gating) {
-      int m = batch_size * seq_len_m * seq_len_r;
-      int n = num_head * key_dim;
-      int k = q_dim;
-
-      Tensor gate_bias_out;
-      gate_bias_out.Resize(
-          {batch_size, seq_len_m, seq_len_r, num_head, key_dim});
-      gate_bias_out.mutable_data<T>(ctx.GetPlace());
-      fmha_or_gate_out = ComputeGatingLinearForward<T>(ctx, query, &fmha_out,
-                                                       &gate_bias_out, m, n, k);
-    } else {
-      fmha_or_gate_out = &fmha_out;
+      int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+      int n = config.num_heads * config.key_dim;
+      int k = config.query_dim;
+      fmha_or_gate_out =
+          ComputeGatingLinearForward<T>(ctx, query, fmha_out, m, n, k);
     }
 
     // 4. Output Linear
-    int m = batch_size * seq_len_m * seq_len_r;
-    int n = q_dim;
-    int k = num_head * key_dim;
+    int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+    int n = config.query_dim;
+    int k = config.num_heads * config.key_dim;
     ComputeOutputLinearForward<T>(ctx, fmha_or_gate_out, m, n, k);
   }
 };
@@ -407,8 +390,11 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     const auto merge_qkv = ctx.Attr<bool>("merge_qkv");
 
     // forward input
-    auto *query = ctx.Input<Tensor>("Query");
-    auto *key = ctx.Input<Tensor>("Key");
+    const auto *query = ctx.Input<Tensor>("Query");
+    const auto *key = ctx.Input<Tensor>("Key");
+    const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
+    const auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
+
     auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
 
     // forward output, backward input
@@ -446,6 +432,9 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       d_key->mutable_data<T>(ctx.GetPlace());
     }
 
+    GateAttentionConfig<T> config(query, key, query_weight, qkv_weight,
+                                  merge_qkv);
+
     const auto &input_q_dims = query->dims();
     int num_head, key_dim, m_size, kv_dim;
     int batch_size = input_q_dims[0];
@@ -479,8 +468,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     fmha_out.mutable_data<T>(ctx.GetPlace());
 
     auto fmha_compute =
-        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, batch_size,
-                       seq_len_m, seq_len_r, m_size, num_head, key_dim);
+        FMHAGateRef<T>(ctx.cuda_device_context(), merge_qkv, &config);
     fmha_compute.ComputeQKTVTransposeForward(*qktv_out, &fmha_out);
 
     // 1. Gradient of Output Linear
