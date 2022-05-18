@@ -256,9 +256,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
                                     size_t size) {
-  if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false)
-    return;
+  if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr), 0,
@@ -275,11 +273,12 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
       FLAGS_enable_host_event_recorder_hook == false)
     return;
   std::lock_guard<std::mutex> guard(mtx_);
-  if (FLAGS_enable_host_event_recorder_hook) {
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostMemEventRecorder::GetInstance().RecordMemEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Allocate, size, place.DebugString(),
         current_allocated, current_reserved);
+    return;
   }
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr), 0,
@@ -290,9 +289,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
-  if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false)
-    return;
+  if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
@@ -309,11 +306,12 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
       FLAGS_enable_host_event_recorder_hook == false)
     return;
   std::lock_guard<std::mutex> guard(mtx_);
-  if (FLAGS_enable_host_event_recorder_hook) {
+  if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostMemEventRecorder::GetInstance().RecordMemEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Free, -size, place.DebugString(), current_allocated,
         current_reserved);
+    return;
   }
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
