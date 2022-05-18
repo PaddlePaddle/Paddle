@@ -281,7 +281,6 @@
     param : [grad_x_grad, axis]
   kernel :
     func : concat
-  no_need_buffer : x
 
 - backward_api : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
@@ -507,7 +506,6 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
-  optional : seed_tensor
 
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
@@ -648,7 +646,6 @@
     data_type: out_grad
     backend: out_grad
     layout: out_grad
-  no_need_buffer : x
 
 - backward_api : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
@@ -866,7 +863,6 @@
     param : [out_grad]
   kernel :
     func : label_smooth_grad
-  optional : prior_dist
 
 - backward_api : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test) -> Tensor(out), Tensor(mean), Tensor(variance)
@@ -1483,7 +1479,7 @@
   no_need_buffer : grad_out
 
 - backward_api : reshape_grad
-  forward : reshape_with_xshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
+  forward : reshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -1750,7 +1746,7 @@
     func : square_grad
 
 - backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(xshape), Tensor(out)
+  forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad, int[] axes)
   output : Tensor(x_grad)
   infer_meta :
@@ -1814,7 +1810,7 @@
   backward : sum_triple_grad
 
 - backward_api : sum_grad
-  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
+  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int64_t[] dims, bool keep_dim, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
@@ -1830,7 +1826,6 @@
   args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(grad_grad_x_grad)
   invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
-  no_need_buffer : x
 
 - backward_api : swish_grad
   forward : swish (Tensor x, float beta=1.0) -> Tensor(out)
@@ -2021,7 +2016,7 @@
   no_need_buffer : x
 
 - backward_api : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(xshape), Tensor(out)
+  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :

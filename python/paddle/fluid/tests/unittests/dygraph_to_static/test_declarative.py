@@ -14,7 +14,8 @@
 
 import numpy as np
 import unittest
-
+import os
+import tempfile
 import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
@@ -100,7 +101,11 @@ class TestStaticFunctionInstance(unittest.TestCase):
 
 class TestInputSpec(unittest.TestCase):
     def setUp(self):
-        pass
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, 'simple_net')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_with_input_spec(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -116,8 +121,8 @@ class TestInputSpec(unittest.TestCase):
 
             # 2. test save load
             net.inner_function(x)
-            jit.save(net, './simple_net')
-            infer_net = fluid.dygraph.jit.load('./simple_net')
+            jit.save(net, self.model_path)
+            infer_net = fluid.dygraph.jit.load(self.model_path)
             pred = infer_net(x)
             self.assertTrue(np.allclose(out.numpy(), pred.numpy()))
 
@@ -438,12 +443,19 @@ class SetBuffersNet2(paddle.nn.Layer):
 
 
 class TestSetBuffers(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, 'SetBuffersNet1')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()
         out = net()
         self.assertEqual(out.numpy().tolist(), [2])
-        paddle.jit.save(net, './SetBuffersNet1')
+        paddle.jit.save(net, self.model_path)
         paddle.enable_static()
 
     def test_set_buffers2(self):

@@ -167,6 +167,9 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/pybind/paddle_bfloat/bfloat16.h"
+#ifdef PADDLE_WITH_CINN
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -1937,16 +1940,18 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
-  m.def("get_readable_comile_key", [](const OpDesc &op_desc) {
-    auto compilation_key =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("compilation_key"));
-    VLOG(4) << std::hash<std::string>{}(compilation_key) << " "
-            << compilation_key.size();
-    proto::ProgramDesc desc;
-    desc.ParseFromString(compilation_key);
-    auto s = desc.DebugString();
+  m.def("get_serialize_comile_key", [](int64_t compilation_key) {
+#ifdef PADDLE_WITH_CINN
+    auto compiler = framework::paddle2cinn::CinnCompiler::GetInstance();
+    auto s = compiler->SerializeKey(compilation_key);
     VLOG(4) << s;
     return s;
+#else
+    PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot get compilation key in non-CINN version, "
+                 "Please recompile or reinstall Paddle with CINN support."));
+#endif
   });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
