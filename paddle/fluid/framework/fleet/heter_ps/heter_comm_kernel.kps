@@ -229,9 +229,10 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     GM2LM(d_shard_vals + i, local_shard_vals, read_len * sizeof(ValType));
     for (int k = 0; k < read_len; k++) {
-      local_vals[local_idx[k]] = local_shard_vals[k];
+      LM2GM(&local_shard_vals[k], d_vals + local_idx[k], 1 * sizeof(ValType));
+      // local_vals[local_idx[k]] = local_shard_vals[k];
     }
-    LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
+    // LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
   }
 }
 
