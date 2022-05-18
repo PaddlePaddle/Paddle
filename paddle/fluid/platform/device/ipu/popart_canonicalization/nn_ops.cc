@@ -299,7 +299,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
           CreateConst(graph, node, {}, {},
                       {{"value", std::vector<float>{1 - dropout_prob_}},
                        {"dims", std::vector<int64_t>{1}},
-                       {"dtype", GetOutputVarDtype(node)}});
+                       {"dtype", GetOutputVarDType(node)}});
       return CreateBaseOp(graph, node, "popart_mul",
                           {GetInputVarNode("X", node), scale->outputs[0]},
                           {GetOutputVarNode("Out", node)}, {});

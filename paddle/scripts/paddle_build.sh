@@ -981,9 +981,6 @@ function generate_upstream_develop_api_spec() {
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
 
     cd ${PADDLE_ROOT}
     git checkout .
@@ -995,6 +992,9 @@ function generate_upstream_develop_api_spec() {
     if [ "$url_return" == '200' ];then
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         cmake_gen $1
         build $2
     fi
@@ -1817,7 +1817,14 @@ function precise_card_test() {
     echo "****************************************************************"
     
     tmpfile=$tmp_dir/$testcases".log"
+    tmpfile1=$tmp_dir/$testcases"-gpu.log"
+    nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
+    gpu_memory_pid=$!
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    kill ${gpu_memory_pid}
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
+    rm -rf $tmpfile1
     set +m
 }
 
@@ -1909,8 +1916,11 @@ set -x
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
     wait;
 
-    #generate ut map
+    #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+
+    #generate ut mem map
+    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir 
 }
 
 function get_failedUts_precise_map_file {

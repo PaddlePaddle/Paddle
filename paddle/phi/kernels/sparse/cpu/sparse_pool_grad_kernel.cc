@@ -50,7 +50,7 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
-  memset(x_grad_ptr, 0, sizeof(T) * x_grad->numel());
+  memset(x_grad_ptr, 0, sizeof(T) * x_grad_values.numel());
   phi::Copy<CPUContext>(dev_ctx,
                         x.non_zero_indices(),
                         dev_ctx.GetPlace(),

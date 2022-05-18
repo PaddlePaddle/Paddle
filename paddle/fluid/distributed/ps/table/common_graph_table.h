@@ -63,7 +63,13 @@ class GraphShard {
     }
     return res;
   }
-
+  std::vector<int64_t> get_all_id() {
+    std::vector<int64_t> res;
+    for (int i = 0; i < (int)bucket.size(); i++) {
+      res.push_back(bucket[i]->get_id());
+    }
+    return res;
+  }
   GraphNode *add_graph_node(int64_t id);
   GraphNode *add_graph_node(Node *node);
   FeatureNode *add_feature_node(int64_t id);
@@ -420,6 +426,10 @@ class GraphTable : public Table {
     use_cache = false;
     shard_num = 0;
     rw_lock.reset(new pthread_rwlock_t());
+#ifdef PADDLE_WITH_HETERPS
+    next_partition = 0;
+    total_memory_cost = 0;
+#endif
   }
   virtual ~GraphTable();
 
@@ -465,6 +475,8 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
+  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
+                                               int slice_num);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
   int32_t add_graph_node(int idx, std::vector<int64_t> &id_list,
@@ -513,7 +525,7 @@ class GraphTable : public Table {
       const std::vector<std::vector<std::string>> &res);
 
   size_t get_server_num() { return server_num; }
-
+  void clear_graph(int idx);
   virtual int32_t make_neighbor_sample_cache(size_t size_limit, size_t ttl) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
@@ -538,6 +550,7 @@ class GraphTable : public Table {
   //   graph_sampler->set_graph_sample_callback(callback);
   //   return 0;
   // }
+  virtual void make_partitions(int idx, int64_t gb_size, int device_len);
   virtual char *random_sample_neighbor_from_ssd(
       int idx, int64_t id, int sample_size,
       const std::shared_ptr<std::mt19937_64> rng, int &actual_size);
@@ -545,8 +558,25 @@ class GraphTable : public Table {
                                   char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, std::vector<int64_t> ids);
+  int32_t Load_to_ssd(const std::string &path, const std::string &param);
+  int64_t load_graph_to_memory_from_ssd(int idx, std::vector<int64_t> &ids);
+  int32_t make_complementary_graph(int idx, int64_t byte_size);
+  int32_t dump_edges_to_ssd(int idx);
+  int32_t get_partition_num(int idx) { return partitions[idx].size(); }
+  std::vector<int64_t> get_partition(int idx, int index) {
+    if (idx >= partitions.size() || index >= partitions[idx].size())
+      return std::vector<int64_t>();
+    return partitions[idx][index];
+  }
+  int32_t load_edges_to_ssd(const std::string &path, bool reverse_edge,
+                            const std::string &edge_type);
+  int32_t load_next_partition(int idx);
+  void set_search_level(int search_level) { this->search_level = search_level; }
   // virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
   int search_level;
+  int64_t total_memory_cost;
+  std::vector<std::vector<std::vector<int64_t>>> partitions;
+  int next_partition;
 #endif
   virtual int32_t add_comm_edge(int idx, int64_t src_id, int64_t dst_id);
   virtual int32_t build_sampler(int idx, std::string sample_type = "random");

@@ -20,8 +20,6 @@ import os
 import sys
 import subprocess
 import paddle
-from paddle.fluid.framework import _enable_legacy_dygraph
-_enable_legacy_dygraph()
 
 paddle.enable_static()
 

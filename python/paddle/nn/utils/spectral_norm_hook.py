@@ -178,7 +178,7 @@ def spectral_norm(layer,
        .. code-block:: python
 
             from paddle.nn import Conv2D
-            from paddle.nn.utils import Spectralnorm
+            from paddle.nn.utils import spectral_norm
 
             conv = Conv2D(3, 1, 3)
             sn_conv = spectral_norm(conv)

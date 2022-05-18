@@ -73,18 +73,19 @@ struct OneHotV2OpCUDAFunctor {
 template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     int32_t depth,
+                     const Scalar& depth,
                      DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out) {
+  auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = depth;
+    out_dims[out_dims.size() - 1] = depth_v;
     out->Resize(out_dims);
   }
 
   phi::VisitDataType(
-      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_v, dev_ctx));
 }
 
 }  // namespace phi

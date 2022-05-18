@@ -79,9 +79,6 @@ paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
     // Pass Attributes to GradNode
     scale_node->SetAttributes_scale(scale);
 
-    // Set Next Edges
-    scale_node->AddEdges(p_autograd_in, /*slot id*/ 0);
-
     // Set TensorWrappers
     scale_node->SetTensorWrappers_X({x});
 
