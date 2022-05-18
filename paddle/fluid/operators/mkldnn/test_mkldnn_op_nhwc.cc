@@ -235,7 +235,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   }
   // Second input (Y) to crop is having no buffer
   // but as it is MKLDNN then its shape order should be NCHW
-  auto expected_dims_nchw = phi::vectorize<long int>(expected_dims);
+  auto expected_dims_nchw = phi::vectorize<int64_t>(expected_dims);
   std::rotate(expected_dims_nchw.begin() + 1, expected_dims_nchw.end() - 1,
               expected_dims_nchw.end());
   second_crop_input_name.tensor->Resize(phi::make_ddim(expected_dims_nchw));
