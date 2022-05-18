@@ -143,7 +143,6 @@ TEST(ProfilerTest, TestHostTracerForMem) {
       mem_events_map[evt->Name()] = evt->GetMemTraceEventNodes();
     }
   }
-  LOG(INFO) << "Hello world";
   EXPECT_EQ(host_events.count("TestTracerForMem_phase1"), 1u);
   EXPECT_EQ(host_events.count("TestTracerForMem_phase2"), 1u);
   EXPECT_EQ(mem_events_indx_map["TestTracerForMem_phase1"].size(), 2u);

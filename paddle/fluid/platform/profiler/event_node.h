@@ -159,7 +159,7 @@ class HostTraceEventNode {
   uint64_t Duration() const {
     return host_event_.end_ns - host_event_.start_ns;
   }
-  std::vector<uint64_t> MemEventIdx() const {
+  const std::vector<uint64_t>& MemEventIdx() const {
     return host_event_.mem_events_idx;
   }
 
