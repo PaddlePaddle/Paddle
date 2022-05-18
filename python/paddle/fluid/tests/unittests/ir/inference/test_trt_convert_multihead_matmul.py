@@ -84,9 +84,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "fused_reshape_X": [],
                                 "fused_reshape_Y": [],
                                 "fused_transpose_X": [],
-                                "fused_transpose_Y": [],
-                                "fused_reshape_Out": [],
-                                "fused_transpose_Out": []
+                                "fused_transpose_Y": []
                             }, {
                                 "axis": axis
                             }, {
@@ -105,9 +103,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 "fused_reshape_X": [],
                                 "fused_reshape_Y": [],
                                 "fused_transpose_X": [],
-                                "fused_transpose_Y": [],
-                                "fused_reshape_Out": [],
-                                "fused_transpose_Out": []
+                                "fused_transpose_Y": []
                             }, {
                                 "axis": [0, 2, 1, 3]
                             }, {
@@ -534,9 +530,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 "fused_reshape_X": [],
                                 "fused_reshape_Y": [],
                                 "fused_transpose_X": [],
-                                "fused_transpose_Y": [],
-                                "fused_reshape_Out": [],
-                                "fused_transpose_Out": []
+                                "fused_transpose_Y": []
                             }, {
                                 "axis": axis
                             }, {
@@ -555,9 +549,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 "fused_reshape_X": [],
                                 "fused_reshape_Y": [],
                                 "fused_transpose_X": [],
-                                "fused_transpose_Y": [],
-                                "fused_reshape_Out": [],
-                                "fused_transpose_Out": []
+                                "fused_transpose_Y": []
                             }, {
                                 "axis": [0, 2, 1, 3]
                             }, {

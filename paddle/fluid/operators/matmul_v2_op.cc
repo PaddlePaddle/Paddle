@@ -156,13 +156,11 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     auto ddim_out = phi::make_ddim(new_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul_v2+transpose+reshape fuse activated
-    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
+    if(ctx->HasAttr("fused_reshape_Out") && ctx->HasAttr("fused_transpose_Out")
+    {
+      shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+      axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
 
@@ -231,18 +229,6 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
