@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from .primreg import REGISTER_FN
 
@@ -133,7 +134,9 @@ def split(x, num_or_sections, axis=0, outs=None):
     if isinstance(num_or_sections, (list, tuple)):
         n = len(num_or_sections)
     else:
-        assert isinstance(num_or_sections, int)
+        if not isinstance(num_or_sections, int):
+            raise TypeError(
+                f'num_or_sections must be int, but got {type(num_or_sections)}.')
         n = num_or_sections
 
     attrs = {'num_or_sections': num_or_sections, 'axis': axis}
@@ -154,8 +157,7 @@ def split(x, num_or_sections, axis=0, outs=None):
 
 @REGISTER_FN('concat_p', 'XS', 'Y')
 def concat(xs, axis=0, out=None):
-    # TODO(lml): This is hacky, refine it later
-    if not isinstance(xs, (list, tuple)):
+    if isinstance(xs, paddle.fluid.framework.Variable):
         xs = [xs]
     attrs = {'axis': axis}
     helper = LayerHelper('concat_p', **locals())
@@ -171,9 +173,10 @@ def concat(xs, axis=0, out=None):
 
 @REGISTER_FN('reduce_p', 'X', 'Y')
 def reduce(x, axis, keepdim=False, out=None):
-    assert isinstance(axis, (tuple, list))
-    assert isinstance(keepdim, bool)
-
+    if not isinstance(axis, (tuple, list)):
+        raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
+    if not isinstance(keepdim, bool):
+        raise TypeError(f'keepdim must be bool, but got {type(keepdim)}')
     attrs = {'axis': axis, 'keepdim': keepdim}
 
     helper = LayerHelper('reduce_p', **locals())
@@ -195,12 +198,20 @@ def matmul(x, y, out=None):
 
 @REGISTER_FN('slice_select_p', 'X', 'Y')
 def slice_select(x, axis, starts, ends, strides, out=None):
-    assert isinstance(axis, (list, tuple)), (
-        f'Argument type error. `axis` is supposed to be int, list or'
-        f' tuple but found {type(axis)}.')
-    assert isinstance(starts, (list, tuple))
-    assert isinstance(ends, (list, tuple))
-    assert len(axis) == len(starts) == len(ends) == len(strides)
+    if not isinstance(axis, (list, tuple)):
+        raise TypeError(f'Argument type error. `axis` is supposed to be list or'
+                        f' tuple but found {type(axis)}.')
+    if not isinstance(starts, (list, tuple)):
+        raise TypeError(
+            f'Argument type error. `starts` is supposed to be list or'
+            f' tuple but found {type(starts)}.')
+    if not isinstance(ends, (list, tuple)):
+        raise TypeError(f'Argument type error. `ends` is supposed to be list or'
+                        f' tuple but found {type(ends)}.')
+    assert len(axis) == len(starts) == len(ends) == len(strides), (
+        f'len(axis), len(starts), len(ends) and len(strides) should be equal, '
+        f'but len(axis)={len(axis)}, len(starts)={len(starts)}, '
+        f'len(ends)={len(ends)} and len(strides)={len(strides)}')
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_select_p', **locals())
@@ -216,8 +227,13 @@ def slice_select(x, axis, starts, ends, strides, out=None):
 
 @REGISTER_FN('slice_assign_p', 'X', 'Y', 'Z')
 def slice_assign(x, y, axis, starts, ends, strides, out=None):
-    assert len(starts) == len(ends) == len(strides) == len(axis)
-    assert len(y.shape) == len(x.shape)
+    assert len(starts) == len(ends) == len(strides) == len(axis), (
+        f'len(starts), len(ends), len(strides) and len(axis) should be equal, '
+        f'but len(starts)={len(starts)}, len(ends)={len(ends)}, '
+        f'len(strides)={len(strides)} and len(axis)={len(axis)}')
+    assert len(y.shape) == len(x.shape), (
+        f'len(y.shape) should be equal to len(x.shape), '
+        f'but len(y.shape)={len(y.shape)} and len(x.shape)={len(x.shape)}.')
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_assign_p', **locals())
@@ -249,9 +265,16 @@ def gather(x, indextensor, axis, out=None):
 
 @REGISTER_FN('scatter_add_p', 'X', 'Y', 'IndexTensor', 'Z')
 def scatter_add(x, y, indextensor, axis, out=None):
-    assert len(x.shape) == len(y.shape)
-    assert len(indextensor.shape) == 1
-    assert y.shape[axis] == indextensor.shape[0]
+    assert len(x.shape) == len(y.shape), (
+        f'len(x.shape) should be equal to len(y.shape), '
+        f'but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}.')
+    assert len(
+        indextensor.shape
+    ) == 1, f'len(indextensor.shape) must be equal to 1, but got {len(indextensor.shape)}.'
+    assert y.shape[axis] == indextensor.shape[0], (
+        f'y.shape[axis] should be equal to indextensor.shape[0], '
+        f'but y.shape[axis]={y.shape[axis]} and '
+        f'indextensor.shape[0]={indextensor.shape[0]}.')
     attrs = {'axis': axis}
     helper = LayerHelper('scatter_add_p', **locals())
     if out is None:

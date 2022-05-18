@@ -90,12 +90,12 @@ inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
 }
 
 // Get compilation_key values
-std::vector<std::string> GetCompilationKeys(const Graph& graph) {
-  std::vector<std::string> compilation_keys;
+std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
+  std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
       compilation_keys.emplace_back(BOOST_GET_CONST(
-          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
+          int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;

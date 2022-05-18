@@ -51,8 +51,7 @@ static ProgramDesc BuildProgramInsideCinnLaunchOp() {
   return program;
 }
 
-static ProgramDesc BuildProgramWithCinnLaunchOp(
-    const std::string& compilation_key) {
+static ProgramDesc BuildProgramWithCinnLaunchOp(int64_t compilation_key) {
   // create a cinn_launch op
   ProgramDesc program;
   auto* block = program.MutableBlock(0);
@@ -89,7 +88,7 @@ TEST(ShareMemInfoToSubGraphPassTest, test_main_graph_share_varinfo) {
   auto subgraph = std::make_unique<ir::Graph>(BuildProgramInsideCinnLaunchOp());
   subgraph->GetOrInit<Name2VarInfoMap>(
       paddle2cinn::kMemOptVarInfoFromMainGraph);
-  std::string compilation_key =
+  auto compilation_key =
       paddle2cinn::CinnCompiler::GetInstance()->AddGraph(std::move(subgraph));
 
   // build test data and apply pass
