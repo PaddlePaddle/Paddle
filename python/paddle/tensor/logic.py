@@ -275,9 +275,10 @@ def is_empty(x, name=None):
 
 def equal_all(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
+    Returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
@@ -395,7 +396,8 @@ def equal(x, y, name=None):
 
     This layer returns the truth value of :math:`x == y` elementwise.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
@@ -452,9 +454,10 @@ def equal(x, y, name=None):
 @templatedoc()
 def greater_equal(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
+    Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
@@ -462,7 +465,7 @@ def greater_equal(x, y, name=None):
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
         .. code-block:: python
@@ -502,9 +505,10 @@ def greater_equal(x, y, name=None):
 @templatedoc()
 def greater_than(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+    Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
@@ -512,7 +516,7 @@ def greater_than(x, y, name=None):
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x` .
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
         .. code-block:: python
@@ -551,9 +555,10 @@ def greater_than(x, y, name=None):
 @templatedoc()
 def less_equal(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
+    Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
@@ -562,7 +567,7 @@ def less_equal(x, y, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
         .. code-block:: python
@@ -602,9 +607,10 @@ def less_equal(x, y, name=None):
 @templatedoc()
 def less_than(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
+    Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
@@ -613,7 +619,7 @@ def less_than(x, y, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
         .. code-block:: python
@@ -653,9 +659,10 @@ def less_than(x, y, name=None):
 @templatedoc()
 def not_equal(x, y, name=None):
     """
-    This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
+    Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
     
-    **NOTICE**: The output of this OP has no gradient.
+    Note: 
+        The output has no gradient.
 
     Args:
         x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
@@ -664,7 +671,7 @@ def not_equal(x, y, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the output data type is bool: The tensor storing the output, the output shape is same as input :attr:`x`.
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
         .. code-block:: python

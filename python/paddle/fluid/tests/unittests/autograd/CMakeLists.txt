@@ -8,3 +8,4 @@ endforeach(TEST_OP)
 
 set_tests_properties(test_autograd_functional_dynamic PROPERTIES TIMEOUT 160)
 set_tests_properties(test_autograd_functional_static PROPERTIES TIMEOUT 160)
+set_tests_properties(test_gradients_and_minimize PROPERTIES TIMEOUT 60)

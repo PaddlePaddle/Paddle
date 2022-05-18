@@ -981,9 +981,6 @@ function generate_upstream_develop_api_spec() {
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
 
     cd ${PADDLE_ROOT}
     git checkout .
@@ -995,6 +992,9 @@ function generate_upstream_develop_api_spec() {
     if [ "$url_return" == '200' ];then
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         cmake_gen $1
         build $2
     fi

@@ -122,7 +122,7 @@ def argsort(x, axis=-1, descending=False, name=None):
 
 def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
-    This OP computes the indices of the max elements of the input tensor's
+    Computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
     Args:
@@ -133,23 +133,21 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is 'int64', and it will
+                    be int32, int64. The default value is ``int64`` , and it will
                     return the int64 indices.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            x =  paddle.to_tensor([[5,8,9,5],
-                                     [0,0,1,7],
-                                     [6,9,2,4]])
+            x = paddle.to_tensor([[5,8,9,5],
+                                 [0,0,1,7],
+                                 [6,9,2,4]])
             out1 = paddle.argmax(x)
             print(out1) # 2
             out2 = paddle.argmax(x, axis=0)

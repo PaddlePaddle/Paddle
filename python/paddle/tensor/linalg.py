@@ -1481,10 +1481,12 @@ def bmm(x, y, name=None):
             y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
                                 [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
             out = paddle.bmm(x, y)
-            #output size: (2, 2, 2)
-            #output value:
-            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-            out_np = out.numpy()
+            # Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[6. , 6. ],
+            #          [12., 12.]],
+
+            #         [[45., 45.],
+            #          [60., 60.]]])
 
     """
     x_shape = x.shape
@@ -1519,9 +1521,10 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     Args:
         input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
-        bins (int): number of histogram bins
-        min (int): lower end of the range (inclusive)
-        max (int): upper end of the range (inclusive)
+        bins (int, optional): number of histogram bins.
+        min (int, optional): lower end of the range (inclusive).
+        max (int, optional): upper end of the range (inclusive).
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: data type is int64, shape is (nbins,).
@@ -1629,14 +1632,14 @@ def mv(x, vec, name=None):
             # x: [M, N], vec: [N]
             # paddle.mv(x, vec)  # out: [M]
 
-            import numpy as np
             import paddle
 
-            x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
-            x = paddle.to_tensor(x_data)
-            vec_data = np.array([3, 5, 1])
-            vec = paddle.to_tensor(vec_data).astype("float64")
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1]]).astype("float64")
+            vec = paddle.to_tensor([3, 5, 1]).astype("float64")
             out = paddle.mv(x, vec)
+            print(out)
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [14., 10.])
     """
     if in_dygraph_mode():
         return _C_ops.final_state_mv(x, vec)
