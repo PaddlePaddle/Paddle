@@ -41,6 +41,8 @@ class PushGpuPSSparseCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(pull_gpups_sparse,
-                        ops::PullGpuPSSparseCUDAKernel<float>)
+                        ops::PullGpuPSSparseCUDAKernel<float>,
+                        ops::PullGpuPSSparseCUDAKernel<double>)
 REGISTER_OP_CUDA_KERNEL(push_gpups_sparse,
-                        ops::PushGpuPSSparseCUDAKernel<float>)
+                        ops::PushGpuPSSparseCUDAKernel<float>,
+                        ops::PushGpuPSSparseCUDAKernel<double>)
