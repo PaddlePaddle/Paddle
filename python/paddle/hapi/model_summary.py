@@ -30,7 +30,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     Args:
         net (Layer): the network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec]): size of input tensor. if model only 
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. if model only 
                     have one input, input_size can be tuple or InputSpec. if model
                     have multiple input, input_size must be a list which contain 
                     every input's shape. Note that input_size only dim of

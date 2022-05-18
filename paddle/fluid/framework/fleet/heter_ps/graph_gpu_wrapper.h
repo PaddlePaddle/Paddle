@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,10 +23,13 @@ namespace framework {
 #ifdef PADDLE_WITH_HETERPS
 class GraphGpuWrapper {
  public:
-  static GraphGpuWrapper* GetInstance() {
-    static GraphGpuWrapper wrapper;
-    return &wrapper;
+  static std::shared_ptr<GraphGpuWrapper> GetInstance() {
+    if (NULL == s_instance_) {
+      s_instance_.reset(new paddle::framework::GraphGpuWrapper());
+    }
+    return s_instance_;
   }
+  static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
   void test();
   void set_device(std::vector<int> ids);
@@ -53,6 +57,8 @@ class GraphGpuWrapper {
                                              std::vector<int64_t>& key,
                                              int sample_size);
 
+  void init_sample_status();
+  void free_sample_status();
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
@@ -62,7 +68,7 @@ class GraphGpuWrapper {
   ::paddle::distributed::GraphParameter table_proto;
   std::vector<int> device_id_mapping;
   int search_level = 1;
-  char* graph_table;
+  void* graph_table;
 };
 #endif
 }

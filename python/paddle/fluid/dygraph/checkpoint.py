@@ -257,7 +257,7 @@ def load_dygraph(model_path, **configs):
                     para_dict = structured_para_dict
         else:
             # load state dict by `io.save_params/persistables` save format
-            # TODO(chenweihang): [ Now only supports loading parameters seperately ]
+            # TODO(chenweihang): [ Now only supports loading parameters separately ]
             # If users save all parameters as one file, the [ variable.name -> variable ]
             # mapping info will lost, so users need to give variable list, but users build 
             # variable list in dygraph mode is difficult, we recommend users to use

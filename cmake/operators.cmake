@@ -261,6 +261,12 @@ function(op_library TARGET)
     elseif (WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
         xpu_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu_kp_cc_srcs} DEPS ${op_library_DEPS} ${op_common_deps})
     else()
+        # deal with CANN version control while registering NPU operators before build
+        if (WITH_ASCEND_CL)
+            if (CANN_VERSION LESS 504000)
+                list(REMOVE_ITEM npu_cc_srcs "multinomial_op_npu.cc")
+            endif()
+        endif()
         # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
             # Combine the cc source files.

@@ -65,6 +65,9 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
+std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
+                                                      ssize_t arg_pos);
+std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -96,6 +99,7 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
+PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value);
 
 template <typename Tuple, size_t N>
 struct TupleTensorResult {

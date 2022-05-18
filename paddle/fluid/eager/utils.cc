@@ -157,7 +157,7 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
     if (autograd_meta->GradNode()) {
       VLOG(7) << "Should not set grad node twice, original node is:"
               << autograd_meta->GradNode()->name()
-              << "current is: " << grad_node->name();
+              << " current is: " << grad_node->name();
     }
     autograd_meta->SetGradNode(grad_node);
   }
