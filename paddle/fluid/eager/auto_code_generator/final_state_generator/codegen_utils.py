@@ -63,22 +63,24 @@ def AssertMessage(lhs_str, rhs_str):
 
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
+    # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
-    return contents
+    return contents if contents is not None else []
 
 
 def ReadBwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
-    for content in contents:
-        assert 'backward_api' in content.keys(), AssertMessage('backward_api',
-                                                               content.keys())
-        if 'backward_api' in content.keys():
-            api_name = content['backward_api']
+    if contents is not None:
+        for content in contents:
+            assert 'backward_api' in content.keys(), AssertMessage(
+                'backward_api', content.keys())
+            if 'backward_api' in content.keys():
+                api_name = content['backward_api']
 
-        ret[api_name] = content
+            ret[api_name] = content
     f.close()
     return ret
 
@@ -207,6 +209,8 @@ def ParseYamlArgs(string):
 
         assert arg_type in yaml_types_mapping.keys(
         ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        if arg_type in ["DataType", "DataLayout"] and default_value is not None:
+            default_value = f"paddle::experimental::{default_value}"
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)

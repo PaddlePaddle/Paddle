@@ -237,8 +237,13 @@ namespace experimental {
 def generate_backward_api(backward_yaml_path, header_file_path,
                           source_file_path):
 
-    with open(backward_yaml_path, 'r') as f:
-        bw_apis = yaml.load(f, Loader=yaml.FullLoader)
+    bw_apis = []
+    for each_api_yaml in backward_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                bw_apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -270,6 +275,7 @@ def main():
     parser.add_argument(
         '--backward_yaml_path',
         help='path to backward yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/backward.yaml')
     parser.add_argument(
         '--backward_header_path',
