@@ -952,12 +952,15 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
+          
             import paddle
             x = paddle.uniform([2, 490, 28, 28], dtype='float32')
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
             boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
+            print(pool_out.shape)
+            # [3, 10, 7, 7]
     """
 
     check_type(output_size, 'output_size', (int, tuple, list), 'psroi_pool')
