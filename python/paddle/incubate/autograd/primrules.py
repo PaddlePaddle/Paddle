@@ -644,6 +644,8 @@ def concat_transpose(op, check_dot, y_bar):
         assert check_dot(x), 'check_dot(x) must be True'
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
+    if len(sections) == 1:
+        return y_bar
     return split(y_bar, num_or_sections=sections, axis=axis)
 
 
