@@ -372,7 +372,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
         # data parallel synchronization for primtive operators
-        from paddle.incubate.autograd.utils import prim_enabled
+        from paddle.incubate.autograd import prim_enabled
         if prim_enabled():
             assert is_prim_op(src_op)
             prim_operator_data_parallel_functor(ctx, src_op)

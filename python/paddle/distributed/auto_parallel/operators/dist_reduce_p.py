@@ -18,7 +18,7 @@ from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
-from ..utils import is_valid_list_index, is_prim_op
+from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
