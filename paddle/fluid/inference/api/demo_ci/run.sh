@@ -106,6 +106,9 @@ mkdir -p build
 cd build
 rm -rf *
 
+# run all test cases before exit
+EXIT_CODE=0
+
 for WITH_STATIC_LIB in ON OFF; do
   if [ $(echo `uname` | grep "Win") != "" ]; then
     # TODO(wilber, T8T9): Do we still need to support windows gpu static library
@@ -128,7 +131,7 @@ for WITH_STATIC_LIB in ON OFF; do
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
-        echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " >> ${current_dir}/test_summary.txt
+        echo "simple_on_word2vec use_gpu:${use_gpu} runs failed " > ${current_dir}/test_summary.txt
         EXIT_CODE=1
       fi
     done

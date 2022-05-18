@@ -267,12 +267,8 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-::call :test_inference
-::if %errorlevel% NEQ 0 set error_code=%errorlevel%
-::call :test_inference_ut
-::if %errorlevel% NEQ 0 set error_code=%errorlevel%
-::if %error_code% NEQ 0 goto test_inference_error
-
+::call :test_inference || goto test_inference_error
+::call :test_inference_ut || goto test_inference_ut_error
 ::call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -775,7 +771,7 @@ goto:eof
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
 echo    ==========================================
-echo    Testing fluid library for inference failed!
+echo    Testing inference library failed!
 echo    ==========================================
 exit /b 1
 
