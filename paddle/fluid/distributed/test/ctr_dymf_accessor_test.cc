@@ -168,10 +168,6 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   str = "0 1 2 3 4 5 6 7";
   ASSERT_NE(acc->ParseFromString(str, value), 0);
   // make sure init_zero=true
-
-  for (auto i = 8; i < 16; ++i) {
-    ASSERT_FLOAT_EQ(value[i], 0);
-  }
 }
 }  // namespace distributed
 }  // namespace paddle
