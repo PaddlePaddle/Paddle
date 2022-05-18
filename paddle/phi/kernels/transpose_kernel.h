@@ -35,7 +35,7 @@ DenseTensor Transpose(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TransposeInferMeta(x, axis, &meta_out);
-  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  phi::TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
 
