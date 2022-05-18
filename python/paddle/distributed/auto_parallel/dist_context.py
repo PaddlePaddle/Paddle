@@ -191,8 +191,8 @@ class DistributedContext:
             self._dist_ops_for_program)
 
     @property
-    def gradient_mean(self):
-        return self._gradient_mean
+    def gradient_scale(self):
+        return self._gradient_scale
 
     def initialize(self):
         if not self._is_initialized:
