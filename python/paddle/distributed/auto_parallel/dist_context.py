@@ -115,6 +115,9 @@ class DistributedContext:
 
         self._is_initialized = False
 
+        # flag whether scale gradient with dp size
+        self._gradient_scale = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -186,6 +189,10 @@ class DistributedContext:
     def has_annotation(self):
         return len(self._dist_tensors_for_program) or len(
             self._dist_ops_for_program)
+
+    @property
+    def gradient_mean(self):
+        return self._gradient_mean
 
     def initialize(self):
         if not self._is_initialized:
