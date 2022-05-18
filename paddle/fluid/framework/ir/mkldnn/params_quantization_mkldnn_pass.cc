@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/params_to_int8_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -82,7 +82,7 @@ int64_t GetScaleCount(ir::Node* conv_op, ir::Node* conv_filter) {
 
 };  // namespace
 
-ParamsToInt8Pass::ParamsToInt8Pass() {
+ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -122,7 +122,7 @@ ParamsToInt8Pass::ParamsToInt8Pass() {
       .End();
 }
 
-void ParamsToInt8Pass::Conv(ir::Graph* graph) const {
+void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::Conv conv_pattern(gpd.mutable_pattern(), name_scope);
   conv_pattern();
@@ -135,7 +135,7 @@ void ParamsToInt8Pass::Conv(ir::Graph* graph) const {
       LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
-    VLOG(4) << "handle convolution params_to_int8_pass";
+    VLOG(4) << "handle convolution in params_quantization_mkldnn_pass";
 
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
 
@@ -176,11 +176,9 @@ void ParamsToInt8Pass::Conv(ir::Graph* graph) const {
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
 
-void ParamsToInt8Pass::QuantizeConvFilter(Scope* scope, ir::Graph* g,
-                                          ir::Node* conv_op,
-                                          ir::Node* conv_filter,
-                                          const LoDTensor& weights,
-                                          int64_t scale_count) const {
+void ParamsQuantizationMkldnnPass::QuantizeConvFilter(
+    Scope* scope, ir::Graph* g, ir::Node* conv_op, ir::Node* conv_filter,
+    const LoDTensor& weights, int64_t scale_count) const {
   VarDesc int_weights_desc = CreatePersistableVarDesc(
       "conv2d_int8_weights", proto::VarType_Type::VarType_Type_INT8,
       conv_filter->Var()->GetShape());
@@ -195,15 +193,15 @@ void ParamsToInt8Pass::QuantizeConvFilter(Scope* scope, ir::Graph* g,
   QuantizeParams<int8_t>(weights, int_weights_tensor, scale_weights_data);
 
   ConnectNode(conv_op, "Filter", int_weights_node);
-  GraphSafeRemoveNodes(g, {conv_filter});
   scope->EraseVars({conv_filter->Name()});
+  GraphSafeRemoveNodes(g, {conv_filter});
 
   conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 }
 
-void ParamsToInt8Pass::QuantizeConvBias(Scope* scope, ir::Graph* g,
-                                        ir::Node* conv_op,
-                                        int64_t scale_count) const {
+void ParamsQuantizationMkldnnPass::QuantizeConvBias(Scope* scope, ir::Graph* g,
+                                                    ir::Node* conv_op,
+                                                    int64_t scale_count) const {
   std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
   auto bias = scope->FindVar(conv_bias_name)->GetMutable<LoDTensor>();
   PADDLE_ENFORCE_EQ(scale_count, bias->numel());
@@ -225,11 +223,11 @@ void ParamsToInt8Pass::QuantizeConvBias(Scope* scope, ir::Graph* g,
   conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 
   ConnectNode(conv_op, "Bias", int_biases_node);
-  GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
   scope->EraseVars({conv_bias_name});
+  GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
 }
 
-VarDesc ParamsToInt8Pass::CreatePersistableVarDesc(
+VarDesc ParamsQuantizationMkldnnPass::CreatePersistableVarDesc(
     const std::string& name, const proto::VarType_Type& type,
     const std::vector<int64_t>& shape) const {
   VarDesc var_desc(patterns::PDNodeName(name_scope, "conv2d_int8_weights"));
@@ -239,11 +237,11 @@ VarDesc ParamsToInt8Pass::CreatePersistableVarDesc(
   return var_desc;
 }
 
-void ParamsToInt8Pass::ApplyImpl(ir::Graph* graph) const {
+void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
-  FusePassBase::Init("params_to_int8_pass", graph);
+  FusePassBase::Init("params_quantization_mkldnn_pass", graph);
   Conv(graph);
 }
 
@@ -251,8 +249,9 @@ void ParamsToInt8Pass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(params_to_int8_pass, paddle::framework::ir::ParamsToInt8Pass);
-REGISTER_PASS_CAPABILITY(params_to_int8_pass)
+REGISTER_PASS(params_quantization_mkldnn_pass,
+              paddle::framework::ir::ParamsQuantizationMkldnnPass);
+REGISTER_PASS_CAPABILITY(params_quantization_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().LE(
             "conv2d", 1));

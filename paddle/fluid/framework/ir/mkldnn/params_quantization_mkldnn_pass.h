@@ -24,10 +24,10 @@ class Graph;
 /*
  * Quantize parameters of ops
  */
-class ParamsToInt8Pass : public FusePassBase {
+class ParamsQuantizationMkldnnPass : public FusePassBase {
  public:
-  ParamsToInt8Pass();
-  virtual ~ParamsToInt8Pass() {}
+  ParamsQuantizationMkldnnPass();
+  virtual ~ParamsQuantizationMkldnnPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -46,7 +46,7 @@ class ParamsToInt8Pass : public FusePassBase {
                                    const std::vector<int64_t>& shape) const;
 
  private:
-  const std::string name_scope = "params_to_int8_pass";
+  const std::string name_scope = "params_quantization_mkldnn_pass";
 };
 
 }  // namespace ir

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/params_to_int8_pass.h"  // NOLINT
+#include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/imperative/type_defs.h"
@@ -213,11 +213,11 @@ struct ConvProgramStrategy : public ProgramStrategy {
   const std::vector<float> scale_bias;
 };
 
-struct ParamsToInt8PassTestFixture : public ::testing::Test {
+struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
   void RunPassTest(std::unique_ptr<ProgramStrategy> program) {
     auto graph = program->CreateGraph();
 
-    auto pass = PassRegistry::Instance().Get("params_to_int8_pass");
+    auto pass = PassRegistry::Instance().Get("params_quantization_mkldnn_pass");
     graph.reset(pass->Apply(graph.release()));
 
     program->CheckGraph(graph);
@@ -227,21 +227,21 @@ struct ParamsToInt8PassTestFixture : public ::testing::Test {
 Data GenericInput() { return Data({1, 4, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}); }
 Data GenericOutput() { return GenericInput(); }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_o1i1h1w1) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_o1i1h1w1) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
       std::vector<float>{2.f});
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2o1i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
       std::vector<float>{2.f, 4.f});
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2o2i2h2w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o2i2h2w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 2}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f,
@@ -250,7 +250,7 @@ TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2o2i2h2w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2g2o2i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
@@ -258,14 +258,14 @@ TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2g2o2i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_without_bias_2g2o1i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_1o1i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_1o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
       std::vector<float>{2.f}, 1, Data({1, 1, 1, 1}, {1.5f}),
@@ -273,7 +273,7 @@ TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_1o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2o1i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
       std::vector<float>{2.f, 4.f}, 1, Data({2, 1, 1, 1}, {1.5f, 1.5f}),
@@ -281,7 +281,7 @@ TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2g2o1i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
@@ -290,7 +290,7 @@ TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2g2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2g2o2i1h1w) {
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
@@ -305,4 +305,4 @@ TEST_F(ParamsToInt8PassTestFixture, conv_with_bias_2g2o2i1h1w) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(params_to_int8_pass);
+USE_PASS(params_quantization_mkldnn_pass);
