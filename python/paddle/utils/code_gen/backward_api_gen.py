@@ -172,8 +172,8 @@ class BackwardAPI(BaseAPI):
         return kernel_output, output_names, output_create
 
     def gene_invoke_code(self, invoke_code, params_code):
-        inveke_func_name = invoke_code.split('(')[0].strip()
-        if inveke_func_name.endswith('_grad') or inveke_func_name.endswith(
+        invoke_func_name = invoke_code.split('(')[0].strip()
+        if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
                 '_grad_impl'):
             return f"""
 PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{

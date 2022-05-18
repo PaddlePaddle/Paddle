@@ -726,7 +726,7 @@
     backend : x
   inplace : (x -> out)
   view : (x -> out)
-  # intermediate : xshape
+  intermediate : xshape
   backward : flatten_grad
 
 # flip
@@ -1996,12 +1996,13 @@
 
 - api : squeeze
   args : (Tensor x, int[] axes)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeInferMeta
   kernel :
     func : squeeze
   view: (x -> out)
+  intermediate : xshape
   backward : squeeze_grad
 
 - api : stack
@@ -2225,12 +2226,13 @@
 
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
   view: (x -> out)
+  intermediate : xshape
   backward : unsqueeze_grad
 
 # viterbi_decode
