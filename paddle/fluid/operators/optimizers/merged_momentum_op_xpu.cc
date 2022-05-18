@@ -303,8 +303,8 @@ auto* velocity_ptr = reinterpret_cast<T*>(VectorToTensor<T>(velocity_vec,ctx,sta
     int r = xpu::merged_momentum(dev_ctx.x_context(),params_ptr,
                           velocity_ptr,grad_ptr,
                           params_out_ptr,velocity_out_ptr,
-             //             sum,lr->data<T>(), use_nesterov,mu_xpu_ptr,len,sizes_xpu_ptr);
-                          len,lr->data<T>(), use_nesterov,mu_xpu_ptr,sum,sizes_xpu_ptr);
+                         sum,lr->data<T>(), use_nesterov,mu_xpu_ptr,len,sizes_xpu_ptr);
+              //            len,lr->data<T>(), use_nesterov,mu_xpu_ptr,sum,sizes_xpu_ptr);
     int tid = syscall(SYS_gettid);
     std::cout<<"14. merged momentum:" << dev_ctx.x_context() << " " << dev_ctx.x_context()->xpu_stream <<  " "
 	                              << (int) dev_ctx.x_context()->dev().type() << " " << dev_ctx.x_context()->dev().id() << " tid:" << tid << std::endl;
