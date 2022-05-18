@@ -1,4 +1,4 @@
-set(eager_deps phi_api phi_dygraph_api hook_utils tensor_utils utils global_utils backward phi_tensor tracer layer autograd_meta grad_node_info grad_tensor_holder accumulation_node custom_operator_node)
+set(eager_deps phi_api phi_dygraph_api hook_utils tensor_utils utils global_utils backward phi_tensor tracer layer autograd_meta eager_nan_inf_utils grad_node_info grad_tensor_holder accumulation_node custom_operator_node)
 
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function dygraph_node)
@@ -18,6 +18,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(backward SRCS backward.cc DEPS grad_tensor_holder utils autograd_meta grad_node_info switch_autotune)
 endif()
 
+cc_library(eager_nan_inf_utils SRCS nan_inf_utils.cc DEPS phi_tensor nan_inf_utils enforce)
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS phi_api phi_tensor)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS phi_api phi_tensor)

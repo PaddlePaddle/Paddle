@@ -66,7 +66,7 @@ static void ShareVarInfoToCinnLaunch(
           << paddle::string::join_strings(vars_to_delete, ',');
 
   const Graph& subgraph = paddle2cinn::CinnCompiler::GetInstance()->FindGraph(
-      cinn_launch_op->GetOp()->Attr<std::string>(operators::kCompilationKey));
+      cinn_launch_op->GetOp()->Attr<int64_t>(operators::kCompilationKey));
   auto& dst_varinfo_map =
       subgraph.Get<Name2VarInfoMap>(paddle2cinn::kMemOptVarInfoFromMainGraph);
   const Name2VarInfoMap& src_varinfo_map =

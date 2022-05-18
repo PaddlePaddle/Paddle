@@ -193,9 +193,10 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     memory_copy(dst_place, node.key_storage, src_place,
                 reinterpret_cast<char*>(src_key + h_left[i]),
                 node.key_bytes_len, node.in_stream);
-#if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
-    cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
-#endif
+    // #if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
+    //     cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len,
+    //     node.in_stream);
+    // #endif
 
     if (need_copy_val) {
       memory_copy(dst_place, node.val_storage, src_place,
