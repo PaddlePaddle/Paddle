@@ -255,12 +255,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
     std::vector<phi::DenseTensor>& in_tensors, int peer) {
-#if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-#endif
-
   PADDLE_ENFORCE_EQ(
       in_tensors.size(), 1,
       platform::errors::PreconditionNotMet(
@@ -299,12 +293,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
     std::vector<phi::DenseTensor>& out_tensors, int peer) {
-#if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-#endif
-
   PADDLE_ENFORCE_EQ(
       out_tensors.size(), 1,
       platform::errors::PreconditionNotMet(
@@ -343,7 +331,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   end = std::chrono::high_resolution_clock::now();
   diff = end - start;
   VLOG(2) << "Time to copy tensor of dims(" << cpu_tensor.dims()
-          << ") from gpu to cpu for recv " << std::setw(9)
+          << ") from cpu to gpu for recv " << std::setw(9)
           << " is: " << diff.count() << " s" << std::endl;
   return CreateTask(rank_, CommType::RECV, out_tensors);
 }

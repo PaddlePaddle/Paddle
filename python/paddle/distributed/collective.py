@@ -337,6 +337,7 @@ _custom_gid = None
 
 
 def _set_custom_gid(gid):
+    global _custom_gid
     _custom_gid = gid
 
 
@@ -363,6 +364,7 @@ def new_group(ranks=None, backend=None):
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
 
     """
+    global _custom_gid
     global _group_map
     if in_dygraph_mode():
         global _default_group_name
