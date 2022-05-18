@@ -133,7 +133,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
       ptr;
-  if (external_device_contexts_) {
+  if (external_device_contexts_ && external_device_contexts_->count(place)) {
     ptr = external_device_contexts_;
   } else {
     ptr = &device_contexts_;

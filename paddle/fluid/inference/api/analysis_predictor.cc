@@ -327,30 +327,6 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
-  // Init CPUContext.
-  phi::CPUPlace cpu_place;
-  device_contexts_.emplace(
-      cpu_place, std::async(std::launch::deferred, [&] {
-        auto *cpu_context = new InferCPUContext();
-        cpu_context->SetAllocator(
-            memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(cpu_place)
-                .get());
-        cpu_context->SetHostAllocator(
-            memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(cpu_place)
-                .get());
-        cpu_context->SetZeroAllocator(
-            memory::allocation::AllocatorFacade::Instance()
-                .GetZeroAllocator(cpu_place)
-                .get());
-        cpu_context->SetGenerator(framework::DefaultCPUGenerator().get());
-        cpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
-        auto *cpu_resource = ResourceManager::Instance().GetCPUResource();
-        cpu_context->SetEigenDevice(cpu_resource->GetCPUEigenDevice());
-        return std::unique_ptr<phi::DeviceContext>(cpu_context);
-      }));
-
 // Init GPUContext.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU) {
@@ -367,7 +343,7 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .get());
           gpu_context->SetHostAllocator(
               memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(cpu_place)
+                  .GetAllocator(platform::CPUPlace())
                   .get());
           gpu_context->SetZeroAllocator(
               memory::allocation::AllocatorFacade::Instance()
