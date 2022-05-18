@@ -1220,12 +1220,12 @@ def roi_align(x,
             default.
 
     Returns:
-        Tensor: The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import roi_align
 
