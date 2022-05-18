@@ -549,7 +549,6 @@ class Cluster:
             machine["devices"] = devices
             cluster_info["machines"].append(machine)
 
-        print("cluster global id ", global_id)
         # build link
         for i in range(0, global_id + 1):
             for j in range(0, global_id + 1):
@@ -630,6 +629,7 @@ class Cluster:
         link.source.machine.add_link(link)
 
     def get_device(self, device_global_id):
+        device = None
         for machine in self.machines.values():
             if device_global_id in machine.devices.keys():
                 device = machine.devices[device_global_id]
