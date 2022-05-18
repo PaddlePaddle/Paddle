@@ -1541,7 +1541,9 @@ def assign(x, output=None):
         if in_dygraph_mode():
             if output is None:
                 output = core.eager.Tensor()
-            _C_ops.final_state_assign_out_(input, output)
+                _C_ops.final_state_assign_out_(input, output)
+            else:
+                output = _C_ops.final_state_assign(input)
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
@@ -1604,7 +1606,7 @@ def assign(x, output=None):
                 value_name: values
             })
 
-    if is_inplace and _non_static_mode():
+    if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
 
     return output
