@@ -1296,12 +1296,12 @@ class RoIAlign(Layer):
             when pooling. Default: 1.0
 
     Returns:
-        align_out (Tensor): The output of ROIAlign operator is a 4-D tensor with
+        The output of ROIAlign operator is a 4-D tensor with
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
         ..  code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import RoIAlign
 
