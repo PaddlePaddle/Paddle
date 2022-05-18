@@ -824,6 +824,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
     def GenerateForwardDefinition(self, is_inplaced):
         namespace = self.namespace
+        if self.forward_api_name[-1] == '_' and not is_inplaced:
+            return
         forward_api_name = GetInplacedFunctionName(
             self.forward_api_name) if is_inplaced else self.forward_api_name
         backward_api_name = self.backward_api_name
