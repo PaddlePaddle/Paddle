@@ -70,7 +70,7 @@ def set_excluded_layers(param_names, main_program=None):
                     learning_rate=0.01, parameters=my_layer.parameters())
 
                 # Need to set excluded layers before calling decorate
-                paddle.asp.set_excluded_layers(["linear_0"])
+                paddle.asp.set_excluded_layers([my_layer.linear1.full_name()])
 
                 optimizer = paddle.asp.decorate(optimizer)
 
@@ -107,7 +107,7 @@ def set_excluded_layers(param_names, main_program=None):
 
                     # Setup exluded layers out from ASP workflow.
                     # Please note, excluded_layers must be set before calling optimizer.minimize().
-                    paddle.asp.set_excluded_layers(["linear_0"], main_program)
+                    paddle.asp.set_excluded_layers([my_layer.linear1.full_name()], main_program)
 
                     optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                     optimizer = paddle.static.amp.decorate(optimizer )
@@ -156,7 +156,7 @@ def reset_excluded_layers(main_program=None):
                     learning_rate=0.01, parameters=my_layer.parameters())
 
                 # Need to set excluded layers before calling decorate
-                paddle.asp.set_excluded_layers(["linear_0"])
+                paddle.asp.set_excluded_layers([my_layer.linear1.full_name()])
                 # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
                 # Please note, reset_excluded_layers also must be called before calling sparsity.decorate().
                 paddle.asp.reset_excluded_layers()
@@ -196,7 +196,7 @@ def reset_excluded_layers(main_program=None):
 
                     # Setup exluded layers out from ASP workflow.
                     # Please note, excluded_layers must be set before calling optimizer.minimize().
-                    paddle.asp.set_excluded_layers(["linear_0"], main_program)
+                    paddle.asp.set_excluded_layers([my_layer.linear1.full_name()], main_program)
                     # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
                     # Please note, reset_excluded_layers also must be called before calling optimizer.minimize().
                     paddle.asp.reset_excluded_layers(main_program)
