@@ -548,12 +548,10 @@ class Remover:
     def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
                                dist_params_grads):
         """Remove no need vars and ops in the main program."""
-        # print("reshard remove 1", auto_parallel_main_prog, flush=True)
-        Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
-                                                   dist_context)
-        # print("reshard remove 0", auto_parallel_main_prog, flush=True)
         Remover.remove_no_need_ops(auto_parallel_main_prog, dist_context,
                                    rank_id)
+        Resharder.change_while_op_input_and_output(auto_parallel_main_prog,
+                                                   dist_context)
         Remover.remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
 
     @staticmethod
@@ -828,11 +826,6 @@ class Resharder:
             sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
             parent_while_op_id = Resharder.while_block_info[sub_block_idx][
                 "op_id"]
-            # print(
-            #     "reshard change 0",
-            #     Resharder.while_block_info,
-            #     parent_while_op_id,
-            #     flush=True)
             parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
 
             sub_block_op_inputs = set()
@@ -856,7 +849,8 @@ class Resharder:
                     while_op = op
                     break
 
-            assert while_op is not None
+            if while_op is None:
+                continue
 
             # find the actual input and output of while op
             proto = OpProtoHolder.instance().get_op_proto(while_op.type)
@@ -871,7 +865,8 @@ class Resharder:
             for var_name in while_op.output("Out"):
                 for output_name in sub_block_op_outputs[::-1]:
                     if output_name.find(var_name) != -1:
-                        new_Out.append(output_name)
+                        if output_name not in new_Out:
+                            new_Out.append(output_name)
             assert new_Out
             while_op.desc.set_output(proto.outputs[0].name, new_Out)
 
@@ -937,6 +932,7 @@ class Resharder:
                         op_input_dims_mapping, op_process_mesh
                     ])):
                 # dims_mapping
+
                 if tensor_dims_mapping != op_input_dims_mapping:
                     if tensor_process_mesh not in self.dist_context.process_meshes:
                         if not is_reshard:
@@ -992,6 +988,12 @@ class Resharder:
                     #                 break
                     # else:
                     is_reshard = True
+
+                if tensor_name == "linear_7.tmp_1" and dist_op.serial_op.type == "write_to_array":
+                    print("****~~~~~", tensor_dims_mapping,
+                          op_input_dims_mapping, tensor_process_mesh,
+                          op_process_mesh, is_reshard)
+
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 tensor_name)
@@ -1046,7 +1048,7 @@ class Resharder:
         for process_mesh in self.dist_context.process_meshes:
             if set(process_mesh.processes) & (
                     set(op_process_mesh.processes)
-            ) and len(process_mesh.processes) <= len(op_process_mesh.processes):
+            ) and len(process_mesh.processes) < len(op_process_mesh.processes):
                 process_meshes.append(process_mesh)
 
         # it means the process mesh is not a union when process meshes is null
@@ -1538,9 +1540,9 @@ class Resharder:
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
                         process_meshes = self.get_while_op_actual_process_meshes(
-                            op, var_name) if op.type == "while" else [
-                                dist_op.dist_attr.process_mesh
-                            ]
+                            op, var_name
+                        ) if op.type == "while" else self.get_op_process_meshes(
+                            op)
                         for process_mesh in process_meshes:
                             if dist_tensor is not None and self.need_reshard(
                                     dist_tensor, dist_op, process_mesh):
