@@ -28,7 +28,6 @@ from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
 import warnings
-from .incubate.ad_transform.primx import prim_enabled, _gradients
 try:
     from collections.abc import Sequence
 except:

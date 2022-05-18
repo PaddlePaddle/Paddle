@@ -45,7 +45,6 @@ from .. import compat as cpt
 import warnings
 from paddle import _C_ops
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.incubate.ad_transform.primx import orig2prim, prim2orig, Transform, prim_enabled
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -56,44 +55,6 @@ __all__ = [
     'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
     'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
-
-
-@framework.static_only
-def append_backward_new(loss_list,
-                        parameter_list=None,
-                        no_grad_set=None,
-                        callbacks=None,
-                        checkpoints=None,
-                        distop_context=None):
-    program = default_main_program()
-    assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
-    block = program.current_block()
-
-    orig2prim(block)
-    ad = Transform(block)
-    if parameter_list is None:
-        parameter_list = program.global_block().all_parameters()
-    param_dot, loss_dot = ad.linearize(parameter_list, loss_list)
-    loss_bar, param_bar = ad.transpose(loss_dot, param_dot)
-
-    # remove param_dot and their constructor ops
-    op_indexes = []
-    for var in param_dot:
-        if var is not None:
-            op_index = block.ops.index(var.op)
-            assert op_index >= 0
-            op_indexes.append(op_index)
-
-    ad.erase_ops(sorted(op_indexes))
-    ad.erase_dots(param_dot)
-
-    if len(parameter_list) == 1:
-        params_and_grads = [(parameter_list, param_bar)]
-    else:
-        params_and_grads = []
-        for i, param in enumerate(parameter_list):
-            params_and_grads.append((param, param_bar[i]))
-    return params_and_grads
 
 
 class Optimizer(object):
@@ -954,12 +915,8 @@ class Optimizer(object):
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
             with program_guard(program, startup_program):
-                if prim_enabled():
-                    params_grads = append_backward_new(
-                        [loss], parameter_list, act_no_grad_set, callbacks)
-                else:
-                    params_grads = append_backward(loss, parameter_list,
-                                                   act_no_grad_set, callbacks)
+                params_grads = append_backward(loss, parameter_list,
+                                               act_no_grad_set, callbacks)
         return params_grads
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
