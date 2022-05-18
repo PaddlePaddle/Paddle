@@ -1061,7 +1061,7 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, U8WS8,
-                                    ops::kConvMKLDNNINT8,
+                                    ops::kConvMKLDNNINT8WS8,
                                     ops::ConvMKLDNNOpKernel<uint8_t, int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
@@ -1071,7 +1071,7 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, S8WS8,
-                                    ops::kConvMKLDNNINT8,
+                                    ops::kConvMKLDNNINT8WS8,
                                     ops::ConvMKLDNNOpKernel<int8_t, int8_t>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad, MKLDNN,
