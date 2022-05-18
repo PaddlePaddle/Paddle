@@ -78,13 +78,6 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
 inline void MatchShapeToLayout(framework::Tensor* tensor_in,
                                framework::DataLayout from,
                                framework::DataLayout to) {
-  // In these data layouts, channel dimension is either on 2nd position: nChw or
-  // at last nhwC, so for dim==2 these layouts are the same and nothing should
-  // be done. Similarly for dim==1 when you have just one possible combination.
-  if (tensor_in->dims().size() < 3) {
-    return;
-  }
-
   auto print_dims = [](const std::vector<int>& dims) {
     std::ostringstream oss;
 
@@ -100,6 +93,15 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
 
     return oss.str();
   };
+
+  // In these data layouts, channel dimension is either on 2nd position: nChw or
+  // at last nhwC, so for dim==2 these layouts are the same and nothing should
+  // be done. Similarly for dim==1 when you have just one possible combination.
+  if (tensor_in->dims().size() < 3) {
+    VLOG(3) << "Keeping kMKLDNN/kNHWC/kNDHWC output_shape"
+            << print_dims(phi::vectorize<int>(tensor_in->dims()));
+    return;
+  }
 
   switch (from) {
     case framework::DataLayout::kMKLDNN:
@@ -571,6 +573,12 @@ inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
+    // If there is already registered NHWC then quit this call
+    // not to overwrite setting with analysis of internal "while" op block
+    if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+        framework::DataLayout::kNHWC)
+      return;
+
     VLOG(4) << "RegisterModelLayout for mkldnn";
     auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
                            const std::string& attrib_name) -> bool {

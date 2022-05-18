@@ -24,6 +24,7 @@ from .logic import logical_not
 from .creation import full
 
 import paddle
+import warnings
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
@@ -1491,10 +1492,12 @@ def bmm(x, y, name=None):
             y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
                                 [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
             out = paddle.bmm(x, y)
-            #output size: (2, 2, 2)
-            #output value:
-            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-            out_np = out.numpy()
+            # Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[[6. , 6. ],
+            #          [12., 12.]],
+
+            #         [[45., 45.],
+            #          [60., 60.]]])
 
     """
     x_shape = x.shape
@@ -1529,9 +1532,10 @@ def histogram(input, bins=100, min=0, max=0, name=None):
     Args:
         input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
-        bins (int): number of histogram bins
-        min (int): lower end of the range (inclusive)
-        max (int): upper end of the range (inclusive)
+        bins (int, optional): number of histogram bins.
+        min (int, optional): lower end of the range (inclusive).
+        max (int, optional): upper end of the range (inclusive).
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: data type is int64, shape is (nbins,).
@@ -1639,14 +1643,14 @@ def mv(x, vec, name=None):
             # x: [M, N], vec: [N]
             # paddle.mv(x, vec)  # out: [M]
 
-            import numpy as np
             import paddle
 
-            x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
-            x = paddle.to_tensor(x_data)
-            vec_data = np.array([3, 5, 1])
-            vec = paddle.to_tensor(vec_data).astype("float64")
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1]]).astype("float64")
+            vec = paddle.to_tensor([3, 5, 1]).astype("float64")
             out = paddle.mv(x, vec)
+            print(out)
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [14., 10.])
     """
     if in_dygraph_mode():
         return _C_ops.final_state_mv(x, vec)
@@ -3181,3 +3185,72 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         singular_values = paddle.static.data(name='singular_values', shape=[0])
 
     return solution, residuals, rank, singular_values
+
+
+def corrcoef(x, rowvar=True, name=None):
+    """
+    
+    A correlation coefficient matrix indicate the correlation of each pair variables in the input matrix.
+    For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
+    element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.
+
+    The relationship between the correlation coefficient matrix `R` and the
+    covariance matrix `C`, is
+
+    .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
+
+    The values of `R` are between -1 and 1.
+
+    Parameters:
+
+        x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
+        rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`.
+
+    Returns:
+
+        The correlation coefficient matrix of the variables.
+
+    Examples:
+        .. code-block:: python
+          :name: code-example1
+        
+            import paddle
+
+            xt = paddle.rand((3,4))
+            print(paddle.linalg.corrcoef(xt))
+
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # [[ 1.        , -0.73702252,  0.66228950],
+            # [-0.73702258,  1.        , -0.77104872],
+            # [ 0.66228974, -0.77104825,  1.        ]])
+
+    """
+    if len(x.shape) > 2 or len(x.shape) < 1:
+        raise ValueError(
+            "Input(x) only support N-D (1<=N<=2) tensor in corrcoef, but received "
+            "length of Input(input) is %s." % len(x.shape))
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'corrcoef')
+
+    c = cov(x, rowvar)
+    if (c.ndim == 0):
+        # scalar covariance
+        # nan if incorrect value (nan, inf, 0), 1 otherwise
+        return c / c
+
+    d = paddle.diag(c)
+
+    if paddle.is_complex(d):
+        d = d.real()
+    stddev = paddle.sqrt(d)
+    c /= stddev[:, None]
+    c /= stddev[None, :]
+
+    # Clip to [-1, 1].  This does not guarantee
+    if paddle.is_complex(c):
+        return paddle.complex(
+            paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1))
+    else:
+        c = paddle.clip(c, -1, 1)
+
+    return c

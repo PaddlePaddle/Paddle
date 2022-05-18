@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +85,7 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(einsum, EinsumInferShapeFunctor,
-                            PD_INFER_META(phi::EinsumInferShape));
+                            PD_INFER_META(phi::EinsumInferMeta));
 
 REGISTER_OPERATOR(einsum, ops::EinsumOp, ops::EinsumOpMaker,
                   EinsumInferShapeFunctor,

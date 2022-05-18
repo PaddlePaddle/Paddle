@@ -16,9 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#if defined(PADDLE_WITH_XPU_KP)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-#endif
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -48,10 +46,8 @@ class HeterPsBase {
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;
 
-#if defined(PADDLE_WITH_XPU_KP)
-  virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config) {}
-  virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config) {}
-#endif
+  virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config) = 0;
+  virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config) = 0;
 
   static HeterPsBase* get_instance(size_t capacity,
                                    std::shared_ptr<HeterPsResource> resource);

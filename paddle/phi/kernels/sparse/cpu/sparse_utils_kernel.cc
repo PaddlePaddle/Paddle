@@ -254,7 +254,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
   if (indices_dims.size() == 1) {
     sparse_dim = 1;
   }
-  const int64_t dense_dim = values.dims().size() - 1;
+  const int64_t dense_dim = x.dense_dim();
 
   const T* x_data = values.data<T>();
   *out = phi::Empty(

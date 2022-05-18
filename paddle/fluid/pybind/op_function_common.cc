@@ -282,6 +282,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
   std::vector<int> value;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
@@ -298,6 +299,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
     }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
@@ -314,6 +316,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
     }
   } else if (PySequence_Check(obj)) {
     Py_ssize_t len = PySequence_Size(obj);
+    value.reserve(len);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);

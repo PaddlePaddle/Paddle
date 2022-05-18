@@ -720,7 +720,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(), true,
       platform::errors::InvalidArgument(
-          "First parameter of function HasOuput must be Node::Op"));
+          "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
