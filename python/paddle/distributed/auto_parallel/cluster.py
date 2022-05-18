@@ -409,8 +409,20 @@ class Cluster:
         self._alpha_latency = None
         self._rank_to_device_id = {}
         self._device_id_to_rank = {}
-    
-    def gen_default_config_cluster(gpu_model="V100", cpu_model="6271C", node_count=2, device_count=8, gpu_memory=32, cpu_memory=503, inter_bandwidth=24, intra_bandwidth=235, gpu_dp_gflops=7800, gpu_sp_gflops=15700, cpu_dp_gflops=75, cpu_sp_gflops=150):
+
+    def gen_default_config_cluster(self,
+                                   gpu_model="V100",
+                                   cpu_model="6271C",
+                                   node_count=2,
+                                   device_count=8,
+                                   gpu_memory=32,
+                                   cpu_memory=503,
+                                   inter_bandwidth=24,
+                                   intra_bandwidth=235,
+                                   gpu_dp_gflops=7800,
+                                   gpu_sp_gflops=15700,
+                                   cpu_dp_gflops=75,
+                                   cpu_sp_gflops=150):
         """Generate cluster by default config."""
         gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
         xpu_models = ["XPU"]
@@ -432,7 +444,7 @@ class Cluster:
             assert type is not None
 
             return type
-        
+
         def _convert_to_model(gpu_model, gpu_memory):
             model = None
             if gpu_model == "V100":
@@ -440,7 +452,7 @@ class Cluster:
             assert model is not None
 
             return model
-        
+
         def _convert_to_cpu_info(cpu_model):
             arch, vendor, model = None, None, None
             if cpu_model == "6271C":
@@ -475,17 +487,18 @@ class Cluster:
 
             devices = []
             local_id = 0
-            
-            for j in range(devices):
+
+            for j in range(device_count):
                 device = {}
-                global_id = global_id + local_id if i == 0 else global_id + local_id + 1
+                global_id = global_id if i == 0 and j == 0 else global_id + 1
+
                 local_id += 1
                 type = _convert_to_type(gpu_model)
                 model = _convert_to_model(gpu_model, gpu_memory)
                 dp_gflops = gpu_dp_gflops
                 sp_gflops = gpu_dp_gflops
                 memory = gpu_memory
-                
+
                 device["global_id"] = global_id
                 device["local_id"] = local_id
                 device["type"] = type
@@ -496,7 +509,7 @@ class Cluster:
                 global_id_to_device_type[global_id] = type
                 global_id_to_node[global_id] = i
                 devices.append(device)
-            
+
             # add cpu device and nic device, just one cpu
             cpu_device = {}
             arch, vendor, model = _convert_to_cpu_info(cpu_model)
@@ -521,6 +534,8 @@ class Cluster:
 
             nic_device = {}
             global_id += 1
+
+            # add NIC
             type = "NIC"
             width = 12.5
             ip = "127.0.0.1"
@@ -534,8 +549,9 @@ class Cluster:
             machine["devices"] = devices
             cluster_info["machines"].append(machine)
 
-        for i in range(0, global_id+1):
-            for j in range(0, global_id+1):
+        # build link
+        for i in range(0, global_id + 1):
+            for j in range(0, global_id + 1):
                 if i == j:
                     continue
                 node_id_i = global_id_to_node[i]
@@ -555,8 +571,8 @@ class Cluster:
                     link["type"] = "PHB"
                     link["bandwidth"] = inter_bandwidth
                 cluster_info["machines"][node_id_i]["links"].append(link)
-        
-        return cluster_info
+
+        self._build_from_dict(cluster_info)
 
     @property
     def rank_to_device_id(self):
@@ -618,7 +634,7 @@ class Cluster:
             if device_global_id in machine.devices.keys():
                 device = machine.devices[device_global_id]
         return device
-    
+
     def _build_from_dict(self, cluster_info):
         machines_info = cluster_info["machines"]
         for machine_info in machines_info:
