@@ -307,23 +307,25 @@ PreparedOp PrepareImpl(
       || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
           ) {
-    if (has_phi_kernel) {
-      auto pt_cpu_kernel_key =
-          FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto& pt_cpu_kernel =
-          phi_kernel_factory.SelectKernel(pt_kernel_name, pt_cpu_kernel_key);
-      if (pt_cpu_kernel.IsValid()) {
-        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-                << " | kernel key: " << pt_cpu_kernel_key
-                << " | kernel: " << pt_cpu_kernel;
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(
-            op, empty_ctx,
-            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
-            arg_map_fn, default_kernel_signature, std::move(kernel_signature),
-            pt_cpu_kernel, cpu_ctx);
-      }
-    }
+    // if (has_phi_kernel) {
+    //   auto pt_cpu_kernel_key =
+    //       FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
+    //   auto& pt_cpu_kernel =
+    //       phi_kernel_factory.SelectKernel(pt_kernel_name, pt_cpu_kernel_key);
+    //   if (pt_cpu_kernel.IsValid()) {
+    //     VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " <<
+    //     pt_kernel_name
+    //             << " | kernel key: " << pt_cpu_kernel_key
+    //             << " | kernel: " << pt_cpu_kernel;
+    //     auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
+    //     return PreparedOp(
+    //         op, empty_ctx,
+    //         framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+    //         arg_map_fn, default_kernel_signature,
+    //         std::move(kernel_signature),
+    //         pt_cpu_kernel, cpu_ctx);
+    //   }
+    // }
   }
 
   PADDLE_ENFORCE_NE(
