@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -153,6 +153,7 @@ class CommContext:
             return
         self.beta = {}
         self.hops = {}
+        assert cluster is not None
         self.cluster = cluster
         # if cluster has no info about those vars, it will be set by default
         self.base_ring = None
@@ -338,8 +339,6 @@ class Cost:
 
 class OpCost:
     def __init__(self, op=None, op_desc=None):
-        assert (op is not None and op_desc is None) or (op is None and
-                                                        op_desc is not None)
         self._op = op
         self._op_desc = op_desc
         self._cost = None
