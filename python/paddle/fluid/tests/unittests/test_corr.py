@@ -18,9 +18,15 @@ import numpy as np
 import six
 import paddle
 import warnings
+import sys
+
+np_minor_version = int((np.__version__).split('.')[1])
 
 
 def numpy_corr(np_arr, rowvar=True, dtype='float64'):
+    # np.corrcoef support parameter 'dtype' since 1.20
+    if np_minor_version < 20:
+        return np.corrcoef(np_arr, rowvar=rowvar)
     return np.corrcoef(np_arr, rowvar=rowvar, dtype=dtype)
 
 
