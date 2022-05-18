@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
-#include "thrust/pair.h"
 #include "paddle/fluid/platform/timer.h"
+#include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
 // #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
@@ -46,70 +46,6 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
-struct CustomGradMerger {
-  // template <typename T>
-  // CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
-  // operator()(const T& a, const T& b) const {
-  //   T out;
-  //   out.slot = a.slot;
-  //   out.mf_dim = a.mf_dim;
-  //   out.show = a.show + b.show;
-  //   out.clk = a.clk + b.clk;
-  //   out.lr_g = a.lr_g + b.lr_g;
-  //   for (int i = 0; i < out.mf_dim; ++i) {
-  //     //printf("mf_g: %f\n", a.mf_g[0]);
-  //     // a.mf_g[0] = b.mf_g[0];
-  //     //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; //
-  //     // for local test
-  //     out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-  //   }
-
-  //   return out;
-  // }
-  template <typename T>
-  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
-  operator()(const T& a, const T& b) const {
-    T out;
-    out.slot = a.slot;
-    out.mf_dim = a.mf_dim;
-    out.show = a.show + b.show;
-    out.clk = a.clk + b.clk;
-    out.lr_g = a.lr_g + b.lr_g;
-    //for (int i = 0; i < out->mf_dim; ++i) {
-      //printf("mf_g: %f\n", a.mf_g[0]);
-      // a.mf_g[0] = b.mf_g[0];
-      //((float*)out.mf_g)[i] = ((float*)a.mf_g)[i] + ((float*)b.mf_g)[i]; //
-      // for local test
-      //out->mf_g[i] = a->mf_g[i] + b->mf_g[i];
-    //}
-
-    return out;
-  }
-
-  template <typename T>
-  __device__ __forceinline__
-  void copy_basic_field(T& output, const T& input) {
-      output.slot    = input.slot;
-      output.show    = input.show;
-      output.clk     = input.clk;
-      output.mf_dim = input.mf_dim;
-      output.lr_g = input.lr_g;
-      for(int i = 0; i < output.mf_dim ; ++i) {
-         output.mf_g[i] = input.mf_g[i];
-      }
-  }
-  template <typename T>
-  __device__ __forceinline__
-  void add_basic_field(T& output, const T& input) {
-      output.show    += input.show;
-      output.clk     += input.clk;
-      output.lr_g += input.lr_g;
-      for(int i = 0; i < input.mf_dim; ++i) {
-         output.mf_g[i] += input.mf_g[i];
-      }
-  }
-};
-
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
  public:
@@ -127,8 +63,8 @@ class HeterComm {
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num);
-  void build_ps(int num, KeyType* h_keys, char* pool, size_t len, size_t feature_value_size,
-                size_t chunk_size, int stream_num);
+  void build_ps(int num, KeyType* h_keys, char* pool, size_t len,
+                size_t feature_value_size, size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
@@ -172,9 +108,8 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
-  
+
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
-    
     multi_mf_dim_ = multi_mf_dim;
     max_mf_dim_ = max_mf_dim;
   }

@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
@@ -23,7 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-/*
 template <typename T>
 __global__ void fill_idx(T* idx, size_t len) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -89,7 +89,7 @@ __global__ void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
     d_shard_grads[i] = d_grads[idx[i]];
   }
 }
-*/
+
 template <typename KeyType, typename GradType, typename T>
 __global__ void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
                                        GradType* d_shard_grads,
@@ -110,7 +110,7 @@ __global__ void merge_gradient_kernel(const uint32_t* offset,
                                       size_t grad_value_size,
                                       CustomGradMerger& merger_) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  
+
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
@@ -120,14 +120,13 @@ __global__ void merge_gradient_kernel(const uint32_t* offset,
     FeaturePushValue& in =
         *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
     merger_.copy_basic_field(lhs, in);
-    
+
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
       in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
       merger_.add_basic_field(lhs, in);
     }
   }
-  
 }
 
 template <typename ValType, typename T>
@@ -156,7 +155,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
   storage_.resize(resource_->total_device());
-  multi_mf_dim_ = resource_->multi_mf();
+  multi_mf_dim_ = resource->multi_mf();
   for (int i = 0; i < resource_->total_device(); ++i) {
 #if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
@@ -168,14 +167,13 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
       tables_.push_back(table);
     } else {
       max_mf_dim_ = resource_->max_mf_dim();
-      size_t val_type_size =
-      TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
-      size_t grad_type_size =
-      TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+      size_t val_type_size = TYPEALIGN(
+          8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+      size_t grad_type_size = TYPEALIGN(
+          8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
       auto ptr_table = new PtrTable(capacity / load_factor_);
       ptr_table->set_feature_value_size(val_type_size, grad_type_size);
       ptr_tables_.push_back(ptr_table);
-
     }
     if (multi_node_) {
       storage_[i].init(feanum_, resource_->dev_id(i));
@@ -314,6 +312,63 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
 #endif
 }
 
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
+//     int start_index, int gpu_num, int* h_left, int* h_right, KeyType*
+//     src_key,
+//     GradType* src_val) {
+//   int need_copy_val = 0;
+//   if (src_val) {
+//     need_copy_val = 1;
+//   }
+//   std::queue<CopyTask> que;
+//   for (int i = 0; i < gpu_num; i++) {
+//     if (h_left[i] == -1 || h_right[i] == -1) {
+//       continue;
+//     }
+//     int size = path_[start_index][i].nodes_.size();
+//     auto& node = path_[start_index][i].nodes_[0];
+//     CopyTask t(&path_[start_index][i], 0);
+//     que.push(t);
+//     cudaMemcpyAsync(node.key_storage,
+//                     reinterpret_cast<char*>(src_key + h_left[i]),
+//                     node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+// // #if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
+// //     cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len,
+// node.in_stream);
+// // #endif
+//     if (need_copy_val) {
+//       cudaMemcpyAsync(node.val_storage,
+//                       reinterpret_cast<char*>(src_val + h_left[i]),
+//                       node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
+//     }
+//   }
+//   while (!que.empty()) {
+//     CopyTask& cur_task = que.front();
+//     que.pop();
+//     if (cur_task.path->nodes_[cur_task.step].sync) {
+//       cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
+//     }
+//     if (cur_task.step != cur_task.path->nodes_.size() - 1) {
+//       int cur_step = cur_task.step;
+//       CopyTask c(cur_task.path, cur_step + 1);
+//       que.push(c);
+//       cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].key_storage,
+//                       cur_task.path->nodes_[cur_step].key_storage,
+//                       cur_task.path->nodes_[cur_step + 1].key_bytes_len,
+//                       cudaMemcpyDefault,
+//                       cur_task.path->nodes_[cur_step + 1].in_stream);
+//       if (need_copy_val) {
+//         cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].val_storage,
+//                         cur_task.path->nodes_[cur_step].val_storage,
+//                         cur_task.path->nodes_[cur_step + 1].val_bytes_len,
+//                         cudaMemcpyDefault,
+//                         cur_task.path->nodes_[cur_step + 1].in_stream);
+//       }
+//     }
+//   }
+// }
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
                                                          int num, int* h_left,
@@ -342,9 +397,10 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     memory_copy(dst_place, node.key_storage, src_place,
                 reinterpret_cast<char*>(src_key + h_left[i]),
                 node.key_bytes_len, node.in_stream);
-#if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
-    cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len, node.in_stream);
-#endif
+    // #if defined(PADDLE_WITH_CUDA)  // adapt for gpu-graph
+    //     cudaMemsetAsync(node.val_storage, -1, node.val_bytes_len,
+    //     node.in_stream);
+    // #endif
 
     if (need_copy_val) {
       memory_copy(dst_place, node.val_storage, src_place,
@@ -516,7 +572,8 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_src(
-    int start_index, int gpu_num, int* h_left, int* h_right, char* src_val, size_t val_size) {
+    int start_index, int gpu_num, int* h_left, int* h_right, char* src_val,
+    size_t val_size) {
   std::queue<CopyTask> que;
   for (int i = 0; i < gpu_num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
@@ -591,14 +648,14 @@ HeterComm<KeyType, ValType, GradType>::~HeterComm() {
       mg_time_8[0] += mg_time_8[i];
     }
     VLOG(0) << "gradients merge cost: " << mg_time_1[0];
-    VLOG(0) << "pull cost : " << mg_time_2[0];
+    VLOG(0) << "pullllll cost : " << mg_time_2[0];
     VLOG(0) << "push cost: " << mg_time_3[0];
     VLOG(0) << "sort cost: " << mg_time_4[0];
     VLOG(0) << "encode cost: " << mg_time_5[0];
     VLOG(0) << "sum cost: " << mg_time_6[0];
     VLOG(0) << "merge_kernel cost: " << mg_time_7[0];
     VLOG(0) << "merge_kernel_1 cost: " << mg_time_8[0];
-   }
+  }
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -701,8 +758,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
-                                                     char* pool,
-                                                     size_t len,
+                                                     char* pool, size_t len,
                                                      size_t feature_value_size,
                                                      size_t chunk_size,
                                                      int stream_num) {
@@ -710,15 +766,16 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     return;
   }
   int dev_id = resource_->dev_id(num);
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
-  platform::CUDADeviceGuard guard(dev_id);
+
+  DevPlace place = DevPlace(dev_id);
+  AnyDeviceGuard guard(dev_id);
 
   // use hbm pool
   std::vector<memory::allocation::AllocationPtr> d_key_bufs;
 
-  gpuStream_t streams[stream_num];
+  ppStream streams[stream_num];  // NOLINT
   for (int i = 0; i < stream_num; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&(streams[i])));
+    create_stream(&(streams[i]));
     auto d_k_buf = memory::Alloc(place, chunk_size * sizeof(KeyType));
     d_key_bufs.push_back(std::move(d_k_buf));
   }
@@ -728,21 +785,28 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 
   while (cur_len < len) {
     cur_stream = cur_stream % stream_num;
+    auto cur_use_stream = streams[cur_stream];
+#if defined(PADDLE_WITH_XPU_KP)
+    cur_use_stream = 0;
+#endif
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemcpyAsync(d_key_bufs[cur_stream]->ptr(), h_keys + cur_len,
-                        sizeof(KeyType) * tmp_len, cudaMemcpyHostToDevice,
-                        streams[cur_stream]));
+
+    auto dst_place = place;
+    auto src_place = platform::CPUPlace();
+
+    memory_copy(
+        dst_place, reinterpret_cast<char*>(d_key_bufs[cur_stream]->ptr()),
+        src_place, h_keys + cur_len, sizeof(KeyType) * tmp_len, cur_use_stream);
     ptr_tables_[num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()), tmp_len,
-        pool, feature_value_size, cur_len, streams[cur_stream]);
+        pool, feature_value_size, cur_len, cur_use_stream);
     cur_stream += 1;
     cur_len += tmp_len;
   }
 
   for (int i = 0; i < stream_num; ++i) {
-    cudaStreamSynchronize(streams[i]);
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams[i]));
+    sync_stream(streams[i]);
+    destroy_stream(streams[i]);
   }
 }
 
@@ -814,7 +878,7 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
 
   size_t temp_storage_bytes;
 
-  //VLOG(1) << "hetercomm merge_grad: max_mf_dim: " << max_mf_dim_;
+  // VLOG(1) << "hetercomm merge_grad: max_mf_dim: " << max_mf_dim_;
   size_t grad_value_size =
       TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
 
@@ -825,8 +889,7 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
 
-  auto d_fea_num_info =
-      memory::Alloc(place, sizeof(uint32_t) * (len * 3 + 1));
+  auto d_fea_num_info = memory::Alloc(place, sizeof(uint32_t) * (len * 3 + 1));
   uint32_t* d_fea_num_info_ptr =
       reinterpret_cast<uint32_t*>(d_fea_num_info->ptr());
   uint32_t* d_index = (uint32_t*)&d_fea_num_info_ptr[len];
@@ -886,18 +949,17 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
   mg_time_6[gpu_num] += timeline.ElapsedSec();
   timeline.Start();
 
-  grid_size = (uniq_len - 1) / block_size_ + 1;
-  merge_gradient_kernel<<<grid_size, block_size_, 0, stream>>>(
+  heter_comm_kernel_->merge_gradient(
       d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
-      (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_);
+      (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_, stream);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   timeline.Pause();
   mg_time_7[gpu_num] += timeline.ElapsedSec();
   timeline.Start();
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpyAsync(d_grads, d_merge_grads_ptr, grad_value_size * uniq_len,
-                      cudaMemcpyDeviceToDevice, stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(d_grads, d_merge_grads_ptr,
+                                             grad_value_size * uniq_len,
+                                             cudaMemcpyDeviceToDevice, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   timeline.Pause();
   mg_time_1[gpu_num] += timeline.ElapsedSec();
@@ -1027,9 +1089,14 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   for (int i = 0; i < total_device; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
+    // VLOG(0) << "pullsparse num:" << num << " to " << i << " h_right[i]:" <<
+    // h_right[i] << "  h_left[i]:" << h_left[i];
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
+    // if (shard_len == 0) {
+    //     continue;
+    // }
     create_storage(num, i, shard_len * sizeof(KeyType),
                    shard_len * val_type_size);
   }
@@ -1046,9 +1113,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     auto& node = path_[num][i].nodes_.back();
     sync_stream(node.in_stream);
-
     AnyDeviceGuard guard(resource_->dev_id(i));
-
     if (!multi_mf_dim_) {
       tables_[i]->rwlock_->RDLock();
       tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
@@ -1056,7 +1121,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                       h_right[i] - h_left[i] + 1,
                       resource_->remote_stream(i, num));
     } else {
+      // VLOG(0) << "yxf:: start table get in device: " << num << " remote
+      // device: " << i;
       ptr_tables_[i]->rwlock_->RDLock();
+      // VLOG(0) << "after lock yxf:: start table get in device: " << num << "
+      // remote device: " << i;
       ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                           node.val_storage, h_right[i] - h_left[i] + 1,
                           resource_->remote_stream(i, num));
@@ -1080,7 +1149,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   if (!multi_mf_dim_) {
     walk_to_src(num, total_device, h_left, h_right, d_shard_vals_ptr);
   } else {
-    walk_to_src(num, total_device, h_left, h_right, reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
+    walk_to_src(num, total_device, h_left, h_right,
+                reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
   }
 
   for (int i = 0; i < total_device; ++i) {
@@ -1088,23 +1158,352 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     sync_stream(node.out_stream);
   }
 
-   if (!multi_mf_dim_) {
+  // VLOG(0) << "yxf::finish walk to src: " << num;
+
+  if (!multi_mf_dim_) {
     heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
-                                 stream);
+                                   stream);
   } else {
-    grid_size = (len - 1) / 2048 + 1;
-    dy_mf_fill_dvals<<<grid_size, block_size_, 0, stream>>>(
-        d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size);
+    // grid_size = (len - 1) / 2048 + 1;
+    heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr,
+                                         len, val_type_size, stream);
   }
   sync_stream(stream);
-
+  // VLOG(0) << "yxf::finish walk to fill: " << num;
   for (int i = 0; i < total_device; ++i) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     destroy_storage(num, i);
+    // VLOG(0) << "yxf::end get device: " << num << "from device: " << i;
   }
 }
+
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
+//                                                         KeyType* d_keys,
+//                                                         ValType* d_vals,
+//                                                         size_t len) {
+//   if (len == 0) {
+//     return;
+//   }
+
+//   int total_gpu = resource_->total_device();
+//   int dev_id = resource_->dev_id(num);
+//   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+//   platform::CUDADeviceGuard guard(dev_id);
+//   auto stream = resource_->local_stream(num, 0);
+
+//   int grid_size = (len - 1) / block_size_ + 1;
+
+//   auto h_left_alloc = memory::Alloc(phi::GPUPinnedPlace(), sizeof(int) *
+//   total_gpu);
+//   auto h_right_alloc = memory::Alloc(phi::GPUPinnedPlace(), sizeof(int) *
+//   total_gpu);
+//   int* h_left = reinterpret_cast<int*>(h_left_alloc->ptr());
+//   int* h_right = reinterpret_cast<int*>(h_right_alloc->ptr());
+
+//   auto d_left = memory::Alloc(place, total_gpu * sizeof(int));
+//   auto d_right = memory::Alloc(place, total_gpu * sizeof(int));
+//   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+//   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+
+//   cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
+//   cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
+//   //
+//   auto d_idx = memory::Alloc(place, len * sizeof(int));
+//   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+
+//   size_t val_type_size = 0;
+//   if (!multi_mf_dim_) {
+//     val_type_size = sizeof(ValType);
+//   } else {
+//     val_type_size =
+//         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ +
+//         1));
+//   }
+
+//   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
+//   KeyType* d_shard_keys_ptr =
+//   reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+//   // auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+//   auto d_shard_vals = memory::Alloc(place, len * val_type_size);
+//   ValType* d_shard_vals_ptr =
+//   reinterpret_cast<ValType*>(d_shard_vals->ptr());
+
+//   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
+
+//   fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr,
+//                                                         d_keys, d_idx_ptr,
+//                                                         len);
+
+//   cudaMemcpyAsync(h_left, d_left_ptr, total_gpu * sizeof(int),
+//              cudaMemcpyDeviceToHost, stream);
+//   cudaMemcpyAsync(h_right, d_right_ptr, total_gpu * sizeof(int),
+//              cudaMemcpyDeviceToHost, stream);
+//   cudaStreamSynchronize(stream);
+
+//   for (int i = 0; i < total_gpu; ++i) {
+//     int shard_len = h_right[i] - h_left[i] + 1;
+//     if (shard_len == 0) {
+//       continue;
+//     }
+//     create_storage(num, i, shard_len * sizeof(KeyType),
+//                    shard_len * val_type_size);
+//   }
+
+//   walk_to_dest(num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
+
+//   std::vector<platform::Timer> time_lines;
+//   time_lines.resize(total_gpu);
+
+//   for (int i = 0; i < total_gpu; ++i) {
+//     time_lines[i].Start();
+//     if (h_left[i] == -1) {
+//       continue;
+//     }
+//     auto& node = path_[num][i].nodes_.back();
+//     cudaStreamSynchronize(node.in_stream);
+//     platform::CUDADeviceGuard guard(resource_->dev_id(i));
+//     if (!multi_mf_dim_) {
+//       tables_[i]->rwlock_->RDLock();
+//       tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+//                       reinterpret_cast<ValType*>(node.val_storage),
+//                       h_right[i] - h_left[i] + 1,
+//                       resource_->remote_stream(i, num));
+//     } else {
+//       // VLOG(0) << "yxf:: start table get in device: " << num << " remote
+//       device: " << i;
+//       ptr_tables_[i]->rwlock_->RDLock();
+//       // VLOG(0) << "after lock yxf:: start table get in device: " << num <<
+//       " remote device: " << i;
+//       ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+//                           node.val_storage, h_right[i] - h_left[i] + 1,
+//                           resource_->remote_stream(i, num));
+//     }
+//   }
+//   for (int i = 0; i < total_gpu; ++i) {
+//     cudaStreamSynchronize(resource_->remote_stream(i, num));
+//     if (h_left[i] == -1) {
+//       continue;
+//     }
+//     if (!multi_mf_dim_) {
+//       tables_[i]->rwlock_->UNLock();
+//     } else {
+//       ptr_tables_[i]->rwlock_->UNLock();
+//     }
+//     time_lines[i].Pause();
+//     mg_time_2[i] += time_lines[i].ElapsedSec();
+//   }
+
+//   if (!multi_mf_dim_) {
+//     walk_to_src(num, total_gpu, h_left, h_right, d_shard_vals_ptr);
+//   } else {
+//     walk_to_src(num, total_gpu, h_left, h_right,
+//     reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
+//   }
+
+//   for (int i = 0; i < total_gpu; ++i) {
+//     auto& node = path_[num][i].nodes_.front();
+//     cudaStreamSynchronize(node.out_stream);
+//   }
+
+//   // VLOG(0) << "yxf::finish walk to src: " << num;
+
+//   if (!multi_mf_dim_) {
+//     fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr,
+//     d_vals,
+//                                                       d_idx_ptr, len);
+//   } else {
+//     // grid_size = (len - 1) / 2048 + 1;
+//     dy_mf_fill_dvals<<<grid_size, block_size_, 0, stream>>>(
+//         d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size);
+//   }
+//   cudaStreamSynchronize(stream);
+//   // VLOG(0) << "yxf::finish walk to fill: " << num;
+//   for (int i = 0; i < total_gpu; ++i) {
+//     destroy_storage(num, i);
+//     // VLOG(0) << "yxf::end get device: " << num << "from device: " << i;
+//   }
+// }
+
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
+//                                                         KeyType* d_keys,
+//                                                         ValType* d_vals,
+//                                                         size_t len) {
+//   if (len == 0) {
+//     return;
+//   }
+
+//   int total_device = resource_->total_device();
+//   int dev_id = resource_->dev_id(num);
+//   DevPlace place = DevPlace(dev_id);
+//   AnyDeviceGuard guard(dev_id);
+//   auto stream = resource_->local_stream(num, 0);
+
+//   int grid_size = (len - 1) / block_size_ + 1;
+
+//   // int h_left[total_device];   // NOLINT
+//   // #int h_right[total_device];  // NOLINT
+//   auto h_left_alloc = memory::Alloc(phi::GPUPinnedPlace(), sizeof(int) *
+//   total_gpu);
+//   auto h_right_alloc = memory::Alloc(phi::GPUPinnedPlace(), sizeof(int) *
+//   total_gpu);
+//   int* h_left = reinterpret_cast<int*>(h_left_alloc->ptr());
+//   int* h_right = reinterpret_cast<int*>(h_right_alloc->ptr());
+
+//   auto d_left = memory::Alloc(place, total_device * sizeof(int));
+//   auto d_right = memory::Alloc(place, total_device * sizeof(int));
+//   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+//   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+
+// #if defined(PADDLE_WITH_CUDA)
+//   cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
+//   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
+
+// #elif defined(PADDLE_WITH_XPU_KP)
+//   // get XPUDeviceContext according to xpu place
+//   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+//   auto xpu_context = xpu_dev_ctx.x_context();
+
+//   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
+//   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+//                     platform::errors::External(
+//                         "XPU constant kernel return wrong value[%d %s]", r,
+//                         XPUAPIErrorMsg[r]));
+//   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
+//   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
+//                     platform::errors::External(
+//                         "XPU constant kernel return wrong value[%d %s]", r2,
+//                         XPUAPIErrorMsg[r2]));
+// #endif
+
+//   auto d_idx = memory::Alloc(place, len * sizeof(int));
+//   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+
+//   size_t val_type_size = 0;
+//   if (!multi_mf_dim_) {
+//     val_type_size = sizeof(ValType);
+//   } else {
+//     val_type_size =
+//         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ +
+//         1));
+//   }
+
+//   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
+//   KeyType* d_shard_keys_ptr =
+//   reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+//   // auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+//   auto d_shard_vals = memory::Alloc(place, len * val_type_size);
+//   ValType* d_shard_vals_ptr =
+//   reinterpret_cast<ValType*>(d_shard_vals->ptr());
+
+//   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
+
+//   // heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr,
+//   len,
+//   //                                    stream);
+//   fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr,
+//                                                         d_keys, d_idx_ptr,
+//                                                         len);
+
+//   // sync_stream(stream);
+
+//   auto dst_place = platform::CPUPlace();
+//   auto src_place = place;
+
+//   cudaMemcpyAsync(h_left, d_left_ptr, total_device * sizeof(int),
+//              cudaMemcpyDeviceToHost, stream);
+//   cudaMemcpyAsync(h_right, d_right_ptr, total_device * sizeof(int),
+//              cudaMemcpyDeviceToHost, stream);
+//   cudaStreamSynchronize(stream);
+//   // memory_copy(dst_place, h_left, src_place, d_left_ptr,
+//   //             total_device * sizeof(int), stream);
+//   // memory_copy(dst_place, h_right, src_place, d_right_ptr,
+//   //             total_device * sizeof(int), stream);
+
+//   for (int i = 0; i < total_device; ++i) {
+//     int shard_len = h_right[i] - h_left[i] + 1;
+//     if (h_left[i] == -1 || h_right[i] == -1) {
+//       continue;
+//     }
+//     create_storage(num, i, shard_len * sizeof(KeyType),
+//                    shard_len * val_type_size);
+//   }
+
+//   walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
+
+//   std::vector<platform::Timer> time_lines;
+//   time_lines.resize(total_device);
+
+//   for (int i = 0; i < total_device; ++i) {
+//     time_lines[i].Start();
+//     if (h_left[i] == -1) {
+//       continue;
+//     }
+//     auto& node = path_[num][i].nodes_.back();
+//     sync_stream(node.in_stream);
+
+//     if (!multi_mf_dim_) {
+//       AnyDeviceGuard guard(resource_->dev_id(i));
+//       tables_[i]->rwlock_->RDLock();
+//       tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+//                       reinterpret_cast<ValType*>(node.val_storage),
+//                       h_right[i] - h_left[i] + 1,
+//                       resource_->remote_stream(i, num));
+//     } else {
+//       AnyDeviceGuard guard(resource_->dev_id(i));
+//       ptr_tables_[i]->rwlock_->RDLock();
+//       ptr_tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
+//                           node.val_storage, h_right[i] - h_left[i] + 1,
+//                           resource_->remote_stream(i, num));
+//     }
+//   }
+
+//   for (int i = 0; i < total_device; ++i) {
+//     sync_stream(resource_->remote_stream(i, num));
+//     if (h_left[i] == -1) {
+//       continue;
+//     }
+//     if (!multi_mf_dim_) {
+//       tables_[i]->rwlock_->UNLock();
+//     } else {
+//       ptr_tables_[i]->rwlock_->UNLock();
+//     }
+//     time_lines[i].Pause();
+//     mg_time_2[i] += time_lines[i].ElapsedSec();
+//   }
+
+//   if (!multi_mf_dim_) {
+//     walk_to_src(num, total_device, h_left, h_right, d_shard_vals_ptr);
+//   } else {
+//     walk_to_src(num, total_device, h_left, h_right,
+//     reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
+//   }
+
+//   for (int i = 0; i < total_device; ++i) {
+//     auto& node = path_[num][i].nodes_.front();
+//     sync_stream(node.out_stream);
+//   }
+
+//    if (!multi_mf_dim_) {
+//     heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
+//                                  stream);
+//   } else {
+//     grid_size = (len - 1) / 2048 + 1;
+//     dy_mf_fill_dvals<<<grid_size, block_size_, 0, stream>>>(
+//         d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size);
+//   }
+//   sync_stream(stream);
+
+//   for (int i = 0; i < total_device; ++i) {
+//     if (h_left[i] == -1 || h_right[i] == -1) {
+//       continue;
+//     }
+//     destroy_storage(num, i);
+//   }
+// }
 
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>
@@ -1181,8 +1580,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   if (!multi_mf_dim_) {
     heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
-                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
-                                       uniq_len, stream);
+                                         d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                         uniq_len, stream);
   } else {
     dy_mf_fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
         d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
@@ -1214,10 +1613,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   if (!multi_mf_dim_) {
     walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
-               d_shard_grads_ptr);
+                 d_shard_grads_ptr);
   } else {
     walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
-               reinterpret_cast<char*>(d_shard_grads_ptr), grad_value_size);
+                 reinterpret_cast<char*>(d_shard_grads_ptr), grad_value_size);
   }
 
   std::vector<platform::Timer> time_lines;

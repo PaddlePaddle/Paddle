@@ -80,7 +80,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
     // printf("yxf::cur dim: %d",cur_dim);
     FeatureValue* feature_value_ptr =
         (FeatureValue*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
-    
+
     int mf_dim = feature_value_ptr->mf_dim;
     mf_dim = gpu_dim[x] - 3;
     if (*(keys[x] + y) == 0) {
@@ -102,7 +102,7 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
           *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
         }
       }
-      
+
     } else {
       for (int j = 0; j < mf_dim; j++) {
         *(dest[x] + y * (mf_dim + 3) + 3 + j) = feature_value_ptr->mf[1 + j];
@@ -291,8 +291,8 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const std::vector<const float*>& grad_values,
                                FeaturePushValue* total_grad_values_gpu,
                                const std::vector<int64_t>& slot_lengths,
-                               const uint64_t total_length, const int batch_size,
-                               size_t grad_value_size) {
+                               const uint64_t total_length,
+                               const int batch_size, size_t grad_value_size) {
   auto stream = dynamic_cast<platform::CUDADeviceContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -302,8 +302,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   }
   auto buf_grad_value =
       memory::Alloc(place, grad_values.size() * sizeof(float*));
-  auto buf_length =
-      memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
+  auto buf_length = memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
   auto buf_slot_vector =
       memory::Alloc(place, slot_lengths_lod.size() * sizeof(int));
   auto buf_mf_dim_vector =

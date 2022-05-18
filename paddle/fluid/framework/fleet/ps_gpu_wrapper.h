@@ -25,9 +25,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/data_set.h"
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
@@ -113,8 +113,7 @@ class PSGPUWrapper {
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const std::vector<int>& slot_dim,
-                  const int hidden_size);
+                  const std::vector<int>& slot_dim, const int hidden_size);
   void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -338,7 +337,7 @@ class PSGPUWrapper {
     for (auto s : slot_offset_vector_) {
       std::cout << s << " | ";
     }
-    std::cout << " end " <<std::endl;
+    std::cout << " end " << std::endl;
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -366,8 +365,7 @@ class PSGPUWrapper {
     for (auto s : slots_vec_test) {
       std::cout << s << " | ";
     }
-    std::cout << " end wrapper " <<std::endl;
-    
+    std::cout << " end wrapper " << std::endl;
 
     VLOG(0) << "get slot desc";
 
@@ -385,7 +383,7 @@ class PSGPUWrapper {
     for (auto s : slot_offset_vector_) {
       std::cout << s << " | ";
     }
-    std::cout << " end " <<std::endl;
+    std::cout << " end " << std::endl;
     for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }

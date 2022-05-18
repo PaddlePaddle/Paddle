@@ -125,9 +125,9 @@ class Optimizer {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * (ptr->show - ptr->clk) +
               optimizer_config.clk_coeff * ptr->clk) {
-        // ptr->mf_size = ptr->mf_dim + 1;
+        ptr->mf_size = ptr->mf_dim + 1;
 
-        ptr->mf_size = MF_DIM + 1;
+        // ptr->mf_size = MF_DIM + 1;
         ptr->mf[0] = 0;
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
@@ -138,7 +138,8 @@ class Optimizer {
         }
       }
     } else {
-      update_mf(optimizer_config, ptr->mf_dim, &(ptr->mf[1]), ptr->mf[0], grad.mf_g,
+      update_mf(optimizer_config, ptr->mf_dim, &(ptr->mf[1]), ptr->mf[0],
+                grad.mf_g,
                 grad.show);  // for local test
     }
   }

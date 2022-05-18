@@ -82,8 +82,8 @@ struct FeatureValue {
 
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
-        << " lr: " << val.lr << " mf_dim: " << val.mf_dim << "cpuptr: " << val.cpu_ptr
-        << " mf_size: " << val.mf_size << " mf:";
+        << " lr: " << val.lr << " mf_dim: " << val.mf_dim
+        << "cpuptr: " << val.cpu_ptr << " mf_size: " << val.mf_size << " mf:";
     for (int i = 0; i < val.mf_dim + 1; ++i) {
       out << " " << val.mf[i];
     }
@@ -134,7 +134,7 @@ struct FeaturePushValue {
     lr_g = in.lr_g;
     mf_dim = in.mf_dim;
     for (int i = 0; i < mf_dim; i++) {
-     mf_g[i] = in.mf_g[i];
+      mf_g[i] = in.mf_g[i];
     }
   }
 };

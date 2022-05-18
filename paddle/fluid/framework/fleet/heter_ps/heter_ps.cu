@@ -44,9 +44,11 @@ void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
   comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
-void HeterPs::build_ps(int num, FeatureKey* h_keys, char* pool,
-                       size_t len, size_t feature_value_size, size_t chunk_size, int stream_num) {
-  comm_->build_ps(num, h_keys, pool, len, feature_value_size, chunk_size, stream_num);
+void HeterPs::build_ps(int num, FeatureKey* h_keys, char* pool, size_t len,
+                       size_t feature_value_size, size_t chunk_size,
+                       int stream_num) {
+  comm_->build_ps(num, h_keys, pool, len, feature_value_size, chunk_size,
+                  stream_num);
 }
 
 int HeterPs::get_index_by_devid(int devid) {

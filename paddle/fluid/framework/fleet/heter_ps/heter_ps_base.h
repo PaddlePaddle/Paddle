@@ -35,8 +35,9 @@ class HeterPsBase {
                            size_t len) = 0;
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) = 0;
-  virtual void build_ps(int num, FeatureKey* h_keys, char* pool,
-                        size_t len, size_t feature_value_size, size_t chunk_size, int stream_num) = 0;
+  virtual void build_ps(int num, FeatureKey* h_keys, char* pool, size_t len,
+                        size_t feature_value_size, size_t chunk_size,
+                        int stream_num) = 0;
   virtual int get_index_by_devid(int devid) = 0;
 #if defined(PADDLE_WITH_CUDA)
   virtual void set_nccl_comm_and_size(
