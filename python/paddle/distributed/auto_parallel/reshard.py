@@ -957,8 +957,7 @@ class Resharder:
                         #             if var_dims_mapping != tensor_dims_mapping:
                         #                 is_reshard = True
                         #                 break
-                    else:
-                        is_reshard = True
+                    is_reshard = True
                 # process_mesh
                 if tensor_process_mesh != op_process_mesh:
                     # when processes length is not the same, the dims mapping must be replicative now
@@ -977,22 +976,22 @@ class Resharder:
                     if dist_tensor.serial_tensor.dtype == paddle.bool:
                         raise ValueError("Bool var is not supported reshard.")
 
-                        # for while op, it should find the process mesh of op actually used the tensor as input
-                        # if dist_op.serial_op.type == "while":
-                        #     sub_block = self.auto_parallel_main_prog.blocks[
-                        #         dist_op.serial_op.attr("sub_block").id]
-                        #     is_reshard = True
-                        # for op in sub_block.ops:
-                        #     for var_name in op.input_arg_names:
-                        #         if var_name == tensor_name:
-                        #             dist_op_attr = self.dist_context.get_dist_op_for_program(
-                        #                 op).dist_attr
-                        #             process_mesh = dist_op_attr.process_mesh
-                        #             if process_mesh == op_process_mesh:
-                        #                 is_reshard = True
-                        #                 break
-                        # else:
-                        is_reshard = True
+                    # for while op, it should find the process mesh of op actually used the tensor as input
+                    # if dist_op.serial_op.type == "while":
+                    #     sub_block = self.auto_parallel_main_prog.blocks[
+                    #         dist_op.serial_op.attr("sub_block").id]
+                    #     is_reshard = True
+                    # for op in sub_block.ops:
+                    #     for var_name in op.input_arg_names:
+                    #         if var_name == tensor_name:
+                    #             dist_op_attr = self.dist_context.get_dist_op_for_program(
+                    #                 op).dist_attr
+                    #             process_mesh = dist_op_attr.process_mesh
+                    #             if process_mesh == op_process_mesh:
+                    #                 is_reshard = True
+                    #                 break
+                    # else:
+                    is_reshard = True
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 tensor_name)
