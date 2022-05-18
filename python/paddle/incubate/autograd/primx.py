@@ -582,7 +582,7 @@ def _gradients(ys, xs, ys_bar=None):
         xs_bar: a list gradients of input `xs`
     """
 
-    ys, xs = to_tensors(ys), to_tensors(xs)
+    ys, xs, ys_bar = to_tensors(ys), to_tensors(xs), to_tensors(ys_bar)
     block = ys[0].block
     # TODO(Tongxin) without any prior knowledge about whether the program
     # is completely lowered to primitive ops, it's mandatory to run the lowering
