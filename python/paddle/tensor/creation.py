@@ -1540,10 +1540,9 @@ def assign(x, output=None):
     if isinstance(input, (Variable, core.VarBase)):
         if in_dygraph_mode():
             if output is None:
-                output = core.eager.Tensor()
-                _C_ops.final_state_assign_out_(input, output)
-            else:
                 output = _C_ops.final_state_assign(input)
+            else:
+                _C_ops.final_state_assign_out_(input, output)
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
