@@ -2338,6 +2338,9 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+
 #if CUDA_VERSION >= 9010
   if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
       std::is_same<T, phi::dtype::float16>::value) {
@@ -2350,6 +2353,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
             << (use_tensor_op_math ? "True" : "False");
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    // set ComputeType as CUDA_R_32F for fp16 and fp32, for better accuracy
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cublasGemmStridedBatchedEx(handle,
@@ -2358,7 +2362,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                                 N,
                                                                 M,
                                                                 K,
-                                                                &alpha,
+                                                                &h_alpha,
                                                                 B,
                                                                 fp,
                                                                 ldb,
@@ -2367,13 +2371,13 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                                 fp,
                                                                 lda,
                                                                 strideA,
-                                                                &beta,
+                                                                &h_beta,
                                                                 C,
                                                                 fp,
                                                                 ldc,
                                                                 strideC,
                                                                 batchCount,
-                                                                fp,
+                                                                CUDA_R_32F,
                                                                 algo));
     });
   } else {
