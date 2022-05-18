@@ -117,6 +117,7 @@ def loss_func(eq_loss, bc_u, bc_value):
 
 
 def main():
+    paddle.enable_static()
     # dataset
     train_dataset = LaplaceDataset(10)
     # optimizer
