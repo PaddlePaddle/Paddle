@@ -1432,7 +1432,7 @@ struct PriorBox : public PatternBase {
 };
 
 // Conv + ElementwiseAdd + an activation
-// This pattern can futher fuse the conv related ops after the conv+bn fusion.
+// This pattern can further fuse the conv related ops after the conv+bn fusion.
 struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}

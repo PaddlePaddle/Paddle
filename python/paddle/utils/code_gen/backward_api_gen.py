@@ -35,10 +35,10 @@ class BackwardAPI(BaseAPI):
             r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
         api = result.group('api')
-        _, outputs, _, _ = self.parse_output(self.api, result.group('outputs'))
+        _, outputs, _, = self.parse_output(self.api, result.group('outputs'))
         outputs = [item.split('@')[0] for item in outputs]
-        fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
-            api, result.group('args'))
+        fw_inputs, fw_attrs = self.parse_input_and_attr(api,
+                                                        result.group('args'))
 
         return api, fw_inputs, fw_attrs, outputs
 
@@ -77,15 +77,15 @@ class BackwardAPI(BaseAPI):
             f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
-    def get_declare_args(self):
+    def get_declare_args(self, inplace_flag=False):
         return self.get_define_args()
 
-    def get_define_args(self):
+    def get_define_args(self, inplace_flag=False):
         out_type_map = {
             'Tensor': 'Tensor*',
             'std::vector<Tensor>': 'std::vector<Tensor*>'
         }
-        intputs_and_attrs = self.args_str['args_define']
+        intputs_and_attrs = super(BackwardAPI, self).get_define_args()
         outs = []
         for i, name in enumerate(self.outputs['names']):
             outs.append(out_type_map[self.outputs['types'][i]] + ' ' +
@@ -109,7 +109,7 @@ class BackwardAPI(BaseAPI):
         else:
             return super().gene_kernel_backend_select()
 
-    def get_return_type(self, out_type_list):
+    def get_return_type(self, inplace_flag=False):
         return 'void'
 
     def gene_output(self,
@@ -172,17 +172,17 @@ class BackwardAPI(BaseAPI):
         return kernel_output, output_names, output_create
 
     def gene_invoke_code(self, invoke_code, params_code):
-        inveke_func_name = invoke_code.split('(')[0].strip()
-        if inveke_func_name.endswith('_grad') or inveke_func_name.endswith(
+        invoke_func_name = invoke_code.split('(')[0].strip()
+        if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
                 '_grad_impl'):
             return f"""
-PADDLE_API {self.outputs['return_type']} {self.api}({params_code}) {{
+PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   {invoke_code};
 }}"""
 
         else:
             return f"""
-PADDLE_API {self.outputs['return_type']} {self.api}({params_code}) {{
+PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   *{self.outputs['names'][0].split('@')[0]} = {invoke_code};
 }}"""
 
@@ -237,8 +237,13 @@ namespace experimental {
 def generate_backward_api(backward_yaml_path, header_file_path,
                           source_file_path):
 
-    with open(backward_yaml_path, 'r') as f:
-        bw_apis = yaml.load(f, Loader=yaml.FullLoader)
+    bw_apis = []
+    for each_api_yaml in backward_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                bw_apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -270,6 +275,7 @@ def main():
     parser.add_argument(
         '--backward_yaml_path',
         help='path to backward yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/backward.yaml')
     parser.add_argument(
         '--backward_header_path',

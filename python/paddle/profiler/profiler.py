@@ -150,7 +150,7 @@ def make_scheduler(*,
 
 def _default_state_scheduler(step: int):
     r"""
-    A default state scheduler, keep recording from the begining of the profiler until ending.
+    A default state scheduler, keep recording from the beginning of the profiler until ending.
     """
     return ProfilerState.RECORD
 
