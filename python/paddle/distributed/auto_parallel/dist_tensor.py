@@ -41,7 +41,7 @@ class DistributedTensor:
                                       rank=None,
                                       shard_sizes=None):
         if not (isinstance(sizes, (list, tuple)) and
-                all(map(lambda x: isinstance(x, int) and x > 0, sizes))):
+                all(map(lambda x: isinstance(x, int) and x >= 0, sizes))):
             raise ValueError(
                 "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}".
                 format(sizes))
@@ -79,8 +79,11 @@ class DistributedTensor:
 
         local_sizes = []
         # for even sharding, the local sizes of every rank are equal
+
         for idx, item in enumerate(global_sizes):
-            if dims_mapping[idx] == -1:
+            # This is a trick to avoid dims_mapping is []
+            val = dims_mapping[idx] if idx < len(dims_mapping) else -1
+            if val == -1:
                 local_sizes.append(item)
             else:
                 local_sizes.append(item // topology[dims_mapping[idx]])

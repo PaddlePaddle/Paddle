@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import unittest
+import os
+import json
+
 import paddle
 import numpy as np
 import paddle.nn as nn
@@ -23,11 +26,11 @@ import paddle.nn.functional as F
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
-from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
@@ -35,6 +38,7 @@ import sys
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
+from test_cluster import cluster_json
 
 paddle.enable_static()
 
@@ -357,7 +361,7 @@ def get_program_v3():
 
 class TestParallelTuner(unittest.TestCase):
     def setUp(self):
-        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v3(
         )
         dist_context = DistributedContext(train_program, start_program,
                                           optimizer, loss, feed_vars,
@@ -368,47 +372,61 @@ class TestParallelTuner(unittest.TestCase):
 
         self.num_nodes = 1
         self.device_per_nodes = 8
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_object = json.loads(cluster_json)
+        with open(cluster_json_path, "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
+        cluster = Cluster()
+        cluster.build_from_file(cluster_json_path)
         self.parallel_tuner = ParallelTuner(
             dist_context,
             num_nodes=self.num_nodes,
-            devices_per_node=self.device_per_nodes)
+            devices_per_node=self.device_per_nodes,
+            cluster=cluster,
+            loop_count=10,
+            mode="test")
 
-    def test_generate_process_mesh_candidates(self):
-        process_mesh_candidates = self.parallel_tuner._partition_devices(1, 8)
-        print(process_mesh_candidates)
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
 
-    def test_generate_dims_mapping_candidates(self):
-        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
-            1, 1)
-        print(dims_mapping_candidates, "\n\n")
-        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
-            2, 1)
-        print(dims_mapping_candidates, "\n\n")
-        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
-            3, 2)
-        print(dims_mapping_candidates, "\n\n")
-        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
-            3, 2)
-        print(dims_mapping_candidates, "\n\n")
-        dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
-            4, 3)
-        print(dims_mapping_candidates, "\n\n")
+# def test_generate_process_mesh_candidates(self):
+#     process_mesh_candidates = self.parallel_tuner._partition_devices(1, 8)
+#     print(process_mesh_candidates)
 
-    def test_construct_space(self):
-        self.parallel_tuner.construct_space()
+# def test_generate_dims_mapping_candidates(self):
+#     dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+#         1, 1)
+#     print(dims_mapping_candidates, "\n\n")
+#     dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+#         2, 1)
+#     print(dims_mapping_candidates, "\n\n")
+#     dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+#         3, 2)
+#     print(dims_mapping_candidates, "\n\n")
+#     dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+#         3, 2)
+#     print(dims_mapping_candidates, "\n\n")
+#     dims_mapping_candidates = self.parallel_tuner._generate_dims_mapping_candidates(
+#         4, 3)
+#     print(dims_mapping_candidates, "\n\n")
 
-    def test_create_trial(self):
-        self.parallel_tuner.construct_space()
-        self.parallel_tuner.create_trial()
+# def test_construct_space(self):
+#     self.parallel_tuner.construct_space()
 
-    def test_eval_trial(self):
-        self.parallel_tuner.construct_space()
-        trail = self.parallel_tuner.create_trial()
-        self.parallel_tuner.eval_trial(trail.id)
+# def test_create_trial(self):
+#     self.parallel_tuner.construct_space()
+#     self.parallel_tuner.create_trial()
+
+# def test_eval_trial(self):
+#     self.parallel_tuner.construct_space()
+#     trail = self.parallel_tuner.create_trial()
+#     self.parallel_tuner.eval_trial(trail.id)
 
     def test_tune(self):
-        self.parallel_tuner.tune()
 
+        self.parallel_tuner.tune()
 
 if __name__ == "__main__":
     unittest.main()

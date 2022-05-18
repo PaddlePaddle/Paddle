@@ -275,6 +275,7 @@ class DistributedContext:
 
         self._need_copy_dist_attr_to_graph = True
         self._backup_op_dist_attr_for_program = {}
+        self._process_meshes = []
 
     def initialize(self):
         if not self._is_initialized:
