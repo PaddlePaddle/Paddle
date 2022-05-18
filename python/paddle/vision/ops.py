@@ -1017,7 +1017,7 @@ class PSRoIPool(Layer):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             
             psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
