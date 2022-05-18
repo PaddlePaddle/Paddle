@@ -24,7 +24,7 @@ __all__ = []
 
 def set_default_dtype(d):
     """
-    Set default dtype. The default dtype is initially float32
+    Set default dtype. The default dtype is initially float32.
 
     Args:
         d(string|np.dtype): the dtype to make the default. It only

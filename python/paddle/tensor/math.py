@@ -292,6 +292,7 @@ def multiplex(inputs, index, name=None):
             :name: code-example1
 
             import paddle
+            
             img1 = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
             img2 = paddle.to_tensor([[5, 6], [7, 8]], dtype=paddle.float32)
             inputs = [img1, img2]
@@ -498,6 +499,7 @@ def add(x, y, name=None):
     ..  code-block:: python
 
         import paddle
+
         x = paddle.to_tensor([2, 3, 4], 'float64')
         y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
@@ -539,8 +541,8 @@ def subtract(x, y, name=None):
     .. math::
         out = x - y
 
-    **Note**:
-    ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -554,35 +556,37 @@ def subtract(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[5, 6], [3, 4]])
             res = paddle.subtract(x, y)
             print(res)
-            #       [[-4, -4],
-            #        [4, 4]]
+            # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[-4, -4],
+            #         [ 4,  4]])
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
             y = paddle.to_tensor([1, 0, 4])
             res = paddle.subtract(x, y)
             print(res)
-            #       [[[ 0,  2, -1],
-            #         [ 0,  2, -1]]]
+            # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[[ 0,  2, -1],
+            #          [ 0,  2, -1]]])
 
-            x = paddle.to_tensor([2, np.nan, 5], dtype='float32')
-            y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
+            x = paddle.to_tensor([2, float('nan'), 5], dtype='float32')
+            y = paddle.to_tensor([1, 4, float('nan')], dtype='float32')
             res = paddle.subtract(x, y)
             print(res)
-            #       [ 1., nan, nan]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1. , nan, nan])
 
-            x = paddle.to_tensor([5, np.inf, -np.inf], dtype='float64')
+            x = paddle.to_tensor([5, float('inf'), -float('inf')], dtype='float64')
             y = paddle.to_tensor([1, 4, 5], dtype='float64')
             res = paddle.subtract(x, y)
             print(res)
-            #       [   4.,  inf., -inf.]
-
+            # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [ 4.  ,  inf., -inf.])
     """
     op_type = 'elementwise_sub'
     axis = -1
@@ -1083,9 +1087,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
         otherwise it's data type is the same as `x`.
 
-    Raises:
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
-
     Examples:
         .. code-block:: python
 
@@ -1571,7 +1572,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
     **addmm**
 
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    Perform matrix multiplication for input $x$ and $y$.
     $input$ is added to the final result.
     The equation is:
 
@@ -1584,12 +1585,12 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         input (Tensor): The input Tensor to be added to the final result.
         x (Tensor): The first input Tensor for matrix multiplication.
         y (Tensor): The second input Tensor for matrix multiplication.
-        beta (float): Coefficient of $input$.
-        alpha (float): Coefficient of $x*y$.
+        beta (float, optional): Coefficient of $input$, default is 1.
+        alpha (float, optional): Coefficient of $x*y$, default is 1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor of addmm op.
+        Tensor: The output Tensor of addmm.
 
     Examples:
         ..  code-block:: python
@@ -1830,7 +1831,7 @@ def outer(x, y, name=None):
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
     r"""
-    This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -2543,9 +2544,9 @@ def clip(x, min=None, max=None, name=None):
 
     Args:
         x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
-        min (float|int|Tensor): The lower bound with type ``float`` , ``int`` or a ``Tensor``
+        min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
+        max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2661,7 +2662,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
     **trace**
 
-    This OP computes the sum along diagonals of the input tensor x.
+    Computes the sum along diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the sum of diagonal.
 
@@ -2862,18 +2863,15 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
 def kron(x, y, name=None):
     """
 
-${comment}
+    ${comment}
 
     Args:
-        x (Tensor): the fist operand of kron op, data type: float16, float32,
-            float64, int32 or int64.
-        y (Tensor): the second operand of kron op, data type: float16,
-            float32, float64, int32 or int64. Its data type should be the same
-            with x.
+        x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
+        y (Tensor): the second operand of kron op, data type: float16, float32, float64, int32 or int64. Its data type should be the same with x.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+        Tensor: The output of kron, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
 
     Examples:
         .. code-block:: python
@@ -3135,12 +3133,12 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
             int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
-            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3224,7 +3222,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
 def sign(x, name=None):
     """
-    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+    Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
         x (Tensor): The input tensor. The data type can be float16, float32 or float64.
@@ -3856,7 +3854,7 @@ def lerp_(x, y, weight, name=None):
 
 def erfinv(x, name=None):
     r"""
-    The inverse error function of x, .
+    The inverse error function of x.
 
     Equation:
         .. math::
