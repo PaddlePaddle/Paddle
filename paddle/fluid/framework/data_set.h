@@ -248,7 +248,7 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
-  virtual std::vector<std::string> GetSlots(); 
+  virtual std::vector<std::string> GetSlots();
   /* for enable_heterps_
   virtual void EnableHeterps(bool enable_heterps) {
     enable_heterps_ = enable_heterps;
@@ -383,7 +383,6 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
                                        bool discard_remaining_ins);
   virtual void PrepareTrain();
   virtual void DynamicAdjustReadersNum(int thread_num);
-  virtual std::vector<std::string> GetSlots(); 
 
  protected:
   bool enable_heterps_ = true;
