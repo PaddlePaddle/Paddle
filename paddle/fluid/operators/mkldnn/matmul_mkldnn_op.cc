@@ -327,7 +327,7 @@ class MatMulMKLDNNHandler
   }
 
   bool IsOutputFused(const ExecutionContext& ctx) const {
-    return (ctx->HasAttr("fused_reshape_Out") && ctx->HasAttr("fused_transpose_Out");
+    return (ctx.HasAttr("fused_reshape_Out") && ctx.HasAttr("fused_transpose_Out"));
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {

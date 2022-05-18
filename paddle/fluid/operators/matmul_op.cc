@@ -665,10 +665,10 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
-    if(context->HasAttr("fused_reshape_Out") && context->HasAttr("fused_transpose_Out")
+    if(context->HasAttr("fused_reshape_Out") && context->HasAttr("fused_transpose_Out"))
     {
-      shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-      axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+      auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+      auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
       ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif

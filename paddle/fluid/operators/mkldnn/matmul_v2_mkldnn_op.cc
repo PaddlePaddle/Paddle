@@ -108,7 +108,7 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
 }
 
 bool IsOutputFused(const ExecutionContext& ctx) {
-  return (ctx->HasAttr("fused_reshape_Out") && ctx->HasAttr("fused_transpose_Out");
+  return (ctx.HasAttr("fused_reshape_Out") && ctx.HasAttr("fused_transpose_Out"));
 }
 
 float ComputeOutputScale(const ExecutionContext& ctx) {
