@@ -58,8 +58,8 @@ class HeterComm {
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
                   int& uniq_len);  // NOLINT
-  void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, float* mf,
-                  size_t len, int& uniq_len);
+  void dynamic_merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads,
+                          size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num);

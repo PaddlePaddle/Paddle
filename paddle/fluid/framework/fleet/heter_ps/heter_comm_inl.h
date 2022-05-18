@@ -23,132 +23,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-template <typename T>
-__global__ void fill_idx(T* idx, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    idx[i] = i;
-  }
-}
-
-template <typename T>
-void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
-  T tmp[len];  // NOLINT
-  cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
-  cudaStreamSynchronize(stream);
-  std::cout << name;
-  for (int i = 0; i < len; ++i) {
-    std::cout << ":" << tmp[i];
-  }
-  std::cout << std::endl;
-}
-
-template <typename T>
-__global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len - 1) {
-    if (idx[i] != idx[i + 1]) {
-      right[idx[i]] = i;
-      left[idx[i + 1]] = i + 1;
-    }
-  }
-  if (i == 0) {
-    left[idx[i]] = i;
-  }
-  if (i == (len - 1)) {
-    right[idx[i]] = i;
-  }
-}
-
-template <typename KeyType, typename T>
-__global__ void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
-                                 int total_gpu) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    shard_index[i] = d_keys[i] % total_gpu;
-  }
-}
-
-template <typename KeyType, typename T>
-__global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                               size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-  }
-}
-
-template <typename KeyType, typename GradType, typename T>
-__global__ void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                 GradType* d_shard_grads, GradType* d_grads,
-                                 T* idx, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-    d_shard_grads[i] = d_grads[idx[i]];
-  }
-}
-
-template <typename KeyType, typename GradType, typename T>
-__global__ void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                       GradType* d_shard_grads,
-                                       GradType* d_grads, T* idx, size_t len,
-                                       size_t grad_value_size) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-    *(GradType*)((char*)d_shard_grads + i * grad_value_size) =
-        *(GradType*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
-  }
-}
-
-__global__ void merge_gradient_kernel(const uint32_t* offset,
-                                      const uint32_t* fea_num,
-                                      const uint32_t* index, const char* input,
-                                      char* output, int n,
-                                      size_t grad_value_size,
-                                      CustomGradMerger& merger_) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (i < n) {
-    uint32_t start = offset[i];
-    uint32_t num = fea_num[i];
-    int ori_index = index[start];
-
-    FeaturePushValue& lhs = *(FeaturePushValue*)(output + i * grad_value_size);
-    FeaturePushValue& in =
-        *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-    merger_.copy_basic_field(lhs, in);
-
-    for (int j = 1; j < num; ++j) {
-      ori_index = index[start + j];
-      in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.add_basic_field(lhs, in);
-    }
-  }
-}
-
-template <typename ValType, typename T>
-__global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                           size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_vals[idx[i]] = d_shard_vals[i];
-  }
-}
-
-template <typename ValType, typename T>
-__global__ void dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                                 size_t len, size_t val_size) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    uint64_t new_offset = uint64_t(idx[i]) * val_size;
-    *(ValType*)((char*)d_vals + new_offset) =
-        *(ValType*)((char*)d_shard_vals + i * val_size);
-  }
-}
-
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
@@ -807,11 +681,9 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
-                                                       KeyType* d_keys,
-                                                       GradType* d_grads,
-                                                       float* mf, size_t len,
-                                                       int& uniq_len) {
+void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
+    int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
+    int& uniq_len) {
   platform::Timer timeline;
   timeline.Start();
   int dev_id = resource_->dev_id(gpu_num);
@@ -1188,7 +1060,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   int uniq_len = len;
-  merge_grad(dev_num, d_keys, d_grads, NULL, len, uniq_len);
+  dynamic_merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
 
   int grid_size = (uniq_len - 1) / block_size_ + 1;
 
