@@ -294,6 +294,44 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  // Create and add 1D constant layer
+  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
+                                        const std::string& weight_name) {
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    int data_size = data.size();
+    tmp_tensor->Resize({data_size});
+    auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());
+    for (int i = 0; i < data_size; i++) {
+      tmp_data[i] = data[i];
+    }
+    engine_->SetWeights(weight_name, std::move(tmp_tensor));
+
+    TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
+                                  static_cast<void*>(tmp_data),
+                                  static_cast<size_t>(data_size)};
+    nvinfer1::Dims input_shape;
+    input_shape.nbDims = 1;
+    input_shape.d[0] = data_size;
+    auto const_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
+    return const_layer->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Add1DConstantLayer(nvinfer1::Dims data,
+                                        const std::string& weight_name) {
+          std::vector<int> tmp_data;
+          for (int i = 0; i < data.nbDims; i++)
+          tmp_data.push_back(data.d[i]);
+        return Add1DConstantLayer(tmp_data, weight_name);
+  }
+
+  nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
+                                        const std::string& weight_name) {
+          std::vector<int> tmp_data;
+          tmp_data.push_back(data);
+        return Add1DConstantLayer(tmp_data, weight_name);
+  }
+
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer, const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
