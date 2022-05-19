@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+
 #include <algorithm>
 #include <array>
 #include <functional>
@@ -21,8 +22,9 @@ limitations under the License. */
 #include <memory>
 #include <mutex>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "glog/logging.h"
 
+#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"

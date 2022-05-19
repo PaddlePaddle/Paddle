@@ -59,7 +59,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
-#include "paddle/phi/core/compat/type_defs.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
