@@ -339,29 +339,7 @@ class PSGPUWrapper {
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
-  }
-
-  void InitSlotInfo() {
-    if (slot_info_initialized_) {
-      return;
-    }
-    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
-    auto slots_vec = dataset->GetSlots();
-    slot_offset_vector_.clear();
-    for (auto& slot : slot_vector_) {
-      for (size_t i = 0; i < slots_vec.size(); ++i) {
-        if (std::to_string(slot) == slots_vec[i]) {
-          slot_offset_vector_.push_back(i);
-          break;
-        }
-      }
-    }
-    std::cout << "psgpu wrapper use slots: ";
-    for (auto s : slot_offset_vector_) {
-      std::cout << s << " | ";
-    }
-    std::cout << " end " << std::endl;
-    for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
+    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
 
@@ -390,7 +368,6 @@ class PSGPUWrapper {
         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
-    slot_info_initialized_ = true;
   }
 #endif
 
@@ -451,7 +428,6 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
-  bool slot_info_initialized_ = false;
   int use_afs_api_ = 0;
 
 #ifdef PADDLE_WITH_CUDA
