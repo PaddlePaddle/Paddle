@@ -34,20 +34,25 @@ CacheManager::CacheManager(int thread_num, int batch_sz, int worker_num):
 #endif
 }
 
-void CacheManager::build_sign2fids(FeatureKey* d_keys, size_t len) {
+void CacheManager::clear_sign2fids() {
     sign2fid_.clear();
+    fid2meta_.clear();
+    feasign_cnt_ = 0;
+}
+
+void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     // pre-build the sign2fid_, in order not to use mutex
     for (size_t i = 0; i < len; ++i) {
+        // assert(sign2fid_.find(d_keys[i]) == sign2fid_.end());
         sign2fid_[d_keys[i]] = 0;
     }
-    fid2meta_ = std::vector<CacheMeta>(len);
-
+    size_t origin_size = fid2meta_.size();
+    fid2meta_.resize(origin_size + len);
     // build sign 2 fids
     std::vector<std::thread> threads(thread_num_);
     size_t split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
-    feasign_cnt_ = 0;
     for (int i = 0; i < thread_num_; ++i) {
-        threads[i] = std::thread([this](FeatureKey* keys, size_t keys_len) {
+        threads[i] = std::thread([this](const FeatureKey* keys, size_t keys_len) {
             for (size_t j = 0; j < keys_len; ++j) {
                 int tmp = feasign_cnt_;
                 while (!feasign_cnt_.compare_exchange_strong(tmp, tmp + 1)) {}
@@ -61,13 +66,13 @@ void CacheManager::build_sign2fids(FeatureKey* d_keys, size_t len) {
     }
 }
 
-uint64_t CacheManager::query_sign2fid(FeatureKey & key) {
+uint64_t CacheManager::query_sign2fid(const FeatureKey & key) {
     return sign2fid_[key];
 }
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
-void CacheManager::build_batch_fid_seq(Record * recs, int size) {
+void CacheManager::build_batch_fid_seq(const Record * recs, int size) {
     std::vector<std::thread> threads(thread_num_);
     for (int i = 0; i < thread_num_; ++i) {
         threads[i] = std::thread([this, i, recs, size]() {
@@ -111,7 +116,7 @@ std::shared_ptr<std::vector<uint64_t>>  CacheManager::get_current_batch_fid_seq(
     return current_batch_fid_seq_; 
 }
 
-void CacheManager::convert_fid2bfid(uint64_t * fids, int * out_bfids, int size) {
+void CacheManager::convert_fid2bfid(const uint64_t * fids, int * out_bfids, int size) {
     std::lock_guard<std::mutex> lock(*current_batch_fid_seq_lock);
     for (int i = 0; i < size; ++i) {
         out_bfids[i] = current_batch_fid2bfid_[fids[i]];
