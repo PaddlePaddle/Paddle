@@ -77,7 +77,9 @@ class PyTensorHook : public egr::TensorHook {
 
     PyObject* res = nullptr;
     try {
-      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+      PyObject* p_tmp_var = ToPyObject(var);
+      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+      Py_DECREF(p_tmp_var);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
@@ -94,7 +96,9 @@ class PyTensorHook : public egr::TensorHook {
     if (res == Py_None) {
       return var;
     }
-    return reinterpret_cast<TensorObject*>(res)->tensor;
+    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+    Py_DECREF(res);
+    return res_tensor;
   }
 
  private:
