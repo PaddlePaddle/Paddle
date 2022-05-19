@@ -22,12 +22,16 @@ namespace paddle {
 namespace framework {
 
 CacheManager::CacheManager(int worker_num): thread_num_(-1), batch_sz_(-1), worker_num_(worker_num) {
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
     current_batch_fid_seq_lock = std::make_shared<std::mutex>();
+#endif
 }
 
 CacheManager::CacheManager(int thread_num, int batch_sz, int worker_num): 
         thread_num_(thread_num), batch_sz_(batch_sz), worker_num_(worker_num) {
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
     current_batch_fid_seq_lock = std::make_shared<std::mutex>();
+#endif
 }
 
 void CacheManager::build_sign2fids(FeatureKey* d_keys, size_t len) {
