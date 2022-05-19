@@ -534,6 +534,10 @@ void BroadcastKernelForDifferentVecSize(
                                              merge_dims.in_dims[0],
                                              merge_dims.dim_size);
   auto type = kps::details::OptType::CanNotOptimize;
+  if (configs[0].cmp_type != configs[1].cmp_type) {
+    configs[0].cmp_type = kps::details::OptType::CanNotOptimize;
+    configs[1].cmp_type = kps::details::OptType::CanNotOptimize;
+  }
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
