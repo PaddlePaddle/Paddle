@@ -26,7 +26,6 @@ namespace framework {
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
   storage_.resize(resource_->total_device());
   multi_mf_dim_ = resource->multi_mf();
@@ -365,10 +364,6 @@ HeterComm<KeyType, ValType, GradType>::~HeterComm() {
       delete table;
       table = nullptr;
     }
-    for (auto& table : tables_) {
-      delete table;
-      table = nullptr;
-    }
   }
 }
 
@@ -376,8 +371,6 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::show_one_table(int gpu_num) {
   if (!multi_mf_dim_) {
     tables_[gpu_num]->show();
-  } else {
-    // ptr_tables_[gpu_num]->show();
   }
 }
 
@@ -480,23 +473,17 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     return;
   }
   int dev_id = resource_->dev_id(num);
-
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
-
-  // use hbm pool
   std::vector<memory::allocation::AllocationPtr> d_key_bufs;
-
   ppStream streams[stream_num];  // NOLINT
   for (int i = 0; i < stream_num; ++i) {
     create_stream(&(streams[i]));
     auto d_k_buf = memory::Alloc(place, chunk_size * sizeof(KeyType));
     d_key_bufs.push_back(std::move(d_k_buf));
   }
-
   int cur_len = 0;
   int cur_stream = 0;
-
   while (cur_len < len) {
     cur_stream = cur_stream % stream_num;
     auto cur_use_stream = streams[cur_stream];
@@ -504,10 +491,8 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     cur_use_stream = 0;
 #endif
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-
     auto dst_place = place;
     auto src_place = platform::CPUPlace();
-
     memory_copy(
         dst_place, reinterpret_cast<char*>(d_key_bufs[cur_stream]->ptr()),
         src_place, h_keys + cur_len, sizeof(KeyType) * tmp_len, cur_use_stream);
@@ -517,7 +502,6 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     cur_stream += 1;
     cur_len += tmp_len;
   }
-
   for (int i = 0; i < stream_num; ++i) {
     sync_stream(streams[i]);
     destroy_stream(streams[i]);
@@ -528,52 +512,40 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::merge_grad(
     int dev_num, KeyType* d_keys, GradType* d_grads, size_t len,
     int& uniq_len) {  // NOLINT
-
   int dev_id = resource_->dev_id(dev_num);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
-
   size_t temp_storage_bytes;
-
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
   auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
-
   heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
                                  d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
                                  len, 0, 8 * sizeof(KeyType), stream, false);
-
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
-
   heter_comm_kernel_->sort_pairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
       d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
   temp_storage_bytes = 0;
-
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
   int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
-
   heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
                                     d_keys, d_merge_grads_ptr, d_grads,
                                     d_num_runs_out, len, stream, false);
-
   if (d_temp_storage->size() < temp_storage_bytes) {
     d_temp_storage = NULL;
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   }
-
   heter_comm_kernel_->reduce_by_key(
       d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
       d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
-
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
   memory_copy(dst_place, &uniq_len, src_place, d_num_runs_out, sizeof(int),
               stream);
-
   sync_stream(stream);
 }
 
@@ -585,20 +557,14 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
-
   size_t temp_storage_bytes;
-
-  // VLOG(1) << "hetercomm merge_grad: max_mf_dim: " << max_mf_dim_;
   size_t grad_value_size =
       TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
-
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
   auto d_merge_grads = memory::Alloc(place, len * grad_value_size);
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
-
   auto d_fea_num_info = memory::Alloc(place, sizeof(uint32_t) * (len * 3 + 1));
   uint32_t* d_fea_num_info_ptr =
       reinterpret_cast<uint32_t*>(d_fea_num_info->ptr());
@@ -610,14 +576,12 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_idx, d_index, len,
       0, 8 * sizeof(KeyType), stream));
-
   void* d_buff = NULL;
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
       d_idx, d_index, len, 0, 8 * sizeof(KeyType), stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-
   temp_storage_bytes = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRunLengthEncode::Encode(
       NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_fea_num_info_ptr,
@@ -636,7 +600,6 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
 
   assert(d_merged_size > 0);
   uint32_t* d_offset = (uint32_t*)&d_index[len];
-
   temp_storage_bytes = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, d_fea_num_info_ptr, d_offset, uniq_len,
@@ -649,12 +612,10 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
       d_temp_storage->ptr(), temp_storage_bytes, d_fea_num_info_ptr, d_offset,
       uniq_len, stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-
   heter_comm_kernel_->merge_gradient(
       d_offset, d_fea_num_info_ptr, d_index, (char*)d_grads,
       (char*)d_merge_grads_ptr, uniq_len, grad_value_size, merger_, stream);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(d_grads, d_merge_grads_ptr,
                                              grad_value_size * uniq_len,
                                              cudaMemcpyDeviceToDevice, stream));
@@ -875,16 +836,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
-
   GradType* d_shard_grads_ptr;
-  if (!multi_mf_dim_) {
-    auto d_shard_grads = memory::Alloc(place, len * sizeof(GradType));
-    d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
-  } else {
-    auto d_shard_grads = memory::Alloc(place, len * grad_value_size);
-    d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
-  }
-
+  auto d_shard_grads = memory::Alloc(place, len * grad_value_size);
+  d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
   int uniq_len = len;
   dynamic_merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
 
@@ -892,17 +846,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr,
                        dev_num);
-
-  if (!multi_mf_dim_) {
-    heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
-                                         d_shard_grads_ptr, d_grads, d_idx_ptr,
-                                         uniq_len, stream);
-  } else {
-    heter_comm_kernel_->dy_mf_fill_shard_grads(
-        d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
-        uniq_len, grad_value_size, stream);
-  }
-
+  heter_comm_kernel_->dy_mf_fill_shard_grads(
+      d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
+      uniq_len, grad_value_size, stream);
+  
   sync_stream(stream);
 
   auto dst_place = platform::CPUPlace();
