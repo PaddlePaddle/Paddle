@@ -36,7 +36,8 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "InnerCache",
         "(Tensor), The cache of the forward transpose tensors: tA and tB.")
-        .AsDuplicable();
+        .AsDuplicable()
+        .AsExtra();
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
