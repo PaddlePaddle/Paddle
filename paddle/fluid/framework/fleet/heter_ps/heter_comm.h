@@ -17,8 +17,6 @@ limitations under the License. */
 #include <vector>
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
-// #include "hashtable.h"       // NOLINT
-// #include "heter_resource.h"  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -252,14 +250,6 @@ class HeterComm {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
-  std::vector<double> mg_time_1;
-  std::vector<double> mg_time_2;
-  std::vector<double> mg_time_3;
-  std::vector<double> mg_time_4;
-  std::vector<double> mg_time_5;
-  std::vector<double> mg_time_6;
-  std::vector<double> mg_time_7;
-  std::vector<double> mg_time_8;
   int multi_mf_dim_{8};
   int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;

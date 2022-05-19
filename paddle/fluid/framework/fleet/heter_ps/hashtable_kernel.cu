@@ -106,23 +106,6 @@ __global__ void dy_mf_search_kernel(Table* table,
       for (int j = 0; j < cur->mf_dim + 1; ++j) {
         cur->mf[j] = input.mf[j];
       }
-    } else {
-      printf("warning: pull miss key: %d", keys[i]);
-      // it = table->find(0);
-      //*(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
-      FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
-      cur->delta_score = 0;
-      cur->show = 0;
-      cur->clk = 0;
-      cur->slot = -1;
-      cur->lr = 0;
-      cur->lr_g2sum = 0;
-      cur->mf_size = 0;
-      cur->mf_dim = 8;
-      cur->cpu_ptr;
-      for (int j = 0; j < cur->mf_dim + 1; j++) {
-        cur->mf[j] = 0;
-      }
     }
   }
 }
