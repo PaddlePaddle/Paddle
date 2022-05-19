@@ -2364,7 +2364,7 @@ void GraphSendERecvInferMeta(const MetaTensor& x,
       e_dims[0],
       src_index_dims[0],
       phi::errors::InvalidArgument(
-          "Expect Input E to have size %d on the first dimension, "
+          "Expect Input E to have size %d as Src_index on the first dimension, "
           "but we get %d",
           src_index_dims[0],
           e_dims[0]));
@@ -2381,7 +2381,6 @@ void GraphSendERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  // 先假设都要进行broadcast，后面再进行区分
   std::vector<int> x_dims1 = phi::vectorize(x_dims);
   std::vector<int> e_dims1 = phi::vectorize(e_dims);
   std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
