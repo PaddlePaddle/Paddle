@@ -147,11 +147,6 @@ inline void ClearMKLDNNCache(const platform::Place& place,
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
-    // For blocked cache clearing also layout setting should not be reset
-    if (dev_ctx->IsNextCacheClearingBlocked() == false) {
-      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-          paddle::framework::DataLayout::kNCHW);
-    }
     dev_ctx->ResetBlobMap(ptr);
   }
 }

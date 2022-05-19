@@ -768,6 +768,10 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
         s.second->erase(ptr);
       }
     }
+    // Reset paddle layout to NCHW
+    VLOG(3) << "Resetting Paddle data layout to NCHW.";
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   } else {
     --block_next_cache_clearing_;
     VLOG(3) << "Prevented Clearing DNNL cache. Updated "
@@ -807,11 +811,6 @@ void MKLDNNDeviceContext::BlockNextCacheClearing() {
   VLOG(3) << "Next DNNL cache clearing has been blocked. Updated "
              "block_next_cache_clearing_ : "
           << block_next_cache_clearing_;
-}
-
-bool MKLDNNDeviceContext::IsNextCacheClearingBlocked() const {
-  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  return block_next_cache_clearing_ > 0;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
