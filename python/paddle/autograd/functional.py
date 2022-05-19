@@ -548,57 +548,6 @@ def _replace_none_with_zero_tensor(xs, refs):
         return xs
 
 
-@framework.static_only
-def forward_gradients(targets, inputs, input_gradients=None):
-    """Computes forward gradients.
-
-    .. note::
-        **ONLY available in the static mode.**
-    
-    Args:
-        targets: The target tensor or tensors
-        inputs: The input tensor or tensors
-        input_gradients: The gradient Tensor of inputs which has the same 
-            shape with targets, If None, ones will be created for them.
-    
-    Returns:
-        A list of gradients for targets. If an input does not affect targets, 
-            the corresponding gradient Tensor will be None.
-
-    Examples:
-
-        .. code-block:: python
-
-            import numpy as np
-            import paddle
-            from paddle.autograd.functional import forward_gradients
-
-            paddle.enable_static()
-
-            sp = paddle.static.Program()
-            mp = paddle.static.Program()
-
-            with paddle.static.program_guard(mp, sp):
-                x = paddle.static.data('x', shape=[1], dtype='float32')
-                x.stop_gradients = False
-                y = x * x 
-                y_grad = forward_gradients(y, x)
-                paddle.incubate.autograd.prim2orig()
-
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            out = exe.run(mp, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[y_grad])
-            print(out)
-    """
-    from paddle.incubate.autograd import primx
-    ys, xs, xs_dot = _as_tensors(targets), _as_tensors(inputs), _as_tensors(
-        input_gradients)
-    primx.orig2prim(ys[0].block)
-    ad = primx.Transform(ys[0].block)
-    _, ys_dot = ad.linearize(xs, ys, input_gradients)
-    return ys_dot[0] if isinstance(ys, framework.Variable) else ys_dot
-
-
 def _grad(ys, xs, v=None):
     """A gradient function that can be used in dynamic graph and static graph.
 

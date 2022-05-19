@@ -391,3 +391,34 @@ def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
     if not isinstance(src[0], typing.Sequence):
         src = [src]
     return concat_row(tuple(concat_col(xs) for xs in src))
+
+
+def gen_static_data_and_feed(xs, v, stop_gradient=True):
+    feed = {}
+    if isinstance(xs, typing.Sequence):
+        static_xs = []
+        for i, x in enumerate(xs):
+            x = paddle.static.data(f"x{i}", x.shape, x.dtype)
+            x.stop_gradient = stop_gradient
+            static_xs.append(x)
+        feed.update({f'x{idx}': value for idx, value in enumerate(xs)})
+    else:
+        static_xs = paddle.static.data('x', xs.shape, xs.dtype)
+        static_xs.stop_gradient = stop_gradient
+        feed.update({'x': xs})
+
+    if isinstance(v, typing.Sequence):
+        static_v = []
+        for i, e in enumerate(v):
+            e = paddle.static.data(f'v{i}', e.shape, e.dtype)
+            e.stop_gradient = stop_gradient
+            static_v.append(e)
+        feed.update({f'v{i}': value for i, value in enumerate(v)})
+    elif v is not None:
+        static_v = paddle.static.data('v', v.shape, v.dtype)
+        static_v.stop_gradient = stop_gradient
+        feed.update({'v': v})
+    else:
+        static_v = v
+
+    return feed, static_xs, static_v
