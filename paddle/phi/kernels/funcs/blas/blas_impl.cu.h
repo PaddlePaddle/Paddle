@@ -2372,11 +2372,9 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGemmArray(
     });
   } else {
 #endif  // CUDA_VERSION >= 9010
-    PADDLE_ENFORCE_GE(
-        0,
-        1,
-        phi::errors::InvalidArgument("cuda version don't support  %d",
-                                     context_.GetComputeCapability()));
+    // raise error
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "cublasGemmBatchedEx is not supported on cuda <= 9"));
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010

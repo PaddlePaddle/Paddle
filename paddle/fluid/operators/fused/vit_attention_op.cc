@@ -34,14 +34,12 @@ class VitAttentionOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Output(Out) of MultiHeadMatMul should not be null."));
 
-    // int head_number = context->Attrs().Get<int>("head_number");
     auto dim_input = context->GetInputDim("Input");
     int batch = dim_input[0];
     int seq_len = dim_input[1];
     int hidden_size = dim_input[2] / 3;
     std::vector<int> dims = {batch, seq_len, hidden_size};
     context->SetOutputDim("Out", phi::make_ddim(dims));
-    // context->ShareLoD("Input", /*->*/ "Out");
   }
 };
 

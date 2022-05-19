@@ -85,15 +85,5 @@ class TestFusedVitAttentionOp(OpTest):
         self.check_output_with_place(place, atol=2e-3)
 
 
-'''
-class TestFusedVitAttentionOp2(TestFusedVitAttentionOp):
-    def config(self):
-        self.seq_len = 256
-        self.size_per_head = 32
-        self.head_number = 12
-        self.batch_size = 8
-        self.scale = 1.0
-'''
-
 if __name__ == '__main__':
     unittest.main()
