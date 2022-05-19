@@ -1486,7 +1486,9 @@ def roll(x, shifts, axis=None, name=None):
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
-        name (str, optional): Name for the operation. Default: None
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name` .
+
 
     Returns:
         Tensor: A Tensor with same data type as `x`.
@@ -2431,13 +2433,14 @@ def unbind(input, axis=0):
 
             import paddle
 
-            # input is a variable which shape is [3, 4, 5]
-            input = paddle.rand([3, 4, 5]).astype('float32')
-
+            # input is a Tensor which shape is [3, 4, 5]
+            input = paddle.rand([3, 4, 5])
+       
             [x0, x1, x2] = paddle.unbind(input, axis=0)
             # x0.shape [4, 5]
             # x1.shape [4, 5]
             # x2.shape [4, 5]
+
             [x0, x1, x2, x3] = paddle.unbind(input, axis=1)
             # x0.shape [3, 5]
             # x1.shape [3, 5]
@@ -2582,7 +2585,6 @@ def scatter_(x, index, updates, overwrite=True, name=None):
 
 def scatter_nd_add(x, index, updates, name=None):
     r"""
-    **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
     or slice in a Tensor.
@@ -2639,15 +2641,16 @@ def scatter_nd_add(x, index, updates, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
-            index_data = np.array([[1, 1],
-                                   [0, 1],
-                                   [1, 3]]).astype(np.int64)
-            index = paddle.to_tensor(index_data)
+            index = paddle.to_tensor([[1, 1],
+                                    [0, 1],
+                                    [1, 3]], dtype='int64')
+            
             output = paddle.scatter_nd_add(x, index, updates)
+            print(output.shape)
+            # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
         op = getattr(_C_ops, 'scatter_nd_add')
@@ -3011,7 +3014,7 @@ def expand(x, shape, name=None):
 
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -3429,7 +3432,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 result = [ [2], ]
 
     Args:
-        x (Tensor): An N-D ``Tensor``. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
