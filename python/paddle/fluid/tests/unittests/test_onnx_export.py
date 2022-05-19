@@ -80,7 +80,6 @@ class TestExportPrunedGraph(unittest.TestCase):
             model, 'pruned', input_spec=[self.x], output_spec=[out])
 
     def test_prune_graph(self):
-        # test in eager mode
         with _test_eager_guard():
             self.func_prune_graph()
         self.func_prune_graph()
