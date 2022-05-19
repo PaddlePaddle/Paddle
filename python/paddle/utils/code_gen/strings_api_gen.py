@@ -32,7 +32,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_str['args_declare']});
+{super(StringsAPI, self).gene_api_declaration()}
 """
 
     def get_kernel_tensor_out_type(self, output_name):
@@ -56,6 +56,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         kernel_output = ""
         output_names = []
         output_create = ""
+        return_type = self.get_return_type(inplace_flag)
 
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
@@ -67,13 +68,12 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} api_output{inplace_assign};
-  
+  {return_type} api_output{inplace_assign};
   {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>({set_out_func}(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.outputs['return_type']} api_output;"""
+  {return_type} api_output;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
@@ -194,7 +194,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  (*kernel_fn)({kernel_args}, {outputs_args});
 
-{code_indent}  return {self.gene_return_code()};"""
+{code_indent}  {self.gene_return_code()}"""
 
     def gene_kernel_select(self) -> str:
         api = self.api
@@ -264,7 +264,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.outputs['return_type']} {api_func_name}({self.args_str["args_define"]}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
 {self.gene_kernel_select()}
 {self.gen_string_tensor_kernel_code(inplace_flag)}
 }}
