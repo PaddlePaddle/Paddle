@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/program_desc.h"
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -98,9 +101,18 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
-                    platform::errors::InvalidArgument(
-                        "Failed to parse program_desc from binary string."));
+  google::protobuf::io::ArrayInputStream input(binary_str.data(),
+                                               binary_str.size());
+  google::protobuf::io::CodedInputStream decoder(&input);
+  // We enlarge the Bytes Limit from 64MB to 256MB to read larger model from
+  // binary_str.
+  // Because 64MB is the default limit and this limit is Protobuf's suggestion.
+  // So, we set 64MB as warning_threshold.
+  decoder.SetTotalBytesLimit(256 * 1024 * 1024, 64 * 1024 * 1024);
+  PADDLE_ENFORCE_EQ(
+      desc_.ParseFromCodedStream(&decoder) && decoder.ConsumedEntireMessage(),
+      true, platform::errors::InvalidArgument(
+                "Failed to parse program_desc from binary string."));
   InitFromProto();
 }
 
