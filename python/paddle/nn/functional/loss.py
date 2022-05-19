@@ -393,20 +393,24 @@ def hsigmoid_loss(input,
 
             paddle.set_device('cpu')
 
-            input = paddle.uniform([2, 3])
-            # [[-0.8018668   0.8736385  -0.9064771 ] # random
-            #  [-0.10228515 -0.87188244 -0.8783718 ]] # random
+            input = paddle.uniform([4, 3])
+            # [[0.45424712  -0.77296764  0.82943869] # random
+            #  [0.85062802  0.63303483  0.35312140] # random
+            #  [0.57170701  0.16627562  0.21588242] # random
+            #  [0.27610803  -0.99303514  -0.17114788]] # random
             label = paddle.to_tensor([0, 1, 4, 5])
             num_classes = 5
             weight=paddle.uniform([num_classes-1, 3])
-            # [[-0.24148715  0.8449961  -0.7399121 ] # random
-            #  [-0.9800559   0.43509364  0.9091208 ] # random
-            #  [ 0.60194826  0.10430074 -0.4521166 ] # random
-            #  [-0.4469818  -0.01536179 -0.604454  ]] # random
+            # [[-0.64477652  0.24821866  -0.17456549] # random
+            #  [-0.04635394  0.07473493  -0.25081766] # random
+            #  [ 0.05986035  -0.12185556  0.45153677] # random
+            #  [-0.66236806  0.91271877  -0.88088769]] # random
 
             out=F.hsigmoid_loss(input, label, num_classes, weight)
-            # [[3.0159328]
-            #  [2.2407534]]
+            # [[1.96709502]
+            #  [2.40019274]
+            #  [2.11009121]
+            #  [1.92374969]]
     """
 
     if _non_static_mode():
@@ -543,7 +547,7 @@ def margin_ranking_loss(input,
                         name=None):
     r"""
 
-    This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
+    This op the calcluate the margin rank loss between the input, other and label, use the math function as follows.
 
     .. math::
         margin\_rank\_loss = max(0, -label * (input - other) + margin)
@@ -880,7 +884,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
     While :attr:`reduction` is :attr:`none`, output loss is in
     the same shape as input, loss in each point is calculated
-    seperately and no reduction is applied.
+    separately and no reduction is applied.
 
     While :attr:`reduction` is :attr:`mean`, output loss is in
     shape of [1] and loss value is the mean value of all losses.
@@ -2007,7 +2011,7 @@ def sigmoid_focal_loss(logit,
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
             a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the the number of positive samples.
+            For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25. 

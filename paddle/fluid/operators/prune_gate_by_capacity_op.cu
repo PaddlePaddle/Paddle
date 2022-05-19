@@ -98,7 +98,7 @@ static void VisitDataType(paddle::experimental::DataType type,
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The recieved values gate_id type %s can not meet input requirements. "
+        "The received values gate_id type %s can not meet input requirements. "
         "Because the given gate_id data type of operators must be "
         "int64. Please input appropriate gate_id again! ",
         "framework::DataTypeToString(type)"));

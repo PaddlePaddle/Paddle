@@ -118,6 +118,7 @@ class IpuStrategy {
                               const std::string &value);
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
+  void SetReplicatedCollectivesSettings(const std::string &opt, bool value);
   void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
                                           const std::vector<int> &values);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,

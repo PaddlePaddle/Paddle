@@ -32,7 +32,7 @@ class TestResnetCPU(TestResnetBase):
         self._compare_result_with_origin_model(
             check_func,
             use_device=DeviceType.CPU,
-            compare_seperately=False,
+            compare_separately=False,
             delta2=1e-3)
 
 

@@ -34,8 +34,8 @@ def get_ut_mem(rootPath):
                 if '[Memory Usage (Byte)] gpu' in line:
                     mem_reserved = round(
                         float(
-                            line.split('[max memory reserved] gpu')[1].split(
-                                ':')[1].split('\\n')[0].strip()), 2)
+                            line.split(' : Reserved = ')[1].split(
+                                ', Allocated = ')[0]), 2)
                     if mem_reserved > mem_reserved1:
                         mem_reserved1 = mem_reserved
                 if 'MAX_GPU_MEMORY_USE=' in line:

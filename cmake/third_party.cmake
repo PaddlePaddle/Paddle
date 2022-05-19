@@ -357,7 +357,7 @@ if (WITH_PSCORE)
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
 
-    include(external/rocksdb)     # download, build, install libmct
+    include(external/rocksdb)     # download, build, install rocksdb
     list(APPEND third_party_deps extern_rocksdb)
 endif()
 
