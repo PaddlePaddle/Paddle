@@ -118,30 +118,18 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform
-            variance calculations. ``axis`` should be int, list(int) or
-            tuple(int). If ``axis`` is a list/tuple of dimension(s), variance
-            is calculated along all element(s) of ``axis`` . ``axis`` or
-            element(s) of ``axis`` should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is less
-            than 0, it works the same way as :math:`axis + D` . If ``axis`` is
-            None, variance is calculated over all elements of ``x``. Default
-            is None.
-        unbiased (bool, optional): Whether to use the unbiased estimation. If
-            ``unbiased`` is True, the divisor used in the computation is
-            :math:`N - 1`, where :math:`N` represents the number of elements
-            along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
-        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keepdim`` is True, the dimensions of
-            the output Tensor is the same as ``x`` except in the reduced
-            dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int). 
+        
+            - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` . 
+            - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` . 
+            - If ``axis`` is None, variance is calculated over all elements of ``x``. Default is None.
+
+        unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, results of variance along ``axis`` of ``x``, with the same data
-        type as ``x``.
+        Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
@@ -223,7 +211,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 def numel(x, name=None):
     """
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
-    or a scalar value in imperative mode
+    or a scalar value in imperative mode.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
@@ -280,21 +268,26 @@ def median(x, axis=None, keepdim=False, name=None):
             import paddle
 
             x = paddle.arange(12).reshape([3, 4])
-            # x is [[0 , 1 , 2 , 3 ],
-            #       [4 , 5 , 6 , 7 ],
-            #       [8 , 9 , 10, 11]]
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0 , 1 , 2 , 3 ],
+            #         [4 , 5 , 6 , 7 ],
+            #         [8 , 9 , 10, 11]])
 
             y1 = paddle.median(x)
-            # y1 is [5.5]
+            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [5.50000000])
 
             y2 = paddle.median(x, axis=0)
-            # y2 is [4., 5., 6., 7.]
+            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [4., 5., 6., 7.])
 
             y3 = paddle.median(x, axis=1)
-            # y3 is [1.5, 5.5, 9.5]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1.50000000, 5.50000000, 9.50000000])
 
             y4 = paddle.median(x, axis=0, keepdim=True)
-            # y4 is [[4., 5., 6., 7.]]
+            # Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[4., 5., 6., 7.]])
 
     """
     if not isinstance(x, Variable):
