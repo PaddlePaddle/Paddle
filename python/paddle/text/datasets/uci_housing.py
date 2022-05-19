@@ -51,7 +51,7 @@ class UCIHousing(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.text.datasets import UCIHousing
+            from paddle.text import UCIHousing
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

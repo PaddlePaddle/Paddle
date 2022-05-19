@@ -50,7 +50,7 @@ class Imikolov(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.text.datasets import Imikolov
+            from paddle.text import Imikolov
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

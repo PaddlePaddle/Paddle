@@ -107,7 +107,7 @@ class Movielens(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.text.datasets import Movielens
+            from paddle.text import Movielens
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

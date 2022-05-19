@@ -50,7 +50,7 @@ class Imdb(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.text.datasets import Imdb
+            from paddle.text import Imdb
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

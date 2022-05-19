@@ -64,7 +64,7 @@ class WMT14(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.text.datasets import WMT14
+            from paddle.text import WMT14
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
@@ -188,7 +188,7 @@ class WMT14(Dataset):
     
             .. code-block:: python
     
-                from paddle.text.datasets import WMT14
+                from paddle.text import WMT14
                 wmt14 = WMT14(mode='train', dict_size=50)
                 src_dict, trg_dict = wmt14.get_dict()
         """
