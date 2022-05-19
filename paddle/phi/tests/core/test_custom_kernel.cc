@@ -264,10 +264,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
 
   phi::MetaTensor meta_out(dense_out.get());
   phi::DotInferMeta(*dense_x, *dense_y, &meta_out);
