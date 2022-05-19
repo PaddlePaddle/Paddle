@@ -847,9 +847,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr,
                        dev_num);
   heter_comm_kernel_->dy_mf_fill_shard_grads(
-      d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
-      uniq_len, grad_value_size, stream);
-  
+      d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr, uniq_len,
+      grad_value_size, stream);
+
   sync_stream(stream);
 
   auto dst_place = platform::CPUPlace();

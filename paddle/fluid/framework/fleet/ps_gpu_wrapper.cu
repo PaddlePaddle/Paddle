@@ -210,9 +210,9 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
   cudaMemcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              cudaMemcpyHostToDevice);
-    PullCopy<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
-        gpu_values, total_values_gpu, gpu_len, slot_num, total_length, gpu_keys,
-        val_type_size_, gpu_dim);
+  PullCopy<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
+      gpu_values, total_values_gpu, gpu_len, slot_num, total_length, gpu_keys,
+      val_type_size_, gpu_dim);
   cudaStreamSynchronize(stream);
 }
 
