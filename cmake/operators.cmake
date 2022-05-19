@@ -265,6 +265,7 @@ function(op_library TARGET)
         if (WITH_ASCEND_CL)
             if (CANN_VERSION LESS 504000)
                 list(REMOVE_ITEM npu_cc_srcs "multinomial_op_npu.cc")
+                list(REMOVE_ITEM npu_cc_srcs "take_along_axis_op_npu.cc")
             endif()
         endif()
         # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.

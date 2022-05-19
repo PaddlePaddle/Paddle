@@ -110,6 +110,7 @@ struct PDNode {
   // Assertions, helper functions to simplify the pattern definition.
   PDNode* assert_is_op();
   PDNode* assert_is_op(const std::string& op_type);
+  PDNode* assert_is_not_op_type(const std::string& op_type);
   PDNode* assert_is_var();
   PDNode* assert_var_dtype(proto::VarType::Type dtype);
   PDNode* assert_is_not_ctrl_var();

@@ -43,6 +43,8 @@ class GraphGpuWrapper {
   void load_node_file(std::string name, std::string filepath);
   int32_t load_next_partition(int idx);
   int32_t get_partition_num(int idx);
+  void load_node_weight(int type_id, int idx, std::string path);
+  void export_partition_files(int idx, std::string file_path);
   std::vector<int64_t> get_partition(int idx, int num);
   void make_partitions(int idx, int64_t byte_size, int device_len);
   void make_complementary_graph(int idx, int64_t byte_size);

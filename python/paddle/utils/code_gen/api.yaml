@@ -812,7 +812,7 @@
     skip_transform : x
 
 - api : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
+  args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
   infer_meta :
     func : GatherInferMeta
@@ -2021,7 +2021,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta

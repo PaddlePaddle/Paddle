@@ -1731,6 +1731,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
 
 #if PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(elementwise_sub_weight);
+USE_TRT_CONVERTER(elementwise_mul_weight);
+USE_TRT_CONVERTER(elementwise_div_weight);
+USE_TRT_CONVERTER(elementwise_pow_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
 USE_TRT_CONVERTER(elementwise_div_tensor);

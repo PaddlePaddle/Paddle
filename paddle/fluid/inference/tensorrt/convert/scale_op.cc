@@ -48,7 +48,6 @@ class ScaleOpConverter : public OpConverter {
         BOOST_GET_CONST(bool, op_desc.GetAttr("bias_after_scale"));
     float bias = BOOST_GET_CONST(float, op_desc.GetAttr("bias"));
     float scale = BOOST_GET_CONST(float, op_desc.GetAttr("scale"));
-
     auto create_weights = [&](float data, std::string type) -> float* {
       std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
       tmp_tensor->Resize({1});
@@ -59,8 +58,11 @@ class ScaleOpConverter : public OpConverter {
       return tmp_data;
     };
 
+    int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
+
     float* bias_ptr = create_weights(bias, "bias");
     float* scale_ptr = create_weights(scale, "scale");
+
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
                                          static_cast<void*>(scale_ptr), 1};
     TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
@@ -68,26 +70,50 @@ class ScaleOpConverter : public OpConverter {
     TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
                                          0};
     nvinfer1::ILayer* layer = nullptr;
+
+    auto input_dim = input->getDimensions();
+
+    nvinfer1::IShuffleLayer* expand_layer = nullptr;
+    nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
+
+    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+      nvinfer1::Dims expand_shape;
+      expand_shape.nbDims = 3 + dynamic_shape_offset;
+      for (int i = 0; i < 3 + dynamic_shape_offset; i++) {
+        if (i < input_dim.nbDims) {
+          expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+        } else {
+          expand_shape.d[i] = 1;
+        }
+      }
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      expand_layer->setReshapeDimensions(expand_shape);
+      input = expand_layer->getOutput(0);
+      expand_layer->getOutput(0)->setName(
+          ("before_reshape_out: " + out_name).c_str());
+      expand_layer->setName(
+          ("Scale: before_reshape (Output: " + out_name + ")").c_str());
+    }
+
     if (bias_after_scale) {
       layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ScaleNd, *input, nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), scale_weights.get(), power_weights.get(), 0);
+          engine_, Scale, *input, nvinfer1::ScaleMode::kUNIFORM,
+          shift_weights.get(), scale_weights.get(), power_weights.get());
       layer->getOutput(0)->setName(
           ("bias_after_scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
     } else {
       // add bias
       layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ScaleNd, *(input), nvinfer1::ScaleMode::kUNIFORM,
-          shift_weights.get(), power_weights.get(), power_weights.get(), 0);
+          engine_, Scale, *(input), nvinfer1::ScaleMode::kUNIFORM,
+          shift_weights.get(), power_weights.get(), power_weights.get());
       layer->getOutput(0)->setName(
           ("bias_before_scale：bias_out: " + out_name).c_str());
       layer->setName(("Scale: scale_bias (Output: " + out_name + ")").c_str());
       // mul scale
-      layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *(layer->getOutput(0)),
-                                   nvinfer1::ScaleMode::kUNIFORM,
-                                   power_weights.get(), scale_weights.get(),
-                                   power_weights.get(), 0);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Scale, *(layer->getOutput(0)), nvinfer1::ScaleMode::kUNIFORM,
+          power_weights.get(), scale_weights.get(), power_weights.get());
       layer->getOutput(0)->setName(
           ("bias_before_scale：scale_out: " + out_name).c_str());
       layer->setName(("Scale: scale_scale (Output: " + out_name + ")").c_str());
@@ -96,6 +122,20 @@ class ScaleOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(layer != nullptr, true,
                       platform::errors::Fatal("Create scale layer failed."));
 
+    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+      nvinfer1::Dims squeeze_shape;
+      squeeze_shape.nbDims = input_dim.nbDims;
+      for (int i = 0; i < squeeze_shape.nbDims; i++) {
+        squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+      }
+      squeeze_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
+      squeeze_layer->setReshapeDimensions(squeeze_shape);
+      layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+      layer->getOutput(0)->setName(("after_reshape_out: " + out_name).c_str());
+      layer->setName(
+          ("Scale: Shuffle_reshape (Output: " + out_name + ")").c_str());
+    }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
   }
 };

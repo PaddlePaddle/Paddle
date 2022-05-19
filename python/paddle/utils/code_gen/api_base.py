@@ -434,7 +434,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 vars_list = kernel['data_type'].split(',')
                 assert len(
                     vars_list
-                ) == 1, f"{api} api: The number of params to set data_type only allows 2, but received {len(vars_list)}."
+                ) == 1, f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
                 kernel_select_code = kernel_select_code + f"""
   kernel_data_type = ParseDataType({vars_list[0].strip()});
 """
@@ -837,10 +837,10 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             return api_code
 
         else:
-            inveke_func_name = self.invoke.split('(')[0].strip()
-            if inveke_func_name in self.attrs['names']:
+            invoke_func_name = self.invoke.split('(')[0].strip()
+            if invoke_func_name in self.attrs['names']:
                 # Adjust the param whose name is same with api invoked.
-                pattern = r'\W' + inveke_func_name + '[^A-Za-z0-9_(]'
+                pattern = r'\W' + invoke_func_name + '[^A-Za-z0-9_(]'
 
                 def adjust_name(matched):
                     matched_str = matched.group()
