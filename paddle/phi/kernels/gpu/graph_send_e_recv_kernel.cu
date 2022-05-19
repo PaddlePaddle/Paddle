@@ -128,27 +128,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           bcast_info.use_bcast,
           add_funtor,
           sum_functor);
-    } else if (compute_type == "SUB") {
-      SubtractFunctor<T> sub_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvSumCUDAFunctor<T>,
-          SubtractFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          sub_functor,
-          sum_functor);
     } else if (compute_type == "MUL") {
       MultiplyFunctor<T> mul_functor;
       GraphSendERecvCUDAKernel<
@@ -169,27 +148,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
-          sum_functor);
-    } else if (compute_type == "DIV") {
-      DivideFunctor<T> div_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvSumCUDAFunctor<T>,
-          DivideFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          div_functor,
           sum_functor);
     }
     if (pool_type == "MEAN") {
@@ -236,27 +194,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           bcast_info.use_bcast,
           add_funtor,
           max_functor);
-    } else if (compute_type == "SUB") {
-      SubtractFunctor<T> sub_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMaxCUDAFunctor<T>,
-          SubtractFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          sub_functor,
-          max_functor);
     } else if (compute_type == "MUL") {
       MultiplyFunctor<T> mul_functor;
       GraphSendERecvCUDAKernel<
@@ -277,27 +214,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
-          max_functor);
-    } else if (compute_type == "DIV") {
-      DivideFunctor<T> div_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMaxCUDAFunctor<T>,
-          DivideFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          div_functor,
           max_functor);
     }
     if (out_size > 0) {
@@ -329,27 +245,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           bcast_info.use_bcast,
           add_funtor,
           min_functor);
-    } else if (compute_type == "SUB") {
-      SubtractFunctor<T> sub_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMinCUDAFunctor<T>,
-          SubtractFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          sub_functor,
-          min_functor);
     } else if (compute_type == "MUL") {
       MultiplyFunctor<T> mul_functor;
       GraphSendERecvCUDAKernel<
@@ -370,27 +265,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
-          min_functor);
-    } else if (compute_type == "DIV") {
-      DivideFunctor<T> div_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMinCUDAFunctor<T>,
-          DivideFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
-          out_data,
-          index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
-          out_len,
-          bcast_info.use_bcast,
-          div_functor,
           min_functor);
     }
     if (out_size > 0) {

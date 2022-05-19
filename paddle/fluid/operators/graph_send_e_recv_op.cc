@@ -70,7 +70,7 @@ class GraphSendERecvOpMaker : public framework::OpProtoAndCheckerMaker {
                          "(string, default 'ADD')"
                          "Define differenct computation types between X and E".)
         .SetDefault("ADD")
-        .InEnum({"ADD", "SUB", "MUL", "DIV"});
+        .InEnum({"ADD", "MUL"});
     AddAttr<std::string>("pool_type",
                          "(string, default 'SUM')"
                          "Define different pool types to receive the result "
