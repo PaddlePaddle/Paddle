@@ -135,7 +135,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
                           framework::Tensor *saved_mean,
                           framework::Tensor *saved_variance, double epsilon,
                           const float momentum, const bool is_test,
-                          const bool use_global_stats
+                          const bool use_global_stats, const int ring_id
 
                           ) {
   const auto &x_dims = x->dims();
@@ -188,14 +188,18 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *comm = dev_ctx.nccl_comm();
+    const auto &place = ctx.GetPlace();
+    platform::NCCLComm *comm =
+        platform::NCCLCommContext::Instance().Get(ring_id, place);
     if (comm) {
+      platform::GpuStreamSync(stream);
       int dtype = platform::ToNCCLDataType(
           framework::TransToProtoVarType(mean_out->dtype()));
       // In-place operation
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-          comm, stream));
+          comm->comm(), comm->stream()));
+      platform::GpuStreamSync(comm->stream());
     }
 #endif
 
@@ -361,7 +365,7 @@ void SyncBatchNormGradFunctor(
     framework::Tensor *d_x, const framework::Tensor *d_y,
     framework::Tensor *d_scale, framework::Tensor *d_bias,
     const framework::Tensor *mean, const framework::Tensor *variance,
-    const double epsilon) {
+    const double epsilon, const int ring_id) {
   // sync_batch_norm with inplace as false will take X as grad input, which
   // is same as cuDNN batch_norm backward calculation, batch_norm
   // with inplace as true only take Y as input and X should be calculate
@@ -463,14 +467,18 @@ void SyncBatchNormGradFunctor(
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto *comm = dev_ctx.nccl_comm();
+  const auto &place = ctx.GetPlace();
+  platform::NCCLComm *comm =
+      platform::NCCLCommContext::Instance().Get(ring_id, place);
   if (comm) {
+    platform::GpuStreamSync(stream);
     int dtype = platform::ToNCCLDataType(
         framework::TransToProtoVarType(scale->dtype()));
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
+        comm->comm(), comm->stream()));
+    platform::GpuStreamSync(comm->stream());
   }
 #endif
 
