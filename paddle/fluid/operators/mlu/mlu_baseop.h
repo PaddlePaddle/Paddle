@@ -175,6 +175,10 @@ const std::map<std::pair<VT::Type, VT::Type>, cnnlCastDataType_t>
 
 cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
                                    const VT::Type& dst_type);
+
+cnnlCastDataType_t GetCastDataType(const DataType& src_type,
+                                   const DataType& dst_type);
+
 bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type);
 
 cnnlDeviceType_t GetCnnlDev(int dev_ordinal);
@@ -1202,11 +1206,13 @@ class MLUCnnl {
                      const void* k, const int k_int,
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void ScatterNd(const ExecutionContext& ctx,
+  static void ScatterNd(const ExecutionContext& ctx, cnnlScatterNdMode_t mode,
                         const cnnlTensorDescriptor_t indices_desc,
                         const void* indices,
                         const cnnlTensorDescriptor_t updates_desc,
                         const void* updates,
+                        const cnnlTensorDescriptor_t input_desc,
+                        const void* input,
                         const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void BitWise(const ExecutionContext& ctx,
@@ -1227,6 +1233,12 @@ class MLUCnnl {
                          const void* input,
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
+
+  static void EmbeddingBackward(
+      const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+      const cnnlTensorDescriptor_t indices_desc, const void* indices,
+      const cnnlTensorDescriptor_t diff_desc, const void* diff,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 };
 
 template <typename T>
