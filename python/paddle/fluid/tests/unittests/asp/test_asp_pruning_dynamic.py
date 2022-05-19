@@ -67,13 +67,13 @@ class TestASPDynamicPruningBase(unittest.TestCase):
 
         optimizer = paddle.optimizer.SGD(learning_rate=0.01,
                                          parameters=self.layer.parameters())
-        optimizer = paddle.asp.decorate(optimizer)
+        optimizer = paddle.incubate.asp.decorate(optimizer)
 
         self.__pruning_and_checking(True)
 
     def __pruning_and_checking(self, with_mask):
 
-        paddle.asp.prune_model(
+        paddle.incubate.asp.prune_model(
             self.layer, mask_algo=self.mask_gen_func, with_mask=with_mask)
 
         for param in self.layer.parameters():

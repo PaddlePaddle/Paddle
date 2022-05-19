@@ -86,7 +86,7 @@ class TestASPStaticOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        paddle.asp.set_excluded_layers(['fc_1', 'conv2d_0'], program)
+        paddle.incubate.asp.set_excluded_layers(['fc_1', 'conv2d_0'], program)
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False
@@ -95,7 +95,7 @@ class TestASPStaticOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        paddle.asp.reset_excluded_layers(program)
+        paddle.incubate.asp.reset_excluded_layers(program)
         ref = [
             False, False, True, False, True, False, True, False, True, False,
             True, False
@@ -108,7 +108,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         param_names = self.__get_param_names(self.main_program.global_block()
                                              .all_parameters())
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.optimizer = paddle.asp.decorate(self.optimizer)
+            self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
         param_names_after_minimize = self.__get_param_names(
             self.main_program.global_block().all_parameters())
@@ -118,7 +118,7 @@ class TestASPStaticOptimize(unittest.TestCase):
 
     def test_asp_training(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.optimizer = paddle.asp.decorate(self.optimizer)
+            self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
 
         place = paddle.CPUPlace()
@@ -128,7 +128,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
-        paddle.asp.prune_model(self.main_program)
+        paddle.incubate.asp.prune_model(self.main_program)
 
         data = (np.random.randn(32, 3, 24, 24), np.random.randint(
             10, size=(32, 1)))
@@ -148,7 +148,7 @@ class TestASPStaticOptimize(unittest.TestCase):
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.optimizer = fluid.contrib.mixed_precision.decorator.decorate(
                     self.optimizer)
-                self.optimizer = paddle.asp.decorate(self.optimizer)
+                self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 
             exe = fluid.Executor(place)
@@ -156,7 +156,7 @@ class TestASPStaticOptimize(unittest.TestCase):
                 feed_list=[self.img, self.label], place=place)
 
             exe.run(self.startup_program)
-            paddle.asp.prune_model(self.main_program)
+            paddle.incubate.asp.prune_model(self.main_program)
 
             data = (np.random.randn(32, 3, 24, 24), np.random.randint(
                 10, size=(32, 1)))

@@ -60,8 +60,8 @@ class TestFleetWithASPDynamic(unittest.TestCase):
     def test_with_asp(self):
         fleet.init(is_collective=True)
 
-        self.optimizer = paddle.asp.decorate(self.optimizer)
-        paddle.asp.prune_model(self.layer)
+        self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
+        paddle.incubate.asp.prune_model(self.layer)
 
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
@@ -114,8 +114,8 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
     def test_with_asp(self):
         fleet.init(is_collective=True)
 
-        self.optimizer = paddle.asp.decorate(self.optimizer)
-        paddle.asp.prune_model(self.layer)
+        self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
+        paddle.incubate.asp.prune_model(self.layer)
 
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)

@@ -63,7 +63,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
             loss = fluid.layers.mean(
                 fluid.layers.cross_entropy(
                     input=self.predict, label=self.label))
-            optimizer = paddle.asp.decorate(
+            optimizer = paddle.incubate.asp.decorate(
                 fluid.optimizer.SGD(learning_rate=0.01))
             optimizer.minimize(loss, self.startup_program)
 
@@ -76,7 +76,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
 
     def __pruning_and_checking(self, exe, place, with_mask):
         exe.run(self.startup_program)
-        paddle.asp.prune_model(
+        paddle.incubate.asp.prune_model(
             self.main_program,
             mask_algo=self.mask_gen_func,
             with_mask=with_mask)

@@ -69,7 +69,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        paddle.asp.set_excluded_layers(['fc_1', 'conv2d_0'])
+        paddle.incubate.asp.set_excluded_layers(['fc_1', 'conv2d_0'])
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False
@@ -78,7 +78,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        paddle.asp.reset_excluded_layers()
+        paddle.incubate.asp.reset_excluded_layers()
         ref = [
             False, False, True, False, True, False, True, False, True, False,
             True, False
@@ -89,7 +89,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
     def test_decorate(self):
         param_names = [param.name for param in self.layer.parameters()]
-        self.optimizer = paddle.asp.decorate(self.optimizer)
+        self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
 
         program = paddle.static.default_main_program()
 
@@ -102,9 +102,9 @@ class TestASPDynamicOptimize(unittest.TestCase):
                 self.assertTrue(mask_var is None)
 
     def test_asp_training(self):
-        self.optimizer = paddle.asp.decorate(self.optimizer)
+        self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
 
-        paddle.asp.prune_model(self.layer)
+        paddle.incubate.asp.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
             np.random.randn(32, 3, 24, 24),
@@ -135,9 +135,9 @@ class TestASPDynamicOptimize(unittest.TestCase):
                         mat.T, n=2, m=4))
 
     def test_asp_training_with_amp(self):
-        self.optimizer = paddle.asp.decorate(self.optimizer)
+        self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
 
-        paddle.asp.prune_model(self.layer)
+        paddle.incubate.asp.prune_model(self.layer)
 
         imgs = paddle.to_tensor(
             np.random.randn(32, 3, 24, 24),
