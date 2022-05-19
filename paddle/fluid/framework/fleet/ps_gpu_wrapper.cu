@@ -76,11 +76,9 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
     }
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
-    int cur_dim = gpu_dim[x] - 3;
     FeatureValue* feature_value_ptr =
         (FeatureValue*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
-    int mf_dim = feature_value_ptr->mf_dim;
-    mf_dim = gpu_dim[x] - 3;
+    int mf_dim = gpu_dim[x] - 3;
     if (*(keys[x] + y) == 0) {
       *(dest[x] + y * (cur_dim + 3)) = 0;
       *(dest[x] + y * (cur_dim + 3) + 1) = 0;
@@ -91,14 +89,8 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       *(dest[x] + y * (mf_dim + 3) + 2) = feature_value_ptr->lr;
     }
     if ((feature_value_ptr)->mf_size == 0 || *(keys[x] + y) == 0) {
-      if (*(keys[x] + y) == 0) {
-        for (int j = 0; j < cur_dim; j++) {
-          *(dest[x] + y * (cur_dim + 3) + 3 + j) = 0;
-        }
-      } else {
-        for (int j = 0; j < mf_dim; j++) {
-          *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
-        }
+      for (int j = 0; j < mf_dim; j++) {
+        *(dest[x] + y * (mf_dim + 3) + 3 + j) = 0;
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {

@@ -69,19 +69,6 @@ struct FeaturePushValue {
   int mf_dim;
   float mf_g[0];
 
-  __device__ __forceinline__ FeaturePushValue
-  operator+(const FeaturePushValue& a) const {
-    FeaturePushValue out;
-    out.slot = a.slot;
-    out.mf_dim = a.mf_dim;
-    out.show = a.show + show;
-    out.clk = a.clk + clk;
-    out.lr_g = a.lr_g + lr_g;
-    for (int i = 0; i < out.mf_dim; ++i) {
-      out.mf_g[i] = a.mf_g[i] + mf_g[i];
-    }
-    return out;
-  }
   __device__ __forceinline__ void operator=(const FeaturePushValue& in) {
     show = in.show;
     clk = in.clk;
