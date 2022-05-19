@@ -402,13 +402,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
 
   bool record_status = false;
-#ifdef PADDLE_WITH_PSLIB
-  uint16_t pass_id = 0;
-  if (multi_node_) {
-    record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(
-        table_id_, pass_id, pass_values);
-  }
-#endif
   auto& device_task_keys = gpu_task->device_task_keys_;
   auto& device_task_ptrs = gpu_task->device_task_ptr_;
   auto build_pull_dynamic_mf_func = [this, device_num, &local_dim_keys,
