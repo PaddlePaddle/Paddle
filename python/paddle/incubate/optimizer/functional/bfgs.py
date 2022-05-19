@@ -79,7 +79,7 @@ def minimize_bfgs(objective_func,
             def func(x):
                 return paddle.dot(x, x)
 
-            x0 = paddle.to_tensor([1.3, 2.7])
+            x0 = paddle.to_tensor([1.3,  2.7])
             results = paddle.incubate.optimizer.functional.minimize_bfgs(func, x0)
             print("is_converge: ", results[0])
             print("the minimum of func is: ", results[2])
