@@ -1428,16 +1428,19 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(Out, "Input", "Out", "SigmoidTripleGrad"));
     auto dout = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "DOut", "SigmoidTripleGrad"));
-    auto d_ddOut = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
     auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
         d_dOut_New, "Input", "D_DOut_New", "SigmoidTripleGrad"));
 
     if (d_Out_New) {
       auto d_OutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
           d_Out_New, "Output", "D_OutNew", "SigmoidTripleGrad"));
-      d_OutNew.device(*d) = (ddx - static_cast<T>(2) * out * ddx) * d_ddOut -
-                            static_cast<T>(2) * dout * ddx * d_dOutNew;
+      d_OutNew.device(*d) = -static_cast<T>(2) * dout * ddx * d_dOutNew;
+      if (d_DDOut) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
+        d_OutNew.device(*d) =
+            (ddx - static_cast<T>(2) * out * ddx) * d_ddOut + d_OutNew;
+      }
     }
     if (d_d_Out) {
       auto d_dOut = EigenVector<T>::Flatten(
@@ -1449,8 +1452,12 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
       auto d_ddx = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "SigmoidTripleGrad"));
       d_ddx.device(*d) =
-          (static_cast<T>(1) - out) * out * d_ddOut +
           (static_cast<T>(1) - static_cast<T>(2) * out) * dout * d_dOutNew;
+      if (d_DDOut) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
+        d_ddx.device(*d) = d_ddx + (static_cast<T>(1) - out) * out * d_ddOut;
+      }
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {

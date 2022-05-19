@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
@@ -136,7 +137,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              const DenseTensor& dout,
                              const DenseTensor& ddx,
                              const DenseTensor& d_dout_new,
-                             const DenseTensor& d_ddout,
+                             paddle::optional<const DenseTensor&> d_ddout,
                              DenseTensor* d_out_new,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx);
