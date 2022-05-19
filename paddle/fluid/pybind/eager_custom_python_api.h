@@ -65,7 +65,7 @@ static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
     if (bias.initialized()) {
       auto mm_out =
           matmul_final_state_dygraph_function(x, weight, false, false);
-      auto out = add_final_state_dygraph_function(mm_out, bias);
+      auto out = add_final_state_dygraph_function(bias, mm_out);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
