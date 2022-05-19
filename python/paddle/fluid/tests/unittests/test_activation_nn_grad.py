@@ -135,6 +135,34 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestAbsDoubleGradCheck(unittest.TestCase):
+    def abs_wrapper(self, x):
+        return paddle.abs(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.abs(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.abs_wrapper, [x], y, x_init=x_arr, place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestReluDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):

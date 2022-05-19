@@ -156,6 +156,6 @@ class ProcessGroup:
 
 
 # Note that Process group 0 is reserved for representing all ranks.
-# At the begining, group 0 is empty and new ranks will be added automatically. 
+# At the beginning, group 0 is empty and new ranks will be added automatically. 
 _g_process_group_map = {}
 _g_process_group_map[0] = ProcessGroup(0, [])

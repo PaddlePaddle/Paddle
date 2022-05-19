@@ -537,6 +537,7 @@ class GraphTable : public Table {
     }
     return 0;
   }
+  virtual void load_node_weight(int type_id, int idx, std::string path);
 #ifdef PADDLE_WITH_HETERPS
   // virtual int32_t start_graph_sampling() {
   //   return this->graph_sampler->start_graph_sampling();
@@ -551,6 +552,7 @@ class GraphTable : public Table {
   //   return 0;
   // }
   virtual void make_partitions(int idx, int64_t gb_size, int device_len);
+  virtual void export_partition_files(int idx, std::string file_path);
   virtual char *random_sample_neighbor_from_ssd(
       int idx, int64_t id, int sample_size,
       const std::shared_ptr<std::mt19937_64> rng, int &actual_size);
@@ -572,7 +574,6 @@ class GraphTable : public Table {
                             const std::string &edge_type);
   int32_t load_next_partition(int idx);
   void set_search_level(int search_level) { this->search_level = search_level; }
-  // virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
   int search_level;
   int64_t total_memory_cost;
   std::vector<std::vector<std::vector<int64_t>>> partitions;
@@ -585,6 +586,7 @@ class GraphTable : public Table {
   int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
 
+  std::vector<std::vector<std::unordered_map<int64_t, double>>> node_weight;
   std::vector<std::vector<std::string>> feat_name;
   std::vector<std::vector<std::string>> feat_dtype;
   std::vector<std::vector<int32_t>> feat_shape;

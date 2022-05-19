@@ -90,7 +90,26 @@ class ModelOutter(paddle.nn.Layer):
         return y, 3
 
 
-class LeNetListInput(LeNetDygraph):
+class LeNetListInput(paddle.nn.Layer):
+    def __init__(self, num_classes=10):
+        super(LeNetListInput, self).__init__()
+        self.num_classes = num_classes
+        self.cov = Conv2D(1, 6, 3, stride=1, padding=1)
+        for param in self.cov.parameters():
+            param.trainable = False
+        self.features = Sequential(
+            self.cov,
+            ReLU(),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            Conv2D(
+                6, 16, 5, stride=1, padding=0),
+            ReLU(),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+
+        if num_classes > 0:
+            self.fc = Sequential(
+                Linear(400, 120), Linear(120, 84), Linear(84, 10))
+
     def forward(self, inputs):
         x = inputs[0]
         x = self.features(x)
