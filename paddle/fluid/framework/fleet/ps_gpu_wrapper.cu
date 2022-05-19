@@ -80,9 +80,9 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
         (FeatureValue*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     if (*(keys[x] + y) == 0) {
-      *(dest[x] + y * (cur_dim + 3)) = 0;
-      *(dest[x] + y * (cur_dim + 3) + 1) = 0;
-      *(dest[x] + y * (cur_dim + 3) + 2) = 0;
+      *(dest[x] + y * (mf_dim + 3)) = 0;
+      *(dest[x] + y * (mf_dim + 3) + 1) = 0;
+      *(dest[x] + y * (mf_dim + 3) + 2) = 0;
     } else {
       *(dest[x] + y * (mf_dim + 3)) = feature_value_ptr->show;
       *(dest[x] + y * (mf_dim + 3) + 1) = feature_value_ptr->clk;

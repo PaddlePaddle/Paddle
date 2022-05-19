@@ -297,14 +297,12 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto& device_dim_keys = gpu_task->device_dim_keys_;
   auto& device_dim_ptr = gpu_task->device_dim_ptr_;
   auto& device_dim_mutex = gpu_task->dim_mutex_;
-
   if (multi_mf_dim_) {
     for (size_t dev = 0; dev < device_dim_keys.size(); dev++) {
       device_dim_keys[dev].resize(multi_mf_dim_);
       device_dim_ptr[dev].resize(multi_mf_dim_);
     }
   }
-
   // auto& device_mutex = gpu_task->mutex_;
 
   std::vector<std::thread> threads(thread_keys_shard_num_);
@@ -417,10 +415,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       task_keys[shard].push_back(local_dim_keys[i][j][k]);
       task_ptrs[shard].push_back(local_dim_ptr[i][j][k]);
     }
-    // allocate local keys to devices
     for (int dev = 0; dev < device_num; dev++) {
       device_dim_mutex[dev][j]->lock();
-
       int len = task_keys[dev].size();
       int cur = device_dim_keys[dev][j].size();
       device_dim_keys[dev][j].resize(device_dim_keys[dev][j].size() + len);
@@ -623,7 +619,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
             << feature_keys_count[i];
     size_max = std::max(size_max, feature_keys_count[i]);
   }
-
   if (HeterPs_) {
     delete HeterPs_;
     HeterPs_ = nullptr;
@@ -637,7 +632,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_CUDA
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
 #endif
-
   auto build_dynamic_mf_func = [this, &gpu_task](int i, int j) {
     this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
     int mf_dim = this->index_dim_vec_[j];
