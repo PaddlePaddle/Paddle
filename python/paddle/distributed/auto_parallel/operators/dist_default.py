@@ -457,6 +457,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             if len(allreduce_vars) > 0:
 
                 for varname in allreduce_vars:
+                    added_ops = []
 
                     grad_var = main_block.var(varname)
                     allreduce_op = main_block.append_op(
@@ -468,20 +469,23 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Backward
                         })
+                    added_ops.append(allreduce_op)
 
-                    scale_op = main_block.append_op(
-                        type='scale',
-                        inputs={'X': grad_var},
-                        outputs={'Out': grad_var},
-                        attrs={
-                            'scale': 1.0 / dp_degree,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                    if ctx.gradient_scale:
+                        scale_op = main_block.append_op(
+                            type='scale',
+                            inputs={'X': grad_var},
+                            outputs={'Out': grad_var},
+                            attrs={
+                                'scale': 1.0 / dp_degree,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                        added_ops.append(scale_op)
 
                     dims_mapping = ctx.get_tensor_dist_attr_for_program(
                         grad_var).dims_mapping
                     process_mesh = dist_attr.process_mesh
-                    for op in [allreduce_op, scale_op]:
+                    for op in added_ops:
                         op_attr = OperatorDistributedAttribute()
                         op_attr.process_mesh = process_mesh
                         op_attr.set_output_dims_mapping(grad_var.name,
