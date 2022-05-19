@@ -2277,14 +2277,14 @@ def triplet_margin_loss(input,
 
         margin (float, Optional): Default: :math:`1`.
 
-        reduction:Indicate how to average the loss by batch_size.
+        reduction (str, Optional):Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default: ``'mean'``
 
-        name: Name for the operation (optional, default is None).
+        name (str, Optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
