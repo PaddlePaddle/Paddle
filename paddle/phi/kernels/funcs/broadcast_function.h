@@ -669,26 +669,16 @@ void BroadcastKernel(const KPDevice &ctx,
                      Functor func) {
   std::vector<int> dims_size;
   dims_size.reserve(ins.size());
-  bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag &= ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
 
-  if (ins.size() > 0 && outs->size() > 0) {
-    no_broadcast_flag &= outs->at(0)->dims() == ins[0]->dims();
-  }
-
-  if (no_broadcast_flag) {
-    phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, ins, outs, func);
-  } else {
-    axis = axis == -1
-               ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                     *std::min_element(dims_size.begin(), dims_size.end())
-               : axis;
-    BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
-        ctx, ins, outs, axis, func);
-  }
+  axis = axis == -1
+             ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                   *std::min_element(dims_size.begin(), dims_size.end())
+             : axis;
+  BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
+      ctx, ins, outs, axis, func);
 }
 
 template <typename Functor, typename T, typename OutType = T>
