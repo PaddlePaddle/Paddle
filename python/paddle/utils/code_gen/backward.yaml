@@ -1655,6 +1655,7 @@
     param : [out, fwd_grad_out, grad_grad_x]
   kernel :
     func : sigmoid_triple_grad
+  optional : grad_grad_out_grad
 
 - backward_api : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
