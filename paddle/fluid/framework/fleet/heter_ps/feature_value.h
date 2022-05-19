@@ -77,7 +77,6 @@ struct FeaturePushValue {
     out.show = a.show + show;
     out.clk = a.clk + clk;
     out.lr_g = a.lr_g + lr_g;
-    // out.mf_g = a.mf_g;
     for (int i = 0; i < out.mf_dim; ++i) {
       out.mf_g[i] = a.mf_g[i] + mf_g[i];
     }
