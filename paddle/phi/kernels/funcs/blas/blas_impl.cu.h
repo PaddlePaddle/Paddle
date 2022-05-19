@@ -2262,20 +2262,16 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     cudaDataType_t compute_type = fp;
 
-    void *a = nullptr;
-    void *b = nullptr;
-
+    float h_alpha = static_cast<float>(alpha);
+    float h_beta = static_cast<float>(beta);
+    void *a = static_cast<void *>(&h_alpha);
+    void *b = static_cast<void *>(&h_beta);
     // set ComputeType as CUDA_R_32F for fp16, for better accuracy
-    if (FLAGS_gemm_use_half_precision_compute_type == false &&
+    if (FLAGS_gemm_use_half_precision_compute_type == true &&
         std::is_same<T, phi::dtype::float16>::value) {
-      float h_alpha = static_cast<float>(alpha);
-      float h_beta = static_cast<float>(beta);
-      a = static_cast<void *>(&h_alpha);
-      b = static_cast<void *>(&h_beta);
-      compute_type = CUDA_R_32F;
-    } else {
       a = static_cast<void *>(&alpha);
       b = static_cast<void *>(&beta);
+      compute_type = CUDA_R_16F;
     }
 
     // set ComputeType as CUDA_R_32F for fp16 and fp32, for better accuracy
@@ -2374,22 +2370,18 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
             << FLAGS_gemm_use_half_precision_compute_type;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
-    cudaDataType_t compute_type = fp;
+    cudaDataType_t compute_type = CUDA_R_32F;
 
-    void *a = nullptr;
-    void *b = nullptr;
-
+    float h_alpha = static_cast<float>(alpha);
+    float h_beta = static_cast<float>(beta);
+    void *a = static_cast<void *>(&h_alpha);
+    void *b = static_cast<void *>(&h_beta);
     // set ComputeType as CUDA_R_32F for fp16, for better accuracy
-    if (FLAGS_gemm_use_half_precision_compute_type == false &&
+    if (FLAGS_gemm_use_half_precision_compute_type == true &&
         std::is_same<T, phi::dtype::float16>::value) {
-      float h_alpha = static_cast<float>(alpha);
-      float h_beta = static_cast<float>(beta);
-      a = static_cast<void *>(&h_alpha);
-      b = static_cast<void *>(&h_beta);
-      compute_type = CUDA_R_32F;
-    } else {
       a = static_cast<void *>(&alpha);
       b = static_cast<void *>(&beta);
+      compute_type = CUDA_R_16F;
     }
 
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {

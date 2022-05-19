@@ -92,16 +92,16 @@ PADDLE_DEFINE_EXPORTED_bool(
  * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: whether to use fp16 compute type when the input and output is fp16,
  * faster but it may loss precision.
  */
 PADDLE_DEFINE_EXPORTED_bool(
-    gemm_use_half_precision_compute_type, true,
+    gemm_use_half_precision_compute_type, false,
     "Whether to use fp16 compute type when the input and output is fp16, "
-    "faster but it may loss precision. If false, the compute type will be "
-    "set to fp32. Default is True.");
+    "faster but it may loss precision in most case. If false, the compute "
+    "type will be set to fp32. Default is false.");
 
 /**
  * CUDA related FLAG
