@@ -744,6 +744,72 @@ std::map<int, std::list<int>> get_downstream_map(
   return downstream;
 }
 
+struct MemPassNode {
+  int inst_score;
+  int inst_idx;
+
+  MemPassNode(int score, int idx) : inst_score(score), inst_idx(idx) {}
+};
+
+struct MemPassNodeCompare {
+  bool operator()(const MemPassNode& n1, const MemPassNode& n2) {
+    if (n1.inst_score < n2.inst_score) {
+      return true;
+    } else if (n1.inst_score > n2.inst_score) {
+      return false;
+    } else {
+      return n1.inst_idx > n2.inst_idx;
+    }
+  }
+};
+
+void device_memory_pass(const std::vector<Instruction>& instructions,
+                        std::map<int, std::set<int>>* op2dependences) {
+  std::priority_queue<MemPassNode, std::vector<MemPassNode>, MemPassNodeCompare>
+      q;
+  std::vector<int> dep_count(instructions.size(), 0);
+  std::vector<std::vector<int>> nexts(instructions.size());
+  for (const auto& kv : *op2dependences) {
+    if (kv.second.size() == 0) {
+      VLOG(1) << "ltx push " << kv.first << " "
+              << instructions[kv.first].OpBase()->Type() << " "
+              << (*op2dependences)[kv.first].size() << "deps";
+      q.push({0, kv.first});
+      continue;
+    }
+    dep_count[kv.first] = kv.second.size();
+    for (int prev : kv.second) {
+      nexts[prev].push_back(kv.first);
+    }
+  }
+  std::vector<int> device_insts;
+  while (!q.empty()) {
+    auto cur = q.top();
+    q.pop();
+    device_insts.push_back(cur.inst_idx);
+    VLOG(1) << "ltx pop " << cur.inst_idx << " "
+            << instructions[cur.inst_idx].OpBase()->Type() << " "
+            << (*op2dependences)[cur.inst_idx].size() << "deps";
+    for (int next : nexts[cur.inst_idx]) {
+      if (--dep_count[next] == 0) {
+        VLOG(1) << "ltx push " << next << " "
+                << instructions[next].OpBase()->Type() << " "
+                << (*op2dependences)[next].size() << "deps";
+        int score = 0;
+        if (instructions[next].KernelType() == OpFuncType::kQueueAsync) {
+          for (const auto& kv : instructions[next].Inputs()) {
+            score += kv.second.size();
+          }
+        }
+        q.push({score, next});
+      }
+    }
+  }
+  for (size_t i = 1; i < device_insts.size(); ++i) {
+    (*op2dependences)[device_insts[i]].insert(device_insts[i - 1]);
+  }
+}
+
 std::map<int, std::list<int>> build_op_downstream_map(
     const std::vector<Instruction>& vec_instruction,
     std::vector<std::vector<bool>>* op_happens_before) {
@@ -988,6 +1054,9 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
+
+  device_memory_pass(vec_instruction, &op2dependences);
+
   for (auto pair : op2dependences) {
     std::ostringstream oss;
     oss << pair.first << " Depends on " << pair.second.size() << " ops: ";
