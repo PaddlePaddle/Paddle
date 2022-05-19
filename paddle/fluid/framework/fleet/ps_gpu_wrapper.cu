@@ -163,8 +163,7 @@ __global__ void PushCopyWithPool(FeaturePushValue* dest, float** src,
     FeaturePushValue* cur =
         (FeaturePushValue*)((char*)dest + i * grad_value_size);
     cur->slot = slot_vector[x];
-    int mf_dim = mf_dim_vector[x];  // slot_vector holds both slot and
-                                    // slot:mf_dim information
+    int mf_dim = mf_dim_vector[x];
     cur->mf_dim = mf_dim;
     cur->show = *(src[x] + y * (mf_dim + 3));
     cur->clk = *(src[x] + y * (mf_dim + 3) + 1);
