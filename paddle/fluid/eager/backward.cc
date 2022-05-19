@@ -698,6 +698,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
 
+    if (is_general_grad && GeneralGrad::Instance().IsPotentialStopNodes(node)) {
+      continue;
+    }
+
     // Check input
     EnforceGradNodeHasInput(node);
 
@@ -796,7 +800,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         if (is_general_grad) {
           bool is_potential_stop_node =
-              GeneralGrad::Instance().GetPotentialStopNodes()->count(next_node);
+              GeneralGrad::Instance().IsPotentialStopNodes(next_node);
           if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
             queue.emplace(std::move(next_node));
           }
