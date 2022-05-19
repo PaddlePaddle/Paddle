@@ -362,12 +362,54 @@ template void HeterCommKernel::reduce_by_key<
     int num_items, XPUStream stream, bool debug_synchronous);
 
 // Todo
+
+__global__ void merge_grad_kernel(
+        int * in_keys, paddle::framework::FeaturePushValue * in_vals, 
+        int len, paddle::framework::FeaturePushValue * out_vals) {
+    int cid = core_id();
+    int ncores = core_num();
+    if (cid >= ncores) {
+        return;
+    }
+    int thread_id = ncores * cluster_id() + cid;
+    int nthreads = ncores * cluster_num();
+
+    const int local_key_size = 1000;
+    __local__ int local_keys[local_key_size];
+    __local__ FeaturePushValue local_push_value;
+    __local__ FeaturePushValue local_merge_value;
+    int hash_key = 0;
+    for (int i = 0; i < len; ) {
+        int read_len = min(local_key_size, len - i);
+        GM2LM(in_keys + i, local_keys, read_len * sizeof(float));
+        for (int j = 0; j < read_len; j++) {
+            hash_key = local_keys[j] % nthreads;
+            if (hash_key == thread_id) {
+                GM2LM(&(in_vals[i + j]), &local_push_value, sizeof(FeaturePushValue));
+                GM2LM(&(out_vals[local_keys[j]]), &local_merge_value, sizeof(FeaturePushValue));
+                local_merge_value.slot = local_push_value.slot;
+                local_merge_value.show += local_push_value.show;
+                local_merge_value.clk += local_push_value.clk;
+                local_merge_value.lr_g += local_push_value.lr_g;
+                for (int k = 0; k < 8; k++) {
+                    local_merge_value.mf_g[k] += local_push_value.mf_g[k];
+                }
+                LM2GM(&local_merge_value, &(out_vals[local_keys[j]]), sizeof(FeaturePushValue));
+            }
+        }
+        i += read_len;
+    }
+}
+
 template <typename KeyT, typename ValueT>
 void HeterCommKernel::merge_grad(
     KeyT* d_keys, 
     ValueT* d_vals_in, 
     int len, 
-    ValueT* d_vals_out) {};
+    ValueT* d_vals_out) {
+    merge_grad_kernel<<<8, 64>>>(d_keys, d_vals_in, len, d_vals_out);   
+}
+
 template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue>(
     int* d_keys, 
     paddle::framework::FeaturePushValue* d_vals_in, 
