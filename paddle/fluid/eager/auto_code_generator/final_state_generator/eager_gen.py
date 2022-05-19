@@ -33,6 +33,13 @@ from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
 from codegen_utils import AssertMessage, GetIndent
 
+# Note: assign is a inplace api when parameter(output) isn't none,
+# so we should check parameter(output) with rule of inplace.
+# But because there is no check in old dygraph mode, in order to
+# keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
+# and this will be fixed in the futrue.
+inplace_check_blacklist = set(["assign_out_"])
+
 
 ###########
 ## Utils ##
@@ -967,7 +974,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # 1. Get Input AutoGradMeta
         inputs_autograd_meta_list = []
         compute_require_grad_args_list = ["trace_backward"]
-        input_with_grad_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             # Has corresponding grad output
             has_corresponding_grad_output = False
@@ -975,20 +981,20 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     _) in backward_grad_outputs_map.items():
                 if pos == corresponding_pos:
                     has_corresponding_grad_output = True
-            if not has_corresponding_grad_output:
-                continue
-            input_with_grad_list.append(name)
-            input_autograd_meta_name = GetAutoGradMetaName(name)
-            if IsPlainTensorType(ttype):
-                input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
-            else:
-                assert IsVectorTensorType(ttype)
-                input_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
-                input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
-                input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
-
-            inputs_autograd_meta_list.append(input_autograd_meta)
-            compute_require_grad_args_list.append(input_autograd_meta_name)
+            if has_corresponding_grad_output or (
+                    name in inplace_map and
+                    forward_api_name not in inplace_check_blacklist):
+                input_autograd_meta_name = GetAutoGradMetaName(name)
+                if IsPlainTensorType(ttype):
+                    input_autograd_meta = f"{indent}egr::AutogradMeta* {input_autograd_meta_name} = egr::EagerUtils::nullable_autograd_meta({name});"
+                else:
+                    assert IsVectorTensorType(ttype)
+                    input_autograd_meta_vec_name = GetAutoGradMetaVectorName(
+                        name)
+                    input_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {input_autograd_meta_vec_name} = egr::EagerUtils::nullable_autograd_meta({name});\n"
+                    input_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {input_autograd_meta_name} = &{input_autograd_meta_vec_name};"
+                inputs_autograd_meta_list.append(input_autograd_meta)
+                compute_require_grad_args_list.append(input_autograd_meta_name)
         inputs_autograd_meta_str = "\n".join(inputs_autograd_meta_list)
         compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
 
@@ -1022,7 +1028,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         bump_inplace_version_str = ""
         if is_inplaced:
             for inplace_name in inplace_map.keys():
-                if inplace_name in input_with_grad_list:
+                if forward_api_name not in inplace_check_blacklist:
                     inplace_autograd_meta_name = GetAutoGradMetaName(
                         inplace_name)
                     check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
