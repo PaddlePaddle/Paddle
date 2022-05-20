@@ -13,27 +13,27 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
 
-#include <unordered_map>
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/platform/enforce.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+namespace paddle {
+namespace framework {
+namespace ir {
 
-namespace infrt {
-namespace phi {
+class Graph;
 
-class DenseTensorMap {
- public:
-  DenseTensorMap() = default;
-  DenseTensorMap(DenseTensorMap&& other) : map_(std::move(other.map_)) {}
-  void SetDenseTensor(const std::string& name,
-                      std::unique_ptr<::phi::DenseTensor>&& tensor);
-  ::phi::DenseTensor* GetDenseTensor(const std::string& name) const;
-  size_t size() const;
+class DeleteFillConstantOpPass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  mutable std::mutex mu_;
-  std::unordered_map<std::string, std::unique_ptr<::phi::DenseTensor>> map_;
+  virtual ~DeleteFillConstantOpPass() = default;
 };
 
-}  // namespace phi
-}  // namespace infrt
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

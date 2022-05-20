@@ -90,7 +90,7 @@ _supported_float_dtype_ = [
 
 def log(x, name=None):
     r"""
-    Calculates the natural log of the given input tensor, element-wise.
+    Calculates the natural log of the given input Tensor, element-wise.
 
     .. math::
 
@@ -154,7 +154,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Output tensor of scale operator, with shape and data type same as input.
+        Tensor: Output Tensor of scale operator, with shape and data type same as input.
 
     Examples:
         .. code-block:: python
@@ -340,7 +340,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 def pow(x, y, name=None):
     """
-    Compute the power of tensor elements. The equation is:
+    Compute the power of Tensor elements. The equation is:
 
     .. math::
         out = x^{y} 
@@ -859,7 +859,7 @@ def maximum(x, y, name=None):
 
 def minimum(x, y, name=None):
     """
-    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is:
+    Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
     .. math::
         out = min(x, y)
@@ -873,7 +873,7 @@ def minimum(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+        Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
 
     Examples:
 
@@ -2660,7 +2660,6 @@ def clip_(x, min=None, max=None, name=None):
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
-    **trace**
 
     Computes the sum along diagonals of the input tensor x.
 
@@ -3048,7 +3047,7 @@ def isfinite(x, name=None):
             import paddle
 
             x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            out = paddle.tensor.isfinite(x)
+            out = paddle.isfinite(x)
             print(out)  # [False  True  True False  True False False]
     """
     if in_dygraph_mode():
@@ -3077,8 +3076,9 @@ def isinf(x, name=None):
         .. code-block:: python
 
             import paddle
+
             x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            out = paddle.tensor.isinf(x)
+            out = paddle.isinf(x)
             print(out)  # [ True False False  True False False False]
     """
     if in_dygraph_mode():
@@ -3107,8 +3107,9 @@ def isnan(x, name=None):
         .. code-block:: python
 
             import paddle
+            
             x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            out = paddle.tensor.isnan(x)
+            out = paddle.isnan(x)
             print(out)  # [False False False False False  True  True]
     """
     if in_dygraph_mode():
@@ -3143,10 +3144,6 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
-
-    Raises:
-        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
     
     Examples:
         .. code-block:: python
@@ -3362,38 +3359,32 @@ def all(x, axis=None, keepdim=False, name=None):
     Returns:
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
-    Raises:
-        ValueError: If the data type of `x` is not bool.
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
+
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
             print(x)
             x = paddle.cast(x, 'bool')
-            
+
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
             print(out1)
-            
+
             # out2 should be [True, False]
             out2 = paddle.all(x, axis=0)  # [True, False]
             print(out2)
-            
-            # keep_dim=False, out3 should be [False, True], out.shape should be (2,)
+
+            # keepdim=False, out3 should be [False, True], out.shape should be (2,)
             out3 = paddle.all(x, axis=-1)  # [False, True]
             print(out3)
-            
-            # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
+
+            # keepdim=True, out4 should be [[False], [True]], out.shape should be (2,1)
+            out4 = paddle.all(x, axis=1, keepdim=True) # [[False], [True]]
             print(out4)
             
     """
@@ -3440,7 +3431,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the ``logical or`` of tensor elements over the given dimension.
+    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3458,39 +3449,34 @@ def any(x, axis=None, keepdim=False, name=None):
     Returns:
         Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
-    Raises:
-        ValueError: If the data type of `x` is not bool.
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
-
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
-            # x is a bool Tensor with following elements:
-            #    [[True, False]
-            #     [False, False]]
-            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+
+            x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            x = paddle.assign(x)
             print(x)
             x = paddle.cast(x, 'bool')
-            
+            # x is a bool Tensor with following elements:
+            #    [[True, False]
+            #     [True, True]]
+
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
             print(out1)
-            
+
             # out2 should be [True, True]
             out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
-            
-            # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
+
+            # keepdim=False, out3 should be [True, True], out.shape should be (2,)
             out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
-            
-            # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
-            print(out4)
+
+            # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
+            out4 = paddle.any(x, axis=1, keepdim=True)  # [[True], [True]]
+            print(out4) 
             
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
@@ -3566,18 +3552,18 @@ def conj(x, name=None):
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        x (Tensor): The input tensor which hold the complex numbers. 
+        x (Tensor): The input Tensor which hold the complex numbers. 
             Optional data types are: complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The conjugate of input. The shape and data type is the same with input.
-            If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+        out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
 
     Examples:
         .. code-block:: python
 
           import paddle
+          
           data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
           #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
           #       [[(1+1j), (2+2j), (3+3j)],

@@ -44,14 +44,15 @@ class CacheManager {
   CacheManager(int thread_num, int batch_sz, int worker_num);
   ~CacheManager() {}
 
-  void build_sign2fids(FeatureKey* d_keys, size_t len);
-  uint64_t query_sign2fid(FeatureKey & key);
+  void clear_sign2fids();
+  void build_sign2fids(const FeatureKey* d_keys, size_t len);
+  uint64_t query_sign2fid(const FeatureKey & key);
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(Record * recs, int size);
+  void build_batch_fid_seq(const Record * recs, int size);
   void prepare_current_batch_fid_seq();
   std::shared_ptr<std::vector<uint64_t>>  get_current_batch_fid_seq();
-  void convert_fid2bfid(uint64_t * fids, int * out_bfids, int size);
+  void convert_fid2bfid(const uint64_t * fids, int * out_bfids, int size);
 #endif
 
  private:
