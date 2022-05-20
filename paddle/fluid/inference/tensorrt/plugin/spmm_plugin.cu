@@ -373,6 +373,11 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
               static_cast<char*>(weight_compressed_));
 
+  cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
+             compressed_size);
+  cudaMemcpy(weight_compressed_dev_, weight_compressed_, compressed_size,
+             cudaMemcpyHostToDevice);
+ 
   has_bias_ = (bias != nullptr);
   if (has_bias_) {
     // Each plugin has a copy of bias
@@ -447,7 +452,6 @@ nvinfer1::IPluginV2DynamicExt* SpmmPluginDynamic::clone() const noexcept {
                               is_configured_, m_max_, optim_alg_, activation_);
     p->weight_scale_ = weight_scale_;
     p->setPluginNamespace(namespace_.c_str());
-    p->weight_compressed_dev_ = weight_compressed_dev_;
 
     return p;
   } catch (const std::exception& e) {
@@ -548,24 +552,38 @@ void SpmmPluginDynamic::configurePlugin(
                       platform::errors::InvalidArgument(
                           "precision_ should be equal to inputs[0].desc.type"));
     const auto& inDims0 = inputs[0].desc.dims;
-    PADDLE_ENFORCE_EQ(inDims0.nbDims, 5, platform::errors::InvalidArgument(
-                                             "inDims0.nbDims should be 5"));
-    PADDLE_ENFORCE_EQ(k_, inDims0.d[2],
-                      platform::errors::InvalidArgument(
-                          "inDims0.d[2] should be equals to k"));
-    PADDLE_ENFORCE_EQ(inDims0.d[3], 1, platform::errors::InvalidArgument(
-                                           "inDims0.d[3] should be 1"));
-    PADDLE_ENFORCE_EQ(inDims0.d[4], 1, platform::errors::InvalidArgument(
-                                           "inDims0.d[4] should be 1"));
-    const int BS = inputs->max.d[0];
-
+    if (inDims0.nbDims==5) {
+      PADDLE_ENFORCE_EQ(inDims0.nbDims, 5, platform::errors::InvalidArgument(
+                                               "inDims0.nbDims should be 5"));
+      PADDLE_ENFORCE_EQ(k_, inDims0.d[2],
+                        platform::errors::InvalidArgument(
+                            "inDims0.d[2] should be equals to k"));
+      PADDLE_ENFORCE_EQ(inDims0.d[3], 1, platform::errors::InvalidArgument(
+                                             "inDims0.d[3] should be 1"));
+      PADDLE_ENFORCE_EQ(inDims0.d[4], 1, platform::errors::InvalidArgument(
+                                             "inDims0.d[4] should be 1"));
+      const int BS = inputs->max.d[0];
+      const int Seq = inputs->max.d[1];
+      m_max_ = BS * Seq;
+    } else if (inDims0.nbDims==4) {
+      PADDLE_ENFORCE_EQ(inDims0.nbDims, 4, platform::errors::InvalidArgument(
+                                               "inDims0.nbDims should be 4"));
+      PADDLE_ENFORCE_EQ(k_, inDims0.d[1],
+                        platform::errors::InvalidArgument(
+                            "inDims0.d[1] should be equals to k"));
+      PADDLE_ENFORCE_EQ(inDims0.d[2], 1, platform::errors::InvalidArgument(
+                                             "inDims0.d[2] should be 1"));
+      PADDLE_ENFORCE_EQ(inDims0.d[3], 1, platform::errors::InvalidArgument(
+                                             "inDims0.d[3] should be 1"));
+      const int BS_Seq = inputs->max.d[0];
+      m_max_ = BS_Seq; 
+    }
     // The optimal algorighm id is for m = m_max_
     // To Do: configurePlugin takes time when m is changed
     if (is_configured_) {
       return;
     }
 
-    m_max_ = BS;
     if (has_bias_) {
       if (inputs->desc.type == nvinfer1::DataType::kINT8) {
         for (int i = 0; i < out_dim_; ++i) {
@@ -624,9 +642,15 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     PADDLE_ENFORCE_EQ(is_configured_, true,
                       platform::errors::InvalidArgument(
                           "The plugin is not configured before enqueue"));
-    PADDLE_ENFORCE_EQ(
-        k_, inputDesc->dims.d[2],
-        platform::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
+    if (inputDesc->dims.nbDims==5){
+      PADDLE_ENFORCE_EQ(
+          k_, inputDesc->dims.d[2],
+          platform::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
+    } else if (inputDesc->dims.nbDims==4) {
+      PADDLE_ENFORCE_EQ(
+          k_, inputDesc->dims.d[1],
+          platform::errors::InvalidArgument("k_ == inputDesc->dims.d[1]"));
+    } 
     float alpha = 1.0f;
     float beta = 0.0f;
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
@@ -725,10 +749,7 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
 
 void SpmmPluginDynamic::destroy() noexcept {
   delete[] reinterpret_cast<char*>(weight_compressed_);
-  if (weight_compressed_dev_) {
-    cudaFree(weight_compressed_dev_);
-    weight_compressed_dev_ = nullptr;
-  }
+  cudaFree(weight_compressed_dev_);
   if (has_bias_) {
     cudaFree(bias_dev_);
   }
