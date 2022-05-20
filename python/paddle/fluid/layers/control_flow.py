@@ -30,6 +30,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -38,6 +39,8 @@ __all__ = [
     'reorder_lod_tensor_by_rank', 'Print', 'Assert', 'is_empty', 'case',
     'switch_case', 'while_loop'
 ]
+
+NAME_TO_IGNORE = [RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME]
 
 
 def select_output(input, outputs, mask):
@@ -69,6 +72,19 @@ def select_output(input, outputs, mask):
     return outputs
 
 
+def choose_input_meta(intpus):
+    real_inputs = [
+        var for var in intpus
+        if any(
+            [True if name in var.name else False for name in NAME_TO_IGNORE])
+    ]
+    if len(real_inputs) == 0:
+        raise ValueError(
+            f'len(real_inputs) must grather than 0, but now len(real_inputs)={len(real_inputs)}'
+        )
+    return real_inputs[0].dtype, real_inputs[0].shape, real_inputs[0].type
+
+
 def select_input(inputs, mask):
     """
     **select_input**
@@ -88,9 +104,7 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype = inputs[0].dtype
-    input_shape = inputs[0].shape
-    input_type = inputs[0].type
+    input_dtype, input_shape, input_type = choose_input_meta(intpus)
 
     out = helper.create_variable(
         dtype=input_dtype, shape=input_shape, type=input_type)
