@@ -211,6 +211,9 @@ class HeterComm {
                     KeyType* src_key, GradType* src_val);
   void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
                    ValType* src_val);
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> get_cache_manager() {return cache_mgr_;}
+#endif
 
  protected:
   using Table = HashTable<KeyType, ValType>;
