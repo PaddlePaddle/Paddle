@@ -356,8 +356,7 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = \
     if ({}.impl().use_count() == 1 || {}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get()) {{
       can_be_inplaced = true;
     }}
-  }}
-"""
+  }}"""
 
 CHECK_NAN_AND_INF_TEMPLATE = \
 """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
