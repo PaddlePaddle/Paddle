@@ -30,7 +30,6 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -39,8 +38,6 @@ __all__ = [
     'reorder_lod_tensor_by_rank', 'Print', 'Assert', 'is_empty', 'case',
     'switch_case', 'while_loop'
 ]
-
-NAME_TO_IGNORE = [RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME]
 
 
 def select_output(input, outputs, mask):
@@ -73,6 +70,8 @@ def select_output(input, outputs, mask):
 
 
 def choose_input_meta(intpus):
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME
+    NAME_TO_IGNORE = [RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME]
     real_inputs = [
         var for var in intpus
         if any(
