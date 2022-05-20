@@ -19,7 +19,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #endif
-
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
@@ -52,7 +54,9 @@ class HeterPs : public HeterPsBase {
   void show_one_table(int gpu_num) override;
   void push_sparse(int num, FeatureKey* d_keys, FeaturePushValue* d_grads,
                    size_t len) override;
-
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> get_cache_manager() {return comm_ -> get_cache_manager();}
+#endif
  private:
   std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;
 #if defined(PADDLE_WITH_CUDA)
