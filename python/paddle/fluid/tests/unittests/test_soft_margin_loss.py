@@ -116,7 +116,7 @@ class TestSoftMarginLoss(unittest.TestCase):
         for place in places:
             for reduction in reductions:
                 for _type in types:
-                    label_np = np.random.randint(0, 2, size=(5, 5)).astype(_types)
+                    label_np = np.random.randint(0, 2, size=(5, 5)).astype(_type)
                     label_np[label_np == 0] = -1
                     static_result = test_static_layer(place, input_np, label_np,
                                                       reduction)
