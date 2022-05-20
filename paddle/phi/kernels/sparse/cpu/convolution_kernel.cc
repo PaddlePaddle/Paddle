@@ -15,9 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -51,16 +50,19 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
     kernel_sizes[i] = kernel_dims[i];
   }
 
-  phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
-
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
     phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
+
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
+  const int in_channels = kernel_dims[3];
+  const int out_channels = kernel_dims[4];
+
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
@@ -159,7 +161,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCPUKernel", ([&] {
         Conv3dCPUKernel<T, data_t>(dev_ctx,
                                    x,

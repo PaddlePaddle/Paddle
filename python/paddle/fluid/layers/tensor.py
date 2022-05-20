@@ -329,7 +329,9 @@ def concat(input, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.final_state_concat(input, axis)
+        out = _varbase_creator()
+        _C_ops.concat(input, out, 'axis', axis)
+        return out
 
     if _in_legacy_dygraph():
         if isinstance(axis, Variable):
@@ -678,8 +680,7 @@ def assign(input, output=None):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
@@ -759,8 +760,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             place = _current_expected_place()
             if force_cpu:
                 place = core.CPUPlace()
+            if isinstance(shape, (list, tuple)):
+                for item in shape:
+                    if not isinstance(item, Variable):
+                        shape = list(
+                            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
+                                shape))
+                        break
 
-            shape = utils.convert_shape_to_list(shape)
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             out = _C_ops.final_state_full(shape, float(value), dtype, place)
@@ -1469,6 +1476,11 @@ def range(start, end, step, dtype, name=None):
             # [3, 4, 5, 6]
 
     """
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1499,11 +1511,6 @@ def range(start, end, step, dtype, name=None):
         out.stop_gradient = True
         return out
 
-    out_shape = None
-    if not isinstance(start, Variable) and not isinstance(
-            end, Variable) and not isinstance(step, Variable):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
@@ -1515,6 +1522,8 @@ def range(start, end, step, dtype, name=None):
                 'Step': step},
         outputs={'Out': out})
     out.stop_gradient = True
+    if out_shape is not None:
+        out.desc.set_shape(out_shape)
     return out
 
 

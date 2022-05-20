@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -35,6 +37,15 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
         platform::ToHCCLDataType(framework::TransToProtoVarType(out->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(ring_id)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(ring_id);
+      std::vector<phi::DenseTensor> out_tensor;
+      out_tensor.emplace_back(*out);
+      auto task = pg->Recv(out_tensor, 0);
+      return;
+    }
     auto place = ctx.GetPlace();
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);

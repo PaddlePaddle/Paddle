@@ -1,0 +1,3 @@
+1. At the beginning, run './compile-tools/compile-with-xpups.sh'
+2. Need to update proxy and try again, run './compile-tools/build-again.sh 0' or './compile-tools/build-again.sh 1'
+

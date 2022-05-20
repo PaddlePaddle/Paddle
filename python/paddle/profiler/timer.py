@@ -193,7 +193,7 @@ class TimerHook(Hook):
     def before_reader(self, benchmark):
         """
         Initialize the start time of the dataloader. This function will be
-        called at the begining of `next` method in `_DataLoaderIterMultiProcess` or
+        called at the beginning of `next` method in `_DataLoaderIterMultiProcess` or
         `_DataLoaderIterSingleProcess`.
 
         """
@@ -220,8 +220,8 @@ class TimerHook(Hook):
         Record the cost for the current step. It will contain the cost of the loading
         data if there is a dataloader. Similar to `after_reader`, it will also update
         the maximum, minimum and the total time from the step 11 to the current step
-        as well as the the maximum and minimum speed of the model. This function will
-        be called in in `Profiler.step()`.
+        as well as the maximum and minimum speed of the model. This function will
+        be called in `Profiler.step()`.
 
         """
 
@@ -401,7 +401,7 @@ class Benchmark(object):
                 # enter a new task but not calling beign() to record it.
                 # we pause the timer until the end of new task, so that 
                 # the cost of new task is not added to the current event.
-                # eg. start evaluation in the traing task
+                # eg. start evaluation in the training task
                 self.current_event.need_record = False
         else:
             # when the new task exits, continue timing for the current event.

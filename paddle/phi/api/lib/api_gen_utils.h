@@ -42,13 +42,16 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor);
+    const paddle::optional<const Tensor&>& tensor);
 
 std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 
 /* ----------------- for infer_meta --------------------- */
 
 phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor);
+
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const phi::DenseTensor&>& tensor);
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors);
@@ -57,6 +60,9 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<phi::DenseTensor*>& tensors);
 
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
+
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
+    const paddle::optional<const phi::SelectedRows&>& tensor);
 
 phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor);
 
@@ -67,6 +73,9 @@ phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
                                                Backend backend,
                                                std::vector<Tensor>* out);
+
+// For backward api
+std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);
 
 phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out);
 

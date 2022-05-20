@@ -79,6 +79,10 @@ class AfsWrapper {
 
   int download(const std::string& local_file, const std::string& afs_file);
 
+  int touchz(const std::string& path);
+  std::string cat(const std::string& path);
+  int mv(const std::string& old_path, const std::string& dest_path);
+
  private:
   paddle::ps::AfsApiWrapper afs_handler_;
 };
@@ -91,6 +95,10 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -149,9 +157,7 @@ class PSGPUWrapper {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
-#ifdef PADDLE_WITH_CUDA
       resource_->enable_p2p();
-#endif
       keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
@@ -422,6 +428,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:
   static bool is_initialized_;

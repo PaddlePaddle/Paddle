@@ -13,34 +13,35 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <limits>
 #include <memory>
 #include <vector>
-// #ifdef PADDLE_WITH_PSLIB
-// #include "common_value.h"  // NOLINT
-// #endif
-#ifdef PADDLE_WITH_PSCORE
+
+#ifdef PADDLE_WITH_PSLIB
+#include "common_value.h"  // NOLINT
+#endif
+
+#if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
-#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/phi/core/utils/rw_lock.h"
+
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
-#endif
-#if defined(__xpu__)
-// #include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#elif defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-// #include "cudf/concurrent_unordered_map.cuh.h"
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/phi/core/utils/rw_lock.h"
+
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 namespace paddle {
 namespace framework {
@@ -56,40 +57,52 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
-#endif
-
-#if defined(PADDLE_WITH_XPU_KP)
+#elif defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-      xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-      xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
+    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
+    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
   }
 
   virtual ~XPUCacheArray() {
-      xpu_free(keys);
-      xpu_free(vals);
+    xpu_free(keys);
+    xpu_free(vals);
   }
 
   void print() {}
 
-
-  // __device__ ValType* find(const KeyType& key) { return &vals[0]; }
-
-  // __device__ bool insert(const KeyType& key, const ValType& val) { return true; }
-
-  size_t size() {
-    return 0;
+#if defined(__xpu__)
+  __device__ ValType* find(const KeyType& key) {
+    for (int i = 0; i < size_; i++) {
+      if (keys[i] == key) return &vals[i];
+    }
+    return NULL;
   }
+  __device__ bool insert(const KeyType& key, const ValType& val) {
+    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
+    // one batch
+    if (size_ == capacity_) {
+      return false;
+    } else {
+      keys[size_] = key;
+      vals[size_] = val;
+      size_++;
+      return true;
+    }
+  }
+#endif
+
+  int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
+  size_t size() { return size_; }
 
  private:
-  long long capacity_ = 1;  // NOLINT
-  long long size_;      // NOLINT
+  long long capacity_;
+  long long size_;
   KeyType* keys;
   ValType* vals;
 };
-
 #endif
 
 template <typename KeyType, typename ValType>
@@ -116,6 +129,9 @@ class HashTable {
   void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
 
   void show();
+
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
@@ -159,6 +175,9 @@ class HashTable {
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
 #endif
+  OptimizerConfig* device_optimizer_config_;
+  OptimizerConfig host_optimizer_config_;
+
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;

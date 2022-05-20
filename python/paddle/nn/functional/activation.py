@@ -112,7 +112,10 @@ def elu(x, alpha=1.0, name=None):
             #  [ 1.          15.6      ]]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_elu(x, alpha)
+
+    if _in_legacy_dygraph():
         return _C_ops.elu(x, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
@@ -434,7 +437,10 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_leaky_relu(x, negative_slope)
+
+    if _in_legacy_dygraph():
         return _C_ops.leaky_relu(x, 'alpha', negative_slope)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],

@@ -66,7 +66,8 @@ class ProcessGroupHeter : public ProcessGroup {
   class HeterTask : public ProcessGroup::Task,
                     public std::enable_shared_from_this<HeterTask> {
    public:
-    HeterTask(int rank, CommType CommType, const std::vector<Tensor>& inputs);
+    HeterTask(int rank, CommType CommType,
+              const std::vector<phi::DenseTensor>&);
 
     bool IsCompleted();
 
@@ -80,27 +81,32 @@ class ProcessGroupHeter : public ProcessGroup {
   };
 
   ProcessGroupHeter(const std::shared_ptr<Store>& store, int rank, int size,
-                    int gid, int local_rank, int local_size, int gloo_rank,
-                    int gloo_size, bool with_switch,
-                    std::string switch_endpoints);
+                    const platform::Place& place, int gid, int local_rank,
+                    int local_size, int gloo_rank, int gloo_size,
+                    bool with_switch, std::string switch_endpoints,
+                    int src_rank, int dst_rank);
 
   const std::string GetBackendName() const override {
     return std::string(HETER_BACKEND_NAME);
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<Tensor>& tensors,
+      std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
       const AllreduceOptions& = AllreduceOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<Tensor>& tensors,
+      std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
       const BroadcastOptions& = BroadcastOptions()) override;
 
-  void Broadcast(const phi::DenseTensor* in, phi::DenseTensor* out) override;
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& in_tensors, int peer) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& out_tensors, int peer) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupHeter::HeterTask> CreateTask(
-      int rank, CommType opType, const std::vector<Tensor>& inputs);
+      int rank, CommType opType, const std::vector<phi::DenseTensor>& inputs);
 
  private:
   std::shared_ptr<Store> store_;
@@ -113,6 +119,10 @@ class ProcessGroupHeter : public ProcessGroup {
   int gloo_size_;
   bool with_switch_;
   std::string switch_endpoint_;
+  int src_rank_;
+  int dst_rank_;
+  static int send_count;
+  static int recv_count;
 };
 
 }  //  namespace distributed

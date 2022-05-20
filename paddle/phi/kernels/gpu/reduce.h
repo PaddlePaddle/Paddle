@@ -18,6 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
 
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
@@ -40,7 +41,7 @@ void Reduce(const KPDevice& dev_ctx,
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
   }
-
+#ifndef PADDLE_WITH_XPU_KP
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
@@ -72,6 +73,16 @@ void Reduce(const KPDevice& dev_ctx,
         reduce_dims,
         is_mean);
   }
+#else
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
+      dev_ctx,
+      x,
+      out,
+      TransformOp<T, MPType>(reduce_num),
+      reduce_dims,
+      is_mean);
+#endif
 }
 }  // namespace phi
 

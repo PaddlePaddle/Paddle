@@ -172,9 +172,9 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
 
 def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-        "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
-    )
+        not core.is_compiled_with_cuda() or
+        not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16")
     class TestConv2DCUDNNBF16(parent):
         def get_numeric_grad(self, place, check_name):
             scope = core.Scope()

@@ -109,8 +109,8 @@ size_t SizeOfType(proto::VarType::Type type) {
 }
 
 // Now only supports promotion of complex type
-bool NeedPromoteTypes(const proto::VarType::Type a,
-                      const proto::VarType::Type b) {
+inline bool NeedPromoteTypes(const proto::VarType::Type& a,
+                             const proto::VarType::Type& b) {
   return (IsComplexType(a) || IsComplexType(b));
 }
 

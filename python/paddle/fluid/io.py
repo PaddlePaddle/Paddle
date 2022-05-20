@@ -1846,8 +1846,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 @static_only
 def save(program, model_path, protocol=4, **configs):
     """
-    :api_attr: Static Graph
-
+    
     This function save parameters, optimizer information and network description to model_path.
 
     The parameters contains all the trainable Tensor, will save to a file with suffix ".pdparams".
@@ -2154,7 +2153,6 @@ def load(program, model_path, executor=None, var_list=None):
 
 def load_program_state(model_path, var_list=None):
     """
-    :api_attr: Static Graph
 
     Load program state from local file
 
@@ -2169,6 +2167,7 @@ def load_program_state(model_path, var_list=None):
         state_dict(dict): the dict store Parameter and optimizer information
 
     Examples:
+    
         .. code-block:: python
 
             import paddle

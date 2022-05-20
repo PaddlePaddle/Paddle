@@ -410,19 +410,17 @@ class FCPrimitiveFactory {
       const ExecutionContext& ctx) {
     auto scale_in_data = ctx.Attr<float>("Scale_in");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
     // If the output will be in floats, we don't multiply by scale_out.
-    float activation_scale = 1.0f;
-    float inner_scale = 1.0f;
-    if (!ctx.Attr<bool>("force_fp32_output")) {
-      // if has activation use it's scale, otherwise use inner scale.
-      if (!ctx.Attr<std::string>("activation_type").empty()) {
-        activation_scale = ctx.Attr<float>("Scale_out");
-      } else {
-        inner_scale = ctx.Attr<float>("Scale_out");
-      }
-    }
 
+    float scale = (!force_fp32_output && has_activation)
+                      ? ctx.Attr<float>("Scale_out")
+                      : 1.0f;
+    float inner_scale = (force_fp32_output || has_activation)
+                            ? 1.0f
+                            : ctx.Attr<float>("Scale_out");
     const size_t weight_scales_num = scale_weights_data.size();
     std::vector<float> output_shift_scale(weight_scales_num);
 
@@ -435,7 +433,7 @@ class FCPrimitiveFactory {
             inner_scale / (scale_in_data * scale_weights_data[i]);
     }
 
-    return make_tuple(output_shift_scale, activation_scale);
+    return make_tuple(output_shift_scale, scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -467,6 +465,12 @@ class FCPrimitiveFactory {
     std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
+    float sum_scale = 1.0f;
+
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      post_operations.append_sum(sum_scale);
+    }
 
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       constexpr float negative_slope = 0.0f;
@@ -531,6 +535,21 @@ class FCPrimitiveFactory {
   dnnl::memory CreateDstMemory(
       const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      auto* residual_param = ctx.Output<Tensor>("ResidualData");
+
+      PADDLE_ENFORCE_EQ(
+          output->dims(), residual_param->dims(),
+          platform::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, but got output's dimension = %d"
+              " and residual param's dimension =%d .",
+              output->dims().size(), residual_param->dims().size()));
+
+      output->ShareDataWith(*residual_param);
+    }
+
     auto dst_desc = fc_prim_desc.dst_desc();
     auto buffer_size = dst_desc.get_size();
     T_out* output_data =

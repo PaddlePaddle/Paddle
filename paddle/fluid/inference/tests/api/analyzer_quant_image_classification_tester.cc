@@ -26,8 +26,7 @@ namespace analysis {
 void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->SetModel(model_path);
   cfg->DisableGpu();
-  cfg->SwitchIrOptim(false);
-  cfg->SwitchSpecifyInputNames();
+  cfg->SwitchIrOptim(true);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
@@ -113,9 +112,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 TEST(Analyzer_quant_image_classification, quantization) {
   AnalysisConfig fp32_cfg;
   SetConfig(&fp32_cfg, FLAGS_fp32_model);
+  fp32_cfg.EnableMKLDNN();
 
   AnalysisConfig int8_cfg;
   SetConfig(&int8_cfg, FLAGS_int8_model);
+  if (FLAGS_enable_quant_int8) int8_cfg.EnableMkldnnInt8();
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;

@@ -16,6 +16,7 @@
 
 #include <mlir/IR/BuiltinOps.h>
 #include <string>
+#include <unordered_set>
 
 #include "paddle/infrt/host_context/kernel_frame.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
@@ -71,7 +72,15 @@ OpExecutableBuilder::OpExecutableBuilder(const std::string& op_name,
   // TODO(Superjomn) support other device other than CPU.
   CHECK(impl_->kernel_impl) << "No CPU kernel called " << op_name;
 
-  if (op_name == "dt.get_param") {
+  // TODO(wilber): Maybe we can use the MLIR trait or other facilities to remove
+  // the run_once set.
+  std::unordered_set<std::string> run_once_set{
+      "dt.get_param",
+      "trt.create_engine",
+      "phi_dt.create_host_inited_dense_tensor.f32",
+      "phi_dt.create_context.cpu",
+      "phi_dt.create_context.gpu"};
+  if (run_once_set.count(op_name)) {
     impl_->run_once = true;
   }
 }

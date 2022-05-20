@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
-#include "heter_resource.h"  //NOLINT
-#ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
-#endif
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
 namespace paddle {
@@ -67,7 +69,8 @@ XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
 
   platform::XPUDeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
-  comm_streams_.resize(dev_ids_.size(), 0);
+
+  comm_streams_.resize(dev_ids_.size(), NULL);
   remote_streams_.resize(dev_ids_.size());
 
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
@@ -77,15 +80,15 @@ XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
   }
 }
 
-
 XPUResource::~XPUResource() {
   platform::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
   }
-  for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
-  }
+
+  // for (size_t i = 0; i < comm_streams_.size(); ++i) {
+  //  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
+  // }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(remote_streams_[i]));
   }
@@ -127,7 +130,6 @@ HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   }
 }
 
-
 ppStream HeterPsResource::comm_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->comm_stream(stream_num);
 }
@@ -138,8 +140,6 @@ ppStream HeterPsResource::local_stream(int dev_num, int stream_num) {
 ppStream HeterPsResource::remote_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->remote_stream(stream_num);
 }
-
-
 
 int HeterPsResource::dev_id(int num) { return dev_ids_[num]; }
 

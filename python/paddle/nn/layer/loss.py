@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -465,14 +465,18 @@ class HSigmoidLoss(Layer):
             import paddle
             paddle.set_device('cpu')
 
-            input = paddle.uniform([2, 3])
-            # [[-0.2820413   0.9528898  -0.81638825] # random
-            #  [-0.6733154  -0.33866507  0.25770962]] # random
+            input = paddle.uniform([4, 3])
+            # [[0.56194401  -0.22450298  -0.10741806] # random
+            #  [0.36136317  0.23556745  0.88748658] # random
+            #  [0.18151939  0.80947340  -0.31078976] # random
+            #  [0.68886101  -0.14239830  -0.41297770]] # random
             label = paddle.to_tensor([0, 1, 4, 5])
             m = paddle.nn.HSigmoidLoss(3, 5)
             out = m(input, label)
-            # [[2.4543471]
-            #  [1.9359267]]
+            # [[2.42524505]
+            #  [1.74917245]
+            #  [3.14571381]
+            #  [2.34564662]]
     """
 
     def __init__(self,
@@ -597,7 +601,11 @@ class MSELoss(Layer):
             fluid.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss')
 
-        square_out = paddle.square(paddle.subtract(input, label))
+        if in_dygraph_mode():
+            square_out = paddle._C_ops.final_state_square(
+                paddle.subtract(input, label))
+        else:
+            square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 

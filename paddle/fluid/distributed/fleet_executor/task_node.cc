@@ -74,6 +74,9 @@ void TaskNode::Init(bool use_feed_fetch_ops) {
   }
 }
 
+TaskNode::TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times)
+    : rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
+
 TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
                    int64_t rank, int64_t task_id, int64_t max_run_times,

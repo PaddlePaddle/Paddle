@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import tempfile
 import unittest
 import numpy as np
 
@@ -48,6 +49,12 @@ class SimpleFcLayer(fluid.dygraph.Layer):
 
 
 class TestDyToStaticSaveInferenceModel(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -66,8 +73,10 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                 adam.minimize(loss)
                 layer.clear_gradients()
             # test for saving model in dygraph.guard
-            infer_model_prefix = "./test_dy2stat_inference_in_guard/model"
-            infer_model_dir = "./test_dy2stat_inference_in_guard"
+            infer_model_prefix = os.path.join(
+                self.temp_dir.name, "test_dy2stat_inference_in_guard/model")
+            infer_model_dir = os.path.join(self.temp_dir.name,
+                                           "test_dy2stat_inference_in_guard")
             fluid.dygraph.jit.save(
                 layer=layer,
                 path=infer_model_prefix,
@@ -90,8 +99,10 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
         expected_persistable_vars = set([p.name for p in model.parameters()])
 
-        infer_model_prefix = "./test_dy2stat_inference/model"
-        infer_model_dir = "./test_dy2stat_inference"
+        infer_model_prefix = os.path.join(self.temp_dir.name,
+                                          "test_dy2stat_inference/model")
+        infer_model_dir = os.path.join(self.temp_dir.name,
+                                       "test_dy2stat_inference")
         model_filename = "model" + INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
         fluid.dygraph.jit.save(

@@ -468,10 +468,15 @@ class ClipGradByGlobalNorm(ClipGradBase):
             sdg.step()
     """
 
-    def __init__(self, clip_norm, group_name="default_group"):
+    def __init__(self,
+                 clip_norm,
+                 group_name="default_group",
+                 auto_skip_clip=False):
         super(ClipGradByGlobalNorm, self).__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
+        assert isinstance(auto_skip_clip, bool)
+        self.auto_skip_clip = auto_skip_clip
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
@@ -524,14 +529,19 @@ class ClipGradByGlobalNorm(ClipGradBase):
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
 
-        # only when global_norm_var > max_global_norm, grad need clip
         need_clip = False
-        if global_norm_var > max_global_norm:
+        if not self.auto_skip_clip:  # always apply clip
             need_clip = True
-
-        if need_clip:
+            clip_var = layers.elementwise_div(
+                x=max_global_norm,
+                y=layers.elementwise_max(
+                    x=global_norm_var, y=max_global_norm))
+        elif global_norm_var > max_global_norm:
+            # only when global_norm_var > max_global_norm, grad need clip
+            need_clip = True
             clip_var = layers.elementwise_div(
                 x=max_global_norm, y=global_norm_var)
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -543,7 +553,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 clip_input = (clip_var.astype('float16')
                               if g.dtype == core.VarDesc.VarType.FP16 else
                               clip_var)
-                new_grad = layers.elementwise_mul(x=g, y=clip_input)
+                new_grad = _C_ops.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))

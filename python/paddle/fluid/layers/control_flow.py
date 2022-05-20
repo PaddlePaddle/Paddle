@@ -1796,13 +1796,16 @@ def greater_than(x, y, cond=None, name=None):
 
     attrs = dict()
 
-    helper.append_op(
-        type='greater_than',
-        inputs={'X': [x],
-                'Y': [y]},
-        outputs={'Out': [cond]},
-        attrs=attrs)
-    return cond
+    if in_dygraph_mode():
+        return _C_ops.final_state_greater_than(x, y, -1)
+    else:
+        helper.append_op(
+            type='greater_than',
+            inputs={'X': [x],
+                    'Y': [y]},
+            outputs={'Out': [cond]},
+            attrs=attrs)
+        return cond
 
 
 @templatedoc()

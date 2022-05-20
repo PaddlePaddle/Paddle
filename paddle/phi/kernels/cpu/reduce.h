@@ -16,8 +16,8 @@
 
 #include <set>
 
-#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -118,7 +118,7 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   std::vector<int> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
 
-  shuffled_input->ResizeAndAllocate(shuffled_dims);
+  shuffled_input->Resize(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
   phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
@@ -132,10 +132,7 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  phi::DenseTensor shuffled_input = phi::DenseTensor(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(input.place()),
-      input.meta());
-
+  phi::DenseTensor shuffled_input;
   GetShuffledInput<DeviceContext, OutT>(dev_ctx, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.

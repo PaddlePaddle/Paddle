@@ -15,21 +15,23 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
-#include "cub/cub.cuh"
-#include "cub/util_allocator.cuh"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "thrust/pair.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
-#ifdef PADDLE_WITH_XPU_KP
+#elif defined(PADDLE_WITH_XPU_KP)
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
-#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"       // NOLINT
+
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
-#include "heter_resource.h"  // NOLINT
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
@@ -38,7 +40,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
 
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
@@ -67,6 +68,8 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
 #endif
 
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config);
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 
   int log2i(int x);
 
@@ -89,7 +92,6 @@ class HeterComm {
   int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads,
                              int len);
 
-
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) {
@@ -105,9 +107,9 @@ class HeterComm {
 
   // void dump_to_cpu(int index);
 
-  void end_pass();
-
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
+
+  void end_pass();
 
   struct Node {
     ppStream in_stream;
@@ -156,8 +158,12 @@ class HeterComm {
       }
     }
 
+#if defined(PADDLE_WITH_CUDA)
     platform::CUDAPlace place_;
 
+#elif defined(PADDLE_WITH_XPU_KP)
+    platform::XPUPlace place_;
+#endif
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
 
@@ -174,13 +180,11 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(const StreamType& stream) {
-    // if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU_KP)
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
 #endif
-    // }
   }
 
   template <typename StreamType>
@@ -215,11 +219,11 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
  private:
-  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
-  std::vector<LocalStorage> storage_;
   int topo_aware_{0};
+  std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;
@@ -229,6 +233,12 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inter_comms_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+  //TODO(dingjie02): define CacheManager object
+  std::shared_ptr<CacheManager> cache_mgr_;
+#endif
+
 };
 
 }  // end namespace framework

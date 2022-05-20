@@ -15,26 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-static dnnl::memory::format_tag get_plain_format_tag(
-    const paddle::framework::Tensor* tensor) {
-  auto tensor_dims_size = tensor->dims().size();
-
-  switch (tensor_dims_size) {
-    case 1:
-      return dnnl::memory::format_tag::a;
-    case 2:
-      return dnnl::memory::format_tag::ab;
-    case 3:
-      return dnnl::memory::format_tag::abc;
-    case 4:
-      return dnnl::memory::format_tag::abcd;
-    case 5:
-      return dnnl::memory::format_tag::abcde;
-  }
-
-  return dnnl::memory::format_tag::abcdef;
-}
-
 namespace paddle {
 namespace operators {
 
@@ -105,11 +85,12 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->format(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
                                                         reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, get_plain_format_tag(x), ctx.GetPlace());
+        out, slice_dims, platform::GetPlainMKLDNNFormat(x_vec_dims.size()),
+        ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
@@ -133,9 +114,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     astream.wait();
     out->Resize(phi::make_ddim(new_out_dims));
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(
-        reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
   }
 };
 template <typename T>

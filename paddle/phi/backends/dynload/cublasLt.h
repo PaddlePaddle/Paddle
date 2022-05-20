@@ -1,4 +1,5 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,19 +53,25 @@ extern void *cublasLt_dso_handle;
 
 // APIs available after CUDA 10.1
 // #if CUDA_VERSION >= 10100
-#define CUBLASLT_BLAS_ROUTINE_EACH(__macro)    \
-  __macro(cublasLtCreate);                     \
-  __macro(cublasLtDestroy);                    \
-  __macro(cublasLtMatmul);                     \
-  __macro(cublasLtMatmulDescCreate);           \
-  __macro(cublasLtMatmulDescDestroy);          \
-  __macro(cublasLtMatmulDescSetAttribute);     \
-  __macro(cublasLtMatrixLayoutCreate);         \
-  __macro(cublasLtMatrixLayoutDestroy);        \
-  __macro(cublasLtMatrixLayoutSetAttribute);   \
-  __macro(cublasLtMatrixTransform);            \
-  __macro(cublasLtMatrixTransformDescCreate);  \
-  __macro(cublasLtMatrixTransformDescDestroy); \
+#define CUBLASLT_BLAS_ROUTINE_EACH(__macro)      \
+  __macro(cublasLtCreate);                       \
+  __macro(cublasLtDestroy);                      \
+  __macro(cublasLtMatmul);                       \
+  __macro(cublasLtMatmulDescCreate);             \
+  __macro(cublasLtMatmulDescDestroy);            \
+  __macro(cublasLtMatmulDescSetAttribute);       \
+  __macro(cublasLtMatmulDescGetAttribute);       \
+  __macro(cublasLtMatrixLayoutCreate);           \
+  __macro(cublasLtMatrixLayoutDestroy);          \
+  __macro(cublasLtMatrixLayoutSetAttribute);     \
+  __macro(cublasLtMatrixLayoutGetAttribute);     \
+  __macro(cublasLtMatmulPreferenceCreate);       \
+  __macro(cublasLtMatmulPreferenceDestroy);      \
+  __macro(cublasLtMatmulPreferenceSetAttribute); \
+  __macro(cublasLtMatmulAlgoGetHeuristic);       \
+  __macro(cublasLtMatrixTransform);              \
+  __macro(cublasLtMatrixTransformDescCreate);    \
+  __macro(cublasLtMatrixTransformDescDestroy);   \
   __macro(cublasLtMatrixTransformDescSetAttribute);
 
 CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)

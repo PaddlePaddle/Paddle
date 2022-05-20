@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
 from paddle.fluid.dygraph import nn
+from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
 epoch = 10
@@ -31,7 +32,6 @@ base_lr = 0.1
 momentum_rate = 0.9
 l2_decay = 1e-4
 batch_size = 100
-fleet.init(is_collective=True)
 
 
 class MLP(fluid.Layer):
@@ -144,4 +144,7 @@ def test_sharding_api():
 
 
 if __name__ == '__main__':
+    with _test_eager_guard():
+        pass
+    fleet.init(is_collective=True)
     test_sharding_api()

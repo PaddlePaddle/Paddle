@@ -15,11 +15,12 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -46,8 +47,17 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
   }
+
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
+
   phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
@@ -65,11 +75,6 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
-  std::vector<int> subm_paddings(paddings), subm_strides(strides);
-  if (subm) {
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
-        kernel.dims(), &subm_paddings, &subm_strides);
-  }
   int n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
                                                x,
                                                kernel_sizes,
@@ -148,18 +153,35 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, out->nnz() * out_channels, 1);
-  ScatterKernel<T><<<config.block_per_grid.x,
-                     config.thread_per_block.x,
-                     0,
-                     dev_ctx.stream()>>>(out_features_ptr,
-                                         unique_value.data<int>(),
-                                         out_index.data<int>(),
-                                         out->nnz(),
-                                         n,
-                                         out_channels,
-                                         out_values_ptr);
+  if (subm) {
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+    config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * out_channels, 1);
+    phi::funcs::ScatterCUDAKernel<T, IntT><<<config.block_per_grid,
+                                             config.thread_per_block,
+                                             0,
+                                             dev_ctx.stream()>>>(
+        out_features_ptr,
+        rulebook_ptr + 2 * n,
+        out_values_ptr,
+        n,
+        out_channels,
+        false);
+  } else {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, out->nnz() * out_channels, 1);
+    phi::funcs::sparse::ScatterKernel<T><<<config.block_per_grid.x,
+                                           config.thread_per_block.x,
+                                           0,
+                                           dev_ctx.stream()>>>(
+        out_features_ptr,
+        unique_value.data<int>(),
+        out_index.data<int>(),
+        out->nnz(),
+        n,
+        out_channels,
+        out_values_ptr);
+  }
 }
 /**
  * x: (N, D, H, W, C)
@@ -177,7 +199,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dGPUKernel", ([&] {
         Conv3dGPUKernel<T, data_t>(dev_ctx,
                                    x,

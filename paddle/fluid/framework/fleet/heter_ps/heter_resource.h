@@ -17,14 +17,17 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <vector>
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-#include "paddle/fluid/platform/enforce.h"
+
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+
+#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -33,10 +36,9 @@ namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 using ppStream = cudaStream_t;
-// using ppStreamCreate = cudaStreamCreate;
+
 #elif defined(PADDLE_WITH_XPU_KP)
 using ppStream = XPUStream;
-// using ppStreamCreate = xpu_stream_create;;
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -87,11 +89,11 @@ class XPUResource {
 #if defined(PADDLE_WITH_CUDA)
 using DevResource = GPUResource;
 using DevPlace = platform::CUDAPlace;
-using AnyDeviceGuard= platform::CUDADeviceGuard;
+using AnyDeviceGuard = platform::CUDADeviceGuard;
 #elif defined(PADDLE_WITH_XPU_KP)
 using DevResource = XPUResource;
 using DevPlace = platform::XPUPlace;
-using AnyDeviceGuard= platform::XPUDeviceGuard;
+using AnyDeviceGuard = platform::XPUDeviceGuard;
 #endif
 
 class HeterPsResource {

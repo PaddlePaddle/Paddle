@@ -35,7 +35,8 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors);
 
 void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
@@ -117,7 +118,7 @@ void AdamwInferMeta(const MetaTensor& param,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs);
 
-void AddNInferMeta(const std::vector<MetaTensor*>& x,
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
@@ -173,10 +174,10 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     MetaTensor* out,
                                     MetaConfig config = MetaConfig());
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
@@ -227,7 +228,13 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out);
+
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
 void MomentumInferMeta(const MetaTensor& param,
@@ -245,9 +252,10 @@ void MomentumInferMeta(const MetaTensor& param,
                        MetaTensor* velocity_out,
                        MetaTensor* master_param_out);
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out);
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out);
 
@@ -276,8 +284,8 @@ void RmspropInferMeta(const MetaTensor& param,
                       MetaTensor* mean_grad_out);
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
                   paddle::optional<const MetaTensor&> sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
@@ -292,7 +300,7 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
-void SGDInferMeta(const MetaTensor& param,
+void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
                   paddle::optional<const MetaTensor&> master_param,
@@ -300,11 +308,11 @@ void SGDInferMeta(const MetaTensor& param,
                   MetaTensor* param_out,
                   MetaTensor* master_param_out);
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);
 
-void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);
 
 void WarpctcInferMeta(const MetaTensor& logits,

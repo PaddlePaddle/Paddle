@@ -23,7 +23,7 @@
 #include <set>
 #include <vector>
 
-#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
