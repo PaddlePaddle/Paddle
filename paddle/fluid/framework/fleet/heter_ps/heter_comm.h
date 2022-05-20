@@ -242,7 +242,7 @@ class HeterComm {
  private:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
-  CustomGradMerger merger_;
+  DynamicGradMerger merger_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;

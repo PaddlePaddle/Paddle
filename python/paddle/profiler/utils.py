@@ -78,7 +78,7 @@ class RecordEvent(ContextDecorator):
 
     def begin(self):
         r"""
-        Record the time of begining.
+        Record the time of beginning.
 
         Examples:
 

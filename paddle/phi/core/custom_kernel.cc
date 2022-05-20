@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/custom_kernel.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 void CustomKernelMap::RegisterCustomKernel(const std::string& name,

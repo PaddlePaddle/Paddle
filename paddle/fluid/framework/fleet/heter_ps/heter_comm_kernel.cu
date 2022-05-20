@@ -134,23 +134,21 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        const uint32_t* index, const char* input,
                                        char* output, int n,
                                        size_t grad_value_size,
-                                       CustomGradMerger& merger_) {
+                                       DynamicGradMerger& merger_) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
     int ori_index = index[start];
-
-    FeaturePushValue& lhs = *(FeaturePushValue*)(output + i * grad_value_size);
+    FeaturePushValue& out = *(FeaturePushValue*)(output + i * grad_value_size);
     FeaturePushValue& in =
         *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-    merger_.copy_basic_field(lhs, in);
-
+    merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
       in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.add_basic_field(lhs, in);
+      merger_.merge_one(out, in);
     }
   }
 }
@@ -272,7 +270,7 @@ template <typename StreamType>
 void HeterCommKernel::merge_gradient(
     const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
     const char* input, char* output, int n, size_t grad_value_size,
-    CustomGradMerger& merger_, const StreamType& stream) {
+    DynamicGradMerger& merger_, const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
       offset, fea_num, index, input, output, n, grad_value_size, merger_);
@@ -363,7 +361,7 @@ template void HeterCommKernel::dy_mf_fill_shard_grads<
 template void HeterCommKernel::merge_gradient<cudaStream_t>(
     const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
     const char* input, char* output, int n, size_t grad_value_size,
-    CustomGradMerger& merger_, const cudaStream_t& stream);
+    DynamicGradMerger& merger_, const cudaStream_t& stream);
 
 template void HeterCommKernel::dy_mf_fill_dvals<paddle::framework::FeatureValue,
                                                 int, cudaStream_t>(

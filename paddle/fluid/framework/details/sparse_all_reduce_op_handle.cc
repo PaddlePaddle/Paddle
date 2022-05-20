@@ -75,7 +75,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       in_var_handles.size(), places_.size(),
       platform::errors::PreconditionNotMet(
           "The number of input variables should be equal to the number of "
-          "places, but got the number of input variables is %zu and the the "
+          "places, but got the number of input variables is %zu and the "
           "number of places is %zu.",
           in_var_handles.size(), places_.size()));
   PADDLE_ENFORCE_EQ(
@@ -83,7 +83,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       platform::errors::PreconditionNotMet(
           "The number of input variables should be equal to the number of "
           "output variables, but got the number of input variables is %zu and "
-          "the the number of output variables is %zu.",
+          "the number of output variables is %zu.",
           in_var_handles.size(), out_var_handles.size()));
 
   std::vector<const LoDTensor *> ins;

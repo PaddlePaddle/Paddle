@@ -458,7 +458,7 @@ void BatchNormInferMeta(const MetaTensor& x,
         true,
         phi::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but recieved %d. Input's shape is [%s].",
+            "positive number, but received %d. Input's shape is [%s].",
             x_dims[i],
             x_dims));
   }
@@ -755,7 +755,7 @@ inline int ConvOutputSize(
       0,
       phi::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
-          "But recieved: output's size is %d. The output's size is computed by "
+          "But received: output's size is %d. The output's size is computed by "
           "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
           "stride + 1), where input_size is %d, padding is %d, "
           "filter_size is %d, dilation is %d, stride is %d.",

@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-struct CustomGradMerger {
+struct DynamicGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
   operator()(const T& a, const T& b) const {
@@ -42,7 +42,7 @@ struct CustomGradMerger {
   }
 
   template <typename T>
-  __device__ __forceinline__ void copy_basic_field(T& output, const T& input) {
+  __device__ __forceinline__ void update_one(T& output, const T& input) {
     output.slot = input.slot;
     output.show = input.show;
     output.clk = input.clk;
@@ -53,7 +53,7 @@ struct CustomGradMerger {
     }
   }
   template <typename T>
-  __device__ __forceinline__ void add_basic_field(T& output, const T& input) {
+  __device__ __forceinline__ void merge_one(T& output, const T& input) {
     output.show += input.show;
     output.clk += input.clk;
     output.lr_g += input.lr_g;
@@ -126,7 +126,7 @@ class HeterCommKernel {
   template <typename StreamType>
   void merge_gradient(const uint32_t* offset, const uint32_t* fea_num,
                       const uint32_t* index, const char* input, char* output,
-                      int n, size_t grad_value_size, CustomGradMerger& merger_,
+                      int n, size_t grad_value_size, DynamicGradMerger& merger_,
                       const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>

@@ -487,7 +487,7 @@ void AddLinkToCinnOp(const GraphNodeSet& cluster_inputs,
 void AddCinnOpToGraph(const GraphNodeSet& cluster,
                       const GraphNodeSet& cluster_inputs,
                       const GraphNodeSet& cluster_outputs,
-                      const std::string& compilation_key,
+                      int64_t compilation_key,
                       const std::unordered_set<std::string>& deny_var_set,
                       Graph* graph) {
   // Add the cinn launch op
@@ -511,7 +511,7 @@ void AddCinnOpToGraph(const GraphNodeSet& cluster,
                        ExtractOpRole(cluster));
   cinn_op_desc.Flush();
   auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
-  // Add new links from or to the the cinn launch op node
+  // Add new links from or to the cinn launch op node
   AddLinkToCinnOp(cluster_inputs, cluster_outputs, cinn_op_node);
 
   VLOG(4) << "Add op [" << kCinnLaunchOp << "] into graph.";
@@ -536,7 +536,7 @@ void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
 void ReplaceSubGraphWithCinnOpNode(
     const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs,
     const GraphNodeSet& cluster_outputs, const GraphNodeSet& cluster_internals,
-    const std::string& compilation_key,
+    int64_t compilation_key,
     const std::unordered_set<std::string>& deny_var_set, Graph* graph) {
   // Add the cinn op node whose name is "kCinnLaunchOp" into graph
   AddCinnOpToGraph(cluster, cluster_inputs, cluster_outputs, compilation_key,
@@ -613,7 +613,7 @@ void SearchAllSubgraphs(Graph* graph) {
 
     // Create a new subgraph according to the found cluster and
     // save it in CinnCompiler
-    std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
+    auto compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
         cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
     VLOG(4) << "Compilation Key:\n"
             << cinn_compiler->ReadableKey(compilation_key);

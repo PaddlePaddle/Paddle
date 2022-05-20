@@ -352,34 +352,16 @@ class PSGPUWrapper {
     }
     SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
     auto slots_vec = dataset->GetSlots();
-    auto multi_slot_desc = dataset_->GetDataFeedDesc().multi_slot_desc();
-    std::vector<std::string> slots_vec_test;
-    for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
-      const auto& slot = multi_slot_desc.slots(i);
-      // VLOG(0) << "yxfslotname: " << slot.name();
-      if (slot.type() == "uint64" || slot.type() == "uint32") {
-        slots_vec_test.push_back(slot.name());
-      }
-    }
-    std::cout << "yxf wrapper use slots: ";
-    for (auto s : slots_vec_test) {
-      std::cout << s << " | ";
-    }
-    std::cout << " end wrapper " << std::endl;
-
-    VLOG(0) << "get slot desc";
-
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
       for (size_t i = 0; i < slots_vec.size(); ++i) {
         if (std::to_string(slot) == slots_vec[i]) {
-          // VLOG(0) << "yxf slot: " << slot;
           slot_offset_vector_.push_back(i);
           break;
         }
       }
     }
-    std::cout << "yxf1111set: ";
+    std::cout << "psgpu wrapper use slots: ";
     for (auto s : slot_offset_vector_) {
       std::cout << s << " | ";
     }
