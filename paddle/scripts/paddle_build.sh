@@ -344,6 +344,7 @@ function abort(){
 }
 
 function check_style() {
+    set +x
     trap 'abort' 0
     set -e
 
@@ -368,7 +369,7 @@ function check_style() {
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
-    done 
+    done
 
     export PATH=${OLD_PATH}
     
@@ -378,6 +379,7 @@ function check_style() {
         exit 4
     fi
     trap : 0
+    set -x 
 }
 
 #=================================================
@@ -981,9 +983,6 @@ function generate_upstream_develop_api_spec() {
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
 
     cd ${PADDLE_ROOT}
     git checkout .
@@ -995,6 +994,9 @@ function generate_upstream_develop_api_spec() {
     if [ "$url_return" == '200' ];then
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         cmake_gen $1
         build $2
     fi
@@ -3063,6 +3065,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
+        set +x
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
@@ -3074,6 +3077,7 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)
