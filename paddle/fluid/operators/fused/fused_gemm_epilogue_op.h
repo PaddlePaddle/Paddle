@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 DECLARE_int64(cublaslt_exhaustive_search_times);
@@ -76,12 +77,13 @@ class GemmEpilogueAlgoCache {
               &workspace_size, sizeof(workspace_size)));
 
       int returned_results = 0;
-      cublasLtMatmulHeuristicResult_t heuristic_results[requested_algo_count_] =
-          {0};
+      std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
+          requested_algo_count_);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulAlgoGetHeuristic(
               lt_handle, op_desc, a_desc, b_desc, c_desc, c_desc, preference,
-              requested_algo_count_, heuristic_results, &returned_results));
+              requested_algo_count_, heuristic_results.data(),
+              &returned_results));
 
       PADDLE_ENFORCE_GT(
           returned_results, 0,

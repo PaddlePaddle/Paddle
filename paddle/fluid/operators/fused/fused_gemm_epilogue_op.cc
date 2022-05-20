@@ -349,11 +349,38 @@ X with shape [d0, d1, d2, d3] -> X_2D with shape [d0*d1*d2, d3]
   }
 };
 
+template <typename T>
+class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    const auto& act_type = this->template Attr<std::string>("activation");
+    PADDLE_ENFORCE_EQ(act_type, "none", phi::errors::InvalidArgument(
+                                            "The activation should be none."));
+
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->OutputGrad("Out"));
+
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DY", this->InputGrad("Y"));
+    op->SetOutput("DBias", this->InputGrad("Bias"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_gemm_epilogue, ops::FusedGemmEpilogueOp,
-                  ops::FusedGemmEpilogueOpMaker)
+REGISTER_OPERATOR(
+    fused_gemm_epilogue, ops::FusedGemmEpilogueOp,
+    ops::FusedGemmEpilogueOpMaker,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gemm_epilogue_grad, ops::FusedGemmEpilogueGradOp,
-                  ops::FusedGemmEpilogueGradOpMaker)
+                  ops::FusedGemmEpilogueGradOpMaker);

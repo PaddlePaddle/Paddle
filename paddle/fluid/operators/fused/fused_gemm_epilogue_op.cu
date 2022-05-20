@@ -50,6 +50,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     auto x_mat_dims =
         phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+    // (M * K) * (K * N)
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
@@ -133,7 +134,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024 * 1024;
-    const cublasLtMatmulAlgo_t* algo = nullptr;
     cudaStream_t stream = dev_ctx.stream();
     memory::allocation::AllocationPtr workspace =
         memory::Alloc(dev_ctx, workspace_size);
@@ -158,7 +158,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
         lt_handle, operation_desc, alpha, y_data, y_desc, x_data, x_desc, beta,
-        out_data, out_desc, out_data, out_desc, &algo, workspace->ptr(),
+        out_data, out_desc, out_data, out_desc, nullptr, workspace->ptr(),
         workspace_size, stream));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -220,9 +220,12 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     auto x_mat_dims =
         phi::flatten_to_2d(x->dims(), transpose_x ? 1 : x->dims().size() - 1);
 
+    // (M * K) * (K * N)
     int64_t M = transpose_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = transpose_y ? y->dims()[1] : y->dims()[0];
     int64_t N = transpose_y ? y->dims()[0] : y->dims()[1];
+
+    VLOG(10) << "M = " << M << " , K = " << K << " , N = " << N;
 
     cudaDataType_t mat_type = CUDA_R_32F;
     cudaDataType_t scale_type = CUDA_R_32F;
@@ -346,7 +349,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
           lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
           dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
-          &algo, dx_workspace->ptr(), workspace_size, stream));
+          nullptr, dx_workspace->ptr(), workspace_size, stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescDestroy(dx_operation_desc));
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -401,10 +404,16 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 sizeof(trans_x)));
       }
 
-      cublasLtEpilogue_t epiloque_func_for_dy =
-          dbias == nullptr ? CUBLASLT_EPILOGUE_DEFAULT
-                           : (transpose_y ? CUBLASLT_EPILOGUE_BGRADB
-                                          : CUBLASLT_EPILOGUE_BGRADA);
+      cublasLtEpilogue_t epiloque_func_for_dy;
+      if (dbias == nullptr) {
+        epiloque_func_for_dy = CUBLASLT_EPILOGUE_DEFAULT;
+      } else {
+        if (transpose_y) {
+          epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADB;
+        } else {
+          epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADA;
+        }
+      }
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
@@ -412,8 +421,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
               &epiloque_func_for_dy, sizeof(epiloque_func_for_dy)));
 
       if (dbias) {
-        dbias->mutable_data<T>(ctx.GetPlace());
-        auto* dbias_data = dbias->data<T>();
+        auto* dbias_data = dbias->mutable_data<T>(ctx.GetPlace());
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dy_operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER,
@@ -437,8 +445,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       memory::allocation::AllocationPtr dy_workspace =
           memory::Alloc(dev_ctx, workspace_size);
 
-      dy->mutable_data<T>(ctx.GetPlace());
-      auto* dy_data = dy->data<T>();
+      auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
       const auto* dout_data = dout->data<T>();
       const auto* x_data = x->data<T>();
 
@@ -449,7 +456,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
           lt_handle, dy_operation_desc, alpha, dout_data, dout_desc, x_data,
-          x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, &algo,
+          x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, nullptr,
           dy_workspace->ptr(), workspace_size, stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescDestroy(dy_operation_desc));

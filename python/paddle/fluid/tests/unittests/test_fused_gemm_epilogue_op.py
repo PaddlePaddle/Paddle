@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 
 def gelu(x):
@@ -43,10 +43,15 @@ def get_output(X, Y, bias, act):
         return out
 
 
+@skip_check_inplace_ci(reason="no inplace op")
+class TestFuseGemmBase(OpTest):
+    pass
+
+
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -95,7 +100,7 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -144,7 +149,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -193,7 +198,7 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -242,7 +247,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -294,7 +299,7 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -346,7 +351,7 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
+class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -397,7 +402,7 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):
+class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
