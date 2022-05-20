@@ -34,17 +34,6 @@ class ParamsQuantizationMkldnnPass : public FusePassBase {
 
   void Conv(Graph* graph) const;
 
-  void QuantizeConvFilter(Scope* scope, ir::Graph* g, ir::Node* conv_op,
-                          ir::Node* conv_filter, const LoDTensor& weights,
-                          int64_t scale_count) const;
-
-  void QuantizeConvBias(Scope* scope, ir::Graph* g, ir::Node* conv_op,
-                        int64_t scale_count) const;
-
-  VarDesc CreatePersistableVarDesc(const std::string& name,
-                                   const proto::VarType_Type& type,
-                                   const std::vector<int64_t>& shape) const;
-
  private:
   const std::string name_scope = "params_quantization_mkldnn_pass";
 };

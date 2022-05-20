@@ -29,9 +29,6 @@ struct Data {
 
   Data(std::vector<int64_t>&& data_shape, std::vector<float>&& raw_data)
       : shape(std::move(data_shape)), data(std::move(raw_data)) {
-    PADDLE_ENFORCE_EQ(shape.size(), 4, platform::errors::InvalidArgument(
-                                           "Expected 4 dimensions"));
-
     auto size_from_shape = std::accumulate(shape.begin(), shape.end(), 1,
                                            std::multiplies<int64_t>());
     PADDLE_ENFORCE_EQ(
@@ -253,14 +250,14 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o2i2h2w) {
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
-      Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericInput(), Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
   RunPassTest(std::move(program));
 }
@@ -293,9 +290,9 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
-      Data({4, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
       GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
-      Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       std::vector<float>{2.f, 2.f, 4.f, 4.f});
   RunPassTest(std::move(program));
 }

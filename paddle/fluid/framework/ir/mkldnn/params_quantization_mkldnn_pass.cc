@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"
-
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -61,14 +60,13 @@ bool HasBias(ir::Node* conv_op) {
 }
 
 int64_t GetScaleCount(ir::Node* conv_op, ir::Node* conv_filter) {
-  std::vector<int64_t> weights_tz = conv_filter->Var()->GetShape();
+  auto weights_tz = conv_filter->Var()->GetShape();
   const int groups = std::max(conv_op->Op()->GetAttrIfExists<int>("groups"), 1);
-  platform::GetGroupConvWeightsTz(weights_tz, groups);
 
-  const auto& scale_weights_data =
+  const auto& scale_weights =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
 
-  bool is_multi_channel = scale_weights_data.size() > 1;
+  bool is_multi_channel = scale_weights.size() > 1;
 
   int64_t scale_count = 1;
   if (is_multi_channel) {
@@ -80,7 +78,86 @@ int64_t GetScaleCount(ir::Node* conv_op, ir::Node* conv_filter) {
   return scale_count;
 }
 
-};  // namespace
+bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
+  if (!platform::HasOpINT8DataType(conv_op->Op())) {
+    return true;
+  }
+
+  auto filter_var = scope->FindVar(conv_filter->Name());
+  auto filter_v = conv_filter->Var();
+  if (filter_var == nullptr || filter_v == nullptr ||
+      filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+    VLOG(4) << "Skipping convolution (id: " << conv_op->id()
+            << ") because it's a bug that it is detected again.";
+    return true;
+  }
+
+  VLOG(4) << "Not skipping convolution (id: " << conv_op->id() << ")";
+  return false;
+}
+
+VarDesc CreatePersistableVarDesc(const std::string& name,
+                                 const proto::VarType_Type& type,
+                                 const std::vector<int64_t>& shape) {
+  VarDesc var_desc(name);
+  var_desc.SetShape(shape);
+  var_desc.SetDataType(type);
+  var_desc.SetPersistable(true);
+  return var_desc;
+}
+
+void QuantizeConvFilter(Scope* scope, ir::Graph* g,
+                        const std::string& name_scope, ir::Node* conv_op,
+                        ir::Node* conv_filter, int64_t scale_count) {
+  VarDesc int_weights_desc = CreatePersistableVarDesc(
+      patterns::PDNodeName(name_scope, "conv2d_int8_weights"),
+      proto::VarType_Type::VarType_Type_INT8, conv_filter->Var()->GetShape());
+
+  ir::Node* int_weights_node = g->CreateVarNode(&int_weights_desc);
+  auto* int_weights_tensor =
+      scope->Var(int_weights_node->Name())->GetMutable<LoDTensor>();
+
+  const auto& scale_weights =
+      conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
+  PADDLE_ENFORCE_EQ(scale_count, scale_weights.size());
+  QuantizeParams<int8_t>(scope->FindVar(conv_filter->Name())->Get<LoDTensor>(),
+                         int_weights_tensor, scale_weights);
+
+  ConnectNode(conv_op, "Filter", int_weights_node);
+  scope->EraseVars({conv_filter->Name()});
+  GraphSafeRemoveNodes(g, {conv_filter});
+
+  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
+}
+
+void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
+                      ir::Node* conv_op, int64_t scale_count) {
+  std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
+  auto bias = scope->FindVar(conv_bias_name)->GetMutable<LoDTensor>();
+  PADDLE_ENFORCE_EQ(scale_count, bias->numel());
+
+  VarDesc int_biases_desc = CreatePersistableVarDesc(
+      patterns::PDNodeName(name_scope, "conv2d_int32_biases"),
+      proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias->dims()));
+
+  ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
+  auto* int_biases_tensor =
+      scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
+
+  const auto& scale_bias_data =
+      conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
+
+  PADDLE_ENFORCE_EQ(scale_count, scale_bias_data.size());
+  QuantizeParams<int32_t>(*bias, int_biases_tensor, scale_bias_data);
+
+  conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
+
+  ConnectNode(conv_op, "Bias", int_biases_node);
+  scope->EraseVars({conv_bias_name});
+  GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
+}
+
+}  // namespace
 
 ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
   AddOpCompat(OpCompat("conv2d"))
@@ -138,32 +215,24 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
     VLOG(4) << "handle convolution in params_quantization_mkldnn_pass";
 
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
-
-    if (!platform::HasOpINT8DataType(conv_op->Op())) {
-      return;
-    }
-
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
-
-    auto scale_count = GetScaleCount(conv_op, conv_filter);
 
     // get scope to interact with tensors
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    auto weights = scope->FindVar(conv_filter->Name())->Get<LoDTensor>();
-    if (weights.dtype() != phi::DataType::FLOAT32) {
-      VLOG(4) << "Skipping convolution (id: " << conv_op->id()
-              << ") because it's a bug that it is detected again.";
+    if (ShouldSkipConv(conv_op, scope, conv_filter)) {
       return;
     }
 
-    QuantizeConvFilter(scope, g, conv_op, conv_filter, weights, scale_count);
+    auto scale_count = GetScaleCount(conv_op, conv_filter);
+
+    QuantizeConvFilter(scope, g, name_scope, conv_op, conv_filter, scale_count);
 
     if (HasBias(conv_op)) {
-      QuantizeConvBias(scope, g, conv_op, scale_count);
+      QuantizeConvBias(scope, g, name_scope, conv_op, scale_count);
     }
     params_to_int8_conv_found++;
   };
@@ -171,70 +240,9 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
   AddStatis(params_to_int8_conv_found);
 
   std::stringstream msg_ss;
-  msg_ss << "Quantized weights of " << params_to_int8_conv_found
+  msg_ss << "Quantized params of " << params_to_int8_conv_found
          << " conv2d ops";
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
-}
-
-void ParamsQuantizationMkldnnPass::QuantizeConvFilter(
-    Scope* scope, ir::Graph* g, ir::Node* conv_op, ir::Node* conv_filter,
-    const LoDTensor& weights, int64_t scale_count) const {
-  VarDesc int_weights_desc = CreatePersistableVarDesc(
-      "conv2d_int8_weights", proto::VarType_Type::VarType_Type_INT8,
-      conv_filter->Var()->GetShape());
-
-  ir::Node* int_weights_node = g->CreateVarNode(&int_weights_desc);
-  auto* int_weights_tensor =
-      scope->Var(int_weights_node->Name())->GetMutable<LoDTensor>();
-
-  const auto& scale_weights_data =
-      conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
-  PADDLE_ENFORCE_EQ(scale_count, scale_weights_data.size());
-  QuantizeParams<int8_t>(weights, int_weights_tensor, scale_weights_data);
-
-  ConnectNode(conv_op, "Filter", int_weights_node);
-  scope->EraseVars({conv_filter->Name()});
-  GraphSafeRemoveNodes(g, {conv_filter});
-
-  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
-}
-
-void ParamsQuantizationMkldnnPass::QuantizeConvBias(Scope* scope, ir::Graph* g,
-                                                    ir::Node* conv_op,
-                                                    int64_t scale_count) const {
-  std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
-  auto bias = scope->FindVar(conv_bias_name)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(scale_count, bias->numel());
-
-  VarDesc int_biases_desc = CreatePersistableVarDesc(
-      "conv2d_int32_biases", proto::VarType::Type::VarType_Type_INT32,
-      phi::vectorize(bias->dims()));
-
-  ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
-  auto* int_biases_tensor =
-      scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
-
-  const auto& scale_bias_data =
-      conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
-
-  PADDLE_ENFORCE_EQ(scale_count, scale_bias_data.size());
-  QuantizeParams<int32_t>(*bias, int_biases_tensor, scale_bias_data);
-
-  conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
-
-  ConnectNode(conv_op, "Bias", int_biases_node);
-  scope->EraseVars({conv_bias_name});
-  GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
-}
-
-VarDesc ParamsQuantizationMkldnnPass::CreatePersistableVarDesc(
-    const std::string& name, const proto::VarType_Type& type,
-    const std::vector<int64_t>& shape) const {
-  VarDesc var_desc(patterns::PDNodeName(name_scope, "conv2d_int8_weights"));
-  var_desc.SetShape(shape);
-  var_desc.SetDataType(type);
-  var_desc.SetPersistable(true);
-  return var_desc;
 }
 
 void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
