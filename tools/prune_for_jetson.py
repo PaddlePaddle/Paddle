@@ -102,7 +102,11 @@ def prune_phi_kernels():
 
 
 def apply_patches():
-    return True
+    work_path = os.path.dirname(os.path.abspath(__file__)) + "/../"
+    ret = os.system("cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
+                    " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h " 
+                    " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path)
+    return ret == 0 
 
 
 def append_fluid_kernels():
@@ -165,11 +169,11 @@ def append_fluid_kernels():
 if __name__ == '__main__':
 
     print("================ step 1: apply patches =======================")
-    #assert(apply_patches())
+    assert(apply_patches())
     print("==============================================================\n")
 
     print("================ step 2: append fluid op/kernels==============")
-    #assert(append_fluid_kernels())
+    assert(append_fluid_kernels())
     print("==============================================================\n")
 
     print("================ step 3:prune phi kernels ====================")

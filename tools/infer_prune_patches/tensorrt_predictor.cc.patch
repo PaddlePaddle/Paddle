@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000000..e13a5ddf12
 --- /dev/null
 +++ b/paddle/fluid/inference/api/tensorrt_predictor.cc
-@@ -0,0 +1,1088 @@
+@@ -0,0 +1,1090 @@
 +// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
