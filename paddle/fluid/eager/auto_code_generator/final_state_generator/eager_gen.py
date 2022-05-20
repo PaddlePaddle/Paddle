@@ -353,7 +353,7 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = \
   bool can_be_inplaced = false;
   if ({}.initialized()) {{
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
-    if ({}.impl().use_count() == 1 || {}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get()) {{
+    if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
       can_be_inplaced = true;
     }}
   }}"""
