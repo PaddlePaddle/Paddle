@@ -737,7 +737,7 @@ def _pull_gpups_sparse(input,
         for i in range(len(inputs))
     ]
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=[size[0]], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_gpups_sparse',
         inputs={'Ids': inputs,

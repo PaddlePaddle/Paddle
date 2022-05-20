@@ -344,6 +344,7 @@ function abort(){
 }
 
 function check_style() {
+    set +x
     trap 'abort' 0
     set -e
 
@@ -368,7 +369,7 @@ function check_style() {
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
-    done 
+    done
 
     export PATH=${OLD_PATH}
     
@@ -378,6 +379,7 @@ function check_style() {
         exit 4
     fi
     trap : 0
+    set -x 
 }
 
 #=================================================
@@ -3063,6 +3065,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
+        set +x
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
@@ -3074,6 +3077,7 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)
