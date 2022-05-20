@@ -110,24 +110,23 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
                         const std::string& name_scope, ir::Node* conv_op,
                         ir::Node* conv_filter, int64_t scale_count) {
   VarDesc int_weights_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope, "conv2d_int8_weights"),
+      patterns::PDNodeName(name_scope, "conv2d_int8_filter"),
       proto::VarType_Type::VarType_Type_INT8, conv_filter->Var()->GetShape());
 
   ir::Node* int_weights_node = g->CreateVarNode(&int_weights_desc);
-  auto* int_weights_tensor =
+  auto* int_weights =
       scope->Var(int_weights_node->Name())->GetMutable<LoDTensor>();
 
-  const auto& scale_weights =
+  const auto scale_weights =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
   PADDLE_ENFORCE_EQ(scale_count, scale_weights.size());
   QuantizeParams<int8_t>(scope->FindVar(conv_filter->Name())->Get<LoDTensor>(),
-                         int_weights_tensor, scale_weights);
+                         int_weights, scale_weights);
+  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 
   ConnectNode(conv_op, "Filter", int_weights_node);
   scope->EraseVars({conv_filter->Name()});
   GraphSafeRemoveNodes(g, {conv_filter});
-
-  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 }
 
 void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
@@ -137,19 +136,16 @@ void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
   PADDLE_ENFORCE_EQ(scale_count, bias->numel());
 
   VarDesc int_biases_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope, "conv2d_int32_biases"),
+      patterns::PDNodeName(name_scope, "conv2d_int32_bias"),
       proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias->dims()));
 
   ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
-  auto* int_biases_tensor =
-      scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
+  auto* int_bias = scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
 
-  const auto& scale_bias_data =
+  const auto bias_scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
-
-  PADDLE_ENFORCE_EQ(scale_count, scale_bias_data.size());
-  QuantizeParams<int32_t>(*bias, int_biases_tensor, scale_bias_data);
-
+  PADDLE_ENFORCE_EQ(scale_count, bias_scales.size());
+  QuantizeParams<int32_t>(*bias, int_bias, bias_scales);
   conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 
   ConnectNode(conv_op, "Bias", int_biases_node);
