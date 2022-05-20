@@ -563,13 +563,12 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}
+  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
   kernel :
     func : einsum
-  backward : einsum_grad
 
 - api : elementwise_pow
   args : (Tensor x, Tensor y)

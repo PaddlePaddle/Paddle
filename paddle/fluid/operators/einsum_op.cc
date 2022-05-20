@@ -38,6 +38,9 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor), The cache of the forward transpose tensors: tA and tB.")
         .AsDuplicable()
         .AsExtra();
+    AddOutput("XShape", "(Tensor), The cache of the x_shape of: A and B.")
+        .AsDuplicable()
+        .AsExtra();
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
@@ -56,8 +59,8 @@ class EinsumGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto x_name = "Operands";
     auto x_grad_name = framework::GradVarName(x_name);
-    ctx->SetOutputsDim(x_grad_name, ctx->GetInputsDim(x_name));
-    ctx->ShareAllLoD(x_name, x_grad_name);
+    ctx->SetOutputsDim(x_grad_name, ctx->GetInputsDim("XShape"));
+    ctx->ShareAllLoD("XShape", x_grad_name);
   }
 
  protected:
@@ -76,8 +79,8 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("einsum_grad");
-    retv->SetInput("Operands", this->Input("Operands"));
     retv->SetInput("InnerCache", this->Output("InnerCache"));
+    retv->SetInput("XShape", this->Output("XShape"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("Operands"),

@@ -594,6 +594,8 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                   out);
     // Reshape Procedure
   } else if (inputs.size() == 1) {
+    (*cache[0]) = *(inputs[0]);  // ShareBuffer for backward, because backward
+                                 // we can only see cached tensor.
     auto reduce_A = PerformReduction<T, Context>(dev_ctx,
                                                  *inputs[0],
                                                  label2perms[0],
@@ -622,10 +624,11 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& inputs,
                      const std::string& equation,
                      DenseTensor* out,
-                     std::vector<DenseTensor*> cache) {
+                     std::vector<DenseTensor*> inner_cache,
+                     std::vector<DenseTensor*> xshape) {
   std::vector<char> tmp;
   EinsumKernelImpl<T, Context>(
-      dev_ctx, tmp, inputs, equation, out, cache, /*forward=*/true);
+      dev_ctx, tmp, inputs, equation, out, inner_cache, /*forward=*/true);
 }
 
 template <typename T, typename Context>
