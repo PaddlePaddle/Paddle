@@ -1815,11 +1815,12 @@ class CyclicLR(LRScheduler):
 
     According to the paper, the cyclic learning rate schedule has three build-in scale methods:
 
-    * "triangular": A basic triangular cycle without amplitude scaling.
-    * "triangular2": A basic triangular cycle that scales initial amplitude by half each cycle.
-    * "exp_range": A cycle that scales initial amplitude by half each cycle.
+    * "triangular": A basic triangular cycle without any amplitude scaling.
+    * "triangular2": A basic triangular cycle that reduce initial amplitude by half each cycle.
+    * "exp_range": A cycle that scales initial amplitude by half each cycle. Scale function defined as :math:`gamma^{iterations}`
 
     The initial amplitude is defined as max_learning_rate - base_learning_rate.
+    Also note that you should update learning rate each step.
 
     Args:
         base_learning_rate (float): Initial learning rate, which is the lower boundary in the cycle. The paper recommends
