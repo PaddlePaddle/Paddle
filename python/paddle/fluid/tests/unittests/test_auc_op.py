@@ -70,8 +70,8 @@ class TestAucOpIgnoreIllegalLabel(OpTest):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
-        labels[8, 0] = -1
-        labels[18, 0] = 2
+        labels[64:] = -1
+        labels[100:] = 2
         num_thresholds = 200
         slide_steps = 1
 
@@ -96,7 +96,7 @@ class TestAucOpIgnoreIllegalLabel(OpTest):
         python_auc = metrics.Auc(name="auc",
                                  curve='ROC',
                                  num_thresholds=num_thresholds)
-        python_auc.update(pred, labels)
+        python_auc.update(pred[:64], labels[:64])
 
         pos = python_auc._stat_pos * 2
         pos.append(1)

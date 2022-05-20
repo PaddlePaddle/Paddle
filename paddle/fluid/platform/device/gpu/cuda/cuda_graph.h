@@ -103,11 +103,12 @@ class CUDAGraph {
 
   static bool IsThreadLocalCapturing() {
 #if CUDA_VERSION >= 10010
-    return IsCapturing() &&
-           capture_mode_ == cudaStreamCaptureModeThreadLocal;
-#else
-    return false;
+    if (IsCapturing()) {
+      std::atomic_thread_fence(std::memory_order_acquire);
+      return capture_mode_ == cudaStreamCaptureModeThreadLocal;
+    }
 #endif
+    return false;
   }
 
   static bool IsThisThreadCapturing() {

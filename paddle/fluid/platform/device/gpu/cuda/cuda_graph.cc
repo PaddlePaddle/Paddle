@@ -88,20 +88,20 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
       stream, errors::PermissionDenied(
                   "CUDA Graph cannot be captured in default CUDA stream 0."));
   capture_mode_ = mode;
-  // While mode is cudaStreamCaptureModeThreadLocal, other thread may 
-  // be running Alloc at the same time.
-  // To make sure other thread call IsThisThreadCapturing() is false,
-  // this thread_fence is necessary. That mean when IsCapturing() is true,
-  // the capture_mode_ it will get is always cudaStreamCaptureModeThreadLocal.
-  std::atomic_thread_fence(std::memory_order_release);
-  capturing_graph_.reset(new CUDAGraph());
-  capturing_graph_->place_ = place;
-  capturing_graph_->stream_ = stream;
   if (mode == cudaStreamCaptureModeThreadLocal) {
     capturing_thread_id_ = std::this_thread::get_id();
     VLOG(10) << "Capturing CUDA Graph in thread local mode, thread id: "
              << capturing_thread_id_;
   }
+  // While mode is cudaStreamCaptureModeThreadLocal, other thread may 
+  // be running Alloc at the same time.
+  // To make sure other thread call IsThisThreadCapturing() is false,
+  // this thread_fence is necessary. That means when IsCapturing() is true,
+  // the capture_mode_ it will get is always cudaStreamCaptureModeThreadLocal.
+  std::atomic_thread_fence(std::memory_order_release);
+  capturing_graph_.reset(new CUDAGraph());
+  capturing_graph_->place_ = place;
+  capturing_graph_->stream_ = stream;
   BeginSegmentCapture();
 #endif
 }

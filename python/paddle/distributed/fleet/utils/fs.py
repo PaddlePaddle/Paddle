@@ -1377,35 +1377,20 @@ class AFSClient(FS):
                 client.download("hdfs:/test_hdfs_client", "./")
         """
 
-        def __subprocess_download(local_path, datas):
-            """
-            download file from HDFS
-            Args:
-                local_path(str): the local file path
-                datas(str): the hdfs file path list
-            """
-            for data in datas:
-                self._fs.download(local_path, data)
-
         if not self.is_exist(fs_path):
             raise FSFileNotExistsError("{} not exits".format(fs_path))
         # download file
         if self.is_file(fs_path):
             return self._fs.download(local_path, fs_path)
+        if not os.path.exists(local_path):
+            os.mkdir(local_path)
+        elif not os.path.isdir(local_path):
+            raise FSFileNotExistsError("{} is not dir".format(local_path))
         # download dir
         _, all_filenames = self.ls_dir(fs_path)
-        all_files = [fs_path + i for i in all_filenames]
-        procs = []
-        for i in range(multi_processes):
-            process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas))
-            procs.append(p)
-            p.start()
-
-        # complete the processes
-        for proc in procs:
-            proc.join()
+        for file_name in all_filenames:
+            local_file_name = os.path.join(local_path, os.path.split(file_name)[1])
+            self._fs.download(local_file_name, file_name)
 
     def mkdirs(self, fs_path):
         """

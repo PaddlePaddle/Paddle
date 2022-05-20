@@ -529,6 +529,8 @@ class FleetUtil(object):
                 last_dict = json.loads(pre_content.split("\n")[-1])
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
+                if last_pass == 'base':
+                    last_pass = '0'
                 exist = False
                 if int(day) < int(last_day) or \
                         int(day) == int(last_day) and \
@@ -2066,7 +2068,8 @@ class GPUPSUtil(FleetUtil):
                 last_dict = json.loads(pre_content.strip().split("\n")[-1])
                 last_day = last_dict["input"].split("/")[-3]
                 last_pass = last_dict["input"].split("/")[-2].split("-")[-1]
-
+                if last_pass == 'base':
+                    last_pass = '0'
                 os.remove(donefile_name)
                 self.rank0_info("remove %s succeed" % (donefile_name))
                 exist = False
