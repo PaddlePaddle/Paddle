@@ -65,7 +65,7 @@ set +x
 
         if [[ "$is_exclusive" != "" ]]; then
             if [[ $(echo $all_mem0_uts | grep -o "\^$testcase\\$") != "" ]]; then
-                exclusive_mem_0_uts="$exclusive_mem0_ut|^$testcase$"
+                exclusive_mem_0_uts="$exclusive_mem_0_uts|^$testcase$"
             fi
             all_exclusive_uts="$all_exclusive_uts|^$testcase$"
         elif [[ "$is_multicard" != "" ]]; then
@@ -94,23 +94,23 @@ set -x
     echo $exclusive_mem_0_uts 
     echo $exclusive_mem_0_uts > /zhangbo/ut_logic/exclusive_mem_0_uts.txt
 
-    echo 'multiple_card_mem_0_uts: ' 
+    echo 'multiple_card_mem_0_uts:' 
     echo $multiple_card_mem_0_uts 
     echo $multiple_card_mem_0_uts > /zhangbo/ut_logic/multiple_card_mem_0_uts.txt
 
-    echo 'all_exclusive_uts: ' 
+    echo 'all_exclusive_uts:' 
     echo $all_exclusive_uts 
     echo $all_exclusive_uts > /zhangbo/ut_logic/all_exclusive_uts.txt
 
-    echo 'all_multiple_card_uts: ' 
+    echo 'all_multiple_card_uts:' 
     echo $all_multiple_card_uts 
     echo $all_multiple_card_uts > /zhangbo/ut_logic/all_multiple_card_uts.txt
 
-    single_ut_startTime_s=`date +%s`
-    card_test "$parallel_mem_0_uts" 1 16            # run cases 24 job each time with single GPU
-    single_ut_endTime_s=`date +%s`
+    # single_ut_startTime_s=`date +%s`
+    # card_test "$parallel_mem_0_uts" 1 16            # run cases 24 job each time with single GPU
+    # single_ut_endTime_s=`date +%s`
 
-    echo "parallel_mem_0_uts: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+    # echo "parallel_mem_0_uts: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
     
     
 }
