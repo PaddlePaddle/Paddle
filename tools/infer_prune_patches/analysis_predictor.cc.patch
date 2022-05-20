@@ -1,5 +1,5 @@
 diff --git a/paddle/fluid/inference/api/analysis_predictor.cc b/paddle/fluid/inference/api/analysis_predictor.cc
-index 0d3a687c46..f73c64eee0 100644
+index 09a5bbddba..569435b43c 100644
 --- a/paddle/fluid/inference/api/analysis_predictor.cc
 +++ b/paddle/fluid/inference/api/analysis_predictor.cc
 @@ -1024,6 +1024,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
@@ -34,7 +34,7 @@ index 0d3a687c46..f73c64eee0 100644
  
  }  // namespace paddle
  
-@@ -1763,7 +1767,7 @@ USE_TRT_CONVERTER(shuffle_channel);
+@@ -1769,7 +1773,7 @@ USE_TRT_CONVERTER(shuffle_channel);
  USE_TRT_CONVERTER(swish);
  USE_TRT_CONVERTER(group_norm);
  USE_TRT_CONVERTER(instance_norm);
@@ -43,13 +43,15 @@ index 0d3a687c46..f73c64eee0 100644
  USE_TRT_CONVERTER(gelu);
  USE_TRT_CONVERTER(multihead_matmul);
  USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
-@@ -1773,11 +1777,11 @@ USE_TRT_CONVERTER(scale);
+@@ -1779,13 +1783,13 @@ USE_TRT_CONVERTER(scale);
  USE_TRT_CONVERTER(stack);
  USE_TRT_CONVERTER(clip);
  USE_TRT_CONVERTER(gather);
 -USE_TRT_CONVERTER(anchor_generator);
 +//USE_TRT_CONVERTER(anchor_generator);
  USE_TRT_CONVERTER(yolo_box);
+ USE_TRT_CONVERTER(yolo_box_head);
+ USE_TRT_CONVERTER(arg_max);
 -USE_TRT_CONVERTER(roi_align);
 -USE_TRT_CONVERTER(affine_channel);
 -USE_TRT_CONVERTER(multiclass_nms);
