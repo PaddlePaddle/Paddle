@@ -90,7 +90,10 @@ def mean(x, axis=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         if reduce_all:
-            axis = range(len(x.shape))
+            if isinstance(x, tuple):
+                axis = range(len(x))
+            else:
+                axis = range(len(x.shape))
         return _C_ops.final_state_mean(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
