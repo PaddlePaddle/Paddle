@@ -101,8 +101,11 @@ def monkey_patch_varbase():
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
+        param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
+            for key in param_keys:
+                attr_kwargs[key] = getattr(self, key)
         else:
             attr_names = []
             for name in dir(self):
