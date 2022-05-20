@@ -42,7 +42,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         for num_input in [0, 1]:
             for dims in [1, 2, 3, 4]:
                 for batch in [1, 2]:
-                    for scale in [0.1, 1.0]:
+                    for scale in [0.1, -1.0]:
                         for bias in [0.0, 1.2]:
                             for bias_after_scale in [False, True]:
                                 self.num_input = num_input

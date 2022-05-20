@@ -13,6 +13,15 @@
 
 #pragma once
 
+// gcc >= 9 has a bug that creates a false positive warning.
+// Reference:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92145
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89381
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+
 /*
    variant synopsis
 
@@ -2828,3 +2837,7 @@ struct hash<paddle::monostate> {
 };
 
 }  // namespace std
+
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif

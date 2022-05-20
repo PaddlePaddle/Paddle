@@ -277,7 +277,7 @@ void InterpreterCore::Convert(
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    // checkout ouput
+    // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
       for (auto var_id : item.second) {
         if (input_var2op_info_.at(var_id).size() == 0) {

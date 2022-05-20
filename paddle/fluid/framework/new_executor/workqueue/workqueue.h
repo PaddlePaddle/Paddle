@@ -89,7 +89,7 @@ struct WorkQueueOptions {
   // If you need to blocking the calling  thread to wait "queue empty", set
   // track_task = true and set events_waiter. EventsWaiter::WaitEvent will
   // block the calling thread until any of events (including "queue empty")
-  // occured.
+  // occurred.
   bool track_task;
   // If you need to be noticed when a WorkQueue Destruct() , set detached =
   // false and set events_waiter.

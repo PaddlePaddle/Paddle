@@ -69,10 +69,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
   kernel_context.EmplaceBackAttr(bias);
   kernel_context.EmplaceBackAttr(bias_after_scale);
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(kernel_backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());
@@ -236,10 +233,7 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
 
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(kernel_backend)),
-      phi::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>();
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 

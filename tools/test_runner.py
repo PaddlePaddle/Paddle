@@ -32,6 +32,7 @@ def main():
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
         if (os.getenv('FLAGS_enable_gpu_memory_usage_log') == None):
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
+            os.environ['FLAGS_enable_gpu_memory_usage_log_mb'] = 'false'
 
     some_test_failed = False
     for module_name in sys.argv[1:]:

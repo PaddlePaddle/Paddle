@@ -21,8 +21,7 @@ import paddle.static as static
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
-_enable_legacy_dygraph()
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -64,7 +63,7 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
 
-    def test_func_double_grad_dynamic(self):
+    def func_double_grad_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -84,6 +83,11 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                     np.allclose(dout, pd_dout),
                     "custom op out grad: {},\n paddle api out grad: {}".format(
                         dout, pd_dout))
+
+    def test_func_double_grad_dynamic(self):
+        with _test_eager_guard():
+            self.func_double_grad_dynamic()
+        self.func_double_grad_dynamic()
 
 
 if __name__ == "__main__":

@@ -36,6 +36,11 @@
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
+static std::string LegalizeVarName(const std::string& var_name) {
+  std::string ret = var_name;
+  std::replace(ret.begin(), ret.end(), '@', '_');  // replace all '-' to '_'
+  return ret;
+}
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
@@ -185,18 +190,19 @@ std::string GenerateOpFunctionsBody(
       continue;
     }
     const auto in_type = input.duplicable() ? IN_VAR_LIST_TYPE : IN_VAR_TYPE;
-    auto input_arg =
-        paddle::string::Sprintf(ARG_TEMPLATE, in_type, TempName(in_name));
+    auto input_arg = paddle::string::Sprintf(
+        ARG_TEMPLATE, in_type, TempName(LegalizeVarName(in_name)));
     input_args += input_arg;
     input_args += ",";
     input_args_num++;
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
-                                            in_name, arg_idx++, dispensable);
+    ins_cast_str +=
+        paddle::string::Sprintf(in_cast_type, LegalizeVarName(in_name), op_type,
+                                in_name, arg_idx++, dispensable);
 
-    call_api_str += in_name + ", ";
+    call_api_str += LegalizeVarName(in_name) + ", ";
   }
 
   if (!input_args.empty() && input_args.back() == ',') {
@@ -224,7 +230,7 @@ std::string GenerateOpFunctionsBody(
         input_args += ",";
       }
       input_args += out_type;
-      input_args += out_name;
+      input_args += LegalizeVarName(out_name);
       input_args_num++;
 
       if (output.dispensable()) {
@@ -237,18 +243,19 @@ std::string GenerateOpFunctionsBody(
         const auto out_template = output.duplicable()
                                       ? INPUT_LIST_INITIALIZER_TEMPLATE
                                       : INPUT_INITIALIZER_TEMPLATE;
-        outs_initializer +=
-            paddle::string::Sprintf(out_template, out_name, out_name);
+        outs_initializer += paddle::string::Sprintf(out_template, out_name,
+                                                    LegalizeVarName(out_name));
         outs_initializer += ",";
       }
 
       const auto in_cast_type = output.duplicable() ? CAST_VAR_PTR_LIST_TEMPLATE
                                                     : CAST_VAR_PTR_TEMPLATE;
       auto dispensable = output.dispensable() ? "true" : "false";
-      ins_cast_str += paddle::string::Sprintf(in_cast_type, out_name, op_type,
-                                              out_name, arg_idx++, dispensable);
+      ins_cast_str +=
+          paddle::string::Sprintf(in_cast_type, LegalizeVarName(out_name),
+                                  op_type, out_name, arg_idx++, dispensable);
 
-      call_api_str += out_name + ", ";
+      call_api_str += LegalizeVarName(out_name) + ", ";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -257,7 +264,8 @@ std::string GenerateOpFunctionsBody(
         if (input_args != "") {
           input_args += ",";
         }
-        auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+        auto out_num_str =
+            paddle::string::Sprintf(ARG_OUT_NUM, LegalizeVarName(out_name));
         input_args += ARG_OUT_NUM_TYPE;
         input_args += out_num_str;
         input_args_num++;

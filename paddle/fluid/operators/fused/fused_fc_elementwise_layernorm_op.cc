@@ -76,7 +76,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The attribute x_num_col_dims used to flatten input X to "
             "a 2-D tensor, is expected to be less than the number of "
-            "input X's dimensions. But recieved x_num_col_dims is %d, "
+            "input X's dimensions. But received x_num_col_dims is %d, "
             "the number of input X's dimensions is %d, input X's shape is %s.",
             x_num_col_dims, x_dims.size(), x_dims));
 
@@ -85,7 +85,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
         x_mat_dims[1], w_dims[0],
         platform::errors::InvalidArgument(
             "The input's second dimension and weight's first dimension is "
-            "expected to be the same. But recieved input's second dimension is "
+            "expected to be the same. But received input's second dimension is "
             "%d, input's shape is %s; weight's first dimension is %d, weight's "
             "shape is %s.",
             x_mat_dims[1], x_mat_dims, w_dims[0], w_dims));
@@ -100,7 +100,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(phi::make_ddim(fc_out_dims), y_dims,
                       platform::errors::InvalidArgument(
                           "The output's shape of fc is expected to be equal to "
-                          "that of input Y. But recieved output's shape of fc "
+                          "that of input Y. But received output's shape of fc "
                           "is %s, input Y's shape is %s.",
                           phi::make_ddim(fc_out_dims), y_dims));
 
@@ -110,7 +110,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The attribute begin_norm_axis used to flatten input Y to a 2-D "
             "tensor, is expected to be less than the number of input Y's "
-            "dimensions. But recieved begin_norm_axis is %d, the number of "
+            "dimensions. But received begin_norm_axis is %d, the number of "
             "input Y's dimensions is %d, input Y's shape is %s.",
             begin_norm_axis, y_dims.size(), y_dims));
 
@@ -122,7 +122,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(scale_dims.size(), 1,
                         platform::errors::InvalidArgument(
                             "The input Scale is expected to be an 1-D tensor. "
-                            "But recieved the number of input Scale's "
+                            "But received the number of input Scale's "
                             "dimensions is %d, input Scale's shape is %s.",
                             scale_dims.size(), scale_dims));
 
@@ -132,7 +132,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "The first dimension of input Scale is expected to be equal to "
                 "the second dimension of input Y after flattened. "
-                "But recieved the first dimension of input Scale is %d, input "
+                "But received the first dimension of input Scale is %d, input "
                 "Scale's shape is %s; the second dimension of flattened input "
                 "Y is %d, input Y's shape is %s, flattened axis is %d.",
                 scale_dims[0], scale_dims, dim_1, y_dims, begin_norm_axis));
@@ -144,7 +144,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
           bias1_dims.size(), 1,
           platform::errors::InvalidArgument(
               "The input Bias1 is expected to be an 1-D tensor. "
-              "But recieved the number of input Bias1's dimension is %d, "
+              "But received the number of input Bias1's dimension is %d, "
               "input Bias1's shape is %s.",
               bias1_dims.size(), bias1_dims));
 
@@ -154,7 +154,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "The first dimension of input Bias1 is expected to be equal to "
                 "the second dimension of input Y after flattened. "
-                "But recieved the first dimension of input Bias1 is %d, input "
+                "But received the first dimension of input Bias1 is %d, input "
                 "Bias1's shape is %s; the second dimension of flatten input "
                 "Y is %d, input Y's shape is %s, flattened axis is %d.",
                 bias1_dims[0], bias1_dims, dim_1, y_dims, begin_norm_axis));

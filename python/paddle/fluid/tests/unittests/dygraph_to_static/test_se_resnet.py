@@ -16,6 +16,8 @@ import logging
 import math
 import time
 import unittest
+import os
+import tempfile
 import numpy as np
 
 import paddle
@@ -35,11 +37,6 @@ BATCH_SIZE = 8
 EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
-MODEL_SAVE_DIR = "./inference"
-MODEL_SAVE_PREFIX = "./inference/se_resnet"
-MODEL_FILENAME = "se_resnet" + INFER_MODEL_SUFFIX
-PARAMS_FILENAME = "se_resnet" + INFER_PARAMS_SUFFIX
-DY_STATE_DICT_SAVE_PATH = "./se_resnet.dygraph"
 
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
     else fluid.CPUPlace()
@@ -327,129 +324,6 @@ class SeResNeXt(fluid.dygraph.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
-def train(train_reader, to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
-
-    np.random.seed(SEED)
-
-    with fluid.dygraph.guard(place):
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-        se_resnext = SeResNeXt()
-        optimizer = optimizer_setting(train_parameters, se_resnext.parameters())
-
-        for epoch_id in range(EPOCH_NUM):
-            total_loss = 0.0
-            total_acc1 = 0.0
-            total_acc5 = 0.0
-            total_sample = 0
-            step_idx = 0
-            speed_list = []
-            for step_id, data in enumerate(train_reader()):
-                dy_x_data = np.array([x[0].reshape(3, 224, 224)
-                                      for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    BATCH_SIZE, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
-                label.stop_gradient = True
-
-                pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
-
-                dy_out = avg_loss.numpy()
-                avg_loss.backward()
-
-                optimizer.minimize(avg_loss)
-                se_resnext.clear_gradients()
-
-                lr = optimizer._global_learning_rate().numpy()
-                total_loss += dy_out
-                total_acc1 += acc_top1.numpy()
-                total_acc5 += acc_top5.numpy()
-                total_sample += 1
-                if step_id % PRINT_STEP == 0:
-                    if step_id == 0:
-                        logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f" % \
-                                      ( epoch_id, step_id, total_loss / total_sample, \
-                                        total_acc1 / total_sample, total_acc5 / total_sample))
-                        avg_batch_time = time.time()
-                    else:
-                        speed = PRINT_STEP / (time.time() - avg_batch_time)
-                        speed_list.append(speed)
-                        logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s" % \
-                                      ( epoch_id, step_id, total_loss / total_sample, \
-                                        total_acc1 / total_sample, total_acc5 / total_sample, speed))
-                        avg_batch_time = time.time()
-
-                step_idx += 1
-                if step_idx == STEP_NUM:
-                    if to_static:
-                        fluid.dygraph.jit.save(
-                            se_resnext,
-                            MODEL_SAVE_PREFIX, [img],
-                            output_spec=[pred])
-                    else:
-                        fluid.dygraph.save_dygraph(se_resnext.state_dict(),
-                                                   DY_STATE_DICT_SAVE_PATH)
-                    break
-        return pred.numpy(), avg_loss.numpy(), acc_top1.numpy(), acc_top5.numpy(
-        )
-
-
-def predict_dygraph(data):
-    program_translator = ProgramTranslator()
-    program_translator.enable(False)
-    with fluid.dygraph.guard(place):
-        se_resnext = SeResNeXt()
-
-        model_dict, _ = fluid.dygraph.load_dygraph(DY_STATE_DICT_SAVE_PATH)
-        se_resnext.set_dict(model_dict)
-        se_resnext.eval()
-
-        label = np.random.random([1, 1]).astype("int64")
-        img = fluid.dygraph.to_variable(data)
-        label = fluid.dygraph.to_variable(label)
-        pred_res, _, _, _ = se_resnext(img, label)
-
-        return pred_res.numpy()
-
-
-def predict_static(data):
-    paddle.enable_static()
-    exe = fluid.Executor(place)
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(
-         MODEL_SAVE_DIR,
-         executor=exe,
-         model_filename=MODEL_FILENAME,
-         params_filename=PARAMS_FILENAME)
-
-    pred_res = exe.run(inference_program,
-                       feed={feed_target_names[0]: data},
-                       fetch_list=fetch_targets)
-
-    return pred_res[0]
-
-
-def predict_dygraph_jit(data):
-    with fluid.dygraph.guard(place):
-        se_resnext = fluid.dygraph.jit.load(MODEL_SAVE_PREFIX)
-        se_resnext.eval()
-
-        pred_res = se_resnext(data)
-
-        return pred_res.numpy()
-
-
-def predict_analysis_inference(data):
-    output = PredictorTools(MODEL_SAVE_DIR, MODEL_FILENAME, PARAMS_FILENAME,
-                            [data])
-    out = output()
-    return out
-
-
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
@@ -457,13 +331,148 @@ class TestSeResnet(unittest.TestCase):
                 use_xmap=False, cycle=True),
             batch_size=BATCH_SIZE,
             drop_last=True)
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+        self.model_save_dir = os.path.join(self.temp_dir.name, "inference")
+        self.model_save_prefix = os.path.join(self.temp_dir.name,
+                                              "inference/se_resnet")
+        self.model_filename = "se_resnet" + INFER_MODEL_SUFFIX
+        self.params_filename = "se_resnet" + INFER_PARAMS_SUFFIX
+        self.dy_state_dict_save_path = os.path.join(self.temp_dir.name,
+                                                    "se_resnet.dygraph")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def train(self, train_reader, to_static):
+        program_translator = ProgramTranslator()
+        program_translator.enable(to_static)
+
+        np.random.seed(SEED)
+
+        with fluid.dygraph.guard(place):
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
+            se_resnext = SeResNeXt()
+            optimizer = optimizer_setting(train_parameters,
+                                          se_resnext.parameters())
+
+            for epoch_id in range(EPOCH_NUM):
+                total_loss = 0.0
+                total_acc1 = 0.0
+                total_acc5 = 0.0
+                total_sample = 0
+                step_idx = 0
+                speed_list = []
+                for step_id, data in enumerate(train_reader()):
+                    dy_x_data = np.array(
+                        [x[0].reshape(3, 224, 224)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(
+                            BATCH_SIZE, 1)
+
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
+                    label.stop_gradient = True
+
+                    pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
+
+                    dy_out = avg_loss.numpy()
+                    avg_loss.backward()
+
+                    optimizer.minimize(avg_loss)
+                    se_resnext.clear_gradients()
+
+                    lr = optimizer._global_learning_rate().numpy()
+                    total_loss += dy_out
+                    total_acc1 += acc_top1.numpy()
+                    total_acc5 += acc_top5.numpy()
+                    total_sample += 1
+                    if step_id % PRINT_STEP == 0:
+                        if step_id == 0:
+                            logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f" % \
+                                        ( epoch_id, step_id, total_loss / total_sample, \
+                                            total_acc1 / total_sample, total_acc5 / total_sample))
+                            avg_batch_time = time.time()
+                        else:
+                            speed = PRINT_STEP / (time.time() - avg_batch_time)
+                            speed_list.append(speed)
+                            logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s" % \
+                                        ( epoch_id, step_id, total_loss / total_sample, \
+                                            total_acc1 / total_sample, total_acc5 / total_sample, speed))
+                            avg_batch_time = time.time()
+
+                    step_idx += 1
+                    if step_idx == STEP_NUM:
+                        if to_static:
+                            fluid.dygraph.jit.save(
+                                se_resnext,
+                                self.model_save_prefix, [img],
+                                output_spec=[pred])
+                        else:
+                            fluid.dygraph.save_dygraph(
+                                se_resnext.state_dict(),
+                                self.dy_state_dict_save_path)
+                        break
+            return pred.numpy(), avg_loss.numpy(), acc_top1.numpy(
+            ), acc_top5.numpy()
+
+    def predict_dygraph(self, data):
+        program_translator = ProgramTranslator()
+        program_translator.enable(False)
+        with fluid.dygraph.guard(place):
+            se_resnext = SeResNeXt()
+
+            model_dict, _ = fluid.dygraph.load_dygraph(
+                self.dy_state_dict_save_path)
+            se_resnext.set_dict(model_dict)
+            se_resnext.eval()
+
+            label = np.random.random([1, 1]).astype("int64")
+            img = fluid.dygraph.to_variable(data)
+            label = fluid.dygraph.to_variable(label)
+            pred_res, _, _, _ = se_resnext(img, label)
+
+            return pred_res.numpy()
+
+    def predict_static(self, data):
+        paddle.enable_static()
+        exe = fluid.Executor(place)
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             self.model_save_dir,
+             executor=exe,
+             model_filename=self.model_filename,
+             params_filename=self.params_filename)
+
+        pred_res = exe.run(inference_program,
+                           feed={feed_target_names[0]: data},
+                           fetch_list=fetch_targets)
+
+        return pred_res[0]
+
+    def predict_dygraph_jit(self, data):
+        with fluid.dygraph.guard(place):
+            se_resnext = fluid.dygraph.jit.load(self.model_save_prefix)
+            se_resnext.eval()
+
+            pred_res = se_resnext(data)
+
+            return pred_res.numpy()
+
+    def predict_analysis_inference(self, data):
+        output = PredictorTools(self.model_save_dir, self.model_filename,
+                                self.params_filename, [data])
+        out = output()
+        return out
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
-        dy_pre = predict_dygraph(image)
-        st_pre = predict_static(image)
-        dy_jit_pre = predict_dygraph_jit(image)
-        predictor_pre = predict_analysis_inference(image)
+        dy_pre = self.predict_dygraph(image)
+        st_pre = self.predict_static(image)
+        dy_jit_pre = self.predict_dygraph_jit(image)
+        predictor_pre = self.predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
@@ -483,9 +492,9 @@ class TestSeResnet(unittest.TestCase):
                     flat_predictor_pre[i], flat_st_pre[i]))
 
     def test_check_result(self):
-        pred_1, loss_1, acc1_1, acc5_1 = train(
+        pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False)
-        pred_2, loss_2, acc1_2, acc5_2 = train(
+        pred_2, loss_2, acc1_2, acc5_2 = self.train(
             self.train_reader, to_static=True)
 
         self.assertTrue(

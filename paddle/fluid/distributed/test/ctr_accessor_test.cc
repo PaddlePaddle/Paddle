@@ -196,9 +196,10 @@ TEST(downpour_feature_value_accessor_test, test_update) {
         ptr[idx + j] = embedx_w[j];
       }
       idx += 8;
-      for (auto j = 0u; j < 0; ++j) {
-        ptr[idx + j] = embedx_g2sum[j];
-      }
+      //      NaiveSGD has no embedx_g2sum
+      //      for (auto j = 0u; j < 0; ++j) {
+      //        ptr[idx + j] = embedx_g2sum[j];
+      //      }
     }
   };
   struct DownpourSparsePushValueTest {
