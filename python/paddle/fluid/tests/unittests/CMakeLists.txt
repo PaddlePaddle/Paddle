@@ -185,6 +185,8 @@ endif()
 # Temporally disable test_deprecated_decorator
 LIST(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
 
+LIST(REMOVE_ITEM TEST_OPS test_tensordot)
+
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
