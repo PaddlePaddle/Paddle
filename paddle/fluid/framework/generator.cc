@@ -100,8 +100,9 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
 
 // There are 3 conditions:
 // (1) op seed is set, use op seed.
-// (2) op seed is not set, global seed is set, use op seed.
-// (3) op seed is not set, global seed is not set, use random seed.
+// (2) op seed is not set, global seed is set, use global seed.
+// (3) op seed is not set, global seed is not set too, use random seed from
+// RandomGenerator.
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   if (seed == 0) {
     VLOG(4) << "Use random engine from generator";
