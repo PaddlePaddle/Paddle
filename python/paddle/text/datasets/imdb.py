@@ -36,14 +36,14 @@ class Imdb(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         mode(str): 'train' 'test' mode. Default 'train'.
         cutoff(int): cutoff number for building word dictionary. Default 150.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
-        Dataset: instance of IMDB dataset
+        Dataset: instance of IMDB dataset.
 
     Examples:
 

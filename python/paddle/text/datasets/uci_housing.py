@@ -38,10 +38,10 @@ class UCIHousing(Dataset):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
         Dataset: instance of UCI housing dataset.

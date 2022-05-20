@@ -48,11 +48,11 @@ class WMT14(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train', 'test' or 'gen'. Default 'train'
+            :attr:`download` is True. Default None.
+        mode(str): 'train', 'test' or 'gen'. Default 'train'.
         dict_size(int): word dictionary size. Default -1.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
         Dataset: Instance of WMT14 dataset

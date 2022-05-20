@@ -62,13 +62,13 @@ class WMT16(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train', 'test' or 'val'. Default 'train'
+            :attr:`download` is True. Default None.
+        mode(str): 'train', 'test' or 'val'. Default 'train'.
         src_dict_size(int): word dictionary size for source language word. Default -1.
         trg_dict_size(int): word dictionary size for target language word. Default -1.
         lang(str): source language, 'en' or 'de'. Default 'en'.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
         Dataset: Instance of WMT16 dataset. The instance of dataset has 3 fields:

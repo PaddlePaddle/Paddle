@@ -34,16 +34,16 @@ class Imikolov(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         data_type(str): 'NGRAM' or 'SEQ'. Default 'NGRAM'.
         window_size(int): sliding window size for 'NGRAM' data. Default -1.
         mode(str): 'train' 'test' mode. Default 'train'.
         min_word_freq(int): minimal word frequence for building word dictionary. Default 50.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
-        Dataset: instance of imikolov dataset
+        Dataset: instance of imikolov dataset.
 
     Examples:
 

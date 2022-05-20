@@ -50,22 +50,22 @@ class Conll05st(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         word_dict_file(str): path to word dictionary file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         verb_dict_file(str): path to verb dictionary file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         target_dict_file(str): path to target dictionary file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None.
         emb_file(str): path to embedding dictionary file, only used for
             :code:`get_embedding` can be set None if :attr:`download` is
-            True. Default None
+            True. Default None.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` :attr:`word_dict_file` :attr:`verb_dict_file`
-            :attr:`target_dict_file` is not set. Default True
+            :attr:`target_dict_file` is not set. Default True.
 
     Returns:
-        Dataset: instance of conll05st dataset
+        Dataset: instance of conll05st dataset.
 
     Examples:
 
