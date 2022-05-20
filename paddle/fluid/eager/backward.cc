@@ -453,7 +453,6 @@ class GeneralGrad {
   std::unordered_set<GradNodeBase*> potential_startup_nodes_;
   // Record all the potential stop nodes, will be changed.
   std::unordered_set<GradNodeBase*> potential_stop_nodes_;
-  // Recode all stop nodes
   std::unordered_set<GradNodeBase*> stop_nodes_;
   std::unordered_map<GradNodeBase* /* next node */,
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
