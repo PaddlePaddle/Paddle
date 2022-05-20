@@ -1835,7 +1835,7 @@ class CyclicLR(LRScheduler):
             If not specified, it's value will initialize to `` step_size_up `` . Default: None
         mode (str, optional): one of 'triangular', 'triangular2' or 'exp_range'.
             If scale_fn is specified, this argument will be ignored. Default: 'triangular'
-        exp_gamma (float): Constant in 'exp_range' scaling function: gamma**(cycle iterations).
+        exp_gamma (float): Constant in 'exp_range' scaling function: exp_gamma**(cycle iterations).
             Used only when mode = 'exp_range'. Default: 1.0
         scale_fn (function, optional): A custom scaling function, which is used to replace three build-in methods.
             It should only have one argument. For all x >= 0, 0 <= scale_fn(x) <= 1.
