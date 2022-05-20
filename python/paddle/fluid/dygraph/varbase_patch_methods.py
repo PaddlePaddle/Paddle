@@ -904,10 +904,8 @@ def monkey_patch_varbase():
                     #[1, 2, 3, 4, 5]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_values(self)
-        elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_csr_values(self)
+        if self.is_sparse_coo() or self.is_sparse_csr():
+            return _C_ops.final_state_sparse_values(self)
         else:
             raise ValueError(
                 "only SparseCooTensor and SparseCsrTensor have method values")
