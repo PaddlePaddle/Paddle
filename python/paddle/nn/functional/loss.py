@@ -2244,7 +2244,7 @@ def soft_margin_loss(input, label,reduction='mean',
 
         input (Tensor): The input predications tensor with shape: [N, *],
             N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
-             Available dtype is float32, float64.
+             Available dtype is int32, int64, float32, float64.
 
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
@@ -2285,6 +2285,7 @@ def soft_margin_loss(input, label,reduction='mean',
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
     if _non_static_mode():
+        label = _C_ops.cast(label, 'in_dtype', label.dtype, 'out_dtype', input.dtype)
         out = _C_ops.soft_margin_loss(input, label)
         if reduction == 'sum':
             return _C_ops.reduce_sum(out, "reduce_all", True)
@@ -2296,7 +2297,9 @@ def soft_margin_loss(input, label,reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'soft_margin_loss')
     fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'soft_margin_loss')
+        label, 'label', ['int32', 'int64', 'float32', 'float64'], 'soft_margin_loss')
+
+    label = fluid.layers.cast(label, input.dtype)
 
     sub_name = name
     helper = LayerHelper("soft_margin_loss", name=sub_name)

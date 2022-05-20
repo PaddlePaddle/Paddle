@@ -1335,7 +1335,7 @@ class SoftMarginLoss(Layer):
 
         Label (Tensor): The target labels tensor with the same shape as
         ``input``. The target labels which values should be numbers -1 or 1.
-        Available dtype is float32, float64.
+        Available dtype is int32, int64, float32, float64.
 
     Returns:
 
