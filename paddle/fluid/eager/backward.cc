@@ -240,7 +240,7 @@ class GeneralGrad {
                                   GradNodeBase* node) {
     auto iter = GetInputTargetNodesInputMetaMap()->find(node);
     if (iter != GetInputTargetNodesInputMetaMap()->end()) {
-      VLOG(6) << "Get target result by by inputmeta";
+      VLOG(6) << "Get target result by inputmeta";
       // out rank_info of forward op
       auto rank_info = (iter->second)->OutRankInfo();
       // rank_info is a pair, first means slot_id, second means rank.
@@ -294,6 +294,17 @@ class GeneralGrad {
     return results;
   }
 
+  void UpdateStopNodes() {
+    for (auto p_stop_nodes : potential_stop_nodes_) {
+      auto iter = depending_nodes_.find(p_stop_nodes);
+      if (iter != depending_nodes_.end()) {
+        for (auto nodes : iter->second) {
+          stop_nodes_.emplace(nodes);
+        }
+      }
+    }
+  }
+
   void PreparedForGeneralGrad(
       const std::vector<paddle::experimental::Tensor>& inputs,
       const std::vector<paddle::experimental::Tensor>& no_grad_vars,
@@ -317,7 +328,12 @@ class GeneralGrad {
     ModifyReadyQueue(queue);
     // Set result for input target grad_var when queue is empty
     if (queue->empty()) SetResultForInputTargetVar(node_input_buffers_dict);
+
+    // Update stop nodes
+    UpdateStopNodes();
   }
+
+  bool IsStopNodes(GradNodeBase* node) { return stop_nodes_.count(node); }
 
   bool IsPotentialStopNodes(GradNodeBase* node) {
     return potential_stop_nodes_.count(node);
@@ -350,6 +366,7 @@ class GeneralGrad {
     results_map_.clear();
     copied_grad_nodes_.clear();
     orig_to_copied_node_mapping_.clear();
+    stop_nodes_.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
@@ -436,6 +453,8 @@ class GeneralGrad {
   std::unordered_set<GradNodeBase*> potential_startup_nodes_;
   // Record all the potential stop nodes, will be changed.
   std::unordered_set<GradNodeBase*> potential_stop_nodes_;
+  // Recode all stop nodes
+  std::unordered_set<GradNodeBase*> stop_nodes_;
   std::unordered_map<GradNodeBase* /* next node */,
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes_;
@@ -656,7 +675,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(6) << "Running GradNode:" << node->name();
+    VLOG(6) << "GradNode " << node->name() << "is ready.";
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
@@ -698,7 +717,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
 
-    if (is_general_grad && GeneralGrad::Instance().IsPotentialStopNodes(node)) {
+    if (is_general_grad && GeneralGrad::Instance().IsStopNodes(node)) {
+      VLOG(3) << "Skip the GradNode " << node->name();
       continue;
     }
 
