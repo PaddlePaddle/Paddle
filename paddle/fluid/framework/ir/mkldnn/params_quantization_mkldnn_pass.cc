@@ -59,25 +59,6 @@ bool HasBias(ir::Node* conv_op) {
          conv_op->Op()->Input("Bias").size() > 0;
 }
 
-int64_t GetScaleCount(ir::Node* conv_op, ir::Node* conv_filter) {
-  auto weights_tz = conv_filter->Var()->GetShape();
-  const int groups = std::max(conv_op->Op()->GetAttrIfExists<int>("groups"), 1);
-
-  const auto& scale_weights =
-      conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
-
-  bool is_multi_channel = scale_weights.size() > 1;
-
-  int64_t scale_count = 1;
-  if (is_multi_channel) {
-    scale_count *= weights_tz[0];
-    if (groups > 1) {
-      scale_count *= weights_tz[1];
-    }
-  }
-  return scale_count;
-}
-
 bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   if (!platform::HasOpINT8DataType(conv_op->Op())) {
     return true;
@@ -108,7 +89,7 @@ VarDesc CreatePersistableVarDesc(const std::string& name,
 
 void QuantizeConvFilter(Scope* scope, ir::Graph* g,
                         const std::string& name_scope, ir::Node* conv_op,
-                        ir::Node* conv_filter, int64_t scale_count) {
+                        ir::Node* conv_filter) {
   VarDesc int_weights_desc = CreatePersistableVarDesc(
       patterns::PDNodeName(name_scope, "conv2d_int8_filter"),
       proto::VarType_Type::VarType_Type_INT8, conv_filter->Var()->GetShape());
@@ -119,7 +100,6 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
 
   const auto scale_weights =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
-  PADDLE_ENFORCE_EQ(scale_count, scale_weights.size());
   QuantizeParams<int8_t>(scope->FindVar(conv_filter->Name())->Get<LoDTensor>(),
                          int_weights, scale_weights);
   conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
@@ -130,10 +110,9 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
 }
 
 void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
-                      ir::Node* conv_op, int64_t scale_count) {
+                      ir::Node* conv_op) {
   std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
   auto bias = scope->FindVar(conv_bias_name)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(scale_count, bias->numel());
 
   VarDesc int_biases_desc = CreatePersistableVarDesc(
       patterns::PDNodeName(name_scope, "conv2d_int32_bias"),
@@ -144,7 +123,6 @@ void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
 
   const auto bias_scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
-  PADDLE_ENFORCE_EQ(scale_count, bias_scales.size());
   QuantizeParams<int32_t>(*bias, int_bias, bias_scales);
   conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 
@@ -223,12 +201,10 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
       return;
     }
 
-    auto scale_count = GetScaleCount(conv_op, conv_filter);
-
-    QuantizeConvFilter(scope, g, name_scope, conv_op, conv_filter, scale_count);
+    QuantizeConvFilter(scope, g, name_scope, conv_op, conv_filter);
 
     if (HasBias(conv_op)) {
-      QuantizeConvBias(scope, g, name_scope, conv_op, scale_count);
+      QuantizeConvBias(scope, g, name_scope, conv_op);
     }
     params_to_int8_conv_found++;
   };
