@@ -52,7 +52,7 @@ void CalcMedianFunc(const Context& dev_ctx,
   bool is_ori_odd = stride & 1;
   if (should_ignore_nan) {
     for (i = 0; i < pre_dim; i++) {
-      offset = i * pre_dim;
+      offset = i * sort_k;
       if (nan_counts[i] == stride) {
         m_ptr[i * 2] = -1;
         m_ptr[i * 2 + 1] = -1;
