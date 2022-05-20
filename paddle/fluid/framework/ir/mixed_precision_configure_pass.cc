@@ -53,8 +53,16 @@ void MixedPrecisionConfigurePass::InsertCastOps(
           const auto pre_node_inlinks = pre_node->inputs;
           for (auto* pre_node_input : pre_node_inlinks) {
             if (!pre_node_input->IsOp()) continue;
+
             const auto& type = pre_node_input->Op()->Type();
-            if (!cast_list.count(type) && type != "cast") {
+            bool is_fp16_input = false;
+            if (type == "cast") {
+              const auto out_dtype =
+                  pre_node_input->Op()->GetAttrIfExists<int>("out_dtype");
+              if (out_dtype == 4) is_fp16_input = true;
+            }
+
+            if (!cast_list.count(type) && type != "feed" && !is_fp16_input) {
               std::string old_name = pre_node->Name();
               std::string new_name =
                   old_name + "_cast.tmp_" + std::to_string(suffix);
@@ -97,7 +105,7 @@ void MixedPrecisionConfigurePass::InsertCastOps(
             if (!next_node_output->IsOp()) continue;
 
             const auto& type = next_node_output->Op()->Type();
-            if (!cast_list.count(type) && type != "cast") {
+            if (!cast_list.count(type) && type != "fetch" && type != "cast") {
               std::string old_name = next_node->Name();
               std::string new_name =
                   old_name + "_cast.tmp_" + std::to_string(suffix);
@@ -137,14 +145,16 @@ void MixedPrecisionConfigurePass::InsertCastOps(
   }
 
   for (auto* op_node : all_nodes) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
-      continue;
+    if (!op_node->IsOp()) continue;
 
     const auto& type = op_node->Op()->Type();
-    if (blacklist.count(type)) {
+    if (type == "feed") {
+      cast_output(graph, op_node, blacklist);
+    } else if (blacklist.count(type)) {
       cast_input(graph, op_node, blacklist);
       cast_output(graph, op_node, blacklist);
+    } else if (type == "fetch") {
+      cast_input(graph, op_node, blacklist);
     }
 
     if (type == "fill_any_like" || type == "fill_constant") {
