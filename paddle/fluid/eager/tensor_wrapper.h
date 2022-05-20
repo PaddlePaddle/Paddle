@@ -116,6 +116,10 @@ class TensorWrapper {
     return recovered_tensor;
   }
 
+  paddle::experimental::Tensor get_intermidiate_tensor() {
+    return intermidiate_tensor_;
+  }
+
   void clear() { intermidiate_tensor_.reset(); }
 
  private:

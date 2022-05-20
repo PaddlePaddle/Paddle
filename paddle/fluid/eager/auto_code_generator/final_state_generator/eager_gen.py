@@ -141,9 +141,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
-{}
   auto hooked_grads = ApplyGradientHooks(grads);
-{}
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
 {}
@@ -348,6 +346,17 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
 """
   paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
   if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+"""
+
+CHECK_BACKWARD_INPLACE_TEMPLATE = \
+"""
+  bool can_be_inplaced = false;
+  if ({}.initialized()) {{
+    VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
+    if ({}.impl().use_count() == 1 || {}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get()) {{
+      can_be_inplaced = true;
+    }}
+  }}
 """
 
 CHECK_NAN_AND_INF_TEMPLATE = \
@@ -1308,13 +1317,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in self.optional_inputs)
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
             if backward_inplace_map and name in backward_inplace_map.keys():
-                tensor_wrapper_recover_str += f"""
-{indent}bool can_be_inplaced = false;
-{indent}VLOG(10) << {transformed_tensor_name}.name() << "({name}) use_count: " << {transformed_tensor_name}.impl().use_count();
-{indent}if ({transformed_tensor_name}.initialized() && {transformed_tensor_name}.impl().use_count() == 2) {{
-{indent}  can_be_inplaced = true;
-{indent}}}"""
-
+                tensor_wrapper_intermidiate_tensor_str = f"(&this->{tensor_wrapper_name})->get_intermidiate_tensor()"
+                tensor_wrapper_recover_str += CHECK_BACKWARD_INPLACE_TEMPLATE.format(
+                    transformed_tensor_name, transformed_tensor_name, name,
+                    transformed_tensor_name, transformed_tensor_name,
+                    transformed_tensor_name, transformed_tensor_name,
+                    tensor_wrapper_intermidiate_tensor_str)
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
@@ -1330,29 +1338,23 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
-        inplace_for_grad_ins_str = ""
-        inplace_for_hooked_grad_ins_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_inputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
 
             is_optional = (name in self.optional_inputs)
             if IsPlainTensorType(ttype):
-                if backward_inplace_map and name in backward_inplace_map.keys():
-                    inplace_for_grad_ins_str = f"""
-{indent}bool can_be_inplaced = false;
-{indent}VLOG(10) << grads[{fwd_position}][0].name() << "({name}) use_count: " << grads[{fwd_position}][0].impl().use_count();
-{indent}if (grads[{fwd_position}][0].initialized() && grads[{fwd_position}][0].impl().use_count() == 1) {{
-{indent}  can_be_inplaced = true;
-{indent}}}"""
-
-                    inplace_for_hooked_grad_ins_str = f"""
-{indent}if (!hooked_grads[{fwd_position}][0].initialized() || hooked_grads[{fwd_position}][0].impl().use_count() != 2) {{
-{indent}  can_be_inplaced = false;
-{indent}}}"""
-
-                    inplace_grad_input_str = transformed_tensor_name
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
+
+                # Inplace in backward op
+                if backward_inplace_map and name in backward_inplace_map.keys():
+                    grads_tensor_str = f"grads[{fwd_position}][0]"
+                    get_tensor_str += CHECK_BACKWARD_INPLACE_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name, name,
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name,
+                        grads_tensor_str)
+                    inplace_grad_input_str = transformed_tensor_name
 
                 if is_optional:
                     get_tensor_str += "\n" + CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE.format(
@@ -1392,7 +1394,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         # Grad Outputs
         out_index = -1
-        inplace_for_grad_outs_str = ""
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             transformed_tensor_name = self.TransformToNextGradName(name)
@@ -1400,6 +1401,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_api_args.append(f"api_output_{out_index}")
 
             if IsPlainTensorType(ttype):
+                inplace_for_grad_outs_str = ""
                 if backward_inplace_map and name in backward_inplace_map.values(
                 ):
                     inplace_for_grad_outs_str = f"""
@@ -1409,8 +1411,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
                 grad_function_call_str += f"""
   auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];{inplace_for_grad_outs_str}"""
-
-                inplace_for_grad_outs_str = ""
 
             else:
                 assert IsVectorTensorType(ttype)
@@ -1520,11 +1520,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_node_name = GetGradNodeName(forward_api_name)
 
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
-            grad_node_name, fill_zero_str, inplace_for_grad_ins_str,
-            inplace_for_hooked_grad_ins_str, get_grad_in_args_str,
-            grad_node_name, grad_function_call_str, check_nan_inf_str,
-            inputs_autograd_meta_str, outputs_autograd_meta_str,
-            compute_require_grad_str, next_grad_node_creation_str, returns_str)
+            grad_node_name, fill_zero_str, get_grad_in_args_str, grad_node_name,
+            grad_function_call_str, check_nan_inf_str, inputs_autograd_meta_str,
+            outputs_autograd_meta_str, compute_require_grad_str,
+            next_grad_node_creation_str, returns_str)
 
     def run(self):
         super().run()
