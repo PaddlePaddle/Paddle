@@ -231,6 +231,27 @@
   kernel :
     func : ceil_grad
 
+- backward_api : celu_double_grad
+  forward : celu_grad(Tensor x, Tensor grad_out, float alpha) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float alpha)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : celu_double_grad
+
+- backward_api : celu_grad
+  forward : celu(Tensor x, float alpha) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : celu_grad
+  backward : celu_double_grad
+
 - backward_api : cholesky_grad
   forward : cholesky (Tensor x, bool upper) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, bool upper)
@@ -1540,6 +1561,16 @@
   kernel :
     func : round_grad
 
+- backward_api : rsqrt_double_grad
+  forward : rsqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : rsqrt_double_grad
+
 - backward_api : rsqrt_grad
   forward : rsqrt (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1549,6 +1580,7 @@
     param : [out]
   kernel :
     func : rsqrt_grad
+  backward : rsqrt_double_grad
 
 - backward_api : scale_double_grad
   forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
@@ -1726,6 +1758,16 @@
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
+- backward_api : sqrt_double_grad
+  forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : sqrt_double_grad
+
 - backward_api : sqrt_grad
   forward : sqrt (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1735,6 +1777,17 @@
     param : [out]
   kernel :
     func : sqrt_grad
+  backward : sqrt_double_grad
+
+- backward_api : square_double_grad
+  forward : square_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : square_double_grad
 
 - backward_api : square_grad
   forward : square (Tensor x) -> Tensor(out)
@@ -1745,6 +1798,7 @@
     param : [x]
   kernel :
     func : square_grad
+  backward : square_double_grad
 
 - backward_api : squeeze_grad
   forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
