@@ -440,15 +440,29 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
                                  d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
                                  len, 0, 8 * sizeof(KeyType), stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->sort_pairs(place, NULL, temp_storage_bytes, d_keys,
+                                 d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
+                                 len, 0, 8 * sizeof(KeyType), stream, false);
+#endif
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->sort_pairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
       d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->sort_pairs(
+      place,
+      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
+      d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
+#endif
+
   temp_storage_bytes = 0;
 
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
@@ -503,15 +517,29 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_device);
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->sort_pairs(
       NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
       d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->sort_pairs(
+      place,
+      NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
+      d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+#endif
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
+#if defined(PADDLE_WITH_CUDA)
   heter_comm_kernel_->sort_pairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
       d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+#elif defined(PADDLE_WITH_XPU_KP)
+  heter_comm_kernel_->sort_pairs(
+      place,
+      d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
+      d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+#endif
 
   heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
                                         total_device, stream);
@@ -550,7 +578,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0],
               len * sizeof(int), stream);
-  
+
   // cachemanager get fid_seq
   std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
 
@@ -574,8 +602,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   ValType* d_all_values_ptr = reinterpret_cast<ValType*>(d_all_values->ptr());
 
   auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
-  bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr, 
-      h_fid_seq -> size() * sizeof(ValType) / sizeof(float), 
+  bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_values_ptr,
+      h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
       BKCL_FLOAT, BKCL_ADD, stream);
 
   // fill to d_val
@@ -588,7 +616,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
-//#elif defined(PADDLE_WITH_XPU_KP) 
+//#elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
 #endif
   int h_left[total_device];   // NOLINT
@@ -826,7 +854,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int* d_bfids_ptr = reinterpret_cast<int*>(d_bfids->ptr());
   memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0],
               len * sizeof(int), stream);
-  
+
   // cachemanager get fid_seq
   std::shared_ptr<std::vector<uint64_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
 
@@ -846,10 +874,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   GradType* d_fgrad_all_ptr = reinterpret_cast<GradType*>(d_fgrad_all->ptr());
 
   auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
-  bkcl_all_reduce(comm->comm(), d_fgrad_ptr, d_fgrad_all_ptr, 
-      h_fid_seq -> size() * sizeof(GradType) / sizeof(float), 
+  bkcl_all_reduce(comm->comm(), d_fgrad_ptr, d_fgrad_all_ptr,
+      h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
       BKCL_FLOAT, BKCL_ADD, stream);
-  
+
   // update
   tables_[dev_id]->update(d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
 

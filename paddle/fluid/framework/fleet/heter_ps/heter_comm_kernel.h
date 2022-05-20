@@ -16,6 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA)
 #include "cub/cub.cuh"
@@ -58,6 +59,8 @@ class HeterCommKernel {
   void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
                   const StreamType& stream);
 
+
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeyT, typename ValueT, typename StreamType>
   void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                   const KeyT* d_keys_in, KeyT* d_keys_out,
@@ -66,6 +69,17 @@ class HeterCommKernel {
 
                   int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
                   bool debug_synchronous = false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename KeyT, typename ValueT, typename StreamType>
+  void sort_pairs(const paddle::platform::Place& place,
+                  void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in, KeyT* d_keys_out,
+                  const ValueT* d_values_in, ValueT* d_values_out,
+                  int num_items, int begin_bit = 0,
+
+                  int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
+                  bool debug_synchronous = false);
+#endif
 
   template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
             typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,

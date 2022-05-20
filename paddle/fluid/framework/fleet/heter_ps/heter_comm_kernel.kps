@@ -14,6 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
@@ -22,6 +23,8 @@ limitations under the License. */
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
+
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace framework {
@@ -285,14 +288,75 @@ void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
                                                    len);
 }
 
+template<>
+void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
+                                 void* d_temp_storage,
+                                 size_t& temp_storage_bytes,  // NOLINT
+                                 const unsigned long* d_keys_in,       // NOLINT
+                                 unsigned long* d_keys_out,
+                                 const FeaturePushValue* d_values_in,
+                                 FeaturePushValue* d_values_out,
+                                 int num_items,
+                                 int begin_bit,
+                                 int end_bit,
+                                 XPUStream stream,
+                                 bool debug_synchronous) {
+    // Not used.
+    (void)d_temp_storage;
+    (void)temp_storage_bytes;
+    (void)begin_bit;
+    (void)end_bit;
+    (void)debug_synchronous;
+
+    platform::XPUDeviceContext xpu_dev_ctx(place);
+    auto ctx_xpu = xpu_dev_ctx.x_context();
+
+    int r = xpu::sort_pairs<unsigned int, ::FeaturePushValue>(
+        ctx_xpu,
+        reinterpret_cast<const unsigned int*>(d_keys_in),
+        reinterpret_cast<unsigned int*>(d_keys_out),
+        reinterpret_cast<const ::FeaturePushValue*>(d_values_in),
+        reinterpret_cast<::FeaturePushValue*>(d_values_out),
+        num_items,
+        false);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU sum kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
+}
+
 template <typename KeyT, typename ValueT, typename StreamType>
-void HeterCommKernel::sort_pairs(void* d_temp_storage,
+void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
+                                 void* d_temp_storage,
                                  size_t& temp_storage_bytes,  // NOLINT
                                  const KeyT* d_keys_in,       // NOLINT
                                  KeyT* d_keys_out, const ValueT* d_values_in,
                                  ValueT* d_values_out, int num_items,
                                  int begin_bit, int end_bit, StreamType stream,
-                                 bool debug_synchronous) {}
+                                 bool debug_synchronous) {
+    // Not used.
+    (void)d_temp_storage;
+    (void)temp_storage_bytes;
+    (void)begin_bit;
+    (void)end_bit;
+    (void)debug_synchronous;
+
+    platform::XPUDeviceContext xpu_dev_ctx(place);
+    auto ctx_xpu = xpu_dev_ctx.x_context();
+
+    int r = xpu::sort_pairs<KeyT, ValueT>(
+        ctx_xpu,
+        d_keys_in,
+        d_keys_out,
+        d_values_in,
+        d_values_out,
+        num_items,
+        false);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU sum kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
+}
 
 template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
           typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
@@ -336,6 +400,7 @@ HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, XPUStream>(
 
 template void HeterCommKernel::sort_pairs<
     unsigned long, paddle::framework::FeaturePushValue, XPUStream>(
+    const paddle::platform::Place& place,
     void* d_temp_storage,
     size_t& temp_storage_bytes,      // NOLINT
     const unsigned long* d_keys_in,  // NOLINT
@@ -345,6 +410,7 @@ template void HeterCommKernel::sort_pairs<
     int begin_bit, int end_bit, XPUStream stream, bool debug_synchronous);
 
 template void HeterCommKernel::sort_pairs<int, int, XPUStream>(
+    const paddle::platform::Place& place,
     void* d_temp_storage,
     size_t& temp_storage_bytes,  // NOLINT
     const int* d_keys_in,        // NOLINT
@@ -364,7 +430,7 @@ template void HeterCommKernel::reduce_by_key<
 // Todo
 
 __global__ void merge_grad_kernel(
-        int * in_keys, paddle::framework::FeaturePushValue * in_vals, 
+        int * in_keys, paddle::framework::FeaturePushValue * in_vals,
         int len, paddle::framework::FeaturePushValue * out_vals) {
     int cid = core_id();
     int ncores = core_num();
@@ -403,17 +469,17 @@ __global__ void merge_grad_kernel(
 
 template <typename KeyT, typename ValueT>
 void HeterCommKernel::merge_grad(
-    KeyT* d_keys, 
-    ValueT* d_vals_in, 
-    int len, 
+    KeyT* d_keys,
+    ValueT* d_vals_in,
+    int len,
     ValueT* d_vals_out) {
-    merge_grad_kernel<<<8, 64>>>(d_keys, d_vals_in, len, d_vals_out);   
+    merge_grad_kernel<<<8, 64>>>(d_keys, d_vals_in, len, d_vals_out);
 }
 
 template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue>(
-    int* d_keys, 
-    paddle::framework::FeaturePushValue* d_vals_in, 
-    int len, 
+    int* d_keys,
+    paddle::framework::FeaturePushValue* d_vals_in,
+    int len,
     paddle::framework::FeaturePushValue* d_vals_out);
 
 #endif
