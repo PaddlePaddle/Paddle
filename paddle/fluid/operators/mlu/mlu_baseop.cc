@@ -34,6 +34,12 @@ cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
   return cast_type;
 }
 
+cnnlCastDataType_t GetCastDataType(const DataType& src_type,
+                                   const DataType& dst_type) {
+  return GetCastDataType(framework::TransToProtoVarType(src_type),
+                         framework::TransToProtoVarType(dst_type));
+}
+
 bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type) {
   for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
        it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
@@ -2713,17 +2719,16 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                         output_desc, output));
 }
 
-/* static */ void MLUCnnl::ScatterNd(const ExecutionContext& ctx,
-                                     const cnnlTensorDescriptor_t indices_desc,
-                                     const void* indices,
-                                     const cnnlTensorDescriptor_t updates_desc,
-                                     const void* updates,
-                                     const cnnlTensorDescriptor_t output_desc,
-                                     void* output) {
+/* static */ void MLUCnnl::ScatterNd(
+    const ExecutionContext& ctx, cnnlScatterNdMode_t mode,
+    const cnnlTensorDescriptor_t indices_desc, const void* indices,
+    const cnnlTensorDescriptor_t updates_desc, const void* updates,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatterNd(handle, indices_desc, indices,
-                                           updates_desc, updates, output_desc,
-                                           output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlScatterNd_v2(handle, mode, indices_desc, indices, updates_desc,
+                       updates, input_desc, input, output_desc, output));
 }
 
 /* static */ void MLUCnnl::BitWise(
@@ -2775,6 +2780,27 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlReciprocal(handle, input_desc, input, output_desc, output));
+}
+
+/* static */ void MLUCnnl::EmbeddingBackward(
+    const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+    const cnnlTensorDescriptor_t indices_desc, const void* indices,
+    const cnnlTensorDescriptor_t diff_desc, const void* diff,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetEmbeddingBackwardWorkspaceSize(
+      handle, diff_desc, output_desc, scale_grad_by_freq, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlEmbeddingBackward(
+      handle, padding_idx, scale_grad_by_freq, indices_desc, indices, diff_desc,
+      diff, workspace_ptr, workspace_size, output_desc, output));
 }
 
 }  // namespace operators
