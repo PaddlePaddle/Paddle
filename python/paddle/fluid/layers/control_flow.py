@@ -69,7 +69,7 @@ def select_output(input, outputs, mask):
     return outputs
 
 
-def choose_input_meta(inputs):
+def _choose_input_meta(inputs):
     from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME
     IGNORE_NAMES = [RETURN_NO_VALUE_VAR_NAME, RETURN_VALUE_INIT_NAME]
 
@@ -109,7 +109,7 @@ def select_input(inputs, mask):
     check_type(inputs, 'inputs', (list, tuple), 'select_input')
     check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
 
-    input_dtype, input_shape, input_type = choose_input_meta(inputs)
+    input_dtype, input_shape, input_type = _choose_input_meta(inputs)
 
     out = helper.create_variable(
         dtype=input_dtype, shape=input_shape, type=input_type)
