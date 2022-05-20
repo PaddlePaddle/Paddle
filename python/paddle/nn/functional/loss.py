@@ -2231,8 +2231,8 @@ def triplet_margin_with_distance_loss(input,
 				      positive,
 				      negative,
 				      distance_function = None,
-                        	      swap=False, 
 				      margin=1.0, 
+                        	      swap=False, 
 				      reduction='mean',
                         	      name=None):
     r"""
@@ -2270,12 +2270,12 @@ def triplet_margin_with_distance_loss(input,
             The shape of label is the same as the shape of input.
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-
+	
+	margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+            between the positive and negative distances required for the loss to be 0.
+	
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
-
-        margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
-            between the positive and negative distances required for the loss to be 0.
 
         reduction (str, optional):Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
