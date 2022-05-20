@@ -662,7 +662,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                                                    node_input_buffers_dict);
   }
 
-  VLOG(6) << " startup_ops' size is :" << queue.size();
+  VLOG(6) << "startup_ops' size is :" << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -674,7 +674,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(6) << "GradNode " << node->name() << "is ready.";
+    VLOG(6) << "GradNode " << node->name() << " is ready.";
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
