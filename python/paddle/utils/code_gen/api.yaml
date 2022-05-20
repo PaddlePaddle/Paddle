@@ -714,6 +714,7 @@
     backend : x
   inplace : (x -> out)
   view : (x -> out)
+  intermediate : xshape
   backward : flatten_grad
 
 # flip
@@ -811,7 +812,7 @@
     skip_transform : x
 
 - api : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
+  args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
   infer_meta :
     func : GatherInferMeta
@@ -1983,12 +1984,13 @@
 
 - api : squeeze
   args : (Tensor x, int[] axes)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeInferMeta
   kernel :
     func : squeeze
   view: (x -> out)
+  intermediate : xshape
   backward : squeeze_grad
 
 - api : stack
@@ -2019,7 +2021,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
@@ -2138,6 +2140,18 @@
     func : triangular_solve
   backward : triangular_solve_grad
 
+- api : tril_indices
+  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+    backend : place
+
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
   output : Tensor(out)
@@ -2212,12 +2226,13 @@
 
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
   view: (x -> out)
+  intermediate : xshape
   backward : unsqueeze_grad
 
 # viterbi_decode

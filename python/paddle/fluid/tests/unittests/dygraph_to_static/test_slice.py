@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import os
+import tempfile
 import unittest
 import numpy as np
 
@@ -166,15 +167,20 @@ class TestSetValue(TestSliceWithoutControlFlow):
 
 
 class TestSetValueWithLayerAndSave(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "layer_use_set_value")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_set_value_with_save(self):
         prog_trans.enable(True)
         model = LayerWithSetValue(input_dim=10, hidden=1)
         x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
         paddle.jit.save(
-            layer=model,
-            path="./layer_use_set_value",
-            input_spec=[x],
-            output_spec=None)
+            layer=model, path=self.model_path, input_spec=[x], output_spec=None)
 
 
 class TestSliceSupplementSpecialCase(unittest.TestCase):

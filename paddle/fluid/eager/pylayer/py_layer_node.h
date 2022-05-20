@@ -32,7 +32,7 @@ class GradNodePyLayer : public GradNodeBase {
     ctx_ = ctx;
   }
 
-  ~GradNodePyLayer() override { Py_DECREF(ctx_); };
+  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -46,9 +46,6 @@ class GradNodePyLayer : public GradNodeBase {
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
-
-  // for paddle.grad get result
-  PyObject* GetMutableOutputs() { return outputs_; }
 
   void SaveForwardOutputsMeta(
       const std::vector<std::vector<paddle::experimental::Tensor*>>&
@@ -78,7 +75,6 @@ class GradNodePyLayer : public GradNodeBase {
 
  private:
   PyObject* ctx_{nullptr};
-  PyObject* outputs_{nullptr};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
 };

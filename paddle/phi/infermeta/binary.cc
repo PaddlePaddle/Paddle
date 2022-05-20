@@ -1534,7 +1534,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                     phi::errors::InvalidArgument(
                         "X's second dimension is expected to be equal to "
                         "Vec's first dimension"
-                        "but recieved X'shape = [%s], Vec's shape = [%s]",
+                        "but received X'shape = [%s], Vec's shape = [%s]",
                         dim_x,
                         dim_vec));
 

@@ -117,7 +117,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
 
         compatible_dim_mapping = compute_compatible_dim_mapping(
             batch_dim_mappings)
-        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dim_mapping is None:
+            return False
 
         for arg_name in op_desc.input_arg_names():
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
