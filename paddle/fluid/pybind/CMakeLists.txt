@@ -41,6 +41,7 @@ if (WITH_ASCEND_CL)
 endif()
 
 if (WITH_CNCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
 endif()
 
