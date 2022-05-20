@@ -41,8 +41,10 @@ ir::Node* FindOpInput(ir::Node* op, const std::string& input_name) {
       std::find_if(op->inputs.begin(), op->inputs.end(),
                    [&](ir::Node* node) { return node->Name() == input_name; });
 
-  PADDLE_ENFORCE_NE(op_input_it, op->inputs.end(),
-                    platform::errors::InvalidArgument("Op input not found."));
+  PADDLE_ENFORCE_NE(
+      op_input_it, op->inputs.end(),
+      platform::errors::InvalidArgument("Not found input %s of operator %s.",
+                                        input_name, op->Op()->Type()));
   return (*op_input_it);
 }
 
