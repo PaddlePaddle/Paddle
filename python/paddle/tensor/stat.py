@@ -263,7 +263,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     Args:
         x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
         axis (None|int|list|tuple, optional):
-            The axis along which to perform median calculations ``axis`` should be int.
+            The axis along which to perform median calculations ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
@@ -271,7 +271,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is False.
+            the output Tensor is squeezed in ``axis`` . Default is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -287,13 +287,16 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             x = paddle.to_tensor([[np.nan, 2. , 3. ], [0. , 1. , 2. ]])
 
             y1 = x.nanmedian()
-            # y1 is [[[2.]]
+            # y1 is [[2.]]
 
             y2 = x.nanmedian(0)
             # y2 is [[0.,  1.5, 2.5]]
 
             y3 = x.nanmedian(0, keepdim=False)
             # y3 is [0.,  1.5, 2.5]
+
+            y4 = x.nanmedian((1, 2))
+            # y4 is [[2.]]
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
