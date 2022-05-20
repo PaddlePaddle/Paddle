@@ -14,9 +14,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -67,9 +68,8 @@ class AttnMatMul {
       ins.emplace_back(bias);
       outs.emplace_back(bias_out);
       int elewise_add_axis = -1;
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+          dev_ctx_, ins, &outs, elewise_add_axis, phi::funcs::AddFunctor<T>());
     }
   }
 

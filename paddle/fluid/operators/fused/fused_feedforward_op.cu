@@ -17,9 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -345,9 +346,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     ins[1] = d_x;
     outs[0] = d_x;
     int elewise_add_axis = -1;
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
-        ctx, ins, &outs, elewise_add_axis, AddFunctor<T>());
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        ctx, ins, &outs, elewise_add_axis, phi::funcs::AddFunctor<T>());
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
