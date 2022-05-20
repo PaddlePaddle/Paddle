@@ -1392,7 +1392,13 @@ set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
+
+        check_added_ut_startTime_s=`date +%s`
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        check_added_ut_endTime_s=`date +%s`
+        echo "1: check_added_ut_Total_Time: $[ $check_added_ut_endTime_s - $check_added_ut_startTime_s ]s"
+        
+        get_precision_ut_startTime_s=`date +%s`
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
@@ -1402,6 +1408,10 @@ set -x
                 set -x
             fi
         fi
+        get_precision_ut_endTime_s=`date +%s`
+        echo "2: get_precision_ut_Total_Time: $[ $get_precision_ut_endTime_s - $get_precision_ut_startTime_s ]s"
+        
+        duplicate_ut_startTime_s=`date +%s`
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -1414,6 +1424,11 @@ set -x
                 set -x
             fi
         fi
+        duplicate_ut_endTime_s=`date +%s`
+        echo "3: duplicate_ut_Total_Time: $[ $duplicate_ut_endTime_s - $duplicate_ut_startTime_s ]s"
+
+        
+        test_added_ut_startTime_s=`date +%s`
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
@@ -1425,7 +1440,11 @@ set -x
                 exit 8;
             fi
         fi
+        test_added_ut_endTime_s=`date +%s`
+        echo "4: test_added_ut_Total_Time: $[ $test_added_ut_endTime_s - $test_added_ut_startTime_s ]s"
+
 set +x
+        ut_clas_startTime_s=`date +%s`
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
@@ -1538,8 +1557,12 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
+        ut_clas_endTime_s=`date +%s`
+        echo "5: ut_clas_Total_Time: $[ $ut_clas_endTime_s - $ut_clas_startTime_s ]s"
         
         ut_actual_total_startTime_s=`date +%s`
+
+        ut_test_startTime_s=`date +%s`
 
         single_ut_startTime_s=`date +%s`
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
@@ -1566,7 +1589,15 @@ set +x
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
+        ut_test_endTime_s=`date +%s`
+        echo "6: ut_test_Total_Time: $[ $ut_test_endTime_s - $ut_test_startTime_s ]s"
+        
+        failed_test_collect_startTime_s=`date +%s`
         collect_failed_tests
+        failed_test_collect_endTime_s=`date +%s`
+        echo "7: failed_test_collect_Total_Time: $[ $failed_test_collect_endTime_s - $failed_test_collect_startTime_s ]s"
+
+        failed_test_test_startTime_s=`date +%s`
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
@@ -1670,6 +1701,8 @@ set +x
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
+        failed_test_test_endTime_s=`date +%s`
+        echo "8: failed_test_test_Total_Time: $[ $failed_test_test_endTime_s - $failed_test_test_startTime_s ]s"
 
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
