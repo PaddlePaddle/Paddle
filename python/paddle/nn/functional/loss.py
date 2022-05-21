@@ -2246,11 +2246,11 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
      Parameters:
-        input1 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): 1D or 2D tensor with shape: [*, N], '*' means batch size, N the length of input array.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): 0D or 1D tensor. The target labels values should be numbers between -1 and 1.
+        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
@@ -2267,15 +2267,22 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
 
     Examples:
         .. code-block:: python
+          :name: code-example1
 
             import paddle
 
-            input1 = paddle.to_tensor([1.6, 1.2, -0.5], 'float32')
-            input2 = paddle.to_tensor([0.5, 0.5, -1.8], 'float32')
-            label = paddle.to_tensor([1], 'int64')
+            input1 = paddle.to_tensor([[1.6, 1.2, -0.5], [3.2, 2.6, -5.8]], 'float32')
+            input2 = paddle.to_tensor([[0.5, 0.5, -1.8], [2.3, -1.4, 1.1]], 'float32')
+            label = paddle.to_tensor([1, -1], 'int64')
 
-            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
-            print(output)  # output: [0.42310387]
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean')
+            print(output)  # [0.21155193]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='sum')
+            print(output)  # [0.42310387]
+
+            output = paddle.nn.functional.cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='none')
+            print(output)  # [0.42310387, 0.        ]
 
     """
     if len(label.shape) != 1:
