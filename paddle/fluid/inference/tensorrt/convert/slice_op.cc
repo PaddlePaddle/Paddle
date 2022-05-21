@@ -71,7 +71,6 @@ class SliceOpConverter : public OpConverter {
                 ends[i], starts[i]));
       }
     }
-
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss() && engine_->with_ernie() &&
@@ -107,6 +106,7 @@ class SliceOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
                                           plugin_inputs.size(), plugin);
       } else {
+#if IS_TRT_VERSION_GE(8034)
         auto nchw_input_dims = input->getDimensions();
         nvinfer1::Dims trt_start_dims;
         trt_start_dims.nbDims = nchw_input_dims.nbDims;
@@ -173,6 +173,7 @@ class SliceOpConverter : public OpConverter {
             if (i == decrease_axis) continue;
             gather_indices.push_back(i);
           }
+          if (gather_indices.empty()) gather_indices.push_back(decrease_axis);
           auto gather_indices_tensor = Add1DConstantLayer(
               gather_indices,
               output_name + "_add_slice_op_" + "gather_indices");
@@ -186,9 +187,20 @@ class SliceOpConverter : public OpConverter {
           layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
           layer->setInput(1, *real_size_tensor);
         }
+
+#else
+        bool with_fp16 =
+            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+        int decrease_axis =
+            decrease_axises.size() == 0 ? -1 : decrease_axises[0];
+        plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
+            starts, ends, axes, decrease_axis, with_fp16);
+        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
+
+#endif
       }
     } else {
-#if IS_TRT_VERSION_GE(7130)
+#if IS_TRT_VERSION_GE(8034)
       auto chw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = chw_input_dims.nbDims;

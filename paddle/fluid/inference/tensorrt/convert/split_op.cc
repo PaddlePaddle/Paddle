@@ -55,8 +55,8 @@ class SplitOpConverter : public OpConverter {
         output_lengths.push_back(out_axis_dim);
       }
     }
-
     nvinfer1::ILayer* layer = nullptr;
+#if IS_TRT_VERSION_GE(8034)
     if (engine_->with_dynamic_shape()) {
       nvinfer1::Dims trt_step_dims;
       trt_step_dims.nbDims = input->getDimensions().nbDims;
@@ -108,18 +108,9 @@ class SplitOpConverter : public OpConverter {
         layer->setInput(2, *size_tensor);
 
         auto output_name = op_desc.Output("Out")[i];
-        layer->getOutput(0)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput(0));
-        std::string layer_name = "split (Output: ";
-        layer_name += output_name;
-        if (test_mode) {
-          engine_->DeclareOutput(output_name);
-        }
-        layer->setName((layer_name + ")").c_str());
+        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
       }
     } else {
-#if IS_TRT_VERSION_GE(7130)
-
       auto chw_input_dims = input->getDimensions();
       nvinfer1::Dims trt_start_dims;
       trt_start_dims.nbDims = chw_input_dims.nbDims;
@@ -137,35 +128,29 @@ class SplitOpConverter : public OpConverter {
         layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
                                      trt_size_dims, trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
-        layer->getOutput(0)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput(0));
-        std::string layer_name = "split (Output: ";
-        layer_name += output_name;
-        if (test_mode) {
-          engine_->DeclareOutput(output_name);
-        }
-        layer->setName((layer_name + ")").c_str());
+        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
       }
+    }
 #else
+    if (engine_->with_dynamic_shape()) {
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::SplitPluginDynamic* plugin =
+          new plugin::SplitPluginDynamic(axis, output_lengths, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+    } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16);
-      layer = engine_->AddPluginV2Ext(&input, 1, plugin);
-
-      std::string layer_name = "split (Output: ";
-      for (size_t i = 0; i < output_num; i++) {
-        auto output_name = op_desc.Output("Out")[i];
-        layer->getOutput(i)->setName(output_name.c_str());
-        engine_->SetITensor(output_name, layer->getOutput(i));
-        layer_name += output_name;
-        if (test_mode) {
-          engine_->DeclareOutput(output_name);
-        }
-      }
-      layer->setName((layer_name + ")").c_str());
-#endif
+      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
+    std::string output_names;
+    for (size_t i = 0; i < output_num; i++) {
+      output_names += op_desc.Output("Out")[i];
+    }
+    RreplenishLayerAndOutput(layer, "split", output_names, test_mode);
+#endif
   }
 };
 
