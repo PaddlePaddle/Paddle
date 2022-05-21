@@ -177,7 +177,8 @@ def alexnet(pretrained=False, **kwargs):
     AlexNet model
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
+        **kwargs: unpacked dict arguments
     
     Returns:
         the model of alexnet
