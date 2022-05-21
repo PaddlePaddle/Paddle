@@ -77,10 +77,10 @@ class MobileNetV2(nn.Layer):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
     Args:
-        scale (float): scale of channels in each layer. Default: 1.0.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        scale (float, optional): scale of channels in each layer. Default: 1.0.
+        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
