@@ -940,7 +940,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         boxes_num (Tensor): The number of boxes contained in each picture in the batch.
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
-        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their 
                                input scale to the scale used when pooling. Default: 1.0
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
