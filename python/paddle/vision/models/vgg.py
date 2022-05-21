@@ -33,9 +33,9 @@ class VGG(nn.Layer):
 
     Args:
         features (nn.Layer): Vgg features create by function make_layers.
-        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
-        with_pool (bool): Use pool before the last three fc layer or not. Default: True.
+        with_pool (bool, optional): Use pool before the last three fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
