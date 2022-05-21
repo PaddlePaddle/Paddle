@@ -30,16 +30,17 @@ __all__ = []
 def bernoulli(x, name=None):
     """
 
-    For each element :math:`x_i` in input ``x``, take a sample from the Bernoulli distribution with success probability :math:`x_i`. The Bernoulli distribution with success probability :math:`x_i` is a discrete probability distribution with probability mass function
+    For each element :math:`x_i` in input ``x``, take a sample from the Bernoulli distribution, also called two-point distribution, with success probability :math:`x_i`. The Bernoulli distribution with success probability :math:`x_i` is a discrete probability distribution with probability mass function
+
     .. math::
-        p(y)=\\begin{cases}
+        p(y)=\begin{cases}
             x_i,&y=1\\\\
             1-x_i,&y=0
-        \\end{cases}.
+        \end{cases}.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
-        name(str, optional): name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns: 
         Tensor: A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
