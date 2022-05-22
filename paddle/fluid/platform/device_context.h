@@ -849,7 +849,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // to erase
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
-  // 0 - clearing is allowed. x > 0 do not clear. Each time
+  // 0 - clearing is allowed. x > 0 do not clear.
   unsigned int block_next_cache_clearing_ = 0;
 };
 #endif

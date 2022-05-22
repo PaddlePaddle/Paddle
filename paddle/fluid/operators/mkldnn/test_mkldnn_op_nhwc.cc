@@ -224,8 +224,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   InputVars second_crop_input_name = {
       "v", scope.Var("v")->GetMutable<framework::LoDTensor>()};
   // Initialize input data
-  std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
-                                             static_cast<float>(20.0));
+  std::uniform_real_distribution<float> dist(10.0f, 20.0f);
   std::mt19937 engine;
   size_t numel = static_cast<size_t>(phi::product(dims));
   input_name.tensor->Resize(dims);
@@ -239,7 +238,6 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   std::rotate(expected_dims_nchw.begin() + 1, expected_dims_nchw.end() - 1,
               expected_dims_nchw.end());
   second_crop_input_name.tensor->Resize(phi::make_ddim(expected_dims_nchw));
-  // second_crop_input_name.tensor->set_layout(framework::DataLayout::kMKLDNN);
   const auto second_crop_input_md =
       dnnl::memory::desc(expected_dims_nchw, dnnl::memory::data_type::f32,
                          dnnl::memory::format_tag::nhwc);
@@ -251,8 +249,8 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   auto &pool = platform::DeviceContextPool::Instance();
 
   // Make pool2d followed by crop. crop may have Y input as
-  // non buffered so, it will come through codepath we are to test
-  // inside operator
+  // non buffered so the path to be executed is handling oneDNN kernel
+  // that is followed by CPU kernel with non-buffered Input
 
   auto ksize = std::vector<int>(2, 2);
   auto op_pool = framework::OpRegistry::CreateOp(

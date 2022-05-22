@@ -71,8 +71,8 @@ class WhileOp : public framework::OperatorBase {
 
 #ifdef PADDLE_WITH_MKLDNN
     // (jczaja) Executor on being destroyed clears oneDNN cache and
-    // reset registered model data layout. This is unwanted for nested Executors
-    // (executors declared inside control ops)
+    // resets registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
     platform::DontClearMKLDNNCache(dev_place);
 #endif
     framework::Executor executor(dev_place);
