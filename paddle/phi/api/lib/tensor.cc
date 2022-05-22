@@ -341,7 +341,11 @@ bool Tensor::is_initialized() const {
   return defined() && impl_->initialized();
 }
 
-void Tensor::reset() { impl_.reset(); }
+void Tensor::reset() {
+  impl_.reset();
+  autograd_meta_.reset();
+  name_ = "";
+}
 
 /* Part 6: Operator overloading */
 
@@ -390,8 +394,8 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "current_inplace_version is only supported on DenseTensor now."));
+    LOG_FIRST_N(WARNING, 1)
+        << "current_inplace_version is only supported on DenseTensor now.";
   }
   return 0;
 }

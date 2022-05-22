@@ -69,7 +69,7 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   meta->SetSingleOutRankWithSlot(0, 0);
   meta->SetGradNode(acc_node_ptr);
   std::vector<egr::AutogradMeta*> res = {meta};
-  scale_node_ptr->AddEdges(&res, 0);
+  scale_node_ptr->SetGradOutMeta(leaf_tensor, 0);
 
   Backward(target_tensors, {});
 

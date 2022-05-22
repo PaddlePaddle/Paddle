@@ -19,7 +19,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

@@ -51,7 +51,9 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
+        f for f in listdir(pth)
+        if isfile(join(pth, f)) and f.startswith(prefix) and f !=
+        f"{prefix}.gpu.log"
     ]
 
 

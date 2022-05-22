@@ -208,6 +208,20 @@ class TestSparseConvert(unittest.TestCase):
             # test coo_values_grad
             values_tensor.backward(paddle.to_tensor(out_grad))
             assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
+            indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+            values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0],
+                      [5.0, 5.0]]
+            sparse_x = paddle.sparse.sparse_coo_tensor(
+                paddle.to_tensor(indices),
+                paddle.to_tensor(values),
+                shape=[3, 4, 2],
+                stop_gradient=False)
+            values_tensor = sparse_x.values()
+            out_grad = [[2.0, 2.0], [3.0, 3.0], [5.0, 5.0], [8.0, 8.0],
+                        [9.0, 9.0]]
+            # test coo_values_grad
+            values_tensor.backward(paddle.to_tensor(out_grad))
+            assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
 
     def test_sparse_coo_tensor_grad(self):
         with _test_eager_guard():
@@ -233,6 +247,21 @@ class TestSparseConvert(unittest.TestCase):
                     assert np.array_equal(correct_values_grad,
                                           values.grad.numpy())
 
+                    # test the non-zero values is a vector
+                    values = [[1, 1], [2, 2]]
+                    values = paddle.to_tensor(
+                        values, dtype='float32', stop_gradient=False)
+                    sparse_x = paddle.sparse.sparse_coo_tensor(
+                        indices, values, shape=[2, 2, 2], stop_gradient=False)
+                    grad_values = [[2, 2], [3, 3]]
+                    grad_values = paddle.to_tensor(grad_values, dtype='float32')
+                    sparse_out_grad = paddle.sparse.sparse_coo_tensor(
+                        grad_indices, grad_values, shape=[2, 2, 2])
+                    sparse_x.backward(sparse_out_grad)
+                    correct_values_grad = [[0, 0], [3, 3]]
+                    assert np.array_equal(correct_values_grad,
+                                          values.grad.numpy())
+
     def test_sparse_coo_tensor_sorted(self):
         with _test_eager_guard():
             for device in devices:
@@ -247,6 +276,16 @@ class TestSparseConvert(unittest.TestCase):
                     sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
                     indices_sorted = [[0, 1], [1, 0]]
                     values_sorted = [5.0, 1.0]
+                    assert np.array_equal(indices_sorted,
+                                          sparse_x.indices().numpy())
+                    assert np.array_equal(values_sorted,
+                                          sparse_x.values().numpy())
+
+                    # test the non-zero values is a vector
+                    values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+                    values = paddle.to_tensor(values, dtype='float32')
+                    sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                    values_sorted = [[5.0, 5.0], [1.0, 1.0]]
                     assert np.array_equal(indices_sorted,
                                           sparse_x.indices().numpy())
                     assert np.array_equal(values_sorted,

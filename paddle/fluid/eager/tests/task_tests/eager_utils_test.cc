@@ -251,10 +251,11 @@ TEST(EagerUtils, GetGradAccumulationNode) {
 }
 
 TEST(EagerUtils, FillZeroForEmptyGradInputs) {
-  std::vector<std::vector<paddle::experimental::Tensor>> grads = {
-      std::vector<paddle::experimental::Tensor>(1)};
-  std::vector<std::vector<GradSlotMeta>> slot_metas = {
-      std::vector<GradSlotMeta>(1)};
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      grads = {std::vector<paddle::experimental::Tensor>(1)};
+  paddle::small_vector<std::vector<GradSlotMeta>, egr::kSlotSmallVectorSize>
+      slot_metas = {std::vector<GradSlotMeta>(1)};
 
   phi::DenseTensorMeta tensor_meta;
   tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;

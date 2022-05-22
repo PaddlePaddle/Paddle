@@ -226,9 +226,15 @@ def _new_process_group_impl(backend,
                             world_size,
                             group_name,
                             pg_options,
-                            group_id=0):
+                            group_id=0,
+                            src_rank=None,
+                            dst_rank=None):
     pg = None
     genv = _get_global_env()
+    if backend != 'heter':
+        assert src_rank is None and dst_rank is None, (
+            "src_rank and dst_rank "
+            "can only be set for heter backend.")
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
         place = core.CPUPlace()
@@ -263,13 +269,15 @@ def _new_process_group_impl(backend,
             rank=global_rank,
             world_size=global_world_size,
             place=place,
-            gid=0,
+            gid=group_id,
             local_rank=rank,
             local_size=world_size,
             gloo_rank=cluster_id,
             gloo_size=len(cluster_size),
             with_switch=True,
-            switch_endpoint=switch_ep)
+            switch_endpoint=switch_ep,
+            src_rank=src_rank,
+            dst_rank=dst_rank)
 
     return pg
 
@@ -322,6 +330,17 @@ def barrier(group=None):
         attrs={'ring_id': ring_id})
 
 
+# _custom_gid provides a way for users to
+# set the group id, which is usually useful
+# to be compatible with the static mode.
+_custom_gid = None
+
+
+def _set_custom_gid(gid):
+    global _custom_gid
+    _custom_gid = gid
+
+
 def new_group(ranks=None, backend=None):
     """
 
@@ -345,24 +364,28 @@ def new_group(ranks=None, backend=None):
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
 
     """
+    global _custom_gid
     global _group_map
     if in_dygraph_mode():
         global _default_group_name
-        gid = _new_ring_id()
+        gid = _custom_gid if _custom_gid else _new_ring_id()
         group_name = _default_group_name + str(gid)
-        global_group = _get_default_group()
-        global_rank = global_group.rank
-        global_ranks = global_group.ranks
-        backend = _default_backend if backend is None else backend
-        if ranks is None:
-            ranks = global_ranks
-        assert len(ranks) <= len(global_ranks), (
-            "Size of new group must be less than or "
-            "equal to that of the default global group.")
+        if backend != 'heter' and (ranks is None or len(ranks) > 1):
+            global_group = _get_default_group()
+            global_rank = global_group.rank
+            global_ranks = global_group.ranks
+            backend = _default_backend if backend is None else backend
+            if ranks is None:
+                ranks = global_ranks
+            assert len(ranks) <= len(global_ranks), (
+                "Size of new group must be less than or "
+                "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if global_rank in ranks and size > 1:
-            rank = ranks.index(global_rank)
+        if backend == 'heter' or (size > 1 and global_rank in ranks):
+            rank = 0 if backend == 'heter' else ranks.index(global_rank)
+            src_rank = ranks[0] if backend == 'heter' else None
+            dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(
                 backend,
                 _default_store,
@@ -370,7 +393,9 @@ def new_group(ranks=None, backend=None):
                 size,
                 group_name,
                 pg_options=None,
-                group_id=gid)
+                group_id=gid,
+                src_rank=src_rank,
+                dst_rank=dst_rank)
         else:
             rank = -1
             pg = None
@@ -642,6 +667,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
@@ -744,6 +771,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group

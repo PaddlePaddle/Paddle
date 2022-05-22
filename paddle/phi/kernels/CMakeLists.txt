@@ -36,7 +36,7 @@ set(MANUAL_BUILD_KERNELS ${AUTOTUNE_KERNELS} cross_entropy_kernel adam_kernel ad
     matrix_power_kernel matrix_power_grad_kernel maxout_kernel maxout_grad_kernel pool_kernel
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
-    triangular_solve_grad_kernel determinant_grad_kernel reduce_sum_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
+    triangular_solve_grad_kernel determinant_grad_kernel reduce_sum_kernel reduce_mean_kernel rnn_kernel rnn_grad_kernel warpctc_kernel warpctc_grad_kernel)
 foreach(src ${AUTOTUNE_KERNELS})
   kernel_library(${src} DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
 endforeach()
@@ -52,6 +52,7 @@ kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matri
 kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(reduce_sum_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+kernel_library(reduce_mean_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
 kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)

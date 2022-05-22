@@ -34,6 +34,8 @@ int CtrCommonAccessor::Initialize() {
   common_feature_value.embedx_dim = _config.embedx_dim();
   common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->Dim();
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
+  _ssd_unseenday_threshold =
+      _config.ctr_accessor_param().ssd_unseenday_threshold();
 
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
@@ -72,6 +74,25 @@ bool CtrCommonAccessor::Shrink(float* value) {
                               common_feature_value.Click(value));
   auto unseen_days = common_feature_value.UnseenDays(value);
   if (score < delete_threshold || unseen_days > delete_after_unseen_days) {
+    return true;
+  }
+  return false;
+}
+
+bool CtrCommonAccessor::SaveCache(float* value, int param,
+                                  double global_cache_threshold) {
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
+  if (ShowClickScore(common_feature_value.Show(value),
+                     common_feature_value.Click(value)) >= base_threshold &&
+      common_feature_value.UnseenDays(value) <= delta_keep_days) {
+    return common_feature_value.Show(value) > global_cache_threshold;
+  }
+  return false;
+}
+
+bool CtrCommonAccessor::SaveSSD(float* value) {
+  if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
     return true;
   }
   return false;

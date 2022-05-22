@@ -74,25 +74,26 @@ bool CtrDoubleAccessor::Shrink(float* value) {
   }
   return false;
 }
+
 bool CtrDoubleAccessor::SaveSSD(float* value) {
   if (CtrDoubleFeatureValue::UnseenDays(value) > _ssd_unseenday_threshold) {
     return true;
   }
   return false;
 }
-// bool CtrDoubleAccessor::save_cache(
-//         float* value, int param, double global_cache_threshold) {
-//     auto base_threshold = _config.ctr_accessor_param().base_threshold();
-//     auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
-//     if (ShowClickScore(CtrDoubleFeatureValue::Show(value),
-//     CtrDoubleFeatureValue::Click(value)) >= base_threshold
-//         && CtrDoubleFeatureValue::UnseenDays(value) <=
-//         delta_keep_days) {
-//         return CtrDoubleFeatureValue::Show(value) >
-//         global_cache_threshold;
-//     }
-//     return false;
-// }
+
+bool CtrDoubleAccessor::SaveCache(float* value, int param,
+                                  double global_cache_threshold) {
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
+  if (ShowClickScore(CtrDoubleFeatureValue::Show(value),
+                     CtrDoubleFeatureValue::Click(value)) >= base_threshold &&
+      CtrDoubleFeatureValue::UnseenDays(value) <= delta_keep_days) {
+    return CtrDoubleFeatureValue::Show(value) > global_cache_threshold;
+  }
+  return false;
+}
+
 bool CtrDoubleAccessor::Save(float* value, int param) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();

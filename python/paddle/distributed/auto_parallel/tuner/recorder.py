@@ -138,7 +138,6 @@ class MetricRecords(object):
     def from_state(cls, state):
         records = cls(state["direction"])
         records.records = [MetricRecord.from_state(r) for r in state["records"]]
-        print("here 1", records.records)
         return records
 
 

@@ -134,6 +134,42 @@ class TestProfiler(unittest.TestCase):
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
+        prof = None
+        dataset = RandomDataset(10 * 4)
+        simple_net = SimpleNet()
+        opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                   parameters=simple_net.parameters())
+        loader = DataLoader(
+            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
+        prof = profiler.Profiler(on_trace_ready=lambda prof: None)
+        prof.start()
+        for i, (image, label) in enumerate(loader()):
+            out = simple_net(image)
+            loss = F.cross_entropy(out, label)
+            avg_loss = paddle.mean(loss)
+            avg_loss.backward()
+            opt.minimize(avg_loss)
+            simple_net.clear_gradients()
+            prof.step()
+        prof.stop()
+        prof.summary()
+        prof = None
+        dataset = RandomDataset(10 * 4)
+        simple_net = SimpleNet()
+        loader = DataLoader(dataset, batch_size=4, shuffle=True, drop_last=True)
+        opt = paddle.optimizer.Adam(
+            learning_rate=1e-3, parameters=simple_net.parameters())
+        prof = profiler.Profiler(on_trace_ready=lambda prof: None)
+        prof.start()
+        for i, (image, label) in enumerate(loader()):
+            out = simple_net(image)
+            loss = F.cross_entropy(out, label)
+            avg_loss = paddle.mean(loss)
+            avg_loss.backward()
+            opt.step()
+            simple_net.clear_gradients()
+            prof.step()
+        prof.stop()
 
 
 class TestNvprof(unittest.TestCase):

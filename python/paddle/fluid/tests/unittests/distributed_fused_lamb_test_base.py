@@ -149,6 +149,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
             kwargs['exclude_from_weight_decay_fn'] = exclude_fn
             kwargs['lamb_weight_decay'] = 0.1
 
+            gm_steps = kwargs['gradient_accumulation_steps']
             if use_distributed_lamb:
                 optimizer_class = DistributedFusedLamb
                 kwargs = dict(kwargs)
@@ -163,6 +164,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 )
                 kwargs['grad_clip'] = GradClipDecorator(base_clip,
                                                         clip_after_allreduce)
+                kwargs.pop('gradient_accumulation_steps', None)
 
             optimizer = optimizer_class(**kwargs)
             get_parameter = optimizer._get_parameter
@@ -173,6 +175,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
             if use_fp16:
                 if not use_distributed_lamb:
                     optimizer._multi_precision = True
+
                 optimizer = paddle.static.amp.decorate(
                     optimizer,
                     amp_list,
@@ -180,6 +183,13 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                     use_dynamic_loss_scaling=False,
                     use_pure_fp16=use_fp16,
                     use_fp16_guard=use_fp16)
+                amp_init = optimizer.amp_init
+            else:
+                amp_init = None
+
+            if gm_steps > 1 and not use_distributed_lamb:
+                optimizer = paddle.fluid.optimizer.GradientMergeOptimizer(
+                    optimizer, k_steps=gm_steps, avg=False)
 
             params_grads = optimizer.backward(loss, startup)
             op_num = len(main.global_block().ops)
@@ -211,7 +221,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         return grad_t
 
     def reader():
-        for _ in range(5):
+        for _ in range(6):
             yield dict(
                 [(grad.name, gen_random_grad_tensor(grad)) for grad in grads])
 
@@ -223,8 +233,8 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         place = paddle.CUDAPlace(dev_id)
         exe = paddle.static.Executor(place)
         exe.run(startup)
-        if use_fp16:
-            optimizer.amp_init(place)
+        if amp_init is not None:
+            amp_init(place)
 
         master_p_ts = []
         for p in params:
@@ -258,10 +268,12 @@ class TestDistributedFusedLamb(unittest.TestCase):
             distutils.util.strtobool(
                 os.getenv('CLIP_AFTER_ALLREDUCE', 'True')))
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
+        gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
         print('clip_after_allreduce = {}, max_global_norm = {}'.format(
             clip_after_allreduce, max_global_norm))
         return {
             'clip_after_allreduce': clip_after_allreduce,
+            'gradient_accumulation_steps': gm_steps,
             'grad_clip': paddle.nn.ClipGradByGlobalNorm(max_global_norm)
             if max_global_norm > 0 else None,
         }

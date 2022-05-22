@@ -100,9 +100,10 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   void EmplaceBackOutput(CompatMetaTensor output);
 
   void EmplaceBackInputs(
-      paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs);
+      paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
+          inputs);
   void EmplaceBackOutputs(
-      paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+      paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
@@ -121,9 +122,9 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   virtual ~CompatInferMetaContext() = default;
 
  private:
-  paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+  paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
       compat_inputs_;
-  paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+  paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
       compat_outputs_;
 };
 

@@ -382,6 +382,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    use_gpudnn : true
   backward : conv2d_transpose_grad
 
 - api : conv3d_transpose
@@ -391,6 +392,7 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv3d_transpose
+    use_gpudnn : true
   backward : conv3d_transpose_grad
 
 - api : copy_to
@@ -464,6 +466,7 @@
     func : DeformableConvInferMeta
   kernel :
     func : deformable_conv
+    data_type : x
   optional : mask
   backward : deformable_conv_grad
 
@@ -544,6 +547,7 @@
     func : DropoutInferMeta
   kernel :
     func : dropout
+    data_type : x
   optional : seed_tensor
   backward : dropout_grad
 
@@ -556,6 +560,16 @@
   kernel :
     func : eigh
   backward : eigh_grad
+
+- api : einsum
+  args : (Tensor[] x, str equation)
+  output : Tensor
+  infer_meta :
+    func : EinsumInferMeta
+    param : [x, equation]
+  kernel :
+    func : einsum
+  backward : einsum_grad
 
 - api : elementwise_pow
   args : (Tensor x, Tensor y)
@@ -700,6 +714,7 @@
     backend : x
   inplace : (x -> out)
   view : (x -> out)
+  intermediate : xshape
   backward : flatten_grad
 
 # flip
@@ -797,7 +812,7 @@
     skip_transform : x
 
 - api : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
+  args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
   infer_meta :
     func : GatherInferMeta
@@ -1063,6 +1078,7 @@
     func : LayerNormInferMeta
   kernel :
     func : layer_norm
+    data_type : x
   backward : layer_norm_grad
   optional : scale, bias
 
@@ -1556,7 +1572,19 @@
     func : PoolInferMeta
   kernel :
     func : pool2d
+    use_gpudnn : true
   backward : pool2d_grad
+
+# Used in adaptive_avg_pool2d API
+- api : pool2d_gpudnn_unused
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d
+    use_gpudnn : false
+  backward : pool2d_grad_gpudnn_unused
 
 - api : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1565,6 +1593,7 @@
     func : PoolInferMeta
   kernel :
     func : pool3d
+    use_gpudnn : true
   backward : pool3d_grad
 
 - api : pow
@@ -1593,6 +1622,7 @@
     func : PsroiPoolInferMeta
   kernel :
     func : psroi_pool
+    data_type : x
   optional : boxes_num
   backward : psroi_pool_grad
 
@@ -1698,6 +1728,7 @@
     func : RoiAlignInferMeta
   kernel :
     func : roi_align
+    data_type : x
   optional : boxes_num
   backward : roi_align_grad
 
@@ -1708,6 +1739,7 @@
     func : RoiPoolInferMeta
   kernel :
     func : roi_pool
+    data_type : x
   optional : boxes_num
   intermediate : arg_max
   backward : roi_pool_grad
@@ -1923,6 +1955,7 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
+    use_gpudnn : true
   backward : softmax_grad
 
 - api : split
@@ -1951,12 +1984,13 @@
 
 - api : squeeze
   args : (Tensor x, int[] axes)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeInferMeta
   kernel :
     func : squeeze
   view: (x -> out)
+  intermediate : xshape
   backward : squeeze_grad
 
 - api : stack
@@ -1987,7 +2021,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
@@ -2106,6 +2140,18 @@
     func : triangular_solve
   backward : triangular_solve_grad
 
+- api : tril_indices
+  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+    backend : place
+
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)
   output : Tensor(out)
@@ -2180,12 +2226,13 @@
 
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
-  output : Tensor(xshape), Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
   view: (x -> out)
+  intermediate : xshape
   backward : unsqueeze_grad
 
 # viterbi_decode
