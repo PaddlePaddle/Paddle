@@ -1853,7 +1853,7 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def squeeze(x, axis=None, name=None):
     """
-    Squeezing the dimension(s) of size 1 of input tensor x's shape. 
+    Squeeze the dimension(s) of size 1 of input tensor x's shape. 
     
     Note that the output Tensor will share data with origin Tensor and doesn't have a 
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
