@@ -1319,7 +1319,7 @@ def nanmean(x, axis=None, keepdim=False, name=None):
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
-    This OP is used to sum one or more Tensor of the input.
+    Sum one or more Tensor of the input.
     
     For example:
 
@@ -1365,7 +1365,7 @@ def add_n(inputs, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
