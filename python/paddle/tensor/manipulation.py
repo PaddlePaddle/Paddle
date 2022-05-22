@@ -2111,7 +2111,7 @@ def unique(x,
 
     Examples:
         .. code-block:: python
-
+	  :name: code-example1
             import paddle
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
