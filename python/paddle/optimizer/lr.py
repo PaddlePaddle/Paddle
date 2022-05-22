@@ -1806,7 +1806,7 @@ class OneCycleLR(LRScheduler):
 
 class CyclicLR(LRScheduler):
     r"""
-    Set the learning rate according to a cyclic learning rate scheduler.
+    Set the learning rate according to the cyclic learning rate (CLR) scheduler.
     The scheduler regards the process of learning rate adjustment as one cycle after another.
     It cycles the learning rate between two boundaries with a constant frequency.
     The distance between the two boundaries can be scaled on a per-iteration or per-cycle basis.
@@ -1817,7 +1817,7 @@ class CyclicLR(LRScheduler):
 
     * "triangular": A basic triangular cycle without any amplitude scaling.
     * "triangular2": A basic triangular cycle that reduce initial amplitude by half each cycle.
-    * "exp_range": A cycle that scales initial amplitude by half each cycle. Scale function defined as :math:`gamma^{iterations}`
+    * "exp_range": A cycle that scales initial amplitude by scale function which is defined as :math:`gamma^{iterations}` .
 
     The initial amplitude is defined as max_learning_rate - base_learning_rate.
     Also note that you should update learning rate each step.
@@ -1825,7 +1825,7 @@ class CyclicLR(LRScheduler):
     Args:
         base_learning_rate (float): Initial learning rate, which is the lower boundary in the cycle. The paper recommends
             that set the base_learning_rate to 1/3 or 1/4 of max_learning_rate.
-        max_learning_rate (float): Upper learning rate in the cycle. It defines the cycle amplitude.
+        max_learning_rate (float): Maximum learning rate in the cycle. It defines the cycle amplitude as above.
             Since there is some scaling operation during process of learning rate adjustment,
             max_learning_rate may not actually be reached.
         step_size_up (int): Number of training steps, which is used to increase learning rate in a cycle.
@@ -1835,15 +1835,13 @@ class CyclicLR(LRScheduler):
             If not specified, it's value will initialize to `` step_size_up `` . Default: None
         mode (str, optional): one of 'triangular', 'triangular2' or 'exp_range'.
             If scale_fn is specified, this argument will be ignored. Default: 'triangular'
-        exp_gamma (float): Constant in 'exp_range' scaling function: exp_gamma**(cycle iterations).
-            Used only when mode = 'exp_range'. Default: 1.0
+        exp_gamma (float): Constant in 'exp_range' scaling function: exp_gamma**iterations. Used only when mode = 'exp_range'. Default: 1.0
         scale_fn (function, optional): A custom scaling function, which is used to replace three build-in methods.
             It should only have one argument. For all x >= 0, 0 <= scale_fn(x) <= 1.
             If specified, then 'mode' will be ignored. Default: None
         scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle
             number or cycle iterations (total iterations since start of training). Default: 'cycle'
-        last_epoch (int, optional): The index of last epoch. Can be set to restart training.
-            Default: -1, means initial learning rate.
+        last_epoch (int, optional): The index of last epoch. Can be set to restart training.Default: -1, means initial learning rate.
         verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
