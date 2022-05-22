@@ -102,6 +102,8 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             alpha=alpha,
             trans_x=transpose_X,
             trans_y=transpose_Y,
+            fused_reshape_Out=[],
+            fused_transpose_Out=[],
             fused_reshape_X=[],
             fused_reshape_Y=[],
             fused_transpose_X=[],

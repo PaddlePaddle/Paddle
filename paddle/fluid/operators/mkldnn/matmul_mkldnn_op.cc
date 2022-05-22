@@ -327,7 +327,10 @@ class MatMulMKLDNNHandler
   }
 
   bool IsOutputFused(const ExecutionContext& ctx) const {
-    return (ctx.HasAttr("fused_reshape_Out") && ctx.HasAttr("fused_transpose_Out"));
+    auto& fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+    auto& fused_transpose_Out =
+        ctx.Attr<std::vector<int>>("fused_transpose_Out");
+    return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -346,7 +349,7 @@ class MatMulMKLDNNHandler
                           "they have to be equal."));
 
     memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
-    const memory::dim M = mat_dim_x.height_;
+  const memory::dim M = mat_dim_x.height_;
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
 
