@@ -659,8 +659,8 @@ class Normalize(BaseTransform):
     ``output[channel] = (input[channel] - mean[channel]) / std[channel]``
 
     Args:
-        mean (int|float|list|tuple): Sequence of means for each channel.
-        std (int|float|list|tuple): Sequence of standard deviations for each channel.
+        mean (int|float|list|tuple, optional): Sequence of means for each channel.
+        std (int|float|list|tuple, optional): Sequence of standard deviations for each channel.
         data_format (str, optional): Data format of img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
