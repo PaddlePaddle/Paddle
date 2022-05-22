@@ -55,12 +55,4 @@ extra {
     name: "fused_transpose_Y"
     type: INTS
   }
-  attrs {
-    name: "fused_reshape_Out"
-    type: INTS
-  }
-  attrs {
-    name: "fused_transpose_Out"
-    type: INTS
-  }
 }

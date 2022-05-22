@@ -665,14 +665,11 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul+transpose+reshape fuse activated
-    auto reshape_out =
-        context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
+    if(context->HasAttr("fused_reshape_Out") && context->HasAttr("fused_transpose_Out"))
+    {
+      auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+      auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
     context->SetOutputDim("Out", ddim_out);
@@ -759,18 +756,6 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({})
         .AsExtra();
     AddAttr<bool>(
