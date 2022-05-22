@@ -822,7 +822,7 @@ def masked_select(x, mask, name=None):
 
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
-    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
@@ -844,35 +844,27 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     Examples:
 
         .. code-block:: python
+          :name: code-example1
+            import paddle
 
-           import paddle
+            data_1 = paddle.to_tensor([1, 4, 5, 7])
+            value_1, indices_1 = paddle.topk(data_1, k=1)
+            print(value_1) # [7]
+            print(indices_1) # [3]
 
-           tensor_1 = paddle.to_tensor([1, 4, 5, 7])
-           value_1, indices_1 = paddle.topk(tensor_1, k=1)
-           print(value_1)
-           # [7]
-           print(indices_1)
-           # [3] 
-           tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
-           value_2, indices_2 = paddle.topk(tensor_2, k=1)
-           print(value_2)
-           # [[7]
-           #  [6]]
-           print(indices_2)
-           # [[3]
-           #  [1]]
-           value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
-           print(value_3)
-           # [[7]
-           #  [6]]
-           print(indices_3)
-           # [[3]
-           #  [1]]
-           value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
-           print(value_4)
-           # [[2 6 5 7]]
-           print(indices_4)
-           # [[1 1 0 0]]
+            data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
+            value_2, indices_2 = paddle.topk(data_2, k=1)
+            print(value_2) # [[7], [6]]
+            print(indices_2) # [[3], [1]]
+
+            value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
+            print(value_3) # [[7], [6]]
+            print(indices_3) # [[3], [1]]
+
+            value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
+            print(value_4) # [[2, 6, 5, 7]]
+            print(indices_4) # [[1, 1, 0, 0]]
+
 
     """
 
