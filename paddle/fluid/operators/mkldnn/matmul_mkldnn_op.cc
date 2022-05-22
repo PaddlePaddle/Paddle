@@ -349,7 +349,7 @@ class MatMulMKLDNNHandler
                           "they have to be equal."));
 
     memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
-  const memory::dim M = mat_dim_x.height_;
+    const memory::dim M = mat_dim_x.height_;
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
 

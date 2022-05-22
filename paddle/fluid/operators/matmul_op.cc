@@ -772,7 +772,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({})
-        .AsExtra();    
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "

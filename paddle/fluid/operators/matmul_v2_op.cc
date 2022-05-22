@@ -242,7 +242,7 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({})
-        .AsExtra();    
+        .AsExtra();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
