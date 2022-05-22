@@ -220,7 +220,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        The tensor of :attr:`dtype`
+        The tensor of :attr:`dtype`.
 
     Examples:
         .. code-block:: python
