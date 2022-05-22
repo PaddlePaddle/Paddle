@@ -625,7 +625,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     """
-    Returning a Tensor filled with random integers from a discrete uniform
+    Generate a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
     If ``high`` is None (the default), the range is [0, ``low``).
 
