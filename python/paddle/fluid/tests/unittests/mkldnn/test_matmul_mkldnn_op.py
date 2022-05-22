@@ -456,6 +456,12 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
+        if len(self.reshape_out) > 0:
+            self.attrs['fused_reshape_Out'] = self.reshape_out
+        if len(self.transpose_out) > 0:
+            self.attrs['fused_transpose_Out'] = self.transpose_out
+
+        self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
