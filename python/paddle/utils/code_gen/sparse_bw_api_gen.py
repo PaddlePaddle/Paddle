@@ -35,7 +35,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         return BackwardAPI.get_return_type(self)
 
     def gene_return_code(self):
-        return ""
+        return "return;"
 
     def gene_api_declaration(self):
         return SparseAPI.gene_api_declaration(self)
@@ -54,6 +54,11 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         kernel_output = ""
         output_names = []
         output_create = ""
+        output_type_map = {
+            'dense': 'TensorType::DENSE_TENSOR',
+            'sparse_coo': 'TensorType::SPARSE_COO',
+            'sparse_csr': 'TensorType::SPARSE_CSR'
+        }
 
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
@@ -62,7 +67,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  auto kernel_out = {set_out_func}({self.outputs['names'][0].split('@')[0]}, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+    auto kernel_out = {set_out_func}({self.outputs['names'][0]}, {output_type_map[output_type_list[0]]});"""
 
         elif len(output_type_list) > 1:
             output_create = ""
@@ -73,10 +78,10 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 if inplace_flag and self.inplace_map is not None and self.outputs[
                         'names'][i] in self.inplace_map:
                     output_create = output_create + f"""
-  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
+    *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i].split('@')[0]}, {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+    auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]}, {output_type_map[output_type_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
