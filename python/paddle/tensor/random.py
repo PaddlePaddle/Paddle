@@ -39,7 +39,7 @@ def bernoulli(x, name=None):
         \end{cases}.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64.
+        x (Tensor): The input Tensor, it's data type should be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns: 
