@@ -55,6 +55,7 @@ class SplitOpConverter : public OpConverter {
         output_lengths.push_back(out_axis_dim);
       }
     }
+
     nvinfer1::ILayer* layer = nullptr;
 #if IS_TRT_VERSION_GE(8034)
     if (engine_->with_dynamic_shape()) {
@@ -137,17 +138,17 @@ class SplitOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPluginDynamic* plugin =
           new plugin::SplitPluginDynamic(axis, output_lengths, with_fp16);
-      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+      layer = engine_->AddDynamicPlugin(&input, 1, plugin);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16);
-      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
+      layer = engine_->AddPluginV2Ext(&input, 1, plugin);
     }
-    std::string output_names;
+    std::vector<std::string> output_names;
     for (size_t i = 0; i < output_num; i++) {
-      output_names += op_desc.Output("Out")[i];
+      output_names.push_back(op_desc.Output("Out")[i]);
     }
     RreplenishLayerAndOutput(layer, "split", output_names, test_mode);
 #endif

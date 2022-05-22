@@ -71,6 +71,7 @@ class SliceOpConverter : public OpConverter {
                 ends[i], starts[i]));
       }
     }
+
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss() && engine_->with_ernie() &&
