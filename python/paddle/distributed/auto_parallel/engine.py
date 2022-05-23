@@ -45,8 +45,6 @@ from .utils import print_program_with_dist_attr, to_list
 from .process_group import get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
-paddle.enable_static()
-
 
 class Engine:
     def __init__(self,
@@ -82,6 +80,7 @@ class Engine:
     def prepare(self,
                 optimizer=None,
                 loss=None,
+                gradient_scale=True,
                 metrics=None,
                 mode='train',
                 all_ranks=False):
@@ -90,6 +89,7 @@ class Engine:
         self._loss = loss
         self._metrics = to_list(metrics)
         self._mode = mode
+        self._gradient_scale = gradient_scale
         # Build forward program
         self._build(mode)
         # Do the planning process
@@ -149,6 +149,7 @@ class Engine:
             self._serial_main_progs[mode], self._serial_startup_progs[mode],
             self._optimizer, losses, self._feed_vars[mode],
             self._fetch_vars[mode], self.strategy)
+        self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _initialize(self, mode):
         if self._nranks > 1:
@@ -183,14 +184,14 @@ class Engine:
             epochs=1,
             steps_per_epoch=None,
             use_program_cache=False,
-            return_numpy=True,
-            sample_generator=True):
+            return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
         self.mode = 'train'
-        assert self.mode in self._dist_main_progs, "train model is not ready, please call `engine.prepare(mode='train')` first."
-        train_dataloader = self._create_dataloader(
-            train_data, batch_size, epochs, steps_per_epoch, sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "train model is not ready, please call `engine.prepare(mode='train')` first."
+        train_dataloader = self._create_dataloader(train_data, batch_size,
+                                                   epochs, steps_per_epoch)
 
         outputs = []
         for epoch in range(epochs):
@@ -209,12 +210,11 @@ class Engine:
                  eval_data,
                  batch_size=1,
                  use_program_cache=False,
-                 return_numpy=True,
-                 sample_generator=True):
+                 return_numpy=True):
         self.mode = 'eval'
-        assert self.mode in self._dist_main_progs, "eval model is not ready, please call `engine.prepare(mode='eval')` first."
-        eval_dataloader = self._create_dataloader(
-            eval_data, batch_size, sample_generator=sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "eval model is not ready, please call `engine.prepare(mode='eval')` first."
+        eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
         outputs = []
         for step, data in enumerate(eval_dataloader):
@@ -228,12 +228,11 @@ class Engine:
                 test_data,
                 batch_size=1,
                 use_program_cache=False,
-                return_numpy=True,
-                sample_generator=True):
+                return_numpy=True):
         self.mode = 'predict'
-        assert self.mode in self._dist_main_progs, "predict model is not ready, please call `engine.prepare(mode='predict')` first."
-        test_dataloader = self._create_dataloader(
-            test_data, batch_size, sample_generator=sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "predict model is not ready, please call `engine.prepare(mode='predict')` first."
+        test_dataloader = self._create_dataloader(test_data, batch_size)
 
         outputs = []
         for step, data in enumerate(test_dataloader):
@@ -304,21 +303,30 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           steps_per_epoch=None,
-                           sample_generator=True):
-        feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
-            self.mode]["labels"]
+                           steps_per_epoch=None):
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
-        serial_main_prog = self._serial_main_progs[self.mode]
-        serial_main_block = serial_main_prog.global_block()
+
+        # get feed_list from dist_program
+        inputs_var = self._feed_vars[self.mode]["inputs"]
+        labels_var = self._feed_vars[self.mode]["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+        dp_world_size, dp_rank = self._get_data_parallel_info(feed_list[0],
+                                                              dist_context)
+
+        # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
         if dist_main_block.ops[0].type == 'create_py_reader':
             op_size -= 3
             for _ in range(3):
                 dist_main_block._remove_op(0, sync=False)
+
+        # insert read op at the end of program
         places = paddle.static.cuda_places()
         with fluid.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = NonIterableGeneratorLoader(
@@ -328,7 +336,10 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                sample_generator=sample_generator)
+                data_parallel_world_size=dp_world_size,
+                data_parallel_rank=dp_rank)
+
+        # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
@@ -337,17 +348,6 @@ class Engine:
             new_op = Operator(
                 dist_main_block, new_op_desc, type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
-            for in_name in new_op.input_arg_names:
-                if "lod_tensor_blocking_queue" in in_name:
-                    continue
-                if in_name not in dist_main_block.vars:
-                    in_var = serial_main_block._var_recursive(in_name)
-                    dist_main_block._clone_variable(in_var, in_var.persistable)
-            for out_name in new_op.output_arg_names:
-                if out_name not in dist_main_block.vars:
-                    out_var = serial_main_block._var_recursive(out_name)
-                    dist_main_block._clone_variable(out_var,
-                                                    out_var.persistable)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
@@ -386,6 +386,29 @@ class Engine:
                 })
 
         return var
+
+    def _get_data_parallel_info(self, var, dist_context):
+        # get data parallel world size and current data parallel rank
+        from .utils import _get_comm_group, _get_corresponding_rank
+
+        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+        process_mesh = tensor_dist_attr.process_mesh
+        dims_mapping = tensor_dist_attr.dims_mapping
+
+        if self._cur_rank not in process_mesh.processes:
+            rank_id = _get_corresponding_rank(dist_context, process_mesh,
+                                              self._cur_rank)
+        else:
+            rank_id = self._cur_rank
+
+        batch_size_axis = dims_mapping[0]
+        if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+            group_ranks = _get_comm_group(process_mesh.processes,
+                                          process_mesh.topology,
+                                          batch_size_axis, rank_id)
+            return len(group_ranks), group_ranks.index(rank_id)
+
+        return None, None
 
     def save(self, path, training=True, mode=None):
         if not mode:

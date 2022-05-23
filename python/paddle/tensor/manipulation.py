@@ -970,7 +970,7 @@ def tolist(x):
 def concat(x, axis=0, name=None):
     """
 
-    This OP concatenates the input along the axis.
+    Concatenates the input along the axis.
 
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
@@ -1330,13 +1330,11 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     r"""
-    **Flatten op**
-
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
-    Note that the output Tensor will share data with origin Tensor and doesn't have a 
-    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, please 
-    use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+    Note:
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode. 
+        If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
 
     For Example:
 
@@ -1371,8 +1369,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                       float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the contents of the input tensor, with input \
@@ -1427,8 +1424,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        dy_out, _ = _C_ops.final_state_flatten(x, start_axis, stop_axis)
-        return dy_out
+        return _C_ops.final_state_flatten(x, start_axis, stop_axis)
 
     if _in_legacy_dygraph():
         dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
@@ -1490,7 +1486,9 @@ def roll(x, shifts, axis=None, name=None):
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
-        name (str, optional): Name for the operation. Default: None
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name` .
+
 
     Returns:
         Tensor: A Tensor with same data type as `x`.
@@ -1566,7 +1564,7 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-    This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
+    Stacks all the input tensors ``x`` along ``axis`` dimemsion. 
     All tensors must be of the same shape and same dtype.
     
     For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked 
@@ -1622,7 +1620,7 @@ def stack(x, axis=0, name=None):
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
-        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         
     Returns:
         Tensor: The stacked tensor with same data type as input.
@@ -1936,7 +1934,7 @@ def squeeze(x, axis=None, name=None):
     input = x
     axes = axis
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)[1]
+        return _C_ops.final_state_squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -2271,7 +2269,7 @@ def unsqueeze(x, axis, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)[1]
+        return _C_ops.final_state_unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -2434,20 +2432,20 @@ def unbind(input, axis=0):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            # input is a variable which shape is [3, 4, 5]
-            np_input = np.random.rand(3, 4, 5).astype('float32')
-            input = paddle.to_tensor(np_input)
+
+            # input is a Tensor which shape is [3, 4, 5]
+            input = paddle.rand([3, 4, 5])
+       
             [x0, x1, x2] = paddle.unbind(input, axis=0)
             # x0.shape [4, 5]
             # x1.shape [4, 5]
             # x2.shape [4, 5]
+
             [x0, x1, x2, x3] = paddle.unbind(input, axis=1)
             # x0.shape [3, 5]
             # x1.shape [3, 5]
             # x2.shape [3, 5]
             # x3.shape [3, 5]
-
     """
     if in_dygraph_mode():
         return _C_ops.final_state_unbind(input, axis)
@@ -2587,7 +2585,6 @@ def scatter_(x, index, updates, overwrite=True, name=None):
 
 def scatter_nd_add(x, index, updates, name=None):
     r"""
-    **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
     or slice in a Tensor.
@@ -2644,15 +2641,16 @@ def scatter_nd_add(x, index, updates, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
-            index_data = np.array([[1, 1],
-                                   [0, 1],
-                                   [1, 3]]).astype(np.int64)
-            index = paddle.to_tensor(index_data)
+            index = paddle.to_tensor([[1, 1],
+                                    [0, 1],
+                                    [1, 3]], dtype='int64')
+            
             output = paddle.scatter_nd_add(x, index, updates)
+            print(output.shape)
+            # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
         op = getattr(_C_ops, 'scatter_nd_add')
@@ -2934,8 +2932,7 @@ def broadcast_to(x, shape, name=None):
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
 
@@ -3017,7 +3014,7 @@ def expand(x, shape, name=None):
 
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -3098,7 +3095,7 @@ def expand(x, shape, name=None):
 
 def reshape(x, shape, name=None):
     """
-    This operator changes the shape of ``x`` without changing its data.
+    Changes the shape of ``x`` without changing its data.
 
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode. 
@@ -3107,32 +3104,17 @@ def reshape(x, shape, name=None):
 
     Some tricks exist when specifying the target shape.
 
-    1. -1 means the value of this dimension is inferred from the total element
-    number of x and remaining dimensions. Thus one and only one dimension can
-    be set -1.
+        - 1. -1 means the value of this dimension is inferred from the total element number of x and remaining dimensions. Thus one and only one dimension can be set -1.
 
-    2. 0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x. The index of 0s in shape can not exceed
-    the dimension of x.
+        - 2. 0 means the actual dimension value is going to be copied from the corresponding dimension of x. The index of 0s in shape can not exceed the dimension of x.
 
     Here are some examples to explain it.
 
-    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [6, 8], the reshape operator will transform x into a 2-D tensor with
-    shape [6, 8] and leaving x's data unchanged.
+        - 1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [6, 8], the reshape operator will transform x into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
 
-    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified is [2, 3, -1, 2], the reshape operator will transform x into a
-    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
-    case, one dimension of the target shape is set to -1, the value of this
-    dimension is inferred from the total element number of x and remaining
-    dimensions.
+        - 2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape specified is [2, 3, -1, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this case, one dimension of the target shape is set to -1, the value of this dimension is inferred from the total element number of x and remaining dimensions.
 
-    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
-    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
-    besides -1, 0 means the actual dimension value is going to be copied from
-    the corresponding dimension of x.
+        - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
 
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
@@ -3364,8 +3346,7 @@ def gather_nd(x, index, name=None):
         x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name` .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
@@ -3451,7 +3432,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 result = [ [2], ]
 
     Args:
-        x (Tensor): An N-D ``Tensor``. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.

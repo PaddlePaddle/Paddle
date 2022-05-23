@@ -294,12 +294,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     Returns:
         Tensor: A Tensor constructed from ``data`` .
 
-    Raises:
-        TypeError: If the data type of ``data`` is not scalar, list, tuple, np.ndarray, paddle.Tensor
-        ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
-        TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
-
     Examples:
 
     .. code-block:: python
@@ -445,7 +439,6 @@ def full_like(x, fill_value, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
           
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
@@ -528,7 +521,7 @@ def ones(shape, dtype=None, name=None):
 
 def ones_like(x, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with the value 1, with the same shape and
+    Returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
@@ -546,10 +539,6 @@ def ones_like(x, dtype=None, name=None):
         Tensor: A Tensor filled with the value 1, with the same shape and
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
-    Raise:
-        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-        float64, int32 or int64.
-
     Examples:
         .. code-block:: python
 
@@ -565,7 +554,7 @@ def ones_like(x, dtype=None, name=None):
 
 def zeros(shape, dtype=None, name=None):
     """
-    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+    Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
         shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of ``shape`` is int32 or int64.
@@ -621,9 +610,6 @@ def zeros_like(x, dtype=None, name=None):
         Tensor: A Tensor filled with the value 0, with the same shape and
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
-    Raise:
-        TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -765,7 +751,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
-    This OP returns a 1-D Tensor with spaced values within a given interval.
+    Returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
     the ``step``. (the interval including ``start`` but excluding ``end``).
@@ -789,17 +775,12 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dytpe`` is None, the data type is float32. Default is None.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns: 
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
         taken with common difference ``step`` beginning from ``start``. Its
         data type is set by ``dtype``.
-
-    Raises:
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
     Examples:
         .. code-block:: python
@@ -914,7 +895,7 @@ def _tril_triu_op(helper):
 
 def tril(x, diagonal=0, name=None):
     r"""
-    This op returns the lower triangular part of a matrix (2-D tensor) or batch
+    Returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
     on and below the diagonal.
@@ -929,48 +910,42 @@ def tril(x, diagonal=0, name=None):
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
 
-    Raises:
-        TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`x` is less than 2.
-
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
-            # array([[ 1,  2,  3,  4],
-            #        [ 5,  6,  7,  8],
-            #        [ 9, 10, 11, 12]])
+            data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 2 , 3 , 4 ],
+            #         [5 , 6 , 7 , 8 ],
+            #         [9 , 10, 11, 12]])
 
-
-            x = paddle.to_tensor(data)
-            
-            tril1 = paddle.tensor.tril(x)
-            # array([[ 1,  0,  0,  0],
-            #        [ 5,  6,  0,  0],
-            #        [ 9, 10, 11,  0]])
+            tril1 = paddle.tril(data)
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 0 , 0 , 0 ],
+            #         [5 , 6 , 0 , 0 ],
+            #         [9 , 10, 11, 0 ]])
 
             # example 2, positive diagonal value
-            tril2 = paddle.tensor.tril(x, diagonal=2)
-            # array([[ 1,  2,  3,  0], 
-            #        [ 5,  6,  7,  8],
-            #        [ 9, 10, 11, 12]])
+            tril2 = paddle.tril(data, diagonal=2)
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 2 , 3 , 0 ],
+            #         [5 , 6 , 7 , 8 ],
+            #         [9 , 10, 11, 12]])
 
             # example 3, negative diagonal value
-            tril3 = paddle.tensor.tril(x, diagonal=-1)
-            # array([[ 0,  0,  0,  0],
-            #        [ 5,  0,  0,  0],
-            #        [ 9, 10,  0,  0]])
-
+            tril3 = paddle.tril(data, diagonal=-1)
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0 , 0 , 0 , 0 ],
+            #         [5 , 0 , 0 , 0 ],
+            #         [9 , 10, 0 , 0 ]])
     """
     if in_dygraph_mode():
         return _C_ops.final_state_tril_triu(x, diagonal, True)
@@ -1005,10 +980,6 @@ def triu(x, diagonal=0, name=None):
     Returns:
         Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
         it's data type is the same as x's Tensor.
-
-    Raises:
-        TypeError: diagonal is not a int type.
-        ValueError: dimension of :attr:`x` is less than 2.
 
     Examples:
         .. code-block:: python
@@ -1054,13 +1025,12 @@ def triu(x, diagonal=0, name=None):
 
 def meshgrid(*args, **kwargs):
     """
-    This op takes a list of N tensors as input *args, each of which is 1-dimensional 
-    vector, and creates N-dimensional grids.
+    Takes a list of N tensors as input *args, each of which is 1-dimensional vector, and creates N-dimensional grids.
     
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        **kwargs (optional): Currently, we only accept name in **kwargs 
+        **kwargs (optional): Currently, only accept name in **kwargs 
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
@@ -1342,7 +1312,7 @@ def diag(x, offset=0, padding_value=0, name=None):
 
 def empty(shape, dtype=None, name=None):
     """
-    This Op returns a Tensor with uninitialized data which size is same as ``shape``.
+    Returns a Tensor with uninitialized data which size is same as ``shape``.
     
     Args:
         shape(list|tuple|Tensor): Shape of the Tensor to be created.
@@ -1362,29 +1332,32 @@ def empty(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          paddle.set_device("cpu")  # and use cpu device
+            paddle.set_device("cpu")  # and use cpu device
 
-          # example 1: argument ``shape`` is a list which doesn't contain Tensor.
-          data1 = paddle.empty(shape=[2,3], dtype='float32')
-          #[[4.3612203e+27 1.8176809e+31 1.3555911e-19]     # uninitialized
-          # [1.1699684e-19 1.3563156e-19 3.6408321e-11]]    # uninitialized
+            # example 1: argument ``shape`` is a list which doesn't contain Tensor.
+            data1 = paddle.empty(shape=[2, 3], dtype='float32')
+            print(data1)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0.00000000, 0.        , 0.00000000],
+            #         [0.        , 0.29652897, 0.09356152]])       # uninitialized
 
-          # example 2: argument ``shape`` is a Tensor, the data type must be int64 or int32.
-          shape_data = np.array([2, 3]).astype('int32')
-          shape = paddle.to_tensor(shape_data)
-          data2 = paddle.empty(shape=shape, dtype='float32')
-          #[[1.7192326e-37 4.8125365e-38 1.9866003e-36]     # uninitialized
-          # [1.3284029e-40 7.1117408e-37 2.5353012e+30]]    # uninitialized
+            # example 2: argument ``shape`` is a Tensor, the data type must be int64 or int32.
+            shape_data = paddle.to_tensor([2, 3]).astype('int32')
+            data2 = paddle.empty(shape=shape_data, dtype='float32')
+            print(data2)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-0.50543123, -0.09872390, -0.92634487],
+            #         [-0.51007903, -0.02454148,  1.29315734]])    # uninitialized
 
-          # example 3: argument ``shape`` is a list which contains Tensor.
-          dim2_data = np.array([3]).astype('int32')
-          dim2 = paddle.to_tensor(dim2_data)
-          data3 = paddle.empty(shape=[2, dim2], dtype='float32')
-          #[[1.1024214e+24 7.0379409e+22 6.5737699e-34]     # uninitialized
-          # [7.5563101e+31 7.7130405e+31 2.8020654e+20]]    # uninitialized
+            # example 3: argument ``shape`` is a list which contains Tensor.
+            dim2 = paddle.to_tensor([3]).astype('int32')
+            data3 = paddle.empty(shape=[2, dim2], dtype='float32')
+            print(data3)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[ 0.00000000,  0.        , -0.92634487],
+            #         [-0.51007903, -0.02454148,  1.29315734]])    # uninitialized
     """
 
     if dtype is None:
@@ -1428,7 +1401,7 @@ def empty(shape, dtype=None, name=None):
 
 def empty_like(x, dtype=None, name=None):
     """
-    This Op returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
+    Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
     
     Args:
@@ -1446,7 +1419,6 @@ def empty_like(x, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           paddle.set_device("cpu")  # and use cpu device
 
@@ -1740,4 +1712,91 @@ def complex(real, imag, name=None):
     outputs = {"Out": out}
     attrs = {}
     helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
+
+
+def tril_indices(row, col, offset=0, dtype='int64'):
+    """
+    Return the indices of the lower triangular part of the 2-D matrix 
+    whose row and col is knowed.Indices are ordered based on row and then columns. 
+    The lower triangular part of the matrix is defined as the elements on
+    and below the diagonal.
+    
+    Args:
+        row (int): The input x which is a int number describe the number of row of the matrix.
+        col (int): The input x which is a int number describe the number of col of the matrix.
+        offset (int, optional): The offset to consider, default value is 0.
+
+            - If offset = 0, all elements on and below the main diagonal are retained.  
+            - If offset > 0, include just as many diagonals above the main diagonal.  
+            - If offset < 0, excludes just as many diagonals below the main diagonal.  
+ 
+        dtype (int, optional): the data type of the output tensor, can be int32, int64.
+
+    Returns:
+        Tensor: Results of the indices of lower triangular part of a row * col matrix,
+        where the first row contains row coordinates of and the second row contains column coordinates.
+
+    Examples:
+        .. code-block:: python
+            :name: tril_indices-example
+
+            import paddle
+            
+            # example 1, default offset value
+            data1 = paddle.tril_indices(4,4,0)
+            print(data1)
+            # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
+            #  [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
+
+            # example 2, positive offset value
+            data2 = paddle.tril_indices(4,4,2)
+            print(data2)
+            # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
+            #  [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
+
+            # example 3, negative offset value
+            data3 = paddle.tril_indices(4,4,-1)
+            print(data3)
+            # [[ 1, 2, 2, 3, 3, 3],
+            #  [ 0, 0, 1, 0, 1, 2]]
+    """
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
+    if not isinstance(offset, int):
+        raise TypeError("offset should be a  int")
+
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
+                                              _current_expected_place())
+        return out
+
+    if _in_legacy_dygraph():
+        out = _C_ops.tril_indices('rows', row, 'cols', col, 'offset', offset,
+                                  "dtype", dtype)
+        return out
+
+    else:
+        helper = LayerHelper("tril_indices", **locals())
+
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(
+            type='tril_indices',
+            inputs={},
+            outputs={'out': [out]},
+            attrs={'rows': row,
+                   'cols': col,
+                   'offset': offset,
+                   'dtype': dtype})
     return out
