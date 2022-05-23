@@ -16,6 +16,7 @@ import os
 import json
 from enum import IntEnum
 from enum import unique
+import paddle
 
 
 @unique
@@ -50,14 +51,14 @@ class Device:
         self._local_id = local_id
         self._machine = machine
         self._type = None
-        # Different device have different models, such as 
+        # Different device have different models, such as
         # "Tesla V100-SXM2-32GB" and "A100-SXM4-40GB" etc.
         self._model = None
         # Double precision GFLOPS
         self._dp_gflops = None
         # Single precision GFLOPS
         self._sp_gflops = None
-        # Memory is stored by GB 
+        # Memory is stored by GB
         self._memory = None
 
     @property
@@ -144,9 +145,9 @@ class Link:
         self._src = source
         self._tgt = target
         self._type = None
-        # bandwidth is stored by GB/s 
+        # bandwidth is stored by GB/s
         self._bandwidth = None
-        # latency is stored by millisecond 
+        # latency is stored by millisecond
         self._latency = None
         self._hop = None
 
@@ -798,13 +799,26 @@ class Cluster:
 
 def get_default_cluster():
     cluster = Cluster()
-    node_count = os.getenv("PADDLE_GLOBAL_SIZE")
-    if node_count is None:
-        print("PADDLE_GLOBAL_SIZE is None", flush=True)
+    local_device_count = os.getenv("PADDLE_LOCAL_SIZE")
+    if local_device_count is None:
+        local_device_count = 1
+    else:
+        local_device_count = int(local_device_count)
+    global_device_count = os.getenv("PADDLE_GLOBAL_SIZE")
+    if global_device_count is None:
         node_count = 1
-    device_count = os.getenv("PADDLE_LOCAL_SIZE")
-    if device_count is None:
-        device_count = 1
+    else:
+        global_device_count = int(global_device_count)
+        assert global_device_count % local_device_count == 0
+        node_count = int(global_device_count) // local_device_count
+    print(
+        "Node Count: ",
+        node_count,
+        "Local Device Size: ",
+        local_device_count,
+        "World size: ",
+        paddle.distributed.get_world_size(),
+        flush=True)
     cluster.gen_default_config_cluster(
-        node_count=node_count, device_count=device_count)
+        node_count=node_count, device_count=local_device_count)
     return cluster

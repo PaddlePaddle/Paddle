@@ -255,6 +255,8 @@ class Engine:
     def _train_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        print_program_with_dist_attr(dist_main_prog,
+                                     self._dist_contexts[self.mode])
         fetch_var = self._fetch_vars[self.mode]["loss"][0]
         if fetch_var.name not in dist_main_prog.global_block().vars:
             loss = self._executor.run(dist_main_prog,

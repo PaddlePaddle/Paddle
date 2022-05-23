@@ -41,7 +41,7 @@ class ParallelTuner:
     def __init__(self,
                  dist_context,
                  mode="main",
-                 max_trials=2,
+                 max_trials=3,
                  tuner_id=None,
                  seed=None,
                  logger=None,
@@ -65,6 +65,8 @@ class ParallelTuner:
         print(
             "seed",
             self._seed,
+            "mode",
+            self._mode,
             "num_machies",
             self._num_machines,
             "num_devices_per_machine",
@@ -596,8 +598,6 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_idx = 0
 
     def _eval_trial(self, trial):
-        # We don't need to backup distributed information since a new one is used.
-        self._dist_context._backup(serial=True, dist=False)
         results = None
         start_time = time.time()
         inter_node_partition = trial.space.values["inter_node_partitions"]
@@ -644,16 +644,11 @@ class ParallelTuner:
 
         start_time = time.time()
         estimate_time = self._estimate_trial()
+        print("time of cost model 0", estimate_time, flush=True)
         end_time = time.time()
         print("estimate time", end_time - start_time, flush=True)
 
-        # We have to restore the distributed context, because the estimation of one trail need to
-        # generate the backward and update parts.
-        self._dist_context._restore(
-            serial=True, dist=True, dist_mode="to_default")
-
         # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-
         results = {"estimate_time": estimate_time}
         return results
 
@@ -743,6 +738,8 @@ class ParallelTuner:
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
         init_time = self._estimate_trial()
+        print("init time", init_time, flush=True)
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.
@@ -758,17 +755,32 @@ class ParallelTuner:
             trial = self._create_trial()
             if trial.status == TrialStatus.STOPPED:
                 break
+
+            # We need to backup the distributed context, because the evaluation of one trail will
+            # generate the backward and update parts which may change the context.
+            # However, the distributed information of the context aren't backup since a new one is used.
+            self._dist_context._backup(serial=True, dist=False)
+
             start_time = time.time()
             results = self._eval_trial(trial)
             end_time = time.time()
             print("eval trial time", end_time - start_time, flush=True)
+
             cur_time = results["estimate_time"]
-            print("time of estimation: ", cur_time, flush=True)
+            print("time of cost model: ", cur_time, flush=True)
             if cur_time < best_time:
                 self._update_trail(trial, results)
                 self._store_best_parallel_strategy()
                 best_time = cur_time
+
+            # We need to restore the distributed context and reset the distributed information to the default.
+            self._dist_context._restore(
+                serial=True, dist=True, dist_mode="to_default")
+
         self._dist_context._dist_tensors_for_program = self._best_parallel_strategy[
             0]
         self._dist_context._dist_ops_for_program = self._best_parallel_strategy[
             1]
+
+        print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                     self._dist_context)

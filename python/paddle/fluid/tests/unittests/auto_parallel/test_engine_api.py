@@ -31,7 +31,8 @@ class TestEngineAPI(unittest.TestCase):
             coverage_args = []
 
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--gpus", "0,1", launch_model_path
+            "-m", "paddle.distributed.launch", "--devices", "0,1",
+            launch_model_path
         ]
 
         process = subprocess.Popen(cmd)

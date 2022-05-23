@@ -370,8 +370,6 @@ class TestParallelTuner(unittest.TestCase):
                                           optimizer, loss, feed_vars,
                                           fetch_vars, cluster)
         dist_context.initialize()
-        dist_context.block_state.parse_forward_blocks(
-            dist_context.serial_main_program)
 
         self.parallel_tuner = ParallelTuner(
             dist_context, max_trials=3, mode="test")
@@ -379,7 +377,7 @@ class TestParallelTuner(unittest.TestCase):
 
     def test_tune_with_materialization(self):
         set_default_distributed_context(DistributedContext())
-        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v3(
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v2(
         )
         cluster = Cluster()
         cluster.gen_default_config_cluster(node_count=2, device_count=8)

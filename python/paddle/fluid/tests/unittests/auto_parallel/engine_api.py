@@ -88,7 +88,7 @@ class MLPLayer(nn.Layer):
         out = F.gelu(out, approximate=True)
         out = auto.shard_op(
             self.linear1, dist_attr={"process_mesh": PP_MESH_1})(out)[0]
-        out = self.dropout(out)
+        # out = self.dropout(out)
         out = self.linear2(out)
         return out
 
@@ -177,14 +177,14 @@ def train_full_auto():
                steps_per_epoch=batch_num * batch_size,
                sample_generator=True)
 
-    eval_dataset = MyDataset(batch_size)
-    engine.prepare(optimizer, loss, mode='eval')
-    engine.evaluate(eval_dataset, batch_size)
+    # eval_dataset = MyDataset(batch_size)
+    # engine.prepare(optimizer, loss, mode='eval')
+    # engine.evaluate(eval_dataset, batch_size)
 
-    test_dataset = MyDataset(batch_size)
-    engine.prepare(mode='predict')
-    engine.predict(test_dataset, batch_size)
-    engine.save('./mlp_inf', training=False, mode='predict')
+    # test_dataset = MyDataset(batch_size)
+    # engine.prepare(mode='predict')
+    # engine.predict(test_dataset, batch_size)
+    # engine.save('./mlp_inf', training=False, mode='predict')
 
 
 if __name__ == "__main__":
