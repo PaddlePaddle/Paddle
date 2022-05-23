@@ -174,7 +174,10 @@ def RecoverBaseNameOfInplaceFunction(function_name):
 
 
 def GetInplacedFunctionName(function_name):
-    return function_name + "_"
+    inplace_func_name = function_name
+    if inplace_func_name[-1] != '_':
+        inplace_func_name += '_'
+    return inplace_func_name
 
 
 def GetForwardFunctionName(string):
