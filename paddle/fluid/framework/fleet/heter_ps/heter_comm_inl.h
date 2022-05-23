@@ -570,7 +570,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   // cachemanager convert h_keys to h_bfids
   std::unique_ptr<int[]> h_bfids(new int[len]);
-  cache_mgr_ -> convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
+  cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
 
   // h_bfids memcpy to d_bfids
   auto d_bfids = memory::Alloc(place, len * sizeof(int));
@@ -598,7 +598,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                        len,
                        stream);
   // allreduce
-  auto d_all_values = memory::Alloc(place, h_fid_seq -> size() * sizeof(ValType));
+  auto d_all_values = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   ValType* d_all_values_ptr = reinterpret_cast<ValType*>(d_all_values->ptr());
 
   auto comm = platform::BKCLCommContext::Instance().Get(dev_id, place);
@@ -847,7 +847,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   // cachemanager convert h_keys to h_bfids
   std::unique_ptr<int[]> h_bfids(new int[len]);
-  cache_mgr_ -> convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
+  cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
 
   // h_bfids memcpy to d_bfids
   auto d_bfids = memory::Alloc(place, len * sizeof(int));
