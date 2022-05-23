@@ -792,7 +792,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "squeeze2" || op_type == "unsqueeze2") {
+    if (op_type == "squeeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
+    }
+
+    if (op_type == "unsqueeze2") {
+      std::vector<int> axes;
+      if (desc.HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      }
+      if (axes.size() == 0) {
+        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
+                   "missing.";
+        return false;
+      }
     }
 
     if (op_type == "batch_norm") {
