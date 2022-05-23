@@ -626,9 +626,9 @@ class OperatorWithKernel : public OperatorBase {
    * Transfer data place for phi kernel
    * Is this really needed?
    */
-  Scope* TransformDataPlace(const Scope& scope, const phi::Kernel& pt_kernel,
-                            const phi::KernelSignature& pt_kernel_signature,
-                            RuntimeContext* ctx) const;
+  Scope* PreparePhiData(const Scope& scope, const phi::Kernel& pt_kernel,
+                        const phi::KernelSignature& pt_kernel_signature,
+                        RuntimeContext* ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
                              platform::DeviceContext* dev_ctx,
@@ -662,10 +662,10 @@ class OperatorWithKernel : public OperatorBase {
    *
    * * transfered_inplace_vars is a output vector.
    */
-  Scope* TransformDataFormat(const Scope& scope,
-                             const OpKernelType& expected_kernel_key,
-                             std::vector<std::string>* transfered_inplace_vars,
-                             RuntimeContext* ctx) const;
+  Scope* PrepareData(const Scope& scope,
+                     const OpKernelType& expected_kernel_key,
+                     std::vector<std::string>* transfered_inplace_vars,
+                     RuntimeContext* ctx) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
@@ -697,8 +697,8 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
-  mutable bool need_transform_data_format_ = true;
-  mutable bool need_transform_data_place_ = false;
+  mutable bool need_prepare_data_ = true;
+  mutable bool need_prepare_phi_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
