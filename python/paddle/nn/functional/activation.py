@@ -549,7 +549,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
 
 
 def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
-    """
+    r"""
     rrelu activation.
 
     Applies the randomized leaky rectified liner unit function to improve generalization performance,

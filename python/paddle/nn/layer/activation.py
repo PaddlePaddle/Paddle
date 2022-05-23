@@ -437,7 +437,7 @@ class PReLU(Layer):
 
 
 class RReLU(Layer):
-    """
+    r"""
     RReLU activation layer.
 
     Applies the randomized leaky rectified liner unit function to improve generalization performance,
