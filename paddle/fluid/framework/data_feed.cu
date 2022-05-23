@@ -17,8 +17,10 @@ limitations under the License. */
 #endif
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 
+#include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_feed.h"
-
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 namespace paddle {
 namespace framework {
 
@@ -142,6 +144,89 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
       uint64_offsets, uint64_ins_lens, uint64_slot_size, float_feas,
       float_offsets, float_ins_lens, float_slot_size, used_slots);
   cudaStreamSynchronize(stream);
+}
+
+__global__ void GraphFillIdKernel(int64_t *id_tensor, int *actual_sample_size,
+                                  int64_t *prefix_sum, int64_t *device_key,
+                                  int64_t *neighbors, int sample_size,
+                                  int len) {
+  CUDA_KERNEL_LOOP(idx, len) {
+    for (int k = 0; k < actual_sample_size[idx]; k++) {
+      int offset = (prefix_sum[idx] + k) * 2;
+      id_tensor[offset] = device_key[idx];
+      id_tensor[offset + 1] = neighbors[idx * sample_size + k];
+    }
+  }
+}
+
+__global__ void GraphFillCVMKernel(int64_t *tensor, int len) {
+  CUDA_KERNEL_LOOP(idx, len) { tensor[idx] = 1; }
+}
+
+void GraphDataGenerator::FeedGraphIns(size_t cursor, int len,
+                                      NeighborSampleResult &sample_res) {
+  size_t temp_storage_bytes = 0;
+  int *d_actual_sample_size = sample_res.actual_sample_size;
+  int64_t *d_neighbors = sample_res.val;
+  int64_t *d_prefix_sum = reinterpret_cast<int64_t *>(d_prefix_sum_->ptr());
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL, temp_storage_bytes,
+                                           d_actual_sample_size,
+                                           d_prefix_sum + 1, len, stream_));
+  auto d_temp_storage = memory::Alloc(place_, temp_storage_bytes);
+
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(
+      d_temp_storage->ptr(), temp_storage_bytes, d_actual_sample_size,
+      d_prefix_sum + 1, len, stream_));
+  cudaStreamSynchronize(stream_);
+  int64_t total_ins = 0;
+  cudaMemcpyAsync(&total_ins, d_prefix_sum + len, sizeof(int64_t),
+                  cudaMemcpyDeviceToHost, stream_);
+
+  total_ins *= 2;
+  id_tensor_ptr_ =
+      feed_vec_[0]->mutable_data<int64_t>({total_ins, 1}, this->place_);
+  show_tensor_ptr_ =
+      feed_vec_[1]->mutable_data<int64_t>({total_ins}, this->place_);
+  clk_tensor_ptr_ =
+      feed_vec_[2]->mutable_data<int64_t>({total_ins}, this->place_);
+
+  GraphFillIdKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, stream_>>>(
+      id_tensor_ptr_, d_actual_sample_size, d_prefix_sum,
+      device_keys_ + cursor_, d_neighbors, walk_degree_, len);
+  GraphFillCVMKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, stream_>>>(
+      show_tensor_ptr_, total_ins);
+  GraphFillCVMKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, stream_>>>(
+      clk_tensor_ptr_, total_ins);
+
+  offset_.clear();
+  offset_.push_back(0);
+  offset_.push_back(total_ins);
+  LoD lod{offset_};
+  feed_vec_[0]->set_lod(lod);
+  // feed_vec_[1]->set_lod(lod);
+  // feed_vec_[2]->set_lod(lod);
+  cudaStreamSynchronize(stream_);
+}
+
+int GraphDataGenerator::GenerateBatch() {
+  // GpuPsGraphTable *g = (GpuPsGraphTable *)(gpu_graph_ptr->graph_table);
+  platform::CUDADeviceGuard guard(gpuid_);
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+  int tmp_len = cursor_ + sample_key_size_ > device_key_size_
+                    ? device_key_size_ - cursor_
+                    : sample_key_size_;
+  VLOG(3) << "device key size: " << device_key_size_
+          << " this batch: " << tmp_len << " cursor: " << cursor_
+          << " sample_key_size_: " << sample_key_size_;
+  if (tmp_len == 0) {
+    return 0;
+  }
+  int total_instance = 1;
+  auto sample_res = gpu_graph_ptr->graph_neighbor_sample(
+      gpuid_, device_keys_ + cursor_, walk_degree_, tmp_len);
+  FeedGraphIns(cursor_, tmp_len, sample_res);
+  cursor_ += tmp_len;
+  return 1;
 }
 
 }  // namespace framework

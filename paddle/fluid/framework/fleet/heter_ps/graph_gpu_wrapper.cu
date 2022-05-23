@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include <sstream>
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS
@@ -207,6 +208,32 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
       ->graph_neighbor_sample_v3(q, cpu_switch);
 }
 
+NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
+    int gpu_id, int64_t* device_keys, int walk_degree, int len) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto neighbor_sample_res =
+      ((GpuPsGraphTable *)graph_table)
+          ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len);
+  
+  //int64_t *cpu_keys = new int64_t[len];
+  //cudaMemcpy(cpu_keys, device_keys,
+  //           len * sizeof(int64_t),
+  //           cudaMemcpyDeviceToHost);  // 3, 1, 3
+  //int *actual_sample_size = new int[len];
+  //cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
+  //           len * sizeof(int),
+  //           cudaMemcpyDeviceToHost);  // 3, 1, 3
+  //std::stringstream ss;
+  //ss << len << "\t";
+  //for (int i = 0; i < len; i++) {
+  //  ss << cpu_keys[i] << ":" << actual_sample_size[i] << ",";
+  //}
+  //VLOG(0) << ss.str();
+  //free(actual_sample_size);
+  //free(cpu_keys);
+  return neighbor_sample_res;
+}
+
 // this function is contributed by Liwb5
 std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     int gpu_id, std::vector<int64_t> &key, int sample_size) {
@@ -216,7 +243,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   cudaMalloc(&cuda_key, key.size() * sizeof(int64_t));
   cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-
+  VLOG(0) << "key_size: " << key.size();
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
