@@ -450,6 +450,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
+                 prefetch_factor=2,
                  use_shared_memory=True,
                  timeout=0,
                  worker_init_fn=None,
@@ -457,6 +458,7 @@ class DataLoader(object):
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
+        self.prefetch_factor = prefetch_factor
         self.worker_init_fn = worker_init_fn
 
         self.dataset = dataset
