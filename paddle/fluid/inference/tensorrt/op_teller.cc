@@ -49,7 +49,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("sparse_fc");
     int8_teller_set.insert("sparse_fc");
     teller_set.insert("sparse_multihead_matmul");
-    int8_teller_set.insert("sparse_multihead_matmul"); 
+    int8_teller_set.insert("sparse_multihead_matmul");
 #endif
   }
 
@@ -1742,7 +1742,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #if IS_TRT_VERSION_GE(8000)
     if (op_type == "sparse_fc" || op_type == "sparse_multihead_matmul") {
       if (!with_dynamic_shape) {
-        VLOG(3) << "the sparse_fc and sparse_multihead_matmul does not support static shape yet";
+        VLOG(3) << "the sparse_fc and sparse_multihead_matmul does not support "
+                   "static shape yet";
         return false;
       }
     }

@@ -20,7 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ReplaceDenseMultiheadMatmulWithSparsePass::ReplaceDenseMultiheadMatmulWithSparsePass() {
+ReplaceDenseMultiheadMatmulWithSparsePass::
+    ReplaceDenseMultiheadMatmulWithSparsePass() {
   AddOpCompat(OpCompat("multihead_matmul"))
       .AddInput("Input")
       .IsTensor()
@@ -47,8 +48,8 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
   FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
 
-  patterns::MultiheadMatmul multihead_matmul_pattern(gpd.mutable_pattern(),
-                                     "dense_multihead_matmul_replace_pass");
+  patterns::MultiheadMatmul multihead_matmul_pattern(
+      gpd.mutable_pattern(), "dense_multihead_matmul_replace_pass");
   multihead_matmul_pattern();
   int found_multihead_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -60,12 +61,19 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
          return;
        }*/
 
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out, multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul, multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input, multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_weights, multihead_matmul_weights, multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_bias, multihead_matmul_bias, multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk, multihead_matmul_biasqk, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out,
+                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul,
+                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input,
+                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_weights,
+                              multihead_matmul_weights,
+                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_bias, multihead_matmul_bias,
+                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk, multihead_matmul_biasqk,
+                              multihead_matmul_pattern);
 
     auto *multihead_matmul_op = multihead_matmul->Op();
     auto w_name = multihead_matmul_op->Input("W")[0];
@@ -84,19 +92,23 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
       desc.SetAttr("alpha", multihead_matmul_op->GetAttr("alpha"));
       desc.SetAttr("head_number", multihead_matmul_op->GetAttr("head_number"));
       if (multihead_matmul_op->HasAttr("Input_scale")) {
-        desc.SetAttr("Input_scale", multihead_matmul_op->GetAttr("Input_scale"));
+        desc.SetAttr("Input_scale",
+                     multihead_matmul_op->GetAttr("Input_scale"));
       }
       if (multihead_matmul_op->HasAttr("fc_out_threshold")) {
-        desc.SetAttr("fc_out_threshold", multihead_matmul_op->GetAttr("fc_out_threshold"));
+        desc.SetAttr("fc_out_threshold",
+                     multihead_matmul_op->GetAttr("fc_out_threshold"));
       }
       if (multihead_matmul_op->HasAttr("qkv2context_plugin_int8")) {
-        desc.SetAttr("qkv2context_plugin_int8", multihead_matmul_op->GetAttr("qkv2context_plugin_int8"));
+        desc.SetAttr("qkv2context_plugin_int8",
+                     multihead_matmul_op->GetAttr("qkv2context_plugin_int8"));
       }
       if (multihead_matmul_op->HasAttr("dp_probs")) {
         desc.SetAttr("dp_probs", multihead_matmul_op->GetAttr("dp_probs"));
       }
       if (multihead_matmul_op->HasAttr("out_threshold")) {
-        desc.SetAttr("out_threshold", multihead_matmul_op->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold",
+                     multihead_matmul_op->GetAttr("out_threshold"));
       }
       desc.Flush();
       GraphSafeRemoveNodes(g, {multihead_matmul});

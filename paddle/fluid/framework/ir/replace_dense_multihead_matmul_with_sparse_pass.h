@@ -37,7 +37,8 @@ class ReplaceDenseMultiheadMatmulWithSparsePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  const std::string name_scope_{"replace_dense_multihead_matmul_with_sparse_pass"};
+  const std::string name_scope_{
+      "replace_dense_multihead_matmul_with_sparse_pass"};
 };
 
 }  // namespace ir
