@@ -1333,7 +1333,7 @@ class TripletMarginLoss(Layer):
 	
     	p (int, Optional):The norm degree for pairwise distance. Default: :math:`2`.
 	
-        eps (float, Optional):Add small value to avoid division by zero,
+        epsilon (float, Optional):Add small value to avoid division by zero,
             default value is 1e-6.
 	    
         swap (bool, Optional):The distance swap change the negative distance to the distance between
@@ -1383,7 +1383,7 @@ class TripletMarginLoss(Layer):
             # Tensor([0.19165580])
 
     """
-    def __init__(self, margin=1.0, p=2., eps= 1e-6, swap=False, reduction='mean', name=None):
+    def __init__(self, margin=1.0, p=2., epsilon= 1e-6, swap=False, reduction='mean', name=None):
         super(TripletMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -1391,7 +1391,7 @@ class TripletMarginLoss(Layer):
                 "received %s, which is not allowed." % reduction)
         self.margin = margin
         self.p = p
-        self.eps = eps
+        self.epsilon = epsilon
         self.swap = swap
         self.reduction = reduction
         self.name = name
@@ -1402,7 +1402,7 @@ class TripletMarginLoss(Layer):
                                      negative,
                                      margin=self.margin,
                                      p=self.p,
-                                     eps=self.eps,
+                                     eps=self.epsilon,
                                      swap=self.swap,
                                      reduction=self.reduction,
                                      name=self.name)
