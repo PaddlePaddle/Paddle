@@ -136,6 +136,7 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        size_t grad_value_size,
                                        DynamicGradMerger& merger_) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
