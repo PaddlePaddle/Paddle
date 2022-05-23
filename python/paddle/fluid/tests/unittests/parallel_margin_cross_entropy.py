@@ -24,6 +24,9 @@ import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle import framework
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 
 def set_random_seed(seed):
