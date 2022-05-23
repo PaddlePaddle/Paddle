@@ -66,6 +66,7 @@
     func : add_grad
   no_need_buffer : x, y
   backward : add_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : add_n_grad
   forward : add_n (Tensor[] x) -> Tensor(out)
@@ -383,6 +384,7 @@
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : softmax
+  inplace : (softmax -> input_grad)
 
 - backward_api : cross_grad
   forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
@@ -646,6 +648,7 @@
     data_type: out_grad
     backend: out_grad
     layout: out_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
@@ -1492,6 +1495,7 @@
     backend: out_grad
     layout: out_grad
   backward : reshape_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
@@ -1563,6 +1567,7 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, bias_after_scale)
   backward : scale_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : scale_triple_grad
   forward : scale_double_grad (Tensor grad_grad_x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_grad_out)
@@ -1755,6 +1760,7 @@
     param: [xshape]
   kernel :
     func : squeeze_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
@@ -1802,6 +1808,7 @@
     func : subtract_grad
   no_need_buffer : x, y
   backward : subtract_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sum_double_grad
   forward : sum_grad (Tensor x, Tensor grad_out, int64_t[] dims, bool keep_dim, bool reduce_all=false) -> Tensor(grad_x)
@@ -2025,6 +2032,7 @@
     param: [xshape]
   kernel :
     func : unsqueeze_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
