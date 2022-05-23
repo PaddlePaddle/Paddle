@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/stats.h"
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
 namespace memory {
 
 TEST(stats_test, MultiThreadReadWriteTest) {
-  std::string stat_type = "Allocated";
+  std::string stat_type = "DeviceAllocated";
   size_t thread_num = 3;
   size_t data_num = 10;
 
@@ -65,7 +65,7 @@ TEST(stats_test, MultiThreadReadWriteTest) {
 }
 
 TEST(stats_test, PeakValueTest) {
-  std::string stat_type = "Allocated";
+  std::string stat_type = "DeviceAllocated";
   std::vector<int64_t> datas = {
       543149808935355, 634698327471328, 706215795436611, 577939367795333,
       419479490054362, 21975227714595,  812939817942250, 984428837942082,
@@ -101,6 +101,18 @@ TEST(stats_test, PeakValueTest) {
     peak_value = std::max(peak_value, sum);
   }
   EXPECT_EQ(StatGetPeakValue(stat_type, 0), peak_value);
+}
+
+TEST(allocator_test, HostAllocated) {
+  std::vector<int64_t> alloc_sizes = {1024, 2048, 4096, 2048};
+  for (int64_t size : alloc_sizes) {
+    AllocationPtr allocation =
+        paddle::memory::Alloc(paddle::platform::CPUPlace(), size);
+    EXPECT_EQ(StatGetCurrentValue("HostAllocated", 0),
+              static_cast<int64_t>(allocation->size()));
+  }
+
+  EXPECT_EQ(StatGetPeakValue("HostAllocated", 0), static_cast<int64_t>(4096));
 }
 
 }  // namespace memory

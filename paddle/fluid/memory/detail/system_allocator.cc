@@ -15,6 +15,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
+#include "paddle/fluid/memory/stats.h"
+
 #ifdef _WIN32
 #include <malloc.h>
 #ifndef NOMINMAX
@@ -92,6 +94,8 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
     }
   }
 
+  MEMORY_STAT_UPDATE(HostReserved, 0, size);
+
   return p;
 }
 
@@ -108,6 +112,8 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #else
   free(p);
 #endif
+
+  MEMORY_STAT_UPDATE(HostReserved, 0, -size);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }

@@ -86,7 +86,7 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment) {
 
 #define MEMORY_STAT_REGISTER_WITH_ID(item, id) \
   StatRegistry::GetInstance()->Register(       \
-      #item, id, Stat<ThreadLocalStatDevice##id##item>::GetInstance());
+      #item, id, Stat<ThreadLocalStat##item##id>::GetInstance());
 
 #define MEMORY_STAT_REGISTER(item)        \
   MEMORY_STAT_REGISTER_WITH_ID(item, 0);  \
@@ -107,8 +107,10 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment) {
   MEMORY_STAT_REGISTER_WITH_ID(item, 15)
 
 int RegisterAllStats() {
-  MEMORY_STAT_REGISTER(Allocated);
-  MEMORY_STAT_REGISTER(Reserved);
+  MEMORY_STAT_REGISTER(DeviceAllocated);
+  MEMORY_STAT_REGISTER(DeviceReserved);
+  MEMORY_STAT_REGISTER(HostAllocated);
+  MEMORY_STAT_REGISTER(HostReserved);
   return 0;
 }
 

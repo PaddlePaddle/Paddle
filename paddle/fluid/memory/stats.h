@@ -100,10 +100,10 @@ int64_t StatGetCurrentValue(const std::string& stat_type, int dev_id);
 int64_t StatGetPeakValue(const std::string& stat_type, int dev_id);
 void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
 
-#define MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)                          \
-  case id:                                                               \
-    stat = paddle::memory::Stat<                                         \
-        paddle::memory::ThreadLocalStatDevice##id##item>::GetInstance(); \
+#define MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)                    \
+  case id:                                                         \
+    stat = paddle::memory::Stat<                                   \
+        paddle::memory::ThreadLocalStat##item##id>::GetInstance(); \
     break
 
 #define MEMORY_STAT_FUNC(item, id, func, ...)                         \
@@ -144,7 +144,7 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
   MEMORY_STAT_FUNC(item, id, Update, increment)
 
 #define MEMORY_STAT_DECLARE_WITH_ID(item, id) \
-  struct ThreadLocalStatDevice##id##item : public ThreadLocalStatBase {};
+  struct ThreadLocalStat##item##id : public ThreadLocalStatBase {};
 
 #define MEMORY_STAT_DECLARE(item)        \
   MEMORY_STAT_DECLARE_WITH_ID(item, 0);  \
@@ -165,8 +165,10 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
   MEMORY_STAT_DECLARE_WITH_ID(item, 15)
 
 // To add a new STAT type, declare here and register in stats.cc
-MEMORY_STAT_DECLARE(Allocated);
-MEMORY_STAT_DECLARE(Reserved);
+MEMORY_STAT_DECLARE(DeviceAllocated);
+MEMORY_STAT_DECLARE(DeviceReserved);
+MEMORY_STAT_DECLARE(HostAllocated);
+MEMORY_STAT_DECLARE(HostReserved);
 
 }  // namespace memory
 }  // namespace paddle

@@ -224,7 +224,7 @@ def max_memory_allocated(device=None):
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.memory_stat_get_peak("Allocated", device_id)
+    return core.memory_stat_get_peak("DeviceAllocated", device_id)
 
 
 def max_memory_reserved(device=None):
@@ -255,7 +255,7 @@ def max_memory_reserved(device=None):
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.memory_stat_get_peak("Reserved", device_id)
+    return core.memory_stat_get_peak("DeviceReserved", device_id)
 
 
 def memory_allocated(device=None):
@@ -290,7 +290,7 @@ def memory_allocated(device=None):
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.memory_stat_get_current("Allocated", device_id)
+    return core.memory_stat_get_current("DeviceAllocated", device_id)
 
 
 def memory_reserved(device=None):
@@ -321,7 +321,7 @@ def memory_reserved(device=None):
             f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
         )
     device_id = extract_cuda_device_id(device, op_name=name)
-    return core.memory_stat_get_current("Reserved", device_id)
+    return core.memory_stat_get_current("DeviceReserved", device_id)
 
 
 def _set_current_stream(stream):

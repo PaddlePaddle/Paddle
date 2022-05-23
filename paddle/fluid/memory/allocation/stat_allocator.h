@@ -30,16 +30,28 @@ class StatAllocator : public Allocator {
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override {
-    MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                       -allocation->size());
+    if (platform::is_cpu_place(allocation->place())) {
+      MEMORY_STAT_UPDATE(HostAllocated, allocation->place().GetDeviceId(),
+                         -allocation->size());
+    } else {
+      MEMORY_STAT_UPDATE(DeviceAllocated, allocation->place().GetDeviceId(),
+                         -allocation->size());
+    }
+
     underlying_allocator_->Free(allocation);
   }
 
   phi::Allocation* AllocateImpl(size_t size) override {
     phi::Allocator::AllocationPtr allocation =
         underlying_allocator_->Allocate(size);
-    MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
-                       allocation->size());
+
+    if (platform::is_cpu_place(allocation->place())) {
+      MEMORY_STAT_UPDATE(HostAllocated, allocation->place().GetDeviceId(),
+                         allocation->size());
+    } else {
+      MEMORY_STAT_UPDATE(DeviceAllocated, allocation->place().GetDeviceId(),
+                         allocation->size());
+    }
     return allocation.release();
   }
 
