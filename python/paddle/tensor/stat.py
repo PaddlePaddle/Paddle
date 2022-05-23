@@ -271,8 +271,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             :name: nanmedian-example
 
             import paddle
-            import numpy as np
-            x = paddle.to_tensor([[np.nan, 2. , 3. ], [0. , 1. , 2. ]])
+            x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
 
             y1 = x.nanmedian()
             # y1 is [[2.]]
@@ -283,7 +282,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             y3 = x.nanmedian(0, keepdim=False)
             # y3 is [0.,  1.5, 2.5]
 
-            y4 = x.nanmedian((1, 2))
+            y4 = x.nanmedian((0, 1))
             # y4 is [[2.]]
     """
     if not isinstance(x, Variable):
