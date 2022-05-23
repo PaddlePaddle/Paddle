@@ -13,16 +13,13 @@
 // limitations under the License.
 
 #include "paddle/utils/variant.h"
-
-#include <string>
-#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/phi/core/enforce.h"
 
 TEST(interface_test, type) {
   using phi::enforce::demangle;
 
-  paddle::variant<bool, int, float, std::string, std::vector<int>> var;
+  paddle::variant<bool, int, float> var;
 
   var = true;
   EXPECT_EQ(demangle(var.type().name()), "bool");
@@ -32,13 +29,4 @@ TEST(interface_test, type) {
 
   var = 0.f;
   EXPECT_EQ(demangle(var.type().name()), "float");
-
-  var = std::string();
-  EXPECT_EQ(demangle(var.type().name()),
-            "std::__cxx11::basic_string<char, std::char_traits<char>, "
-            "std::allocator<char> >");
-
-  var = std::vector<int>();
-  EXPECT_EQ(demangle(var.type().name()),
-            "std::vector<int, std::allocator<int> >");
 }
