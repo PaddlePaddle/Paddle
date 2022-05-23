@@ -73,6 +73,7 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
+# test=eager to check eager in windows-openblas-ci
 _dygraph_tracer_ = None
 _in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
 _global_expected_place_ = None
