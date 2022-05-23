@@ -3449,7 +3449,7 @@ PDNode *patterns::DenseFC::operator()() {
   return fc_out;
 }
 
-PDNode *patterns::DenseMultiheadMatmul::operator()() {
+PDNode *patterns::MultiheadMatmul::operator()() {
   auto *multihead_matmul = pattern->NewNode(multihead_matmul_repr())->assert_is_op("multihead_matmul");
   // Input
   auto *multihead_matmul_input = pattern->NewNode(multihead_matmul_input_repr())
@@ -3471,7 +3471,7 @@ PDNode *patterns::DenseMultiheadMatmul::operator()() {
   auto *multihead_matmul_out = pattern->NewNode(multihead_matmul_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("multihead_matmul", "Out")
-                     ->assert_is_only_output_of_op("fc");
+                     ->assert_is_only_output_of_op("multihead_matmul");
 
   multihead_matmul->LinksFrom({multihead_matmul_input, multihead_matmul_weights, multihead_matmul_bias, multihead_matmul_biasqk}).LinksTo({multihead_matmul_out});
 

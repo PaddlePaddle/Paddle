@@ -47,25 +47,25 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
   FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
 
-  patterns::DenseMultiheadMatmul dense_multihead_matmul_pattern(gpd.mutable_pattern(),
+  patterns::MultiheadMatmul multihead_matmul_pattern(gpd.mutable_pattern(),
                                      "dense_multihead_matmul_replace_pass");
-  dense_multihead_matmul_pattern();
-  int found_dense_multihead_matmul_count = 0;
+  multihead_matmul_pattern();
+  int found_multihead_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "Replace dense multihead matmul with sparse_multihead_matmul.";
+    VLOG(4) << "Replace dense multihead matmul with sparse multihead matmul.";
 
     /*   if (!IsCompat(subgraph, g)) {
          LOG(WARNING) << "Pass in op compat failed.";
          return;
        }*/
 
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out, dense_multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul, dense_multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input, dense_multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_weights, multihead_matmul_weights, dense_multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_bias, multihead_matmul_bias, dense_multihead_matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk, multihead_matmul_biasqk, dense_multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_weights, multihead_matmul_weights, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_bias, multihead_matmul_bias, multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_biasqk, multihead_matmul_biasqk, multihead_matmul_pattern);
 
     auto *multihead_matmul_op = multihead_matmul->Op();
     auto w_name = multihead_matmul_op->Input("W")[0];
@@ -107,12 +107,12 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
       IR_NODE_LINK_TO(multihead_matmul_bias, sparse_multihead_matmul_node);
       IR_NODE_LINK_TO(multihead_matmul_biasqk, sparse_multihead_matmul_node);
       IR_NODE_LINK_TO(sparse_multihead_matmul_node, multihead_matmul_out);
-      found_dense_multihead_matmul_count++;
+      found_multihead_matmul_count++;
     }
   };
 
   gpd(graph, handler);
-  AddStatis(found_dense_multihead_matmul_count);
+  AddStatis(found_multihead_matmul_count);
 }
 
 }  // namespace ir

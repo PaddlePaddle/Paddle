@@ -1959,21 +1959,21 @@ struct DenseFC : public PatternBase {
 };
 
 //
-// \brief   Pattern looking for dense multihead matmul fc.
+// \brief   Pattern looking for multihead matmul fc.
 //
-struct DenseMultiheadMatmul : public PatternBase {
-  DenseMultiheadMatmul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "dense_multihead_matmul") {}
+struct MultiheadMatmul : public PatternBase {
+  MultiheadMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multihead_matmul") {}
 
   PDNode* operator()();
 
   // declare operator node's name
-  PATTERN_DECL_NODE(matmul);
-  PATTERN_DECL_NODE(matmul_out);
-  PATTERN_DECL_NODE(matmul_input);
-  PATTERN_DECL_NODE(matmul_weights);
-  PATTERN_DECL_NODE(matmul_bias);
-  PATTERN_DECL_NODE(matmul_biasqk);
+  PATTERN_DECL_NODE(multihead_matmul);
+  PATTERN_DECL_NODE(multihead_matmul_out);
+  PATTERN_DECL_NODE(multihead_matmul_input);
+  PATTERN_DECL_NODE(multihead_matmul_weights);
+  PATTERN_DECL_NODE(multihead_matmul_bias);
+  PATTERN_DECL_NODE(multihead_matmul_biasqk);
 };
 
 }  // namespace patterns
