@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import math
 import time
 import copy
@@ -411,6 +412,8 @@ class ParallelTuner:
         # return cached_candidates_info[2]
 
     def construct_space(self):
+        # print("********start partition devices********")
+        start_time = time.time()
         inter_node_partitions, intra_node_partitions = self._partition_devices(
             self._num_machines, self._num_devices_per_machine)
         self._space.choice(
@@ -422,14 +425,20 @@ class ParallelTuner:
             intra_node_partitions,
             default=intra_node_partitions[0])
 
+        # print("********start dist op dist attr candidates********")
+        start_time = time.time()
         dist_ops = self._dist_context._dist_ops_for_program
         for op_id, dist_op in dist_ops.items():
+            # print(dist_op.serial_op)
             op_dist_attr_candidates = self._generate_dist_attr_candidates(
                 op_id, dist_op)
+            end_time = time.time()
+            # print("********end dist_op {} dist attr candidates{}s".format(op_id, end_time-start_time))
             self._space.choice(
                 str(op_id),
                 op_dist_attr_candidates,
                 default=op_dist_attr_candidates[0])
+        end_time = time.time()
 
     def _compute_values_hash(self, values):
         keys = sorted(values.keys())

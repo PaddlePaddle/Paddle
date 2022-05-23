@@ -321,7 +321,15 @@ class Inserter:
         """Insert fill constant op into block at the given index."""
         helper = LayerHelper("fill_constant", **locals())
         with paddle.static.program_guard(block.program):
-            out = helper.create_variable_for_type_inference(dtype="int32")
+            # out = helper.create_variable_for_type_inference(dtype="int32")
+            out = block.create_var(
+                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                    ".".join(["fill_constant", 'tmp@RESHARD'])),
+                dtype="int32",
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False)
         inputs = {}
         attrs = {'force_cpu': False}
         attrs['str_value'] = str(int("1"))
@@ -826,6 +834,11 @@ class Resharder:
             sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
             parent_while_op_id = Resharder.while_block_info[sub_block_idx][
                 "op_id"]
+            # print(
+            #     "reshard change 0",
+            #     Resharder.while_block_info,
+            #     parent_while_op_id,
+            #     flush=True)
             parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
 
             sub_block_op_inputs = set()
