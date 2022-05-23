@@ -574,8 +574,8 @@ def where(condition, x=None, y=None, name=None):
 
     Args:
         condition (Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
-        x (Tensor|scalar, optional): x is a Tensor or scalar with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
-        y (Tensor|scalar, optional): y is a Tensor or scalar with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
