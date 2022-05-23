@@ -78,21 +78,23 @@ class CinnCompiler {
       const ::cinn::common::Target& target, void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
-      const std::string& compilation_key,
+      int64_t compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const ::cinn::common::Target& target, void* stream = nullptr);
 
   const CinnCompiledObject& GetCompiledObject(int64_t cached_index) const;
 
-  std::string AddGraph(std::unique_ptr<ir::Graph> graph);
+  int64_t AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  const ir::Graph& FindGraph(const std::string& graph_key) const;
+  const ir::Graph& FindGraph(int64_t graph_key) const;
 
-  std::string VizGraph(const std::string& graph_key) const;
+  std::string VizGraph(int64_t graph_key) const;
 
   std::string VizGraph(const ir::Graph& graph) const;
 
-  std::string ReadableKey(const std::string& compilation_key) const;
+  std::string SerializeKey(int64_t compilation_key) const;
+
+  std::string ReadableKey(int64_t compilation_key) const;
 
   void Clear();
 
@@ -115,7 +117,7 @@ class CinnCompiler {
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const CinnCompiledObject& compiled_obj) const;
 
-  std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
+  std::unordered_map<int64_t, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKeyByAddress, std::int64_t, CinnCacheKey::Hash>
       cache_by_address_;
   std::unordered_map<CinnCacheKeyByStructure, std::int64_t, CinnCacheKey::Hash>

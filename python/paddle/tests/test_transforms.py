@@ -123,6 +123,44 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_affine(self):
+        trans = transforms.Compose([
+            transforms.RandomAffine(90),
+            transforms.RandomAffine(
+                [-10, 10], translate=[0.1, 0.3]),
+            transforms.RandomAffine(
+                45, translate=[0.2, 0.2], scale=[0.2, 0.5]),
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40]),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear'),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114),
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                interpolation='bilinear',
+                fill=114,
+                center=(60, 80)),
+        ])
+        self.do_transform(trans)
+
     def test_rotate(self):
         trans = transforms.Compose([
             transforms.RandomRotation(90),
@@ -131,6 +169,14 @@ class TestTransformsCV2(unittest.TestCase):
                 45, expand=True),
             transforms.RandomRotation(
                 10, expand=True, center=(60, 80)),
+        ])
+        self.do_transform(trans)
+
+    def test_perspective(self):
+        trans = transforms.Compose([
+            transforms.RandomPerspective(prob=1.0),
+            transforms.RandomPerspective(
+                prob=1.0, distortion_scale=0.9),
         ])
         self.do_transform(trans)
 
@@ -279,6 +325,35 @@ class TestTransformsCV2(unittest.TestCase):
             F.pad(tensor_img, [1.0, 2.0, 3.0])
 
         with self.assertRaises(ValueError):
+            transforms.RandomAffine(-10)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine([-30, 60], translate=[2, 2])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 0, 20, 40])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 20, 40],
+                fill=114,
+                center=(1, 2, 3))
+
+        with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
 
         with self.assertRaises(ValueError):
@@ -383,6 +458,20 @@ class TestTransformsTensor(TestTransformsCV2):
         trans = transforms.Compose([transforms.ColorJitter(1.1, 2.2, 0.8, 0.1)])
         self.do_transform(trans)
 
+        color_jitter_trans = transforms.ColorJitter(1.2, 0.2, 0.5, 0.2)
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = color_jitter_trans(batch_input)
+
+    def test_perspective(self):
+        trans = transforms.RandomPerspective(prob=1.0, distortion_scale=0.7)
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = trans(batch_input)
+
+    def test_affine(self):
+        trans = transforms.RandomAffine(15, translate=[0.1, 0.1])
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = trans(batch_input)
+
     def test_pad(self):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
@@ -433,6 +522,10 @@ class TestTransformsTensor(TestTransformsCV2):
         ])
         self.do_transform(trans)
 
+        erase_trans = transforms.RandomErasing(value=(0.5, 0.2, 0.01))
+        batch_input = paddle.rand((2, 3, 4, 4), dtype=paddle.float32)
+        result = erase_trans(batch_input)
+
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
 
@@ -478,6 +571,29 @@ class TestTransformsTensor(TestTransformsCV2):
         with self.assertRaises(ValueError):
             tensor_img = paddle.rand((3, 100, 100))
             F.pad(tensor_img, [1.0, 2.0, 3.0])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(-10)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine([-30, 60], translate=[2, 2])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]),
+
+        with self.assertRaises(ValueError):
+            transforms.RandomAffine(
+                10,
+                translate=[0.5, 0.3],
+                scale=[0.7, 1.3],
+                shear=[-10, 10, 0, 20, 40])
 
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
@@ -546,6 +662,36 @@ class TestFunctional(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             F.adjust_saturation(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.affine('45')
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=0.3)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2, 0.3])
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=-0.5)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=0.5, shear=10)
+
+        with self.assertRaises(TypeError):
+            F.affine(45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 0, 10])
+
+        with self.assertRaises(TypeError):
+            F.affine(
+                45,
+                translate=[0.2, 0.2],
+                scale=0.5,
+                shear=[-10, 10],
+                interpolation=2)
+
+        with self.assertRaises(TypeError):
+            F.affine(
+                45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10], center=0)
 
         with self.assertRaises(TypeError):
             F.rotate(1, 0.1)
@@ -785,6 +931,31 @@ class TestFunctional(unittest.TestCase):
 
         os.remove(path)
 
+    def test_affine(self):
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+
+        np_affined_img = F.affine(
+            np_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+        pil_affined_img = F.affine(
+            pil_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+        tensor_affined_img = F.affine(
+            tensor_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+
+        np.testing.assert_equal(np_affined_img.shape,
+                                np.array(pil_affined_img).shape)
+        np.testing.assert_equal(np_affined_img.shape,
+                                tensor_affined_img.transpose((1, 2, 0)).shape)
+
+        np.testing.assert_almost_equal(
+            np.array(pil_affined_img),
+            tensor_affined_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
+
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
@@ -818,6 +989,144 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+
+    def test_perspective(self):
+        np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
+
+        np.testing.assert_almost_equal(
+            np_img, tensor_img.transpose((1, 2, 0)), decimal=4)
+
+        startpoints = [[0, 0], [13, 0], [13, 15], [0, 15]]
+        endpoints = [[3, 2], [12, 3], [10, 14], [2, 15]]
+
+        np_perspectived_img = F.perspective(np_img, startpoints, endpoints)
+        pil_perspectived_img = F.perspective(pil_img, startpoints, endpoints)
+        tensor_perspectived_img = F.perspective(tensor_img, startpoints,
+                                                endpoints)
+
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                np.array(pil_perspectived_img).shape)
+        np.testing.assert_equal(np_perspectived_img.shape,
+                                tensor_perspectived_img.transpose(
+                                    (1, 2, 0)).shape)
+
+        result_pil = np.array(pil_perspectived_img)
+        result_tensor = tensor_perspectived_img.numpy().transpose(
+            (1, 2, 0)).astype('uint8')
+        num_diff_pixels = (result_pil != result_tensor).sum() / 3.0
+        ratio_diff_pixels = num_diff_pixels / result_tensor.shape[
+            0] / result_tensor.shape[1]
+        # Tolerance : less than 6% of different pixels
+        assert ratio_diff_pixels < 0.06
+
+    def test_batch_input(self):
+        paddle.seed(777)
+        batch_tensor = paddle.rand((2, 3, 8, 8), dtype=paddle.float32)
+
+        def test_erase(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.erase(input1, 1, 1, 2, 2, 0.5),
+                F.erase(input2, 1, 1, 2, 2, 0.5)
+            ])
+
+            batch_result = F.erase(batch_tensor, 1, 1, 2, 2, 0.5)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_erase(batch_tensor))
+
+        def test_affine(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.affine(
+                    input1,
+                    45,
+                    translate=[0.2, 0.2],
+                    scale=0.5,
+                    shear=[-10, 10]), F.affine(
+                        input2,
+                        45,
+                        translate=[0.2, 0.2],
+                        scale=0.5,
+                        shear=[-10, 10])
+            ])
+            batch_result = F.affine(
+                batch_tensor,
+                45,
+                translate=[0.2, 0.2],
+                scale=0.5,
+                shear=[-10, 10])
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_affine(batch_tensor))
+
+        def test_perspective(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            startpoints = [[0, 0], [3, 0], [4, 5], [6, 7]]
+            endpoints = [[0, 1], [3, 1], [4, 4], [5, 7]]
+            target_result = paddle.stack([
+                F.perspective(input1, startpoints, endpoints),
+                F.perspective(input2, startpoints, endpoints)
+            ])
+
+            batch_result = F.perspective(batch_tensor, startpoints, endpoints)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_perspective(batch_tensor))
+
+        def test_adjust_brightness(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_brightness(input1, 2.1),
+                F.adjust_brightness(input2, 2.1)
+            ])
+
+            batch_result = F.adjust_brightness(batch_tensor, 2.1)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_brightness(batch_tensor))
+
+        def test_adjust_contrast(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_contrast(input1, 0.3), F.adjust_contrast(input2, 0.3)
+            ])
+
+            batch_result = F.adjust_contrast(batch_tensor, 0.3)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_contrast(batch_tensor))
+
+        def test_adjust_saturation(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack([
+                F.adjust_saturation(input1, 1.1),
+                F.adjust_saturation(input2, 1.1)
+            ])
+
+            batch_result = F.adjust_saturation(batch_tensor, 1.1)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_saturation(batch_tensor))
+
+        def test_adjust_hue(batch_tensor):
+            input1, input2 = paddle.unbind(batch_tensor, axis=0)
+            target_result = paddle.stack(
+                [F.adjust_hue(input1, -0.2), F.adjust_hue(input2, -0.2)])
+
+            batch_result = F.adjust_hue(batch_tensor, -0.2)
+
+            return paddle.allclose(batch_result, target_result)
+
+        self.assertTrue(test_adjust_hue(batch_tensor))
 
 
 if __name__ == '__main__':

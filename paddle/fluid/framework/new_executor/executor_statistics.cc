@@ -408,6 +408,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
         // See InterpreterCore::RunInstruction for details.
         if (child->Type() == platform::TracerEventType::Operator &&
             cur_node->Name() == "compute") {
+          removed.insert(cur_node);
           removed.insert(child);
         }
         q.push(child);

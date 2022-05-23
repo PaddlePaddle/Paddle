@@ -513,6 +513,20 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, ddy_safe, dx, axis);
     }
+  } else {
+    if (dx && dy) {
+      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          MulGradDX<T>(),
+          MulGradDY<T>());
+    }
   }
 }
 

@@ -52,7 +52,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertTrue(ro.is_server())
         self.assertEqual(ro.worker_num(), 2)
 
-    def test_traing_role(self):
+    def test_training_role(self):
         """Test training role."""
         os.environ["TRAINING_ROLE"] = "TEST"
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
