@@ -86,13 +86,26 @@ __global__ void dy_mf_search_kernel(Table* table,
                                     char* vals, size_t len,
                                     size_t pull_feature_value_size) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  // return;
   if (i < len) {
     auto it = table->find(keys[i]);
 
     if (it != table->end()) {
       uint64_t offset = i * pull_feature_value_size;
-      FeatureValue& cur = *(FeatureValue*)(vals + offset);
+      FeatureValue* cur = (FeatureValue*)(vals + offset);
       FeatureValue& input = *(FeatureValue*)(it->second);
+      cur->slot = input.slot;
+      cur->show = input.show;
+      cur->clk = input.clk;
+      cur->mf_dim = input.mf_dim;
+      cur->lr = input.lr;
+      cur->mf_size = input.mf_size;
+      cur->cpu_ptr = input.cpu_ptr;
+      cur->delta_score = input.delta_score;
+      cur->lr_g2sum = input.lr_g2sum;
+      for (int j = 0; j < cur->mf_dim + 1; ++j) {
+        cur->mf[j] = input.mf[j];
+      }
     }
   }
 }

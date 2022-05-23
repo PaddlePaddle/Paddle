@@ -95,24 +95,6 @@ class HeterContext {
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
-  void init(int shard_num, int device_num) {
-    shard_num_ = shard_num;
-    feature_keys_.resize(shard_num_);
-    value_ptr_.resize(shard_num_);
-    device_task_ptr_.resize(shard_num_);
-    device_task_keys_.resize(shard_num_);
-    for (size_t i = 0; i < device_task_ptr_.size(); i++) {
-      device_task_ptr_[i].resize(device_num);
-      device_task_keys_[i].resize(device_num);
-    }
-
-    device_values_.resize(device_num);
-    device_keys_.resize(device_num);
-    mutex_.resize(device_num);
-    for (size_t i = 0; i < mutex_.size(); ++i) {
-      mutex_[i] = new std::mutex();
-    }
-  }
 
   void init(int shard_num, int device_num, int dim_num) {
     shard_num_ = shard_num;
