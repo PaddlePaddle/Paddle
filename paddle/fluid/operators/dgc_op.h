@@ -15,8 +15,11 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "dgc/dgc.h"
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -152,18 +155,18 @@ class DGCOpKernel : public framework::OpKernel<T> {
       u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
 
       // v = u + v + g
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, u, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
 
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, g, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, g, v, 0, phi::funcs::AddFunctor<T>(), v_out);
     } else {
       // u = m * u + g
       u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
 
       // v = u + v
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, u, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
     }
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
