@@ -169,7 +169,7 @@ inline void EmplaceDeviceContext(
 
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
-              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+              framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
