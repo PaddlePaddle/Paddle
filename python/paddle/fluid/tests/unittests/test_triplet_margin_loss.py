@@ -25,7 +25,7 @@ def call_TripletMarginLoss_layer(input,
                     eps = 1e-6,
                     reduction='mean',):
     triplet_margin_loss = paddle.nn.TripletMarginLoss(p=p,
-                                                      eps=eps,
+                                                      epsilon=eps,
                                                       margin=margin,
                                                       swap=swap,
                                                       reduction=reduction)
@@ -47,7 +47,7 @@ def call_TripletMarginLoss_functional(input,
                                                    positive=positive,
                                                    negative=negative,
                                                    p=p,
-                                                   eps=eps,
+                                                   epsilon=eps,
                                                    margin=margin,
                                                    swap=swap,
                                                    reduction=reduction)
@@ -164,9 +164,9 @@ def calc_triplet_margin_loss(input,
 
 class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss(self):
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
 
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -242,9 +242,9 @@ class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
         expected = calc_triplet_margin_loss(input=input, swap=True, positive=positive, negative=negative,
                                             reduction=reduction)
 
@@ -291,9 +291,9 @@ class TestTripletMarginLoss(unittest.TestCase):
         p = 3
         reduction = 'mean'
         place = paddle.CPUPlace()
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
         expected = calc_triplet_margin_loss(input=input, p=p, positive=positive, negative=negative,
                                                      reduction=reduction)
 
