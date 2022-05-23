@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
+import os
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -532,12 +534,20 @@ class TestForOriginalTuple(TestTransformForOriginalList):
 
 
 class TestForZip(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_for_zip_error(self):
         with self.assertRaises(RuntimeError):
-            paddle.jit.save(for_zip_error, './for_zip_error')
+            model_path = os.path.join(self.temp_dir.name, 'for_zip_error')
+            paddle.jit.save(for_zip_error, model_path)
 
     def test_for_zip(self):
-        paddle.jit.save(for_zip, './for_zip')
+        model_path = os.path.join(self.temp_dir.name, 'for_zip')
+        paddle.jit.save(for_zip, model_path)
 
 
 if __name__ == '__main__':

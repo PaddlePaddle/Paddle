@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle
 import unittest
 import numpy as np
+import tempfile
 
 
 class BufferLayers(paddle.nn.Layer):
@@ -66,11 +68,15 @@ class TestSequential(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
         self.seed = 2021
+        self.temp_dir = tempfile.TemporaryDirectory()
         self._init_config()
 
     def _init_config(self):
         self.net = SequentialNet(BufferLayers, 10, 3)
-        self.model_path = './sequential_net'
+        self.model_path = os.path.join(self.temp_dir.name, 'sequential_net')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def _init_seed(self):
         paddle.seed(self.seed)
@@ -108,7 +114,8 @@ class TestSequential(unittest.TestCase):
 class TestNestSequential(TestSequential):
     def _init_config(self):
         self.net = NestSequentialNet()
-        self.model_path = './nested_sequential_net'
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       'nested_sequential_net')
 
 
 if __name__ == '__main__':

@@ -45,7 +45,8 @@ class BaseAPI(object):
                     'infer_meta'])
             self.kernel = self.parse_kernel(api_item_yaml['kernel'])
             self.support_selected_rows_kernel = False if len(self.kernel[
-                'func']) == 1 else True
+                'func']) == 1 or not self.kernel['func'][1].endswith(
+                    '_sr') else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map, self.view_map = self.parse_inplace_and_view(
                 api_item_yaml)
@@ -248,13 +249,15 @@ class BaseAPI(object):
         #    backend : str, the names of param to choose the kernel backend, default is None
         #    layout : str, the names of param to choose the kernel layout, default is None
         #    data_type : str, the names of param to choose the kernel data_type, default is None
+        #    dispatch : {}, the key is kernel_func, the value is type of inputs and outputs for kernel (example: {kernel_name : (['dense','sparse_coo']#input,['sparse_coo']#output)})
         kernel = {
             'func': [],
             'param': None,
             'backend': None,
             'layout': None,
             'data_type': None,
-            'use_gpudnn': 'false'
+            'use_gpudnn': 'false',
+            'dispatch': {}
         }
         if 'backend' in kernel_config and len(kernel_config['backend']) > 0:
             kernel['backend'] = kernel_config['backend']
@@ -268,17 +271,21 @@ class BaseAPI(object):
             kernel['use_gpudnn'] = kernel_config['use_gpudnn']
             if isinstance(kernel['use_gpudnn'], bool):
                 kernel['use_gpudnn'] = str(kernel['use_gpudnn']).lower()
-        kernel['func'] = [
-            kernel_fn.strip() for kernel_fn in kernel_config['func'].split(',')
-        ]
+        kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
+            kernel_config['func'])
 
-        if len(kernel['func']) == 2:
-            assert kernel['func'][0] == self.api, \
-                    f"{self.api} : Kernel func error: If kernel has two func config, the name of first func should be same with api name({self.api}), \
-                      but now is {kernel['func'][0]}."
-            assert kernel['func'][1].endswith('_sr'), \
-                    f"{self.api} : Kernel func error: If kernel has two func config, the name of second func should be a selected_rows kernel (the func name endwith '_sr'), \
-                      but now is {kernel['func'][1]}."
+        def parse_kernel_in_out_type(in_out_str):
+            if len(in_out_str) == 0:
+                return None
+            tmp_in_out_list = in_out_str[1:-1].split('->')
+            inputs = [item.strip() for item in tmp_in_out_list[0].split(',')]
+            outputs = [item.strip() for item in tmp_in_out_list[1].split(',')]
+            return (inputs, outputs)
+
+        for func_item in kernel_funcs:
+            kernel['func'].append(func_item[0])
+            kernel['dispatch'][func_item[0]] = parse_kernel_in_out_type(
+                func_item[1])
 
         return kernel
 
