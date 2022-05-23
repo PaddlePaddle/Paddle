@@ -79,8 +79,10 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
                                        {DNNL_ARG_DST, *src0_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetPlainMKLDNNFormat(out->dims().size()));
+    // src0_memory_p's md was just to be allow the usage of a binary
+    // primitive as a memset, and now we need to create a real one
+    out->set_mem_desc({phi::vectorize(shape), platform::MKLDNNGetDataType<T>(),
+                       platform::GetPlainMKLDNNFormat(shape.size())});
   }
 
   T CalculateFillValue(const framework::ExecutionContext& ctx) const {
