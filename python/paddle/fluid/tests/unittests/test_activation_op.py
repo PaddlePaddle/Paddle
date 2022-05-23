@@ -2003,6 +2003,7 @@ class TestCELU(TestActivation):
         self.op_type = "celu"
         self.init_dtype()
 
+        self.python_api = paddle.nn.functional.celu
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.5
@@ -2014,7 +2015,7 @@ class TestCELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestCELUAPI(unittest.TestCase):
@@ -2079,6 +2080,11 @@ class TestCELUAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.celu(x_fp16)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+            self.test_errors()
 
 
 class TestReciprocal(TestActivation):

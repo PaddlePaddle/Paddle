@@ -11,6 +11,8 @@ register_operators(EXCLUDES
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
     skip_layernorm_op
+    yolo_box_head_op
+    yolo_box_post_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
     fusion_gru_op
@@ -54,6 +56,8 @@ if (WITH_GPU OR WITH_ROCM)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     op_library(skip_layernorm_op)
+    op_library(yolo_box_head_op)
+    op_library(yolo_box_post_op)
     op_library(fused_embedding_eltwise_layernorm_op)
     op_library(fused_gate_attention_op)
     # fusion_group

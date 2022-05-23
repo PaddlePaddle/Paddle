@@ -90,7 +90,7 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SoftmaxOut",
                       {batch_size, seq_len_m, num_head, seq_len_r, m_size});
     ctx->SetOutputDim("QKTVOut",
-                      {batch_size, seq_len_m, seq_len_r, num_head, key_dim});
+                      {batch_size, seq_len_m, num_head, seq_len_r, key_dim});
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
       OP_INOUT_CHECK(ctx->HasInput("GateWeight"), "Input", "GateWeight",

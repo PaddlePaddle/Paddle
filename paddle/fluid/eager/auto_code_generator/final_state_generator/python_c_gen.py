@@ -15,7 +15,7 @@
 import os
 import argparse
 import logging
-from codegen_utils import FunctionGeneratorBase, YamlGeneratorBase
+from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import yaml_types_mapping
 from codegen_utils import ReadFwdFile, IsVectorTensorType, GetForwardFunctionName
 from codegen_utils import ParseYamlForward, GetInplacedFunctionName
@@ -100,6 +100,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
     // Set Device ID
 {}
+    // Call dygraph function
     decltype({}({})) out = {}({});
 
     PyEval_RestoreThread(tstate);
@@ -258,7 +259,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.optional_inputs
         #self.no_need_buffers
         #self.intermediate_outputs   
-        #self.inplace_map
+        #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.is_forward_only = True
@@ -274,7 +275,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
     def GeneratePythonCFunction(self):
         namespace = self.namespace
-        inplace_map = self.inplace_map
+        forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
         orig_forward_attrs_list = self.orig_forward_attrs_list
         forward_inputs_position_map = self.forward_inputs_position_map
@@ -341,6 +342,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Generate Record Event for performance profiling
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
             "pythonc_record_event", forward_api_name, "pybind_imperative_func")
+
+        # Generate Python-C Function Definetion
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name, pythonc_record_event_str, forward_api_name,
             get_eager_tensor_str, parse_attributes_str, set_device_str,
@@ -350,12 +353,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
         forward_api_name_prefix = "" if prefix == "" else prefix + "_"
+
         # Generate Python-C Function Registration
         self.python_c_function_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
             forward_api_name_prefix, forward_api_name, namespace,
             forward_api_name, forward_api_name)
 
-        if inplace_map:
+        if forward_inplace_map:
             inplaced_forward_api_name = GetInplacedFunctionName(
                 self.forward_api_name)
             if is_forward_only:
@@ -368,14 +372,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     GetForwardFunctionName(inplaced_forward_api_name))
 
             assert len(
-                inplace_map
-            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
-            for inplace_input, inplace_output in inplace_map.items():
+                forward_inplace_map
+            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(forward_inplace_map)}"
+            for inplace_input, inplace_output in forward_inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
                     inplaced_forward_api_name, inplace_input,
                     inplaced_forward_api_name, inplace_output)
                 break
 
+            # Generate Python-C Function Definetion
             self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
@@ -396,8 +401,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Initialized optional_inputs
         self.ParseDispensable()
 
-        # Initialized inplace_map
-        self.ParseInplaceInfo()
+        # Initialized forward_inplace_map
+        self.ParseForwardInplaceInfo()
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
@@ -414,17 +419,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         return True
 
 
-class PythonCYamlGenerator(YamlGeneratorBase):
+class PythonCGenerator(GeneratorBase):
     def __init__(self, path):
         # Parent members: 
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
-        YamlGeneratorBase.__init__(self, api_yaml_path)
+        GeneratorBase.__init__(self, api_yaml_path)
 
         # Generated Result
-        self.python_c_functions_reg_str = ""
         self.python_c_functions_str = ""
+        self.python_c_functions_reg_str = ""
 
     def GeneratePythonCFunctions(self):
         namespace = self.namespace
@@ -436,8 +441,8 @@ class PythonCYamlGenerator(YamlGeneratorBase):
             status = f_generator.run()
 
             if status == True:
-                self.python_c_functions_reg_str += f_generator.python_c_function_reg_str + ",\n"
                 self.python_c_functions_str += f_generator.python_c_function_str + "\n"
+                self.python_c_functions_reg_str += f_generator.python_c_function_reg_str + ",\n"
 
     def AttachNamespace(self):
         namespace = self.namespace
@@ -509,11 +514,11 @@ if __name__ == "__main__":
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
-        y_generator = PythonCYamlGenerator(api_yaml_path)
-        y_generator.run()
+        py_c_generator = PythonCGenerator(api_yaml_path)
+        py_c_generator.run()
 
-        generated_python_c_functions += y_generator.python_c_functions_str + "\n"
-        generated_python_c_registration += y_generator.python_c_functions_reg_str + "\n"
+        generated_python_c_functions += py_c_generator.python_c_functions_str + "\n"
+        generated_python_c_registration += py_c_generator.python_c_functions_reg_str + "\n"
 
     python_c_str = GeneratePythonCWrappers(generated_python_c_functions,
                                            generated_python_c_registration)

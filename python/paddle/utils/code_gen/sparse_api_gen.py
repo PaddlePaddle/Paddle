@@ -47,6 +47,11 @@ class SparseAPI(ForwardAPI):
         output_names = []
         output_create = ""
         return_type = self.get_return_type_with_intermediate(inplace_flag)
+        output_type_map = {
+            'dense': 'TensorType::DENSE_TENSOR',
+            'sparse_coo': 'TensorType::SPARSE_COO',
+            'sparse_csr': 'TensorType::SPARSE_CSR'
+        }
 
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
@@ -55,19 +60,18 @@ class SparseAPI(ForwardAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {return_type} api_output{inplace_assign};
-  auto* kernel_out = {set_out_func}(&api_output, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+    {return_type} api_output{inplace_assign};
+    auto* kernel_out = {set_out_func}(&api_output, {output_type_map[output_type_list[0]]});"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {return_type} api_output;"""
+    {return_type} api_output;"""
 
             if inplace_flag:
                 output_create = f"""
-  {return_type} api_output{{"""
+    {return_type} api_output{{"""
 
                 for out_name in self.outputs['names']:
-                    out_name = out_name.split('@')[0]
                     if out_name in self.inplace_map:
                         output_create = output_create + self.inplace_map[
                             out_name] + ', '
@@ -79,7 +83,7 @@ class SparseAPI(ForwardAPI):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 output_create = output_create + f"""
-  auto* kernel_out_{i} = {set_out_func}(&std::get<{i}>(api_output), {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+    auto* kernel_out_{i} = {set_out_func}(&std::get<{i}>(api_output), {output_type_map[output_type_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -117,7 +121,7 @@ class SparseAPI(ForwardAPI):
                     )
                 else:
                     kernel_context_code = kernel_context_code + f"""
-  kernel_context.EmplaceBackInput({param}.impl().get());"""
+    kernel_context.EmplaceBackInput({param}.impl().get());"""
 
                 continue
             if param in attr_names:
@@ -131,43 +135,78 @@ class SparseAPI(ForwardAPI):
             else:
                 param + str(param) + ", "
             kernel_context_code = kernel_context_code + f"""
-  kernel_context.EmplaceBackAttr({param});"""
+    kernel_context.EmplaceBackAttr({param});"""
 
         for out_name in kernel_output_names:
             kernel_context_code = kernel_context_code + f"""
-  kernel_context.EmplaceBackOutput({out_name});"""
+    kernel_context.EmplaceBackOutput({out_name});"""
 
         return kernel_context_code
 
-    def gen_sparse_kernel_code(self, inplace_flag=False):
+    def gen_sparse_kernel_code(self, kernel_name, inplace_flag=False):
         _, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], 'SetSparseKernelOutput', '', inplace_flag)
+            self.kernel['dispatch'][kernel_name][1], 'SetSparseKernelOutput',
+            '', inplace_flag)
 
         kernel_context_code = self.gen_sparse_kernel_context(
             kernel_output_names)
         return_code = "" if len(self.gene_return_code(
         )) == 0 else "  " + self.gene_return_code()
         return f"""
-  auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
-  VLOG(6) << "{self.api} api sparse kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-  VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
+    VLOG(6) << "{self.api} api sparse kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+    auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+    VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
 
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-  auto kernel_context = phi::KernelContext(dev_ctx);
+    auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+    auto kernel_context = phi::KernelContext(dev_ctx);
 {output_create}
 {kernel_context_code}
-  phi_kernel(&kernel_context);
-{return_code}"""
+    phi_kernel(&kernel_context);
+  {return_code}"""
+
+    def get_condition_code(self, kernel_name):
+        assert self.kernel['dispatch'][kernel_name], \
+                f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_api.yaml."
+        input_types = self.kernel['dispatch'][kernel_name][0]
+        sparse_type_map = {
+            'sparse_coo': 'DataLayout::SPARSE_COO',
+            'sparse_csr': 'DataLayout::SPARSE_CSR'
+        }
+        condition_list = []
+        for i, in_type in enumerate(input_types):
+            if in_type == "dense":
+                condition_list.append(
+                    f"phi::DenseTensor::classof({self.inputs['names'][i]}.impl().get())"
+                )
+            else:
+                condition_list.append(
+                    f"{self.inputs['names'][i]}.layout() == {sparse_type_map[in_type]}"
+                )
+        return " && ".join(condition_list)
+
+    def gene_dispatch_code(self, kernel_name, inplace_flag=False):
+        dispatch_code = ""
+        return f"""
+  if ({self.get_condition_code(kernel_name)}) {{
+{self.gen_sparse_kernel_code(kernel_name, inplace_flag)}
+  }}
+"""
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
+        kernel_dispatch_code = f"{self.gene_kernel_select()}\n"
+        for kernel_name in self.kernel['func']:
+            kernel_dispatch_code += self.gene_dispatch_code(kernel_name,
+                                                            inplace_flag)
+
         return f"""
 PADDLE_API {self.get_return_type()} {api_func_name}({self.get_define_args()}) {{
-{self.gene_kernel_select()}
-{self.gen_sparse_kernel_code(inplace_flag)}
+{kernel_dispatch_code}
+  PADDLE_THROW(phi::errors::Unimplemented(
+          "The kernel of ({self.api}) for input tensors is unimplemented, please check the type of input tensors."));
 }}
 """
 
