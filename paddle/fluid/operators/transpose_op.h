@@ -64,34 +64,35 @@ class DimsAndPermSimplifier {
  public:
   explicit DimsAndPermSimplifier(const int rank, const int elem_size,
                                  const std::vector<int32_t>& perm,
-                                 const size_t* in_dims, size_t* simplified_dims,
-                                 int* simplified_perm, const T* src, T* dst) {
-    const size_t simplified_movement_size =
-        GetMovementSize(rank, elem_size, in_dims, perm.data(), src, dst);
+                                 std::vector<size_t>* in_dims, const T* src,
+                                 T* dst) {
+    perm_.resize(rank);
+    dims_.resize(rank);
+    size_t simplified_movement_size =
+        GetMovementSize(rank, elem_size, *in_dims, perm, src, dst);
 
-    size_t tmp_dims[phi::DDim::kMaxRank];
-    for (size_t i = 0; i < rank; ++i) {
-      tmp_dims[i] = in_dims[i];
-    }
-    tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
+    (*in_dims)[rank - 1] /= (simplified_movement_size / elem_size);
+    Simplifyperm(rank, *in_dims, perm);
 
-    Simplifyperm(rank, tmp_dims, perm, simplified_dims, simplified_perm);
-    movement_size = GetMovementSize(rank, simplified_movement_size,
-                                    simplified_dims, simplified_perm, src, dst);
-    simplified_dims[simplified_rank - 1] /=
-        (movement_size / simplified_movement_size);
+    movement_size_ = GetMovementSize(rank_, simplified_movement_size, dims_,
+                                     perm_, src, dst);
+    dims_[rank_ - 1] /= (movement_size_ / simplified_movement_size);
   }
 
-  size_t GetRank() { return simplified_rank; }
-  size_t GetMovementSize() { return movement_size; }
+  size_t GetRank() const { return rank_; }
+  size_t GetMovementSize() const { return movement_size_; }
+
+  std::vector<int> GetPerm() const { return perm_; }
+  std::vector<size_t> GetDims() const { return dims_; }
 
  private:
-  size_t movement_size;
-  size_t simplified_rank;
+  size_t rank_;
+  size_t movement_size_;
+  std::vector<int> perm_;
+  std::vector<size_t> dims_;
 
-  void Simplifyperm(const size_t rank, const size_t* in_dims,
-                    const std::vector<int32_t>& perm, size_t* simplified_dims,
-                    int* simplified_perm) {
+  void Simplifyperm(const size_t rank, const std::vector<size_t>& in_dims,
+                    const std::vector<int32_t>& perm) {
     size_t coalesced_dims[phi::DDim::kMaxRank];
     size_t start_perm_index = 0;
 
@@ -120,23 +121,23 @@ class DimsAndPermSimplifier {
         mapping[i] = -1;
       } else {
         mapping[i] = valid_num_dims;
-        simplified_dims[valid_num_dims] = src_dim;
+        dims_[valid_num_dims] = src_dim;
         valid_num_dims += 1;
       }
     }
 
     // Acquire simplified perm.
     if (valid_num_dims == 0) {
-      simplified_rank = 1;
-      simplified_dims[0] = 1;
-      simplified_perm[0] = 0;
+      rank_ = 1;
+      dims_[0] = 1;
+      perm_[0] = 0;
     } else {
       size_t perm_index = 0;
-      simplified_rank = valid_num_dims;
+      rank_ = valid_num_dims;
       for (size_t i = 0; i < rank; ++i) {
         const int mapped = mapping[perm[i]];
         if (mapped >= 0) {
-          simplified_perm[perm_index] = mapped;
+          perm_[perm_index] = mapped;
           perm_index += 1;
         }
       }
@@ -144,8 +145,8 @@ class DimsAndPermSimplifier {
   }
 
   size_t GetMovementSize(const size_t rank, const size_t elem_size,
-                         const size_t* in_dims, const int* perm, const T* src,
-                         T* dst) {
+                         const std::vector<size_t>& in_dims,
+                         const std::vector<int>& perm, const T* src, T* dst) {
     static_assert(kMaxMovementSize > 0 &&
                       (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
                   "The kMaxMovementSize shall be power of 2.");
