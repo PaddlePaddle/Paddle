@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See
@@ -18,7 +21,7 @@ namespace inference {
 namespace tensorrt {
 
 class SparseMultiheadMatMulOpConverter : public OpConverter {
- public:	
+ public:
   plugin::SpmmPluginDynamic* new_spmm_plugin(TensorRTEngine::Weight* weight,
                                              TensorRTEngine::Weight* bias,
                                              nvinfer1::DataType type,
@@ -100,21 +103,18 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
         if (engine_->with_interleaved()) {
-          VLOG(4) << "fused sparse_multihead_matmul op: use_oss and with_interleaved";
+          VLOG(4) << "fused multihead_matmul op: use_oss and with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
             PADDLE_THROW(
                 platform::errors::Fatal("use with_interleaved must be int8."));
           }
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
-          plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-                  &weight, &bias, nvinfer1::DataType::kINT8, n);
-          std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(input);
-          fc_layer = engine_->network()->addPluginV2(
-              plugin_inputs.data(), plugin_inputs.size(), *plugin);
+          nvinfer1::DimsHW nv_ksize(1, 1);
+          fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
+                                          nv_ksize, weight, bias);
           fc_layer->setName(
-              ("SparseMultihead: SPMM: (Output: " +
+              ("Multihead: Convolution/FullyConnected: (Output: " +
                output_name + ")")
                   .c_str());
           PADDLE_ENFORCE_EQ(
@@ -177,7 +177,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           plugin_inputs.emplace_back(
               shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
           shuffle_layer->setName(
-              ("Sparse multihead: Shuffle: (Output: " + output_name + ")").c_str());
+              ("Multihead: Shuffle: (Output: " + output_name + ")").c_str());
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
           layer = plugin_layer;
@@ -215,21 +215,6 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           transpose_weight_v2(weight_data_tmp.data(), weight_data, three,
                               head_number, head_size, hidden_in);
 
-          half* half_data = nullptr;
-          void* w_data = nullptr;
-          if (with_fp16) {
-            half_data = new half[weight_t->numel()];
-            for (int i = 0; i < weight_t->numel(); i++) {
-              half_data[i] = static_cast<half>(weight_data[i]);
-            }
-            w_data = static_cast<void*>(half_data);
-          } else {
-            w_data = static_cast<void*>(weight_data);
-          }
-          weight{with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-                                   static_cast<void*>(w_data),
-                                   static_cast<int32_t>(weight_t->numel())};
-
           std::vector<float> bias_data_tmp;
           bias_data_tmp.reserve(bias_t->numel());
           memcpy(bias_data_tmp.data(), bias_data,
@@ -240,20 +225,12 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
           if (op_desc.HasAttr("Input_scale")) {
-            plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-                &weight, &bias, nvinfer1::DataType::kINT8, n);
-            std::vector<nvinfer1::ITensor*> plugin_inputs;
-            plugin_inputs.emplace_back(input);
-            fc_layer = engine_->network()->addPluginV2(
-                plugin_inputs.data(), plugin_inputs.size(), *plugin);
+            nvinfer1::DimsHW nv_ksize(1, 1);
+            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
+                                            nv_ksize, weight, bias);
           } else {
-            plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-                &weight, &bias,
-                with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT, n);
-            std::vector<nvinfer1::ITensor*> plugin_inputs;
-            plugin_inputs.emplace_back(input);
-            fc_layer = engine_->network()->addPluginV2(
-                plugin_inputs.data(), plugin_inputs.size(), *plugin);
+            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
+                                            weight, bias);
           }
 
           if (op_desc.HasAttr("fc_out_threshold")) {
@@ -392,7 +369,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
               &weight, &bias, nvinfer1::DataType::kINT8, n);
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(reshape_before_fc_layer.getOutput(0));
+          plugin_inputs.emplace_back(reshape_before_fc_layer->getOutput(0));
           fc_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
         } else {
@@ -401,7 +378,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
               with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
               n);
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          plugin_inputs.emplace_back(reshape_before_fc_layer.getOutput(0));
+          plugin_inputs.emplace_back(reshape_before_fc_layer->getOutput(0));
           fc_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
         }
@@ -453,4 +430,4 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(sparse_multihead_matmul, MultiheadMatMulOpConverter);
+REGISTER_TRT_OP_CONVERTER(sparse_multihead_matmul, SparseMultiheadMatMulOpConverter);
