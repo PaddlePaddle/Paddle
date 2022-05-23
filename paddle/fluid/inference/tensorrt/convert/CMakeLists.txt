@@ -10,7 +10,7 @@ conv3d_op.cc mish_op.cc nearest_interp_v2_op.cc pool3d_op.cc deformable_conv_op.
 preln_skip_layernorm.cc	strided_slice_op.cc roll_op.cc)
 
 if (CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
-  list(APPEND CONVERT_FILES sparse_fc_op.cc)
+  list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
 
 nv_library(tensorrt_converter
