@@ -29,6 +29,7 @@ from codegen_utils import RemoveSpecialSymbolsInName, RecoverBaseNameOfInplaceFu
 from codegen_utils import GetInplacedFunctionName
 from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
 from codegen_utils import ParseYamlForward, ParseYamlBackward
+from codegen_utils import ParseYamlInplaceInfo
 from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
 from codegen_utils import AssertMessage, GetIndent
@@ -347,6 +348,16 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
   if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
 """
 
+CHECK_BACKWARD_INPLACE_TEMPLATE = \
+"""
+  bool can_be_inplaced = false;
+  if ({}.initialized()) {{
+    VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
+    if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
+      can_be_inplaced = true;
+    }}
+  }}"""
+
 CHECK_NAN_AND_INF_TEMPLATE = \
 """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
 """
@@ -407,7 +418,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         #self.optional_inputs
         #self.no_need_buffers
         #self.intermediate_outputs
-        #self.inplace_map
+        #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.grad_api_contents = grad_api_contents
@@ -437,6 +448,15 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         }  #{ "name" : [type, fwd_position, orig_position] ...}
         self.backward_grad_outputs_map = {
         }  #{ "name" : [type, fwd_position, orig_position] ...}
+
+        self.backward_inplace_map = {}  #{name : name, ...}
+
+    def ParseBackwardInplaceInfo(self):
+        grad_api_contents = self.grad_api_contents
+        if 'inplace' not in grad_api_contents.keys(): return
+
+        inplace_map_str = grad_api_contents['inplace']
+        self.backward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
 
     def DygraphYamlValidationCheck(self):
         forward_api_contents = self.forward_api_contents
@@ -777,8 +797,9 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ##########################
         ## Parsing Raw Contents ##
         ##########################
-        # Parse inplace_map
-        self.ParseInplaceInfo()
+        # Parse forward and backward inplace_map
+        self.ParseForwardInplaceInfo()
+        self.ParseBackwardInplaceInfo()
 
         # Parse no_need_buffer
         self.ParseNoNeedBuffer()
@@ -837,7 +858,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         optional_inputs = self.optional_inputs
         intermediate_outputs = self.intermediate_outputs
-        inplace_map = self.inplace_map if is_inplaced else {}
+        forward_inplace_map = self.forward_inplace_map if is_inplaced else {}
         indent = GetIndent(1)
 
         # Get Function Args
@@ -869,7 +890,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(NEW_{name}_temp_tensor) : {name};\n"
                     )
                 else:
-                    if is_inplaced and inplace_map and name in inplace_map.keys(
+                    if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
                     ):
                         arg_str = f"paddle::experimental::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
@@ -944,13 +965,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):
-                if is_inplaced and inplace_map and name in inplace_map.values():
+                if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
+                ):
                     returns_type_list[pos] = "paddle::experimental::Tensor&"
                 else:
                     returns_type_list[pos] = "paddle::experimental::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
-                if is_inplaced and inplace_map and name in inplace_map.values():
+                if is_inplaced and forward_inplace_map and name in forward_inplace_map.values(
+                ):
                     returns_type_list[
                         pos] = "std::vector<paddle::experimental::Tensor>&"
                 else:
@@ -1014,7 +1037,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         check_inplace_str = ""
         bump_inplace_version_str = ""
         if is_inplaced:
-            for inplace_name in inplace_map.keys():
+            for inplace_name in forward_inplace_map.keys():
                 inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
                 check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
                     inplace_name, inplace_autograd_meta_name)
@@ -1258,6 +1281,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
+        backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
 
         # Construct grad_api function args
@@ -1282,6 +1306,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     else:
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
+        inplace_grad_input_str = ""
         # Grad Ins from TensorWrappers
         for name, (_, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
@@ -1290,6 +1315,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = (name in self.optional_inputs)
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
+            if backward_inplace_map and name in backward_inplace_map.keys():
+                tensor_wrapper_intermidiate_tensor_str = f"(&this->{tensor_wrapper_name})->get_intermidiate_tensor()"
+                tensor_wrapper_recover_str += CHECK_BACKWARD_INPLACE_TEMPLATE.format(
+                    transformed_tensor_name, transformed_tensor_name, name,
+                    transformed_tensor_name, transformed_tensor_name,
+                    transformed_tensor_name, transformed_tensor_name,
+                    tensor_wrapper_intermidiate_tensor_str)
+                inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
                     transformed_tensor_name, transformed_tensor_name,
@@ -1311,6 +1344,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in self.optional_inputs)
             if IsPlainTensorType(ttype):
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
+
+                # Inplace in backward op
+                if backward_inplace_map and name in backward_inplace_map.keys():
+                    grads_tensor_str = f"grads[{fwd_position}][0]"
+                    get_tensor_str += CHECK_BACKWARD_INPLACE_TEMPLATE.format(
+                        transformed_tensor_name, transformed_tensor_name, name,
+                        transformed_tensor_name, transformed_tensor_name,
+                        transformed_tensor_name, transformed_tensor_name,
+                        grads_tensor_str)
+                    inplace_grad_input_str = transformed_tensor_name
 
                 if is_optional:
                     get_tensor_str += "\n" + CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE.format(
@@ -1357,8 +1400,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_api_args.append(f"api_output_{out_index}")
 
             if IsPlainTensorType(ttype):
+                inplace_for_grad_outs_str = ""
+                if backward_inplace_map and name in backward_inplace_map.values(
+                ):
+                    inplace_for_grad_outs_str = f"""
+{indent}if (api_output_{out_index} != nullptr && can_be_inplaced) {{
+{indent}  egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
+{indent}}}"""
+
                 grad_function_call_str += f"""
-  auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];"""
+  auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];{inplace_for_grad_outs_str}"""
 
             else:
                 assert IsVectorTensorType(ttype)
