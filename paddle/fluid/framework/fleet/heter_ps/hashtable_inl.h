@@ -127,7 +127,10 @@ __global__ void dy_mf_search_kernel(Table* table,
       //   cur->mf[j] = 0;
       // }
     } else {
-      printf("yxf::pull miss key: %d",keys[i]);
+      if (keys[i] != 0) {
+        printf("yxf::pull miss key: %d",keys[i]);
+      }
+      
       //it = table->find(0);
       //*(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
       FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
@@ -250,7 +253,10 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value((it.getter())->second, *cur);
     } else {
-      printf("yxf::push miss key: %d", keys[i]);
+      if (keys[i] != 0) {
+        printf("yxf::push miss key: %d", keys[i]);
+      }
+      
     }
   }
 }
