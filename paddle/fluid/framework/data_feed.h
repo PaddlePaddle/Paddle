@@ -56,6 +56,7 @@ namespace framework {
 class DataFeedDesc;
 class Scope;
 class Variable;
+class NeighborSampleResult;
 }  // namespace framework
 }  // namespace paddle
 
@@ -774,6 +775,38 @@ class DLManager {
   std::map<std::string, DLHandle> handle_map_;
 };
 
+class GraphDataGenerator {
+ public:
+  GraphDataGenerator() {};
+  ~GraphDataGenerator() {};
+  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc) {
+    walk_degree_ = 1;
+    walk_len_ = 1;
+    sample_key_size_ = 8000;
+  };
+  void AllocResource(const paddle::platform::Place& place, std::vector<LoDTensor*> feed_vec, std::vector<int64_t>* h_device_keys);
+  void FeedGraphIns(size_t cursor, int len, NeighborSampleResult& sample_res);
+  int GenerateBatch();
+ protected:
+  int walk_degree_ = 1;
+  int walk_len_ = 1;
+  int sample_key_size_;
+  int gpuid_;
+  size_t device_key_size_;
+  size_t cursor_;
+  int64_t* device_keys_;
+  int64_t* id_tensor_ptr_;
+  int64_t* show_tensor_ptr_;
+  int64_t* clk_tensor_ptr_;
+  cudaStream_t stream_;
+  paddle::platform::Place place_;
+  std::vector<LoDTensor*> feed_vec_;
+  std::vector<int64_t>* h_device_keys_;
+  std::vector<size_t> offset_;
+  std::shared_ptr<phi::Allocation> d_prefix_sum_ = nullptr;
+  std::shared_ptr<phi::Allocation> d_device_keys_ = nullptr;
+};
+
 class DataFeed {
  public:
   DataFeed() {
@@ -836,6 +869,12 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+  virtual void SetDeviceKeys(std::vector<int64_t>* device_keys) {
+    h_device_keys_ = device_keys;
+  }
+  virtual void SetGpuGraphMode(int gpu_graph_mode) {
+    gpu_graph_mode_ = gpu_graph_mode;
+  }
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -919,6 +958,9 @@ class DataFeed {
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch
   int input_type_;
+  int gpu_graph_mode_ = 0;
+  std::vector<int64_t>* h_device_keys_;
+  GraphDataGenerator gpu_graph_data_generator_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.

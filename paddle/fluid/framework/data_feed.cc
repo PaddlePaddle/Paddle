@@ -38,6 +38,34 @@ DLManager& global_dlmanager_pool() {
   return manager;
 }
 
+void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
+                                       std::vector<LoDTensor*> feed_vec,
+                                       std::vector<int64_t>* h_device_keys) {
+  place_ = place;
+  gpuid_ = place_.GetDeviceId();
+  VLOG(3) << "gpuid " << gpuid_;
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+  feed_vec_ = feed_vec;
+  h_device_keys_ = h_device_keys;
+  device_key_size_ = h_device_keys_->size();
+  d_device_keys_ =
+      memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
+  CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
+                             device_key_size_ * sizeof(int64_t),
+                             cudaMemcpyHostToDevice, stream_));
+  d_prefix_sum_ =
+      memory::AllocShared(place_, (sample_key_size_ + 1) * sizeof(int64_t));
+  int64_t* d_prefix_sum_ptr = reinterpret_cast<int64_t*>(d_prefix_sum_->ptr());
+  cudaMemsetAsync(d_prefix_sum_ptr, 0, (sample_key_size_ + 1) * sizeof(int64_t),
+                  stream_);
+  cursor_ = 0;
+  device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());
+  ;
+  cudaStreamSynchronize(stream_);
+}
+
 class BufferedLineFileReader {
   typedef std::function<bool()> SampleFunc;
   static const int MAX_FILE_BUFF_SIZE = 4 * 1024 * 1024;
@@ -2065,6 +2093,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
+  gpu_graph_data_generator_.SetConfig(data_feed_desc);
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
@@ -2589,6 +2618,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
+  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_,
+                                          h_device_keys_);
 #endif
   return true;
 }
@@ -2596,27 +2627,31 @@ bool SlotRecordInMemoryDataFeed::Start() {
 int SlotRecordInMemoryDataFeed::Next() {
 #ifdef _LINUX
   this->CheckStart();
-
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size();
-  if (offset_index_ >= batch_offsets_.size()) {
-    VLOG(3) << "offset_index: " << offset_index_
+  if (!gpu_graph_mode_) {
+    VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
-    return 0;
-  }
-  auto& batch = batch_offsets_[offset_index_++];
-  this->batch_size_ = batch.second;
-  VLOG(3) << "batch_size_=" << this->batch_size_
-          << ", thread_id=" << thread_id_;
-  if (this->batch_size_ != 0) {
-    PutToFeedVec(&records_[batch.first], this->batch_size_);
+    if (offset_index_ >= batch_offsets_.size()) {
+      VLOG(3) << "offset_index: " << offset_index_
+              << " batch_offsets: " << batch_offsets_.size();
+      return 0;
+    }
+    auto& batch = batch_offsets_[offset_index_++];
+    this->batch_size_ = batch.second;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(&records_[batch.first], this->batch_size_);
+    } else {
+      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+              << thread_id_;
+    }
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size()
+            << " baych_size: " << this->batch_size_;
   } else {
-    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-            << thread_id_;
+    VLOG(3) << "datafeed in gpu graph mode";
+    this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
   }
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size()
-          << " baych_size: " << this->batch_size_;
 
   return this->batch_size_;
 #else
