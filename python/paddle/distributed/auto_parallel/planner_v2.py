@@ -15,6 +15,7 @@
 from .completion import Completer
 from .dist_context import get_default_distributed_context
 from .utils import print_program_with_dist_attr
+from .tuner.parallel_tuner import ParallelTuner
 
 
 class Planner:
@@ -30,13 +31,20 @@ class Planner:
 
         self._completer = Completer(self._dist_context)
 
+        self._strategy = dist_context.strategy
+        if self._strategy.auto_search:
+            self._parallel_tuner = ParallelTuner(
+                self._dist_context, mode=self._mode)
+
     @property
     def completer(self):
         return self._completer
 
     def plan(self):
-        self._completer.complete_forward_annotation()
+        if self._strategy.auto_search:
+            self._parallel_tuner.tune()
+        else:
+            self._completer.complete_forward_annotation()
         # parse forward sub block
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
-        # TODO: add the auto searcher

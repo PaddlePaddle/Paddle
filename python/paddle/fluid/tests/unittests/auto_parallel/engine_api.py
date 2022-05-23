@@ -93,7 +93,7 @@ class MLPLayer(nn.Layer):
         return out
 
 
-def train():
+def train_semi_auto():
     mlp = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,
@@ -140,5 +140,53 @@ def train():
     engine.save('./mlp_inf', training=False, mode='predict')
 
 
+def train_full_auto():
+    mlp = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        learning_rate=0.00001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-08,
+        grad_clip=None)
+
+    dataset = MyDataset(batch_num * batch_size)
+    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
+    labels_spec = InputSpec([batch_size], 'int64', 'label')
+
+    dist_strategy = fleet.DistributedStrategy()
+    dist_strategy.amp = False
+    dist_strategy.pipeline = False
+    dist_strategy.recompute = False
+    # init parallel optimizer
+    dist_strategy.auto_search = True
+    fleet.init(is_collective=True, strategy=dist_strategy)
+
+    engine = Engine(
+        mlp,
+        inputs_spec=inputs_spec,
+        labels_spec=labels_spec,
+        strategy=dist_strategy)
+    engine.prepare(optimizer, loss)
+    engine.fit(dataset,
+               batch_size=batch_size,
+               steps_per_epoch=batch_num * batch_size,
+               sample_generator=True)
+
+    eval_dataset = MyDataset(batch_size)
+    engine.prepare(optimizer, loss, mode='eval')
+    engine.evaluate(eval_dataset, batch_size)
+
+    test_dataset = MyDataset(batch_size)
+    engine.prepare(mode='predict')
+    engine.predict(test_dataset, batch_size)
+    engine.save('./mlp_inf', training=False, mode='predict')
+
+
 if __name__ == "__main__":
-    train()
+    # train_semi_auto()
+    train_full_auto()

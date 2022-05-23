@@ -409,12 +409,15 @@ class Cluster:
         self._alpha_latency = None
         self._rank_to_device_id = {}
         self._device_id_to_rank = {}
+        # This property only be valid when the cluster consists of machines,
+        # which have the same number accelerators.
+        self._num_devices_per_machine = None
 
     def gen_default_config_cluster(self,
                                    gpu_model="V100",
                                    cpu_model="6271C",
-                                   node_count=2,
-                                   device_count=8,
+                                   node_count=1,
+                                   device_count=1,
                                    gpu_memory=32,
                                    cpu_memory=503,
                                    inter_bandwidth=24,
@@ -430,6 +433,7 @@ class Cluster:
         dcu_models = ["DCU"]
         all_gpu_models = gpu_models + xpu_models + npu_models + dcu_models
         assert gpu_model in all_gpu_models
+        self._num_devices_per_machine = device_count
 
         def _convert_to_type(gpu_model):
             type = None
@@ -773,6 +777,15 @@ class Cluster:
         assert count > 0
         return count
 
+    def get_num_machines(self):
+        return len(self._machines)
+
+    def get_num_devices_per_machine(self):
+        # Only return the number of accelerators of each machine.
+        # All machines must has the same number of devices and same type of devices.
+        assert self._num_devices_per_machine
+        return self._num_devices_per_machine
+
     def __str__(self):
         str = ""
         for machine in self.machines.values():
@@ -781,3 +794,17 @@ class Cluster:
 
     def __repr__(self):
         return self.__str__()
+
+
+def get_default_cluster():
+    cluster = Cluster()
+    node_count = os.getenv("PADDLE_GLOBAL_SIZE")
+    if node_count is None:
+        print("PADDLE_GLOBAL_SIZE is None", flush=True)
+        node_count = 1
+    device_count = os.getenv("PADDLE_LOCAL_SIZE")
+    if device_count is None:
+        device_count = 1
+    cluster.gen_default_config_cluster(
+        node_count=node_count, device_count=device_count)
+    return cluster

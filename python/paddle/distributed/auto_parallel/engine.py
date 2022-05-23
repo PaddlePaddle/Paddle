@@ -31,10 +31,11 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-from .cluster import Cluster
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -59,7 +60,11 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
+        if self.strategy is None:
+            self.strategy = fleet.DistributedStrategy()
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -148,7 +153,7 @@ class Engine:
         self._dist_contexts[mode] = DistributedContext(
             self._serial_main_progs[mode], self._serial_startup_progs[mode],
             self._optimizer, losses, self._feed_vars[mode],
-            self._fetch_vars[mode], self.strategy)
+            self._fetch_vars[mode], self.cluster, self.strategy)
 
     def _initialize(self, mode):
         if self._nranks > 1:

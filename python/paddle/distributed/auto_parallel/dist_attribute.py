@@ -132,7 +132,7 @@ class TensorDistributedAttribute:
                         key, dist_attr)
             self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
 
-    def reset(self, skip_dist_attr_field_names):
+    def reset(self, skip_dist_attr_field_names=None):
         if skip_dist_attr_field_names is None or \
             (skip_dist_attr_field_names is not None \
                 and "process_mesh" not in skip_dist_attr_field_names):
@@ -382,7 +382,7 @@ class OperatorDistributedAttribute:
                         "ProcessMeshes in DistributedOperator must be the same."
         self.process_mesh = shared_process_mesh
 
-    def reset(self, skip_dist_attr_field_names):
+    def reset(self, skip_dist_attr_field_names=None):
         for tensor_dist_attr in self.inputs_dist_attrs.values():
             tensor_dist_attr.reset(skip_dist_attr_field_names)
         for tensor_dist_attr in self.outputs_dist_attrs.values():
@@ -390,7 +390,7 @@ class OperatorDistributedAttribute:
         if skip_dist_attr_field_names is None or \
             (skip_dist_attr_field_names is not None \
                 and "process_mesh" not in skip_dist_attr_field_names):
-            self.process_mesh = None
+            self._process_mesh = None
         self.impl_type = "default"
         self.impl_idx = 0
         self._is_annotated = {}

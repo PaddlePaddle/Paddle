@@ -42,11 +42,12 @@ class Parallelizer:
     def parallel_all(self):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
-        self._dist_context._backup()
+        print("begin parallel all", flush=True)
         for rank in all_ranks:
+            self._dist_context._backup(serial=True, dist=True)
             self.parallel(rank)
-            self._dist_context._restore()
-            # print("finish rank ", rank, flush=True)
+            self._dist_context._restore(serial=True, dist=True)
+            print("finish rank ", rank, flush=True)
 
     def parallel(self, rank):
         serial_main_program = self._dist_context.serial_main_program
@@ -57,7 +58,6 @@ class Parallelizer:
             serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
             params_grads = self._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
-            print("parallel_v2 enter into parallel train")
             # Apply pre optimization passes
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
@@ -80,13 +80,7 @@ class Parallelizer:
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
-            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            # print_program_with_dist_attr(dist_main_prog,
-            #                              self._dist_context)
         else:
-            # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            # print_program_with_dist_attr(serial_main_program,
-            #                              self._dist_context)
             # Apply pre optimization passes
             self._apply_pre_optimization(
                 serial_main_program, serial_startup_program, None, None, None)
@@ -102,8 +96,6 @@ class Parallelizer:
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
-            # print("~~~~~~~~~~~~~~~~~~~~~parallelizer_v2 rank {}~~~~~~~~~~~~~~~~~~~~~~~~".format(rank))
-            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)
@@ -112,8 +104,6 @@ class Parallelizer:
         # Store the distributed programs for further usages
         self._dist_context.dist_main_programs[rank] = dist_main_prog
         self._dist_context.dist_startup_programs[rank] = dist_startup_prog
-        # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # print_program_with_dist_attr(dist_main_prog, self._dist_context)
 
     def _generate_backward(self, main_program, startup_program, loss):
         with program_guard(main_program, startup_program):
