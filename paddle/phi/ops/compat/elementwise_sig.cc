@@ -27,7 +27,7 @@ KernelSignature ElementwiseAddOpArgumentMapping(
 
 KernelSignature ElementwiseGradAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("add", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseSubOpArgumentMapping(
@@ -322,4 +322,4 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
                            phi::ElementwiseHeavisideGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
                            phi::ElementwisePowGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(add_grad, phi::ElementwisePowGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(grad_add, phi::ElementwiseGradAddOpArgumentMapping);
