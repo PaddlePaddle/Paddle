@@ -139,6 +139,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
+  for (auto node : subgraph) {
+    if (node->NodeType() == Node::Type::kOperation) {
+      VLOG(5) << "trt subgraph has op: " << (node->Op()->Type());
+    }
+  }
 
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
