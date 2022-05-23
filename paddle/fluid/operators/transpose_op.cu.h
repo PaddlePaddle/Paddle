@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
@@ -659,60 +660,99 @@ constexpr int32_t kCudaMaxBlocksNum = 8192;
 constexpr int32_t kMov4TileSize = 32;
 constexpr int32_t kBlockRows = 8;
 
+template <int N, typename T>
+class IndexHelper {
+ public:
+  IndexHelper() {}
+  explicit IndexHelper(const T* dims) {
+    for (int i = N - 1; i >= 0; --i) {
+      stride_[i] = i < (N - 1) ? dims[i + 1] * stride_[i + 1] : 1;
+    }
+  }
+
+  __device__ inline T GetStride(int idx) const { return stride_[idx]; }
+
+  __device__ inline void GetIndexFromOffset(T offset, T* index) const {
+    T remaining = offset;
+#pragma unroll
+    for (int i = 0; i < N - 1; ++i) {
+      const T idx = remaining / stride_[i];
+      remaining = remaining - idx * stride_[i];
+      index[i] = idx;
+    }
+    index[N - 1] = remaining;
+  }
+
+ private:
+  T stride_[N];
+};
+
+template <int N>
+class IndexHelper<N, int32_t> {
+ public:
+  IndexHelper() {}
+  explicit IndexHelper(const int32_t* dims) {
+    for (int i = N - 1; i >= 0; --i) {
+      int32_t value = i < (N - 1) ? dims[i + 1] * stride_[i + 1] : 1;
+      divmoder_[i] = paddle::platform::FastDivMod(value);
+      stride_[i] = value;
+    }
+  }
+
+  __device__ inline int32_t GetStride(int idx) const { return stride_[idx]; }
+
+  __device__ inline void GetIndexFromOffset(int32_t offset,
+                                            int32_t* index) const {
+    int32_t remaining = offset;
+#pragma unroll
+    for (int i = 0; i < N - 1; ++i) {
+      int32_t idx = divmoder_[i].Div(remaining);
+      index[i] = idx;
+      remaining -= idx * stride_[i];
+    }
+    index[N - 1] = remaining;
+  }
+
+ private:
+  int32_t stride_[N];
+  paddle::platform::FastDivMod divmoder_[N];
+};
+
 template <typename T, int N>
 class NdIdxAndOffset {
  public:
   NdIdxAndOffset() {}
+  ~NdIdxAndOffset() = default;
 
-  HOSTDEVICE __forceinline__ explicit NdIdxAndOffset(const T* dims) {
-    InitStrides(dims, N);
+  explicit NdIdxAndOffset(const T* dims) {
+    index_helper = IndexHelper<N, T>(dims);
   }
 
   template <typename U>
-  HOSTDEVICE __forceinline__ explicit NdIdxAndOffset(const U* dims) {
-    T dims_arr[N];
+  explicit NdIdxAndOffset(const U* dims) {
+    T temp_dims[N];
     for (int i = 0; i < N; ++i) {
-      dims_arr[i] = dims[i];
+      temp_dims[i] = static_cast<T>(dims[i]);
     }
-    InitStrides(dims_arr, N);
+    index_helper = IndexHelper<N, T>(temp_dims);
   }
 
-  ~NdIdxAndOffset() = default;
-
-  HOSTDEVICE __forceinline__ T NdIndexToOffset(const T* index) const {
+  __device__ inline T IndexToOffset(const T* index) const {
     T offset = 0;
 #pragma unroll
     for (int i = 0; i < N - 1; ++i) {
-      offset += index[i] * stride_[i];
+      offset += index[i] * index_helper.GetStride(i);
     }
     offset += index[N - 1];
     return offset;
   }
 
-  HOSTDEVICE __forceinline__ void OffsetToNdIndex(T offset, T* index) const {
-    T remaining = offset;
-#pragma unroll
-    for (int i = 0; i < N - 1; ++i) {
-      const T idx = remaining / stride_[i];
-      index[i] = idx;
-      remaining = remaining - idx * stride_[i];
-    }
-    index[N - 1] = remaining;
+  __device__ inline void OffsetToIndex(T offset, T* index) const {
+    index_helper.GetIndexFromOffset(offset, index);
   }
-
-  HOSTDEVICE __forceinline__ constexpr int Size() const { return N; }
 
  private:
-  HOSTDEVICE __forceinline__ void InitStrides(const T* dims, const int n) {
-    for (int i = n - 1; i < N; ++i) {
-      stride_[i] = 1;
-    }
-    for (int i = n - 2; i >= 0; --i) {
-      stride_[i] = dims[i + 1] * stride_[i + 1];
-    }
-  }
-
-  T stride_[N];
+  IndexHelper<N, T> index_helper;
 };
 
 template <size_t Rank, typename IndexT>
@@ -722,8 +762,8 @@ struct PermuteParams {
   int perm[Rank]{};
   IndexT count{};
 
-  explicit PermuteParams(const size_t* in_dims, const int* _perm,
-                         size_t _count) {
+  explicit PermuteParams(const size_t* in_dims, const int* _perm, size_t _count)
+      : count(_count) {
     src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims);
     size_t dst_dims[Rank];
 
@@ -735,7 +775,6 @@ struct PermuteParams {
     for (size_t i = 0; i < Rank; ++i) {
       perm[i] = _perm[i];
     }
-    count = static_cast<IndexT>(_count);
   }
 };
 
@@ -749,16 +788,16 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   using Type = typename std::aligned_storage<MovementSize, MovementSize>::type;
   const Type* src = reinterpret_cast<const Type* __restrict__>(src_data);
   Type* dst = reinterpret_cast<Type*>(dst_data);
+  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-  for (IndexT i = blockIdx.x * blockDim.x + threadIdx.x; i < params.count;
-       i += blockDim.x * gridDim.x) {
-    params.dst_index_helper.OffsetToNdIndex(i, dst_index);
+  for (IndexT i = tid; i < params.count; i += blockDim.x * gridDim.x) {
+    params.dst_index_helper.OffsetToIndex(i, dst_index);
 
 #pragma unroll
     for (size_t dim = 0; dim < Rank; ++dim) {
       src_index[params.perm[dim]] = dst_index[dim];
     }
-    IndexT src_offset = params.src_index_helper.NdIndexToOffset(src_index);
+    IndexT src_offset = params.src_index_helper.IndexToOffset(src_index);
     dst[i] = src[src_offset];
   }
 }
@@ -950,112 +989,6 @@ inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
   }
 #undef CALL_DISPATCH_MOVEMENT_SIZE_FUNC
 }
-
-template <typename T, size_t kMaxMovementSize>
-class DimsAndPermSimplifier {
- public:
-  explicit DimsAndPermSimplifier(const int rank, const int elem_size,
-                                 const std::vector<int32_t>& perm,
-                                 const size_t* in_dims, size_t* simplified_dims,
-                                 int* simplified_perm, const T* src, T* dst) {
-    const size_t simplified_movement_size =
-        GetMovementSize(rank, elem_size, in_dims, perm.data(), src, dst);
-    size_t tmp_dims[phi::DDim::kMaxRank];
-    for (size_t i = 0; i < rank; ++i) {
-      tmp_dims[i] = in_dims[i];
-    }
-    tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
-
-    Simplifyperm(rank, tmp_dims, perm, simplified_dims, simplified_perm);
-    movement_size = GetMovementSize(rank, simplified_movement_size,
-                                    simplified_dims, simplified_perm, src, dst);
-    simplified_dims[simplified_rank - 1] /=
-        (movement_size / simplified_movement_size);
-  }
-
-  size_t GetRank() { return simplified_rank; }
-  size_t GetMovementSize() { return movement_size; }
-
- private:
-  size_t movement_size;
-  size_t simplified_rank;
-
-  void Simplifyperm(const size_t rank, const size_t* in_dims,
-                    const std::vector<int32_t>& perm, size_t* simplified_dims,
-                    int* simplified_perm) {
-    size_t coalesced_dims[phi::DDim::kMaxRank];
-    size_t start_perm_index = 0;
-
-    // Merge consecutive dims for in_dims.
-    while (start_perm_index < rank) {
-      const size_t start_dim_index = perm[start_perm_index];
-      coalesced_dims[start_dim_index] = in_dims[start_dim_index];
-      size_t end_perm_index = start_perm_index + 1;
-
-      while (end_perm_index < rank &&
-             perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
-        const size_t end_dim_index = perm[end_perm_index];
-        coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
-        coalesced_dims[end_dim_index] = 1;
-        end_perm_index += 1;
-      }
-      start_perm_index = end_perm_index;
-    }
-
-    // Merge value `1` dim for perm.
-    size_t valid_num_dims = 0;
-    int mapping[phi::DDim::kMaxRank];
-    for (size_t i = 0; i < rank; ++i) {
-      const int src_dim = coalesced_dims[i];
-      if (src_dim == 1) {
-        mapping[i] = -1;
-      } else {
-        mapping[i] = valid_num_dims;
-        simplified_dims[valid_num_dims] = src_dim;
-        valid_num_dims += 1;
-      }
-    }
-
-    // Acquire simplified perm.
-    if (valid_num_dims == 0) {
-      simplified_rank = 1;
-      simplified_dims[0] = 1;
-      simplified_perm[0] = 0;
-    } else {
-      size_t perm_index = 0;
-      simplified_rank = valid_num_dims;
-      for (size_t i = 0; i < rank; ++i) {
-        const int mapped = mapping[perm[i]];
-        if (mapped >= 0) {
-          simplified_perm[perm_index] = mapped;
-          perm_index += 1;
-        }
-      }
-    }
-  }
-
-  size_t GetMovementSize(const size_t rank, const size_t elem_size,
-                         const size_t* in_dims, const int* perm, const T* src,
-                         T* dst) {
-    static_assert(kMaxMovementSize > 0 &&
-                      (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
-                  "The kMaxMovementSize shall be power of 2.");
-
-    if (perm[rank - 1] == rank - 1) {
-      const size_t last_dim_size = in_dims[rank - 1] * elem_size;
-      auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
-      auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
-
-      for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
-        if (last_dim_size % size == 0 && src_ptr % size == 0 &&
-            dst_ptr % size == 0) {
-          return size;
-        }
-      }
-    }
-    return elem_size;
-  }
-};
 
 template <typename DeviceContext, typename T>
 inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,

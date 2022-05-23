@@ -59,5 +59,112 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
   }
 }
 
+template <typename T, size_t kMaxMovementSize>
+class DimsAndPermSimplifier {
+ public:
+  explicit DimsAndPermSimplifier(const int rank, const int elem_size,
+                                 const std::vector<int32_t>& perm,
+                                 const size_t* in_dims, size_t* simplified_dims,
+                                 int* simplified_perm, const T* src, T* dst) {
+    const size_t simplified_movement_size =
+        GetMovementSize(rank, elem_size, in_dims, perm.data(), src, dst);
+
+    size_t tmp_dims[phi::DDim::kMaxRank];
+    for (size_t i = 0; i < rank; ++i) {
+      tmp_dims[i] = in_dims[i];
+    }
+    tmp_dims[rank - 1] /= (simplified_movement_size / elem_size);
+
+    Simplifyperm(rank, tmp_dims, perm, simplified_dims, simplified_perm);
+    movement_size = GetMovementSize(rank, simplified_movement_size,
+                                    simplified_dims, simplified_perm, src, dst);
+    simplified_dims[simplified_rank - 1] /=
+        (movement_size / simplified_movement_size);
+  }
+
+  size_t GetRank() { return simplified_rank; }
+  size_t GetMovementSize() { return movement_size; }
+
+ private:
+  size_t movement_size;
+  size_t simplified_rank;
+
+  void Simplifyperm(const size_t rank, const size_t* in_dims,
+                    const std::vector<int32_t>& perm, size_t* simplified_dims,
+                    int* simplified_perm) {
+    size_t coalesced_dims[phi::DDim::kMaxRank];
+    size_t start_perm_index = 0;
+
+    // Merge consecutive dims for in_dims.
+    while (start_perm_index < rank) {
+      const size_t start_dim_index = perm[start_perm_index];
+      coalesced_dims[start_dim_index] = in_dims[start_dim_index];
+      size_t end_perm_index = start_perm_index + 1;
+
+      while (end_perm_index < rank &&
+             perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
+        const size_t end_dim_index = perm[end_perm_index];
+        coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
+        coalesced_dims[end_dim_index] = 1;
+        end_perm_index += 1;
+      }
+      start_perm_index = end_perm_index;
+    }
+
+    // Merge value `1` dim for perm.
+    size_t valid_num_dims = 0;
+    int mapping[phi::DDim::kMaxRank];
+    for (size_t i = 0; i < rank; ++i) {
+      const int src_dim = coalesced_dims[i];
+      if (src_dim == 1) {
+        mapping[i] = -1;
+      } else {
+        mapping[i] = valid_num_dims;
+        simplified_dims[valid_num_dims] = src_dim;
+        valid_num_dims += 1;
+      }
+    }
+
+    // Acquire simplified perm.
+    if (valid_num_dims == 0) {
+      simplified_rank = 1;
+      simplified_dims[0] = 1;
+      simplified_perm[0] = 0;
+    } else {
+      size_t perm_index = 0;
+      simplified_rank = valid_num_dims;
+      for (size_t i = 0; i < rank; ++i) {
+        const int mapped = mapping[perm[i]];
+        if (mapped >= 0) {
+          simplified_perm[perm_index] = mapped;
+          perm_index += 1;
+        }
+      }
+    }
+  }
+
+  size_t GetMovementSize(const size_t rank, const size_t elem_size,
+                         const size_t* in_dims, const int* perm, const T* src,
+                         T* dst) {
+    static_assert(kMaxMovementSize > 0 &&
+                      (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
+                  "The kMaxMovementSize shall be power of 2.");
+
+    if (perm[rank - 1] == rank - 1) {
+      const size_t last_dim_size = in_dims[rank - 1] * elem_size;
+      auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
+      auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
+
+      for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
+        if (last_dim_size % size == 0 && src_ptr % size == 0 &&
+            dst_ptr % size == 0) {
+          return size;
+        }
+      }
+    }
+    return elem_size;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
