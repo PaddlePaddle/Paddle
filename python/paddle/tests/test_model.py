@@ -39,6 +39,7 @@ from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+import os
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -1065,4 +1066,10 @@ class TestRaiseError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # This test file run in windows-openblas-ci
+    # Try to get FLAGS_enable_eager_mode, make sure the flag is right in eager
+    if os.environ.get('FLAGS_enable_eager_mode') == '1':
+        pass
+    else:
+        raise Exception('FLAGS_enable_eager_mode is not set 1')
     unittest.main()
