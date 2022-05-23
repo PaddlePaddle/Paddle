@@ -1010,7 +1010,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 if pos == corresponding_pos:
                     has_corresponding_grad_output = True
             if has_corresponding_grad_output or (
-                    name in inplace_map and
+                    name in forward_inplace_map and
                     forward_api_name not in inplace_check_blacklist):
                 input_autograd_meta_name = GetAutoGradMetaName(name)
                 if IsPlainTensorType(ttype):
