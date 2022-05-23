@@ -63,8 +63,10 @@ def celu(x, alpha=1.0, name=None):
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.celu(x, 'alpha', alpha)
+    if in_dygraph_mode():
+        return _C_ops.final_state_celu(x, alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
     helper = LayerHelper("celu", **locals())
