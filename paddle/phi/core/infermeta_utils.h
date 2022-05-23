@@ -50,7 +50,7 @@ class InferMetaContext {
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
   virtual const MetaTensor& InputAt(size_t idx) const;
-  virtual paddle::optional<const MetaTensor&> OptionalInputAt(size_t idx) const;
+  virtual paddle::optional<MetaTensor> OptionalInputAt(size_t idx) const;
 
   virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
                                                        size_t end) const;
@@ -152,7 +152,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<paddle::optional<const MetaTensor&>, Tail...> {
+  struct InferMetaFnCallHelper<const paddle::optional<MetaTensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,

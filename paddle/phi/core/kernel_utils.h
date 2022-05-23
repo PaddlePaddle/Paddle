@@ -85,7 +85,7 @@ namespace phi {
 
 #define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
   template <typename... Tail>                                              \
-  struct KernelCallHelper<paddle::optional<const tensor_type&>, Tail...> { \
+  struct KernelCallHelper<const paddle::optional<tensor_type>&, Tail...> { \
     template <int dev_ctx_idx,                                             \
               int in_idx,                                                  \
               int attr_idx,                                                \

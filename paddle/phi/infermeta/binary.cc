@@ -201,7 +201,7 @@ void BCELossInferMeta(const MetaTensor& input,
 }
 
 void BincountInferMeta(const MetaTensor& x,
-                       const paddle::optional<const MetaTensor&> weights,
+                       const paddle::optional<MetaTensor>& weights,
                        int minlength,
                        MetaTensor* out) {
   auto input_dim = x.dims();
@@ -864,7 +864,7 @@ void DistInferMeta(const MetaTensor& x,
 }
 
 void DropoutInferMeta(const MetaTensor& x,
-                      paddle::optional<const MetaTensor&> seed_tensor,
+                      const paddle::optional<MetaTensor>& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,
@@ -982,7 +982,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
 }
 
 void ExpandAsInferMeta(const MetaTensor& x,
-                       paddle::optional<const MetaTensor&> y,
+                       const paddle::optional<MetaTensor>& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 6

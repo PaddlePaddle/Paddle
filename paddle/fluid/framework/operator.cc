@@ -2373,7 +2373,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  typeid(paddle::optional<const phi::DenseTensor&>)) ||
          input_defs[i].type_index ==
              std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+                 typeid(const paddle::optional<phi::SelectedRows>&)) ||
          input_defs[i].type_index ==
              std::type_index(
                  typeid(paddle::optional<

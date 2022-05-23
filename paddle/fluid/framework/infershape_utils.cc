@@ -349,12 +349,11 @@ const phi::MetaTensor& CompatInferMetaContext::InputAt(size_t idx) const {
   return compat_inputs_.at(idx);
 }
 
-paddle::optional<const phi::MetaTensor&>
-CompatInferMetaContext::OptionalInputAt(size_t idx) const {
+paddle::optional<phi::MetaTensor> CompatInferMetaContext::OptionalInputAt(
+    size_t idx) const {
   const auto& input = compat_inputs_.at(idx);
-  return input.initialized()
-             ? paddle::optional<const phi::MetaTensor&>{input}
-             : paddle::optional<const phi::MetaTensor&>{paddle::none};
+  return input.initialized() ? paddle::optional<phi::MetaTensor>{input}
+                             : paddle::none;
 }
 
 std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(

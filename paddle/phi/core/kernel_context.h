@@ -81,11 +81,11 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
-    const auto& input = inputs_.at(idx);
-    return input ? paddle::optional<const TensorType&>{static_cast<
-                       const TensorType&>(*input)}
-                 : paddle::optional<const TensorType&>{paddle::none};
+  paddle::optional<TensorType> OptionalInputAt(size_t idx) const {
+    const auto* input = inputs_.at(idx);
+    return input ? paddle::make_optional<TensorType>(
+                       *(static_cast<const TensorType*>(input)))
+                 : paddle::none;
   }
 
   template <typename TensorType>

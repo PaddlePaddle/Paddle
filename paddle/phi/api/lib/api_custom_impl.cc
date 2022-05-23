@@ -42,8 +42,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
     const Tensor& moment2,
     const Tensor& beta1_pow,
     const Tensor& beta2_pow,
-    paddle::optional<const Tensor&> master_param,
-    paddle::optional<const Tensor&> skip_update,
+    const paddle::optional<Tensor>& master_param,
+    const paddle::optional<Tensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -88,11 +88,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
   auto input_moment2 = PrepareData(moment2, kernel.InputAt(4), {});
   auto input_beta1_pow = PrepareData(beta1_pow, kernel.InputAt(5), {});
   auto input_beta2_pow = PrepareData(beta2_pow, kernel.InputAt(6), {});
-  paddle::optional<const phi::DenseTensor&> input_master_param(paddle::none);
-  auto input_master_param_ptr =
-      PrepareData(master_param, kernel.InputAt(7), {});
-  paddle::optional<const phi::DenseTensor&> input_skip_update(paddle::none);
-  auto input_skip_update_ptr = PrepareData(skip_update, kernel.InputAt(8), {});
+  auto input_master_param = PrepareData(master_param, kernel.InputAt(7), {});
+  auto input_skip_update = PrepareData(skip_update, kernel.InputAt(8), {});
 
   std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
   auto kernel_out_0 = input_param.get();
@@ -101,40 +98,15 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
   auto kernel_out_3 = input_beta1_pow.get();
   auto kernel_out_4 = input_beta2_pow.get();
   phi::DenseTensor* kernel_out_5 = nullptr;
-  if (input_master_param_ptr) {
-    input_master_param =
-        paddle::make_optional<const phi::DenseTensor&>(*input_master_param_ptr);
-    kernel_out_5 =
-        paddle::make_optional<phi::DenseTensor&>(*input_master_param_ptr)
-            .get_ptr();
+  if (input_master_param) {
+    kernel_out_5 = input_master_param.get_ptr();
   }
 
-  if (input_skip_update_ptr) {
-    input_skip_update =
-        paddle::make_optional<const phi::DenseTensor&>(*input_skip_update_ptr);
-  }
+  paddle::optional<phi::MetaTensor> input_meta_ref_master_param =
+      MakeMetaTensor(input_master_param);
 
-  paddle::optional<const phi::MetaTensor&> input_meta_ref_master_param(
-      paddle::none);
-  phi::DenseTensor dt;
-  phi::MetaTensor input_meta_tmp_master_param(dt);
-  if (input_master_param_ptr) {
-    input_meta_tmp_master_param.set_dtype(input_master_param_ptr->dtype());
-    input_meta_tmp_master_param.set_dims(input_master_param_ptr->dims());
-    input_meta_tmp_master_param.set_layout(input_master_param_ptr->layout());
-    input_meta_ref_master_param = input_meta_tmp_master_param;
-  }
-
-  paddle::optional<const phi::MetaTensor&> input_meta_ref_skip_update(
-      paddle::none);
-  phi::DenseTensor dt1;
-  phi::MetaTensor input_meta_tmp_skip_update(dt1);
-  if (input_skip_update_ptr) {
-    input_meta_tmp_skip_update.set_dtype(input_skip_update_ptr->dtype());
-    input_meta_tmp_skip_update.set_dims(input_skip_update_ptr->dims());
-    input_meta_tmp_skip_update.set_layout(input_skip_update_ptr->layout());
-    input_meta_ref_skip_update = input_meta_tmp_skip_update;
-  }
+  paddle::optional<phi::MetaTensor> input_meta_ref_skip_update =
+      MakeMetaTensor(input_skip_update);
 
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
@@ -177,8 +149,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
                                       const phi::DenseTensor&,
                                       const phi::DenseTensor&,
                                       const phi::DenseTensor&,
-                                      paddle::optional<const phi::DenseTensor&>,
-                                      paddle::optional<const phi::DenseTensor&>,
+                                      const paddle::optional<phi::DenseTensor>&,
+                                      const paddle::optional<phi::DenseTensor>&,
                                       const Scalar&,
                                       const Scalar&,
                                       const Scalar&,
@@ -251,8 +223,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
                                       const phi::DenseTensor&,
                                       const phi::DenseTensor&,
                                       const phi::DenseTensor&,
-                                      paddle::optional<const phi::DenseTensor&>,
-                                      paddle::optional<const phi::DenseTensor&>,
+                                      const paddle::optional<phi::DenseTensor>&,
+                                      const paddle::optional<phi::DenseTensor>&,
                                       const Scalar&,
                                       const Scalar&,
                                       const Scalar&,
@@ -305,8 +277,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     const Tensor& moment2,
     const Tensor& beta1_pow,
     const Tensor& beta2_pow,
-    paddle::optional<const Tensor&> master_param,
-    paddle::optional<const Tensor&> skip_update,
+    const paddle::optional<Tensor>& master_param,
+    const paddle::optional<Tensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -351,11 +323,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
   auto input_moment2 = PrepareData(moment2, kernel.InputAt(4), {});
   auto input_beta1_pow = PrepareData(beta1_pow, kernel.InputAt(5), {});
   auto input_beta2_pow = PrepareData(beta2_pow, kernel.InputAt(6), {});
-  paddle::optional<const phi::DenseTensor&> input_master_param(paddle::none);
-  auto input_master_param_ptr =
-      PrepareData(master_param, kernel.InputAt(7), {});
-  paddle::optional<const phi::DenseTensor&> input_skip_update(paddle::none);
-  auto input_skip_update_ptr = PrepareData(skip_update, kernel.InputAt(8), {});
+  auto input_master_param = PrepareData(master_param, kernel.InputAt(7), {});
+  auto input_skip_update = PrepareData(skip_update, kernel.InputAt(8), {});
 
   std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
   auto kernel_out_0 = input_param.get();
@@ -364,38 +333,28 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
   auto kernel_out_3 = input_beta1_pow.get();
   auto kernel_out_4 = input_beta2_pow.get();
   phi::DenseTensor* kernel_out_5 = nullptr;
-  if (input_master_param_ptr) {
-    input_master_param =
-        paddle::make_optional<const phi::DenseTensor&>(*input_master_param_ptr);
-    kernel_out_5 =
-        paddle::make_optional<phi::DenseTensor&>(*input_master_param_ptr)
-            .get_ptr();
+  if (input_master_param) {
+    kernel_out_5 = input_master_param.get_ptr();
   }
 
-  if (input_skip_update_ptr) {
-    input_skip_update =
-        paddle::make_optional<const phi::DenseTensor&>(*input_skip_update_ptr);
-  }
-
-  paddle::optional<const phi::MetaTensor&> input_meta_ref_master_param(
-      paddle::none);
+  paddle::optional<phi::MetaTensor> input_meta_ref_master_param(paddle::none);
   phi::DenseTensor dt;
   phi::MetaTensor input_meta_tmp_master_param(dt);
-  if (input_master_param_ptr) {
-    input_meta_tmp_master_param.set_dtype(input_master_param_ptr->dtype());
-    input_meta_tmp_master_param.set_dims(input_master_param_ptr->dims());
-    input_meta_tmp_master_param.set_layout(input_master_param_ptr->layout());
+  if (input_master_param) {
+    input_meta_tmp_master_param.set_dtype(input_master_param->dtype());
+    input_meta_tmp_master_param.set_dims(input_master_param->dims());
+    input_meta_tmp_master_param.set_layout(input_master_param->layout());
     input_meta_ref_master_param = input_meta_tmp_master_param;
   }
 
-  paddle::optional<const phi::MetaTensor&> input_meta_ref_skip_update(
-      paddle::none);
+  paddle::optional<phi::MetaTensor> input_meta_ref_skip_update(paddle::none);
   phi::DenseTensor dt1;
   phi::MetaTensor input_meta_tmp_skip_update(dt1);
-  if (input_skip_update_ptr) {
-    input_meta_tmp_skip_update.set_dtype(input_skip_update_ptr->dtype());
-    input_meta_tmp_skip_update.set_dims(input_skip_update_ptr->dims());
-    input_meta_tmp_skip_update.set_layout(input_skip_update_ptr->layout());
+
+  if (input_skip_update) {
+    input_meta_tmp_skip_update.set_dtype(input_skip_update->dtype());
+    input_meta_tmp_skip_update.set_dims(input_skip_update->dims());
+    input_meta_tmp_skip_update.set_layout(input_skip_update->layout());
     input_meta_ref_skip_update = input_meta_tmp_skip_update;
   }
 
@@ -440,8 +399,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
                                     const phi::DenseTensor&,
                                     const phi::DenseTensor&,
                                     const phi::DenseTensor&,
-                                    paddle::optional<const phi::DenseTensor&>,
-                                    paddle::optional<const phi::DenseTensor&>,
+                                    const paddle::optional<phi::DenseTensor>&,
+                                    const paddle::optional<phi::DenseTensor>&,
                                     const Scalar&,
                                     const Scalar&,
                                     const Scalar&,
@@ -761,7 +720,7 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     const Tensor& grad,
     const Tensor& velocity,
     const Tensor& learning_rate,
-    paddle::optional<const Tensor&> master_param,
+    const paddle::optional<Tensor>& master_param,
     float mu,
     bool use_nesterov,
     const std::string& regularization_method,
@@ -802,30 +761,23 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
   auto input_grad = PrepareData(grad, kernel.InputAt(1), {});
   auto input_velocity = PrepareData(velocity, kernel.InputAt(2), {});
   auto input_learning_rate = PrepareData(learning_rate, kernel.InputAt(3), {});
-  paddle::optional<const phi::DenseTensor&> input_master_param(paddle::none);
-  auto input_master_param_ptr =
-      PrepareData(master_param, kernel.InputAt(4), {});
+  auto input_master_param = PrepareData(master_param, kernel.InputAt(4), {});
 
   std::tuple<Tensor, Tensor, Tensor> api_output;
   auto kernel_out_0 = input_param.get();
   auto kernel_out_1 = input_velocity.get();
   phi::DenseTensor* kernel_out_2 = nullptr;
-  if (input_master_param_ptr) {
-    input_master_param =
-        paddle::make_optional<const phi::DenseTensor&>(*input_master_param_ptr);
-    kernel_out_2 =
-        paddle::make_optional<phi::DenseTensor&>(*input_master_param_ptr)
-            .get_ptr();
+  if (input_master_param) {
+    kernel_out_2 = input_master_param.get_ptr();
   }
 
-  paddle::optional<const phi::MetaTensor&> input_meta_ref_master_param(
-      paddle::none);
+  paddle::optional<phi::MetaTensor> input_meta_ref_master_param(paddle::none);
   phi::DenseTensor dt;
   phi::MetaTensor input_meta_tmp_master_param(dt);
-  if (input_master_param_ptr) {
-    input_meta_tmp_master_param.set_dtype(input_master_param_ptr->dtype());
-    input_meta_tmp_master_param.set_dims(input_master_param_ptr->dims());
-    input_meta_tmp_master_param.set_layout(input_master_param_ptr->layout());
+  if (input_master_param) {
+    input_meta_tmp_master_param.set_dtype(input_master_param->dtype());
+    input_meta_tmp_master_param.set_dims(input_master_param->dims());
+    input_meta_tmp_master_param.set_layout(input_master_param->layout());
     input_meta_ref_master_param = input_meta_tmp_master_param;
   }
   phi::MetaTensor meta_out_0(kernel_out_0);
@@ -868,7 +820,7 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
                                     const phi::DenseTensor&,
                                     const phi::DenseTensor&,
                                     const phi::DenseTensor&,
-                                    paddle::optional<const phi::DenseTensor&>,
+                                    const paddle::optional<phi::DenseTensor>&,
                                     float,
                                     bool,
                                     const std::string&,
@@ -903,7 +855,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
     const Tensor& param,
     const Tensor& learning_rate,
     const Tensor& grad,
-    paddle::optional<const Tensor&> master_param,
+    const paddle::optional<Tensor>& master_param,
     bool multi_precision) {
   DataType kernel_data_type = ParseDataType(param);
   auto kernel_key_set = ParseKernelKeyByInputArgs(param, learning_rate, grad);
@@ -941,17 +893,8 @@ std::tuple<Tensor, Tensor> sgd_impl(
 
   if (phi::DenseTensor::classof(param_tensor.get())) {
     auto in_param = PrepareData(param, kernel.InputAt(0), {});
-    auto in_master_param = PrepareData(master_param, kernel.InputAt(3), {});
-
-    paddle::optional<const phi::DenseTensor&> in_master_param_opt =
-        master_param
-            ? paddle::make_optional<const phi::DenseTensor&>(*in_master_param)
-            : paddle::none;
-    auto master_param_meta = MakeMetaTensor(in_master_param_opt);
-    paddle::optional<const phi::MetaTensor&> master_param_meta_opt =
-        master_param
-            ? paddle::make_optional<const phi::MetaTensor&>(*master_param_meta)
-            : paddle::none;
+    auto in_master_param_opt = PrepareData(master_param, kernel.InputAt(3), {});
+    auto master_param_meta_opt = MakeMetaTensor(in_master_param_opt);
 
     phi::DenseTensor* kernel_out_0 =
         SetKernelOutput(kernel_key.backend(), &std::get<0>(out));
@@ -975,7 +918,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
                    const phi::DenseTensor&,
                    const phi::DenseTensor&,
                    const phi::DenseTensor&,
-                   paddle::optional<const phi::DenseTensor&>,
+                   const paddle::optional<phi::DenseTensor>&,
                    bool,
                    phi::DenseTensor*,
                    phi::DenseTensor*);
@@ -1004,7 +947,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
                    const phi::DenseTensor&,
                    const phi::DenseTensor&,
                    const phi::SelectedRows&,
-                   paddle::optional<const phi::DenseTensor&>,
+                   const paddle::optional<phi::DenseTensor>&,
                    bool,
                    phi::DenseTensor*,
                    phi::DenseTensor*);
@@ -1021,15 +964,11 @@ std::tuple<Tensor, Tensor> sgd_impl(
   } else {
     auto in_param = TensorToSelectedRows(param);
     auto in_grad = TensorToSelectedRows(grad);
-    auto in_master_param = TensorToSelectedRows(master_param);
-    auto in_master_param_opt =
-        master_param
-            ? paddle::make_optional<const phi::SelectedRows&>(*in_master_param)
-            : paddle::none;
+    auto in_master_param_opt = TensorToSelectedRows(master_param);
     auto master_param_meta = MakeMetaTensor(in_master_param_opt);
-    paddle::optional<const phi::MetaTensor&> master_param_meta_opt =
+    paddle::optional<phi::MetaTensor> master_param_meta_opt =
         master_param
-            ? paddle::make_optional<const phi::MetaTensor&>(*master_param_meta)
+            ? paddle::make_optional<phi::MetaTensor>(*master_param_meta)
             : paddle::none;
 
     phi::SelectedRows* kernel_out_0 =
@@ -1052,7 +991,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
                  const phi::SelectedRows&,
                  const phi::DenseTensor&,
                  const phi::SelectedRows&,
-                 paddle::optional<const phi::SelectedRows&>,
+                 const paddle::optional<phi::SelectedRows>&,
                  bool,
                  phi::SelectedRows*,
                  phi::SelectedRows*);
