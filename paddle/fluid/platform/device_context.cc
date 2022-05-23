@@ -143,8 +143,6 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
     const platform::Place& p,
     bool disable_setting_default_stream_for_allocator = false) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  // lazy evaluation. i.e., only create device context at
-  // first `Get`
   auto* dev_ctx = new DevCtx(p);
   if (is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -164,7 +162,7 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
 
     cuda_ctx->PartialInitWithAllocator();
     dev_ctx->SetGenerator(
-        framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+        framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
   } else {
     dev_ctx->SetAllocator(
@@ -186,6 +184,7 @@ inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     platform::Place place, bool disable_setting_default_stream_for_allocator) {
+  // lazy evaluation. i.e., only create device context at first `Get`
   place_to_device_context->emplace(
       place, std::async(std::launch::deferred, CreateDeviceContext<DevCtx>,
                         place, disable_setting_default_stream_for_allocator));

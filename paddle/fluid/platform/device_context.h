@@ -61,7 +61,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"  // NOLINT
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
