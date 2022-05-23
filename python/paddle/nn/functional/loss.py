@@ -2235,10 +2235,10 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 def triplet_margin_loss(input,
                         positive,
                         negative,
-                        swap=False,
+			margin=1.0,
                         p=2,
-                        eps=1e-6,
-                        margin=1.0,
+                        epsilon=1e-6,
+                        swap=False,
                         reduction='mean',
                         name=None):
     r"""
@@ -2269,18 +2269,19 @@ def triplet_margin_loss(input,
 
         negative (Tensor): Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
+	    
+	margin (float, Optional): Default: :math:`1`. 
+        
+        p (int, Optional): The norm degree for pairwise distance. Default: :math:`2`.
 
-        swap (bool,Optional): The distance swap change the negative distance to the distance between
+        epsilon (float, Optional): Add small value to avoid division by zero,
+            default value is 1e-6.
+	
+	swap (bool,Optional): The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
 	    Default: ``False``.
 
-        p (int, Optional): The norm degree for pairwise distance. Default: :math:`2`.
-
-        eps (float, Optional): Add small value to avoid division by zero,
-            default value is 1e-6.
-
-        margin (float, Optional): Default: :math:`1`.
-
+        
         reduction (str, Optional):Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -2335,7 +2336,7 @@ def triplet_margin_loss(input,
             "positive's shape and  "
             "negative's shape")
 
-    distance_function = paddle.nn.PairwiseDistance(p, epsilon=eps)
+    distance_function = paddle.nn.PairwiseDistance(p, epsilon=epsilon)
     positive_dist = distance_function(input, positive)
     negative_dist = distance_function(input, negative)
 
