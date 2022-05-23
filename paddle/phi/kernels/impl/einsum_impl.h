@@ -456,7 +456,8 @@ DenseTensor PerformContraction(
     }
     // reduction
     DenseTensor trans_t;
-    if (use_cache && cache[operand_idx]->IsInitialized()) {
+    if (use_cache && cache[operand_idx] != nullptr &&
+        cache[operand_idx]->IsInitialized()) {
       trans_t.ShareBufferWith(*(cache[operand_idx]));
       VLOG(5) << "Cache Used!";
     } else {
@@ -464,7 +465,8 @@ DenseTensor PerformContraction(
           dev_ctx, t, perm, all_labels, ellipsis, label2type);
       trans_t = PerformTranspose<T, Context>(
           dev_ctx, reduct_t, perm, reordered_all_labels, ellipsis, label2type);
-      cache[operand_idx]->ShareBufferWith(trans_t);
+      if (cache[operand_idx] != nullptr)
+        cache[operand_idx]->ShareBufferWith(trans_t);
     }
     auto mul_dims = GetShapeByType<int>(all_labels,
                                         label2type,
@@ -624,6 +626,13 @@ void EinsumKernelRaw(const Context& dev_ctx,
                      DenseTensor* out,
                      std::vector<DenseTensor*> cache) {
   std::vector<char> tmp;
+  // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
+  // may have nullptr and the cache.size() is not equal to inputs.size(). refer
+  // to BuildPhiKernelContext for details.
+  int diff = inputs.size() - cache.size();
+  for (int i = 0; i < diff; ++i) {
+    cache.push_back(nullptr);
+  }
   EinsumKernelImpl<T, Context>(
       dev_ctx, tmp, inputs, equation, out, cache, /*forward=*/true);
 }
@@ -634,11 +643,10 @@ void EinsumKernel(const Context& dev_ctx,
                   const std::string& equation,
                   DenseTensor* out) {
   std::vector<char> place_holder;
-  std::vector<DenseTensor> cache(inputs.size());  // set empty; TA, TB, TdC
   std::vector<DenseTensor*> cache_tensor(
       inputs.size());  // set empty; TA, TB, TdC
   for (size_t i = 0; i < inputs.size(); ++i) {
-    cache_tensor[i] = &cache[i];
+    cache_tensor[i] = nullptr;
   }
   EinsumKernelImpl<T, Context>(
       dev_ctx, place_holder, inputs, equation, out, cache_tensor, true);

@@ -102,7 +102,7 @@ void EinsumGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
-  VLOG(5) << "Start EisumGradKernel:";
+  VLOG(5) << "Start EinsumGradKernel:";
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(x.size(), LabelMap(-1));
@@ -172,8 +172,11 @@ void EinsumGradKernel(const Context& dev_ctx,
     DenseTensor before_tile;
 
     std::vector<DenseTensor> cache(3);  // set empty; TA, TB, TdC
-    cache[0].ShareBufferWith(*(inner_cache[0]));
-    cache[1].ShareBufferWith(*(inner_cache[1]));
+    if (inner_cache.size() >
+        0) {  // for compatibility,  we can load and run v2.3 EinsumOp.
+      cache[0].ShareBufferWith(*(inner_cache[0]));
+      cache[1].ShareBufferWith(*(inner_cache[1]));
+    }
 
     EinsumKernelImpl<T, Context>(dev_ctx,
                                  all_labels,
