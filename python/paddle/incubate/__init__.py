@@ -28,6 +28,10 @@ from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
+from .sparse import add
+from .sparse import subtract
+from .sparse import multiply
+from .sparse import divide
 import paddle.incubate.autograd
 import paddle.incubate.autotune
 

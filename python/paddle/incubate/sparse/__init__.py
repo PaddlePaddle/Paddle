@@ -12,29 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .creation import sparse_coo_tensor
-from .creation import sparse_csr_tensor
+from ...sparse.creation import sparse_coo_tensor
+from ...sparse.creation import sparse_csr_tensor
 
-from .functional import sqrt
-from .functional import sin
-from .functional import tanh
-
-from .layer import ReLU
-from .layer import BatchNorm
-from .layer import Conv3D
-from .layer import SubmConv3D
-from .layer import MaxPool3D
+from .math import add
+from .math import divide
+from .math import multiply
+from .math import subtract
 
 
 __all__ = [  # noqa
-    'sparse_coo_tensor',
-    'sparse_csr_tensor',
-    'ReLU',
-    'Conv3D',
-    'SubmConv3D',
-    'BatchNorm',
-    'MaxPool3D',
-    'sqrt',
-    'sin',
-    'tanh',
+    'add',
+    'subtract',
+    'multiply',
+    'divide',
 ]
