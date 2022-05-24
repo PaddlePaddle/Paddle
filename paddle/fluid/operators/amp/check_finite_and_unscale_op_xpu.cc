@@ -38,6 +38,8 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
     // cpy to cpu
     bool cpu_found_inf_data = false;
 
+    // number of inf and nans
+    int nums_inf_nans = 0;
     MPDType cpu_scale_data;
     if (platform::is_xpu_place(scale->place())) {
       memory::Copy(platform::CPUPlace(), static_cast<void*>(&cpu_scale_data),
@@ -52,45 +54,26 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(dev_ctx.GetPlace());
-      framework::Tensor is_finite =
-          ctx.AllocateTmpTensor<bool, platform::XPUDeviceContext>(x->dims(),
-                                                                  dev_ctx);
-      framework::Tensor is_nan =
-          ctx.AllocateTmpTensor<bool, platform::XPUDeviceContext>(x->dims(),
-                                                                  dev_ctx);
-      framework::Tensor is_finite_and_nan =
-          ctx.AllocateTmpTensor<bool, platform::XPUDeviceContext>(x->dims(),
-                                                                  dev_ctx);
-      if (cpu_found_inf_data == false) {
-        int r = xpu::isfinite(dev_ctx.x_context(),
-                              reinterpret_cast<const XPUTyp*>(x->data<T>()),
-                              is_finite.data<bool>(), x->numel());
+      framework::Tensor inf_nan_count = ctx.AllocateTmpTensor<int, platform::XPUDeviceContext>(found_inf->dims(), dev_ctx);
+
+      if (nums_inf_nans == 0) {
+
+        int r = xpu::count_nan_or_inf(dev_ctx.x_context(),
+                                      reinterpret_cast<const XPUTyp*>(x->data<T>()),
+                                      inf_nan_count.data<int>(), x->numel());
         PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(isfinite) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
-        r = xpu::logical_not(dev_ctx.x_context(), reinterpret_cast<const bool*>(
-                                                      is_finite.data<bool>()),
-                             is_finite.data<bool>(), x->numel());
-        PADDLE_ENFORCE_EQ(
-            r, XPU_SUCCESS,
-            platform::errors::External("XPU API(logical_not) return wrong "
-                                       "value[%d %s]",
-                                       r, XPUAPIErrorMsg[r]));
-        r = xpu::any(dev_ctx.x_context(), is_finite.data<bool>(),
-                     found_inf_data, x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(any) return wrong "
+                                              "XPU API(count_nan_or_inf) return wrong "
                                               "value[%d %s]",
                                               r, XPUAPIErrorMsg[r]));
         if (dev_ctx.x_context()->xpu_stream) {
           dev_ctx.Wait();
         }
-        memory::Copy(platform::CPUPlace(), &cpu_found_inf_data,
-                     dev_ctx.GetPlace(), found_inf_data, sizeof(bool));
+        memory::Copy(platform::CPUPlace(), &nums_inf_nans,
+                     dev_ctx.GetPlace(), inf_nan_count.data<int>(), sizeof(int));
       }
 
-      if (cpu_found_inf_data) {
+      if (nums_inf_nans > 0) {
+        cpu_found_inf_data = true;
         inverse_scale = 0.0;
       }
 
