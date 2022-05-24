@@ -38,8 +38,7 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor), The cache of the forward transpose tensors: tA and tB.")
         .AsDuplicable()
         .AsExtra()
-        .AsIntermediate()
-        .AsDispensable();
+        .AsIntermediate();
 
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
