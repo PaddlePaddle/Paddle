@@ -20,7 +20,6 @@ from .math import divide
 from .math import multiply
 from .math import subtract
 
-
 __all__ = [  # noqa
     'add',
     'subtract',
