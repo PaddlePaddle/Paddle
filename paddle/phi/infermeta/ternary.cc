@@ -113,23 +113,23 @@ void AddmmInferMeta(const MetaTensor& input,
                                  "if you put exe.run(startup_program) "
                                  "after optimizer.minimize function."));
   // dim check
-  PADDLE_ENFORCE_EQ(
-      ndim_input,
-      2,
-      errors::InvalidArgument("The input tensor input's dimension must be 2. "
-                              "But received input's dimension = [%s].",
-                              ndim_input));
+  PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
+                    true,
+                    errors::InvalidArgument(
+                        "The input tensor input's dimension must be 2 or 1. "
+                        "But received input's dimension = [%d].",
+                        ndim_input));
   PADDLE_ENFORCE_EQ(
       ndim_x,
       2,
       errors::InvalidArgument("The input tensor x's dimension must be 2. "
-                              "But received x's dimension = [%s].",
+                              "But received x's dimension = [%d].",
                               ndim_x));
   PADDLE_ENFORCE_EQ(
       ndim_y,
       2,
       errors::InvalidArgument("The input tensor y's dimension must be 2. "
-                              "But received y's dimension = [%s].",
+                              "But received y's dimension = [%d].",
                               ndim_y));
 
   std::vector<int64_t> output_dims;

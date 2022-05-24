@@ -44,6 +44,16 @@ void AddmmKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
+  if (input.dims().size() == 1) {
+    if (input.dims()[0] == x.dims()[0]) {
+      input_dims = {x.dims()[0], 1};
+    } else {
+      input_dims = {1, y.dims()[1]};
+    }
+  }
+  DenseTensor input_2d(input);
+  input_2d.Resize(input_dims);
+
   // broadcast mode check
   if (x_dims[0] != input_dims[0]) {
     PADDLE_ENFORCE_EQ(input_dims[0],
@@ -97,7 +107,8 @@ void AddmmKernel(const Context& dev_ctx,
   bcast_dims[1] = y_dims[1] / input_dims[1];
   VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << "]";
   // broadcast using eigen
-  auto eigen_input = PhiEigenTensor<T, 2>::From(input);
+  const DenseTensor& const_ref_input = input_2d;
+  auto eigen_input = PhiEigenTensor<T, 2>::From(const_ref_input);
   auto eigen_out = PhiEigenTensor<T, 2>::From(*out);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
