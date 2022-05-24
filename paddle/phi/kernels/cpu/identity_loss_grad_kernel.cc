@@ -43,7 +43,7 @@ void IdentityLossGradKernel(const Context& dev_ctx,
       break;
     default:
       // error
-      PADDLE_THROW(errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "reduction should be 0, 1 and 2. But get %d", reduction));
   }
 }
