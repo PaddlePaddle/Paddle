@@ -446,7 +446,7 @@ class GeneratorBase:
 
     def InferNameSpace(self):
         api_yaml_path = self.api_yaml_path
-        if "sparse" in api_yaml_path:
+        if re.search(r"sparse[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "sparse::"
-        elif "strings" in api_yaml_path:
+        elif re.search(r"strings[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "strings::"
