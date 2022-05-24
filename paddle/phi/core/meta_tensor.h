@@ -39,11 +39,11 @@ class MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 
-  MetaTensor() : is_nullopt_(true), tensor_(nullptr){};
+  MetaTensor() : is_nullopt_(true), tensor_(nullptr) {}
 
   // supporting implicit construction is easier to use
   MetaTensor(TensorBase* tensor) : tensor_(tensor) {  // NOLINT
-    if (tensor) {
+    if (!tensor) {
       is_nullopt_ = true;
     }
   }

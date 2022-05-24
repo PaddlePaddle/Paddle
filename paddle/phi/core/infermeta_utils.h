@@ -54,7 +54,7 @@ class InferMetaContext {
 
   virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
                                                        size_t end) const;
-  virtual paddle::optional<const std::vector<const MetaTensor*>>
+  virtual paddle::optional<std::vector<const MetaTensor*>>
   OptionalInputsBetween(size_t start, size_t end) const;
 
   virtual MetaTensor* MutableOutputAt(size_t idx);
@@ -198,7 +198,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      paddle::optional<const std::vector<const MetaTensor*>> arg =
+      paddle::optional<std::vector<const MetaTensor*>> arg =
           ctx->OptionalInputsBetween(range.first, range.second);
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,

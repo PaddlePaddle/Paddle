@@ -32,7 +32,9 @@ class CompatMetaTensor : public phi::MetaTensor {
     is_nullopt_ = true;
   }
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
-      : var_(std::move(var)), is_runtime_(is_runtime) {}
+      : var_(std::move(var)), is_runtime_(is_runtime) {
+    is_nullopt_ = false;
+  }
 
   CompatMetaTensor(CompatMetaTensor&&) = default;
   CompatMetaTensor& operator=(CompatMetaTensor&&) = default;
@@ -113,8 +115,8 @@ class CompatInferMetaContext : public phi::InferMetaContext {
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;
-  paddle::optional<const std::vector<const phi::MetaTensor*>>
-  OptionalInputsBetween(size_t start, size_t end) const override;
+  paddle::optional<std::vector<const phi::MetaTensor*>> OptionalInputsBetween(
+      size_t start, size_t end) const override;
 
   phi::MetaTensor* MutableOutputAt(size_t idx) override;
   std::vector<phi::MetaTensor*> MutableOutputBetween(size_t start,

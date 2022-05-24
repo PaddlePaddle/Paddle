@@ -367,7 +367,7 @@ std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
   return result;
 }
 
-paddle::optional<const std::vector<const phi::MetaTensor*>>
+paddle::optional<std::vector<const phi::MetaTensor*>>
 CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
   const auto& first = compat_inputs_.at(start);
 
@@ -380,10 +380,10 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<const std::vector<const phi::MetaTensor*>>(result);
+    return paddle::optional<std::vector<const phi::MetaTensor*>>(
+        std::move(result));
   }
-  return paddle::optional<const std::vector<const phi::MetaTensor*>>(
-      paddle::none);
+  return paddle::none;
 }
 
 phi::MetaTensor* CompatInferMetaContext::MutableOutputAt(size_t idx) {
