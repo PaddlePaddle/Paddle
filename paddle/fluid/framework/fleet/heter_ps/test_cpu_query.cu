@@ -111,8 +111,8 @@ TEST(TEST_FLEET, test_cpu_cache) {
   int use_nv = 1;
   GpuPsGraphTable g(resource, use_nv, 1, 2);
   g.init_cpu_table(table_proto);
-  g.cpu_graph_table->Load(node_file_name, "nuser");
-  g.cpu_graph_table->Load(node_file_name, "nitem");
+  g.cpu_graph_table_->Load(node_file_name, "nuser");
+  g.cpu_graph_table_->Load(node_file_name, "nitem");
   std::remove(node_file_name);
   std::vector<paddle::framework::GpuPsCommGraph> vec;
   std::vector<int64_t> node_ids;
@@ -123,7 +123,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
   std::vector<std::string> feature_names;
   feature_names.push_back(std::string("c"));
   feature_names.push_back(std::string("d"));
-  g.cpu_graph_table->get_node_feat(0, node_ids, feature_names, node_feat);
+  g.cpu_graph_table_->get_node_feat(0, node_ids, feature_names, node_feat);
   VLOG(0) << "get_node_feat: " << node_feat[0][0];
   VLOG(0) << "get_node_feat: " << node_feat[0][1];
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
@@ -131,15 +131,15 @@ TEST(TEST_FLEET, test_cpu_cache) {
   int n = 10;
   std::vector<int64_t> ids0, ids1;
   for (int i = 0; i < n; i++) {
-    g.cpu_graph_table->add_comm_edge(0, i, (i + 1) % n);
-    g.cpu_graph_table->add_comm_edge(0, i, (i - 1 + n) % n);
+    g.cpu_graph_table_->add_comm_edge(0, i, (i + 1) % n);
+    g.cpu_graph_table_->add_comm_edge(0, i, (i - 1 + n) % n);
     if (i % 2 == 0) ids0.push_back(i);
   }
-  g.cpu_graph_table->build_sampler(0);
+  g.cpu_graph_table_->build_sampler(0);
   ids1.push_back(5);
   ids1.push_back(7);
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids0));
-  vec.push_back(g.cpu_graph_table->make_gpu_ps_graph(0, ids1));
+  vec.push_back(g.cpu_graph_table_->make_gpu_ps_graph(0, ids0));
+  vec.push_back(g.cpu_graph_table_->make_gpu_ps_graph(0, ids1));
   vec[0].display_on_cpu();
   vec[1].display_on_cpu();
   // g.build_graph_from_cpu(vec);
@@ -172,13 +172,13 @@ TEST(TEST_FLEET, test_cpu_cache) {
       c.display();
     }
   }
-  g.cpu_graph_table->clear_graph(0);
-  g.cpu_graph_table->set_search_level(2);
-  g.cpu_graph_table->Load(edge_file_name, "e>u2u");
-  g.cpu_graph_table->make_partitions(0, 64, 2);
+  g.cpu_graph_table_->clear_graph(0);
+  g.cpu_graph_table_->set_search_level(2);
+  g.cpu_graph_table_->Load(edge_file_name, "e>u2u");
+  g.cpu_graph_table_->make_partitions(0, 64, 2);
   int index = 0;
-  while (g.cpu_graph_table->load_next_partition(0) != -1) {
-    auto all_ids = g.cpu_graph_table->get_all_id(0, 0, device_len);
+  while (g.cpu_graph_table_->load_next_partition(0) != -1) {
+    auto all_ids = g.cpu_graph_table_->get_all_id(0, 0, device_len);
     for (auto x : all_ids) {
       for (auto y : x) {
         VLOG(0) << "part " << index << " " << y;
@@ -186,12 +186,12 @@ TEST(TEST_FLEET, test_cpu_cache) {
     }
     for (int i = 0; i < all_ids.size(); i++) {
       GpuPsCommGraph sub_graph =
-          g.cpu_graph_table->make_gpu_ps_graph(0, all_ids[i]);
+          g.cpu_graph_table_->make_gpu_ps_graph(0, all_ids[i]);
       g.build_graph_on_single_gpu(sub_graph, i, 0);
       VLOG(2) << "sub graph on gpu " << i << " is built";
     }
     VLOG(0) << "start to iterate gpu graph node";
-    g.cpu_graph_table->make_complementary_graph(0, 64);
+    g.cpu_graph_table_->make_complementary_graph(0, 64);
     for (int i = 0; i < 2; i++) {
       // platform::CUDADeviceGuard guard(i);
       LOG(0) << "query on card " << i;
@@ -214,7 +214,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         platform::CUDADeviceGuard guard(i);
         int64_t *key;
         VLOG(0) << "sample key 1 globally";
-        g.cpu_graph_table->set_search_level(2);
+        g.cpu_graph_table_->set_search_level(2);
         cudaMalloc((void **)&key, sizeof(int64_t));
         int64_t t_key = 1;
         cudaMemcpy(key, &t_key, sizeof(int64_t), cudaMemcpyHostToDevice);
@@ -222,7 +222,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         auto d = g.graph_neighbor_sample_v3(q1, true);
         d.display();
         cudaFree(key);
-        g.cpu_graph_table->set_search_level(1);
+        g.cpu_graph_table_->set_search_level(1);
       }
     }
     index++;

@@ -23,19 +23,21 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
+enum GraphTableType { EDGE_TABLE, FEATURE_TABLE };
 class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
  public:
-  int get_table_offset(int gpu_id, int type_id, int idx) {
-    return gpu_id * (graph_table_num + feature_table_num) +
-           type_id * graph_table_num + idx;
+  int get_table_offset(int gpu_id, GraphTableType type, int idx) {
+    int type_id = type;
+    return gpu_id * (graph_table_num_ + feature_table_num_) +
+           type_id * graph_table_num_ + idx;
   }
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware,
                   int graph_table_num, int feature_table_num)
       : HeterComm<uint64_t, int64_t, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
-    this->graph_table_num = graph_table_num;
-    this->feature_table_num = feature_table_num;
+    this->graph_table_num_ = graph_table_num;
+    this->feature_table_num_ = feature_table_num;
     gpu_num = resource_->total_device();
     memset(global_device_map, -1, sizeof(global_device_map));
     for (auto &table : tables_) {
@@ -48,7 +50,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
     for (int i = 0; i < gpu_num; i++) {
       global_device_map[resource_->dev_id(i)] = i;
       for (int j = 0; j < graph_table_num; j++) {
-        gpu_graph_list.push_back(GpuPsCommGraph());
+        gpu_graph_list_.push_back(GpuPsCommGraph());
       }
     }
     cpu_table_status = -1;
@@ -128,13 +130,13 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
                                                  int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
   int gpu_num;
-  int graph_table_num, feature_table_num;
-  std::vector<GpuPsCommGraph> gpu_graph_list;
+  int graph_table_num_, feature_table_num_;
+  std::vector<GpuPsCommGraph> gpu_graph_list_;
   int global_device_map[32];
   std::vector<int *> sample_status;
   const int parallel_sample_size = 1;
   const int dim_y = 256;
-  std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table;
+  std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table_;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
   mutable std::mutex mutex_;
   std::condition_variable cv_;
