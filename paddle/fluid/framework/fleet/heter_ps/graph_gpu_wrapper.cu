@@ -152,7 +152,8 @@ void GraphGpuWrapper::init_service() {
   std::shared_ptr<HeterPsResource> resource =
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
-  GpuPsGraphTable *g = new GpuPsGraphTable(resource, 1);
+  GpuPsGraphTable *g =
+      new GpuPsGraphTable(resource, 1, id_to_edge.size(), id_to_feature.size());
   g->init_cpu_table(table_proto);
   graph_table = (char *)g;
 }
@@ -165,7 +166,7 @@ void GraphGpuWrapper::upload_batch(int idx,
     // vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]));
     GpuPsCommGraph sub_graph =
         g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]);
-    g->build_graph_on_single_gpu(sub_graph, i);
+    g->build_graph_on_single_gpu(sub_graph, i, idx);
     sub_graph.release_on_cpu();
     VLOG(0) << "sub graph on gpu " << i << " is built";
   }
@@ -209,7 +210,7 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
 
 // this function is contributed by Liwb5
 std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
-    int gpu_id, std::vector<int64_t> &key, int sample_size) {
+    int gpu_id, int idx, std::vector<int64_t> &key, int sample_size) {
   int64_t *cuda_key;
   platform::CUDADeviceGuard guard(gpu_id);
 
@@ -219,7 +220,8 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
 
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
-          ->graph_neighbor_sample(gpu_id, cuda_key, sample_size, key.size());
+          ->graph_neighbor_sample(gpu_id, idx, cuda_key, sample_size,
+                                  key.size());
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),
@@ -256,10 +258,10 @@ void GraphGpuWrapper::init_sample_status() {
 void GraphGpuWrapper::free_sample_status() {
   ((GpuPsGraphTable *)graph_table)->free_sample_status();
 }
-NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int start,
+NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int idx, int start,
                                                  int query_size) {
   return ((GpuPsGraphTable *)graph_table)
-      ->query_node_list(gpu_id, start, query_size);
+      ->query_node_list(gpu_id, idx, start, query_size);
 }
 void GraphGpuWrapper::load_node_weight(int type_id, int idx, std::string path) {
   return ((GpuPsGraphTable *)graph_table)

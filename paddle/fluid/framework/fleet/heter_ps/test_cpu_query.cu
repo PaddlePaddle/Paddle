@@ -109,7 +109,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       std::make_shared<HeterPsResource>(device_id_mapping);
   resource->enable_p2p();
   int use_nv = 1;
-  GpuPsGraphTable g(resource, use_nv);
+  GpuPsGraphTable g(resource, use_nv, 1, 2);
   g.init_cpu_table(table_proto);
   g.cpu_graph_table->Load(node_file_name, "nuser");
   g.cpu_graph_table->Load(node_file_name, "nitem");
@@ -143,18 +143,9 @@ TEST(TEST_FLEET, test_cpu_cache) {
   vec[0].display_on_cpu();
   vec[1].display_on_cpu();
   // g.build_graph_from_cpu(vec);
-  g.build_graph_on_single_gpu(vec[0], 0);
-  g.build_graph_on_single_gpu(vec[1], 1);
+  g.build_graph_on_single_gpu(vec[0], 0, 0);
+  g.build_graph_on_single_gpu(vec[1], 1, 0);
   int64_t cpu_key[3] = {0, 1, 2};
-  /*
-  std::vector<std::shared_ptr<char>> buffers(3);
-  std::vector<int> actual_sizes(3,0);
-  g.cpu_graph_table->random_sample_neighbors(cpu_key,2,buffers,actual_sizes,false);
-  for(int i = 0;i < 3;i++){
-    VLOG(0)<<"sample from cpu key->"<<cpu_key[i]<<" actual sample size =
-  "<<actual_sizes[i]/sizeof(int64_t);
-  }
-  */
   void *key;
   int device_len = 2;
   for (int i = 0; i < 2; i++) {
@@ -166,7 +157,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
     int step = 2;
     int cur = 0;
     while (true) {
-      auto node_query_res = g.query_node_list(i, cur, step);
+      auto node_query_res = g.query_node_list(i, 0, cur, step);
       node_query_res.display();
       if (node_query_res.get_len() == 0) {
         VLOG(0) << "no more ids,break";
@@ -174,15 +165,15 @@ TEST(TEST_FLEET, test_cpu_cache) {
       }
       cur += node_query_res.get_len();
       NeighborSampleQuery query;
-      query.initialize(i, node_query_res.get_val(), 1,
+      query.initialize(i, 0, node_query_res.get_val(), 1,
                        node_query_res.get_len());
       query.display();
       auto c = g.graph_neighbor_sample_v3(query, false);
       c.display();
     }
   }
+  g.cpu_graph_table->clear_graph(0);
   g.cpu_graph_table->set_search_level(2);
-  // g.cpu_graph_table->Load_to_ssd(edge_file_name,"e>u2u");
   g.cpu_graph_table->Load(edge_file_name, "e>u2u");
   g.cpu_graph_table->make_partitions(0, 64, 2);
   int index = 0;
@@ -196,7 +187,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
     for (int i = 0; i < all_ids.size(); i++) {
       GpuPsCommGraph sub_graph =
           g.cpu_graph_table->make_gpu_ps_graph(0, all_ids[i]);
-      g.build_graph_on_single_gpu(sub_graph, i);
+      g.build_graph_on_single_gpu(sub_graph, i, 0);
       VLOG(2) << "sub graph on gpu " << i << " is built";
     }
     VLOG(0) << "start to iterate gpu graph node";
@@ -207,7 +198,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
       int step = 2;
       int cur = 0;
       while (true) {
-        auto node_query_res = g.query_node_list(i, cur, step);
+        auto node_query_res = g.query_node_list(i, 0, cur, step);
         node_query_res.display();
         if (node_query_res.get_len() == 0) {
           VLOG(0) << "no more ids,break";
@@ -215,7 +206,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         }
         cur += node_query_res.get_len();
         NeighborSampleQuery query, q1;
-        query.initialize(i, node_query_res.get_val(), 4,
+        query.initialize(i, 0, node_query_res.get_val(), 4,
                          node_query_res.get_len());
         query.display();
         auto c = g.graph_neighbor_sample_v3(query, true);
@@ -227,7 +218,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
         cudaMalloc((void **)&key, sizeof(int64_t));
         int64_t t_key = 1;
         cudaMemcpy(key, &t_key, sizeof(int64_t), cudaMemcpyHostToDevice);
-        q1.initialize(i, (int64_t)key, 2, 1);
+        q1.initialize(i, 0, (int64_t)key, 2, 1);
         auto d = g.graph_neighbor_sample_v3(q1, true);
         d.display();
         cudaFree(key);

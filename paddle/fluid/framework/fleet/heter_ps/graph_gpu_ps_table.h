@@ -25,17 +25,32 @@ namespace paddle {
 namespace framework {
 class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
  public:
-  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
+  int get_table_offset(int gpu_id, int type_id, int idx) {
+    return gpu_id * (graph_table_num + feature_table_num) +
+           type_id * graph_table_num + idx;
+  }
+  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware,
+                  int graph_table_num, int feature_table_num)
       : HeterComm<uint64_t, int64_t, int>(1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
+    this->graph_table_num = graph_table_num;
+    this->feature_table_num = feature_table_num;
     gpu_num = resource_->total_device();
     memset(global_device_map, -1, sizeof(global_device_map));
+    for (auto &table : tables_) {
+      delete table;
+      table = NULL;
+    }
+    tables_.clear();
     for (int i = 0; i < gpu_num; i++) {
-      gpu_graph_list.push_back(GpuPsCommGraph());
       global_device_map[resource_->dev_id(i)] = i;
-      sample_status.push_back(NULL);
-      tables_.push_back(NULL);
+      for (int j = 0; j < graph_table_num; j++) {
+        gpu_graph_list.push_back(GpuPsCommGraph());
+        sample_status.push_back(NULL);
+        tables_.push_back(NULL);
+      }
+      for (int j = 0; j < feature_table_num; j++) tables_.push_back(NULL);
     }
     cpu_table_status = -1;
     if (topo_aware) {
@@ -89,21 +104,23 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
     //   end_graph_sampling();
     // }
   }
-  void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id);
-  void clear_graph_info(int gpu_id);
-  void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
+  void build_graph_on_single_gpu(GpuPsCommGraph &g, int gpu_id, int idx);
+  void clear_graph_info(int gpu_id, int index);
+  void clear_graph_info(int index);
+  void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list,
+                            int idx);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, int idx, int64_t *key,
                                              int sample_size, int len);
-  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int64_t *key,
-                                                int sample_size, int len,
-                                                bool cpu_query_switch);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
+                                                int64_t *key, int sample_size,
+                                                int len, bool cpu_query_switch);
   void init_sample_status();
   void free_sample_status();
-  NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
-  void clear_graph_info();
+  NodeQueryResult query_node_list(int gpu_id, int idx, int start,
+                                  int query_size);
   void display_sample_res(void *key, void *val, int len, int sample_len);
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,
@@ -112,6 +129,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
                                                  int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
   int gpu_num;
+  int graph_table_num, feature_table_num;
   std::vector<GpuPsCommGraph> gpu_graph_list;
   int global_device_map[32];
   std::vector<int *> sample_status;

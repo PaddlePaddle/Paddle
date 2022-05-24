@@ -31,7 +31,6 @@ class GraphGpuWrapper {
   }
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void initialize();
-  void test();
   void set_device(std::vector<int> ids);
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
@@ -52,10 +51,11 @@ class GraphGpuWrapper {
   void init_search_level(int level);
   std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
                                                int slice_num);
-  NodeQueryResult query_node_list(int gpu_id, int start, int query_size);
+  NodeQueryResult query_node_list(int gpu_id, int idx, int start,
+                                  int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  std::vector<int64_t> graph_neighbor_sample(int gpu_id,
+  std::vector<int64_t> graph_neighbor_sample(int gpu_id, int idx,
                                              std::vector<int64_t>& key,
                                              int sample_size);
 

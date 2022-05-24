@@ -322,6 +322,7 @@ template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 template class HashTable<long, int>;
 template class HashTable<unsigned long, int>;
 template class HashTable<unsigned long, unsigned long>;
+template class HashTable<unsigned long, long>;
 template class HashTable<long, long>;
 template class HashTable<long, unsigned long>;
 template class HashTable<long, unsigned int>;
@@ -337,6 +338,8 @@ template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys,
 
 template void HashTable<unsigned long, int>::get<cudaStream_t>(
     const unsigned long* d_keys, int* d_vals, size_t len, cudaStream_t stream);
+template void HashTable<unsigned long, long>::get<cudaStream_t>(
+    const unsigned long* d_keys, long* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<long, unsigned long>::get<cudaStream_t>(
     const long* d_keys, unsigned long* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<long, long>::get<cudaStream_t>(const long* d_keys,
@@ -366,6 +369,11 @@ template void HashTable<long, long>::insert<cudaStream_t>(const long* d_keys,
 template void HashTable<unsigned long, int>::insert<cudaStream_t>(
     const unsigned long* d_keys, const int* d_vals, size_t len,
     cudaStream_t stream);
+
+template void HashTable<unsigned long, long>::insert<cudaStream_t>(
+    const unsigned long* d_keys, const long* d_vals, size_t len,
+    cudaStream_t stream);
+
 template void HashTable<long, unsigned long>::insert<cudaStream_t>(
     const long* d_keys, const unsigned long* d_vals, size_t len,
     cudaStream_t stream);

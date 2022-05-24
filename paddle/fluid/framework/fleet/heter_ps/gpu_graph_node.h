@@ -122,11 +122,12 @@ node_list[7]-> node_id:9, neighbor_size:1, neighbor_offset:14
 node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 */
 struct NeighborSampleQuery {
-  int gpu_id;
+  int gpu_id, idx;
   int64_t *key;
   int sample_size;
   int len;
-  void initialize(int gpu_id, int64_t key, int sample_size, int len) {
+  void initialize(int gpu_id, int idx, int64_t key, int sample_size, int len) {
+    this->idx = idx;
     this->gpu_id = gpu_id;
     this->key = (int64_t *)key;
     this->sample_size = sample_size;
@@ -135,7 +136,7 @@ struct NeighborSampleQuery {
   void display() {
     int64_t *sample_keys = new int64_t[len];
     VLOG(0) << "device_id " << gpu_id << " sample_size = " << sample_size;
-    VLOG(0) << "there are " << len << " keys ";
+    VLOG(0) << "there are " << len << " keys to sample for graph " << idx;
     std::string key_str;
     cudaMemcpy(sample_keys, key, len * sizeof(int64_t), cudaMemcpyDeviceToHost);
 
