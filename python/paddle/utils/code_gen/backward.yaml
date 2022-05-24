@@ -66,6 +66,7 @@
     func : add_grad
   no_need_buffer : x, y
   backward : add_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : add_n_grad
   forward : add_n (Tensor[] x) -> Tensor(out)
@@ -131,7 +132,15 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+  kernel :
+    func : assign
+
+- backward_api : assign_out__grad
+  forward : assign_out_ (Tensor x, Tensor output) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel :
     func : assign
 
@@ -231,6 +240,27 @@
   kernel :
     func : ceil_grad
 
+- backward_api : celu_double_grad
+  forward : celu_grad(Tensor x, Tensor grad_out, float alpha) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float alpha)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : celu_double_grad
+
+- backward_api : celu_grad
+  forward : celu(Tensor x, float alpha) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : celu_grad
+  backward : celu_double_grad
+
 - backward_api : cholesky_grad
   forward : cholesky (Tensor x, bool upper) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, bool upper)
@@ -281,7 +311,6 @@
     param : [grad_x_grad, axis]
   kernel :
     func : concat
-  no_need_buffer : x
 
 - backward_api : concat_grad
   forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
@@ -403,6 +432,7 @@
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : softmax
+  inplace : (softmax -> input_grad)
 
 - backward_api : cross_grad
   forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
@@ -526,7 +556,6 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
-  optional : seed_tensor
 
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
@@ -667,7 +696,7 @@
     data_type: out_grad
     backend: out_grad
     layout: out_grad
-  no_need_buffer : x
+  inplace : (out_grad -> x_grad)
 
 - backward_api : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
@@ -885,7 +914,6 @@
     param : [out_grad]
   kernel :
     func : label_smooth_grad
-  optional : prior_dist
 
 - backward_api : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test) -> Tensor(out), Tensor(mean), Tensor(variance)
@@ -1502,7 +1530,7 @@
   no_need_buffer : grad_out
 
 - backward_api : reshape_grad
-  forward : reshape_with_xshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
+  forward : reshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -1515,6 +1543,7 @@
     backend: out_grad
     layout: out_grad
   backward : reshape_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
@@ -1563,6 +1592,16 @@
   kernel :
     func : round_grad
 
+- backward_api : rsqrt_double_grad
+  forward : rsqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : rsqrt_double_grad
+
 - backward_api : rsqrt_grad
   forward : rsqrt (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1572,6 +1611,7 @@
     param : [out]
   kernel :
     func : rsqrt_grad
+  backward : rsqrt_double_grad
 
 - backward_api : scale_double_grad
   forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
@@ -1586,6 +1626,7 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, bias_after_scale)
   backward : scale_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : scale_triple_grad
   forward : scale_double_grad (Tensor grad_grad_x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_grad_out)
@@ -1678,6 +1719,7 @@
     param : [out, fwd_grad_out, grad_grad_x]
   kernel :
     func : sigmoid_triple_grad
+  optional : grad_grad_out_grad
 
 - backward_api : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
@@ -1748,6 +1790,16 @@
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
+- backward_api : sqrt_double_grad
+  forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : sqrt_double_grad
+
 - backward_api : sqrt_grad
   forward : sqrt (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1757,6 +1809,17 @@
     param : [out]
   kernel :
     func : sqrt_grad
+  backward : sqrt_double_grad
+
+- backward_api : square_double_grad
+  forward : square_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : square_double_grad
 
 - backward_api : square_grad
   forward : square (Tensor x) -> Tensor(out)
@@ -1767,9 +1830,10 @@
     param : [x]
   kernel :
     func : square_grad
+  backward : square_double_grad
 
 - backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(xshape), Tensor(out)
+  forward : squeeze(Tensor x, int[] axes) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad, int[] axes)
   output : Tensor(x_grad)
   infer_meta :
@@ -1777,6 +1841,7 @@
     param: [xshape]
   kernel :
     func : squeeze_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
@@ -1824,6 +1889,7 @@
     func : subtract_grad
   no_need_buffer : x, y
   backward : subtract_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sum_double_grad
   forward : sum_grad (Tensor x, Tensor grad_out, int64_t[] dims, bool keep_dim, bool reduce_all=false) -> Tensor(grad_x)
@@ -1833,7 +1899,7 @@
   backward : sum_triple_grad
 
 - backward_api : sum_grad
-  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
+  forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int64_t[] dims, bool keep_dim, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
@@ -1849,7 +1915,6 @@
   args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(grad_grad_x_grad)
   invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
-  no_need_buffer : x
 
 - backward_api : swish_grad
   forward : swish (Tensor x, float beta=1.0) -> Tensor(out)
@@ -2040,7 +2105,7 @@
   no_need_buffer : x
 
 - backward_api : unsqueeze_grad
-  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(xshape), Tensor(out)
+  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -2048,6 +2113,7 @@
     param: [xshape]
   kernel :
     func : unsqueeze_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)

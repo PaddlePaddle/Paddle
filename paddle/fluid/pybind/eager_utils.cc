@@ -472,6 +472,28 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
   return dtype;
 }
 
+std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
+                                                      ssize_t arg_pos) {
+  if (PyDict_Check(obj)) {
+    return ::pybind11::handle(obj)
+        .cast<std::unordered_map<std::wstring, int>>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be dict, but got %s", arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+
+std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    return ::pybind11::handle(obj).cast<std::vector<std::string>>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be list, but got %s", arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+
 paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
                                                               ssize_t arg_pos) {
   if (PyObject_IsInstance(
@@ -716,6 +738,28 @@ PyObject* ToPyObject(
     }
   }
 
+  return dict;
+}
+
+PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
+  PyObject* dict = PyDict_New();
+  for (const auto map_iter : value) {
+    // Convert Key
+    PyObject* key_string =
+        PyUnicode_FromWideChar(map_iter.first.c_str(), map_iter.first.size());
+    if (!key_string) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Unable to convert std::wstring to PyObject"));
+    }
+
+    // Convert Val
+    PyObject* py_int = PyLong_FromLong(map_iter.second);
+
+    if (PyDict_SetItem(dict, key_string, py_int) != 0) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to set key:value for py_dict"));
+    }
+  }
   return dict;
 }
 
