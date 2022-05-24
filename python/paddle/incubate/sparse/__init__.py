@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...sparse.creation import sparse_coo_tensor
-from ...sparse.creation import sparse_csr_tensor
-
 from .math import add
 from .math import divide
 from .math import multiply

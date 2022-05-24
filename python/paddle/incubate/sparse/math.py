@@ -17,8 +17,8 @@ sparse math functions
 from __future__ import print_function
 
 from paddle import _C_ops, in_dynamic_mode, device, int32, int64
-from ...tensor import cast
-from ...sparse import sparse_csr_tensor
+from paddle.tensor import cast
+from paddle.sparse import sparse_csr_tensor
 
 
 def _cast_coo(x, dtype, name=None):
