@@ -29,8 +29,8 @@ ops_to_fill_zero_for_empty_grads = set([
     "tanh_double_grad", "tanh_triple_grad", "subtract_double_grad",
     "divide_double_grad", "log_double_grad", "elu_double_grad",
     "leaky_relu_double_grad", "sqrt_double_grad", "rsqrt_double_grad",
-    "square_double_grad", "celu_double_grad", "pad3d_double_grad",
-    "squeeze_double_grad", "unsqueeze_double_grad"
+    "square_double_grad", "celu_double_grad", "pad_double_grad",
+    "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad"
 ])
 
 # For API dispatch used at python-level
