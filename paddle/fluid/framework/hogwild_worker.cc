@@ -118,6 +118,11 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
 
 void HogwildWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  platform::SetDeviceId(thread_id_);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::SetXPUDeviceId(thread_id_);
+#endif
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;

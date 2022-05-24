@@ -52,17 +52,46 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
   device_key_size_ = h_device_keys_->size();
   d_device_keys_ =
       memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
+  for (size_t i = 0; i < h_device_keys_->size(); i++) {
+    VLOG(2) << "h_device_keys_[" << i << "] = " << (*h_device_keys_)[i];
+  }
   CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
                              device_key_size_ * sizeof(int64_t),
                              cudaMemcpyHostToDevice, stream_));
-  d_prefix_sum_ =
-      memory::AllocShared(place_, (sample_key_size_ + 1) * sizeof(int64_t));
+  size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
+  d_prefix_sum_ = memory::AllocShared(
+      place_, (once_max_sample_keynum + 1) * sizeof(int64_t));
   int64_t* d_prefix_sum_ptr = reinterpret_cast<int64_t*>(d_prefix_sum_->ptr());
-  cudaMemsetAsync(d_prefix_sum_ptr, 0, (sample_key_size_ + 1) * sizeof(int64_t),
-                  stream_);
+  cudaMemsetAsync(d_prefix_sum_ptr, 0,
+                  (once_max_sample_keynum + 1) * sizeof(int64_t), stream_);
   cursor_ = 0;
+  jump_rows_ = 0;
   device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());
-  ;
+  VLOG(2) << "device_keys_ = " << (uint64_t)device_keys_;
+  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(int64_t));
+  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(int64_t), stream_);
+  d_sample_keys_ =
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int64_t));
+
+  d_sampleidx2rows_.push_back(
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));
+  d_sampleidx2rows_.push_back(
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));
+  cur_sampleidx2row_ = 0;
+
+  d_len_per_row_ =
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int));
+  for (int i = -window_; i < 0; i++) {
+    window_step_.push_back(i);
+  }
+  for (int i = 0; i < window_; i++) {
+    window_step_.push_back(i + 1);
+  }
+  buf_state_.Init(batch_size_, walk_len_, &window_step_);
+  d_random_row_ = memory::AllocShared(
+      place_,
+      (once_sample_startid_len_ * walk_degree_ * repeat_time_) * sizeof(int));
+  shuffle_seed_ = 0;
   cudaStreamSynchronize(stream_);
 }
 

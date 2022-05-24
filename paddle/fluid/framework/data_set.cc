@@ -410,6 +410,18 @@ void MultiSlotDataset::PrepareTrain() {
   return;
 }
 
+template <typename T>
+void DatasetImpl<T>::SetGraphDeviceKeys(
+    const std::vector<int64_t>& h_device_keys) {
+  for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
+    gpu_graph_device_keys_[i].clear();
+  }
+  size_t device_num = gpu_graph_device_keys_.size();
+  for (size_t i = 0; i < h_device_keys.size(); i++) {
+    int shard = h_device_keys[i] % device_num;
+    gpu_graph_device_keys_[shard].push_back(h_device_keys[i]);
+  }
+}
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
 template <typename T>
@@ -422,9 +434,10 @@ void DatasetImpl<T>::LoadIntoMemory() {
     VLOG(0) << "in gpu_graph_mode";
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
     gpu_graph_device_keys_ = gpu_graph_ptr->get_all_id(0, 0, thread_num_);
-    
+
     for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
-      VLOG(0) << "gpu_graph_device_keys_[" << i << "] = " << gpu_graph_device_keys_[i].size(); 
+      VLOG(0) << "gpu_graph_device_keys_[" << i
+              << "] = " << gpu_graph_device_keys_[i].size();
       for (size_t j = 0; j < gpu_graph_device_keys_[i].size(); j++) {
         gpu_graph_total_keys_.push_back(gpu_graph_device_keys_[i][j]);
       }
