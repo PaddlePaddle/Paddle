@@ -1469,9 +1469,13 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
-                                                 'stop_axis', stop_axis)
-    return dy_out
+    if in_dygraph_mode():
+        return _C_ops.final_state_flatten_(x, start_axis, stop_axis)
+
+    if _in_legacy_dygraph():
+        dy_out, _ = _C_ops.flatten_contiguous_range_(
+            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        return dy_out
 
 
 def roll(x, shifts, axis=None, name=None):
@@ -1970,8 +1974,13 @@ def squeeze_(x, axis=None, name=None):
     elif isinstance(axis, tuple):
         axis = list(axis)
 
-    out, _ = _C_ops.squeeze2_(x, 'axes', axis)
-    return out
+    input = x
+    axes = axis
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze_(input, axes)
+    if _in_legacy_dygraph():
+        out, _ = _C_ops.squeeze2_(input, 'axes', axes)
+        return out
 
 
 def unique_consecutive(x,
@@ -2326,8 +2335,10 @@ def unsqueeze_(x, axis, name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in axis
         ]
-    out, _ = _C_ops.unsqueeze2_(x, 'axes', axis)
-    return out
+    if _in_legacy_dygraph():
+        out, _ = _C_ops.unsqueeze2_(input, 'axes', axis)
+        return out
+    return _C_ops.final_state_unsqueeze_(input, axis)
 
 
 def gather(x, index, axis=None, name=None):
@@ -2580,6 +2591,8 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_scatter_(x, index, updates, overwrite)
     return _C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
@@ -3279,17 +3292,35 @@ def reshape_(x, shape, name=None):
     Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_reshape`.
     """
-    if isinstance(shape, (list, tuple)):
-        shape = [
-            item.numpy().item(0) if isinstance(item, Variable) else item
-            for item in shape
-        ]
-        out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
+    if in_dygraph_mode():
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in shape
+            ]
+            out = _C_ops.final_state_reshape_(x, shape)
+        elif isinstance(shape, tmp_tensor_type):
+            shape.stop_gradient = True
+            out = _C_ops.final_state_reshape_(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape)))
+
         return out
-    elif isinstance(shape, Variable):
-        shape.stop_gradient = True
-        out, _ = _C_ops.reshape2_(x, shape)
-        return out
+    else:
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
+            return out
+        elif isinstance(shape, Variable):
+            shape.stop_gradient = True
+            out, _ = _C_ops.reshape2_(x, shape)
+            return out
 
 
 def gather_nd(x, index, name=None):
