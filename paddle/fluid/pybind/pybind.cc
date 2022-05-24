@@ -3140,7 +3140,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::take_ownership);
 
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
-        vector of boost::variant<LoDTensor, LoDTensorArray>.
+        vector of paddle::variant<LoDTensor, LoDTensorArray>.
         )DOC")
       .def("_move_to_list",
            [](FetchList &self) -> py::list {
@@ -3184,7 +3184,7 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
-        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
+        FetchUnmergedList is 2-D array of FetchType(paddle::variant(LoDTensor, LoDTensorArray)).
         )DOC")
       .def("_move_to_list",
            [](FetchUnmergedList &self) -> py::list {

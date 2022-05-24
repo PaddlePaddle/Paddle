@@ -19,11 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 #if defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif

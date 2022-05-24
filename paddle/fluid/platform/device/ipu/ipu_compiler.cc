@@ -19,6 +19,8 @@
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
 
+#include "boost/blank.hpp"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
 #include "paddle/fluid/platform/device/ipu/ipu_strategy.h"

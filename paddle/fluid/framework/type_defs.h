@@ -21,9 +21,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "boost/blank.hpp"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/small_vector.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +41,7 @@ class InferNoNeedBufferVarsFN;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
-using Attribute = boost::variant<
+using Attribute = paddle::variant<
     boost::blank, int, float, std::string, std::vector<int>, std::vector<float>,
     std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
@@ -47,11 +49,11 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
 using NPUAttribute =
-    boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                   std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>, std::vector<int64_t>,
-                   std::vector<double>, std::vector<std::vector<int64_t>>>;
+    paddle::variant<boost::blank, int, float, std::string, std::vector<int>,
+                    std::vector<float>, std::vector<std::string>, bool,
+                    std::vector<bool>, BlockDesc*, int64_t,
+                    std::vector<BlockDesc*>, std::vector<int64_t>,
+                    std::vector<double>, std::vector<std::vector<int64_t>>>;
 
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
 #endif

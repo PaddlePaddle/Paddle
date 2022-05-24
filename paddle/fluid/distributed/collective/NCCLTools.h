@@ -18,13 +18,13 @@
 #include <error.h>
 #include <string>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 
 #include "paddle/fluid/distributed/collective/Types.h"
 

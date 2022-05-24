@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
+
+#include "boost/blank.hpp"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {

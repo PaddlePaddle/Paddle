@@ -326,7 +326,7 @@ static std::string AttrTypeToString(const proto::AttrType& type) {
     }
     default: {
       PADDLE_THROW(platform::errors::Fatal(
-          "AttrType of type boost::variant only supports specific data types."
+          "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           type));
     }
@@ -355,7 +355,7 @@ static std::pair<std::string, std::string> GetAttrType(
     const framework::Attribute& attr, bool is_arg) {
   std::string ret = "";
   std::string val = "";
-  size_t variant_pos = attr.which();
+  size_t variant_pos = attr.index();
   switch (variant_pos) {
     case (1): {
       ret = "int";
@@ -435,7 +435,7 @@ static std::pair<std::string, std::string> GetAttrType(
     }
     default: {
       PADDLE_THROW(platform::errors::Fatal(
-          "AttrType of type boost::variant only supports specific data types."
+          "AttrType of type paddle::variant only supports specific data types."
           "However, detected unrecognized AttrType: %d",
           variant_pos));
     }

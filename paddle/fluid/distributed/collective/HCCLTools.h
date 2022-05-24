@@ -17,7 +17,6 @@
 #include <error.h>
 #include <string>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
@@ -26,6 +25,7 @@
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace distributed {

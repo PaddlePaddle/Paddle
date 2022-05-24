@@ -2,6 +2,7 @@
 // https://github.com/mpark/variant/blob/single-header/v1.4.0/variant.hpp
 // Modify the following points:
 // 1. modify namespace mpark to namespace paddle
+// 2. add type() member function for variant class
 
 // MPark.Variant
 //
@@ -2451,7 +2452,7 @@ class variant {
     impl_.swap(that.impl_);
   }
 
-  inline const std::type_info &type() noexcept { return impl_.type(); }
+  inline const std::type_info &type() const noexcept { return impl_.type(); }
 
  private:
   detail::impl<Ts...> impl_;
