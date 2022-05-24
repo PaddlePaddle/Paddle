@@ -79,7 +79,7 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
                                        {DNNL_ARG_DST, *src0_memory_p}});
     astream.wait();
 
-    // src0_memory_p's md was just to be allow the usage of a binary
+    // src0_memory_p's md was just to allow the usage of a binary
     // primitive as a memset, and now we need to create a real one
     out->set_mem_desc({phi::vectorize(shape), platform::MKLDNNGetDataType<T>(),
                        platform::GetPlainMKLDNNFormat(shape.size())});
