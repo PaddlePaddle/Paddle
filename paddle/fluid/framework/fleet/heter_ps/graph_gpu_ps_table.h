@@ -42,15 +42,14 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
       delete table;
       table = NULL;
     }
-    tables_.clear();
+    tables_ = std::vector<Table *>(
+        gpu_num * (graph_table_num + feature_table_num), NULL);
+    sample_status = std::vector<int *>(gpu_num * graph_table_num, NULL);
     for (int i = 0; i < gpu_num; i++) {
       global_device_map[resource_->dev_id(i)] = i;
       for (int j = 0; j < graph_table_num; j++) {
         gpu_graph_list.push_back(GpuPsCommGraph());
-        sample_status.push_back(NULL);
-        tables_.push_back(NULL);
       }
-      for (int j = 0; j < feature_table_num; j++) tables_.push_back(NULL);
     }
     cpu_table_status = -1;
     if (topo_aware) {
