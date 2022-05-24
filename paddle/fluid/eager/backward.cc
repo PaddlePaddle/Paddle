@@ -126,11 +126,14 @@ class GeneralGrad {
           if (potential_stop_nodes_.find(pre_nodes) !=
               potential_stop_nodes_.end()) {
             potential_stop_nodes_.erase(pre_nodes);
+          } else {
+            needed_nodes_.emplace(pre_nodes);
           }
         }
       } else {  // startup_ops have no precedding nodes
         VLOG(6) << "Emplace startup_ops";
         startup_ops.emplace(node);
+        needed_nodes_.emplace(node);
       }
     }
     // Purify potential_startup_nodes_ again, remove some
@@ -337,6 +340,7 @@ class GeneralGrad {
 
   void SetNextNodeToAccumulationNode(GradNodeBase* node,
                                      std::shared_ptr<GradNodeBase> next_node) {
+    if (next_node.get()->name() == "GradNodeAccumulation") return;
     paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         nodes_edges = node->MutableOutputMeta();
     for (size_t i = 0; i < nodes_edges.size(); i++) {
@@ -383,6 +387,10 @@ class GeneralGrad {
                        IsPotentialStopNodes(next_node.get())) {
               SetNextNodeToAccumulationNode(node, next_node);
             }
+          } else {
+            if (IsNeededNodes(node) && !IsNeededNodes(next_node.get())) {
+              SetNextNodeToAccumulationNode(node, next_node);
+            }
           }
           // Update BFS queue
           queue_.push(next_node.get());
@@ -422,6 +430,8 @@ class GeneralGrad {
       GenSubGraph(queue);
     }
   }
+
+  bool IsNeededNodes(GradNodeBase* node) { return needed_nodes_.count(node); }
 
   bool IsInputTargetNodes(GradNodeBase* node) {
     auto iter = input_target_nodes_inputmeta_map_.find(node);
@@ -463,6 +473,7 @@ class GeneralGrad {
     copied_grad_nodes_.clear();
     orig_to_copied_node_mapping_.clear();
     copied_node_to_end_node_mapping_.clear();
+    needed_nodes_.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
@@ -559,6 +570,8 @@ class GeneralGrad {
       orig_to_copied_node_mapping_;
   std::unordered_map<GradNodeBase*, GradNodeBase*>
       copied_node_to_end_node_mapping_;
+  std::unordered_set<GradNodeBase*> needed_nodes_;
+
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
 
