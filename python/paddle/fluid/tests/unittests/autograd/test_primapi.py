@@ -92,6 +92,25 @@ class TestGradients(unittest.TestCase):
         np.allclose(outs, result)
         paddle.incubate.autograd.disable_prim()
 
+    def test_prim_disabled(self):
+        paddle.incubate.autograd.disable_prim()
+        with self.assertRaises(RuntimeError):
+            primapi.gradients(
+                paddle.static.data(
+                    'targets', shape=[1]),
+                paddle.static.data(
+                    'inputs', shape=[1]))
+        paddle.incubate.autograd.enable_prim()
+
+    def test_illegal_param(self):
+        paddle.incubate.autograd.enable_prim()
+        with self.assertRaises(TypeError):
+            primapi.gradients(1, paddle.static.data('inputs', shape=[1]))
+
+        with self.assertRaises(TypeError):
+            primapi.gradients(paddle.static.data('targets', shape=[1]), 1)
+        paddle.incubate.autograd.disable_prim()
+
 
 @utils.place(config.DEVICES)
 @utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v'), (
@@ -155,7 +174,7 @@ class TestForwardGradients(unittest.TestCase):
 
         paddle.incubate.autograd.disable_prim()
 
-    def test_disable_prim(self):
+    def test_prim_disabled(self):
         paddle.incubate.autograd.disable_prim()
         sp = paddle.static.Program()
         mp = paddle.static.Program()
@@ -171,6 +190,19 @@ class TestForwardGradients(unittest.TestCase):
             exe.run(sp)
             exe.run(mp, feed=feed, fetch_list=ys_grad)
         paddle.incubate.autograd.enable_prim()
+
+    def test_illegal_param(self):
+        paddle.incubate.autograd.enable_prim()
+        with self.assertRaises(TypeError):
+            primapi.forward_gradients(
+                1, paddle.static.data(
+                    'inputs', shape=[1]))
+
+        with self.assertRaises(TypeError):
+            primapi.forward_gradients(
+                paddle.static.data(
+                    'targets', shape=[1]), 1)
+        paddle.incubate.autograd.disable_prim()
 
 
 if __name__ == '__main__':
