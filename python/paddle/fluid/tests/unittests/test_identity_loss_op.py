@@ -79,9 +79,11 @@ class TestCase3(TestIdentityLossOp):
         self.shape = (4, 8, 16)
         self.reduction = 2
 
+
 class TestIdentityLossFloat32(TestIdentityLossOp):
     def set_attrs(self):
         self.dtype = 'float32'
+
 
 class TestIdentityLossOpError(unittest.TestCase):
     def test_errors(self):
@@ -105,6 +107,7 @@ class TestIdentityLossOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
+
 
 class TestIdentityLossAPI(unittest.TestCase):
     def setUp(self):
@@ -132,10 +135,11 @@ class TestIdentityLossAPI(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x},
                           fetch_list=[out1, out2, out3, out4])
-        ref = [self.identity_loss_ref(self.x, 2),
-               self.identity_loss_ref(self.x, 0),
-               self.identity_loss_ref(self.x, 1),
-               self.identity_loss_ref(self.x, 2)]
+        ref = [
+            self.identity_loss_ref(self.x, 2),
+            self.identity_loss_ref(self.x, 0),
+            self.identity_loss_ref(self.x, 1), self.identity_loss_ref(self.x, 2)
+        ]
         for out, out_ref in zip(res, ref):
             self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
 
@@ -164,11 +168,13 @@ class TestIdentityLossAPI(unittest.TestCase):
         x = paddle.to_tensor(x)
         self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x, -1)
         self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x, 3)
-        self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x, "wrongkey")
+        self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x,
+                          "wrongkey")
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.fluid.layers.identity_loss, x)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -153,8 +153,8 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/MLUPlace/"
-        "CustomPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "MLUPlace/CustomPlace"));
   }
 }
 
@@ -206,7 +206,8 @@ static void InitVarBaseAndTensor(
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/MLUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "MLUPlace"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }

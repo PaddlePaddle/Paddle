@@ -73,8 +73,9 @@ class TestBase(unittest.TestCase):
         label = paddle.randint(0, 10, shape=[32], dtype='int64')
         model_path = '{}/model_state_dict_{}.pdparams'.format(
             self.save_path, 'ipu' if use_ipu else 'cpu')
-        optim_path = '{}/optim_state_dict_{}.pdopt'.format(
-            self.save_path, 'ipu' if use_ipu else 'cpu')
+        optim_path = '{}/optim_state_dict_{}.pdopt'.format(self.save_path, 'ipu'
+                                                           if use_ipu else
+                                                           'cpu')
 
         if use_ipu:
             device = paddle.set_device('ipu')
