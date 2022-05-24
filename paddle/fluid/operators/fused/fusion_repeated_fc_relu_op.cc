@@ -140,8 +140,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
             relus[0]->mutable_data<T>(place), attr);
 
     for (int i = 1; i < weight_sz - 1; ++i) {
-      auto i_dims = relus[i - 1]->dims();
-      auto w_dims = weights[i]->dims();
+      const auto& i_dims = relus[i - 1]->dims();
+      const auto& w_dims = weights[i]->dims();
       attr.m = i_dims[0];
       attr.n = w_dims[1];
       attr.k = w_dims[0];
