@@ -101,16 +101,25 @@ class GeneralGrad {
     std::unordered_set<GradNodeBase*> startup_ops;
     VLOG(6) << "Running in UpdateGraphInfo";
     std::queue<GradNodeBase*> queue;
-    for (auto& target_nodes_inputmeta_pair :
-         input_target_nodes_inputmeta_map_) {
-      queue.emplace(target_nodes_inputmeta_pair.first);
+
+    // There is no next_node if the input_target_node is AccumulationNode,
+    // so potential_stop_nodes_ is empty
+    if (!potential_stop_nodes_.empty()) {
+      for (auto* stop_nodes_ : potential_stop_nodes_) {
+        queue.emplace(stop_nodes_);
+      }
+    } else {
+      for (auto& target_nodes_inputmeta_pair :
+           input_target_nodes_inputmeta_map_) {
+        queue.emplace(target_nodes_inputmeta_pair.first);
+      }
     }
 
     while (!queue.empty()) {
-      auto* target_node = queue.front();
+      auto* node = queue.front();
       queue.pop();
-      if (!(depending_nodes_)[target_node].empty()) {
-        auto precedding_nodes = (depending_nodes_)[target_node];
+      if (!(depending_nodes_)[node].empty()) {
+        auto precedding_nodes = (depending_nodes_)[node];
         for (auto pre_nodes : precedding_nodes) {
           queue.emplace(pre_nodes);
           if (potential_stop_nodes_.find(pre_nodes) !=
@@ -120,7 +129,7 @@ class GeneralGrad {
         }
       } else {  // startup_ops have no precedding nodes
         VLOG(6) << "Emplace startup_ops";
-        startup_ops.emplace(target_node);
+        startup_ops.emplace(node);
       }
     }
     // Purify potential_startup_nodes_ again, remove some
@@ -240,7 +249,7 @@ class GeneralGrad {
                                   GradNodeBase* node) {
     auto iter = GetInputTargetNodesInputMetaMap()->find(node);
     if (iter != GetInputTargetNodesInputMetaMap()->end()) {
-      VLOG(6) << "Get target result by by inputmeta";
+      VLOG(6) << "Get target result by inputmeta";
       // out rank_info of forward op
       auto rank_info = (iter->second)->OutRankInfo();
       // rank_info is a pair, first means slot_id, second means rank.
@@ -644,7 +653,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                                                    node_input_buffers_dict);
   }
 
-  VLOG(6) << " startup_ops' size is :" << queue.size();
+  VLOG(6) << "startup_ops' size is :" << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -656,7 +665,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(6) << "Running GradNode:" << node->name();
+    VLOG(6) << "GradNode " << node->name() << " is ready.";
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
@@ -796,7 +805,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         if (is_general_grad) {
           bool is_potential_stop_node =
-              GeneralGrad::Instance().GetPotentialStopNodes()->count(next_node);
+              GeneralGrad::Instance().IsPotentialStopNodes(next_node);
           if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
             queue.emplace(std::move(next_node));
           }
