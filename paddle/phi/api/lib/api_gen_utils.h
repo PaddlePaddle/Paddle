@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"

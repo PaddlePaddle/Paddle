@@ -1510,12 +1510,14 @@ def assign(x, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        if _non_static_mode():
+        if in_dygraph_mode():
             if output is None:
-                if _in_legacy_dygraph():
-                    output = core.VarBase()
-                else:
-                    output = core.eager.Tensor()
+                output = _C_ops.final_state_assign(input)
+            else:
+                _C_ops.final_state_assign_out_(input, output)
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
             _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
@@ -1575,7 +1577,7 @@ def assign(x, output=None):
                 value_name: values
             })
 
-    if is_inplace and _non_static_mode():
+    if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
 
     return output
