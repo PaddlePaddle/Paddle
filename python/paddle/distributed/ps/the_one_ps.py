@@ -312,16 +312,16 @@ class CommonAccessor(Accessor):
         size = ctx.sections()[0]
         single_dim = ctx.sections()[1] if ctx.is_sparse() else 1
         adam_d2sum = context["user_defined_strategy"].adam_d2sum
-        # print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
-        #     ctx.table_id(), ctx.is_datanorm_table()))
+        print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
+            ctx.table_id(), ctx.is_datanorm_table()))
 
         main_program, startup_program, idx = get_program_by_id(context,
                                                                ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
-        # print("the one ps optimizer_ops:", optimizer_ops)
-        # print("the one ps parse_by_optimizer grad_name:", grad_name)
+        print("the one ps optimizer_ops:", optimizer_ops)
+        print("the one ps parse_by_optimizer grad_name:", grad_name)
         oop = None
 
         for op in optimizer_ops:
@@ -368,6 +368,7 @@ class CommonAccessor(Accessor):
             attr_varnames = self.opt_attr_map[oop.type]
             self.accessor_class = oop.type
 
+        print("parse_by_optimizer accessor_class:", self.accessor_class)
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
             if self.accessor_class == "adam_d2sum":
@@ -449,13 +450,18 @@ class CommonAccessor(Accessor):
                     initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
+            print("attr_varname:", attr_varname, " type_:", type_)
             value = oop.attr(attr_varname)
             attrs.append("&".join([attr_varname, type_, str(value)]))
 
         self.params = params
+        print("params:", params)
         self.dims = dims
+        print("dims:", dims)
         self.initializers = initializers
+        print("initializers:", initializers)
         self.attrs = attrs
+        print("attrs:", attrs)
 
     # CommonAccessorParameter common
     def _set(self, proto):
@@ -615,6 +621,7 @@ class SparseTable(Table):
         self.common.sync = True if self.context['is_sync'] else False
 
         self.common._set(table_proto.common)
+        print("SparseTable table_proto.common:", table_proto.common)
 
 
 class GeoSparseTable(SparseTable):
@@ -677,6 +684,7 @@ class DenseTable(Table):
         self.common.sync = True if self.context['is_sync'] else False
 
         self.common._set(table_proto.common)
+        print("DenseTable table_proto.common:", table_proto.common)
 
 
 class Server:
@@ -858,13 +866,14 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_all_params(self, scopes, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
+            print(name, " === ctx:", ctx, " == is_sparse:", ctx.is_sparse())
             if ctx.is_sparse():
                 continue
             _, _, idx = get_program_by_id(self.context, ctx.program_id())
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            # print("init params:", idx, table_id, var_names)
+            print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
@@ -931,7 +940,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
+        if True:
             print("worker: \n{}".format(proto_txt))
             print("communicator send_ctx:")
             for key in send_ctx:
@@ -1010,15 +1019,18 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.scopes = scopes
         if not is_test:
+            print("role_id:", role_id)
             if self.context['ps_mode'] == DistributedMode.GEO:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        print("into _init_all_params")
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
-
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+        if not self.context['use_ps_gpu']:
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context['ps_mode'] == DistributedMode.GEO:
