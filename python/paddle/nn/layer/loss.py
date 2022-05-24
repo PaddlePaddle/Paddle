@@ -1402,7 +1402,7 @@ class TripletMarginLoss(Layer):
                                      negative,
                                      margin=self.margin,
                                      p=self.p,
-                                     eps=self.epsilon,
+                                     epsilon=self.epsilon,
                                      swap=self.swap,
                                      reduction=self.reduction,
                                      name=self.name)
