@@ -25,13 +25,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 
 namespace paddle {
 namespace framework {
 
 #if defined(PADDLE_WITH_XPU_KP)
 
-typedef uint64_t FeatureKey;
+//typedef uint64_t FeatureKey;
 
 class CacheManager {
  public:
@@ -40,9 +41,11 @@ class CacheManager {
     uint64_t sign_;
   };
 
-  CacheManager(int worker_num);
-  CacheManager(int thread_num, int batch_sz, int worker_num);
+  CacheManager();
   ~CacheManager() {}
+
+  // Todo: need check init state before every function call
+  void init(int thread_num, int batch_sz, int worker_num);
 
   void clear_sign2fids();
   void build_sign2fids(const FeatureKey* d_keys, size_t len);

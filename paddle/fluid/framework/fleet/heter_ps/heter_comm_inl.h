@@ -46,6 +46,10 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   }
   heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
+
+#if defined(PADDLE_WITH_XPU_KP)
+  cache_mgr_ = std::make_shared<CacheManager>();
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
