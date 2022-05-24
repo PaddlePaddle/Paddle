@@ -103,12 +103,12 @@ __global__ void dy_mf_search_kernel(Table* table,
       cur->cpu_ptr = input.cpu_ptr;
       cur->delta_score = input.delta_score;
       cur->lr_g2sum = input.lr_g2sum;
-      for(int j = 0; j < cur->mf_dim + 1; ++j) {
-         cur->mf[j] = input.mf[j];
+      for (int j = 0; j < cur->mf_dim + 1; ++j) {
+        cur->mf[j] = input.mf[j];
       }
     } else {
       if (keys[i] != 0) {
-        printf("yxf::pull miss key: %d",keys[i]);
+        printf("yxf::pull miss key: %d", keys[i]);
       }
       FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
       cur->delta_score = 0;
