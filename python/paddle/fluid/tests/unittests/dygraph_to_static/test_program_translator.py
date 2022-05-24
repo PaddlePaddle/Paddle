@@ -27,6 +27,7 @@ from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+import paddle.jit.dy2static as _jst
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -76,15 +77,15 @@ class StaticCode1():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dy2static.convert_ifelse(
+        x_v = _jst.convert_call(_jst.convert_ifelse)(
             fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
             (x_v, ), (x_v, ))
-        __return_0 = paddle.jit.dy2static.create_bool_as_type(label is not None,
-                                                              False)
+        __return_0 = _jst.convert_call(_jst.create_bool_as_type)(
+            label is not None, False)
 
         def true_fn_1(__return_0, __return_value_0, label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
-            __return_0 = paddle.jit.dy2static.create_bool_as_type(
+            __return_0 = _jst.convert_call(_jst.create_bool_as_type)(
                 label is not None, True)
             __return_value_0 = loss
             return __return_0, __return_value_0
@@ -92,24 +93,24 @@ class StaticCode1():
         def false_fn_1(__return_0, __return_value_0):
             return __return_0, __return_value_0
 
-        __return_0, __return_value_0 = (paddle.jit.dy2static.convert_ifelse(
-            label is not None, true_fn_1, false_fn_1,
-            (__return_0, __return_value_0, label, x_v),
-            (__return_0, __return_value_0), (__return_0, __return_value_0)))
+        __return_0, __return_value_0 = _jst.convert_call(_jst.convert_ifelse)(
+            label is not None, true_fn_1, false_fn_1, (
+                __return_0, __return_value_0, label, x_v),
+            (__return_0, __return_value_0), (__return_0, __return_value_0))
 
         def true_fn_2(__return_0, __return_value_0, x_v):
-            __return_1 = paddle.jit.dy2static.create_bool_as_type(
-                paddle.jit.dy2static.convert_logical_not(__return_0), True)
+            __return_1 = _jst.convert_call(_jst.create_bool_as_type)(
+                _jst.convert_call(_jst.convert_logical_not)(__return_0), True)
             __return_value_0 = x_v
             return __return_value_0
 
         def false_fn_2(__return_value_0):
             return __return_value_0
 
-        __return_value_0 = paddle.jit.dy2static.convert_ifelse(
-            paddle.jit.dy2static.convert_logical_not(__return_0), true_fn_2,
-            false_fn_2, (__return_0, __return_value_0,
-                         x_v), (__return_value_0, ), (__return_value_0, ))
+        __return_value_0 = _jst.convert_call(_jst.convert_ifelse)(
+            _jst.convert_call(_jst.convert_logical_not)(__return_0), true_fn_2,
+            false_fn_2, (__return_0, __return_value_0, x_v), (
+                __return_value_0, ), (__return_value_0, ))
         return __return_value_0
 
 
@@ -128,15 +129,15 @@ class StaticCode2():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dy2static.convert_ifelse(
+        x_v = _jst.convert_call(_jst.convert_ifelse)(
             fluid.layers.mean(x_v)[0] > 5, true_fn_3, false_fn_3, (x_v, ),
             (x_v, ), (x_v, ))
-        __return_2 = paddle.jit.dy2static.create_bool_as_type(label is not None,
-                                                              False)
+        __return_2 = _jst.convert_call(_jst.create_bool_as_type)(
+            label is not None, False)
 
         def true_fn_4(__return_2, __return_value_1, label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
-            __return_2 = paddle.jit.dy2static.create_bool_as_type(
+            __return_2 = _jst.convert_call(_jst.create_bool_as_type)(
                 label is not None, True)
             __return_value_1 = loss
             return __return_2, __return_value_1
@@ -144,24 +145,24 @@ class StaticCode2():
         def false_fn_4(__return_2, __return_value_1):
             return __return_2, __return_value_1
 
-        __return_2, __return_value_1 = paddle.jit.dy2static.convert_ifelse(
+        __return_2, __return_value_1 = _jst.convert_call(_jst.convert_ifelse)(
             label is not None, true_fn_4, false_fn_4, (
                 __return_2, __return_value_1, label, x_v),
             (__return_2, __return_value_1), (__return_2, __return_value_1))
 
         def true_fn_5(__return_2, __return_value_1, x_v):
-            __return_3 = paddle.jit.dy2static.create_bool_as_type(
-                paddle.jit.dy2static.convert_logical_not(__return_2), True)
+            __return_3 = _jst.convert_call(_jst.create_bool_as_type)(
+                _jst.convert_call(_jst.convert_logical_not)(__return_2), True)
             __return_value_1 = x_v
             return __return_value_1
 
         def false_fn_5(__return_value_1):
             return __return_value_1
 
-        __return_value_1 = paddle.jit.dy2static.convert_ifelse(
-            paddle.jit.dy2static.convert_logical_not(__return_2), true_fn_5,
-            false_fn_5, (__return_2, __return_value_1,
-                         x_v), (__return_value_1, ), (__return_value_1, ))
+        __return_value_1 = _jst.convert_call(_jst.convert_ifelse)(
+            _jst.convert_call(_jst.convert_logical_not)(__return_2), true_fn_5,
+            false_fn_5, (__return_2, __return_value_1, x_v), (
+                __return_value_1, ), (__return_value_1, ))
         return __return_value_1
 
 

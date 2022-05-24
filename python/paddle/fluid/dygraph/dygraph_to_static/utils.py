@@ -185,6 +185,7 @@ def is_api_in_module(node, module_prefix):
         import paddle.fluid as fluid
         import paddle.fluid.dygraph as dygraph
         import paddle.fluid.layers as layers
+        import paddle.jit.dy2static as _jst
 
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
