@@ -42,6 +42,7 @@ class ShuffleChannelOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     int group = BOOST_GET_CONST(int, op_desc.GetAttr("group"));
 
+#if IS_TRT_VERSION_GE(8000)
     if (engine_->with_dynamic_shape()) {
       auto* input_shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
       auto* input_shape_tensor = input_shape_layer->getOutput(0);
@@ -92,7 +93,9 @@ class ShuffleChannelOpConverter : public OpConverter {
 
       RreplenishLayerAndOutput(output_layer, "shuffle_channel", {output_name},
                                test_mode);
-    } else {
+    }
+#endif
+    if (!engine_->with_dynamic_shape()) {
       int c = input_dims.d[0];
       int h = input_dims.d[1];
       int w = input_dims.d[2];
