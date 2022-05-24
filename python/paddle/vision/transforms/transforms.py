@@ -45,7 +45,14 @@ def _get_image_size(img):
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
     elif F._is_tensor_image(img):
-        return img.shape[1:][::-1]  # chw
+        if len(img.shape) == 3:
+            return img.shape[1:][::-1]  # chw -> wh
+        elif len(img.shape) == 4:
+            return img.shape[2:][::-1]  # nchw -> wh
+        else:
+            raise ValueError(
+                "The dim for input Tensor should be 3-D or 4-D, but received {}".
+                format(len(img.shape)))
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 

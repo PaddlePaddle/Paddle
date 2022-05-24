@@ -52,6 +52,7 @@ def get_gpus(selected_gpus):
 def start_local_trainers(cluster,
                          pod,
                          training_script,
+                         eager_mode,
                          training_script_args,
                          log_dir=None):
     current_env = copy.copy(os.environ.copy())
@@ -71,6 +72,9 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+
+        if not eager_mode:
+            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
 
         current_env.update(proc_env)
 
@@ -99,7 +103,7 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name):
+    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
         if fluid.core.get_cuda_device_count() == 0:
             return
 
@@ -112,6 +116,7 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
+            eager_mode=eager_mode,
             training_script=target_file_name,
             training_script_args=[])
 
@@ -125,13 +130,17 @@ class TestMultipleGpus(unittest.TestCase):
 
     def test_hapi_multiple_gpus_static(self):
         self.run_mnist_2gpu('dist_hapi_mnist_static.py')
+        self.run_mnist_2gpu('dist_hapi_mnist_static.py', eager_mode=False)
 
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
+        self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py', eager_mode=False)
 
     def test_hapi_amp_static(self):
         self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py')
+        self.run_mnist_2gpu('dist_hapi_pure_fp16_static.py', eager_mode=False)
 
 
 if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()
