@@ -153,6 +153,7 @@ class PSGPUWrapper {
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
+    VLOG(0) << "PSGPUWrapper Begin InitializeGPU";
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
@@ -219,6 +220,7 @@ class PSGPUWrapper {
       table_id_ = 0;
 
       // start build cpu&gpu ps thread
+      VLOG(0) << "PSGPUWrapper: before start build thread";
       start_build_thread();
     }
   }

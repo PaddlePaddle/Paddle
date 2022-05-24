@@ -21,17 +21,16 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-CacheManager::CacheManager(int worker_num): thread_num_(-1), batch_sz_(-1), worker_num_(worker_num) {
+CacheManager::CacheManager(): thread_num_(-1), batch_sz_(-1), worker_num_(1) {
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
     current_batch_fid_seq_lock = std::make_shared<std::mutex>();
 #endif
 }
 
-CacheManager::CacheManager(int thread_num, int batch_sz, int worker_num): 
-        thread_num_(thread_num), batch_sz_(batch_sz), worker_num_(worker_num) {
-#if defined(PADDLE_WITH_XPU_CACHE_BFID)
-    current_batch_fid_seq_lock = std::make_shared<std::mutex>();
-#endif
+void CacheManager::init(int thread_num, int batch_sz, int worker_num) {
+    thread_num_ = thread_num;
+    batch_sz_ = batch_sz;
+    worker_num_ = worker_num;
 }
 
 void CacheManager::clear_sign2fids() {
@@ -41,6 +40,7 @@ void CacheManager::clear_sign2fids() {
 }
 
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
+    VLOG(0) << "build_sign2fids: keylen:" << len;
     // pre-build the sign2fid_, in order not to use mutex
     for (size_t i = 0; i < len; ++i) {
         // assert(sign2fid_.find(d_keys[i]) == sign2fid_.end());
@@ -48,6 +48,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     }
     size_t origin_size = fid2meta_.size();
     fid2meta_.resize(origin_size + len);
+    VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
     // build sign 2 fids
     std::vector<std::thread> threads(thread_num_);
     size_t split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
@@ -64,6 +65,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     for (auto & thd : threads) {
         thd.join();
     }
+    VLOG(0) << "build_sign2fids: exit";
 }
 
 uint64_t CacheManager::query_sign2fid(const FeatureKey & key) {

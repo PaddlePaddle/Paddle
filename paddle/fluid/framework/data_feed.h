@@ -858,6 +858,8 @@ class DataFeed {
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
+  virtual int GetDefaultBatchSize() { return default_batch_size_; }
+
  protected:
   // The following three functions are used to check if it is executed in this
   // order:
@@ -988,7 +990,6 @@ class InMemoryDataFeed : public DataFeed {
   virtual void LoadIntoMemory();
   virtual void LoadIntoMemoryFromSo();
   virtual void SetRecord(T* records) { records_ = records; }
-  int GetDefaultBatchSize() { return default_batch_size_; }
   void AddBatchOffset(const std::pair<int, int>& offset) {
     batch_offsets_.push_back(offset);
   }
