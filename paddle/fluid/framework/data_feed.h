@@ -23,6 +23,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
@@ -30,7 +31,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <random>
 
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
@@ -794,47 +794,46 @@ struct BufState {
   int central_word;
   int step;
   engine_wrapper_t random_engine_;
-  
+
   int len;
   int cursor;
   int row_num;
-  
+
   int batch_size;
   int walk_len;
   std::vector<int>* window;
-  
+
   BufState() {}
   ~BufState() {}
-  
-  void Init(int graph_batch_size, int graph_walk_len, std::vector<int>* graph_window) {
+
+  void Init(int graph_batch_size, int graph_walk_len,
+            std::vector<int>* graph_window) {
     batch_size = graph_batch_size;
     walk_len = graph_walk_len;
     window = graph_window;
-    
+
     left = 0;
     right = window->size() - 1;
     central_word = -1;
     step = -1;
-    
+
     len = 0;
     cursor = 0;
-    for (size_t i = 0; i  < graph_window->size(); i++) {
+    for (size_t i = 0; i < graph_window->size(); i++) {
       VLOG(2) << "graph_window[" << i << "] = " << (*graph_window)[i];
     }
   }
-  
+
   void Reset(int total_rows) {
     cursor = 0;
     row_num = total_rows;
-    int tmp_len = cursor + batch_size > row_num
-                        ? row_num - cursor
-                        : batch_size;
+    int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
     len = tmp_len;
     central_word = -1;
     step = -1;
     GetNextCentrolWord();
   }
-  
+
   int GetNextStep() {
     step++;
     if (step <= right && central_word + (*window)[step] < walk_len) {
@@ -844,9 +843,12 @@ struct BufState {
   }
 
   void Debug() {
-    VLOG(2) << "left: " << left << " right: " << right << " central_word: " << central_word << " step: " << step << " cursor: " << cursor << " len: " << len << " row_num: " << row_num;
+    VLOG(2) << "left: " << left << " right: " << right
+            << " central_word: " << central_word << " step: " << step
+            << " cursor: " << cursor << " len: " << len
+            << " row_num: " << row_num;
   }
-  
+
   int GetNextCentrolWord() {
     if (++central_word >= walk_len) {
       return 0;
@@ -855,20 +857,20 @@ struct BufState {
     int random_window = random_engine_.engine() % window_size + 1;
     left = window_size - random_window;
     right = window_size + random_window - 1;
-    VLOG(2) << "random window: " << random_window << " window[" << left << "] = " << (*window)[left] << " window[" << right << "] = " << (*window)[right];
+    VLOG(2) << "random window: " << random_window << " window[" << left
+            << "] = " << (*window)[left] << " window[" << right
+            << "] = " << (*window)[right];
 
-    for (step = left; step <= right; step ++) {
+    for (step = left; step <= right; step++) {
       if (central_word + (*window)[step] >= 0) {
         return 1;
       }
     }
     return 0;
   }
-  
+
   int GetNextBatch() {
-    int tmp_len = cursor + batch_size > row_num
-                        ? row_num - cursor
-                        : batch_size;
+    int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
     cursor += tmp_len;
     len = tmp_len;
     central_word = -1;
@@ -876,13 +878,12 @@ struct BufState {
     GetNextCentrolWord();
     return tmp_len != 0;
   }
-
 };
 
 class GraphDataGenerator {
  public:
-  GraphDataGenerator() {};
-  virtual ~GraphDataGenerator() {};
+  GraphDataGenerator(){};
+  virtual ~GraphDataGenerator(){};
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc) {
     auto graph_config = data_feed_desc.graph_config();
     walk_degree_ = graph_config.walk_degree();
@@ -896,14 +897,23 @@ class GraphDataGenerator {
       batch_size_ = once_sample_startid_len_;
     }
     repeat_time_ = graph_config.sample_times_one_chunk();
-    buf_size_ = once_sample_startid_len_ * walk_len_ * walk_degree_ * repeat_time_;
-    VLOG(2) << "Confirm GraphConfig, walk_degree : " << walk_degree_ << ", walk_len : " << walk_len_ << ", window : " << window_ <<  ", once_sample_startid_len : " << once_sample_startid_len_ << ", sample_times_one_chunk : " << repeat_time_ << ", batch_size: " << batch_size_;
+    buf_size_ =
+        once_sample_startid_len_ * walk_len_ * walk_degree_ * repeat_time_;
+    VLOG(2) << "Confirm GraphConfig, walk_degree : " << walk_degree_
+            << ", walk_len : " << walk_len_ << ", window : " << window_
+            << ", once_sample_startid_len : " << once_sample_startid_len_
+            << ", sample_times_one_chunk : " << repeat_time_
+            << ", batch_size: " << batch_size_;
   };
-  void AllocResource(const paddle::platform::Place& place, std::vector<LoDTensor*> feed_vec, std::vector<int64_t>* h_device_keys);
+  void AllocResource(const paddle::platform::Place& place,
+                     std::vector<LoDTensor*> feed_vec,
+                     std::vector<int64_t>* h_device_keys);
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
-  void FillOneStep(int64_t* walk, int len, NeighborSampleResult &sample_res, int cur_degree, int step, int *len_per_row);
+  void FillOneStep(int64_t* walk, int len, NeighborSampleResult& sample_res,
+                   int cur_degree, int step, int* len_per_row);
+
  protected:
   int walk_degree_;
   int walk_len_;
@@ -930,7 +940,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_walk_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
   std::shared_ptr<phi::Allocation> d_random_row_;
-  // 
+  //
   std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
   int cur_sampleidx2row_;
   // record the keys to call graph_neighbor_sample
