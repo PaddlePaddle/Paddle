@@ -130,7 +130,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     int weight_sz = static_cast<int>(weights.size());
 
     auto i_dims = in->dims();
-    auto w_dims = weights[0]->dims();
+    const auto& w_dims = weights[0]->dims();
     jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
@@ -150,8 +150,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
               biases[i]->data<T>(), relus[i]->mutable_data<T>(place), attr);
     }
 
-    auto i_dims_last = relus[weight_sz - 2]->dims();
-    auto w_dims_last = weights[weight_sz - 1]->dims();
+    const auto& i_dims_last = relus[weight_sz - 2]->dims();
+    const auto& w_dims_last = weights[weight_sz - 1]->dims();
     attr.m = i_dims_last[0];
     attr.n = w_dims_last[1];
     attr.k = w_dims_last[0];
