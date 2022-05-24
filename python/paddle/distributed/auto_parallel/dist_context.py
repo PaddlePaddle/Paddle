@@ -141,6 +141,14 @@ class DistributedContext:
         return self._serial_fetch_vars
 
     @property
+    def dist_main_programs(self):
+        return self._dist_main_programs
+
+    @property
+    def dist_startup_programs(self):
+        return self._dist_startup_programs
+
+    @property
     def cluster(self):
         return self._cluster
 
@@ -171,14 +179,6 @@ class DistributedContext:
     @property
     def block_state(self):
         return self._block_state
-
-    @property
-    def dist_main_programs(self):
-        return self._dist_main_programs
-
-    @property
-    def dist_startup_programs(self):
-        return self._dist_startup_programs
 
     @property
     def has_annotation(self):
@@ -213,7 +213,7 @@ class DistributedContext:
 
         self._serial_optimizer = self._original_serial_optimizer
 
-        if self._original_serial_loss is not None:
+        if self._original_serial_loss:
             if isinstance(self._original_serial_loss, list):
                 assert len(self._original_serial_loss) == 1
                 loss = self._original_serial_loss[0]
@@ -316,8 +316,19 @@ class DistributedContext:
 
     def initialize(self):
         if not self._is_initialized:
-            # Resuse the restore function, but need a better way
-            self._restore_serial_info(mode="no_backup")
+            if not self._serial_main_program:
+                self._serial_main_program = self._original_serial_main_program
+            if not self._serial_startup_program:
+                self._serial_startup_program = self._original_serial_startup_program
+            if not self._serial_loss:
+                self._serial_loss = self._original_serial_loss
+            if not self._serial_optimizer:
+                self._serial_optimizer = self._original_serial_optimizer
+            if not self._serial_feed_vars:
+                self._serial_feed_vars = self._original_serial_feed_vars
+            if not self._serial_fetch_vars:
+                self._serial_fetch_vars = self._original_serial_fetch_vars
+
             self._init_dist_attr_for_program()
             # Backup the original distributed information for later restore
             self._original_dist_tensors_for_program = copy.deepcopy(

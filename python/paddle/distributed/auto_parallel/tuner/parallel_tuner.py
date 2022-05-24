@@ -94,9 +94,9 @@ class ParallelTuner:
         # ]
 
         # Each parallel strategy has two elements. The First one is for distributed tensors,
-        # and the second element is for distributed tensors
-        self._init_parallel_strategy = [None, None]
-        self._best_parallel_strategy = [None, None]
+        # the second element is for distributed tensors, the third element is for process meshes.
+        self._init_parallel_strategy = [None, None, None]
+        self._best_parallel_strategy = [None, None, None]
 
         self._completer = Completer(self._dist_context)
 
@@ -507,7 +507,7 @@ class ParallelTuner:
     def _amend_dist_attr(self):
         # 1) Reshape the process mesh of [1, x] to [x] or [x, 1] to [x],
         # and amend the corresponding dims_mapping.
-        # 2) Set the dim_mapping to -1 when the shape cannot be divided 
+        # 2) Set the dim_mapping to -1 when the shape cannot be divided
         # by the corresponding processes.
         for dist_op in self._dist_context._dist_ops_for_program.values():
             dist_attr = dist_op.dist_attr
@@ -659,13 +659,20 @@ class ParallelTuner:
 
     def _estimate_trial(self):
         assert self._cluster is not None
-        if self._mode == "test":
+        if self._mode == "eval":
+            print("here 1", flush=True)
             self._estimator = CostEstimator(
                 self._dist_context.serial_main_program,
                 self._cluster,
                 loop_count=self._loop_count)
-
+        elif self._mode == "predict":
+            print("here 2", flush=True)
+            self._estimator = CostEstimator(
+                self._dist_context.serial_main_program,
+                self._cluster,
+                loop_count=self._loop_count)
         elif self._mode == "train":
+            print("here 3", flush=True)
             # get serial main program with backward
             serial_main_program = self._dist_context.serial_main_program
             serial_startup_program = self._dist_context.serial_startup_program
@@ -712,24 +719,31 @@ class ParallelTuner:
             self._dist_context._dist_tensors_for_program)
         self._init_parallel_strategy[1] = copy.deepcopy(
             self._dist_context._dist_ops_for_program)
+        self._init_parallel_strategy[2] = copy.deepcopy(
+            self._dist_context.process_meshes)
 
         # Initialize the best parallel strategy to the initial one
         self._best_parallel_strategy[0] = copy.deepcopy(
             self._dist_context._dist_tensors_for_program)
         self._best_parallel_strategy[1] = copy.deepcopy(
             self._dist_context._dist_ops_for_program)
+        self._best_parallel_strategy[2] = copy.deepcopy(
+            self._dist_context._process_meshes)
 
     def _store_best_parallel_strategy(self):
         # Swap the best and the current parallel strategy
-        tmp = [None, None]
+        tmp = [None, None, None]
         tmp[0] = self._best_parallel_strategy[0]
         tmp[1] = self._best_parallel_strategy[1]
+        tmp[2] = self._best_parallel_strategy[2]
         self._best_parallel_strategy[
             0] = self._dist_context._dist_tensors_for_program
         self._best_parallel_strategy[
             1] = self._dist_context._dist_ops_for_program
+        self._best_parallel_strategy[2] = self._dist_context._process_meshes
         self._dist_context._dist_tensors_for_program = tmp[0]
         self._dist_context._dist_ops_for_program = tmp[1]
+        self._dist_context._process_meshes = tmp[2]
         self._dist_context._restore(
             serial=False, dist=True, dist_mode="to_default")
 
@@ -755,7 +769,6 @@ class ParallelTuner:
             trial = self._create_trial()
             if trial.status == TrialStatus.STOPPED:
                 break
-
             # We need to backup the distributed context, because the evaluation of one trail will
             # generate the backward and update parts which may change the context.
             # However, the distributed information of the context aren't backup since a new one is used.
@@ -772,15 +785,12 @@ class ParallelTuner:
                 self._update_trail(trial, results)
                 self._store_best_parallel_strategy()
                 best_time = cur_time
-
             # We need to restore the distributed context and reset the distributed information to the default.
             self._dist_context._restore(
                 serial=True, dist=True, dist_mode="to_default")
-
+        # Select the best parallel strategy
         self._dist_context._dist_tensors_for_program = self._best_parallel_strategy[
             0]
         self._dist_context._dist_ops_for_program = self._best_parallel_strategy[
             1]
-
-        print_program_with_dist_attr(self._dist_context.serial_main_program,
-                                     self._dist_context)
+        self._dist_context._process_meshes = self._best_parallel_strategy[2]

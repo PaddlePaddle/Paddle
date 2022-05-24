@@ -40,9 +40,9 @@ class TestEngineAPI(unittest.TestCase):
         self.assertEqual(process.returncode, 0)
 
         # Remove unnecessary files
-        log_path = os.path.join(file_dir, "log")
-        if os.path.exists(log_path):
-            shutil.rmtree(log_path)
+        # log_path = os.path.join(file_dir, "log")
+        # if os.path.exists(log_path):
+        #     shutil.rmtree(log_path)
         files_path = [path for path in os.listdir('.') if '.pd' in path]
         for path in files_path:
             if os.path.exists(path):

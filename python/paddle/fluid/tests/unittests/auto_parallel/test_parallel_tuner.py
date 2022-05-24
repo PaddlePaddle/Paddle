@@ -372,7 +372,7 @@ class TestParallelTuner(unittest.TestCase):
         dist_context.initialize()
 
         self.parallel_tuner = ParallelTuner(
-            dist_context, max_trials=3, mode="test")
+            dist_context, max_trials=3, mode="eval")
         self.parallel_tuner.tune()
 
     def test_tune_with_materialization(self):

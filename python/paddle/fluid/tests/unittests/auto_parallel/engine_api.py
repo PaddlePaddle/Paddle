@@ -43,7 +43,8 @@ sequence_len = 512
 image_size = hidden_size
 class_num = 10
 
-paddle.seed(44)
+np.random.seed(1234)
+paddle.seed(1234)
 
 
 class MyDataset(Dataset):
@@ -171,22 +172,22 @@ def train_full_auto():
         inputs_spec=inputs_spec,
         labels_spec=labels_spec,
         strategy=dist_strategy)
-    engine.prepare(optimizer, loss)
-    engine.fit(dataset,
-               batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               sample_generator=True)
+    # engine.prepare(optimizer, loss)
+    # engine.fit(dataset,
+    #            batch_size=batch_size,
+    #            steps_per_epoch=batch_num * batch_size,
+    #            sample_generator=True)
 
-    # eval_dataset = MyDataset(batch_size)
-    # engine.prepare(optimizer, loss, mode='eval')
-    # engine.evaluate(eval_dataset, batch_size)
+    eval_dataset = MyDataset(batch_size)
+    engine.prepare(optimizer, loss, mode='eval')
+    engine.evaluate(eval_dataset, batch_size)
 
-    # test_dataset = MyDataset(batch_size)
-    # engine.prepare(mode='predict')
-    # engine.predict(test_dataset, batch_size)
-    # engine.save('./mlp_inf', training=False, mode='predict')
+    test_dataset = MyDataset(batch_size)
+    engine.prepare(mode='predict')
+    engine.predict(test_dataset, batch_size)
+    engine.save('./mlp_inf', training=False, mode='predict')
 
 
 if __name__ == "__main__":
-    # train_semi_auto()
-    train_full_auto()
+    train_semi_auto()
+    # train_full_auto()

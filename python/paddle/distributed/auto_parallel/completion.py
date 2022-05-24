@@ -342,7 +342,7 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
-            # print("op bwd 2", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
+            # print("op bwd 3", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
         return changed
 
     def _update_dims_mapping_between_graphs(self):
@@ -1194,13 +1194,12 @@ class Completer:
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
-    def complete_update_annotation(self, serial_main_program=None):
+    def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""
 
-        if serial_main_program is None:
-            serial_main_program = self._dist_context.serial_main_program
-        else:
-            self._dist_context._serial_main_program = serial_main_program
+        # Notice: serial_main_program is actually a dist_main_program of current rank,
+        # and must be passed into this function. 
+        # TODO: We should fix this behavior.
 
         ops = list(serial_main_program.global_block().ops)
         vars = serial_main_program.global_block().vars
