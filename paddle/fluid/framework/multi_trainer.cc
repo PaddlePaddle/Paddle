@@ -153,7 +153,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       auto it = std::find(need_merge_var_names_.begin(),
                           need_merge_var_names_.end(), var->Name());
       if (it == need_merge_var_names_.end() && var->GetType() != proto::VarType::SELECTED_ROWS) {
-        VLOG(0) << "train param: " << var->Name();
+        VLOG(2) << "train param: " << var->Name();
         trainable_param_.push_back(var->Name());
       }
     }
@@ -283,7 +283,9 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
+#ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
+#endif
 
 #if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
