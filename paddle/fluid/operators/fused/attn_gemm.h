@@ -78,61 +78,64 @@ class AttnMatMul {
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
 
-    T* dB_output_ptr = d_weight->data<T>();
-    T* dA_output_ptr = d_input->data<T>();
-
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     if (!transA_) {
-      // fw: gemm-nt
+      // forward: gemm-nt
       if (transB_) {
-        // bw: gemm-tn, dB = (dC)^t * A
-        CBLAS_TRANSPOSE dB_transA = CblasTrans;
-        CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
-        int dB_m = output_size_;
-        int dB_n = input_size_;
-        int dB_k = bsz_seq_;
+        // backward: gemm-tn, dB = (dC)^T * A
+        if (d_weight) {
+          int dB_m = output_size_;
+          int dB_n = input_size_;
+          int dB_k = bsz_seq_;
 
-        // bw: gemm-nn, dA = dC * B
-        CBLAS_TRANSPOSE dA_transA = CblasNoTrans;
-        CBLAS_TRANSPOSE dA_transB = CblasNoTrans;
-        int dA_m = bsz_seq_;
-        int dA_n = input_size_;
-        int dA_k = output_size_;
+          T* dB_output_ptr = d_weight->data<T>();
+          blas.GEMM(CblasTrans, CblasNoTrans, dB_m, dB_n, dB_k, alpha,
+                    d_output->data<T>(), input->data<T>(), beta_dB,
+                    dB_output_ptr);
+        }
 
-        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
-                  d_output->data<T>(), input->data<T>(), beta_dB,
-                  dB_output_ptr);
-        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
-                  d_output->data<T>(), weight->data<T>(), beta_dA,
-                  dA_output_ptr);
+        // backward: gemm-nn, dA = dC * B
+        if (d_input) {
+          int dA_m = bsz_seq_;
+          int dA_n = input_size_;
+          int dA_k = output_size_;
+
+          T* dA_output_ptr = d_input->data<T>();
+          blas.GEMM(CblasNoTrans, CblasNoTrans, dA_m, dA_n, dA_k, alpha,
+                    d_output->data<T>(), weight->data<T>(), beta_dA,
+                    dA_output_ptr);
+        }
       } else {  // fw: gemm-nn
-        // bw: gemm-tn, dB = A^t * dC
-        CBLAS_TRANSPOSE dB_transA = CblasTrans;
-        CBLAS_TRANSPOSE dB_transB = CblasNoTrans;
-        int dB_m = input_size_;
-        int dB_n = output_size_;
-        int dB_k = bsz_seq_;
+        // backward: gemm-tn, dB = A^T * dC
+        if (d_weight) {
+          int dB_m = input_size_;
+          int dB_n = output_size_;
+          int dB_k = bsz_seq_;
 
-        // bw: gemm-nt, dA = dC * B^t
-        CBLAS_TRANSPOSE dA_transA = CblasNoTrans;
-        CBLAS_TRANSPOSE dA_transB = CblasTrans;
-        int dA_m = bsz_seq_;
-        int dA_n = input_size_;
-        int dA_k = output_size_;
+          T* dB_output_ptr = d_weight->data<T>();
+          blas.GEMM(CblasTrans, CblasNoTrans, dB_m, dB_n, dB_k, alpha,
+                    input->data<T>(), d_output->data<T>(), beta_dB,
+                    dB_output_ptr);
+        }
 
-        blas.GEMM(dB_transA, dB_transB, dB_m, dB_n, dB_k, alpha,
-                  input->data<T>(), d_output->data<T>(), beta_dB,
-                  dB_output_ptr);
-        blas.GEMM(dA_transA, dA_transB, dA_m, dA_n, dA_k, alpha,
-                  d_output->data<T>(), weight->data<T>(), beta_dA,
-                  dA_output_ptr);
+        // backward: gemm-nt, dA = dC * B^T
+        if (d_input) {
+          int dA_m = bsz_seq_;
+          int dA_n = input_size_;
+          int dA_k = output_size_;
+
+          T* dA_output_ptr = d_input->data<T>();
+          blas.GEMM(CblasNoTrans, CblasTrans, dA_m, dA_n, dA_k, alpha,
+                    d_output->data<T>(), weight->data<T>(), beta_dA,
+                    dA_output_ptr);
+        }
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "AttnMatMul wrapper do not support (transA=T, transB=T/N)"
           "parameters."));
     }
-    if (compute_bias_) {
+    if (compute_bias_ && d_bias) {
       // reduce: {0, 1, 2, 3, 4} -> {2, 3, 4} or {0, 1, 2} -> {2} or {0,1,2,3}
       // -> {3} or {0,1,2,3,4} -> {3,4}
       const auto input_dims = d_output->dims();
