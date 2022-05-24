@@ -102,11 +102,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adam_impl(
     kernel_out_5 = input_master_param.get_ptr();
   }
 
-  paddle::optional<phi::MetaTensor> input_meta_ref_master_param =
-      MakeMetaTensor(input_master_param);
+  auto input_meta_ref_master_param = MakeMetaTensor(input_master_param);
 
-  paddle::optional<phi::MetaTensor> input_meta_ref_skip_update =
-      MakeMetaTensor(input_skip_update);
+  auto input_meta_ref_skip_update = MakeMetaTensor(input_skip_update);
 
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
@@ -337,26 +335,9 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     kernel_out_5 = input_master_param.get_ptr();
   }
 
-  paddle::optional<phi::MetaTensor> input_meta_ref_master_param(paddle::none);
-  phi::DenseTensor dt;
-  phi::MetaTensor input_meta_tmp_master_param(dt);
-  if (input_master_param) {
-    input_meta_tmp_master_param.set_dtype(input_master_param->dtype());
-    input_meta_tmp_master_param.set_dims(input_master_param->dims());
-    input_meta_tmp_master_param.set_layout(input_master_param->layout());
-    input_meta_ref_master_param = input_meta_tmp_master_param;
-  }
+  auto input_meta_ref_master_param = MakeMetaTensor(input_master_param);
 
-  paddle::optional<phi::MetaTensor> input_meta_ref_skip_update(paddle::none);
-  phi::DenseTensor dt1;
-  phi::MetaTensor input_meta_tmp_skip_update(dt1);
-
-  if (input_skip_update) {
-    input_meta_tmp_skip_update.set_dtype(input_skip_update->dtype());
-    input_meta_tmp_skip_update.set_dims(input_skip_update->dims());
-    input_meta_tmp_skip_update.set_layout(input_skip_update->layout());
-    input_meta_ref_skip_update = input_meta_tmp_skip_update;
-  }
+  auto input_meta_ref_skip_update = MakeMetaTensor(input_skip_update);
 
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
@@ -771,15 +752,8 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
     kernel_out_2 = input_master_param.get_ptr();
   }
 
-  paddle::optional<phi::MetaTensor> input_meta_ref_master_param(paddle::none);
-  phi::DenseTensor dt;
-  phi::MetaTensor input_meta_tmp_master_param(dt);
-  if (input_master_param) {
-    input_meta_tmp_master_param.set_dtype(input_master_param->dtype());
-    input_meta_tmp_master_param.set_dims(input_master_param->dims());
-    input_meta_tmp_master_param.set_layout(input_master_param->layout());
-    input_meta_ref_master_param = input_meta_tmp_master_param;
-  }
+  auto input_meta_ref_master_param = MakeMetaTensor(input_master_param);
+
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
   if (kernel_out_2) {
@@ -966,10 +940,6 @@ std::tuple<Tensor, Tensor> sgd_impl(
     auto in_grad = TensorToSelectedRows(grad);
     auto in_master_param_opt = TensorToSelectedRows(master_param);
     auto master_param_meta = MakeMetaTensor(in_master_param_opt);
-    paddle::optional<phi::MetaTensor> master_param_meta_opt =
-        master_param
-            ? paddle::make_optional<phi::MetaTensor>(*master_param_meta)
-            : paddle::none;
 
     phi::SelectedRows* kernel_out_0 =
         SetSelectedRowsKernelOutput(kernel_key.backend(), &std::get<0>(out));
@@ -981,7 +951,7 @@ std::tuple<Tensor, Tensor> sgd_impl(
     SgdInferMeta(MakeMetaTensor(*in_param),
                  MakeMetaTensor(*in_learning_rate),
                  MakeMetaTensor(*in_grad),
-                 master_param_meta_opt,
+                 master_param_meta,
                  multi_precision,
                  &meta_out_0,
                  &meta_out_1);

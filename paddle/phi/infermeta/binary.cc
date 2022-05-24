@@ -201,7 +201,7 @@ void BCELossInferMeta(const MetaTensor& input,
 }
 
 void BincountInferMeta(const MetaTensor& x,
-                       const paddle::optional<MetaTensor>& weights,
+                       const MetaTensor& weights,
                        int minlength,
                        MetaTensor* out) {
   auto input_dim = x.dims();
@@ -220,8 +220,8 @@ void BincountInferMeta(const MetaTensor& x,
                                    "But the dimension of Input(X) is [%d]",
                                    input_dim.size()));
 
-  if (weights.is_initialized()) {
-    auto weights_dim = weights->dims();
+  if (weights) {
+    auto weights_dim = weights.dims();
     PADDLE_ENFORCE_EQ(weights_dim.size(),
                       1,
                       phi::errors::InvalidArgument(
@@ -241,8 +241,8 @@ void BincountInferMeta(const MetaTensor& x,
             input_dim));
   }
   out->set_dims(phi::make_ddim({-1}));
-  if (weights.is_initialized()) {
-    out->set_dtype(weights->dtype());
+  if (weights) {
+    out->set_dtype(weights.dtype());
   } else {
     out->set_dtype(x.dtype());
   }
@@ -864,7 +864,7 @@ void DistInferMeta(const MetaTensor& x,
 }
 
 void DropoutInferMeta(const MetaTensor& x,
-                      const paddle::optional<MetaTensor>& seed_tensor,
+                      const MetaTensor& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,
@@ -982,7 +982,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
 }
 
 void ExpandAsInferMeta(const MetaTensor& x,
-                       const paddle::optional<MetaTensor>& y,
+                       const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
 #define MAX_RANK_SUPPORTED 6

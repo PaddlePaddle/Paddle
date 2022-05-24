@@ -188,7 +188,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,
-                                 const paddle::optional<MetaTensor>& mask,
+                                 const MetaTensor& mask,
                                  const MetaTensor& out_grad,
                                  const std::vector<int>& strides,
                                  const std::vector<int>& paddings,
@@ -202,7 +202,7 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
                                  MetaTensor* mask_grad) {
   GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
   if (mask) {
-    UnchangedInferMeta(mask.get(), mask_grad);
+    UnchangedInferMeta(mask, mask_grad);
   }
 }
 
@@ -379,7 +379,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
 
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
-                          const paddle::optional<MetaTensor>& weight,
+                          const MetaTensor& weight,
                           const MetaTensor& total_weight,
                           const MetaTensor& out_grad,
                           int64_t ignore_index,
@@ -492,7 +492,7 @@ void PoolGradInferMeta(const MetaTensor& x,
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
-                            const paddle::optional<MetaTensor>& rois_num,
+                            const MetaTensor& rois_num,
                             const MetaTensor& dout,
                             int pooled_height,
                             int pooled_width,

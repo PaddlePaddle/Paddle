@@ -100,8 +100,8 @@ void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& moment2,
                    const MetaTensor& beta1_pow,
                    const MetaTensor& beta2_pow,
-                   const paddle::optional<MetaTensor>& master_param,
-                   const paddle::optional<MetaTensor>& skip_update,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
                    const Scalar& beta1,
                    const Scalar& beta2,
                    const Scalar& epsilon,
@@ -238,8 +238,8 @@ void AdamwInferMeta(const MetaTensor& param,
                     const MetaTensor& moment2,
                     const MetaTensor& beta1_pow,
                     const MetaTensor& beta2_pow,
-                    const paddle::optional<MetaTensor>& master_param,
-                    const paddle::optional<MetaTensor>& skip_update,
+                    const MetaTensor& master_param,
+                    const MetaTensor& skip_update,
                     const Scalar& beta1,
                     const Scalar& beta2,
                     const Scalar& epsilon,
@@ -580,7 +580,7 @@ void BatchNormInferInferMeta(const MetaTensor& x,
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
-                                    const paddle::optional<MetaTensor>& bias,
+                                    const MetaTensor& bias,
                                     MetaTensor* out,
                                     MetaConfig config) {
   auto x_dims = x.dims();
@@ -619,8 +619,8 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
                         "The second dimension of input(Y) must be equal to "
                         "the third dimension of the input(Weight)."));
 
-  if (bias.get_ptr()) {
-    auto bias_dims = bias->dims();
+  if (bias) {
+    auto bias_dims = bias.dims();
     PADDLE_ENFORCE_EQ(bias_dims.size(),
                       2UL,
                       errors::InvalidArgument(
@@ -772,7 +772,7 @@ inline int ConvOutputSize(
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
-                             const paddle::optional<MetaTensor>& mask,
+                             const MetaTensor& mask,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
                              const std::vector<int>& dilations,
@@ -918,7 +918,7 @@ void DeformableConvInferMeta(const MetaTensor& x,
             deformable_groups));
 
     if (mask) {
-      auto mask_dims = mask->dims();
+      auto mask_dims = mask.dims();
       PADDLE_ENFORCE_EQ(output_shape[2],
                         mask_dims[2],
                         phi::errors::InvalidArgument(
@@ -958,9 +958,9 @@ void DeformableConvInferMeta(const MetaTensor& x,
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
-                                  const paddle::optional<MetaTensor>& path,
-                                  const paddle::optional<MetaTensor>& code,
-                                  const paddle::optional<MetaTensor>& bias,
+                                  const MetaTensor& path,
+                                  const MetaTensor& code,
+                                  const MetaTensor& bias,
                                   int num_classes,
                                   bool remote_prefetch,
                                   int trainer_id,
@@ -991,9 +991,9 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 
 static void Interpolate1DInferShapeCheck(
     const MetaTensor& x,
-    const paddle::optional<MetaTensor>& out_size,
+    const MetaTensor& out_size,
     paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
-    const paddle::optional<MetaTensor>& scale_tensor,
+    const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -1048,7 +1048,7 @@ static void Interpolate1DInferShapeCheck(
 
   int out_w_tmp;
   if (scale_tensor) {
-    auto scale_tensor_dim = scale_tensor->dims();
+    auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
         scale_tensor_dim.size(),
         1,
@@ -1086,7 +1086,7 @@ static void Interpolate1DInferShapeCheck(
   }
 
   if (out_size && config.is_runtime) {
-    auto out_size_dim = out_size->dims();
+    auto out_size_dim = out_size.dims();
     PADDLE_ENFORCE_EQ(
         out_size_dim.size(),
         1,
@@ -1118,9 +1118,9 @@ static void Interpolate1DInferShapeCheck(
 
 static void Interpolate2DInferShapeCheck(
     const MetaTensor& x,
-    const paddle::optional<MetaTensor>& out_size,
+    const MetaTensor& out_size,
     paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
-    const paddle::optional<MetaTensor>& scale_tensor,
+    const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -1178,7 +1178,7 @@ static void Interpolate2DInferShapeCheck(
 
   int out_h_tmp, out_w_tmp;
   if (scale_tensor) {
-    auto scale_tensor_dim = scale_tensor->dims();
+    auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
         scale_tensor_dim.size(),
         1,
@@ -1231,7 +1231,7 @@ static void Interpolate2DInferShapeCheck(
   }
 
   if (out_size && config.is_runtime) {
-    auto out_size_dim = out_size->dims();
+    auto out_size_dim = out_size.dims();
     PADDLE_ENFORCE_EQ(
         out_size_dim.size(),
         1,
@@ -1263,9 +1263,9 @@ static void Interpolate2DInferShapeCheck(
 
 static void Interpolate3DInferShapeCheck(
     const MetaTensor& x,
-    const paddle::optional<MetaTensor>& out_size,
+    const MetaTensor& out_size,
     paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
-    const paddle::optional<MetaTensor>& scale_tensor,
+    const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -1321,7 +1321,7 @@ static void Interpolate3DInferShapeCheck(
 
   int out_d_tmp, out_h_tmp, out_w_tmp;
   if (scale_tensor) {
-    auto scale_tensor_dim = scale_tensor->dims();
+    auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
         scale_tensor_dim.size(),
         1,
@@ -1389,7 +1389,7 @@ static void Interpolate3DInferShapeCheck(
   }
 
   if (out_size && config.is_runtime) {
-    auto out_size_dim = out_size->dims();
+    auto out_size_dim = out_size.dims();
     PADDLE_ENFORCE_EQ(
         out_size_dim.size(),
         1,
@@ -1419,9 +1419,9 @@ static void Interpolate3DInferShapeCheck(
 
 void InterpolateInferMeta(
     const MetaTensor& x,
-    const paddle::optional<MetaTensor>& out_size,
+    const MetaTensor& out_size,
     paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
-    const paddle::optional<MetaTensor>& scale_tensor,
+    const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -1546,7 +1546,7 @@ void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,
                        const MetaTensor& learning_rate,
-                       const paddle::optional<MetaTensor>& master_param,
+                       const MetaTensor& master_param,
                        float mu,
                        bool use_nesterov,
                        const std::string& regularization_method,
@@ -1709,7 +1709,7 @@ void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
-                        const paddle::optional<MetaTensor>& rois_num,
+                        const MetaTensor& rois_num,
                         int pooled_height,
                         int pooled_width,
                         int output_channels,
@@ -1732,8 +1732,8 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                     errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
-  if (rois_num.get_ptr()) {
-    auto rois_num_dims = rois_num->dims();
+  if (rois_num) {
+    auto rois_num_dims = rois_num.dims();
     PADDLE_ENFORCE_EQ(
         rois_num_dims.size(),
         1,
@@ -1787,7 +1787,7 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
-                      const paddle::optional<MetaTensor>& mean_grad,
+                      const MetaTensor& mean_grad,
                       float epsilon,
                       float decay,
                       float momentum,
@@ -1837,14 +1837,14 @@ void RmspropInferMeta(const MetaTensor& param,
   mean_square_out->set_dtype(mean_square.dtype());
   if (centered) {
     mean_grad_out->set_dims(param_dim);
-    mean_grad_out->set_dtype(mean_grad.get_ptr()->dtype());
+    mean_grad_out->set_dtype(mean_grad.dtype());
   }
 }
 
 void RnnInferMeta(const MetaTensor& x,
                   const std::vector<const MetaTensor*>& pre_state,
                   const std::vector<const MetaTensor*>& weight_list,
-                  const paddle::optional<MetaTensor>& sequence_length,
+                  const MetaTensor& sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
                   int input_size,
@@ -1867,7 +1867,7 @@ void RnnInferMeta(const MetaTensor& x,
                                    in_dims.size()));
 
   if (sequence_length) {
-    auto seq_dims = sequence_length->dims();
+    auto seq_dims = sequence_length.dims();
     PADDLE_ENFORCE_EQ(
         in_dims[1],
         seq_dims[0],
@@ -1929,7 +1929,7 @@ void RnnInferMeta(const MetaTensor& x,
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
-                  const paddle::optional<MetaTensor>& master_param,
+                  const MetaTensor& master_param,
                   bool multi_precision,
                   MetaTensor* param_out,
                   MetaTensor* master_param_out) {
@@ -2006,8 +2006,8 @@ void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
-                      const paddle::optional<MetaTensor>& logits_length,
-                      const paddle::optional<MetaTensor>& labels_length,
+                      const MetaTensor& logits_length,
+                      const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
                       MetaTensor* warpctc_grad,
@@ -2015,7 +2015,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   int sequence_width = 0;
 
-  if (logits_length.is_initialized()) {
+  if (logits_length) {
     sequence_width = logits_dims[2];
   } else {
     sequence_width =
@@ -2069,8 +2069,8 @@ void WhereInferMeta(const MetaTensor& condition,
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,
-                           const paddle::optional<MetaTensor>& hashtable_value,
-                           const paddle::optional<MetaTensor>& hashtable_index,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
                            bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
@@ -2100,8 +2100,8 @@ void GraphReindexInferMeta(const MetaTensor& x,
   GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
   GraphReindexShapeCheck(count.dims(), "Count");
   if (flag_buffer_hashtable) {
-    GraphReindexShapeCheck(hashtable_value->dims(), "HashTable_Value");
-    GraphReindexShapeCheck(hashtable_index->dims(), "HashTable_Index");
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
   }
 
   reindex_src->set_dims({-1});
@@ -2112,18 +2112,17 @@ void GraphReindexInferMeta(const MetaTensor& x,
   out_nodes->set_dtype(x.dtype());
 }
 
-void GraphSampleNeighborsInferMeta(
-    const MetaTensor& row,
-    const MetaTensor& col_ptr,
-    const MetaTensor& x,
-    const paddle::optional<MetaTensor>& eids,
-    const paddle::optional<MetaTensor>& perm_buffer,
-    int sample_size,
-    bool return_eids,
-    bool flag_perm_buffer,
-    MetaTensor* out,
-    MetaTensor* out_count,
-    MetaTensor* out_eids) {
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids) {
   // GSN: GraphSampleNeighbors
   auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
     if (dims.size() == 2) {
@@ -2149,12 +2148,12 @@ void GraphSampleNeighborsInferMeta(
   GSNShapeCheck(col_ptr.dims(), "Col_Ptr");
   GSNShapeCheck(x.dims(), "X");
   if (return_eids) {
-    GSNShapeCheck(eids->dims(), "Eids");
+    GSNShapeCheck(eids.dims(), "Eids");
     out_eids->set_dims({-1});
     out_eids->set_dtype(row.dtype());
   }
   if (flag_perm_buffer) {
-    GSNShapeCheck(perm_buffer->dims(), "Perm_Buffer");
+    GSNShapeCheck(perm_buffer.dims(), "Perm_Buffer");
   }
 
   out->set_dims({-1});
@@ -2166,7 +2165,7 @@ void GraphSampleNeighborsInferMeta(
 void Yolov3LossInferMeta(const MetaTensor& x,
                          const MetaTensor& gt_box,
                          const MetaTensor& gt_label,
-                         const paddle::optional<MetaTensor>& gt_score,
+                         const MetaTensor& gt_score,
                          const std::vector<int>& anchors,
                          const std::vector<int>& anchor_mask,
                          int class_num,
@@ -2271,8 +2270,8 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                         "But received class_num(%s) < 0",
                         class_num));
 
-  if (gt_score.get_ptr()) {
-    auto dim_gtscore = gt_score->dims();
+  if (gt_score) {
+    auto dim_gtscore = gt_score.dims();
     PADDLE_ENFORCE_EQ(
         dim_gtscore.size(),
         2,

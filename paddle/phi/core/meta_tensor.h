@@ -37,11 +37,17 @@ struct MetaConfig {
 
 class MetaTensor {
  public:
-  MetaTensor() = default;
+  typedef void (*unspecified_bool_type)();
+
+  MetaTensor() : is_nullopt_(true), tensor_(nullptr){};
 
   // supporting implicit construction is easier to use
-  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
-  MetaTensor(const TensorBase& tensor)                 // NOLINT
+  MetaTensor(TensorBase* tensor) : tensor_(tensor) {  // NOLINT
+    if (tensor) {
+      is_nullopt_ = true;
+    }
+  }
+  MetaTensor(const TensorBase& tensor)  // NOLINT
       : tensor_(const_cast<TensorBase*>(&tensor)) {}
   MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
 
@@ -66,12 +72,24 @@ class MetaTensor {
 
   virtual bool initialized() const;
 
+  operator unspecified_bool_type() const {
+    return is_nullopt_ ? 0 : unspecified_bool_true;
+  }
+
+  bool operator!() const { return is_nullopt_; }
+
+ protected:
+  bool is_nullopt_{false};
+
  private:
+  static void unspecified_bool_true() {}
+
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
   TensorBase* tensor() const;
-  TensorBase* tensor_;
+
+  TensorBase* tensor_ = nullptr;
 };
 
 }  // namespace phi

@@ -28,7 +28,9 @@ namespace framework {
 class CompatMetaTensor : public phi::MetaTensor {
  public:
   explicit CompatMetaTensor(bool is_runtime)
-      : is_runtime_(is_runtime), initialized_(false) {}
+      : is_runtime_(is_runtime), initialized_(false) {
+    is_nullopt_ = true;
+  }
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
       : var_(std::move(var)), is_runtime_(is_runtime) {}
 
@@ -107,7 +109,7 @@ class CompatInferMetaContext : public phi::InferMetaContext {
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
-  paddle::optional<phi::MetaTensor> OptionalInputAt(size_t idx) const override;
+  const phi::MetaTensor& OptionalInputAt(size_t idx) const override;
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;

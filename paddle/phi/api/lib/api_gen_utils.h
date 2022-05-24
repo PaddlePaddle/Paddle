@@ -50,7 +50,7 @@ std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 
 phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor);
 
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
+phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::DenseTensor>& tensor);
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
@@ -61,7 +61,7 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
 
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
+phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SelectedRows>& tensor);
 
 phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor);

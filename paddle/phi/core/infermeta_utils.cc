@@ -65,11 +65,8 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return inputs_.at(idx);
 }
 
-paddle::optional<MetaTensor> InferMetaContext::OptionalInputAt(
-    size_t idx) const {
-  const auto& input = inputs_.at(idx);
-  return input.initialized() ? paddle::optional<MetaTensor>{input}
-                             : paddle::none;
+const phi::MetaTensor& InferMetaContext::OptionalInputAt(size_t idx) const {
+  return inputs_.at(idx);
 }
 
 std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
