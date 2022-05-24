@@ -211,7 +211,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
         new_lr = ipu_strategy_->lr;
       } else {
         new_lr =
-          GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+            GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
       }
       VLOG(10) << "New Lr: " << new_lr;
       optimizer = compiler_resources_->UpdateOptimizer(new_lr);

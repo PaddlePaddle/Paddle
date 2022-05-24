@@ -32,10 +32,9 @@ class IdentityLossOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) The input of identity_loss op");
     AddOutput("Out", "(Tensor) The output of identity_loss op");
-    AddAttr<int>("reduction",
-                 "(int, default 1). The reduction.")
-      .SetDefault(1)
-      .InEnum({0, 1, 2});
+    AddAttr<int>("reduction", "(int, default 1). The reduction.")
+        .SetDefault(1)
+        .InEnum({0, 1, 2});
     AddComment(R"DOC(
 IdentityLoss Operator mark the Loss var.
 
@@ -93,6 +92,5 @@ REGISTER_OPERATOR(identity_loss, ops::IdentityLossOp, ops::IdentityLossOpMaker,
                   ops::IdentityLossInplaceInferer,
                   IdentityLossInferShapeFunctor);
 
-REGISTER_OPERATOR(identity_loss_grad,
-                  ops::IdentityLossGradOp,
+REGISTER_OPERATOR(identity_loss_grad, ops::IdentityLossGradOp,
                   ops::IdentityLossGradInplaceInferer);

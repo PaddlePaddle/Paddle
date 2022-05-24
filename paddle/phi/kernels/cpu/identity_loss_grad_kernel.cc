@@ -44,7 +44,7 @@ void IdentityLossGradKernel(const Context& dev_ctx,
     default:
       // error
       PADDLE_THROW(errors::InvalidArgument(
-            "reduction should be 0, 1 and 2. But get %d", reduction));
+          "reduction should be 0, 1 and 2. But get %d", reduction));
   }
 }
 

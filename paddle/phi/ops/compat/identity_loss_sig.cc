@@ -29,7 +29,6 @@ KernelSignature IdentityLossGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(identity_loss,
-                           phi::IdentityLossOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(identity_loss, phi::IdentityLossOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(identity_loss_grad,
                            phi::IdentityLossGradOpArgumentMapping);

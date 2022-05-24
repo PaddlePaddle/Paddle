@@ -449,8 +449,6 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              const std::string& data_format,
                              MetaTensor* out);
 
-void IdentityLossInferMeta(const MetaTensor& x,
-                           int reduction,
-                           MetaTensor* out);
+void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 }  // namespace phi
