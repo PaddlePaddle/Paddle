@@ -37,6 +37,9 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   ipu_rt_op_desc.SetInput("FeedList", feed_list);
   ipu_rt_op_desc.SetOutput("FetchList", fetch_list);
   ipu_rt_op_desc.Flush();
+  // set op_role to avoid program.clone failure
+  ipu_rt_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                         {static_cast<int>(framework::OpRole::kForward)});
 
   // Create a new node for the ipu_runtime_op.
   auto* ipu_rt_node = graph->CreateOpNode(&ipu_rt_op_desc);

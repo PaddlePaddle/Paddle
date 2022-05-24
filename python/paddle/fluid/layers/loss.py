@@ -41,6 +41,7 @@ __all__ = [
     'hsigmoid',
     'sampled_softmax_with_cross_entropy',
     'softmax_with_cross_entropy',
+    'identity_loss',
     'rank_loss',
     'margin_rank_loss',
     'sigmoid_cross_entropy_with_logits',
@@ -1325,6 +1326,55 @@ def softmax_with_cross_entropy(logits,
         return loss, softmax
 
     return loss
+
+
+def identity_loss(x, reduction="none"):
+    r"""Marks a tensor as being part of the loss calculation for IPU.
+
+    This function should be called on the (final) loss of a model so that
+    it is used as the start of backpropagation. This is equivalent to calling
+    ``x.backward()`` on a tensor ``x`` when running on the CPU.
+
+    Parameters:
+        x (Variable): The calculated loss ``Tensor``.
+        reduction(str|int): Reduce the loss output. The default value is "none". Supported values are:
+
+            * ``"sum"``: Sum the losses.
+            * ``"mean"``: Take the mean of the losses.
+            * ``"none"``: Don't reduce the losses.
+
+    Returns:
+        Variable: The loss ``Tensor`` with the specified reduction applied.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            loss = fluid.data(name="loss", shape=[-1, 1], dtype="float32")
+            out = fluid.layers.identity_loss(loss, reduction=1)
+    """
+    if isinstance(reduction, str):
+        reduction = {"mean": 0, "sum": 1, "none": 2}.get(reduction.lower())
+        if reduction is None:
+            raise Exception("Unsupported reduction type.")
+
+    if _non_static_mode():
+        return _C_ops.identity_loss(x, "reduction", reduction)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")
+    attrs = {'reduction': reduction}
+    helper = LayerHelper('identity_loss', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="identity_loss",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs=attrs)
+    return out
 
 
 def rank_loss(label, left, right, name=None):
