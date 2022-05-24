@@ -121,7 +121,7 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
-      auto x_dims = ins[i]->dims();
+      const auto& x_dims = ins[i]->dims();
       auto x_lod = ins[i]->lod()[0];
       const T* src = ins[i]->data<T>();
       T* dst = y_data + i * w;
