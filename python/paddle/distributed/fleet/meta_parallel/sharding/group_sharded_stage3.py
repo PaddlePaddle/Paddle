@@ -339,10 +339,11 @@ class GroupShardedStage3(nn.Layer):
                 self._param2buffer[param.name].append(
                     (rank_ * pre_buffer, (rank_ + 1) * pre_buffer))
 
-            # Record param's dtype
-            param2dtype[param.name] = param.dtype
             # 3.Flatten layer params and release other rank buffer
             self._param_storage(param, buffer_size)
+
+            # Record param's dtype
+            param2dtype[param.name] = param.dtype
 
     def _param_storage(self, param, buffer_size):
         """

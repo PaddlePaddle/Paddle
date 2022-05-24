@@ -199,7 +199,10 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined()) {
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  if (!self->tensor.defined() ||
+      (dense_tensor && !dense_tensor->IsInitialized())) {
     // be same to old dygraph
     return ToPyObject(framework::proto::VarType::FP32);
   }
