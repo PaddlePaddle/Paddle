@@ -139,6 +139,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
                 self.pass_ctx)
             ps_builder._build_programs()
+            if self.pass_ctx._attrs['use_ps_gpu'] and idx > 0:
+                block = startup_program[idx].global_block()
+                for ids, op in list(enumerate(block.ops)):
+                    if op.type == 'c_comm_init_all':
+                        block._remove_op(ids)
+                        break
             startup_program[idx] = self.pass_ctx._attrs['cloned_startup']
         return None, None
 
