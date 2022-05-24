@@ -166,6 +166,7 @@ void GraphGpuWrapper::upload_batch(int idx,
     // vec.push_back(g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]));
     GpuPsCommGraph sub_graph =
         g->cpu_graph_table->make_gpu_ps_graph(idx, ids[i]);
+    sub_graph.display_on_cpu();
     g->build_graph_on_single_gpu(sub_graph, i, idx);
     sub_graph.release_on_cpu();
     VLOG(0) << "sub graph on gpu " << i << " is built";
