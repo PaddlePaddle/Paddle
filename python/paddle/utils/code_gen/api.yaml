@@ -1562,7 +1562,7 @@
     func : PadInferMeta
   kernel :
     func : pad
-  # backward : pad_grad
+  backward : pad_grad
 
 - api : pad3d
   args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
