@@ -11,6 +11,8 @@ register_operators(EXCLUDES
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
     skip_layernorm_op
+    yolo_box_head_op
+    yolo_box_post_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
     fusion_gru_op
@@ -19,6 +21,7 @@ register_operators(EXCLUDES
     fused_attention_op
     fused_transformer_op
     fused_feedforward_op
+    fused_multi_transformer_op
     resnet_unit_op
     fused_gemm_epilogue_op)
 
@@ -52,6 +55,8 @@ if (WITH_GPU OR WITH_ROCM)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     op_library(skip_layernorm_op)
+    op_library(yolo_box_head_op)
+    op_library(yolo_box_post_op)
     op_library(fused_embedding_eltwise_layernorm_op)
     # fusion_group
     if(NOT APPLE AND NOT WIN32)
@@ -73,6 +78,7 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(fused_feedforward_op)
         # fused_attention_op
         op_library(fused_attention_op)
+        op_library(fused_multi_transformer_op)
     endif()
     # resnet_unit needs cudnn 8.0 above
     if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))

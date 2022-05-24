@@ -104,7 +104,7 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               static_cast<T>(-FLT_MAX));
+               static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {

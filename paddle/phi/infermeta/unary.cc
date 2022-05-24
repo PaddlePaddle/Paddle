@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/impl/einsum_impl.h"
 
 namespace phi {
 
@@ -228,13 +229,6 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
-void CopyToInferMeta(const MetaTensor& x,
-                     Backend backend,
-                     bool blocking,
-                     MetaTensor* out) {
-  UnchangedInferMeta(x, out);
-}
-
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
@@ -403,6 +397,47 @@ void EighInferMeta(const MetaTensor& x,
   }
   out_w->set_dims(phi::make_ddim(values_dim));
   out_v->set_dims(input_dim);
+}
+
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out) {
+  // collect the following informations to prepare einsum.
+  LabelMap labelshape(0);
+  LabelMap labeltype(LabelType::Reduction);
+  std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
+  std::vector<char> all_labels;
+  std::vector<int> broadcast_dims;
+  std::vector<int> output_dims;
+  std::vector<std::vector<int>> ellipsis_dims(2);
+
+  std::vector<DDim> input_dims;
+  for (auto& i : inputs) {
+    input_dims.push_back(i->dims());
+  }
+  std::string right;
+  ParseEinsumEquation(equation,
+                      input_dims,
+                      &labelshape,
+                      &labeltype,
+                      &all_labels,
+                      &label2perms,
+                      &ellipsis_dims,
+                      &broadcast_dims,
+                      &output_dims,
+                      &right);
+
+  VLOG(3) << "Einsum Infershape: input dims:"
+          << paddle::string::join_strings(input_dims, "\n");
+  VLOG(3) << "Einsum Infershape: equation:" << equation;
+  VLOG(3) << "Einsum Infershape: all_labels:"
+          << paddle::string::join_strings(all_labels, ",");
+  VLOG(3) << "Einsum Infershape: output dims:"
+          << paddle::string::join_strings(output_dims, ",");
+  VLOG(3) << "Label Type is : " << label_to_string(all_labels, labeltype);
+  VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
+  out->set_dims(make_ddim(output_dims));
+  out->set_dtype(inputs[0]->dtype());
 }
 
 void ExpandInferMeta(const MetaTensor& x,
@@ -1423,6 +1458,66 @@ void PixelShuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_GE(downscale_factor,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "downscale_factor should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[2] % downscale_factor) == 0 &&
+            (input_dims[3] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[2],
+                                     input_dims[3]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[1] % downscale_factor) == 0 &&
+            (input_dims[2] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[1],
+                                     input_dims[2]));
+  }
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] / downscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] / downscale_factor;
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 void PNormInferMeta(const MetaTensor& x,
                     float porder,
                     int axis,
@@ -2068,8 +2163,8 @@ void SplitInferMeta(const MetaTensor& x,
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
-                      MetaTensor* xshape,
-                      MetaTensor* out) {
+                      MetaTensor* out,
+                      MetaTensor* xshape) {
   const auto& x_dims = x.dims();
   // Check input tensor dims (<6) Eigen limit.
   PADDLE_ENFORCE_LE(x_dims.size(),
@@ -2267,8 +2362,7 @@ void SumRawInferMeta(const MetaTensor& x,
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
   } else {
-    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32 ||
-        x.dtype() == DataType::INT64) {
+    if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
       out_dtype = DataType::INT64;
     } else {
       out_dtype = x.dtype();
@@ -2652,7 +2746,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The dims of X should be larger than that of kernel_sizes "
           "by a number of 2, due to the batch size and input channel dim. "
-          "But recieved dims(X:%u) - dims(kernel_sizes:%u) != 2",
+          "But received dims(X:%u) - dims(kernel_sizes:%u) != 2",
           in_dims.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2660,7 +2754,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       kernel_sizes.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of kernel_sizes. "
-          "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
+          "But received dims(strides: %u) != dims(kernel_sizes: %u).",
           strides.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
@@ -2668,7 +2762,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       2 * strides.size(),
       phi::errors::InvalidArgument(
           "The dims of paddings should be 2 times of that of strides. "
-          "But recieved dims(paddings: %u) != 2*dims(strides: %u).",
+          "But received dims(paddings: %u) != 2*dims(strides: %u).",
           paddings.size(),
           strides.size()));
   PADDLE_ENFORCE_EQ(
@@ -2676,7 +2770,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       dilations.size(),
       phi::errors::InvalidArgument(
           "The dims of strides should be the same with that of dilations. "
-          "But recieved dims(strides: %u) != dims(dilations: %u).",
+          "But received dims(strides: %u) != dims(dilations: %u).",
           strides.size(),
           dilations.size()));
 
@@ -2685,14 +2779,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but recieved kernel_height: %d kernel_width: %d.",
+                        "but received kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   PADDLE_ENFORCE_GT(kernel_sizes[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `kernel_sizes` should be greater than zero, "
-                        "but recieved kernel_height: %d kernel_width: %d.",
+                        "but received kernel_height: %d kernel_width: %d.",
                         kernel_sizes[0],
                         kernel_sizes[1]));
   // check strides
@@ -2700,14 +2794,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but recieved strides_height: %d strides_width: %d.",
+                        "but received strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   PADDLE_ENFORCE_GT(strides[1],
                     0,
                     phi::errors::InvalidArgument(
                         "The `strides` should be greater than zero, "
-                        "but recieved strides_height: %d strides_width: %d.",
+                        "but received strides_height: %d strides_width: %d.",
                         strides[0],
                         strides[1]));
   // check dilations
@@ -2716,7 +2810,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but recieved dilations_height: %d dilations_width: %d.",
+          "but received dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
   PADDLE_ENFORCE_GT(
@@ -2724,7 +2818,7 @@ void UnfoldInferMeta(const MetaTensor& x,
       0,
       phi::errors::InvalidArgument(
           "The `dilations` should be greater than zero, "
-          "but recieved dilations_height: %d dilations_width: %d.",
+          "but received dilations_height: %d dilations_width: %d.",
           dilations[0],
           dilations[1]));
 
@@ -2870,8 +2964,8 @@ void UniqueRawInferMeta(const MetaTensor& x,
 
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
-                        MetaTensor* xshape,
                         MetaTensor* out,
+                        MetaTensor* xshape,
                         MetaConfig config) {
   const auto& x_dims = x.dims();
   // Validity Check: input tensor dims (<6).
@@ -2959,7 +3053,7 @@ void UnStackInferMeta(const MetaTensor& x,
 }
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out) {
@@ -2969,7 +3063,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
   auto out_dims_vec = phi::vectorize(x_dims);
-  out_dims_vec.push_back(depth);
+  out_dims_vec.push_back(depth.to<int>());
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
@@ -3006,8 +3100,53 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      phi::errors::InvalidArgument("groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[1] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[3] % groups,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
+                          groups,
+                          input_dims[3]));
+  }
+  auto output_dims = input_dims;
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);

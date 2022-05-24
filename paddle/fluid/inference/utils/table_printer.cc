@@ -53,7 +53,7 @@ std::string TablePrinter::PrintTable() {
 
   AddRowDivider(ss);
 
-  return std::move(ss.str());
+  return ss.str();
 }
 
 TablePrinter::TablePrinter(const std::vector<std::string>& header) {

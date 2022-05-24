@@ -360,6 +360,14 @@ struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
 };
 
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDX<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && y;
+  }
+};
+
 template <typename T>
 struct MulGradDX<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
@@ -381,6 +389,14 @@ struct MulGradDX<phi::dtype::complex<T>> {
 template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+};
+
+// avoid [-Wint-in-bool-context] warning
+template <>
+struct MulGradDY<bool> {
+  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+    return dout && x;
+  }
 };
 
 template <typename T>
@@ -496,6 +512,20 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                         funcs::MultiplyFunctor<T>,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, ddy_safe, dx, axis);
+    }
+  } else {
+    if (dx && dy) {
+      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          MulGradDX<T>(),
+          MulGradDY<T>());
     }
   }
 }
@@ -666,6 +696,43 @@ struct MinGradDy {
     return dout * static_cast<T>(x >= y);
   }
 };
+
+template <typename T>
+struct HeavisideGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(0);
+  }
+};
+
+template <typename T>
+struct HeavisideGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x == static_cast<T>(0));
+  }
+};
+
+template <typename T, typename Context>
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& dout,
+                                    int axis,
+                                    DenseTensor* dx,
+                                    DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::
+      ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
+          dev_ctx,
+          x,
+          y,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          HeavisideGradDx<T>(),
+          HeavisideGradDy<T>());
+}
 
 template <typename T>
 struct PowGradDX {

@@ -29,7 +29,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -761,6 +761,15 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+
+        # Transfrom data to expected device
+        expected_device = paddle.device.get_device()
+        for o in to_list(outputs):
+            o._to(device=expected_device)
+
+        for l in labels:
+            l._to(device=expected_device)
+
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -915,7 +924,7 @@ class Model(object):
 
     When training on GPU, auto mixed precision (AMP O1) and pure float16 
     (AMP O2) training are both supported in static mode and dynamic mode.
-    In static graph mode, before traing with pure float16 (AMP O2),
+    In static graph mode, before training with pure float16 (AMP O2),
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
     should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
@@ -2075,7 +2084,7 @@ class Model(object):
             #    [input1, input2, ..., label1, lable2, ...]
             # 3. custumed iterator yield concated inputs and labels:
             #   [input1, input2, ..., label1, lable2, ...]
-            # 4. custumed iterator yield seperated inputs and labels:
+            # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
             data = flatten(data)
@@ -2088,7 +2097,6 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-
                 _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
                 if mode == 'train':
                     _inputs.append((step + 1) % self._accumulate == 0 or

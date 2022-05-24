@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 from paddle.dataset.common import DATA_HOME
-from paddle.fluid.framework import core, _non_static_mode
+from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 
@@ -150,13 +150,12 @@ class Predictor(object):
 class TestBertTokenizerOp(unittest.TestCase):
     def setUp(self):
         self.bert_tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
-        self.faster_tokenizer = FasterTokenizer(self.bert_tokenizer.vocab)
-        self.init_data()
         self.save_path = os.path.join(DATA_HOME, "fast_tokenizer")
         self.param_path = os.path.join(self.save_path, "model.pdparams")
         self.inference_path = os.path.join(self.save_path, "inference")
 
     def init_data(self):
+        self.faster_tokenizer = FasterTokenizer(self.bert_tokenizer.vocab)
         self.text = [
             '选择珠江花园的原因就是方便，有电动扶梯直接到达海边，周围餐馆、食廊、商场、超市、摊位一应俱全。'
             '酒店装修一般，但还算整洁。 泳池在大堂的屋顶，因此很小，不过女儿倒是喜欢。 包的早餐是西式的，'
@@ -178,8 +177,8 @@ class TestBertTokenizerOp(unittest.TestCase):
         self.texts_tensor = to_string_tensor(self.texts, "texts")
         self.text_pairs_tensor = to_string_tensor(self.text_pairs, "text_pairs")
 
-    def test_padding(self):
-
+    def run_padding(self):
+        self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = True
         self.is_split_into_words = False
@@ -282,7 +281,13 @@ class TestBertTokenizerOp(unittest.TestCase):
             np.allclose(
                 token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
 
-    def test_no_padding(self):
+    def test_padding(self):
+        with _test_eager_guard():
+            self.run_padding()
+        self.run_padding()
+
+    def run_no_padding(self):
+        self.init_data()
         self.max_seq_len = 128
         self.pad_to_max_seq_len = False
         self.is_split_into_words = False
@@ -335,7 +340,13 @@ class TestBertTokenizerOp(unittest.TestCase):
             np.allclose(
                 token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
 
-    def test_is_split_into_words(self):
+    def test_no_padding(self):
+        with _test_eager_guard():
+            self.run_no_padding()
+        self.run_no_padding()
+
+    def run_is_split_into_words(self):
+        self.init_data()
         self.is_split_into_words = True
 
         input_ids, token_type_ids = self.faster_tokenizer(
@@ -354,7 +365,13 @@ class TestBertTokenizerOp(unittest.TestCase):
             np.allclose(
                 token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
 
+    def test_is_split_into_words(self):
+        with _test_eager_guard():
+            self.run_is_split_into_words()
+        self.run_is_split_into_words()
+
     def test_inference(self):
+        self.init_data()
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path, exist_ok=True)
         paddle.save(self.faster_tokenizer.state_dict(), self.param_path)
@@ -382,6 +399,7 @@ class TestBertTokenizerOp(unittest.TestCase):
                 token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
 
     def test_feed_string_var(self):
+        self.init_data()
         paddle.enable_static()
         x = paddle.static.data(
             name="x", shape=[-1], dtype=core.VarDesc.VarType.STRINGS)

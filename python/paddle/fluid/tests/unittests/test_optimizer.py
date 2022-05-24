@@ -1123,7 +1123,7 @@ class TestOptimizerDtype(unittest.TestCase):
 
 class TestMasterWeightSaveForFP16(unittest.TestCase):
     '''
-    For Amp-O2, some optimizer(Momentum, Adam ...) will create master weights for parameters to to improve the accuracy.
+    For Amp-O2, some optimizer(Momentum, Adam ...) will create master weights for parameters to improve the accuracy.
     Master weights will be saved by optimizer::state_dict.
     '''
 

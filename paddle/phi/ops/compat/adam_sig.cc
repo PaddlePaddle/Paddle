@@ -19,22 +19,22 @@
 namespace phi {
 
 KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  paddle::SmallVector<const char*> in_names = {"Param",
-                                               "Grad",
-                                               "LearningRate",
-                                               "Moment1",
-                                               "Moment2",
-                                               "Beta1Pow",
-                                               "Beta2Pow",
-                                               "MasterParam",
-                                               "SkipUpdate"};
-  paddle::SmallVector<const char*> out_names = {"ParamOut",
-                                                "Moment1Out",
-                                                "Moment2Out",
-                                                "Beta1PowOut",
-                                                "Beta2PowOut",
-                                                "MasterParamOut"};
-  paddle::SmallVector<const char*> attr_names;
+  paddle::small_vector<const char*> in_names = {"Param",
+                                                "Grad",
+                                                "LearningRate",
+                                                "Moment1",
+                                                "Moment2",
+                                                "Beta1Pow",
+                                                "Beta2Pow",
+                                                "MasterParam",
+                                                "SkipUpdate"};
+  paddle::small_vector<const char*> out_names = {"ParamOut",
+                                                 "Moment1Out",
+                                                 "Moment2Out",
+                                                 "Beta1PowOut",
+                                                 "Beta2PowOut",
+                                                 "MasterParamOut"};
+  paddle::small_vector<const char*> attr_names;
 
   attr_names.emplace_back(ctx.HasInput("Beta1Tensor") ? "Beta1Tensor"
                                                       : "beta1");

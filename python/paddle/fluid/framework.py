@@ -729,7 +729,7 @@ def is_compiled_with_rocm():
 
 def cuda_places(device_ids=None):
     """
-    **Note**:
+    Note:
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
         The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
@@ -754,6 +754,7 @@ def cuda_places(device_ids=None):
         list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -874,6 +875,7 @@ def cpu_places(device_count=None):
         list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -993,7 +995,6 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
-    :api_attr: Static Graph
 
     Generate hierarchical name prefix for the operators in Static Graph.
 
@@ -1006,6 +1007,7 @@ def name_scope(prefix=None):
         prefix(str, optional): prefix. Default is none.
 
     Examples:
+    
         .. code-block:: python
 
           import paddle
@@ -2861,8 +2863,23 @@ class Operator(object):
                     attrs_str += ", "
                 continue
 
+            # it is bytes of serialized protobuf 
+            if is_compiled_with_cinn(
+            ) and self.type == 'cinn_launch' and name == 'compilation_key':
+                key = self.desc.attr(name)
+                v = core.get_serialize_comile_key(key)
+                prog = Program()
+                prog = prog.parse_from_string(v)
+                s = prog._to_readable_code()
+                lines = s.split('\n')
+                value = '\n'.join(['      ' + line for line in lines])
+                value = '\n' + value
+            else:
+                value = self.desc.attr(name)
+
             a = "{name} = {value}".format(
-                name=name, type=attr_type, value=self.desc.attr(name))
+                name=name, type=attr_type, value=value)
+
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
@@ -6916,8 +6933,9 @@ def switch_device(device):
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
-    **Notes**:
-        **The API only supports static mode.**
+    
+    Note:
+        The API only supports static mode.
 
     A context manager that specifies the device on which the OP will be placed.
 
@@ -6931,8 +6949,10 @@ def device_guard(device=None):
             assigned devices.
 
     Examples:
+    
         .. code-block:: python
-
+            
+            # required: gpu
             import paddle
 
             paddle.enable_static()

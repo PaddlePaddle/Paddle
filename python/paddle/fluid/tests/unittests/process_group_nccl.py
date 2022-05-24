@@ -122,6 +122,29 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test allreduce min api ok")
 
+            # test allreduce prod
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            prod_result = np.multiply(x, y)
+
+            if pg.rank() == 0:
+                task = dist.all_reduce(
+                    tensor_x, dist.ReduceOp.PROD, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_x, prod_result)
+            else:
+                task = dist.all_reduce(
+                    tensor_y, dist.ReduceOp.PROD, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_y, prod_result)
+
+            print("test allreduce prod api ok")
+
             # test broadcast
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
@@ -332,6 +355,27 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test reduce min api ok")
 
+            # test reduce product
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            prod_result = np.multiply(x, y)
+
+            if pg.rank() == 0:
+                task = dist.reduce(
+                    tensor_x, 0, dist.ReduceOp.PROD, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_x, prod_result)
+            else:
+                task = dist.reduce(
+                    tensor_y, 0, dist.ReduceOp.PROD, use_calc_stream=False)
+                task.wait()
+
+            print("test reduce prod api ok")
             # test Scatter
             # rank 0
             in_shape = list(self.shape)

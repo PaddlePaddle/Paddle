@@ -14,13 +14,19 @@
 
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
-from .layer.activation import ReLU
-from .layer.norm import BatchNorm
+from .layer import ReLU
+from .layer import BatchNorm
 
-from .layer.conv import Conv3D
-from .layer.conv import SubmConv3D
+from .layer import Conv3D
+from .layer import SubmConv3D
+
+from .layer import MaxPool3D
+
+from .functional import sqrt
+from .functional import sin
+from .functional import tanh
 
 __all__ = [
     'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D', 'SubmConv3D',
-    'BatchNorm'
+    'BatchNorm', 'MaxPool3D', 'sqrt', 'sin', 'tanh'
 ]
