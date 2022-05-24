@@ -17,11 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -677,7 +678,7 @@ class IndexHelper {
 #pragma unroll
     for (int i = 0; i < N - 1; ++i) {
       const T idx = remaining / stride_[i];
-      remaining = remaining - idx * stride_[i];
+      remaining -= idx * stride_[i];
       index[i] = idx;
     }
     index[N - 1] = remaining;
@@ -759,19 +760,18 @@ template <size_t Rank, typename IndexT>
 struct PermuteParams {
   NdIdxAndOffset<IndexT, Rank> src_index_helper;
   NdIdxAndOffset<IndexT, Rank> dst_index_helper;
-  int32_t perm[Rank]{};
+  int32_t __restrict__ perm[Rank]{};
   IndexT count{};
 
   explicit PermuteParams(const std::vector<size_t>& in_dims,
                          const std::vector<int>& perm_, IndexT count_)
       : count(count_) {
-    src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims.data());
     size_t dst_dims[Rank];
-
     for (size_t i = 0; i < Rank; ++i) {
       dst_dims[i] = in_dims[perm_[i]];
     }
     dst_index_helper = NdIdxAndOffset<IndexT, Rank>(dst_dims);
+    src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims.data());
 
     for (size_t i = 0; i < Rank; ++i) {
       perm[i] = perm_[i];
@@ -785,18 +785,19 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
                                      T* dst_data) {
   IndexT src_index[Rank];
   IndexT dst_index[Rank];
+  int perm[Rank];
+  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   using Type = typename std::aligned_storage<MovementSize, MovementSize>::type;
   const Type* src = reinterpret_cast<const Type* __restrict__>(src_data);
   Type* dst = reinterpret_cast<Type*>(dst_data);
-  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (IndexT i = tid; i < params.count; i += blockDim.x * gridDim.x) {
     params.dst_index_helper.OffsetToIndex(i, dst_index);
 
 #pragma unroll
-    for (size_t dim = 0; dim < Rank; ++dim) {
-      src_index[params.perm[dim]] = dst_index[dim];
+    for (int j = 0; j < Rank; ++j) {
+      src_index[params.perm[j]] = dst_index[j];
     }
     IndexT src_offset = params.src_index_helper.IndexToOffset(src_index);
     dst[i] = src[src_offset];
@@ -891,10 +892,10 @@ inline bool CheckLaunchBatchTranspose(const int* perm,
 
   if (greater_than_tile) {
     if (num_batches == 1 && perm[1] == 0 && perm[0] == 1) {
-      // 2d tensor case: (0, 1) -> (1, 0)
+      // 2D tensor case: (0, 1) -> (1, 0)
       result = true;
     } else if (Rank == 3 && perm[2] == 1 && perm[1] == 2) {
-      // 3d tensor case: (0, 1, 2) -> (0, 2, 1)
+      // 3D tensor case: (0, 1, 2) -> (0, 2, 1)
       return true;
     }
   }
@@ -907,7 +908,7 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
                                   const std::vector<int>& perm, const T* src,
                                   T* dst, IndexT count) {
   auto params = PermuteParams<Rank, IndexT>(in_dims, perm, count);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, params.count);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, count);
 
   if (Rank == 2 || Rank == 3) {
     IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
@@ -937,6 +938,7 @@ inline void DispatchIndexType(const phi::GPUContext& ctx,
                               T* dst) {
   size_t count = std::accumulate(in_dims.begin(), in_dims.begin() + Rank,
                                  size_t{1}, std::multiplies<size_t>());
+
   if (count < std::numeric_limits<uint32_t>::max()) {
     uint32_t cnt = static_cast<uint32_t>(count);
     LaunchTransposeKernel<T, Rank, MovementSize, uint32_t>(ctx, in_dims, perm,
@@ -957,7 +959,8 @@ inline void DispatchMovementSize(const phi::GPUContext& ctx,
 #define CALL_DISPATCH_INDEX_TYPE_FUNC(size)                         \
   case size: {                                                      \
     DispatchIndexType<T, Rank, size>(ctx, in_dims, perm, src, dst); \
-  } break;
+    break;                                                          \
+  }
 
   switch (movement_size) {
     CALL_DISPATCH_INDEX_TYPE_FUNC(1);
@@ -980,7 +983,8 @@ inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
   case rank: {                                                            \
     DispatchMovementSize<T, rank>(ctx, movement_size, in_dims, perm, src, \
                                   dst);                                   \
-  } break;
+    break;                                                                \
+  }
 
   switch (rank) {
     CALL_DISPATCH_MOVEMENT_SIZE_FUNC(1);
@@ -1007,9 +1011,13 @@ inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
   auto simplifier = DimsAndPermSimplifier<T, /*kMaxMovementSize=*/16>(
       rank, sizeof(T), perm, &src_dims, in.data<T>(), out->data<T>());
 
-  LaunchWithSimplifiedDispatch<T>(
+  if (simplifier.IsSequential()) {
+    phi::Copy(ctx, in, ctx.GetPlace(), true, out);
+  } else {
+    LaunchWithSimplifiedDispatch<T>(
       ctx, simplifier.GetRank(), simplifier.GetMovementSize(),
       simplifier.GetDims(), simplifier.GetPerm(), in.data<T>(), out->data<T>());
+  }
 }
 
 template <typename T>

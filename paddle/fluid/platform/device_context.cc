@@ -169,7 +169,7 @@ inline void EmplaceDeviceContext(
 
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
-              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+              framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
@@ -750,7 +750,7 @@ dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
 void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   VLOG(4) << tls().get_curr_exec() << " " << ptr;
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  if (!block_next_cache_clearing_) {
+  if (block_next_cache_clearing_ == 0) {
     VLOG(3) << "Clearing DNNL cache.";
     // If no specific executor pointer then clear
     // everything. For executor pointer then clear only
@@ -768,9 +768,20 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
         s.second->erase(ptr);
       }
     }
+    // Reset paddle layout to NCHW
+    VLOG(3) << "Resetting Paddle data layout to NCHW.";
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   } else {
-    VLOG(3) << "Prevented Clearing DNNL cache.";
-    block_next_cache_clearing_ = false;
+    --block_next_cache_clearing_;
+    VLOG(3) << "Prevented Clearing DNNL cache. Updated "
+               "block_next_cache_clearing_ : "
+            << block_next_cache_clearing_;
+    PADDLE_ENFORCE_GE(block_next_cache_clearing_, 0,
+                      platform::errors::InvalidArgument(
+                          "Cache clearing mark should be non-negative "
+                          ". But received %d.",
+                          block_next_cache_clearing_));
   }
 }
 
@@ -796,8 +807,10 @@ void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  VLOG(3) << "Next DNNL cache clearing has been blocked.";
-  block_next_cache_clearing_ = true;
+  ++block_next_cache_clearing_;
+  VLOG(3) << "Next DNNL cache clearing has been blocked. Updated "
+             "block_next_cache_clearing_ : "
+          << block_next_cache_clearing_;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {

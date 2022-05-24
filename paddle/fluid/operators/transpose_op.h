@@ -69,82 +69,95 @@ class DimsAndPermSimplifier {
     perm_.resize(rank);
     dims_.resize(rank);
     size_t simplified_movement_size =
-        GetMovementSize(rank, elem_size, *in_dims, perm, src, dst);
+        GetMovementSize(elem_size, rank, *in_dims, perm, src, dst);
 
     (*in_dims)[rank - 1] /= (simplified_movement_size / elem_size);
     Simplifyperm(rank, *in_dims, perm);
 
-    movement_size_ = GetMovementSize(rank_, simplified_movement_size, dims_,
+    movement_size_ = GetMovementSize(simplified_movement_size, rank_, dims_,
                                      perm_, src, dst);
     dims_[rank_ - 1] /= (movement_size_ / simplified_movement_size);
   }
 
   size_t GetRank() const { return rank_; }
   size_t GetMovementSize() const { return movement_size_; }
+  bool IsSequential() const { return sequential_flag_; }
 
   std::vector<int> GetPerm() const { return perm_; }
   std::vector<size_t> GetDims() const { return dims_; }
 
  private:
-  size_t rank_;
+  size_t rank_{1};
   size_t movement_size_;
+  bool sequential_flag_{false};
   std::vector<int> perm_;
   std::vector<size_t> dims_;
 
   void Simplifyperm(const size_t rank, const std::vector<size_t>& in_dims,
                     const std::vector<int32_t>& perm) {
-    size_t coalesced_dims[phi::DDim::kMaxRank];
-    size_t start_perm_index = 0;
+    size_t combined_dims[phi::DDim::kMaxRank];
+    int valid_map[phi::DDim::kMaxRank];
 
-    // Merge consecutive dims for in_dims.
-    while (start_perm_index < rank) {
-      const size_t start_dim_index = perm[start_perm_index];
-      coalesced_dims[start_dim_index] = in_dims[start_dim_index];
-      size_t end_perm_index = start_perm_index + 1;
+    // Merge consecutive dims to the fist one of this these dims,
+    // and leave the origin dim value to be 1. Example below :
+    // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
+    // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
+    size_t start_perm_idx = 0;
+    while (start_perm_idx < rank) {
+      const size_t start_dim_idx = perm[start_perm_idx];
+      combined_dims[start_dim_idx] = in_dims[start_dim_idx];
+      size_t end_perm_idx = start_perm_idx + 1;
 
-      while (end_perm_index < rank &&
-             perm[end_perm_index] == perm[end_perm_index - 1] + 1) {
-        const size_t end_dim_index = perm[end_perm_index];
-        coalesced_dims[start_dim_index] *= in_dims[end_dim_index];
-        coalesced_dims[end_dim_index] = 1;
-        end_perm_index += 1;
+      while (end_perm_idx < rank &&
+             perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
+        const size_t end_dim_idx = perm[end_perm_idx];
+        combined_dims[start_dim_idx] *= in_dims[end_dim_idx];
+        combined_dims[end_dim_idx] = 1;
+        end_perm_idx += 1;
       }
-      start_perm_index = end_perm_index;
+      start_perm_idx = end_perm_idx;
     }
 
-    // Merge value `1` dim for perm.
-    size_t valid_num_dims = 0;
-    int mapping[phi::DDim::kMaxRank];
+    // Reorder combined dims and marked useless dim as -1.
+    // for example, if combined dims is [32, 1, 10, 1],
+    // valid_map is [0, -1, 1, -1] and generate simplified
+    // dims as [32, 10]
+    size_t valid_dim_idx = 0;
+    bool sequential_flag = false;
     for (size_t i = 0; i < rank; ++i) {
-      const int src_dim = coalesced_dims[i];
+      const int src_dim = combined_dims[i];
       if (src_dim == 1) {
-        mapping[i] = -1;
+        valid_map[i] = -1;
       } else {
-        mapping[i] = valid_num_dims;
-        dims_[valid_num_dims] = src_dim;
-        valid_num_dims += 1;
+        sequential_flag = true;
+        valid_map[i] = valid_dim_idx;
+        dims_[valid_dim_idx] = src_dim;
+        valid_dim_idx += 1;
       }
     }
 
-    // Acquire simplified perm.
-    if (valid_num_dims == 0) {
-      rank_ = 1;
+    if (valid_dim_idx == 0) {
       dims_[0] = 1;
       perm_[0] = 0;
-    } else {
-      size_t perm_index = 0;
-      rank_ = valid_num_dims;
-      for (size_t i = 0; i < rank; ++i) {
-        const int mapped = mapping[perm[i]];
-        if (mapped >= 0) {
-          perm_[perm_index] = mapped;
-          perm_index += 1;
-        }
+      return;
+    } else if (valid_dim_idx == 1) {
+      sequential_flag_ = true;
+    }
+
+    // Acquire simplified perm with help of combined dims
+    // and original perm, finally simplified perm is [1, 0]
+    size_t perm_idx = 0;
+    for (size_t i = 0; i < rank; ++i) {
+      const int mapped = valid_map[perm[i]];
+      if (mapped >= 0) {
+        perm_[perm_idx] = mapped;
+        perm_idx += 1;
       }
     }
+    rank_ = valid_dim_idx;
   }
 
-  size_t GetMovementSize(const size_t rank, const size_t elem_size,
+  size_t GetMovementSize(const size_t elem_size, const size_t rank,
                          const std::vector<size_t>& in_dims,
                          const std::vector<int>& perm, const T* src, T* dst) {
     static_assert(kMaxMovementSize > 0 &&

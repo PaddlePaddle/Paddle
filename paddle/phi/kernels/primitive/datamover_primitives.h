@@ -82,10 +82,10 @@ struct FastDivMod {
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
  */
-template <int kDims>
 struct BroadcastConfig {
-  FastDivMod divmoders[kDims];
+  FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
+  int kDims;
   HOSTDEVICE BroadcastConfig() {}
 
   HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
@@ -109,7 +109,7 @@ struct BroadcastConfig {
                                             std::multiplies<int64_t>())
                           : strides_in[i];
     }
-
+    kDims = dim_size;
     memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
     memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
   }
@@ -436,17 +436,12 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     uint32_t block_offset,
-    details::BroadcastConfig<Rank> config,
+    const details::BroadcastConfig& config,
     int total_num_output,
     int stride_nx,
     int stride_ny) {
@@ -465,7 +460,8 @@ __device__ __forceinline__ void ReadDataBc(
         }
       }
 #pragma unroll
-      for (int i = 0; i < Rank; ++i) {
+      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+        if (i >= config.kDims) break;
         auto fast_divmoder = config.divmoders[i].Divmod(index_output);
         index_output = fast_divmoder.val[0];
         index_src += fast_divmoder.val[1] * config.strides[i];
@@ -785,53 +781,14 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     uint32_t block_offset,
-    details::BroadcastConfig<Rank> config,
-    int total_num_output) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
-
-#pragma unroll
-  for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
-    index_src = 0;
-    if (IsBoundary) {
-      if (index_output >= total_num_output) {
-        break;
-      }
-    }
-#pragma unroll
-    for (int i = 0; i < Rank; ++i) {
-      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
-      index_output = fast_divmoder.val[0];
-      index_src += fast_divmoder.val[1] * config.strides[i];
-    }
-    dst[nx] = src[index_src];
-  }
-}
-
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
-__device__ __forceinline__ void ReadDataBc(
-    T* dst,
-    const T* __restrict__ src,
-    uint32_t block_offset,
-    details::BroadcastConfig<Rank> config,
+    const details::BroadcastConfig& config,
     int total_num_output,
-    int read_lens) {
+    int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
   uint32_t index_src = 0;
 
@@ -845,7 +802,8 @@ __device__ __forceinline__ void ReadDataBc(
       }
     }
 #pragma unroll
-    for (int i = 0; i < Rank; ++i) {
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= config.kDims) break;
       auto fast_divmoder = config.divmoders[i].Divmod(index_output);
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];
@@ -853,6 +811,7 @@ __device__ __forceinline__ void ReadDataBc(
     dst[nx] = src[index_src];
   }
 }
+
 /**
  * @brief Initialize register with data index.
  *

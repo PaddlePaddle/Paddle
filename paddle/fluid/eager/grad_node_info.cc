@@ -218,6 +218,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
   // Set Stop_gradient
   if (fwd_in_meta) {
     meta.SetStopGradient(fwd_in_meta->StopGradient());
+  } else {
+    meta.SetStopGradient(true);
   }
   // Set Adj Edges
   if (fwd_in_meta && !fwd_in_meta->StopGradient()) {
