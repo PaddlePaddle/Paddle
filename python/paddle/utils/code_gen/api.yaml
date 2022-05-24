@@ -492,6 +492,17 @@
   optional : mask
   backward : deformable_conv_grad
 
+- api : depthwise_conv2d
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu)
+  output : Tensor(out)
+  invoke : conv2d_impl(x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : depthwise_conv2d_grad
+  # infer_meta :
+  #   func : ConvTransposeInferMeta
+  #   prams: [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+  # kernel :
+  #   func : depthwise_conv2d
+
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
