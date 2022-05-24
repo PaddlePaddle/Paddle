@@ -1,16 +1,16 @@
 - api : add_coo
   args : (Tensor x, Tensor y)
-  output : Tensor(out@SparseCooTensor)
+  output : Tensor(out)
   kernel :
-    func : sparse_elementwise_add_coo
+    func : sparse_elementwise_add_coo{sparse_coo -> sparse_coo}
     layout : x
   backward : add_coo_grad
 
 - api : add_csr
   args : (Tensor x, Tensor y)
-  output : Tensor(out@SparseCsrTensor)
+  output : Tensor(out)
   kernel :
-    func : sparse_elementwise_add_csr
+    func : sparse_elementwise_add_csr{sparse_csr -> sparse_csr}
     layout : x
 
 - api : conv3d
@@ -47,7 +47,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCooTensor)
   kernel :
-    func : sparse_elementwise_div_coo
+    func : sparse_elementwise_div_coo{sparse_coo -> sparse_coo}
     layout : x
   backward : div_coo_grad
 
@@ -55,14 +55,14 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCsrTensor)
   kernel :
-    func : sparse_elementwise_div_csr
+    func : sparse_elementwise_div_csr{sparse_csr -> sparse_csr}
     layout : x
 
 - api : mul_coo
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCooTensor)
   kernel :
-    func : sparse_elementwise_mul_coo
+    func : sparse_elementwise_mul_coo{sparse_coo -> sparse_coo}
     layout : x
   backward : mul_coo_grad
 
@@ -70,7 +70,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCsrTensor)
   kernel :
-    func : sparse_elementwise_mul_csr
+    func : sparse_elementwise_mul_csr{sparse_csr -> sparse_csr}
     layout : x
 
 - api : relu
@@ -104,7 +104,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCooTensor)
   kernel :
-    func : sparse_elementwise_sub_coo
+    func : sparse_elementwise_sub_coo{sparse_coo -> sparse_coo}
     layout : x
   backward : sub_coo_grad
 
@@ -112,7 +112,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCsrTensor)
   kernel :
-    func : sparse_elementwise_sub_csr
+    func : sparse_elementwise_sub_csr{sparse_csr -> sparse_csr}
     layout : x
 
 - api : tanh
