@@ -474,8 +474,8 @@ class HDFSClient(FS):
         output = None
         retry_sleep_second = 3
         for x in range(retry_times + 1):
-#            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
-#            ret = int(ret)
+            #            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+            #            ret = int(ret)
 
             proc = subprocess.Popen(
                 whole_commands,
@@ -491,6 +491,7 @@ class HDFSClient(FS):
             time.sleep(retry_sleep_second)
         if ret == 134:
             raise FSShellCmdAborted(cmd)
+
 #        return ret, output.splitlines()
         return ret_code, ret_out.splitlines(), ret_err.splitlines()
 
@@ -770,9 +771,9 @@ class HDFSClient(FS):
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
         # upload_dir
-#        if local.is_dir(local_path):
-#            self.upload_dir(local_path, fs_path, overwrite=overwrite)
-#            return
+        #        if local.is_dir(local_path):
+        #            self.upload_dir(local_path, fs_path, overwrite=overwrite)
+        #            return
         # upload files
         all_files = get_local_files(local_path)
         if not all_files:
