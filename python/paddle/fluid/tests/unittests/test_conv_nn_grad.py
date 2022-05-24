@@ -503,6 +503,37 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
+    def conv3d_wrapper(self, x):
+        return paddle.nn.functional.conv3d(x[0], x[1])
+
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 8, 8, 8]
+        w_shape = [6, 3, 3, 3, 3]
+        eps = 0.005
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        x = layers.data('x', x_shape, False, dtype)
+        w = layers.data('w', w_shape, False, dtype)
+        x.persistable = True
+        w.persistable = True
+        y = paddle.nn.functional.conv3d(x, w)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv3d_wrapper, [x, w], y, x_init=[x_arr, w_arr], place=place)
+
+    def test_grad(self):
+        places = []
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
