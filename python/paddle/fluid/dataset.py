@@ -1041,6 +1041,24 @@ class InMemoryDataset(DatasetBase):
         user no need to call this function.
         """
         self.dataset.set_heter_ps(enable_heter_ps)
+    
+    def set_graph_device_keys(self, device_keys):
+        """
+        Set heter ps mode
+        user no need to call this function.
+        """
+        self.dataset.set_graph_device_keys(device_keys)
+
+    def set_graph_config(self, config):
+        """
+        """
+        self.proto_desc.graph_config.walk_degree = config.get("walk_degree", 1)
+        self.proto_desc.graph_config.walk_len = config.get("walk_len", 20)
+        self.proto_desc.graph_config.once_sample_startid_len = config.get("once_sample_startid_len", 8000)
+        self.proto_desc.graph_config.sample_times_one_chunk = config.get("sample_times_one_chunk", 10)
+        self.proto_desc.graph_config.batch_size = config.get("batch_size", 1)
+        self.proto_desc.graph_config.debug_mode = config.get("debug_mode", 0)
+        
 
 
 class QueueDataset(DatasetBase):

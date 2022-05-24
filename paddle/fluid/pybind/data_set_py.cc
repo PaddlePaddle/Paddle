@@ -298,6 +298,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_preload_thread_num", &framework::Dataset::SetPreLoadThreadNum,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_graph_device_keys", &framework::Dataset::SetGraphDeviceKeys,
+           py::call_guard<py::gil_scoped_release>())
       .def("create_preload_readers", &framework::Dataset::CreatePreLoadReaders,
            py::call_guard<py::gil_scoped_release>())
       .def("destroy_preload_readers",
