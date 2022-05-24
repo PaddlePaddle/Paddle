@@ -1359,6 +1359,28 @@
   no_need_buffer : x
   backward : pad3d_double_grad
 
+- backward_api : pad_double_grad
+  forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, float pad_value) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int[] paddings, float pad_value)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : PadInferMeta
+  kernel :
+    func : pad
+
+- backward_api : pad_grad
+  forward : pad(Tensor x, int[] paddings, float pad_value) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] paddings, float pad_value)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pad_grad
+    param: [out_grad, paddings, pad_value]
+  no_need_buffer : x
+  backward : pad_double_grad
+
 - backward_api : pixel_shuffle_grad
   forward : pixel_shuffle (Tensor x, int upscale_factor, str data_format) -> Tensor(out)
   args : (Tensor out_grad, int upscale_factor, str data_format)
