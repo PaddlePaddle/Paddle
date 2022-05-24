@@ -136,8 +136,8 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("KeyOut", "Result after k.").AsIntermediate().AsDispensable();
     AddOutput("ValueOut", "Result after v.").AsIntermediate().AsDispensable();
     AddOutput("QKVOut", "Result after qkv.").AsIntermediate().AsDispensable();
-    AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
+    AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
     AddOutput("GateOut", "Result gate").AsIntermediate().AsDispensable();
     AddOutput("Out", "Result after attention.");
     AddAttr<bool>("has_gating",

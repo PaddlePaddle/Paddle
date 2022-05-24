@@ -18,9 +18,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -63,8 +64,7 @@ class AttnMatMul {
       // bias_out = output + bias
       std::vector<const Tensor*> ins = {output, bias};
       std::vector<Tensor*> outs = {bias_out};
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
+      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
   }

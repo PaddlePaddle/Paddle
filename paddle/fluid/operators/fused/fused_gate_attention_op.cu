@@ -210,8 +210,8 @@ Tensor *ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   // gate_out = sigmoid(gate_out) * fmha_out
   std::vector<const Tensor *> ins = {gate_out, fmha_out};
   std::vector<Tensor *> outs = {gate_out};
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
+  phi::funcs::ElementwiseKernel<T>(ctx.cuda_device_context(), ins, &outs,
+                                   SigmoidMultiplyFunctor<T>());
   return gate_out;
 }
 
@@ -242,8 +242,7 @@ Tensor *ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
   std::vector<const Tensor *> ins = {gate_out_grad, &gate_bias_out, fmha_out};
   std::vector<Tensor *> outs = {&gate_bias_out, fmha_out_grad};
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-      T, SigmoidMultiplyGradFunctor<T>, 2>(
+  phi::funcs::ElementwiseKernel<T, SigmoidMultiplyGradFunctor<T>, 2>(
       ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyGradFunctor<T>());
 
   // Gradient of GEMM(query, gate_weight) + gate_bias

@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
@@ -413,8 +415,8 @@ class FMHAGateRef {
     }
 
     // Forward: qktv_out = BatchedGEMM(softmax_out, V)
-    // Backward: V_grad = BatchedGEMM(softmax_out^T, qktv_out_grad) (dy = x^T *
-    // dout)
+    // Backward:
+    //  V_grad = BatchedGEMM(softmax_out^T, qktv_out_grad) (dy = x^T * dout)
     int64_t gemm_batch_size =
         config->batch_size * config->seq_len_m * config->num_heads;
     int64_t gemm_m = config->m_size;
@@ -534,14 +536,12 @@ class FMHAGateRef {
     if (nonbatched_bias) {
       std::vector<const Tensor*> ins = {qk_out, nonbatched_bias, src_mask};
       std::vector<Tensor*> outs = {qk_out};
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kTernary,
-                                                     T, T>(
+      phi::funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
           dev_ctx_, ins, &outs, -1, TernaryAddFunctor<T>());
     } else {
       std::vector<const Tensor*> ins = {qk_out, src_mask};
       std::vector<Tensor*> outs = {qk_out};
-      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                     T, T>(
+      phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
     phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out, -1, softmax_out);

@@ -311,7 +311,7 @@ class BaseAPI(object):
                     view_map = {}
                 in_out_mapping_list = api_item_yaml[mode].split(',')
                 for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
+                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
                     in_val = result.group('in')
                     out_val = result.group('out')
                     assert in_val in self.inputs['names'], \
@@ -840,6 +840,8 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         if self.is_base_api:
             api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
+                if self.api[-1] == '_':
+                    api_code = ""
                 api_code = api_code + self.gene_base_api_code(inplace_flag=True)
             return api_code
 

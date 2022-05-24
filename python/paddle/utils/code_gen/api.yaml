@@ -189,6 +189,18 @@
     func : assign
   backward : assign_grad
 
+- api : assign_out_
+  args : (Tensor x, Tensor output)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : assign
+    param : [x]
+  inplace : (output -> out)
+  backward : assign_out__grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -1544,7 +1556,7 @@
     func : PadInferMeta
   kernel :
     func : pad
-  # backward : pad_grad
+  backward : pad_grad
 
 - api : pad3d
   args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
