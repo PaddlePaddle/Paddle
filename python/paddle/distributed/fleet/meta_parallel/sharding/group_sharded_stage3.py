@@ -371,7 +371,6 @@ class GroupShardedStage3(nn.Layer):
         tmp_var.get_tensor().set(param_cpu.get_tensor(), core.CPUPlace())
         del tmp_var
         param.get_tensor()._set_dims(param_shape)
-        param._clear_data()
 
         # Current rank param_storage
         if self._offload:
@@ -394,6 +393,7 @@ class GroupShardedStage3(nn.Layer):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
             master_tensor.name = param.name
             self._optim._master_weights[param.fw_storage.name] = master_tensor
+        param._clear_data()
 
     def _register_forward_hooks(self, layer):
         """

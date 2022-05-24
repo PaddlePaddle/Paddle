@@ -332,10 +332,11 @@ class ShardingStage3(nn.Layer):
                 self._param2buffer[param.name].append(
                     (rank_ * pre_buffer, (rank_ + 1) * pre_buffer))
 
-            # 3.Flatten layer params and release other rank buffer
-            self._param_storage(param, buffer_size)
             # Record param's dtype
             param2dtype[param.name] = param.dtype
+
+            # 3.Flatten layer params and release other rank buffer
+            self._param_storage(param, buffer_size)
 
     def _param_storage(self, param, buffer_size):
         """
@@ -362,7 +363,6 @@ class ShardingStage3(nn.Layer):
         tmp_var.value().get_tensor().set(param_cpu.value().get_tensor(),
                                          core.CPUPlace())
         param.value().get_tensor()._set_dims(param_shape)
-        param._clear()
 
         # Current rank param_storage
         if self._offload:
@@ -381,6 +381,7 @@ class ShardingStage3(nn.Layer):
         if param.dtype == Type.fp16.value and not self._offload:
             self._optim._master_weights[param.fw_storage.name] = paddle.cast(
                 param.fw_storage, Type.fp32.value)
+        param._clear()
 
     def _register_forward_hooks(self, layer):
         """
