@@ -72,7 +72,7 @@ def add(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.sparse.add(sparse_x, sparse_y)
+            sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  0.],
@@ -122,7 +122,7 @@ def subtract(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.sparse.subtract(sparse_x, sparse_y)
+            sparse_z = paddle.incubate.sparse.subtract(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  4.],
@@ -172,7 +172,7 @@ def multiply(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.sparse.multiply(sparse_x, sparse_y)
+            sparse_z = paddle.incubate.sparse.multiply(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0.,  0.,  0., -4.],
@@ -222,7 +222,7 @@ def divide(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.sparse.divide(sparse_x, sparse_y)
+            sparse_z = paddle.incubate.sparse.divide(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ nan      , -inf.     ,  nan      , -1.       ],
