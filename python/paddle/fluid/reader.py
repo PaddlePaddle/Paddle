@@ -485,6 +485,8 @@ class DataLoader(object):
             num_workers = 0
         self.num_workers = num_workers
 
+        assert prefetch_factor >= 2, "prefetch_factor should be greater than or equal to 2"
+
         self.use_shared_memory = use_shared_memory
         if use_shared_memory and num_workers == 0:
             self.use_shared_memory = False
