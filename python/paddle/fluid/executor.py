@@ -1326,8 +1326,8 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
-            print("program._heter_pipeline_opt: {}".format(
-                program._heter_pipeline_opt))
+            #print("program._heter_pipeline_opt: {}".format(
+            #    program._heter_pipeline_opt))
             ## change default executor 
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
@@ -1336,7 +1336,7 @@ class Executor(object):
             self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
-                print("get startup_program from _pipeline_opt")
+                #print("get startup_program from _pipeline_opt")
                 program = program._heter_pipeline_opt["startup_program"]
 
         if isinstance(program, Program) and \
@@ -1394,7 +1394,7 @@ class Executor(object):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
-            print("compiled is : {}".format(compiled))
+            # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
                 return False
@@ -1782,7 +1782,7 @@ class Executor(object):
             dataset.set_use_var(data_vars)
         elif program._heter_pipeline_opt is not None:
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
-            print("test_fl_stage_id: {}".format(stage_id))
+            #print("test_fl_stage_id: {}".format(stage_id))
             heter_place = program._heter_pipeline_opt["heter_place"]
             if stage_id != 0:
                 if "is_fl_mode" not in program._heter_pipeline_opt:
@@ -1876,7 +1876,7 @@ class Executor(object):
             if trainer_instance is None:
                 trainer_instance = self._default_executor.init_for_dataset(
                     program.desc, trainer._desc(), scope, dataset.dataset)
-                print("test_fl_ps - trainer_desc: {}\n".format(trainer))
+                #print("test_fl_ps - trainer_desc: {}\n".format(trainer))
                 self._add_trainer_cache(cache_key, trainer_instance)
             else:
                 trainer_instance.ResetDataset(dataset.dataset)

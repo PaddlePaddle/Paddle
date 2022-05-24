@@ -867,7 +867,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("init params:", idx, table_id, var_names)
+            #print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
@@ -878,7 +878,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("pull all dense:", idx, table_id, var_names)
+            #print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
 
     def _init_params(self, program, scope, send_ctx, recv_map):
@@ -905,8 +905,8 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        with open("test_fl_ps_worker_desc", "w") as f:
-            f.write(worker_desc)
+        #with open("test_fl_ps_worker_desc", "w") as f:
+        #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
