@@ -65,6 +65,7 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                        info,
                        sizeof(int) * batch_size,
                        dev_ctx.stream());
+  dev_ctx.Wait();
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);
   }
