@@ -87,6 +87,10 @@ set(PYBIND_SRCS
   communication.cc
   cuda_streams_py.cc)
 
+if (WITH_CUSTOM_DEVICE)
+  set(PYBIND_SRCS ${PYBIND_SRCS} custom_phi_kernel_c_api.cc)
+endif()
+
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
@@ -364,7 +368,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
