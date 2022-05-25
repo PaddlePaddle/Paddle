@@ -41,7 +41,7 @@ class GraphSendERecvGradOP : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
     auto e_dims = ctx->GetInputDim("E");
-    ctx->SetOutputDim(framework::GradVarName("E"), in_dims);
+    ctx->SetOutputDim(framework::GradVarName("E"), e_dims);
   }
 
  protected:

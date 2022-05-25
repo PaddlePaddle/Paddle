@@ -19,64 +19,64 @@ namespace phi {
 
 struct BroadCastInfo {
   bool use_bcast;
-  // x_offset[i] indicates the start position of tensor x that required to
-  // compute the i-th element in output, so as e_offset[i].
-  std::vector<int64_t> x_offset, e_offset;
-  int64_t x_len, e_len, out_len, reduce_size;
+  // l_offset[i] indicates the start position of tensor lhs that required to
+  // compute the i-th element in output, so as r_offset[i].
+  std::vector<int64_t> l_offset, r_offset;
+  int64_t l_len, r_len, out_len, reduce_size;
 };
 
-bool UseBroadCast(const phi::DDim& x_dims, const phi::DDim& e_dims) {
-  if (x_dims.size() != e_dims.size()) {
-    return True;
+bool UseBroadCast(const phi::DDim& l_dims, const phi::DDim& r_dims) {
+  if (l_dims.size() != r_dims.size()) {
+    return true;
   }
-  for (int i = 0; i < x_dims.size(); i++) {
-    if (x_dims[i] != e_dims[i]) {
-      return True;
+  for (int i = 1; i < l_dims.size(); i++) {
+    if (l_dims[i] != r_dims[i]) {
+      return true;
     }
   }
-  return False;
+  return false;
 }
 
-BroadCastInfo CaclBCastInfo(const phi::DDim& x_dims, const phi::DDim& e_dims) {
+BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims, const phi::DDim& r_dims) {
   BroadCastInfo binfo;
-  binfo.use_bcast = UseBroadCast(x_dims, e_dims);
-  binfo.x_len = 1;
-  binfo.e_len = 1;
-  for (int i = 1; i < x_dims.size(); i++) {
-    binfo.x_len *= x_dims[i];
+  binfo.use_bcast = UseBroadCast(l_dims, r_dims);
+  binfo.l_len = 1;
+  binfo.r_len = 1;
+  for (int i = 1; i < l_dims.size(); i++) {
+    binfo.l_len *= l_dims[i];
   }
-  for (int i = 1; i < e_dims.size(); i++) {
-    binfo.e_len *= e_dims[i];
+  for (int i = 1; i < r_dims.size(); i++) {
+    binfo.r_len *= r_dims[i];
   }
   // TODO(daisiming): Whether to add dot.
   binfo.reduce_size = 1;
   if (binfo.use_bcast) {
-    const int max_dim = std::max(x_dims.size(), e_dims.size()) - 1;
-    int stride_x = 1, stride_e = 1;
-    binfo.x_offset.emplace_back(0);
-    binfo.e_offset.emplace_back(0);
+    const int max_dim = std::max(l_dims.size(), r_dims.size()) - 1;
+    int stride_l = 1, stride_r = 1;
+    binfo.l_offset.emplace_back(0);
+    binfo.r_offset.emplace_back(0);
     int out_len = 1;
     for (int i = 0; i < max_dim; i++) {
       // Iterate the axis from back to front.
       const int dl =
-          (x_dims.size() - 1 - i < 1) ? 1 : x_dims[x_dims.size() - 1 - i];
+          (l_dims.size() - 1 - i < 1) ? 1 : l_dims[l_dims.size() - 1 - i];
       const int dr =
-          (e_dims.size() - 1 - i < 1) ? 1 : e_dims[e_dims.size() - 1 - i];
+          (r_dims.size() - 1 - i < 1) ? 1 : r_dims[r_dims.size() - 1 - i];
       for (int j = 0; j < std::max(dl, dr); j++) {
         for (int k = 0; k < out_len; k++) {
-          binfo.x_offset.emplace_back(binfo.x_offset[k] +
-                                      j * (j < dl) * stride_x);
-          binfo.e_offset.emplace_back(binfo.e_offset[k] +
-                                      j * (j < dr) * stride_e);
+          binfo.l_offset.emplace_back(binfo.l_offset[k] +
+                                      j * (j < dl) * stride_l);
+          binfo.r_offset.emplace_back(binfo.r_offset[k] +
+                                      j * (j < dr) * stride_r);
         }
       }
       out_len *= std::max(dl, dr);
-      stride_x *= dl;
-      stride_e *= dr;
+      stride_l *= dl;
+      stride_r *= dr;
     }
     binfo.out_len = out_len;
   } else {
-    binfo.out_len = binfo.x_len;
+    binfo.out_len = binfo.l_len;
   }
   return binfo;
 }

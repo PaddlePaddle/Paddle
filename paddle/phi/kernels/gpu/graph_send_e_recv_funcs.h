@@ -28,6 +28,21 @@ namespace phi {
 
 #define CUDA_MAX_NUM_THREADS 1024
 
+void CopyBCastOff(const BroadCastInfo& bcast_info,
+                  thrust::device_vector<int64_t>& l_bcastoff,
+                  thrust::device_vector<int64_t>& r_bcastoff) {
+  l_bcastoff.resize(bcast_info.out_len);
+  r_bcastoff.resize(bcast_info.out_len);
+  cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
+             bcast_info.l_offset.data(),
+             sizeof(int64_t) * bcast_info.out_len,
+             cudaMemcpyHostToDevice);
+  cudaMemcpy(thrust::raw_pointer_cast(r_bcastoff.data()),
+             bcast_info.r_offset.data(),
+             sizeof(int64_t) * bcast_info.out_len,
+             cudaMemcpyHostToDevice);
+}
+
 inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
   PADDLE_ENFORCE_GE(dim,
                     0,
@@ -95,7 +110,7 @@ __global__ void GraphSendERecvCUDAKernel(const T* x_data,
     while (tx < out_len) {
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
-      T val = cfunctor(x_off + x_add, e_off + e_add);
+      T val = cfunctor(x_off[x_add], e_off[e_add]);
       rfunctor(out_off + tx, val);
       tx += stride_x;
     }
@@ -103,47 +118,127 @@ __global__ void GraphSendERecvCUDAKernel(const T* x_data,
   }
 }
 
-// For backward mean
+// x_grad: for backward mean
 template <typename T, typename IndexT>
-__global__ void ManipulateMeanGradCUDAKernel(const T* params,
-                                             const IndexT* src_indices,
-                                             const IndexT* dst_indices,
-                                             T* output,
-                                             size_t index_size,
-                                             size_t slice_size,
-                                             const int32_t* dst_count) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;
-    IndexT src_i = src_indices[indices_i];
-    IndexT dst_i = dst_indices[indices_i];
-    int64_t in_i = src_i * slice_size + slice_i;
-    int64_t out_i = dst_i * slice_size + slice_i;
-    paddle::platform::CudaAtomicAdd(output + out_i,
-                                    *(params + in_i) / dst_count[src_i]);
+__global__ void ManipulateMeanGradCUDAKernelV2(const T* x_data,
+                                               const T* e_data,
+                                               const IndexT* src_indices,
+                                               const IndexT* dst_indices,
+                                               const int* dst_count,
+                                               const int64_t* xbcast_off,
+                                               const int64_t* ebcast_off,
+                                               T* x_grad,
+                                               int64_t index_size,
+                                               int64_t x_len,
+                                               int64_t e_len,
+                                               int64_t out_len,
+                                               bool use_bcast) {
+  IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
+  const IndexT stride_y = blockDim.y * gridDim.y;
+
+  while (ty < index_size) {
+    IndexT src = src_indices[ty];
+    IndexT dst = dst_indices[ty];
+    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t stride_x = blockDim.x * gridDim.x;
+
+    const T* x_off = x_data + src * x_len;
+    const T* e_off = e_data + ty * e_len;
+    T* x_grad_off = x_grad + dst * out_len;
+    while (tx < out_len) {
+      int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
+      int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
+      T val = x_off[x_add] * e_off[e_add];
+      paddle::platform::CudaAtomicAdd(x_grad_off + tx, val / dst_count[src]);
+      tx += stride_x;
+    }
+    ty += stride_y;
   }
 }
 
-// For backward min and max
+// x_grad: backward min and max for add.
 template <typename T, typename IndexT>
-__global__ void ManipulateMinMaxGradCUDAKernel(const T* params,
-                                               const IndexT* src_indices,
-                                               const IndexT* dst_indices,
-                                               T* output,
-                                               size_t index_size,
-                                               size_t slice_size,
-                                               const T* ptr_input,
-                                               const T* ptr_output) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;
-    IndexT src_i = src_indices[indices_i];
-    IndexT dst_i = dst_indices[indices_i];
-    int64_t in_i = src_i * slice_size + slice_i;
-    int64_t out_i = dst_i * slice_size + slice_i;
-    paddle::platform::CudaAtomicAdd(
-        output + out_i,
-        *(params + in_i) * (*(ptr_input + out_i) == *(ptr_output + in_i)));
+__global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
+                                                     const T* e_data,
+                                                     const T* out,
+                                                     const T* out_grad,
+                                                     const IndexT* src_indices,
+                                                     const IndexT* dst_indices,
+                                                     const int64_t* xbcast_off,
+                                                     const int64_t* ebcast_off,
+                                                     T* x_grad,
+                                                     int64_t index_size,
+                                                     int64_t x_len,
+                                                     int64_t e_len,
+                                                     int64_t out_len,
+                                                     bool use_bcast) {
+  IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
+  const IndexT stride_y = blockDim.y * gridDim.y;
+
+  while (ty < index_size) {
+    IndexT src = src_indices[ty];
+    IndexT dst = dst_indices[ty];
+    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t stride_x = blockDim.x * gridDim.x;
+
+    const T* x_off = x_data + dst * x_len;
+    const T* e_off = e_data + ty * e_len;
+    const T* out_off = out + src * out_len;
+    const T* out_grad_off = out_grad + src * out_len;
+    T* x_grad_off = x_grad + dst * x_len;
+    while (tx < out_len) {
+      int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
+      int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
+      T val = x_off[x_add] + e_off[e_add];
+      paddle::platform::CudaAtomicAdd(x_grad_off + x_add,
+                                      out_grad_off[tx] * (val == out_off[tx]));
+      tx += stride_x;
+    }
+    ty += stride_y;
+  }
+}
+
+// x_grad: backward min and max for mul.
+// 后续maxmin的处理函数也可以用来处理e的反向梯度
+template <typename T, typename IndexT>
+__global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
+                                                     const T* e_data,
+                                                     const T* out,
+                                                     const T* out_grad,
+                                                     const IndexT* src_indices,
+                                                     const IndexT* dst_indices,
+                                                     const int64_t* xbcast_off,
+                                                     const int64_t* ebcast_off,
+                                                     T* x_grad,
+                                                     int64_t index_size,
+                                                     int64_t x_len,
+                                                     int64_t e_len,
+                                                     int64_t out_len,
+                                                     bool use_bcast) {
+  IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
+  const IndexT stride_y = blockDim.y * gridDim.y;
+
+  while (ty < index_size) {
+    IndexT src = src_indices[ty];
+    IndexT dst = dst_indices[ty];
+    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t stride_x = blockDim.x * gridDim.x;
+
+    const T* x_off = x_data + dst * x_len;
+    const T* e_off = e_data + ty * e_len;
+    const T* out_off = out + src * out_len;
+    const T* out_grad_off = out_grad + src * out_len;
+    T* x_grad_off = x_grad + dst * x_len;
+    while (tx < out_len) {
+      int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
+      int64_t e_add = use_bcast ? xbcast_off[tx] : tx;
+      T val = x_off[x_add] * e_off[e_add];
+      paddle::platform::CudaAtomicAdd(
+          x_grad_off + x_add,
+          out_grad_off[tx] * (val == out_off[tx]) * e_off[e_add]);
+      tx += stride_x;
+    }
+    ty += stride_y;
   }
 }
 

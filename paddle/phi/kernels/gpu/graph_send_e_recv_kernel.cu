@@ -71,7 +71,7 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
   if (index_size == 0) return;
 
-  const auto& bcast_info = CaclBCastInfo(x.dims(), e.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), e.dims());
   const T* x_data = x.data<T>();
   const T* e_data = e.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
@@ -79,16 +79,7 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
   thrust::device_vector<int64_t> x_bcastoff, e_bcastoff;
   if (bcast_info.use_bcast) {
-    x_bcastoff.resize(bcast_info.out_len);
-    e_bcastoff.resize(bcast_info.out_len);
-    cudaMemcpy(thrust::raw_pointer_cast(x_bcastoff.data()),
-               bcast_info.x_offset.data(),
-               sizeof(int64_t) * bcast_info.out_len,
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(thrust::raw_pointer_cast(e_bcastoff.data()),
-               bcast_info.e_offset.data(),
-               sizeof(int64_t) * bcast_info.out_len,
-               cudaMemcpyHostToDevice);
+    CopyBCastOff(bcast_info, x_bcastoff, e_bcastoff);
   }
 
   int64_t out_len = bcast_info.out_len;
@@ -98,8 +89,6 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   const int nby = (index_size + nty - 1) / nty;
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
-  int64_t* x_bcastoff_data = thrust::raw_pointer_cast(x_bcastoff.data());
-  int64_t* e_bcastoff_data = trhust::raw_pointer_cast(e_bcastoff.data());
   int64_t input_size = x.dims()[0];
 #ifdef PADDLE_WITH_HIP
   int block_ = 256;
@@ -118,12 +107,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           add_funtor,
@@ -139,12 +128,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
@@ -184,12 +173,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           add_funtor,
@@ -205,12 +194,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
@@ -235,12 +224,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           add_funtor,
@@ -256,12 +245,12 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           e_data,
           s_index,
           d_index,
-          x_bcastoff_data,
-          e_bcastoff_data,
+          thrust::raw_pointer_cast(x_bcastoff.data());
+          thrust::raw_pointer_cast(e_bcastoff.data());
           out_data,
           index_size,
-          bcast_info.x_len,
-          bcast_info.e_len,
+          bcast_info.l_len,
+          bcast_info.r_len,
           out_len,
           bcast_info.use_bcast,
           mul_functor,
