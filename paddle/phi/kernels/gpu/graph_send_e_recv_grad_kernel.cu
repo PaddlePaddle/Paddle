@@ -77,7 +77,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
   } else if (compute_type == "MUL") {
     ManipulateMinMaxGradCUDAKernelForMul<
         T,
-        IndexT><<<grid_, block_, 0, ctx.stream()>>>(
+        IndexT><<<grid, block, 0, ctx.stream()>>>(
         x_data,
         e_data,
         out_data,
