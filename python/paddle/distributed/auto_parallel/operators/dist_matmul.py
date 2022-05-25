@@ -1999,6 +1999,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         super(DistributedMulImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
     def calc_cost(self, op_role, dist_op, ctx, cluster):
         cost = None
         if int(op_role) == int(OpRole.Forward):
@@ -2070,7 +2071,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx)
         processes = dist_op.dist_attr.process_mesh.processes
-        cost_mpping = build_comp_costs_from_desc_mapping(
+        cost_mapping = build_comp_costs_from_desc_mapping(
             MulOpCost, ctx, processes, desc_mapping, cluster)
 
         # calc comm op cost
@@ -2403,7 +2404,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         res_cost = [cost_mapping, comm_op_cost_list]
 
         return res_cost
-
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
