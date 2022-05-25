@@ -420,6 +420,8 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_v2_to_matmul_pass')
         graph = self._apply_pass(graph, 'matmul_scale_fuse_pass')
         graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_to_mul_pass')
+        graph = self._apply_pass(graph, 'fc_fuse_pass',
+                                 ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
@@ -442,9 +444,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_mish_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_hard_sigmoid_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'fc_fuse_pass',
-                                 ['use_gpu', 'use_fc_padding'], [False, False])
-        graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
+
         if self._is_fc_quantized(graph):
             # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')

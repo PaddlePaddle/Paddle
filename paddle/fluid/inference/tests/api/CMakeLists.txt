@@ -580,13 +580,10 @@ if(WITH_MKLDNN)
   inference_analysis_api_quant_test_run(test_analyzer_quant2_resnet50_channelwise_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL} ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
 
   # Quant2 VGG16
-  set(QUANT2_VGG16_MODEL_DIR "${QUANT_DATA_DIR}/VGG16_quant")
-  set(QUANT2_VGG16_MODEL_ARCHIVE "VGG16_qat_model.tar.gz")
-  if(NOT LINUX)
-      download_quant_data(${QUANT2_VGG16_MODEL_DIR} ${QUANT2_VGG16_MODEL_ARCHIVE} c37e63ca82a102f47be266f8068b0b55)
-  endif(NOT LINUX)
-  set(QUANT2_VGG16_MODEL ${QUANT2_VGG16_MODEL_DIR}/model)
+  if(NOT WIN32)
+  set(QUANT2_VGG16_MODEL ${QUANT_DATA_DIR}/VGG16_quant/model)
   inference_analysis_api_quant_test_run(test_analyzer_quant2_vgg16_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_VGG16_MODEL} ${QUANT2_VGG16_MODEL} ${IMAGENET_DATA_PATH} true)
+  endif(NOT WIN32)
 
   ### Other tests
  
