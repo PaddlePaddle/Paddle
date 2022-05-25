@@ -43,6 +43,7 @@ function set_cuda_env(){
   if [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
       sed -i 's#<set_cuda_env>#RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.8 /usr/lib/x86_64-linux-gnu/libcudnn.so \&\& \\ \
     ln -s /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusolver.so.11 /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusolver.so \&\& \\ \
+    ln -s /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusparse.so.11 /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcusparse.so \&\& \\ \
     ln -s /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcublas.so.11 /usr/local/cuda-11.2/targets/x86_64-linux/lib/libcublas.so \
 ENV LD_LIBRARY_PATH=/usr/local/lib/:/usr/local/cuda-11.2/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH} #g' Dockerfile.tmp
   elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
