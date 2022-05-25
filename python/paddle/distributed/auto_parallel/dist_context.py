@@ -115,6 +115,8 @@ class DistributedContext:
         self._backup_block_state_stack = []
         self._backup_dist_tensors_for_program_stack = []
         self._backup_dist_ops_for_program_stack = []
+        self._backup_serial_main_program_stack = []
+        self._backup_serial_startup_program_stack = []
 
     @property
     def serial_main_program(self):
@@ -186,6 +188,10 @@ class DistributedContext:
             self._dist_ops_for_program)
 
     def _backup_serial_info(self, mode):
+        self._backup_serial_main_program_stack.append(
+            self._serial_main_program.clone())
+        self._backup_serial_startup_program_stack.append(
+            self._serial_startup_program.clone())
         self._backup_pass_context_stack.append(
             copy.deepcopy(self._pass_context))
         self._backup_block_state_stack.append(copy.deepcopy(self._block_state))
@@ -204,10 +210,16 @@ class DistributedContext:
             self._backup_dist_info(dist_mode)
 
     def _restore_serial_info(self, mode="to_backup"):
-        if self._original_serial_main_program is not None:
+        if mode == "to_backup":
+            self._serial_main_program = self._backup_serial_main_program_stack.pop(
+            )
+            self._serial_startup_program = self._backup_serial_startup_program_stack.pop(
+            )
+        elif mode == "to_original":
+            assert self._original_serial_main_program is not None
+            assert self._original_serial_startup_program is not None
             self._serial_main_program = self._original_serial_main_program.clone(
             )
-        if self._original_serial_startup_program is not None:
             self._serial_startup_program = self._original_serial_startup_program.clone(
             )
 
@@ -249,9 +261,8 @@ class DistributedContext:
                 new_var_list.append(var)
             self._serial_fetch_vars[key] = new_var_list
 
-        if mode == "to_backup":
-            self._pass_context = self._backup_pass_context_stack.pop()
-            self._block_state = self._backup_block_state_stack.pop()
+        self._pass_context = self._backup_pass_context_stack.pop()
+        self._block_state = self._backup_block_state_stack.pop()
 
     def _restore_dist_info(self, mode="to_backup"):
         if mode == "to_backup":

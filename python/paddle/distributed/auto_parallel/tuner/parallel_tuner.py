@@ -660,19 +660,16 @@ class ParallelTuner:
     def _estimate_trial(self):
         assert self._cluster is not None
         if self._mode == "eval":
-            print("here 1", flush=True)
             self._estimator = CostEstimator(
                 self._dist_context.serial_main_program,
                 self._cluster,
                 loop_count=self._loop_count)
         elif self._mode == "predict":
-            print("here 2", flush=True)
             self._estimator = CostEstimator(
                 self._dist_context.serial_main_program,
                 self._cluster,
                 loop_count=self._loop_count)
         elif self._mode == "train":
-            print("here 3", flush=True)
             # get serial main program with backward
             serial_main_program = self._dist_context.serial_main_program
             serial_startup_program = self._dist_context.serial_startup_program
@@ -744,8 +741,6 @@ class ParallelTuner:
         self._dist_context._dist_tensors_for_program = tmp[0]
         self._dist_context._dist_ops_for_program = tmp[1]
         self._dist_context._process_meshes = tmp[2]
-        self._dist_context._restore(
-            serial=False, dist=True, dist_mode="to_default")
 
     def tune(self):
         self._dist_context._backup(serial=True, dist=True)
@@ -758,7 +753,10 @@ class ParallelTuner:
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.
         self._dist_context._restore(
-            serial=True, dist=True, dist_mode="to_default")
+            serial=True,
+            serial_mode="to_backup",
+            dist=True,
+            dist_mode="to_default")
 
         best_time = init_time
         start_time = time.time()
@@ -787,7 +785,10 @@ class ParallelTuner:
                 best_time = cur_time
             # We need to restore the distributed context and reset the distributed information to the default.
             self._dist_context._restore(
-                serial=True, dist=True, dist_mode="to_default")
+                serial=True,
+                serial_mode="to_backup",
+                dist=True,
+                dist_mode="to_default")
         # Select the best parallel strategy
         self._dist_context._dist_tensors_for_program = self._best_parallel_strategy[
             0]
