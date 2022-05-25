@@ -24,6 +24,79 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
+void CalculateXEGradForMinMax(const Context& ctx,
+                              const T* out_grad,
+                              const T* x_data,
+                              const T* e_data,
+                              const phi::DDim& out_grad_dims,
+                              const phi::DDim& x_dims,
+                              const phi::DDim& e_dims,
+                              const IndexT* s_index,
+                              const IndexT* d_index,
+                              const std::string& compute_type,
+                              const std::string& pool_type,
+                              int64_t index_size,
+                              int64_t slice_size,
+                              T* x_grad,
+                              T* e_grad,
+                              const DenseTensor* out = nullptr) {
+  const T* out_data = out->data<T>();
+  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
+  thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
+  if (bcast_info.use_bcast) {
+    CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+  }
+
+  int64_t out_len = bcast_info.out_len;
+  const int ntx = FindNumThreads(out_len);
+  const int nty = CUDA_MAX_NUM_THREADS / ntx;
+  const int nbx = (out_len + ntx - 1) / ntx;
+  const int nby = (index_size + nty - 1) / nty;
+  const dim3 grid(nbx, nby);
+  const dim3 block(ntx, nty);
+
+  if (compute_type == "ADD") {
+    ManipulateMinMaxGradCUDAKernelForAdd<
+        T,
+        IndexT><<<grid, block, 0, ctx.stream()>>>(
+        x_data,
+        e_data,
+        out_data,
+        out_grad,
+        d_index,
+        s_index,
+        thrust::raw_pointer_cast(l_bcastoff.data()),
+        thrust::raw_pointer_cast(r_bcastoff.data()),
+        x_grad,
+        e_grad,
+        index_size,
+        bcast_info.l_len,
+        bcast_info.r_len,
+        out_len,
+        bcast_info.use_bcast);
+  } else if (compute_type == "MUL") {
+    ManipulateMinMaxGradCUDAKernelForMul<
+        T,
+        IndexT><<<grid_, block_, 0, ctx.stream()>>>(
+        x_data,
+        e_data,
+        out_data,
+        out_grad,
+        d_index,
+        s_index,
+        thrust::raw_pointer_cast(l_bcastoff.data()),
+        thrust::raw_pointer_cast(r_bcastoff.data()),
+        x_grad,
+        e_grad,
+        index_size,
+        bcast_info.l_len,
+        bcast_info.r_len,
+        out_len,
+        bcast_info.use_bcast);
+  }
+}
+
+template <typename Context, typename T, typename IndexT>
 void CalculateXGrad(const Context& ctx,
                     const T* out_grad,
                     const T* x_data,
@@ -127,57 +200,6 @@ void CalculateXGrad(const Context& ctx,
           out_len,
           bcast_info.use_bcast);
     }
-  } else if (pool_type == "MAX" || pool_type == "MIN") {
-    const T* out_data = out->data<T>();
-    const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
-    thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
-    if (bcast_info.use_bcast) {
-      CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
-    }
-    int64_t out_len = bcast_info.out_len;
-    const int ntx = FindNumThreads(out_len);
-    const int nty = CUDA_MAX_NUM_THREADS / ntx;
-    const int nbx = (out_len + ntx - 1) / ntx;
-    const int nby = (index_size + nty - 1) / nty;
-    const dim3 grid_(nbx, nby);
-    const dim3 block_(ntx, nty);
-    if (compute_type == "ADD") {
-      ManipulateMinMaxGradCUDAKernelForAdd<
-          T,
-          IndexT><<<grid_, block_, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          out_data,
-          out_grad,
-          d_index,
-          s_index,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          x_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
-    } else if (compute_type == "MUL") {
-      ManipulateMinMaxGradCUDAKernelForMul<
-          T,
-          IndexT><<<grid_, block_, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          out_data,
-          out_grad,
-          d_index,
-          s_index,
-          thrust::raw_pointer_cast(l_bcastoff.data()),
-          thrust::raw_pointer_cast(r_bcastoff.data()),
-          x_grad,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast);
-    }
   }
 }
 
@@ -230,23 +252,42 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
-  // Calculate x_grad
-  CalculateXGrad<Context, T, IndexT>(ctx,
-                                     out_grad_data,
-                                     x_data,
-                                     e_data,
-                                     out_grad.dims(),
-                                     x_dims,
-                                     e_dims,
-                                     s_index,
-                                     d_index,
-                                     compute_type,
-                                     pool_type,
-                                     index_size,
-                                     slice_size,
-                                     x_grad_data,
-                                     dst_count,
-                                     out);
+  if (pool_type == "SUM" || pool_type == "MEAN") {
+    CalculateXGrad<Context, T, IndexT>(ctx,
+                                       out_grad_data,
+                                       x_data,
+                                       e_data,
+                                       out_grad.dims(),
+                                       x_dims,
+                                       e_dims,
+                                       s_index,
+                                       d_index,
+                                       compute_type,
+                                       pool_type,
+                                       index_size,
+                                       slice_size,
+                                       x_grad_data,
+                                       dst_count,
+                                       out);
+    CalculateEGrad<Context, T, IndexT>();
+  } else if (pool_type == "MIN" || pool_type == "MAX") {
+    CalculateXEGradForMinMax<Context, T, IndexT>(ctx,
+                                                 out_grad_data,
+                                                 x_data,
+                                                 e_data,
+                                                 out_grad.dims(),
+                                                 x_dims,
+                                                 e_dims,
+                                                 s_index,
+                                                 d_index,
+                                                 compute_type,
+                                                 pool_type,
+                                                 index_size,
+                                                 slice_size,
+                                                 x_grad_data,
+                                                 e_grad_data,
+                                                 out);
+  }
 }
 
 template <typename T, typename Context>

@@ -167,6 +167,7 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
                                                      const int64_t* xbcast_off,
                                                      const int64_t* ebcast_off,
                                                      T* x_grad,
+                                                     T* e_grad,
                                                      int64_t index_size,
                                                      int64_t x_len,
                                                      int64_t e_len,
@@ -186,11 +187,14 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
     const T* out_off = out + src * out_len;
     const T* out_grad_off = out_grad + src * out_len;
     T* x_grad_off = x_grad + dst * x_len;
+    T* e_grad_off = e_grad + ty * e_len;
     while (tx < out_len) {
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] + e_off[e_add];
       paddle::platform::CudaAtomicAdd(x_grad_off + x_add,
+                                      out_grad_off[tx] * (val == out_off[tx]));
+      paddle::platform::CudaAtomicAdd(e_grad_off + e_add,
                                       out_grad_off[tx] * (val == out_off[tx]));
       tx += stride_x;
     }
@@ -210,6 +214,7 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
                                                      const int64_t* xbcast_off,
                                                      const int64_t* ebcast_off,
                                                      T* x_grad,
+                                                     T* e_grad,
                                                      int64_t index_size,
                                                      int64_t x_len,
                                                      int64_t e_len,
@@ -229,6 +234,7 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
     const T* out_off = out + src * out_len;
     const T* out_grad_off = out_grad + src * out_len;
     T* x_grad_off = x_grad + dst * x_len;
+    T* e_grad_off = e_grad + ty * e_len;
     while (tx < out_len) {
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? xbcast_off[tx] : tx;
@@ -236,6 +242,9 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
       paddle::platform::CudaAtomicAdd(
           x_grad_off + x_add,
           out_grad_off[tx] * (val == out_off[tx]) * e_off[e_add]);
+      paddle::platform::CudaAtomicAdd(
+          e_grad_off + e_add,
+          out_grad_off[tx] * (val == out_off[tx]) * x_off[x_add]);
       tx += stride_x;
     }
     ty += stride_y;
