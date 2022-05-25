@@ -19,7 +19,7 @@ from ..ps.utils.public import *
 from paddle.framework import core
 from .pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+from paddle.fluid.transpiler.collective import MultiThread
 
 
 @register_pass("append_send_ops_pass")
@@ -375,12 +375,12 @@ class DistributedOpsPass(PassBase):
                 if attrs['use_ps_gpu']:
                     _program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
+                        type="pull_gpups_sparse",
                         inputs={"Ids": inputs,
                                 'W': w},
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1] for i in inputs],
                             "is_distributed": True,
                             "is_sparse": True
                         })
@@ -679,7 +679,7 @@ class PsGpuPass(PassBase):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):
@@ -714,7 +714,7 @@ class PsTranspilePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        t = SingleProcessMultiThread()
+        t = MultiThread(trans_mode='fuse_all_reduce')
         env = get_dist_env()
         t.transpile(
             startup_program=startup_program,
