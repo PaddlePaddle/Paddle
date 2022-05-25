@@ -595,8 +595,9 @@ void GpuPsGraphTable::build_graph_from_cpu(
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch) {
-  return graph_neighbor_sample_v2(global_device_map[q.gpu_id], q.idx, q.key,
-                                  q.sample_size, q.len, cpu_switch);
+  return graph_neighbor_sample_v2(global_device_map[q.gpu_id], q.table_idx,
+                                  q.src_nodes, q.sample_size, q.len,
+                                  cpu_switch);
 }
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id, int idx,
                                                             int64_t* key,
