@@ -94,7 +94,9 @@ void AddmmGradKernel(const Context& dev_ctx,
 
     blas.SCAL(total_elems, beta, input_grad->data<T>());
 
-    input_grad->Resize(input.dims());
+    if (input.dims().size() == 1) {
+      input_grad->Resize(input.dims());
+    }
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);

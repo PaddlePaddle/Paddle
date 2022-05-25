@@ -235,7 +235,6 @@ class TestAddMMOp4(unittest.TestCase):
             assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
 
 
-'''
 class TestAddMMAPI(unittest.TestCase):
     def test_api_error(self):
         data_x = np.ones((2, 2)).astype(np.float32)
@@ -249,9 +248,64 @@ class TestAddMMAPI(unittest.TestCase):
             x = paddle.to_tensor(data_x_wrong)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input)
-            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+            out = paddle.tensor.addmm(
+                input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
         self.assertRaises(ValueError, test_error1)
-'''
+
+        def test_error2():
+            data_x_wrong = np.ones((2)).astype(np.float32)
+            x = paddle.to_tensor(data_x_wrong)
+            y = paddle.to_tensor(data_y)
+            input = paddle.to_tensor(data_input)
+            out = paddle.tensor.addmm(
+                input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
+        self.assertRaises(ValueError, test_error2)
+
+        def test_error3():
+            data_input_wrong = np.ones((2, 2, 2)).astype(np.float32)
+            x = paddle.to_tensor(data_x)
+            y = paddle.to_tensor(data_y)
+            input = paddle.to_tensor(data_input_wrong)
+            out = paddle.tensor.addmm(
+                input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
+        self.assertRaises(ValueError, test_error3)
+
+        def test_error4():
+            data_input_wrong = np.ones((5)).astype(np.float32)
+            x = paddle.to_tensor(data_x)
+            y = paddle.to_tensor(data_y)
+            input = paddle.to_tensor(data_input_wrong)
+            out = paddle.tensor.addmm(
+                input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
+        self.assertRaises(ValueError, test_error4)
+
+        paddle.enable_static()
+
+    def test_api_normal(self):
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output = paddle.tensor.addmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(data_x,
+                                                                    data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+
+        paddle.enable_static()
+
 
 if __name__ == "__main__":
     paddle.enable_static()

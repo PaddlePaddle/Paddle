@@ -1623,8 +1623,6 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         if input_shape[1] != y_shape[1]:
             if input_shape[1] != 1:
                 raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
-            if input_shape[0] != x_shape[0] and input_shape[0] != 1:
-                raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
     elif len(input_shape) == 1:
         if input_shape[0] not in (x_shape[0], y_shape[1], 1):
             raise ValueError("The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(input_shape, x_shape[0], y_shape[1]))
