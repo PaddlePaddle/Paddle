@@ -84,6 +84,12 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
 #endif
+        {"elu", nvinfer1::ActivationType::kELU}
+        {"selu", nvinfer1::ActivationType::kSELU}
+        {"softsign", nvinfer1::ActivationType::kSOFTSIGN}
+        {"softplus", nvinfer1::ActivationType::kSOFTPLUS}
+        {"scaled_tanh", nvinfer1::ActivationType::kSCALED_TANH}
+        {"threasholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}
 };
 
 class ReluOpConverter : public ActivationOpConverter {
@@ -106,6 +112,36 @@ class Relu6OpConverter : public ActivationOpConverter {
   Relu6OpConverter() { op_type_ = "relu6"; }
 };
 
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  EluOpConverter() { op_type_ = "elu"; }
+};
+
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  SeluOpConverter() { op_type_ = "selu"; }
+};
+
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  SoftsignOpConverter() { op_type_ = "softsign"; }
+};
+
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  SoftplusOpConverter() { op_type_ = "softplus"; }
+};
+
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  ScaledTanhOpConverter() { op_type_ = "scaled_tanh"; }
+};
+
+class HardSigmoidOpConverter : public ActivationOpConverter {
+ public:
+  ThreasholdedReluOpConverter() { op_type_ = "threasholded_relu"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -114,3 +150,9 @@ REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
+REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
+REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
+REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
+REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
+REGISTER_TRT_OP_CONVERTER(scaled_tanh, ScaledTanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(threasholded_relu, ThreasholdedReluOpConverter);
