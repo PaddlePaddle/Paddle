@@ -49,6 +49,20 @@ TEST(TanhOpConverter, main) { test_activation("tanh"); }
 
 TEST(Relu6OpConverter, main) { test_activation("relu6"); }
 
+TEST(EluOpConverter, main) { test_activation("elu"); }
+
+TEST(seluOpConverter, main) { test_activation("selu"); }
+
+TEST(SoftsignOpConverter, main) { test_activation("softsign"); }
+
+TEST(SoftplusOpConverter, main) { test_activation("softplus"); }
+
+TEST(ScaledTanhOpConverter, main) { test_activation("scaled_tanh"); }
+
+TEST(ThreasholdedReluOpConverter, main) {
+  test_activation("threasholded_relu");
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -56,4 +70,10 @@ TEST(Relu6OpConverter, main) { test_activation("relu6"); }
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(tanh);
+USE_OP_ITSELF(elu);
+USE_OP_ITSELF(selu);
+USE_OP_ITSELF(softsign);
+USE_OP_ITSELF(softplus);
+USE_OP_ITSELF(scaled_tanh);
+USE_OP_ITSELF(threasholded_relu);
 USE_OP(relu6);
