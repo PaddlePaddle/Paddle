@@ -866,6 +866,7 @@ void DownpourWorker::TrainFiles() {
       std::vector<uint64_t> fea_keys_push;
       //fea_keys_push.emplace_back(boost::lexical_cast<uint64_t>("10019922723212237434"));
       std::vector<float*> push_g_vec;
+      std::vector<float> push_path_all_vec;
       //std::vector<float> n_vec = {4.0, 3.0, 2.0, 1.0};
       //float* n_ptr = n_vec.data(); 
       //push_g_vec.push_back(n_ptr);
@@ -896,14 +897,14 @@ void DownpourWorker::TrainFiles() {
       int64_t* top_path_ids = top_path_tensor->data<int64_t>();
       int32_t last_id_pos = 0;
       uint64_t last_id = static_cast<uint64_t>(item_ids[0]);
-      std::cout << "item ids 0 pos:" << last_id << std::endl;
+      ////std::cout << "item ids 0 pos:" << last_id << std::endl;
       // get topk path 
       for (int32_t id_idx = 1; id_idx < static_cast<int32_t>(item_id_len); ++id_idx) {
         uint64_t now_item_id = static_cast<uint64_t>(item_ids[id_idx]);
-        std::cout << "idx: " << id_idx << ", item ids:" << now_item_id << std::endl;
+        ////std::cout << "idx: " << id_idx << ", item ids:" << now_item_id << std::endl;
         if (now_item_id != last_id){
           // last item is over
-          std::cout << "now_item_id:" << now_item_id << ", last_id:" << last_id << std::endl;
+          ////std::cout << "now_item_id:" << now_item_id << ", last_id:" << last_id << std::endl;
           // path_sorted_kv_list store the score/path
           auto path_sorted_kv_list = std::vector<std::pair<float, int64_t*>>();
           // from last_id_pos to idx-1 is the last item's all top k path
@@ -926,20 +927,21 @@ void DownpourWorker::TrainFiles() {
             for (auto tmp_path_idx = 0; tmp_path_idx < matrix_d; ++tmp_path_idx){
               // hard code for debug
               int32_t tmp_tmp_v = static_cast<int32_t>(*tmp_path_ptr); 
-              tmp_vector.emplace_back(static_cast<float>(tmp_tmp_v));
-              std::cout << "path idx push:" << tmp_tmp_v <<std::endl;
-              //tmp_path_ptr += sizeof(int64_t);
+              float tmp_tmp_v_f = static_cast<float>(tmp_tmp_v);
+              //tmp_vector.emplace_back(tmp_tmp_v_f);
+              push_path_all_vec.emplace_back(tmp_tmp_v_f);
+              //std::cout << "path idx push int:" << tmp_tmp_v << " , float: " << tmp_tmp_v_f << std::endl;
               tmp_path_ptr += 1;
             }
             //std::cout << "path sorted :" << sorted_idx << ", score:" << path_sorted_kv_list.at(sorted_idx).first << std::endl;
           }
-          push_g_vec.emplace_back(tmp_vector.data());
+          //push_g_vec.emplace_back(tmp_vector.data());
           last_id = now_item_id;
           last_id_pos = id_idx;
         }
       }
       // deal last item
-      std::cout << "last item id:" << last_id << std::endl;
+      ////std::cout << "last item id:" << last_id << std::endl;
       auto path_sorted_kv_list = std::vector<std::pair<float, int64_t*>>();
       for (auto score_idx = last_id_pos * topk_num; score_idx < static_cast<int32_t>(item_id_len) * topk_num; ++score_idx){
         path_sorted_kv_list.push_back({top_score_ids[score_idx], top_path_ids + 1 + score_idx * (matrix_d + 1)}) ;
@@ -950,27 +952,45 @@ void DownpourWorker::TrainFiles() {
       fea_keys_push.emplace_back(last_id);
       std::vector<float> tmp_vector;
       for (auto sorted_idx = 0u; sorted_idx < path_sorted_kv_list.size(); ++ sorted_idx){
-        if (sorted_idx >= static_cast<uint32_t>(topk_num)){
+        if (sorted_idx >= static_cast<uint32_t>(path_num)){
           break;
         }
         // push fea keys
         int64_t* tmp_path_ptr = path_sorted_kv_list.at(sorted_idx).second;
         for (auto tmp_path_idx = 0; tmp_path_idx < matrix_d; ++tmp_path_idx){
           int32_t tmp_tmp_v = static_cast<int32_t>(*tmp_path_ptr); 
-          tmp_vector.emplace_back(static_cast<float>(tmp_tmp_v));
+          float tmp_tmp_v_f = static_cast<float>(tmp_tmp_v);
+          //tmp_vector.emplace_back(tmp_tmp_v_f);
+          push_path_all_vec.emplace_back(tmp_tmp_v_f);
+          ////std::cout << "last item path idx push int:" << tmp_tmp_v << " , float: " << tmp_tmp_v_f << std::endl;
+          //tmp_vector.emplace_back(static_cast<float>(tmp_tmp_v));
           //std::cout << "path idx push:" << tmp_tmp_v <<std::endl;
           //tmp_path_ptr += sizeof(int64_t);
           tmp_path_ptr += 1;
         }
         //std::cout << "path sorted :" << sorted_idx << ", score:" << path_sorted_kv_list.at(sorted_idx).first << std::endl;
       }
-      push_g_vec.emplace_back(tmp_vector.data());
-      std::cout << "fea_key_vector_size:" << fea_keys_push.size() << ", path size:" << push_g_vec.size() << std::endl;
+      //push_g_vec.emplace_back(tmp_vector.data());
+      // start split all path flat to float*
+      for (auto sp_idx = 0u; sp_idx < fea_keys_push.size(); ++ sp_idx){
+        push_g_vec.emplace_back(push_path_all_vec.data() + path_num * matrix_d * sp_idx);
+      }
+      //std::cout << "fea_key_vector_size:" << fea_keys_push.size() << ", path size:" << push_g_vec.size() << std::endl;
+      for (auto ps_idx=0u; ps_idx < push_g_vec.size(); ++ ps_idx){
+        ////std::cout << "idx:" << ps_idx << ", fea_key:" << fea_keys_push[ps_idx] << std::endl;
+        float* tmp_g_vec = push_g_vec[ps_idx];
+        for (auto gv_idx=0; gv_idx < matrix_d; ++ gv_idx) {
+          ////std::cout << "g_vec idx" << gv_idx << " , path:" << *tmp_g_vec << std::endl; 
+          tmp_g_vec += 1;
+        }
+
+      }
+
 
       //for (auto sorted_idx = 0u; sorted_idx < path_sorted_kv_list.size(); ++ sorted_idx){
       //  std::cout << "path sorted :" << sorted_idx << ", score:" << path_sorted_kv_list.at(sorted_idx).first << std::endl;
       //}
-      std::cout << "end--------batch----------------" << std::endl;
+      ////std::cout << "end--------batch----------------" << std::endl;
       // last item to push
       uint64_t table_id = 0;
 
@@ -983,7 +1003,7 @@ void DownpourWorker::TrainFiles() {
       for (auto& t : push_sparse_status) {
         t.wait();
       }
-      std::cout<< "end push path" << std::endl;
+      ////std::cout<< "end push path" << std::endl;
 
       //for (auto id_idx = 0u; id_idx < top_score_len; ++id_idx) {
       //  std::cout << "top_score:" << top_score_ids[id_idx] << std::endl;
