@@ -254,7 +254,7 @@ def numel(x, name=None):
 
 
 def nanmedian(x, axis=None, keepdim=True, name=None):
-    """
+    r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
     If the valid count of elements is a even number,
