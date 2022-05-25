@@ -162,7 +162,7 @@ void InstanceNormKernel(const Context &dev_ctx,
           data_desc_,
           static_cast<const void *>(x_tmp.template data<T>()),
           data_desc_,
-          static_cast<void *>(y->template mutable_data<T>(dev_ctx.GetPlace())),
+          static_cast<void *>(y->template data<T>()),
           in_param_desc_,
           const_cast<void *>(static_cast<const void *>(
               scale_tmp.template data<BatchNormParamType<T>>())),
@@ -173,11 +173,9 @@ void InstanceNormKernel(const Context &dev_ctx,
           nullptr,
           epsilon,
           static_cast<void *>(
-              saved_mean->template mutable_data<BatchNormParamType<T>>(
-                  dev_ctx.GetPlace())),
+              saved_mean->template data<BatchNormParamType<T>>()),
           static_cast<void *>(
-              saved_variance->template mutable_data<BatchNormParamType<T>>(
-                  dev_ctx.GetPlace()))));
+              saved_variance->template data<BatchNormParamType<T>>())));
 
   PADDLE_ENFORCE_GPU_SUCCESS(
       paddle::platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
@@ -193,7 +191,7 @@ void InstanceNormKernel(const Context &dev_ctx,
           data_desc_,
           x_tmp.template data<T>(),
           data_desc_,
-          y->template mutable_data<T>(dev_ctx.GetPlace()),
+          y->template data<T>(),
           in_param_desc_,
           scale_tmp.template data<BatchNormParamType<T>>(),
           bias_tmp.template data<BatchNormParamType<T>>(),
@@ -201,10 +199,8 @@ void InstanceNormKernel(const Context &dev_ctx,
           nullptr,
           nullptr,
           epsilon,
-          saved_mean->template mutable_data<BatchNormParamType<T>>(
-              dev_ctx.GetPlace()),
-          saved_variance->template mutable_data<BatchNormParamType<T>>(
-              dev_ctx.GetPlace())));
+          saved_mean->template data<BatchNormParamType<T>>(),
+          saved_variance->template data<BatchNormParamType<T>>()));
 
   PADDLE_ENFORCE_GPU_SUCCESS(
       paddle::platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));

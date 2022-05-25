@@ -239,13 +239,11 @@ void InstanceNormGradKernel(const Context &dev_ctx,
             data_desc_,
             d_y_tmp.template data<T>(),
             data_desc_,
-            d_x->template mutable_data<T>(dev_ctx.GetPlace()),
+            d_x->template data<T>(),
             in_param_desc_,
             scale_tmp.template data<BatchNormParamType<T>>(),
-            d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
-                dev_ctx.GetPlace()),
-            d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
-                dev_ctx.GetPlace()),
+            d_scale_tmp.template data<BatchNormParamType<T>>(),
+            d_bias_tmp.template data<BatchNormParamType<T>>(),
             epsilon,
             saved_mean_data,
             saved_var_data));
@@ -263,13 +261,11 @@ void InstanceNormGradKernel(const Context &dev_ctx,
             data_desc_,
             d_y_tmp.template data<T>(),
             data_desc_,
-            d_x->template mutable_data<T>(dev_ctx.GetPlace()),
+            d_x->template data<T>(),
             in_param_desc_,
             scale_tmp.template data<BatchNormParamType<T>>(),
-            d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
-                dev_ctx.GetPlace()),
-            d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
-                dev_ctx.GetPlace()),
+            d_scale_tmp.template data<BatchNormParamType<T>>(),
+            d_bias_tmp.template data<BatchNormParamType<T>>(),
             epsilon,
             saved_mean_data,
             saved_var_data));
