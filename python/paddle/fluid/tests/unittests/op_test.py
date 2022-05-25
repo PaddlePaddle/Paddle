@@ -234,6 +234,14 @@ def get_numeric_gradient(place,
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+
+            x_pos_j = origin + 1j * delta
+            __set_elem__(tensor_to_check, i, x_pos_j)
+            y_pos_j = get_output()
+
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -241,8 +249,26 @@ def get_numeric_gradient(place,
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+
+            x_neg_j = origin - 1j * delta
+            __set_elem__(tensor_to_check, i, x_neg_j)
+            y_neg_j = get_output()
+
         __set_elem__(tensor_to_check, i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            # always assume real output, because this function has 
+            # no input for dl/dy, though it should do.
+            df_over_dr = (y_pos - y_neg) / delta / 2
+            df_over_di = (y_pos_j - y_neg_j) / delta / 2
+            gradient_flat[i] = df_over_dr + 1j * df_over_di
+        else:
+            df_over_dr = (y_pos - y_neg) / delta / 2
+            gradient_flat[i] = df_over_dr
+        __set_elem__(tensor_to_check, i, origin)
 
     return gradient_flat.reshape(tensor_to_check.shape())
 
