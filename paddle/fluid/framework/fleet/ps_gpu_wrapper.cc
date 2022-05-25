@@ -28,10 +28,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+
 #include <algorithm>
 #include <deque>
 
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
@@ -676,8 +677,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 #ifdef PADDLE_WITH_PSCORE
       paddle::distributed::CtrDymfAccessor accessor;
-      // val->delta_score = ptr_val[accessor.common_feature_value.DeltaScoreIndex()];
-      val->delta_score = ptr_val[accessor.common_feature_value.DeltaScoreIndex()];
+      val->delta_score =
+          ptr_val[accessor.common_feature_value.DeltaScoreIndex()];
       val->show = ptr_val[accessor.common_feature_value.ShowIndex()];
       val->clk = ptr_val[accessor.common_feature_value.ClickIndex()];
       val->slot = int(ptr_val[accessor.common_feature_value.SlotIndex()]);
@@ -886,7 +887,7 @@ void PSGPUWrapper::EndPass() {
 #endif
 #ifdef PADDLE_WITH_PSCORE
       auto* downpour_value =
-        (paddle::distributed::FixedFeatureValue*)(gpu_val->cpu_ptr);
+          (paddle::distributed::FixedFeatureValue*)(gpu_val->cpu_ptr);
       int downpour_value_size = downpour_value->size();
       if (gpu_val->mf_size > 0 && downpour_value_size == 8) {
         downpour_value->resize(gpu_val->mf_dim + 1 + downpour_value_size);
@@ -894,11 +895,13 @@ void PSGPUWrapper::EndPass() {
       float* cpu_val = downpour_value->data();
 
       paddle::distributed::CtrDymfAccessor accessor;
-      cpu_val[accessor.common_feature_value.DeltaScoreIndex()] = gpu_val->delta_score;
+      cpu_val[accessor.common_feature_value.DeltaScoreIndex()] =
+          gpu_val->delta_score;
       cpu_val[accessor.common_feature_value.ShowIndex()] = gpu_val->show;
       cpu_val[accessor.common_feature_value.ClickIndex()] = gpu_val->clk;
       cpu_val[accessor.common_feature_value.EmbedWIndex()] = gpu_val->lr;
-      cpu_val[accessor.common_feature_value.EmbedG2SumIndex()] = gpu_val->lr_g2sum;
+      cpu_val[accessor.common_feature_value.EmbedG2SumIndex()] =
+          gpu_val->lr_g2sum;
       cpu_val[accessor.common_feature_value.SlotIndex()] = gpu_val->slot;
 #endif
       if (gpu_val->mf_size > 0) {
