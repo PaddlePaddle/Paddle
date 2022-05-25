@@ -50,7 +50,6 @@ class InferMetaContext {
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
   virtual const MetaTensor& InputAt(size_t idx) const;
-  virtual const phi::MetaTensor& OptionalInputAt(size_t idx) const;
 
   virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
                                                        size_t end) const;
@@ -144,24 +143,6 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
       const MetaTensor& arg = ctx->InputAt(range.first);
-      InferMetaFnCallHelper<
-          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
-                                                                 pargs...,
-                                                                 arg);
-    }
-  };
-
-  template <typename... Tail>
-  struct InferMetaFnCallHelper<const paddle::optional<MetaTensor>&, Tail...> {
-    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
-      static_assert(attr_idx == 0,
-                    "InferMeta's Input should appear before Attributes.");
-      static_assert(out_idx == 0,
-                    "InferMeta's Input should appear before Outputs.");
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      const auto& arg = ctx->OptionalInputAt(range.first);
-
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                  pargs...,

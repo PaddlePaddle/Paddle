@@ -111,7 +111,6 @@ class CompatInferMetaContext : public phi::InferMetaContext {
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
-  const phi::MetaTensor& OptionalInputAt(size_t idx) const override;
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;

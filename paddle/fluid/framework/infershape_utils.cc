@@ -349,11 +349,6 @@ const phi::MetaTensor& CompatInferMetaContext::InputAt(size_t idx) const {
   return compat_inputs_.at(idx);
 }
 
-const phi::MetaTensor& CompatInferMetaContext::OptionalInputAt(
-    size_t idx) const {
-  return compat_inputs_.at(idx);
-}
-
 std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const phi::MetaTensor*> result;
