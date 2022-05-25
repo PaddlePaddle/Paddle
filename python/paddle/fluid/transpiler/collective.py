@@ -42,6 +42,7 @@ class Collective(object):
         self.nrings = nrings
         self.endpoints = None
         self.current_endpoint = None
+        self.other_endpoints = None
         self.nranks = None
         self.rank = None
         self.startup_program = None
@@ -78,6 +79,12 @@ class Collective(object):
 
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
+
+        if current_endpoint:
+            nranks = len(endpoints)
+            other_endpoints = endpoints[:]
+            other_endpoints.remove(current_endpoint)
+            self.other_endpoints = other_endpoints
 
         self.wait_port = wait_port
 
@@ -462,9 +469,41 @@ class MultiThread(GradAllReduce):
                     self.rank, ring_id, self.wait_port, True)
 
         else:
-            print("begin to _transpile_startup_program for single-node")
-            block = self.startup_program.global_block()
-            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+            if "xpu" in self.trans_mode:
+                print(
+                    "begin to _transpile_startup_program for single-node in XPU")
+                block = self.startup_program.global_block()
+                comm_id_var = block.create_var(
+                    name=unique_name.generate('comm_id'),
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+                block.append_op(
+                    type='c_gen_bkcl_id',
+                    inputs={},
+                    outputs={'Out': comm_id_var},
+                    attrs={
+                        'rank': self.rank,
+                        'endpoint': self.current_endpoint,
+                        'other_endpoints': self.other_endpoints,
+                        'ring_id': 0,
+                        self.op_role_key: OpRole.Forward
+                    })
+                block.append_op(
+                    type='c_comm_init',
+                    inputs={'X': comm_id_var},
+                    outputs={},
+                    attrs={
+                        'nranks':
+                        len(os.getenv("FLAGS_selected_gpus").split(",")),
+                        'rank': self.rank,
+                        'ring_id': 0,
+                        self.op_role_key: OpRole.Forward
+                    })
+
+            else:
+                print("begin to _transpile_startup_program for single-node")
+                block = self.startup_program.global_block()
+                block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()

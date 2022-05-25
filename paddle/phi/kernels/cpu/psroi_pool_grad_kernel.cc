@@ -32,7 +32,7 @@ void PsroiPoolGradKernel(const Context& ctx,
                          float spatial_scale,
                          DenseTensor* dx) {
   if (dx) {
-    auto in_dims = x.dims();
+    const auto& in_dims = x.dims();
     int input_channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];

@@ -44,14 +44,6 @@ class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<Tensor>("X");
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor"));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor"));
-
     Functor functor;
     functor(ctx);
   }
@@ -62,14 +54,6 @@ class MKLDNNActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
-                      platform::errors::InvalidArgument(
-                          "Wrong layout set for Input OutGrad tensor"));
-    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Input OutGrad tensor"));
-
     Functor functor;
     functor(ctx);
   }
@@ -107,8 +91,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       astream, {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  out->set_layout(DataLayout::kMKLDNN);
-  out->set_format(GetMKLDNNFormat(*dst_memory_p));
+  out->set_mem_desc(dst_memory_p->get_desc());
 }
 
 template <typename T>
@@ -136,8 +119,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T>
@@ -165,8 +147,7 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_layout(DataLayout::kMKLDNN);
-  dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+  dx->set_mem_desc(diff_src_memory_p->get_desc());
 }
 
 template <typename T, dnnl::algorithm algorithm>
@@ -347,6 +328,7 @@ namespace ops = paddle::operators;
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 
+// round eltwise primitive doesn't support BF16, nor does it support grad
 REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
 
 namespace ops = paddle::operators;

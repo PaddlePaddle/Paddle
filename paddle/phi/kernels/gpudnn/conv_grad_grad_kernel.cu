@@ -44,11 +44,11 @@ namespace phi {
 template <typename T, typename Context>
 void ConvCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
-    const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    paddle::optional<const DenseTensor&> input_grad_grad,
+    paddle::optional<const DenseTensor&> filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -58,9 +58,9 @@ void ConvCudnnGradGradKernel(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search_t,
-    DenseTensor* out_grad_grad,
     DenseTensor* input_grad,
-    DenseTensor* filter_grad) {
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
   auto X = &input;
   auto W = &filter;
   auto dO = &out_grad;
@@ -689,11 +689,11 @@ void DepthwiseConvCudnnGradGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
-                             input_grad_grad,
-                             filter_grad_grad,
-                             out_grad,
                              input,
                              filter,
+                             out_grad,
+                             input_grad_grad,
+                             filter_grad_grad,
                              strides,
                              paddings_t,
                              padding_algorithm,
@@ -703,9 +703,9 @@ void DepthwiseConvCudnnGradGradKernel(
                              use_addto,
                              workspace_size_MB,
                              exhaustive_search_t,
-                             out_grad_grad,
                              input_grad,
-                             filter_grad);
+                             filter_grad,
+                             out_grad_grad);
 }
 
 template <typename T, typename Context>
@@ -729,11 +729,11 @@ void Conv3DCudnnGradGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad) {
   ConvCudnnGradGradKernel<T>(ctx,
-                             input_grad_grad,
-                             filter_grad_grad,
-                             out_grad,
                              input,
                              filter,
+                             out_grad,
+                             input_grad_grad,
+                             filter_grad_grad,
                              strides,
                              paddings_t,
                              padding_algorithm,
@@ -743,9 +743,9 @@ void Conv3DCudnnGradGradKernel(
                              use_addto,
                              workspace_size_MB,
                              exhaustive_search_t,
-                             out_grad_grad,
                              input_grad,
-                             filter_grad);
+                             filter_grad,
+                             out_grad_grad);
 }
 
 }  // namespace phi

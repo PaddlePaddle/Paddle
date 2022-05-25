@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/storage.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -122,6 +121,8 @@ class StringTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0);
+  dtype::pstring* mutable_data(const phi::Place& place,
+                               size_t requested_size = 0);
 
  private:
   friend class StringTensorUtils;

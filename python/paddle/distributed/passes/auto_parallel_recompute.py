@@ -350,11 +350,12 @@ class RecomputePass(PassBase):
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
                         rc_desc = main_block.desc._insert_op(idx)
                         rc_desc.copy_from(op_desc)
+                        rc_desc.set_original_id(rc_desc.id())
                         rc_op = Operator(main_block, rc_desc)
                         main_block.ops.insert(idx, rc_op)
                         # set recomputed ops' dist attr
                         fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program_with_id(
-                            rc_desc.original_id())
+                            op_desc.original_id())
                         assert fwd_op_dist_attr is not None
                         self.set_op_dist_attr(rc_op, fwd_op_dist_attr,
                                               var_name_dict)

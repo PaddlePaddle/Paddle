@@ -200,10 +200,8 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
   for (auto* node_input : op_node->inputs) {
     if (node_input->Name() == x_var_name) {
       fake_quant_in = node_input;
-      break;
     } else if (node_input->Name() == in_scale_name) {
       fake_quant_in_scale = node_input;
-      break;
     }
   }
 
@@ -212,10 +210,8 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
   for (auto* node_output : op_node->outputs) {
     if (node_output->Name() == out_var_name) {
       fake_quant_out = node_output;
-      break;
     } else if (node_output->Name() == out_scale_name) {
       fake_quant_out_scale = node_output;
-      break;
     }
   }
 

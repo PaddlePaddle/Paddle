@@ -69,7 +69,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                 return np.ones([24]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
-            for batch in [1, 2, 4]:
+            for batch in [1, 4]:
                 for axis in [-2, -1, 0, 1, 2, 3]:
                     self.dims = dims
                     dics = [{"axis": axis}, {}]

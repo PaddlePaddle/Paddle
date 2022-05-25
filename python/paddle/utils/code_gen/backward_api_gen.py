@@ -35,10 +35,10 @@ class BackwardAPI(BaseAPI):
             r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
         api = result.group('api')
-        _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
+        _, outputs, _, = self.parse_output(self.api, result.group('outputs'))
         outputs = [item.split('@')[0] for item in outputs]
-        fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
-            api, result.group('args'))
+        fw_inputs, fw_attrs = self.parse_input_and_attr(api,
+                                                        result.group('args'))
 
         return api, fw_inputs, fw_attrs, outputs
 
@@ -77,6 +77,25 @@ class BackwardAPI(BaseAPI):
             f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
+    def get_declare_args(self, inplace_flag=False):
+        return self.get_define_args()
+
+    def get_define_args(self, inplace_flag=False):
+        out_type_map = {
+            'Tensor': 'Tensor*',
+            'std::vector<Tensor>': 'std::vector<Tensor*>'
+        }
+        intputs_and_attrs = super(BackwardAPI, self).get_define_args()
+        outs = []
+        for i, name in enumerate(self.outputs['names']):
+            outs.append(out_type_map[self.outputs['types'][i]] + ' ' +
+                        name.split('@')[0])
+        result = intputs_and_attrs + ', ' + ", ".join(outs)
+        return result
+
+    def gene_return_code(self):
+        return ""
+
     def gene_kernel_backend_select(self):
         all_no_need_buffer = True
         for in_name in self.inputs['names']:
@@ -90,9 +109,8 @@ class BackwardAPI(BaseAPI):
         else:
             return super().gene_kernel_backend_select()
 
-    def get_return_type(self, out_type_list):
-        return out_type_list[0] if len(
-            out_type_list) == 1 else "std::vector<std::vector<Tensor>>"
+    def get_return_type(self, inplace_flag=False):
+        return 'void'
 
     def gene_output(self,
                     output_type_list,
@@ -109,37 +127,41 @@ class BackwardAPI(BaseAPI):
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
-            output_create = f"""
-{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
+            output_create = ""
+            if output_type_list[0] == 'std::vector<Tensor>':
+                assert self.outputs['out_size_expr'] is not None, \
+                     f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}(&{self.outputs['names'][0]});"""
+
+            else:
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, {self.outputs['names'][0]});"""
 
         elif len(output_type_list) > 1:
-            output_create = f"""
-{code_indent}  {self.outputs['return_type']} api_output({len(output_type_list)});"""
-
+            output_create = ""
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
-                    get_out_code = f'&api_output[{i}][0]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+{code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
-                    else:
-                        output_create = output_create + f"""
-{code_indent}  api_output[{i}].emplace_back();"""
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {self.outputs['names'][i]});"""
 
                 else:
-                    get_out_code = f'&api_output[{i}]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+{code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
-                output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
+                    assert self.outputs['out_size_expr'][i] is not None, \
+                        f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -148,6 +170,21 @@ class BackwardAPI(BaseAPI):
                     self.api))
 
         return kernel_output, output_names, output_create
+
+    def gene_invoke_code(self, invoke_code, params_code):
+        invoke_func_name = invoke_code.split('(')[0].strip()
+        if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
+                '_grad_impl'):
+            return f"""
+PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
+  {invoke_code};
+}}"""
+
+        else:
+            return f"""
+PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
+  *{self.outputs['names'][0].split('@')[0]} = {invoke_code};
+}}"""
 
 
 def header_include():
@@ -172,7 +209,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
@@ -200,8 +236,13 @@ namespace experimental {
 def generate_backward_api(backward_yaml_path, header_file_path,
                           source_file_path):
 
-    with open(backward_yaml_path, 'r') as f:
-        bw_apis = yaml.load(f, Loader=yaml.FullLoader)
+    bw_apis = []
+    for each_api_yaml in backward_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                bw_apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -233,6 +274,7 @@ def main():
     parser.add_argument(
         '--backward_yaml_path',
         help='path to backward yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/backward.yaml')
     parser.add_argument(
         '--backward_header_path',

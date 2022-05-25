@@ -33,9 +33,10 @@ namespace platform {
 
 static constexpr uint32_t kProfileCPUOptionBit = 0;
 static constexpr uint32_t kProfileGPUOptionBit = 1;
+static constexpr uint32_t kProfileMLUOptionBit = 2;
 
 struct ProfilerOptions {
-  uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu
+  uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: mlu
   uint32_t trace_level = FLAGS_host_trace_level;
 };
 
@@ -44,6 +45,8 @@ class Profiler {
   static std::unique_ptr<Profiler> Create(const ProfilerOptions& options);
 
   static bool IsCuptiSupported();
+
+  static bool IsCnpapiSupported();
 
   void Prepare();
 

@@ -609,7 +609,6 @@ class SparseTable(Table):
         check_embedding_dim(table_proto.accessor, self.common.table_name,
                             ctx.program_id(), self.context)
 
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -641,7 +640,6 @@ class GeoSparseTable(SparseTable):
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -673,7 +671,6 @@ class DenseTable(Table):
         table_proto.accessor.embedx_dim = 1
 
         self.common.table_name = "MergedDense"
-        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
         self.common.parse_by_optimizer(ctx, self.context)
         self.common.parse_entry(self.common.table_name,
                                 ctx.program_id(), self.context)
@@ -922,11 +919,6 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
-
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
         send_ctx = get_the_one_send_context(
@@ -937,6 +929,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
+        proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -1020,12 +1013,13 @@ class TheOnePSRuntime(RuntimeBase):
             if self.context['ps_mode'] == DistributedMode.GEO:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
-
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+        if not self.context['use_ps_gpu']:
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context['ps_mode'] == DistributedMode.GEO:
@@ -1059,6 +1053,10 @@ class TheOnePSRuntime(RuntimeBase):
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
+
+        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        # if debug:
+        #     print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,
@@ -1317,6 +1315,30 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _save_cache_model(self, dirname, **kwargs):
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        self._worker.client_flush()
+        fleet.util.barrier()
+        cache_threshold = 0.0
+
+        if self.role_maker._is_first_worker():
+            cache_threshold = self._worker.get_cache_threshold(table_id)
+        #check cache threshold right or not
+        fleet.util.barrier()
+
+        if self.role_maker._is_first_worker():
+            self._worker.cache_shuffle(table_id, dirname, mode, cache_threshold)
+
+        fleet.util.barrier()
+
+        feasign_num = -1
+        if self.role_maker._is_first_worker():
+            feasign_num = self._worker.save_cache(table_id, dirname, mode)
+
+        fleet.util.barrier()
+        return feasign_num
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,

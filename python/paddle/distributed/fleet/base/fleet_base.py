@@ -869,6 +869,11 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def save_cache_model(self, dirname, **configs):
+        return self._runtime_handle._save_cache_model(dirname, **configs)
+
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 

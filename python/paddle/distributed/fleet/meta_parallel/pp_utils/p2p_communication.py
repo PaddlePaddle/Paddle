@@ -17,6 +17,7 @@ from .utils import paddle_2_number, number_2_dtype
 from ...utils.log_util import logger
 import numpy as np
 from paddle import _C_ops
+import paddle.fluid.core as core
 
 _hcg = None
 _use_cache = False
@@ -114,7 +115,7 @@ class SendRecvMeta:
         paddle.distributed.send(stop_grad, dst=1, group=group)
 
     def send_meta(self, tensor, group):
-        if isinstance(tensor, paddle.Tensor):
+        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=1, group=group)
@@ -129,11 +130,11 @@ class SendRecvMeta:
             paddle.distributed.send(nums, dst=1, group=group)
 
             for d in tensor:
-                assert isinstance(d, paddle.Tensor)
+                assert isinstance(d, (paddle.Tensor, core.eager.Tensor))
                 self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
-        if isinstance(tensor, paddle.Tensor):
+        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
         elif isinstance(tensor, tuple):

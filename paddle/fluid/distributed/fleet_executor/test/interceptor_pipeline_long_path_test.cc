@@ -55,27 +55,39 @@ TEST(AmplifierInterceptor, Amplifier) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}});
+  carrier->Init(0, {{SOURCE_ID, 0},
+                    {0, 0},
+                    {1, 0},
+                    {2, 0},
+                    {3, 0},
+                    {4, 0},
+                    {5, 0},
+                    {SINK_ID, 0}});
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
   int64_t micro_steps = 3;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, micro_steps);  // rank, task_id, max_run_times
   TaskNode* node_a = new TaskNode(0, 0, 0, 1, 0);  // role, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 1, 0);
   TaskNode* node_c = new TaskNode(0, 0, 2, 1, 0);
   TaskNode* node_d = new TaskNode(0, 0, 3, 1, 0);
   TaskNode* node_e = new TaskNode(0, 0, 4, 1, 0);
   TaskNode* node_f = new TaskNode(0, 0, 5, 1, 0);
+  TaskNode* sink = new TaskNode(0, SINK_ID, micro_steps);
 
-  // a->b->c->d->e->f
-  LinkNodes({node_a, node_b, node_c, node_d, node_e, node_f});
+  // source->a->b->c->d->e->f->sink
+  LinkNodes({source, node_a, node_b, node_c, node_d, node_e, node_f, sink});
 
   // LR->b(1:3)->F->B->e(3:1)->U
   node_b->SetReplyUpPerSteps(micro_steps);
   node_e->SetSendDownPerSteps(micro_steps);
 
+  carrier->SetInterceptor(
+      SOURCE_ID, InterceptorFactory::Create("Source", SOURCE_ID, source));
   carrier->SetInterceptor(0, InterceptorFactory::Create("Compute", 0, node_a));
   carrier->SetInterceptor(1,
                           InterceptorFactory::Create("Amplifier", 1, node_b));
@@ -84,12 +96,13 @@ TEST(AmplifierInterceptor, Amplifier) {
   carrier->SetInterceptor(4,
                           InterceptorFactory::Create("Amplifier", 4, node_e));
   carrier->SetInterceptor(5, InterceptorFactory::Create("Compute", 5, node_f));
+  carrier->SetInterceptor(SINK_ID,
+                          InterceptorFactory::Create("Sink", SINK_ID, sink));
 
   // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
-  msg.set_src_id(-1);
-  msg.set_dst_id(0);
+  msg.set_message_type(START);
+  msg.set_dst_id(SOURCE_ID);
   carrier->EnqueueInterceptorMessage(msg);
   carrier->Wait();
   carrier->Release();

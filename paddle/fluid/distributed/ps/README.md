@@ -10,7 +10,7 @@ Table: for param storage and update
 
 ValueAccessor: for pull param and push gradient
 -----CtrCommonAccessor: pull/push value with show/click, float type
------DownpourCtrDoubleAccessor: same as CtrCommonAccessor, other than show/click with double type
+-----CtrDoubleAccessor: same as CtrCommonAccessor, other than show/click with double type
 -----SparseAccessor: used for common embedding, pull value without show/click, push value with show/click
 -----CommMergeAccessor: used for dense table only, for get param dim
 

@@ -48,8 +48,33 @@ class IntArrayBase {
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
   // The Tensor must have one dim
-  IntArrayBase(const T& tensor) {  // NOLINT
-    is_from_tensor_ = true;
+  IntArrayBase(const T& tensor);  // NOLINT
+
+  // The Tensor in vec must have only one element
+  IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
+
+  template <typename OtherT>
+  IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
+
+  size_t size() const { return array_.size(); }
+
+  const std::vector<int64_t>& GetData() const { return array_; }
+
+ private:
+  /// \brief Assign the data_ from const data pointer value of type T.
+  template <typename TYPE>
+  void AssignData(const TYPE* value_data, int64_t n) {
+    if (value_data || n == 0) {
+      array_.reserve(n);
+      for (auto i = 0; i < n; ++i) {
+        array_.push_back(static_cast<int64_t>(value_data[i]));
+      }
+    } else {
+      PD_THROW("The input data pointer is null.");
+    }
+  }
+
+  void AssignDataFromTensor(const T& tensor) {
     size_t n = tensor.numel();
     array_.reserve(n);
     switch (tensor.dtype()) {
@@ -66,49 +91,6 @@ class IntArrayBase {
             "but now received `",
             tensor.dtype(),
             "`.");
-    }
-  }
-
-  // The Tensor in vec must have only one element
-  IntArrayBase(const std::vector<T>& tensor_list) {  // NOLINT
-    is_from_tensor_ = true;
-
-    for (size_t i = 0; i < tensor_list.size(); ++i) {
-      DataType data_type = tensor_list[i].dtype();
-      switch (data_type) {
-        case DataType::INT32:
-          array_.push_back(*tensor_list[i].template data<int32_t>());
-          break;
-        case DataType::INT64:
-          array_.push_back(*tensor_list[i].template data<int64_t>());
-          break;
-        default:
-          PD_THROW(
-              "Data type error. Currently, The data type of IntArrayBase "
-              "only supports Tensor with int32 and int64, "
-              "but now received `",
-              data_type,
-              "`.");
-      }
-    }
-  }
-
-  template <typename OtherT>
-  IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
-
-  const std::vector<int64_t>& GetData() const { return array_; }
-
- private:
-  /// \brief Assign the data_ from const data pointer value of type T.
-  template <typename TYPE>
-  void AssignData(const TYPE* value_data, int64_t n) {
-    if (value_data || n == 0) {
-      array_.reserve(n);
-      for (auto i = 0; i < n; ++i) {
-        array_.push_back(static_cast<int64_t>(value_data[i]));
-      }
-    } else {
-      PD_THROW("The input data pointer is null.");
     }
   }
 

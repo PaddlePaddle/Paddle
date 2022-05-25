@@ -26,5 +26,11 @@ void SparseMaskKernel(const Context& dev_ctx,
                       const SparseCooTensor& mask,
                       SparseCooTensor* out);
 
+template <typename T, typename Context>
+void SparseMaskHelperKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

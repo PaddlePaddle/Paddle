@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -140,16 +139,16 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     T* tmp_out_grad_ptr = out_grad_features_ptr + offsets[i] * out_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
-    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * out_channels;
+    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
 
     // call gemm: d_kernel = transpose(x) * out_grad
     // (in_channels, n) * (n, out_channels)
     blas.GEMM(CblasTrans,
               CblasNoTrans,
-              M,
-              N,
               K,
+              N,
+              M,
               static_cast<T>(1),
               tmp_in_ptr,
               tmp_out_grad_ptr,
@@ -191,7 +190,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const bool subm,
                       SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dGradCPUKernel", ([&] {
         Conv3dGradCPUKernel<T, data_t>(dev_ctx,
                                        x,

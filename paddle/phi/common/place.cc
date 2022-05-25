@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/ext/exception.h"
 
 namespace phi {
@@ -108,4 +110,34 @@ uint32_t Place::Hash::operator()(const Place &place) const {
   return hash_value;
 }
 
+Place::Place(paddle::PlaceType type)
+    : device(0),
+      alloc_type_(static_cast<AllocationType>(type)),
+      device_type_id_(GetOrRegisterGlobalDeviceTypeId("")) {
+  LOG_FIRST_N(WARNING, 1)
+      << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`paddle::CPUPlace()/GPUPlace()` to represent the place type.";
+}
+
 }  // namespace phi
+
+namespace paddle {
+
+bool operator==(const Place &place, PlaceType place_type) {
+  LOG_FIRST_N(WARNING, 1)
+      << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`Tensor::is_cpu()/is_gpu()` method to determine the type of place.";
+  return place.GetType() == static_cast<AllocationType>(place_type);
+}
+
+bool operator==(PlaceType place_type, const Place &place) {
+  LOG_FIRST_N(WARNING, 1)
+      << "The `paddle::PlaceType::kCPU/kGPU` is deprecated since version "
+         "2.3, and will be removed in version 2.4! Please use "
+         "`Tensor::is_cpu()/is_gpu()` method to determine the type of place.";
+  return static_cast<AllocationType>(place_type) == place.GetType();
+}
+
+}  // namespace paddle

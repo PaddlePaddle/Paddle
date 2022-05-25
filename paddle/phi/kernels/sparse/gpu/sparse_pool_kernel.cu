@@ -16,11 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -105,7 +104,7 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               static_cast<T>(-FLT_MAX));
+               static_cast<T>(0));
   // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
@@ -136,7 +135,7 @@ void MaxPoolKernel(const Context& dev_ctx,
                    const std::vector<int>& strides,
                    SparseCooTensor* out,
                    DenseTensor* rulebook) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolGPUKernel", ([&] {
         MaxPoolGPUKernel<T, data_t>(dev_ctx,
                                     x,

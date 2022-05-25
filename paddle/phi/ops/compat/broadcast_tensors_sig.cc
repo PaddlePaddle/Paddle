@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature BroadcastTensorsGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "broadcast_tensors_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+      "broadcast_tensors_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

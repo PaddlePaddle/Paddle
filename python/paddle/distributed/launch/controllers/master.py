@@ -276,10 +276,20 @@ class ETCDMaster(Master):
         return peer_alive
 
     def wait_peer_ready(self, replicas_min, replicas_max, timeout):
+        timeout = timeout if timeout > 1 else 3
+
         end = time.time() + timeout
+        np_pre = len(self.fetch_peer_alive())
         while not self.ctx.status.is_done() and time.time() < end:
-            if len(self.fetch_peer_alive()) == replicas_max:
+            np = len(self.fetch_peer_alive())
+            if np == replicas_max:
+                # maximum replicas reached, return immediately
                 return (True, replicas_max)
+            elif np != np_pre:
+                # replicas are changing, reset timeout
+                end = time.time() + timeout
+                np_pre = np
+                time.sleep(0.2)
             else:
                 time.sleep(0.5)
 

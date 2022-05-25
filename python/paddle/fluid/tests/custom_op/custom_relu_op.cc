@@ -54,7 +54,7 @@ void relu_cpu_double_backward_kernel(const data_t* out_data,
 }
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto out = paddle::empty(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
@@ -68,7 +68,7 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto grad_x = paddle::empty(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
@@ -85,7 +85,7 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
   CHECK_CPU_INPUT(out);
   CHECK_CPU_INPUT(ddx);
-  auto ddout = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_double_backward", ([&] {
                                relu_cpu_double_backward_kernel<data_t>(
@@ -108,7 +108,6 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx);
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
-  // TODO(chenweihang): Check Input
   if (x.place() == paddle::PlaceType::kCPU) {
     return relu_cpu_forward(x);
   } else if (x.place() == paddle::PlaceType::kGPU) {
@@ -166,7 +165,7 @@ PD_BUILD_DOUBLE_GRAD_OP(custom_relu)
 
 std::vector<paddle::Tensor> relu_cpu_backward_without_x(
     const paddle::Tensor& out, const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto grad_x = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(

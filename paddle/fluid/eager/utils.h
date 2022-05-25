@@ -172,13 +172,14 @@ class EagerUtils {
   static void HandleViewBetweenInputAndOutput(
       const std::shared_ptr<EagerVariable>& input_var,
       const std::shared_ptr<EagerVariable>& view_output_var);
+  static void HandleViewBetweenInputAndOutput(
+      const paddle::experimental::Tensor& input_tensor,
+      paddle::experimental::Tensor* view_output_tensor);
 
   // TensorWrapper Utils
-  static paddle::experimental::Tensor RecoverTensorWrapper(
-      TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
+  static paddle::experimental::Tensor RecoverTensorWrapper(TensorWrapper* tw);
   static std::vector<paddle::experimental::Tensor> RecoverTensorWrapper(
-      std::vector<TensorWrapper>* tw,
-      const std::shared_ptr<GradNodeBase>& grad_node);
+      std::vector<TensorWrapper>* tw);
 
   // Intermidate needed remove this once we don't need legacy
   // Inner Method
@@ -236,8 +237,17 @@ class EagerUtils {
     * Fill Zero
     * **/
   static void FillZeroForEmptyGradInputs(
-      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads,
-      const std::vector<std::vector<GradSlotMeta>>& grad_out_metas);
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>* out_grads,
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& grad_out_metas);
+  static void FillZeroForEmptyGradInput(paddle::experimental::Tensor* in_grad,
+                                        const GradSlotMeta& grad_in_meta);
+  static void FillZeroForEmptyOptionalGradInput(
+      paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta);
+  static void FillZeroForEmptyGradInput(
+      std::vector<paddle::experimental::Tensor>* in_grads,
+      const std::vector<GradSlotMeta>& grad_in_metas);
 };
 
 }  // namespace egr

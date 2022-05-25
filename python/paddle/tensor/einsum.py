@@ -20,6 +20,14 @@ from .linalg import dot, matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
+from ..fluid.framework import _in_legacy_dygraph
+from paddle import _C_ops
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+import collections
+import string
+import opt_einsum
 
 from paddle.common_ops_import import dygraph_only
 
@@ -660,6 +668,163 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
+def preprocess(equation, *operands):
+    """
+    check equation / raise error, default right labels generation
+    """
+    equation = equation.replace(" ", "")
+    nop = len(operands)
+    assert nop > 0, "Required at least one operand in Einsum API, but received %s " % nop
+
+    # Part the equation to left hand side and right hand side
+    lhs, *rhs = equation.lower().split('->')
+    assert len(rhs) < 2, "Invalid equation: multiple `->` were found."
+
+    labels = parse_labels(lhs, operands)
+    # Note, we distinguish between 'ij->' and 'ij' by setting rhs to '' and None
+    rhs = rhs[0] if rhs else None
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+
+    assert len(lhs.split(',')) == len(operands), (
+        f"Invalid equation: the number of operands is {len(operands)}, "
+        f"but found {len(lhs.split(','))} segments in the label equation.")
+
+    assert not ('...' in lhs and '...' not in rhs
+                ), f'Invalid equation: missing ellipsis in output labels.'
+
+    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
+                ), f'Duplicate labels are not supported.'
+
+    assert not has_duplicated_labels(
+        rhs), f'Invalid equation: duplicate output labels are found.'
+
+    return lhs, rhs, labels
+
+
+def parse_fake_shape(equation, operands, labels):
+    """ 
+    this shape is just used for operands planning. may differ with the original shape.
+    for example: 
+    ... is replaced by 1
+    -1  is replaced by 1
+    Results
+    -------
+    list of shape
+    """
+    shaped = collections.namedtuple('shaped', ['shape'])
+
+    def fake_shape(label, op):
+        assert len(op.shape) == len(
+            label
+        ), "length of shape and length of label must be the same, but received %d != %d" % (
+            len(op.shape), len(label))
+        fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
+        fakes = list(map(abs, fakes))  # make -1 -> 1
+        if '.' in label:
+            fakes.insert(label.index('.'), 1)
+        return shaped(fakes)
+
+    out = list(map(fake_shape, labels, operands))
+    return out
+
+
+def rhs_inference(lhs):
+    def is_free(key):
+        return cnt.get(key) == 1 and key not in ['.', ',']
+
+    cnt = collections.Counter(lhs)
+    rhs = "..." if '...' in lhs else ""
+    rhs = rhs + "".join(filter(is_free, sorted(cnt.elements())))
+    return rhs
+
+
+def gen_equation_for_opteinsum(lhs, rhs):
+    """ 
+    1. gen rhs if rhs is None
+    2. '...' -> 'A'
+    """
+
+    def get_used_label(counter):
+        used = set(counter.elements())
+        for c in string.ascii_lowercase:
+            if c not in used: return c
+        raise ValueError(
+            "You have used all `a` - `z`, there can't find a unused for einsum optimization"
+        )
+
+    cnt = collections.Counter(lhs)
+    broadcast_label = get_used_label(cnt)
+    if rhs is None:
+        rhs = rhs_inference(lhs)
+    lhs = lhs.replace("...", broadcast_label)
+    rhs = rhs.replace("...", broadcast_label)
+    return lhs + "->" + rhs, broadcast_label
+
+
+def einsum_v2(equation, *operands):
+    """ 
+    einsum v2 implementation.
+    1. Implement C++ EinsumOp.
+    2. V2 create the EinsumOp to calculate, so just a little verifty work in python.
+    3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
+    """
+    n_op = len(operands)
+    lhs, rhs, labels = preprocess(equation, *operands)
+
+    if n_op <= 2:
+        return gen_einsum_op(lhs + '->' + rhs, *operands)
+
+    shapes = parse_fake_shape(lhs, operands, labels)
+    opt_equation, broadcast_label = gen_equation_for_opteinsum(lhs, rhs)
+    _, cons = opt_einsum.contract_path(opt_equation, *shapes, einsum_call=True)
+    var_list = list(operands)
+    for path in cons:
+        (a, b), _, eq, *__ = path
+        assert a > b, "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        var_s = [var_list.pop(a), var_list.pop(b)]
+        eq = eq.replace(broadcast_label, "...")
+        var_list.append(gen_einsum_op(eq, *var_s))
+    assert len(
+        var_list
+    ) == 1, "There must be one elements in list, but received %d." % len(
+        var_list)
+    return var_list[0]
+
+
+def gen_einsum_op(equation, *operands):
+    """ 
+    EinsumOp Python Interface: 
+    """
+    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+    if in_dygraph_mode():
+        return _C_ops.final_state_einsum(operands, equation)[0]
+
+    if _in_legacy_dygraph():
+        # dygraph
+        return _C_ops.einsum(operands, len(operands), 'equation', equation)[0]
+
+    # static graph 
+    for inp in operands:
+        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
+    check_type(equation, 'equation', str, 'einsum')
+    helper = LayerHelper('einsum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+    attrs = dict()
+    attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
+    helper.append_op(
+        type='einsum',
+        inputs={'Operands': operands},
+        outputs={'Out': out,
+                 "InnerCache": caches},
+        attrs=attrs)
+    return out
+
+
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
@@ -817,6 +982,9 @@ def einsum(equation, *operands):
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
+    import os
+    if int(os.environ.get('FLAGS_new_einsum', "0")):
+        return einsum_v2(equation, *operands)
 
     nop = len(operands)
     assert nop > 0, "At least one operand is expected."

@@ -1,5 +1,6 @@
+pynacl==1.4.0 ; python_version == "3.6"
 PyGithub
-coverage
+coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
 gym
@@ -7,8 +8,9 @@ pygame==2.1.0
 hypothesis
 opencv-python<=4.2.0.32
 visualdl
-paddle2onnx>=0.8.2
-scipy>=1.6
+paddle2onnx>=0.9.6
+scipy>=1.6; python_version >= "3.7"
+scipy>=1.5; python_version == "3.6"
 prettytable
 distro
-numpy>=1.20
+numpy>=1.20,<1.22; python_version >= "3.7"
