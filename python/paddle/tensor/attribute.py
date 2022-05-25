@@ -36,10 +36,10 @@ __all__ = []
 def rank(input):
     """
 
-    The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
+    Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
 
     Args:
-        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
+        input (Tensor): The input Tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
 
     Returns:
         Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
@@ -246,15 +246,15 @@ def is_integer(x):
 
 def real(x, name=None):
     """
-    Returns a new tensor containing real values of the input tensor.
+    Returns a new Tensor containing real values of the input Tensor.
 
     Args:
-        x (Tensor): the input tensor, its data type could be complex64 or complex128.
+        x (Tensor): the input Tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
       
     Returns:
-        Tensor: a tensor containing real values of the input tensor.
+        Tensor: a Tensor containing real values of the input Tensor.
 
     Examples:
         .. code-block:: python

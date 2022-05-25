@@ -17,6 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -65,6 +69,12 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_MKLDNN
+      // (jczaja) Executor on being destroyed clears oneDNN cache and
+      // reset registered model data layout. This is unwanted for nested
+      // Executors (executors declared inside control ops)
+      platform::DontClearMKLDNNCache(dev_place);
+#endif
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()

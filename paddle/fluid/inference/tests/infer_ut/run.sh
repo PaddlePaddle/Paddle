@@ -309,7 +309,7 @@ echo " "
 
 if [[ -f ${exe_dir}/test_summary.txt ]];then
   echo " "
-  echo "Summary Failed Tests ..."
+  echo "Summary infer_ut Failed Tests ..."
   echo "=====================test summary======================"
   echo "The following tests Failed: "
   cat ${exe_dir}/test_summary.txt

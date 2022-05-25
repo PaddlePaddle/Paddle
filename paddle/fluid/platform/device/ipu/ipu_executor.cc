@@ -88,11 +88,7 @@ class PdIArray final : public popart::IArray {
 
 }  // namespace
 
-Executor::~Executor() {
-  Detach();
-  session_.reset();
-  executor_resources_.reset();
-}
+Executor::~Executor() { Reset(); }
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
@@ -197,7 +193,9 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
   VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
+  if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched &&
+      !(ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+        ipu_strategy_->runtime_options.enable_eval)) {
     popart::Optimizer *optimizer;
     if (ipu_strategy_->runtime_options.enable_eval) {
       VLOG(10) << "Switch optimizer to eval mode";
@@ -215,7 +213,12 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
   VLOG(10) << "Running...";
-  session_->run(stepio);
+  if (ipu_strategy_->popart_options.createImplicitPipeliningFwdOnlyProgram &&
+      ipu_strategy_->runtime_options.enable_eval) {
+    session_->run("implicitPipeliningFwdOnly", stepio);
+  } else {
+    session_->run(stepio);
+  }
   VLOG(10) << "Running...done";
 }
 
@@ -290,6 +293,12 @@ void Executor::Detach() {
     device_->detach();
     VLOG(10) << " detached IPU";
   }
+}
+
+void Executor::Reset() {
+  Detach();
+  session_.reset();
+  executor_resources_.reset();
 }
 
 void Executor::SetWeightsIO() {

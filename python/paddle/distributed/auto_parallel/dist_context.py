@@ -55,10 +55,10 @@ class DistributedContext:
     def __init__(self,
                  serial_main_prog=None,
                  serial_startup_prog=None,
-                 dist_main_progs=None,
-                 dist_startup_progs=None,
-                 serial_loss=None,
                  serial_optimizer=None,
+                 serial_loss=None,
+                 feed_vars=None,
+                 fetch_vars=None,
                  strategy=None):
         # Data members related to original programs (unchanged)
         self._original_serial_main_program = serial_main_prog
@@ -75,8 +75,10 @@ class DistributedContext:
         # Data members related to programs (changed)
         self._serial_main_program = None
         self._serial_startup_program = None
-        self._serial_loss = None
-        self._serial_optimizer = None
+        self._serial_loss = serial_loss
+        self._serial_optimizer = serial_optimizer
+        self._serial_feed_vars = feed_vars
+        self._serial_fetch_vars = fetch_vars
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -92,12 +94,8 @@ class DistributedContext:
 
         # Data members related to the distributed programs
         # Distributed programs
-        self._dist_main_programs = dist_main_progs
-        if not self._dist_main_programs:
-            self._dist_main_programs = {}
-        self._dist_startup_programs = dist_startup_progs
-        if not self._dist_startup_programs:
-            self._dist_startup_programs = {}
+        self._dist_main_programs = {}
+        self._dist_startup_programs = {}
 
         # Distributed Strategy
         self._strategy = strategy
@@ -117,6 +115,9 @@ class DistributedContext:
 
         self._is_initialized = False
 
+        # flag whether scale gradient with dp size
+        self._gradient_scale = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -132,33 +133,25 @@ class DistributedContext:
     def serial_startup_program(self):
         return self._serial_startup_program
 
-    # @serial_startup_program.setter
-    # def serial_startup_program(self, serial_startup_program):
-    #     self._serial_startup_program = serial_startup_program
-
     @property
     def serial_loss(self):
         return self._serial_loss
-
-    # @serial_loss.setter
-    # def serial_loss(self, serial_loss):
-    #     self._serial_loss = serial_loss
 
     @property
     def serial_optimizer(self):
         return self._serial_optimizer
 
-    # @serial_optimizer.setter
-    # def serial_optimizer(self, serial_optimizer):
-    #     self._serial_optimizer = serial_optimizer
+    @property
+    def serial_feed_vars(self):
+        return self._serial_feed_vars
+
+    @property
+    def serial_fetch_vars(self):
+        return self._serial_fetch_vars
 
     @property
     def strategy(self):
         return self._strategy
-
-    # @strategy.setter
-    # def strategy(self, strategy):
-    #     self._strategy = strategy
 
     @property
     def serial_graph(self):
@@ -196,6 +189,14 @@ class DistributedContext:
     def has_annotation(self):
         return len(self._dist_tensors_for_program) or len(
             self._dist_ops_for_program)
+
+    @property
+    def gradient_scale(self):
+        return self._gradient_scale
+
+    @gradient_scale.setter
+    def gradient_scale(self, gs):
+        self._gradient_scale = gs
 
     def initialize(self):
         if not self._is_initialized:
@@ -678,7 +679,7 @@ class DistributedContext:
                         dist_op.serial_op.type)
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     assert False, "Operator {} has a wrong distributed attributes {}.".format(
-                        dist_op.serial_op.type, dist_tensor.dist_attr)
+                        dist_op.serial_op.type, dist_op.dist_attr)
         return True
 
     def __deepcopy__(self, memo):

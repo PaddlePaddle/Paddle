@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"

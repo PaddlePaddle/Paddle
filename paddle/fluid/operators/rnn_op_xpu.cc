@@ -65,7 +65,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
     auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
     auto* reserve_data = ctx.Output<Tensor>("Reserve");
-    // Attrbutes
+    // Attributes
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
