@@ -48,8 +48,8 @@ ir::Node* FindOpInput(ir::Node* op, const std::string& input_name) {
   return (*op_input_it);
 }
 
-void ConnectNode(ir::Node* conv_op, const std::string& input_name,
-                 ir::Node* int_node) {
+void ConnectInput(ir::Node* conv_op, const std::string& input_name,
+                  ir::Node* int_node) {
   conv_op->Op()->SetInput(input_name, {int_node->Name()});
   IR_NODE_LINK_TO(int_node, conv_op);
 }
@@ -106,30 +106,28 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
                          int_weights, scale_weights);
   conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 
-  ConnectNode(conv_op, "Filter", int_weights_node);
-  scope->EraseVars({conv_filter->Name()});
+  ConnectInput(conv_op, "Filter", int_weights_node);
   GraphSafeRemoveNodes(g, {conv_filter});
 }
 
 void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
                       ir::Node* conv_op) {
   std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
-  auto bias = scope->FindVar(conv_bias_name)->GetMutable<LoDTensor>();
+  auto bias = scope->FindVar(conv_bias_name)->Get<LoDTensor>();
 
   VarDesc int_biases_desc = CreatePersistableVarDesc(
       patterns::PDNodeName(name_scope, "conv2d_int32_bias"),
-      proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias->dims()));
+      proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias.dims()));
 
   ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
   auto* int_bias = scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
 
   const auto bias_scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
-  QuantizeParams<int32_t>(*bias, int_bias, bias_scales);
+  QuantizeParams<int32_t>(bias, int_bias, bias_scales);
   conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 
-  ConnectNode(conv_op, "Bias", int_biases_node);
-  scope->EraseVars({conv_bias_name});
+  ConnectInput(conv_op, "Bias", int_biases_node);
   GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
 }
 
@@ -177,7 +175,7 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
 
 void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::Conv conv_pattern(gpd.mutable_pattern(), name_scope);
+  patterns::Conv conv_pattern(gpd.mutable_pattern(), name_scope_);
   conv_pattern();
 
   int params_to_int8_conv_found = 0;
@@ -203,10 +201,10 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
       return;
     }
 
-    QuantizeConvFilter(scope, g, name_scope, conv_op, conv_filter);
+    QuantizeConvFilter(scope, g, name_scope_, conv_op, conv_filter);
 
     if (HasBias(conv_op)) {
-      QuantizeConvBias(scope, g, name_scope, conv_op);
+      QuantizeConvBias(scope, g, name_scope_, conv_op);
     }
     params_to_int8_conv_found++;
   };
@@ -223,7 +221,7 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
-  FusePassBase::Init("params_quantization_mkldnn_pass", graph);
+  FusePassBase::Init(name_scope_, graph);
   Conv(graph);
 }
 

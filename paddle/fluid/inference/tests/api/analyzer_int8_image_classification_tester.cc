@@ -48,6 +48,7 @@ TEST(Analyzer_int8_image_classification, quantization) {
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInputs(&input_slots_all);
+  ASSERT_GT(input_slots_all.size(), 0ul);
 
   if (FLAGS_enable_mkldnn && FLAGS_enable_int8) {
     // prepare warmup batch from input data read earlier

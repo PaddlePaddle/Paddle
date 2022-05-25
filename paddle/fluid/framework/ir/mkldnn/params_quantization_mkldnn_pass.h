@@ -35,7 +35,7 @@ class ParamsQuantizationMkldnnPass : public FusePassBase {
   void Conv(Graph* graph) const;
 
  private:
-  const std::string name_scope = "params_quantization_mkldnn_pass";
+  const std::string name_scope_ = "params_quantization_mkldnn_pass";
 };
 
 }  // namespace ir
