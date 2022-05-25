@@ -867,14 +867,16 @@ class OpTest(unittest.TestCase):
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             args = assumption_assert_and_transform(args, len(inputs_sig))
 
-            paddle.device.cuda.synchronize()
+            if core.is_compiled_with_cuda():
+                paddle.device.cuda.synchronize()
             print("[===== check_eager for ", self.op_type,
                   " in op test, start =====")
             st = time.time()
 
             ret_tuple = python_api(*args)
 
-            paddle.device.cuda.synchronize()
+            if core.is_compiled_with_cuda():
+                paddle.device.cuda.synchronize()
             et = time.time()
             print("mode:", "eager", " # op:", self.op_type, "# func:",
                   forward_or_grad, "# input:",
@@ -941,7 +943,8 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            paddle.device.cuda.synchronize()
+            if core.is_compiled_with_cuda():
+                paddle.device.cuda.synchronize()
             if _in_legacy_dygraph():
                 print("[===== check_legacy for ", self.op_type,
                       " in op test, start =====")
@@ -956,7 +959,8 @@ class OpTest(unittest.TestCase):
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
-            paddle.device.cuda.synchronize()
+            if core.is_compiled_with_cuda():
+                paddle.device.cuda.synchronize()
             et = time.time()
             mode = "eager-mid" if in_dygraph_mode() else "legacy"
             print("mode:", mode, "# op:", self.op_type, "# func:",
@@ -2100,7 +2104,8 @@ class OpTest(unittest.TestCase):
                     place, inputs, outputs, forward_or_grad="grad")
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_eager or eager_outputs is None:
-                paddle.device.cuda.synchronize()
+                if core.is_compiled_with_cuda():
+                    paddle.device.cuda.synchronize()
                 if _in_legacy_dygraph():
                     print("[===== check_legacy for ", self.op_type,
                           " in op test, start =====")
@@ -2120,7 +2125,8 @@ class OpTest(unittest.TestCase):
                     outputs=outputs,
                     attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
-                paddle.device.cuda.synchronize()
+                if core.is_compiled_with_cuda():
+                    paddle.device.cuda.synchronize()
                 et = time.time()
                 mode = "eager-mid" if in_dygraph_mode() else "legacy"
                 print("mode:", mode, "# op:", self.op_type, "# func:", "grad",
