@@ -186,6 +186,10 @@ def get_numeric_gradient(place,
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._get_complex64_element(i)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._get_complex128_element(i)
         else:
             raise TypeError("Unsupported test data type %s." %
                             tensor_to_check_dtype)
@@ -209,6 +213,10 @@ def get_numeric_gradient(place,
             tensor._set_float_element(i, e)
         elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._set_complex64_element(i, e)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._set_complex128_element(i, e)
         else:
             raise TypeError("Unsupported test data type %s." %
                             tensor_to_check_dtype)

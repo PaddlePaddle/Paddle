@@ -174,8 +174,10 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "pybind11/complex.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -1053,6 +1055,14 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+      .def("_set_complex64_element",
+           TensorSetElement<paddle::experimental::complex64>)
+      .def("_get_complex64_element",
+           TensorGetElement<paddle::experimental::complex64>)
+      .def("_set_complex128_element",
+           TensorSetElement<paddle::experimental::complex128>)
+      .def("_get_complex128_element",
+           TensorGetElement<paddle::experimental::complex128>)
       .def("_place", [](framework::Tensor &self) { return self.place(); })
       .def("_dtype",
            [](framework::Tensor &self) {
