@@ -19,6 +19,7 @@ import paddle.nn as nn
 from paddle import tensor
 import unittest
 from op_test import OpTest, convert_float_to_uint16
+from test_sparse_attention_op import get_cuda_version
 from paddle import _C_ops
 from paddle.fluid.framework import default_main_program
 from paddle.fluid import core
@@ -176,7 +177,7 @@ class TestFusedGateAttentionOp(OpTest):
         output_w = paddle.to_tensor(self.output_w, stop_gradient=False)
         output_b = paddle.to_tensor(self.output_b, stop_gradient=False)
 
-        query_out, key_out, value_out, qkv_out, softmax_out, qktv_out, gate_out, out = _C_ops.fused_gate_attention(
+        _, _, _, _, _, _, _, out = _C_ops.fused_gate_attention(
             query, key, q_weight, k_weight, v_weight, qkv_weight,
             nonbatched_bias, src_mask, gating_w, gating_b, output_w, output_b,
             'has_gating', self.has_gating, 'merge_qkv', self.merge_qkv)
@@ -234,8 +235,10 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
         self.check_output_and_grad(atol=1e-1, rtol=1e-5)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 'place does not support BF16 evaluation')
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+)
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
     def config(self):
         super().config()
