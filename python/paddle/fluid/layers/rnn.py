@@ -673,7 +673,7 @@ def birnn(cell_fw,
     birnn creates a bidirectional recurrent neural network specified by 
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
     (for dygraph mode :code:`cell.forward`) repeatedly until reaches to 
-    the maximum length of `inputs` and then concat the ouputs for both RNNs
+    the maximum length of `inputs` and then concat the outputs for both RNNs
     along the last axis.
 
     Arguments:

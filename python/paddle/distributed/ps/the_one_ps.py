@@ -1019,13 +1019,14 @@ class TheOnePSRuntime(RuntimeBase):
                     'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode == True:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    print("entering self._init_all_params()")
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        print("entering self._init_all_params()")
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
-        if self.is_heter_ps_mode == False:
+        if self.is_heter_ps_mode == False or not self.context['use_ps_gpu']:
             self._pull_all_dense(scopes, send_ctx, dense_map)
             fleet.util.barrier()
 
