@@ -362,7 +362,7 @@ void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::build_ps(
     int dev_num, KeyType* h_keys, ValType* h_vals, size_t len,
-    size_t chunk_size, int stream_num) {
+    size_t chunk_size, int stream_num, int offset) {
   if (len <= 0) {
     return;
   }
@@ -403,8 +403,8 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
     memory_copy(
         dst_place, reinterpret_cast<char*>(d_val_bufs[cur_stream]->ptr()),
         src_place, h_vals + cur_len, sizeof(ValType) * tmp_len, cur_use_stream);
-
-    tables_[dev_num]->insert(
+    if (offset == -1) offset = dev_num;
+    tables_[offset]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
         reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
         cur_use_stream);

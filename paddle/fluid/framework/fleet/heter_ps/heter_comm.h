@@ -52,7 +52,7 @@ class HeterComm {
                   int& uniq_len);  // NOLINT
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
-                size_t chunk_size, int stream_num);
+                size_t chunk_size, int stream_num, int offset = -1);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);

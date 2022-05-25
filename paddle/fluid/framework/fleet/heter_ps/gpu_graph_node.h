@@ -123,21 +123,25 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 */
 struct NeighborSampleQuery {
   int gpu_id;
-  int64_t *key;
-  int sample_size;
+  int table_idx;
+  int64_t *src_nodes;
   int len;
-  void initialize(int gpu_id, int64_t key, int sample_size, int len) {
+  int sample_size;
+  void initialize(int gpu_id, int table_idx, int64_t src_nodes, int sample_size,
+                  int len) {
+    this->table_idx = table_idx;
     this->gpu_id = gpu_id;
-    this->key = (int64_t *)key;
+    this->src_nodes = (int64_t *)src_nodes;
     this->sample_size = sample_size;
     this->len = len;
   }
   void display() {
     int64_t *sample_keys = new int64_t[len];
     VLOG(0) << "device_id " << gpu_id << " sample_size = " << sample_size;
-    VLOG(0) << "there are " << len << " keys ";
+    VLOG(0) << "there are " << len << " keys to sample for graph " << table_idx;
     std::string key_str;
-    cudaMemcpy(sample_keys, key, len * sizeof(int64_t), cudaMemcpyDeviceToHost);
+    cudaMemcpy(sample_keys, src_nodes, len * sizeof(int64_t),
+               cudaMemcpyDeviceToHost);
 
     for (int i = 0; i < len; i++) {
       if (key_str.size() > 0) key_str += ";";
@@ -212,7 +216,7 @@ struct NeighborSampleResult {
     std::vector<int64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];
     std::string key_str;
-    cudaMemcpy(sample_keys, q.key, q.len * sizeof(int64_t),
+    cudaMemcpy(sample_keys, q.src_nodes, q.len * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
     int64_t *res = new int64_t[sample_size * key_size];
     cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
