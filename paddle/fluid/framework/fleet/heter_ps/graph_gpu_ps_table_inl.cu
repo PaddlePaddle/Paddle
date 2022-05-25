@@ -482,10 +482,8 @@ void GpuPsGraphTable::build_graph_on_single_gpu(GpuPsCommGraph& g, int i,
       keys.push_back(g.node_list[j].node_id);
       offsets.push_back(j);
     }
-    VLOG(0) << "begin to call build ps on _ [" << table_offset << "]";
     build_ps(i, (uint64_t*)keys.data(), offsets.data(), keys.size(), 1024, 8,
              table_offset);
-    VLOG(0) << "calling build ps done";
     gpu_graph_list_[offset].node_size = g.node_size;
   } else {
     build_ps(i, NULL, NULL, 0, 1024, 8, table_offset);
