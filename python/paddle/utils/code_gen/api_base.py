@@ -205,18 +205,17 @@ class BaseAPI(object):
 
         if len(temp_list) == 1:
             out_type, out_name, size_expr = parse_output_item(temp_list[0])
-            return [out_type], [out_name], size_expr, self.get_return_type(
-                [out_type])
+            return [out_type], [out_name], [size_expr]
         else:
             out_type_list = []
             out_name_list = []
+            out_size_expr_list = []
             for output_item in temp_list:
                 out_type, out_name, size_expr = parse_output_item(output_item)
                 out_type_list.append(out_type)
                 out_name_list.append(out_name)
-
-            return out_type_list, out_name_list, size_expr, self.get_return_type(
-                out_type_list)
+                out_size_expr_list.append(size_expr)
+            return out_type_list, out_name_list, out_size_expr_list
 
     def parse_infer_meta(self, infer_meta_config):
         infer_meta = infer_meta_config
