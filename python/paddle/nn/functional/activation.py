@@ -1033,7 +1033,7 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     if _in_legacy_dygraph():
         outs_cast = x if dtype is None \
             else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return _C_ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
+        return _C_ops.softmax_(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):

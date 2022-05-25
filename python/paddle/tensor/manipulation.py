@@ -2326,19 +2326,21 @@ def unsqueeze_(x, axis, name=None):
     Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_unsqueeze`.
     """
-    if isinstance(axis, int):
-        axis = [axis]
-    elif isinstance(axis, Variable):
-        axis = axis.numpy().tolist()
-    elif isinstance(axis, (list, tuple)):
-        axis = [
+    input = x
+    axes = axis
+    if isinstance(axes, int):
+        axes = [axes]
+    elif isinstance(axes, Variable):
+        axes = axes.numpy().tolist()
+    elif isinstance(axes, (list, tuple)):
+        axes = [
             item.numpy().item(0) if isinstance(item, Variable) else item
-            for item in axis
+            for item in axes
         ]
     if _in_legacy_dygraph():
-        out, _ = _C_ops.unsqueeze2_(input, 'axes', axis)
+        out, _ = _C_ops.unsqueeze2_(input, 'axes', axes)
         return out
-    return _C_ops.final_state_unsqueeze_(input, axis)
+    return _C_ops.final_state_unsqueeze_(input, axes)
 
 
 def gather(x, index, axis=None, name=None):
