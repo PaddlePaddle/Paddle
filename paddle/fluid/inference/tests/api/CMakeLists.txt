@@ -581,8 +581,8 @@ if(WITH_MKLDNN)
 
   # Quant2 VGG16
   if(NOT WIN32)
-  set(QUANT2_VGG16_MODEL ${QUANT_DATA_DIR}/VGG16_quant/model)
-  inference_analysis_api_quant_test_run(test_analyzer_quant2_vgg16_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_VGG16_MODEL} ${QUANT2_VGG16_MODEL} ${IMAGENET_DATA_PATH} true)
+      set(QUANT2_VGG16_MODEL ${QUANT_DATA_DIR}/VGG16_quant/model)
+      inference_analysis_api_quant_test_run(test_analyzer_quant2_vgg16_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_VGG16_MODEL} ${QUANT2_VGG16_MODEL} ${IMAGENET_DATA_PATH} true)
   endif(NOT WIN32)
 
   ### Other tests
@@ -805,7 +805,9 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_quant2_vgg16_mkldnn PROPERTIES TIMEOUT 120)
+    if(NOT WIN32)
+        set_tests_properties(test_analyzer_quant2_vgg16_mkldnn PROPERTIES TIMEOUT 120)
+    endif(NOT WIN32)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
