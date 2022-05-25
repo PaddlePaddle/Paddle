@@ -22,8 +22,8 @@ template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* xshape,
-                     DenseTensor* out) {
+                     DenseTensor* out,
+                     DenseTensor* xshape) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {

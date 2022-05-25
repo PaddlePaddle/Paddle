@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
@@ -78,21 +79,15 @@ def parallelizer(program_func, rank):
 
 class TestDistSlice(unittest.TestCase):
     def test_dist_slice_dp2(self):
-
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops
             for op in ops:
                 axes = op.desc.attr('axes')
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-                if axes[0] == 0:
-                    assert op_dist_attr.impl_type == "default"
-                else:
-                    assert op_dist_attr.impl_type == "slice"
-                    for out in op.output_arg_names:
-                        var_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                            out)
-                        assert var_dims_mapping[0] == 0
+                assert op_dist_attr.impl_type == "slice"
+                for out in op.output_arg_names:
+                    var_dims_mapping = op_dist_attr.get_output_dims_mapping(out)
 
     def test_dist_slice_serial(self):
         dist_main_prog, dist_context = parallelizer(make_program_serial, 0)

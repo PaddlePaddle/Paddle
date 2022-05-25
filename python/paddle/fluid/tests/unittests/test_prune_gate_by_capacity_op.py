@@ -17,6 +17,7 @@ import paddle
 import numpy as np
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):
@@ -102,13 +103,18 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
                           fetch_list=out)
         assert_allclose(res[0], self.out, self.n_expert)
 
-    def test_dygraph_api(self):
+    def func_dygraph_api(self):
         paddle.disable_static(self.place)
         gate_idx_tensor = paddle.to_tensor(self.gate_idx)
         expert_count_tensor = paddle.to_tensor(self.expert_count)
         out = utils._prune_gate_by_capacity(
             gate_idx_tensor, expert_count_tensor, self.n_expert, self.n_worker)
         assert_allclose(out.numpy(), self.out, self.n_expert)
+
+    def test_dygraph_api(self):
+        with _test_eager_guard():
+            self.func_dygraph_api()
+        self.func_dygraph_api()
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

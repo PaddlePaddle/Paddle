@@ -117,6 +117,53 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
   }
 }
 
+template <typename KeyType, typename GradType, typename T>
+__global__ void dy_mf_fill_shard_grads_kernel(
+    KeyType* d_shard_keys, KeyType* d_keys, GradType* d_shard_grads,
+    GradType* d_grads, T* idx, size_t len, size_t grad_value_size) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    d_shard_keys[i] = d_keys[idx[i]];
+    *(GradType*)((char*)d_shard_grads + i * grad_value_size) =
+        *(GradType*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
+  }
+}
+
+__global__ void merge_gradients_kernel(const uint32_t* offset,
+                                       const uint32_t* fea_num,
+                                       const uint32_t* index, const char* input,
+                                       char* output, int n,
+                                       size_t grad_value_size,
+                                       DynamicGradMerger& merger_) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (i < n) {
+    uint32_t start = offset[i];
+    uint32_t num = fea_num[i];
+    int ori_index = index[start];
+    FeaturePushValue& out = *(FeaturePushValue*)(output + i * grad_value_size);
+    FeaturePushValue& in =
+        *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
+    merger_.update_one(out, in);
+    for (int j = 1; j < num; ++j) {
+      ori_index = index[start + j];
+      in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
+      merger_.merge_one(out, in);
+    }
+  }
+}
+
+template <typename ValType, typename T>
+__global__ void dy_mf_fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
+                                        T* idx, size_t len, size_t val_size) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    uint64_t new_offset = uint64_t(idx[i]) * val_size;
+    *(ValType*)((char*)d_vals + new_offset) =
+        *(ValType*)((char*)d_shard_vals + i * val_size);
+  }
+}
+
 // cuda implemention of  heter_comm_kernel.h
 template <typename T, typename StreamType>
 void HeterCommKernel::fill_idx(T* idx, long long len,
@@ -207,8 +254,42 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
       debug_synchronous));
 }
 
+template <typename KeyType, typename GradType, typename T, typename StreamType>
+void HeterCommKernel::dy_mf_fill_shard_grads(
+    KeyType* d_shard_keys, KeyType* d_keys, GradType* d_shard_grads,
+    GradType* d_grads, T* idx, long long len, size_t grad_value_size,
+    const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len,
+      grad_value_size);
+}
+
+template <typename StreamType>
+void HeterCommKernel::merge_gradient(
+    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
+    const char* input, char* output, int n, size_t grad_value_size,
+    DynamicGradMerger& merger_, const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
+      offset, fea_num, index, input, output, n, grad_value_size, merger_);
+}
+
+template <typename ValType, typename T, typename StreamType>
+void HeterCommKernel::dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals,
+                                       T* idx, long long len, size_t val_size,
+                                       const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_vals, d_vals, idx, c_len, val_size);
+}
+
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
     int* idx, long long len, const cudaStream_t& stream);
+template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
+    uint32_t* idx, long long len, const cudaStream_t& stream);
 
 template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     int* idx, int* left, int* right, long long len, int total_devs,
@@ -270,6 +351,23 @@ template void HeterCommKernel::reduce_by_key<
     paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
     int num_items, cudaStream_t stream, bool debug_synchronous);
 
+template void HeterCommKernel::dy_mf_fill_shard_grads<
+    unsigned long, paddle::framework::FeaturePushValue, int, cudaStream_t>(
+    unsigned long* d_shard_keys, unsigned long* d_keys,
+    paddle::framework::FeaturePushValue* d_shard_grads,
+    paddle::framework::FeaturePushValue* d_grads, int* idx, long long len,
+    size_t grad_value_size, const cudaStream_t& stream);
+
+template void HeterCommKernel::merge_gradient<cudaStream_t>(
+    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
+    const char* input, char* output, int n, size_t grad_value_size,
+    DynamicGradMerger& merger_, const cudaStream_t& stream);
+
+template void HeterCommKernel::dy_mf_fill_dvals<paddle::framework::FeatureValue,
+                                                int, cudaStream_t>(
+    paddle::framework::FeatureValue* d_shard_vals,
+    paddle::framework::FeatureValue* d_vals, int* idx, long long len,
+    size_t val_size, const cudaStream_t& stream);
 #endif
 
 }  // namespace framework

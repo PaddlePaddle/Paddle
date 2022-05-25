@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -73,6 +72,9 @@ phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
                                                Backend backend,
                                                std::vector<Tensor>* out);
+
+// For backward api
+std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);
 
 phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out);
 

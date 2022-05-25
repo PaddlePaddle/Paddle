@@ -388,7 +388,7 @@ class PassAutoScanTest(AutoScanTest):
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
-                "The duration exceeds {} seconds, if this is neccessary, try to set a larger number for parameter `max_duration`.".
+                "The duration exceeds {} seconds, if this is necessary, try to set a larger number for parameter `max_duration`.".
                 format(max_duration))
             assert False
 

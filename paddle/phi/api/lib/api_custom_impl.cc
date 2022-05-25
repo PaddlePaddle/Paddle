@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/tensor_copy.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -592,19 +591,20 @@ Tensor conv2d_impl(const Tensor& input,
   return api_output;
 }
 
-std::vector<std::vector<Tensor>> conv2d_grad_impl(
-    const Tensor& input,
-    const Tensor& filter,
-    const Tensor& out_grad,
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings,
-    const std::string& paddding_algorithm,
-    int groups,
-    const std::vector<int>& dilations,
-    const std::string& data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search) {
+void conv2d_grad_impl(const Tensor& input,
+                      const Tensor& filter,
+                      const Tensor& out_grad,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+                      Tensor* input_grad,
+                      Tensor* filter_grad) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
@@ -646,18 +646,15 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
   auto input_filter = PrepareData(filter, args1, {});
   auto input_out_grad = PrepareData(out_grad, args2, {});
 
-  std::vector<std::vector<Tensor>> api_output(2);
-  api_output[0].emplace_back();
-  auto kernel_out_0 = SetKernelOutput(kernel_backend, &api_output[0][0]);
-  api_output[1].emplace_back();
-  auto kernel_out_1 = SetKernelOutput(kernel_backend, &api_output[1][0]);
+  auto kernel_out_0 = SetKernelOutput(kernel_backend, input_grad);
+  auto kernel_out_1 = SetKernelOutput(kernel_backend, filter_grad);
   phi::MetaTensor meta_out_0(kernel_out_0);
   phi::MetaTensor meta_out_1(kernel_out_1);
 
   phi::GeneralBinaryGradInferMeta(MakeMetaTensor(*input_input),
                                   MakeMetaTensor(*input_filter),
-                                  &meta_out_0,
-                                  &meta_out_1);
+                                  kernel_out_0 ? &meta_out_0 : nullptr,
+                                  kernel_out_1 ? &meta_out_1 : nullptr);
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,
@@ -693,8 +690,6 @@ std::vector<std::vector<Tensor>> conv2d_grad_impl(
                  kernel_out_0,
                  kernel_out_1);
   }
-
-  return api_output;
 }
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
@@ -1080,8 +1075,9 @@ std::tuple<Tensor, Tensor> sgd_impl(
 // but if we use this impl, it will not support. We need to be able to reuse
 // the autograd API here, which is not yet implemented
 // TODO(chenweihang): we should support call generated api in custom api impl
-std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
-                                    const Tensor& out_grad) {
+void add_n_grad_impl(const std::vector<Tensor>& x,
+                     const Tensor& out_grad,
+                     std::vector<Tensor*> x_grad) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
@@ -1099,9 +1095,7 @@ std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
 
   auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
 
-  size_t out_number = x.size();
-  std::vector<Tensor> x_grad;
-  auto dense_x_grad = SetKernelOutput(out_number, kernel_backend, &x_grad);
+  auto dense_x_grad = SetKernelOutput(&x_grad);
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,
@@ -1117,8 +1111,6 @@ std::vector<Tensor> add_n_grad_impl(const std::vector<Tensor>& x,
     (*kernel_fn)(
         *dev_ctx, *dense_out_grad, phi::Scalar(1.0), 0.0, true, dense_x_grad_t);
   }
-
-  return x_grad;
 }
 
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
@@ -1250,7 +1242,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
   return api_output;
 }
 
-Tensor imag_grad_impl(const Tensor& out_grad) {
+void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
   phi::KernelKey kernel_key{ParseBackend(out_grad),
                             out_grad.layout(),
                             phi::dtype::ToComplex(out_grad.dtype())};
@@ -1264,8 +1256,7 @@ Tensor imag_grad_impl(const Tensor& out_grad) {
 
   auto dense_out_grad = TensorToDenseTensor(out_grad);
 
-  Tensor out;
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), x_grad);
   phi::MetaTensor meta_out(kernel_out);
   phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
 
@@ -1274,11 +1265,9 @@ Tensor imag_grad_impl(const Tensor& out_grad) {
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
-
-  return out;
 }
 
-Tensor real_grad_impl(const Tensor& out_grad) {
+void real_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
   phi::KernelKey kernel_key{ParseBackend(out_grad),
                             out_grad.layout(),
                             phi::dtype::ToComplex(out_grad.dtype())};
@@ -1292,8 +1281,7 @@ Tensor real_grad_impl(const Tensor& out_grad) {
 
   auto dense_out_grad = TensorToDenseTensor(out_grad);
 
-  Tensor out;
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), x_grad);
   phi::MetaTensor meta_out(kernel_out);
   phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
 
@@ -1302,8 +1290,6 @@ Tensor real_grad_impl(const Tensor& out_grad) {
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
-
-  return out;
 }
 
 }  // namespace experimental

@@ -325,14 +325,16 @@ void BindNeighborSampleResult(py::module* m) {
   py::class_<NeighborSampleResult>(*m, "NeighborSampleResult")
       .def(py::init<>())
       .def("initialize", &NeighborSampleResult::initialize)
+      .def("get_len", &NeighborSampleResult::get_len)
+      .def("get_val", &NeighborSampleResult::get_actual_val)
+      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
       .def("display", &NeighborSampleResult::display);
 }
 
 void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
-      .def(py::init<>())
-      //.def("test", &GraphGpuWrapper::test)
-      .def("initialize", &GraphGpuWrapper::initialize)
+  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
+      *m, "GraphGpuWrapper")
+      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -343,6 +345,18 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)
       .def("get_all_id", &GraphGpuWrapper::get_all_id)
+      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
+      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
+      .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
+      .def("make_partitions", &GraphGpuWrapper::make_partitions)
+      .def("make_complementary_graph",
+           &GraphGpuWrapper::make_complementary_graph)
+      .def("set_search_level", &GraphGpuWrapper::set_search_level)
+      .def("init_search_level", &GraphGpuWrapper::init_search_level)
+      .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
+      .def("get_partition", &GraphGpuWrapper::get_partition)
+      .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
+      .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif
