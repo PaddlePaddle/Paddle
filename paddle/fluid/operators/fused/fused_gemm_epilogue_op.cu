@@ -194,12 +194,89 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   }
 };
 
+enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
+
+template <bool TransX, bool TransY>
+struct FusedGEMMGradTrait;
+
+template <>
+struct FusedGEMMGradTrait<false, false> {
+  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
+  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
+  static constexpr auto kXGradATrans = false;
+  static constexpr auto kXGradBTrans = true;
+
+  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
+  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
+  static constexpr auto kYGradATrans = true;
+  static constexpr auto kYGradBTrans = false;
+};
+
+template <>
+struct FusedGEMMGradTrait<true, false> {
+  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
+  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
+  static constexpr auto kXGradATrans = false;
+  static constexpr auto kXGradBTrans = true;
+
+  static constexpr auto kYGradA = FusedGEMMGradInType::kDX;
+  static constexpr auto kYGradB = FusedGEMMGradInType::kDZ;
+  static constexpr auto kYGradATrans = false;
+  static constexpr auto kYGradBTrans = false;
+};
+
+template <>
+struct FusedGEMMGradTrait<false, true> {
+  static constexpr auto kXGradA = FusedGEMMGradInType::kDZ;
+  static constexpr auto kXGradB = FusedGEMMGradInType::kDY;
+  static constexpr auto kXGradATrans = false;
+  static constexpr auto kXGradBTrans = false;
+
+  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
+  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
+  static constexpr auto kYGradATrans = true;
+  static constexpr auto kYGradBTrans = false;
+};
+
+template <>
+struct FusedGEMMGradTrait<true, true> {
+  static constexpr auto kXGradA = FusedGEMMGradInType::kDY;
+  static constexpr auto kXGradB = FusedGEMMGradInType::kDZ;
+  static constexpr auto kXGradATrans = true;
+  static constexpr auto kXGradBTrans = true;
+
+  static constexpr auto kYGradA = FusedGEMMGradInType::kDZ;
+  static constexpr auto kYGradB = FusedGEMMGradInType::kDX;
+  static constexpr auto kYGradATrans = true;
+  static constexpr auto kYGradBTrans = true;
+};
+
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    bool transpose_x = ctx.Attr<bool>("trans_x");
+    bool transpose_y = ctx.Attr<bool>("trans_y");
 
+    if (transpose_x) {
+      if (transpose_y) {
+        ComputeImpl<true, true>(ctx);
+      } else {
+        ComputeImpl<true, false>(ctx);
+      }
+    } else {
+      if (transpose_y) {
+        ComputeImpl<false, true>(ctx);
+      } else {
+        ComputeImpl<false, false>(ctx);
+      }
+    }
+  }
+
+ private:
+  template <bool TransX, bool TransY>
+  static void ComputeImpl(const framework::ExecutionContext& ctx) {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
