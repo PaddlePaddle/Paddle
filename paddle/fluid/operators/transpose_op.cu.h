@@ -17,9 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/copy_kernel.h"
@@ -657,7 +657,6 @@ struct TransposeSimple {
   }
 };
 
-constexpr int32_t kCudaMaxBlocksNum = 8192;
 constexpr int32_t kMov4TileSize = 32;
 constexpr int32_t kBlockRows = 8;
 
@@ -824,7 +823,8 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
   Type* dst = reinterpret_cast<Type*>(dst_data);
 
   IndexT batch_num_tile = num_tile_rows * num_tile_cols;
-  for (int i = blockIdx.x, step = gridDim.x; i < block_nums; i += step) {
+
+  for (int i = blockIdx.x; i < block_nums; i += gridDim.x) {
     const IndexT batch_index = i / batch_num_tile;
     const IndexT tile_index = i - batch_index * batch_num_tile;
 
@@ -873,6 +873,7 @@ inline void LaunchBatchTransposeKernel(
     const T* src, T* dst) {
   IndexT num_tile_rows = (rows + kMov4TileSize - 1) / kMov4TileSize;
   IndexT num_tile_cols = (cols + kMov4TileSize - 1) / kMov4TileSize;
+  constexpr int32_t kCudaMaxBlocksNum = 8192;
   const int32_t block_nums = num_batches * num_tile_rows * num_tile_cols;
   int32_t blocks = std::min(block_nums, kCudaMaxBlocksNum);
 
@@ -940,13 +941,12 @@ inline void DispatchIndexType(const phi::GPUContext& ctx,
                                  size_t{1}, std::multiplies<size_t>());
 
   if (count < std::numeric_limits<uint32_t>::max()) {
-    uint32_t cnt = static_cast<uint32_t>(count);
-    LaunchTransposeKernel<T, Rank, MovementSize, uint32_t>(ctx, in_dims, perm,
-                                                           src, dst, cnt);
+    LaunchTransposeKernel<T, Rank, MovementSize, uint32_t>(
+        ctx, in_dims, perm, src, dst, static_cast<uint32_t>(count));
   } else {
     int64_t cnt = static_cast<int64_t>(count);
-    LaunchTransposeKernel<T, Rank, MovementSize, int64_t>(ctx, in_dims, perm,
-                                                          src, dst, cnt);
+    LaunchTransposeKernel<T, Rank, MovementSize, int64_t>(
+        ctx, in_dims, perm, src, dst, static_cast<int64_t>(count));
   }
 }
 
@@ -1012,11 +1012,13 @@ inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
       rank, sizeof(T), perm, &src_dims, in.data<T>(), out->data<T>());
 
   if (simplifier.IsSequential()) {
+    // If perm is [0,1,2,3], then just operate a DtoD copy.
     phi::Copy(ctx, in, ctx.GetPlace(), true, out);
   } else {
-    LaunchWithSimplifiedDispatch<T>(
-      ctx, simplifier.GetRank(), simplifier.GetMovementSize(),
-      simplifier.GetDims(), simplifier.GetPerm(), in.data<T>(), out->data<T>());
+    LaunchWithSimplifiedDispatch<T>(ctx, simplifier.GetRank(),
+                                    simplifier.GetMovementSize(),
+                                    simplifier.GetDims(), simplifier.GetPerm(),
+                                    in.data<T>(), out->data<T>());
   }
 }
 
@@ -1041,25 +1043,28 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    if (!tuner->CheckInit()) {
-      tuner->AddCallBack(phi::autotune::MakeCallback<T>(
-          SimplifyThenLaunch<phi::GPUContext, T>));
-      tuner->FinishInit();
-    }
+    SimplifyThenLaunch<phi::GPUContext, T>(rank, dev_ctx, in, out, perm);
+    // auto* tuner =
+    //     phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext,
+    //     T>);
+    // if (!tuner->CheckInit()) {
+    //   tuner->AddCallBack(phi::autotune::MakeCallback<T>(
+    //       SimplifyThenLaunch<phi::GPUContext, T>));
+    //   tuner->FinishInit();
+    // }
 
-    auto key = GetTransposeKey<T>(rank, in, perm);
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    if (cache.Find(key)) {
-      auto index = cache.Get(key);
-      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    } else {
-      // All avaliable kernels have ran while picking the best kernel, so
-      // there may be no need for another RunBestKernel.
-      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
-      cache.Set(key, index);
-    }
+    // auto key = GetTransposeKey<T>(rank, in, perm);
+    // auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    // if (cache.Find(key)) {
+    //   auto index = cache.Get(key);
+    //   tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    // } else {
+    //   // All avaliable kernels have ran while picking the best kernel, so
+    //   // there may be no need for another RunBestKernel.
+    //   auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out,
+    //   perm);
+    //   cache.Set(key, index);
+    // }
   }
 }
 
