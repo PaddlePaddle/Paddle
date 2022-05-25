@@ -18,6 +18,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -32,6 +33,16 @@ class PartialSendOpCPUKernel : public framework::OpKernel<T> {
     PADDLE_THROW(platform::errors::Unavailable(
         "Do not support partial_send for cpu kernel now."));
   }
+};
+
+template <typename Context, typename T>
+struct CPartialSendFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
+};
+
+template <typename Context, typename T>
+struct CPartialSendProcessGroupFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
 };
 
 }  // namespace operators
