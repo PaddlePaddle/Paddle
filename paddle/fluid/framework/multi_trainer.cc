@@ -152,7 +152,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     if (var->Persistable()) {
       auto it = std::find(need_merge_var_names_.begin(),
                           need_merge_var_names_.end(), var->Name());
-      if (it == need_merge_var_names_.end() && 
+      if (it == need_merge_var_names_.end() &&
           var->GetType() != proto::VarType::SELECTED_ROWS) {
         VLOG(2) << "train param: " << var->Name();
         trainable_param_.push_back(var->Name());
