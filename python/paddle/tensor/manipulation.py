@@ -3181,13 +3181,13 @@ def reshape(x, shape, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in shape
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in shape
             ]
             out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"
