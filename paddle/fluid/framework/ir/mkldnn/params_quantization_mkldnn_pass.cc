@@ -91,9 +91,10 @@ VarDesc CreatePersistableVarDesc(const std::string& name,
 
 void QuantizeConvFilter(Scope* scope, ir::Graph* g,
                         const std::string& name_scope, ir::Node* conv_op,
-                        ir::Node* conv_filter) {
+                        ir::Node* conv_filter, int found_count) {
   VarDesc int_weights_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope, "conv2d_int8_filter"),
+      patterns::PDNodeName(name_scope,
+                           "conv2d_int8_filter" + std::to_string(found_count)),
       proto::VarType_Type::VarType_Type_INT8, conv_filter->Var()->GetShape());
 
   ir::Node* int_weights_node = g->CreateVarNode(&int_weights_desc);
@@ -111,12 +112,13 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
 }
 
 void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
-                      ir::Node* conv_op) {
+                      ir::Node* conv_op, int found_count) {
   std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
   auto bias = scope->FindVar(conv_bias_name)->Get<LoDTensor>();
 
   VarDesc int_biases_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope, "conv2d_int32_bias"),
+      patterns::PDNodeName(name_scope,
+                           "conv2d_int32_bias" + std::to_string(found_count)),
       proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias.dims()));
 
   ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
@@ -201,10 +203,12 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
       return;
     }
 
-    QuantizeConvFilter(scope, g, name_scope_, conv_op, conv_filter);
+    QuantizeConvFilter(scope, g, name_scope_, conv_op, conv_filter,
+                       params_to_int8_conv_found);
 
     if (HasBias(conv_op)) {
-      QuantizeConvBias(scope, g, name_scope_, conv_op);
+      QuantizeConvBias(scope, g, name_scope_, conv_op,
+                       params_to_int8_conv_found);
     }
     params_to_int8_conv_found++;
   };
