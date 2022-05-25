@@ -863,7 +863,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", *{name}, amp_dst_dtype, op_name);\n"
+                        f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                 else:
                     if is_inplaced and inplace_map and name in inplace_map.keys(
