@@ -219,11 +219,11 @@ bool AnalysisPredictor::Init(
   }
 
   // TODO(inference): Now only gpu support private device_context.
-  if (config_.use_gpu_) {
+  if (config_.use_gpu_ && config_.use_external_stream_) {
     private_context_ = true;
   }
   if (private_context_) {
-    if (config_.use_external_stream_ && !status_is_cloned_) {
+    if (!status_is_cloned_) {
       predictor_stream_ = config_.GetExecStream();
     }
     InitResourceManager(predictor_stream_);
@@ -319,7 +319,6 @@ void AnalysisPredictor::InitPlace() {
 }
 
 void AnalysisPredictor::InitResourceManager(void *stream) {
-  ResourceManager::Instance().InitCPUResource();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   predictor_stream_ =
       ResourceManager::Instance().InitGPUResource(place_, stream);
@@ -332,10 +331,12 @@ void AnalysisPredictor::InitDeviceContexts() {
   if (place_.GetType() == phi::AllocationType::GPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
+          auto *gpu_resource =
+              ResourceManager::Instance().GetGPUResource(predictor_stream_);
           auto *gpu_context = new InferGPUContext();
           gpu_context->SetAllocator(
               memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(place_)
+                  .GetAllocator(place_, gpu_resource->GetStream())
                   .get());
           gpu_context->SetPinnedAllocator(
               memory::allocation::AllocatorFacade::Instance()
@@ -353,8 +354,6 @@ void AnalysisPredictor::InitDeviceContexts() {
               framework::GetDefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
-          auto *gpu_resource =
-              ResourceManager::Instance().GetGPUResource(predictor_stream_);
           gpu_context->SetStream(gpu_resource->GetStream());
           gpu_context->SetBlasHandle(gpu_resource->GetBlasHandle());
           gpu_context->SetBlasTensorCoreHandle(
@@ -375,6 +374,14 @@ void AnalysisPredictor::InitDeviceContexts() {
               gpu_resource->GetGPUMultiProcessors());
           gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
           gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
+          VLOG(1) << "thread id is " << std::this_thread::get_id()
+                  << ", stream id is "
+                  << reinterpret_cast<void *>(gpu_resource->GetStream())
+                  << ", allotor ptr is "
+                  << reinterpret_cast<void *>(
+                         memory::allocation::AllocatorFacade::Instance()
+                             .GetAllocator(place_, gpu_resource->GetStream())
+                             .get());
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
   }
@@ -1209,12 +1216,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = false;
       } else {
         process_level_allocator_enabled = true;
-      }
-
-      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
-      // auto_growth
-      if (config.tensorrt_engine_enabled()) {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
       }
 
       if (framework::InitGflags(gflags)) {
