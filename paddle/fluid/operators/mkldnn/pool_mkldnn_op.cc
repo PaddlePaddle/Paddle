@@ -101,7 +101,8 @@ class PoolingMKLDNNHandler
                         mkldnn_paddings[1]);
     }
 
-    ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
+    ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides,
+                                  &mkldnn_paddings[0], &mkldnn_paddings[1]);
 
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
@@ -167,7 +168,8 @@ class PoolingMKLDNNHandler
       CorrectOutputSize(src_tz, diff_dst_tz, ksize, paddings, strides,
                         mkldnn_paddings[1]);
     }
-    ComputeAdaptivePoolParameters(ctx, diff_src_tz, &ksize, &strides);
+    ComputeAdaptivePoolParameters(ctx, diff_src_tz, &ksize, &strides,
+                                  &mkldnn_paddings[0], &mkldnn_paddings[1]);
 
     const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
@@ -218,13 +220,20 @@ class PoolingMKLDNNHandler
   static void ComputeAdaptivePoolParameters(
       const paddle::framework::ExecutionContext& ctx,
       const std::vector<int64_t>& src_tz, std::vector<int64_t>* ksize,
-      std::vector<int64_t>* strides) {
+      std::vector<int64_t>* strides, std::vector<int64_t>* padding_l,
+      std::vector<int64_t>* padding_r) {
     if (ctx.Attr<bool>("adaptive")) {
       // https://github.com/oneapi-src/oneDNN/tree/bkocot/adaptive-pooling/rfcs/20200818-adaptive-pooling
       auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
       auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
       auto OH = static_cast<double>(ksize->at(0));
       auto OW = static_cast<double>(ksize->at(1));
+
+      const auto padding_size = padding_l->size();
+      auto padding_top = &padding_l->at(padding_size - 2);
+      auto padding_left = &padding_l->at(padding_size - 1);
+      auto padding_bottom = &padding_r->at(padding_size - 2);
+      auto padding_right = &padding_r->at(padding_size - 1);
 
       strides->at(0) =
           static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
@@ -234,6 +243,11 @@ class PoolingMKLDNNHandler
           static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
       ksize->at(1) =
           static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+
+      *padding_top = (strides->at(0) * (OH - 1) + ksize->at(0) - IH) / 2;
+      *padding_bottom = *padding_top;
+      *padding_left = (strides->at(1) * (OW - 1) + ksize->at(1) - IW) / 2;
+      *padding_right = *padding_left;
     }
   }
 
