@@ -560,7 +560,7 @@ class ParallelTuner:
                 for i, dim_mapping in enumerate(dims_mapping):
                     if dim_mapping != -1 \
                         and tensor_shape[i] % process_shape[dim_mapping] != 0:
-                        dims_mapping[i] = [-1]
+                        dims_mapping[i] = -1
 
             for arg_name in dist_attr.outputs_dist_attrs.keys():
                 new_dims_mapping = []
@@ -585,7 +585,7 @@ class ParallelTuner:
                 for i, dim_mapping in enumerate(dims_mapping):
                     if dim_mapping != -1 \
                         and tensor_shape[i] % process_shape[dim_mapping] != 0:
-                        dims_mapping[i] = [-1]
+                        dims_mapping[i] = -1
 
             dist_op_impls = find_compatible_distributed_operator_impls(
                 dist_op, partial=False)
