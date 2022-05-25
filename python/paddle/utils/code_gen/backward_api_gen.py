@@ -255,66 +255,66 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
         header_file.write(bw_api.gene_api_declaration())
-        if bw_api.api == 'add_grad':
-            source_file.write("""
-PADDLE_API void add_grad(const Tensor& x, const Tensor& y, const Tensor& out_grad, int axis, Tensor* x_grad, Tensor* y_grad) {
+#         if bw_api.api == 'add_grad':
+#             source_file.write("""
+# PADDLE_API void add_grad(const Tensor& x, const Tensor& y, const Tensor& out_grad, int axis, Tensor* x_grad, Tensor* y_grad) {
 
-  VLOG(4) << "yoki: add_grad x_grad: " << x_grad;
-  VLOG(4) << "yoki: add_grad y_grad: " << y_grad;
+#   VLOG(4) << "yoki: add_grad x_grad: " << x_grad;
+#   VLOG(4) << "yoki: add_grad y_grad: " << y_grad;
 
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
+#   Backend kernel_backend = Backend::UNDEFINED;
+#   DataLayout kernel_layout = DataLayout::UNDEFINED;
+#   DataType kernel_data_type = DataType::UNDEFINED;
 
-  if (kernel_backend == Backend::UNDEFINED
-        || kernel_layout == DataLayout::UNDEFINED
-        || kernel_data_type == DataType::UNDEFINED ) {
-    auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, out_grad);
-    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
-    }
-  }
+#   if (kernel_backend == Backend::UNDEFINED
+#         || kernel_layout == DataLayout::UNDEFINED
+#         || kernel_data_type == DataType::UNDEFINED ) {
+#     auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, out_grad);
+#     auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+#     if (kernel_backend == Backend::UNDEFINED) {
+#       kernel_backend = kernel_key.backend();
+#     }
+#     if (kernel_layout == DataLayout::UNDEFINED) {
+#       kernel_layout = kernel_key.layout();
+#     }
+#     if (kernel_data_type == DataType::UNDEFINED) {
+#       kernel_data_type = kernel_key.dtype();
+#     }
+#   }
 
-  VLOG(6) << "add_grad API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "add_grad", {kernel_backend, kernel_layout, kernel_data_type});
-  VLOG(6) << "add_grad API kernel: " << kernel;
+#   VLOG(6) << "add_grad API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+#   const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+#       "add_grad", {kernel_backend, kernel_layout, kernel_data_type});
+#   VLOG(6) << "add_grad API kernel: " << kernel;
 
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+#   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto input_x = PrepareData(x, kernel.InputAt(0), {});
-  auto input_y = PrepareData(y, kernel.InputAt(1), {});
-  auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+#   auto input_x = PrepareData(x, kernel.InputAt(0), {});
+#   auto input_y = PrepareData(y, kernel.InputAt(1), {});
+#   auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
 
-  auto kernel_out_0 = SetKernelOutput(kernel_backend, x_grad);
-  auto kernel_out_1 = SetKernelOutput(kernel_backend, y_grad);
-  VLOG(4) << "yoki: add_grad kernel_out_1: " << kernel_out_1;
-  phi::MetaTensor meta_out_0(kernel_out_0);
-  phi::MetaTensor meta_out_1(kernel_out_1);
+#   auto kernel_out_0 = SetKernelOutput(kernel_backend, x_grad);
+#   auto kernel_out_1 = SetKernelOutput(kernel_backend, y_grad);
+#   VLOG(4) << "yoki: add_grad kernel_out_1: " << kernel_out_1;
+#   phi::MetaTensor meta_out_0(kernel_out_0);
+#   phi::MetaTensor meta_out_1(kernel_out_1);
 
-  phi::GeneralBinaryGradInferMeta(MakeMetaTensor(*input_x), MakeMetaTensor(*input_y), kernel_out_0 ? &meta_out_0 : nullptr, kernel_out_1 ? &meta_out_1 : nullptr);
+#   phi::GeneralBinaryGradInferMeta(MakeMetaTensor(*input_x), MakeMetaTensor(*input_y), kernel_out_0 ? &meta_out_0 : nullptr, kernel_out_1 ? &meta_out_1 : nullptr);
 
 
-  using kernel_signature = void(*)(const platform::DeviceContext&, const phi::DenseTensor&, const phi::DenseTensor&, const phi::DenseTensor&, int, phi::DenseTensor*, phi::DenseTensor*);
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  {
-    paddle::platform::RecordEvent kernel_record_event("add_grad compute", paddle::platform::TracerEventType::OperatorInner, 1);
-    VLOG(4) << "yoki: add_grad kernel_out_1 v2: " << kernel_out_1;
-    (*kernel_fn)(*dev_ctx, *input_x, *input_y, *input_out_grad, axis, kernel_out_0, kernel_out_1);
-  }
+#   using kernel_signature = void(*)(const platform::DeviceContext&, const phi::DenseTensor&, const phi::DenseTensor&, const phi::DenseTensor&, int, phi::DenseTensor*, phi::DenseTensor*);
+#   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+#   {
+#     paddle::platform::RecordEvent kernel_record_event("add_grad compute", paddle::platform::TracerEventType::OperatorInner, 1);
+#     VLOG(4) << "yoki: add_grad kernel_out_1 v2: " << kernel_out_1;
+#     (*kernel_fn)(*dev_ctx, *input_x, *input_y, *input_out_grad, axis, kernel_out_0, kernel_out_1);
+#   }
 
   
-}
-""")
-        else:
-            source_file.write(bw_api.gene_api_code())
+# }
+# """)
+#         else:
+        source_file.write(bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

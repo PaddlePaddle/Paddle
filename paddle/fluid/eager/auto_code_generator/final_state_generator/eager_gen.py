@@ -1309,7 +1309,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 {indent}}}
 """
                     inplace_grad_input_str = transformed_tensor_name
-                get_tensor_str = f"{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
+                get_tensor_str = f"{indent}VLOG(4) << \"yoki: hooked_grads[{fwd_position}][0] use_count: \" << hooked_grads[{fwd_position}][0].impl().use_count();\n{indent}auto& {transformed_tensor_name} = hooked_grads[{fwd_position}][0];"
 
                 if is_optional:
                     get_tensor_str += "\n" + CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE.format(
@@ -1345,10 +1345,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   for (int i = 0; i < {slot_num_bwd_outputs}; ++i) {{
     returns[i].resize(out_metas[i].size());
   }}
-{inplace_for_grad_outs_str}
 """
 
         # Grad Outputs
+        inplace_for_grad_outs_str = ""
         out_index = -1
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
@@ -1360,11 +1360,13 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 if backward_inplace_map and name in backward_inplace_map.values():
                     inplace_for_grad_outs_str = f"""
 {indent}if (can_be_inplaced) {{
-{indent}  egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output[{fwd_position}][0]);
+{indent}  egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
 {indent}}}
 """
                 grad_function_call_str += f"""
-  auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];"""
+  auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];
+{inplace_for_grad_outs_str}"""
+                inplace_for_grad_outs_str = ""
 
             else:
                 assert IsVectorTensorType(ttype)
@@ -1474,99 +1476,99 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             outputs_autograd_meta_str, compute_require_grad_str,
             grad_node_creation_str, returns_str)
         
-        if forward_api_name == 'add':
-            self.node_definition_str = """
-paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> GradNodeaddFinal::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {
-  // Fill Zero For GradIn Tensors
+#         if forward_api_name == 'add':
+#             self.node_definition_str = """
+# paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> GradNodeaddFinal::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {
+#   // Fill Zero For GradIn Tensors
 
-  // Apply Gradient Hooks
+#   // Apply Gradient Hooks
 
-  bool can_be_inplaced = false;
-  VLOG(10) << grads[0][0].name() << "(out_grad) use_count: " << grads[0][0].impl().use_count();
-  if (grads[0][0].initialized() && grads[0][0].impl().use_count() == 1) {
-    can_be_inplaced = true;
-  }
+#   bool can_be_inplaced = false;
+#   VLOG(10) << grads[0][0].name() << "(out_grad) use_count: " << grads[0][0].impl().use_count();
+#   if (grads[0][0].initialized() && grads[0][0].impl().use_count() == 1) {
+#     can_be_inplaced = true;
+#   }
 
-  auto hooked_grads = ApplyGradientHooks(grads);
+#   auto hooked_grads = ApplyGradientHooks(grads);
 
-  // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
-  auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
-  auto y = egr::EagerUtils::RecoverTensorWrapper(&this->y_);
-  auto& grad_out = hooked_grads[0][0];
-  auto& axis = this->axis_;
+#   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
+#   auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+#   auto y = egr::EagerUtils::RecoverTensorWrapper(&this->y_);
+#   auto& grad_out = hooked_grads[0][0];
+#   auto& axis = this->axis_;
 
-  // Call grad_api function
-  VLOG(3) << "Final State Running: GradNodeaddFinal";
+#   // Call grad_api function
+#   VLOG(3) << "Final State Running: GradNodeaddFinal";
 
-  const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns(2);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output(2);
-  for (int i = 0; i < 2; ++i) {
-    returns[i].resize(out_metas[i].size());
-    if(returns[i].size() == 0) {
-      api_output[i].reserve(1);
-      api_output[i].push_back(nullptr);
-      continue;
-    }
-    api_output[i].reserve(returns[i].size());
-    for (size_t j = 0; j < returns[i].size(); ++j) {
-      api_output[i].push_back(&returns[i][j]);
-    }
-  }
+#   const auto& out_metas = OutputMeta();
+#   paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> returns(2);
+#   paddle::small_vector<std::vector<paddle::experimental::Tensor*>, egr::kSlotSmallVectorSize> api_output(2);
+#   for (int i = 0; i < 2; ++i) {
+#     returns[i].resize(out_metas[i].size());
+#     if(returns[i].size() == 0) {
+#       api_output[i].reserve(1);
+#       api_output[i].push_back(nullptr);
+#       continue;
+#     }
+#     api_output[i].reserve(returns[i].size());
+#     for (size_t j = 0; j < returns[i].size(); ++j) {
+#       api_output[i].push_back(&returns[i][j]);
+#     }
+#   }
 
-  if (can_be_inplaced) {
-    egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output[0][0]);
-  }
+#   if (can_be_inplaced) {
+#     egr::EagerUtils::HandleViewBetweenInputAndOutput(grad_out, api_output[0][0]);
+#   }
   
-  VLOG(4) << "yoki GradNodeadd api_output[0][0]: " << api_output[0][0];
-  VLOG(4) << "yoki GradNodeadd api_output[1][0]: " << api_output[1][0];
-  paddle::experimental::add_grad(x, y, grad_out, axis, api_output[0][0], api_output[1][0]);
-  // Get GradIn autograd_meta
-  egr::AutogradMeta* grad_out_autograd_meta = egr::EagerUtils::nullable_autograd_meta(grad_out);
-  // Get GradOut autograd_meta
+#   VLOG(4) << "yoki GradNodeadd api_output[0][0]: " << api_output[0][0];
+#   VLOG(4) << "yoki GradNodeadd api_output[1][0]: " << api_output[1][0];
+#   paddle::experimental::add_grad(x, y, grad_out, axis, api_output[0][0], api_output[1][0]);
+#   // Get GradIn autograd_meta
+#   egr::AutogradMeta* grad_out_autograd_meta = egr::EagerUtils::nullable_autograd_meta(grad_out);
+#   // Get GradOut autograd_meta
 
-  auto& grad_x = returns[0][0];
-  egr::AutogradMeta* grad_x_autograd_meta = egr::EagerUtils::autograd_meta(&grad_x);
+#   auto& grad_x = returns[0][0];
+#   egr::AutogradMeta* grad_x_autograd_meta = egr::EagerUtils::autograd_meta(&grad_x);
 
-  auto& grad_y = returns[1][0];
-  egr::AutogradMeta* grad_y_autograd_meta = egr::EagerUtils::autograd_meta(&grad_y);
-  // Compute Require Grad
-  bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(trace_backward,grad_out_autograd_meta);
-  // Create Grad Node
-  if(require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event("add_grad node_creation", paddle::platform::TracerEventType::OperatorInner, 1);
+#   auto& grad_y = returns[1][0];
+#   egr::AutogradMeta* grad_y_autograd_meta = egr::EagerUtils::autograd_meta(&grad_y);
+#   // Compute Require Grad
+#   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
+#   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(trace_backward,grad_out_autograd_meta);
+#   // Create Grad Node
+#   if(require_any_grad) {
+#     paddle::platform::RecordEvent node_creation_record_event("add_grad node_creation", paddle::platform::TracerEventType::OperatorInner, 1);
 
-    egr::EagerUtils::PassStopGradient(false,grad_x_autograd_meta,grad_y_autograd_meta);
+#     egr::EagerUtils::PassStopGradient(false,grad_x_autograd_meta,grad_y_autograd_meta);
 
-    // Node Construction
-    auto grad_node = std::shared_ptr<GradNodeadd_gradFinal>(new GradNodeadd_gradFinal(2, 3));
-    // SetAttributes if needed
-    grad_node->SetAttributeaxis(axis);
-    // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrappery(y);
-    grad_node->SetTensorWrappergrad_out(grad_out);
-    // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(grad_out, 2);
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-    egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
-    egr::EagerUtils::SetOutRankWithSlot(grad_y_autograd_meta, 1);
-    egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
-    egr::EagerUtils::SetHistory(grad_y_autograd_meta, grad_node);
-    grad_node->SetGradInMeta(grad_x, 0);
-    grad_node->SetGradInMeta(grad_y, 1);
-    egr::EagerUtils::CheckAndRetainGrad(grad_x);
-    egr::EagerUtils::CheckAndRetainGrad(grad_y);
-    // Set TensorWrappers for Forward Outputs if needed
+#     // Node Construction
+#     auto grad_node = std::shared_ptr<GradNodeadd_gradFinal>(new GradNodeadd_gradFinal(2, 3));
+#     // SetAttributes if needed
+#     grad_node->SetAttributeaxis(axis);
+#     // Set TensorWrappers for Forward Inputs if needed
+#     grad_node->SetTensorWrappery(y);
+#     grad_node->SetTensorWrappergrad_out(grad_out);
+#     // SetGradOutMeta & SetEdges
+#     grad_node->SetGradOutMeta(grad_out, 2);
+#     // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+#     egr::EagerUtils::SetOutRankWithSlot(grad_x_autograd_meta, 0);
+#     egr::EagerUtils::SetOutRankWithSlot(grad_y_autograd_meta, 1);
+#     egr::EagerUtils::SetHistory(grad_x_autograd_meta, grad_node);
+#     egr::EagerUtils::SetHistory(grad_y_autograd_meta, grad_node);
+#     grad_node->SetGradInMeta(grad_x, 0);
+#     grad_node->SetGradInMeta(grad_y, 1);
+#     egr::EagerUtils::CheckAndRetainGrad(grad_x);
+#     egr::EagerUtils::CheckAndRetainGrad(grad_y);
+#     // Set TensorWrappers for Forward Outputs if needed
 
-  }
+#   }
 
-  // Return
-  if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
-  return returns;
+#   // Return
+#   if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+#   return returns;
 
-}
-"""
+# }
+# """
 
     def run(self):
         super().run()

@@ -340,9 +340,13 @@ GradNodeBase::ApplyGradientHooks(
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        kSlotSmallVectorSize>
       outs(tensors.size());
+  VLOG(4) << "yoki: hook: tensor1: " << tensors[0][0].impl().use_count();
   for (auto& hook_pair : gradient_hooks_) {
+    VLOG(4) << "yoki: hook: recurse";
     size_t slot_id = std::get<0>(hook_pair.second);
     size_t rank = std::get<1>(hook_pair.second);
+    VLOG(4) << "yoki: hook: slot_id: " << slot_id;
+    VLOG(4) << "yoki: hook: rank: " << rank;
 
     auto hook = std::get<2>(hook_pair.second);
 
@@ -358,16 +362,29 @@ GradNodeBase::ApplyGradientHooks(
                        slot_id));
 
     std::vector<paddle::experimental::Tensor>& slot_out = outs[slot_id];
-    slot_out.resize(tensors[slot_id].size());
+    if (slot_out.size() < tensors[slot_id].size()){
+      slot_out.resize(tensors[slot_id].size());
+    }
     paddle::experimental::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
+      VLOG(4) << "yoki: hook: tensor2: " << tensors[slot_id][rank].impl().use_count();
       out = (*hook)(tensors[slot_id][rank]);
+      VLOG(4) << "yoki: hook: out2: " << out.impl().use_count();
+      VLOG(4) << "yoki: hook: tensor22: " << tensors[slot_id][rank].impl().use_count();
     } else {
       // If more than one hook is registered, the input to the next hook func
       // should be the output of the previous hook
+      VLOG(4) << "yoki: hook: out2xxx: " << out.impl().use_count();
+      VLOG(4) << "yoki: hook: tensor2221: " << tensors[slot_id][rank].impl().use_count();
+      VLOG(4) << "yoki: hook scale input origin: "<<*(std::static_pointer_cast<phi::DenseTensor>(tensors[slot_id][rank].impl()));
+      VLOG(4) << "yoki: hook scale input: "<<*(std::static_pointer_cast<phi::DenseTensor>(out.impl()));
       out = (*hook)(out);
+      VLOG(4) << "yoki: hook: out2yyy: " << out.impl().use_count();
+      VLOG(4) << "yoki: hook: tensor2222: " << tensors[slot_id][rank].impl().use_count();
+      VLOG(4) << "yoki: hook scale output: "<<*(std::static_pointer_cast<phi::DenseTensor>(out.impl()));
     }
   }
+  VLOG(4) << "yoki: hook: end apply hook";
 
   for (size_t i = 0; i < outs.size(); i++) {
     if (outs[i].empty() && (!tensors[i].empty())) {
@@ -376,12 +393,17 @@ GradNodeBase::ApplyGradientHooks(
     // TODO(Jiabin): Optimize this if we only add hook slot by slot
     for (size_t j = 0; j < outs[i].size(); j++) {
       if (!outs[i][j].defined() || !outs[i][j].initialized()) {
+        VLOG(4) << "yoki: hook: tensor3: " << tensors[i][j].impl().use_count();
         outs[i][j] = tensors[i][j];
+        VLOG(4) << "yoki: hook: out3: " << outs[i][j].impl().use_count();
       }
       CheckTensor(tensors[i][j], outs[i][j]);
+      VLOG(4) << "yoki: hook: tensor4: " << tensors[i][j].impl().use_count();
+      VLOG(4) << "yoki: hook: out4: " << outs[i][j].impl().use_count();
     }
   }
-
+  VLOG(4) << "yoki: hook: outs5: " << outs[0][0].impl().use_count();
+  VLOG(4) << "yoki: hook scale output final: "<<*(std::static_pointer_cast<phi::DenseTensor>(outs[0][0].impl()));
   return outs;
 }
 

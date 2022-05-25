@@ -597,7 +597,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 else:
                     if self.inputs['input_info'][input_name] == "const Tensor&":
                         input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  VLOG(4) << "yoki: {input_name} ptr: " << {input_name}.impl().get();
+{code_indent}  VLOG(4) << "yoki: {input_name} dims: " << {PREFIX_TENSOR_NAME}{input_name}->dims();"""
 
                     elif self.inputs['input_info'][
                             input_name] == "const std::vector<Tensor>&":
@@ -749,6 +751,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
         cudnn_args = '' if self.kernel[
             'use_gpudnn'] == 'false' else ', ' + self.kernel['use_gpudnn']
+
+        out_log = "" 
+        if self.outputs['types'][0] == "Tensor":
+            out_log = f"""
+{code_indent}    VLOG(4) << "yoki: out ptr: " << {kernel_output_names[0]} << "  out dims: " << {kernel_output_names[0]}->dims();"""
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -765,6 +772,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  {{
 {code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{api_func_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
 {code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
+{out_log}
 {code_indent}  }}
 
 {code_indent}  {self.gene_return_code()}"""

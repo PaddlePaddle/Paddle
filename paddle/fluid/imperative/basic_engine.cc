@@ -563,9 +563,9 @@ void BasicEngine::Execute() {
        */
       auto tmp_ins_ptr = CallGradientHooks(bwd_ins, cur_op.Type());
 
-      if (!tmp_ins_ptr) {
-        PerformBackwardInplace(cur_op.Type(), bwd_ins, &tmp_outs);
-      }
+      // if (!tmp_ins_ptr) {
+      PerformBackwardInplace(cur_op.Type(), bwd_ins, &tmp_outs);
+      // }
 
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();

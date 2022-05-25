@@ -76,7 +76,12 @@ class PyTensorHook : public egr::TensorHook {
 
     PyObject* res = nullptr;
     try {
-      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+      PyObject* p_tmp_var = ToPyObject(var);
+      VLOG(4) << "yoki: eager_method input: "<<*(std::static_pointer_cast<phi::DenseTensor>(reinterpret_cast<TensorObject*>(p_tmp_var)->tensor.impl()));
+      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+      VLOG(4) << "yoki: eager_method output1: "<<*(std::static_pointer_cast<phi::DenseTensor>(reinterpret_cast<TensorObject*>(res)->tensor.impl()));
+      Py_DECREF(p_tmp_var);
+      // res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
@@ -93,7 +98,10 @@ class PyTensorHook : public egr::TensorHook {
     if (res == Py_None) {
       return var;
     }
-    return reinterpret_cast<TensorObject*>(res)->tensor;
+    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+    VLOG(4) << "yoki: eager_method output2: "<<*(std::static_pointer_cast<phi::DenseTensor>(res_tensor.impl()));
+    Py_DECREF(res);
+    return res_tensor;
   }
 
  private:

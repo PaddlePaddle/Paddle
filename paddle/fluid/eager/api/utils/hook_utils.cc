@@ -77,13 +77,17 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
           // Simply Copy impl() to grad_tensor
           grad_tensor->set_impl(t.impl());
           grad_tensor->set_autograd_meta(t.mutable_autograd_meta());
+          VLOG(4) << "yoki: retain grad: "<<*(std::static_pointer_cast<phi::DenseTensor>(grad_tensor->impl()));
+          VLOG(4) << "yoki: retain grad holder: " << (std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor->impl()))->Holder().get();
           return *grad_tensor.get();
         } else {
           VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+          VLOG(3) << "yoki retain grad 111";
           return paddle::experimental::Tensor();
         }
       } else {
         VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+        VLOG(3) << "yoki retain grad 222";
         return paddle::experimental::Tensor();
       }
     };

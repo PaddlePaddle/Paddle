@@ -37,10 +37,13 @@ void AddGradImpl(const Context& dev_ctx,
   // Special case when y_grad is not needed and x_grad doesn't reduce
   VLOG(4) << "yoki: x_grad: " << x_grad;
   VLOG(4) << "yoki: y_grad: " << y_grad;
-  if (x_grad != nullptr) {
-    VLOG(4) << "yoki: x_grad dims: " << x_grad->dims();
-    VLOG(4) << "yoki: out_grad dims: " << out_grad.dims();
-  }
+  // if (x_grad != nullptr) {
+  VLOG(4) << "yoki: x dims: " << x.dims();
+  VLOG(4) << "yoki: y dims: " << y.dims();
+  VLOG(4) << "yoki: x_grad dims: " << x_grad->dims();
+  VLOG(4) << "yoki: y_grad dims: " << y_grad->dims();
+  VLOG(4) << "yoki: out_grad dims: " << out_grad.dims();
+  // }
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
