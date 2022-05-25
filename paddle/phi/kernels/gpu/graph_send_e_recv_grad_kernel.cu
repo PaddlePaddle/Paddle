@@ -183,7 +183,7 @@ void CalculateXGrad(const Context& ctx,
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
-      ManipulateMeanGradCUDAKernelV2<
+      ManipulateMeanGradCUDAKernelForMulX<
           T,
           IndexT><<<grid_, block_, 0, ctx.stream()>>>(
           out_grad,
@@ -202,6 +202,24 @@ void CalculateXGrad(const Context& ctx,
     }
   }
 }
+
+template <typename Context, typename T, typename IndexT>
+void CalculateEGrad(const Context& ctx,
+                    const T* out_grad,
+                    const T* x_data,
+                    const T* e_data,
+                    const phi::DDim& out_grad_dims,
+                    const phi::DDim& x_dims,
+                    const phi::DDim& e_dims,
+                    const IndexT* s_index,
+                    const IndexT* d_index,
+                    const std::string& compute_type,
+                    const std::string& pool_type,
+                    int64_t index_size,
+                    int64_t slice_size,
+                    T* e_grad,
+                    const DenseTensor* dst_count = nullptr,
+                    const DenseTensor* out = nullptr) {}
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendERecvGradOpCUDAKernelLaunchHelper(

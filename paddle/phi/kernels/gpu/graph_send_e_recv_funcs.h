@@ -118,21 +118,21 @@ __global__ void GraphSendERecvCUDAKernel(const T* x_data,
   }
 }
 
-// x_grad: for backward mean
+// x_grad: for backward mean with mul.
 template <typename T, typename IndexT>
-__global__ void ManipulateMeanGradCUDAKernelV2(const T* x_data,
-                                               const T* e_data,
-                                               const IndexT* src_indices,
-                                               const IndexT* dst_indices,
-                                               const int* dst_count,
-                                               const int64_t* xbcast_off,
-                                               const int64_t* ebcast_off,
-                                               T* x_grad,
-                                               int64_t index_size,
-                                               int64_t x_len,
-                                               int64_t e_len,
-                                               int64_t out_len,
-                                               bool use_bcast) {
+__global__ void ManipulateMeanGradCUDAKernelForMulX(const T* x_data,
+                                                    const T* e_data,
+                                                    const IndexT* src_indices,
+                                                    const IndexT* dst_indices,
+                                                    const int* dst_count,
+                                                    const int64_t* xbcast_off,
+                                                    const int64_t* ebcast_off,
+                                                    T* x_grad,
+                                                    int64_t index_size,
+                                                    int64_t x_len,
+                                                    int64_t e_len,
+                                                    int64_t out_len,
+                                                    bool use_bcast) {
   IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
   const IndexT stride_y = blockDim.y * gridDim.y;
 
@@ -156,7 +156,20 @@ __global__ void ManipulateMeanGradCUDAKernelV2(const T* x_data,
   }
 }
 
-// x_grad: backward min and max for add.
+// e_grad: backward sum for add.
+template <typename T, typename IndexT>
+__global__ void ManipulateSumGradCUDAKernelForAddE() {}
+
+// e_grad: backward sum for mul.
+__global__ void ManipulateSumGradCUDAKernelForMulE() {}
+
+// e_grad: backward mean for add
+__global__ void ManipulateMeanGradCUDAKernelForAddE() {}
+
+// e_grad: backward mean for mul.
+__global__ void ManipulateMeanGradCUDAKernelForMulE() {}
+
+// x_grad, e_grad: backward min and max for add.
 template <typename T, typename IndexT>
 __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
                                                      const T* e_data,
@@ -202,8 +215,7 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
   }
 }
 
-// x_grad: backward min and max for mul.
-// 后续maxmin的处理函数也可以用来处理e的反向梯度
+// x_grad, e_grad: backward min and max for mul.
 template <typename T, typename IndexT>
 __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
                                                      const T* e_data,
