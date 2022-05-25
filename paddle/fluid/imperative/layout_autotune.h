@@ -16,8 +16,8 @@
 #include <glog/logging.h>
 #include <memory>
 #include <unordered_set>
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/compat/type_defs.h"
 
 namespace paddle {
 namespace imperative {

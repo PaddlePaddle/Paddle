@@ -1188,6 +1188,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMatmul(graph);
   QuantizeElementwise(graph, "elementwise_add");
   QuantizeElementwise(graph, "elementwise_mul");
+  QuantizeElementwise(graph, "elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);
