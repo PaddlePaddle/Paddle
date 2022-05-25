@@ -231,22 +231,22 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
   const IndexT* d_index = dst_index.data<IndexT>();
 
   // Calculate x_grad
-  CalculateXGrad(ctx,
-                 out_grad_data,
-                 x_data,
-                 e_data,
-                 out_grad.dims(),
-                 x_dims,
-                 e_dims,
-                 s_index,
-                 d_index,
-                 compute_type,
-                 pool_type,
-                 index_size,
-                 slice_size,
-                 x_grad_data,
-                 dst_count,
-                 out);
+  CalculateXGrad<Context, T, IndexT>(ctx,
+                                     out_grad_data,
+                                     x_data,
+                                     e_data,
+                                     out_grad.dims(),
+                                     x_dims,
+                                     e_dims,
+                                     s_index,
+                                     d_index,
+                                     compute_type,
+                                     pool_type,
+                                     index_size,
+                                     slice_size,
+                                     x_grad_data,
+                                     dst_count,
+                                     out);
 }
 
 template <typename T, typename Context>
