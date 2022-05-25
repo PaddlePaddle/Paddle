@@ -1257,12 +1257,6 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
-        # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
-        if distop_context is not None:
-            if op_desc.original_id() in distop_context.grad_op_id_to_op_id:
-                distop_context.grad_op_id_to_op_id[new_op_desc.original_id(
-                )] = distop_context.grad_op_id_to_op_id[op_desc.original_id()]
-                # distop_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
