@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace strings {
 

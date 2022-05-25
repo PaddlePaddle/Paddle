@@ -798,11 +798,12 @@ def gen_einsum_op(equation, *operands):
     """
     assert len(operands) <= 2, "Only support two operands in EinsumOp."
     if in_dygraph_mode():
-        return _C_ops.final_state_einsum(operands, equation)
+        return _C_ops.final_state_einsum(operands, equation)[0]
 
     if _in_legacy_dygraph():
         # dygraph
-        return _C_ops.einsum(operands, 'equation', equation)
+        return _C_ops.einsum(operands, len(operands), 'equation', equation)[0]
+
     # static graph 
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
@@ -811,11 +812,16 @@ def gen_einsum_op(equation, *operands):
     out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
     attrs = dict()
     attrs['equation'] = equation
+    caches = [
+        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        for i in range(len(operands))
+    ]
     helper.append_op(
         type='einsum',
         inputs={'Operands': operands},
-        outputs={'Out': out},
-        attrs=attrs, )
+        outputs={'Out': out,
+                 "InnerCache": caches},
+        attrs=attrs)
     return out
 
 

@@ -737,7 +737,7 @@ def _pull_gpups_sparse(input,
         for i in range(len(inputs))
     ]
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=[size[0]], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_gpups_sparse',
         inputs={'Ids': inputs,
@@ -6533,7 +6533,7 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)[1]
+        return _C_ops.final_state_squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -6598,7 +6598,7 @@ def unsqueeze(input, axes, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)[1]
+        return _C_ops.final_state_unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [

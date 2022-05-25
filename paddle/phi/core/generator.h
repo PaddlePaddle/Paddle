@@ -49,12 +49,6 @@ class Generator {
   virtual std::pair<uint64_t, uint64_t> IncrementOffset(
       uint64_t increament_offset) = 0;
 
-  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
-  // old seed, and it should be removed after all random-related operators
-  // and unittests upgrades to use generator.
-  virtual void SetIsInitPy(bool) = 0;
-  virtual bool GetIsInitPy() const = 0;
-
   virtual uint64_t get_device_id() = 0;
 };
 

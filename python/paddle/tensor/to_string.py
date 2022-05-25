@@ -37,7 +37,6 @@ def set_printoptions(precision=None,
                      sci_mode=None,
                      linewidth=None):
     """Set the printing options for Tensor.
-    NOTE: The function is similar with numpy.set_printoptions()
 
     Args:
         precision (int, optional): Number of digits of the floating number, default 8.

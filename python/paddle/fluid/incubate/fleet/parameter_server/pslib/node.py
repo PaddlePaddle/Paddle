@@ -124,14 +124,15 @@ class DownpourServer(Server):
 
             support_accessor_class = [
                 'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
-                'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor',
-                'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'
+                'DownpourCtrDymfAccessor', 'DownpourSparseValueAccessor',
+                'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
+                'DownpourDoubleUnitAccessor'
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')
                 if accessor_class not in support_accessor_class:
                     raise ValueError(
-                        "support sparse_accessor_class: ['DownpourFeatureValueAccessor', 'DownpourCtrAccessor', \
+                        "support sparse_accessor_class: ['DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDymfAccessor', \
                         'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor'], \
                             but actual %s" % (accessor_class))
             else:
@@ -141,6 +142,7 @@ class DownpourServer(Server):
 
             if accessor_class == 'DownpourFeatureValueAccessor' \
                     or accessor_class == 'DownpourCtrAccessor' \
+                    or accessor_class == 'DownpourCtrDymfAccessor' \
                     or accessor_class == 'DownpourCtrDoubleAccessor':
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
                     'sparse_learning_rate', 0.05)
