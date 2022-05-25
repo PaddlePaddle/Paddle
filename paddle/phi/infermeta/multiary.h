@@ -215,7 +215,7 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 void InterpolateInferMeta(
     const MetaTensor& x,
     const MetaTensor& out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
     const MetaTensor& scale_tensor,
     const std::string& data_layout,
     int out_d,

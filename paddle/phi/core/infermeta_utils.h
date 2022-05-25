@@ -189,7 +189,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
 
   template <typename... Tail>
   struct InferMetaFnCallHelper<
-      paddle::optional<const std::vector<const MetaTensor*>>,
+      const paddle::optional<std::vector<const MetaTensor*>>&,
       Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {

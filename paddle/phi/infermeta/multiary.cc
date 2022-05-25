@@ -992,7 +992,7 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 static void Interpolate1DInferShapeCheck(
     const MetaTensor& x,
     const MetaTensor& out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
     const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
@@ -1119,7 +1119,7 @@ static void Interpolate1DInferShapeCheck(
 static void Interpolate2DInferShapeCheck(
     const MetaTensor& x,
     const MetaTensor& out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
     const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
@@ -1264,7 +1264,7 @@ static void Interpolate2DInferShapeCheck(
 static void Interpolate3DInferShapeCheck(
     const MetaTensor& x,
     const MetaTensor& out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
     const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
@@ -1420,7 +1420,7 @@ static void Interpolate3DInferShapeCheck(
 void InterpolateInferMeta(
     const MetaTensor& x,
     const MetaTensor& out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
     const MetaTensor& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
