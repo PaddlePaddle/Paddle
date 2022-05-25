@@ -19,7 +19,7 @@ from ..ps.utils.public import *
 from paddle.framework import core
 from .pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.transpiler.collective import MultiThread
+from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 
 
 @register_pass("append_send_ops_pass")
@@ -714,7 +714,7 @@ class PsTranspilePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        t = MultiThread(trans_mode='fuse_all_reduce')
+        t = SingleProcessMultiThread()
         env = get_dist_env()
         t.transpile(
             startup_program=startup_program,
