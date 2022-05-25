@@ -286,6 +286,14 @@ bool IsCompiledWithHETERPS() {
 #endif
 }
 
+bool IsCompiledWithCustomDevice() {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -2970,6 +2978,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);

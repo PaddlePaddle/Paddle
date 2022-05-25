@@ -37,6 +37,7 @@ __all__ = [  # noqa
     'is_compiled_with_rocm',
     'is_compiled_with_npu',
     'is_compiled_with_mlu',
+    'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',
     'get_available_device',
@@ -44,6 +45,20 @@ __all__ = [  # noqa
 ]
 
 _cudnn_version = None
+
+def is_compiled_with_custom_device():
+    """
+    Whether paddle was built with WITH_CUSTOM_DEVICE=ON to support Custom Device.
+
+    Returns (bool): `True` if Custom Device is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_custom_device = paddle.device.is_compiled_with_custom_device()
+    """
+    return core.is_compiled_with_custom_device()
 
 
 # TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
