@@ -108,7 +108,7 @@ __global__ void dy_mf_search_kernel(Table* table,
       }
     } else {
       if (keys[i] != 0) {
-        printf("yxf::pull miss key: %d", keys[i]);
+        printf("warning::pull miss key: %d", keys[i]);
       }
       FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
       cur->delta_score = 0;
@@ -156,7 +156,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
       if (keys[i] != 0) {
-        printf("yxf::push miss key: %d", keys[i]);
+        printf("warning::push miss key: %d", keys[i]);
       }
     }
   }
