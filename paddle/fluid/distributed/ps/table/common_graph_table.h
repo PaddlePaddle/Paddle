@@ -566,7 +566,7 @@ class GraphTable : public Table {
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
   std::vector<int64_t> get_partition(int idx, int index) {
-    if (idx >= partitions.size() || index >= partitions[idx].size())
+    if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
       return std::vector<int64_t>();
     return partitions[idx][index];
   }

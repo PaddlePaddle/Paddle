@@ -55,6 +55,8 @@ class GraphGpuWrapper {
                                   int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t* device_keys,
+                                             int walk_degree, int len);
   std::vector<int64_t> graph_neighbor_sample(int gpu_id, int idx,
                                              std::vector<int64_t>& key,
                                              int sample_size);
