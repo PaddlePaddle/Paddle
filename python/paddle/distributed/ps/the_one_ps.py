@@ -1056,8 +1056,8 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()
-        with open("test_fl_ps_server_desc", "w") as f:
-            f.write(server_desc)
+        #with open("test_fl_ps_server_desc", "w") as f:
+        #    f.write(server_desc)
         role_id = get_role_id(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:

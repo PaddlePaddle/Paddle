@@ -334,8 +334,8 @@ def get_dense_send_context(program,
             var_numel += reduce(lambda x, y: x * y, var.shape)
         grad_name = "Dense@GRAD_" + str(idx)
         aggregate = True
-        print("public get_dense_send_context dense_table:", grad_name,
-              var_numel, origin_varnames)
+        # print("public get_dense_send_context dense_table:", grad_name,
+        #      var_numel, origin_varnames)
         from paddle.fluid.core import CommContext
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
@@ -357,8 +357,8 @@ def get_dense_send_context(program,
             var_numel += reduce(lambda x, y: x * y, var.shape)
         grad_name = "DataNorm@GRAD_" + str(idx)
         aggregate = True
-        print("public get_dense_send_context data_norm table:", grad_name,
-              var_numel, origin_varnames)
+        # print("public get_dense_send_context data_norm table:", grad_name,
+        #      var_numel, origin_varnames)
         from paddle.fluid.core import CommContext
         data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
@@ -448,7 +448,7 @@ def get_the_one_send_context(context,
 
     idx = 0
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
-    print("public distibuted_varnames:", distibuted_varnames)
+    # print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
         merged_sparse_pairs = context['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
@@ -467,8 +467,8 @@ def get_the_one_send_context(context,
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            print("public get_the_one_send_context sparse:", grad_name,
-                  splited_varname, shape)
+            #print("public get_the_one_send_context sparse:", grad_name,
+            #      splited_varname, shape)
             if grad_name in send_ctx:
                 continue
             from paddle.fluid.core import CommContext
