@@ -2908,7 +2908,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     The cumulative sum of the elements along a given axis. 
     
     **Note**:
-    The first element of the result is the same of the first element of the input. 
+    The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -2974,14 +2974,14 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     r"""
     The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
 
-    For summation index j given by dim and other indices i, the result is
+    For summation index j given by `axis` and other indices i, the result is
 
     .. math::
 
         logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
     
-    Note:
-    The first element of the result is the same of the first element of the input. 
+    **Note**:
+    The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor.
