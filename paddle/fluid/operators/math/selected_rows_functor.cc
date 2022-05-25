@@ -98,8 +98,8 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
                   const phi::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output) {
     auto in1_height = input1.height();
-    auto in2_dims = input2.dims();
-    auto out_dims = output->dims();
+    const auto& in2_dims = input2.dims();
+    const auto& out_dims = output->dims();
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
@@ -249,7 +249,7 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
       return;
     }
     auto in1_height = input1.height();
-    auto in2_dims = input2->dims();
+    const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
@@ -289,7 +289,7 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
       return;
     }
     auto in1_height = input1.height();
-    auto in2_dims = input2->dims();
+    const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
@@ -838,7 +838,7 @@ struct UpdateToTensor<platform::CPUDeviceContext, T> {
                   const ScatterOps& op, const phi::SelectedRows& input1,
                   framework::Tensor* input2) {
     auto in1_height = input1.height();
-    auto in2_dims = input2->dims();
+    const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."

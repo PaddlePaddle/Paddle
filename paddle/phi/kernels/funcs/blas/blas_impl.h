@@ -1284,9 +1284,9 @@ void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
                                  T alpha,
                                  phi::DenseTensor *mat_out,
                                  T beta) const {
-  auto dim_a = mat_a.dims();
-  auto dim_b = mat_b.dims();
-  auto dim_out = mat_out->dims();
+  const auto &dim_a = mat_a.dims();
+  const auto &dim_b = mat_b.dims();
+  const auto &dim_out = mat_out->dims();
   PADDLE_ENFORCE_EQ(
       dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
       true,
