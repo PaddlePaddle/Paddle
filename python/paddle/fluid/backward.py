@@ -1260,7 +1260,6 @@ def _append_backward_ops_(block,
         # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
         if distop_context is not None:
             if op_desc.original_id() in distop_context.grad_op_id_to_op_id:
-                assert op_desc.id() == new_op_desc.original_id()
                 distop_context.grad_op_id_to_op_id[new_op_desc.original_id(
                 )] = distop_context.grad_op_id_to_op_id[op_desc.original_id()]
                 # distop_context.grad_op_id_to_op_id.pop(op_desc.id())
