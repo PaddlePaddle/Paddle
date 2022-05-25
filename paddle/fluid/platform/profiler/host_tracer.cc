@@ -29,7 +29,7 @@ namespace platform {
 
 namespace {
 
-void ProcessHostEvents(const HostEventSection& host_events,
+void ProcessHostEvents(const HostEventSection<CommonEvent>& host_events,
                        TraceEventCollector* collector) {
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
@@ -61,7 +61,7 @@ void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
-  HostEventRecorder::GetInstance().GatherEvents();
+  HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
@@ -78,8 +78,8 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
       state_, TracerState::STOPED,
       platform::errors::PreconditionNotMet("TracerState must be STOPED"));
-  HostEventSection host_events =
-      HostEventRecorder::GetInstance().GatherEvents();
+  HostEventSection<CommonEvent> host_events =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   ProcessHostEvents(host_events, collector);
 }
 
