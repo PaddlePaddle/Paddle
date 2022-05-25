@@ -29,6 +29,7 @@ cmake .. \
     -DWITH_MKL=OFF \
     -DWITH_XPU=ON \
     -DWITH_XPU_BKCL=ON \
+    -DWITH_XPU_AVOID_CORE=ON \
     -DWITH_XPU_KP=ON \
     -DWITH_XPU_CACHE_BFID=ON \
     -DWITH_GPU=OFF  \

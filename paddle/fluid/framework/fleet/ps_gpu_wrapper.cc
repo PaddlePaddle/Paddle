@@ -792,7 +792,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     //}
     auto & feasign = it->uint64_feasigns_;
     for (unsigned int j = 0; j < feasign.size(); j++) {
-      feasign[j].sign().uint64_feasign_ = cache_manager -> query_sign2fid(feasign[j].sign().uint64_feasign_);
+      feasign[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasign[j].sign().uint64_feasign_);
     }
   }
   VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
@@ -807,9 +807,13 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #endif //PADDLE_WITH_XPU_KP
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     VLOG(3) << "building table: " << i;
+#ifndef PADDLE_WITH_XPU_AVOID_CORE
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
+#else
+    VLOG(0) << "BuildGPUTask build table (hacked): " << i << ", keys:" << feature_keys_count[i];
+#endif
     // if (feature_keys_count[i] > 0) {
     //   HeterPs_->show_one_table(i);
     // }
@@ -942,6 +946,11 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
+#ifdef PADDLE_WITH_XPU_AVOID_CORE
+   VLOG(0) << "PSGPUWrapper::PullSparse hacked";
+   return;
+#endif
+
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -1055,6 +1064,10 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<const float*>& grad_values,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size, const int batch_size) {
+#ifdef PADDLE_WITH_XPU_AVOID_CORE
+   VLOG(0) << "PSGPUWrapper::PushSparse hacked";
+   return;
+#endif
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
