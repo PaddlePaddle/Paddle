@@ -32,7 +32,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -40,6 +40,9 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+import time
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from testsuite import (
@@ -711,7 +714,11 @@ class OpTest(unittest.TestCase):
                 + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
                 self.__class__.__name__)
 
-    def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
+    def _calc_python_api_output(self,
+                                place,
+                                egr_inps=None,
+                                egr_oups=None,
+                                forward_or_grad=None):
         """ set egr_inps and egr_oups = None if you want to create it by yourself.
         """
 
@@ -859,7 +866,24 @@ class OpTest(unittest.TestCase):
         def cal_python_api(python_api, args, kernel_sig):
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             args = assumption_assert_and_transform(args, len(inputs_sig))
+
+            paddle.device.cuda.synchronize()
+            print("[===== check_eager for ", self.op_type,
+                  " in op test, start =====")
+            st = time.time()
+
             ret_tuple = python_api(*args)
+
+            paddle.device.cuda.synchronize()
+            et = time.time()
+            print("mode:", "eager", " # op:", self.op_type, "# func:",
+                  forward_or_grad, "# input:",
+                  str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
+                  "# place:", place, "# time:", (et - st))
+            # print("===== time: ", (et - st))
+            print("===== check_eager for ", self.op_type,
+                  " in op test, end =====]", '\n')
+
             return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
 
         with fluid.dygraph.base.guard(place=place):
@@ -892,7 +916,11 @@ class OpTest(unittest.TestCase):
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
-    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+    def _calc_dygraph_output(self,
+                             place,
+                             parallel=False,
+                             no_check_set=None,
+                             forward_or_grad=None):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -913,11 +941,39 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
+            paddle.device.cuda.synchronize()
+            if _in_legacy_dygraph():
+                print("[===== check_legacy for ", self.op_type,
+                      " in op test, start =====")
+            elif in_dygraph_mode():
+                print("[===== check_eager for ", self.op_type,
+                      " in op test, start =====")
+            st = time.time()
+
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
+
+            paddle.device.cuda.synchronize()
+            et = time.time()
+            mode = "eager-mid" if in_dygraph_mode() else "legacy"
+            print("mode:", mode, "# op:", self.op_type, "# func:",
+                  forward_or_grad, "# input:",
+                  str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
+                  "# place:", place, "# time:", (et - st))
+            # print("===== time: ", (et - st))
+            if _in_legacy_dygraph():
+                print("===== check_legacy for ", self.op_type,
+                      " in op test, end =====]", '\n')
+            elif in_dygraph_mode():
+                print(
+                    "===== missing KernelSignature, fall back to eager middle output."
+                )
+                print("===== check_eager for ", self.op_type,
+                      " in op test, end =====]", '\n')
+
             return outputs
 
     def _calc_output(self,
@@ -1364,7 +1420,11 @@ class OpTest(unittest.TestCase):
                 currently don't support check between checkers.
             """
 
-            def __init__(self, op_test, expect_dict):
+            def __init__(self,
+                         op_test,
+                         expect_dict,
+                         tmp_inputs=None,
+                         tmp_attrs=None):
                 """ expect_dict is the self.outputs
                     support : {str: [numpy]} and {str: [(str, numpy), (str, numpy)]}
                 """
@@ -1372,6 +1432,9 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "checker"
                 self.op_test = op_test  # stop the op_test object.
                 self.op_type = op_test.op_type
+
+                self.tmp_inputs = tmp_inputs
+                self.tmp_attrs = tmp_attrs
 
             def init(self):
                 pass
@@ -1502,8 +1565,9 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "dygraph checker"
 
             def calculate_output(self):
+
                 self.outputs = self.op_test._calc_dygraph_output(
-                    place, no_check_set=no_check_set)
+                    place, no_check_set=no_check_set, forward_or_grad="forward")
 
             def find_actual_value(self, name):
                 with fluid.dygraph.base.guard(place=place):
@@ -1562,13 +1626,18 @@ class OpTest(unittest.TestCase):
                 # we only check end2end api when check_eager=True
                 with _test_eager_guard():
                     self.is_python_api_test = True
+
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
-                        place)
+                        place, forward_or_grad="forward")
                     if eager_dygraph_outs is None:
                         self.is_python_api_test = False
                         # missing KernelSignature, fall back to eager middle output.
+
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
-                            place, no_check_set=no_check_set)
+                            place,
+                            no_check_set=no_check_set,
+                            forward_or_grad="forward")
+
                 self.outputs = eager_dygraph_outs
 
             def _compare_numpy(self, name, actual_np, expect_np):
@@ -1623,22 +1692,22 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
-        if check_dygraph:
+
+        if check_eager and check_dygraph:
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
 
-            dygraph_checker = DygraphChecker(self, self.outputs)
+            dygraph_checker = DygraphChecker(self, self.outputs, self.inputs,
+                                             self.attrs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
-            print("===== check_eager for ", self.op_type, " in op test. =====")
-            eager_checker = EagerChecker(self, self.outputs)
+            eager_checker = EagerChecker(self, self.outputs, self.inputs,
+                                         self.attrs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
-        if not check_eager:
-            print("===== not check_eager for ", self.op_type, " in op test. =====")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -1662,7 +1731,7 @@ class OpTest(unittest.TestCase):
 
         if check_eager:
             return outs, dygraph_outs, eager_dygraph_outs, fetch_list
-        elif check_dygraph:
+        elif check_eager and check_dygraph:
             return outs, dygraph_outs, fetch_list
         else:
             return outs, fetch_list
@@ -1755,7 +1824,7 @@ class OpTest(unittest.TestCase):
             if check_eager:
                 assert check_dygraph == True
                 outs, dygraph_outs, eager_dygraph_outs, fetch_list = res
-            elif check_dygraph:
+            elif check_eager and check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
@@ -2027,15 +2096,48 @@ class OpTest(unittest.TestCase):
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
             if check_eager:
-                eager_outputs = self._calc_python_api_output(place, inputs,
-                                                             outputs)
+                eager_outputs = self._calc_python_api_output(
+                    place, inputs, outputs, forward_or_grad="grad")
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_eager or eager_outputs is None:
+                paddle.device.cuda.synchronize()
+                if _in_legacy_dygraph():
+                    print("[===== check_legacy for ", self.op_type,
+                          " in op test, start =====")
+                elif in_dygraph_mode():
+                    print("[===== check_eager for ", self.op_type,
+                          " in op test, start =====")
+                # print("===== inputs:", self.tmp_inputs.)
+                # print("===== forward or grad: ", "grad")
+                # print("===== inputs:", str(self.inputs)[0:50])
+                # print("===== attrs:", self.attrs)
+                # print("===== place:", place)
+                st = time.time()
+
                 block.append_op(
                     type=self.op_type,
                     inputs=inputs,
                     outputs=outputs,
                     attrs=attrs_outputs if hasattr(self, "attrs") else None)
+
+                paddle.device.cuda.synchronize()
+                et = time.time()
+                mode = "eager-mid" if in_dygraph_mode() else "legacy"
+                print("mode:", mode, "# op:", self.op_type, "# func:", "grad",
+                      "# input:",
+                      str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
+                      "# place:", place, "# time:", (et - st))
+                # print("===== time: ", (et - st))
+                if _in_legacy_dygraph():
+                    print("===== check_legacy for ", self.op_type,
+                          " in op test, end =====]", '\n')
+                elif in_dygraph_mode():
+                    print(
+                        "===== missing KernelSignature, fall back to eager middle output."
+                    )
+                    print("===== check_eager for ", self.op_type,
+                          " in op test, end =====], '\n'")
+
             else:
                 outputs = eager_outputs
 
