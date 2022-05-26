@@ -791,8 +791,8 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)
             # [0.5]
     """
-    if label.dtype == "int32":
-        label = paddle.cast(label, "int64")
+    if label.dtype == paddle.int32:
+        label = paddle.cast(label, paddle.int64)
     if _non_static_mode():
         if correct is None:
             correct = _varbase_creator(dtype="int32")
