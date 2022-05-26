@@ -456,15 +456,31 @@ void SetTensorFromPyArrayT(
       // NOTE(wangxi): When copying data to the accelerator card,
       // we need set_device(dev_id) first.
       platform::CUDADeviceGuard guard(place.device);
+      platform::CUDAPinnedPlace cuda_pinned_place;
+      framework::Tensor gpu_pinned_tensor;
+      gpu_pinned_tensor.Resize(phi::make_ddim(dims));
+      auto *gpu_pinned_ptr =
+          gpu_pinned_tensor.mutable_data<T>(cuda_pinned_place);
+      std::memcpy(gpu_pinned_ptr, array.data(), array.nbytes());
       auto dst = self->mutable_data<T>(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *gpu_ctx =
+          static_cast<platform::CUDADeviceContext *>(pool.Get(place));
 #ifdef PADDLE_WITH_HIP
-      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                      hipMemcpyHostToDevice);
+      paddle::platform::GpuMemcpyAsync(dst, array.data(), array.nbytes(),
+                                       hipMemcpyHostToDevice,
+                                       gpu_ctx->stream());
 #else
-      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                      cudaMemcpyHostToDevice);
+      paddle::platform::GpuMemcpyAsync(dst, array.data(), array.nbytes(),
+                                       cudaMemcpyHostToDevice,
+                                       gpu_ctx->stream());
 #endif
-
+      auto callback = [gpu_pinned_tensor, place]() {
+        VLOG(6) << "Run callback of tensor: " << &gpu_pinned_tensor
+                << " at place " << place;
+      };
+      gpu_ctx->AddStreamCallback(callback);
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
