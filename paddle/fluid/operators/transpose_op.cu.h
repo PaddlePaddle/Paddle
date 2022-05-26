@@ -657,8 +657,8 @@ struct TransposeSimple {
   }
 };
 
-constexpr int32_t kMov4TileSize = 32;
-constexpr int32_t kBlockRows = 8;
+constexpr int32_t kTileSize = 32;
+constexpr int32_t kBlockRows = 16;
 
 template <int N, typename T>
 class IndexHelper {
@@ -803,104 +803,76 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   }
 }
 
-// Refer from
+// Only operate for transposing the last 2 dimensions. Refer from
 // https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
 template <typename T, size_t MovementSize, typename IndexT>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
-                                     T* dst_data, IndexT rows, IndexT cols,
-                                     IndexT num_tile_rows, IndexT num_tile_cols,
-                                     int32_t block_nums) {
-  const IndexT src_rows = rows;
-  const IndexT src_cols = cols;
-  const IndexT dst_rows = cols;
-  const IndexT dst_cols = rows;
-
+                                     T* dst_data, IndexT rows, IndexT cols) {
   using Type = typename std::aligned_storage<MovementSize, MovementSize>::type;
-  __shared__ Type tile[kMov4TileSize]
-                      [kMov4TileSize + 1];  // To avoid bank conflict.
-
-  const Type* src = reinterpret_cast<const Type* __restrict__>(src_data);
+  __shared__ Type tile[kTileSize][kTileSize + 1];  // To avoid bank conflict.
+  const Type* __restrict__ src =
+      reinterpret_cast<const Type* __restrict__>(src_data);
   Type* dst = reinterpret_cast<Type*>(dst_data);
 
-  IndexT batch_num_tile = num_tile_rows * num_tile_cols;
-
-  for (int i = blockIdx.x; i < block_nums; i += gridDim.x) {
-    const IndexT batch_index = i / batch_num_tile;
-    const IndexT tile_index = i - batch_index * batch_num_tile;
-
-    const IndexT tile_row_index = tile_index / num_tile_cols;
-    const IndexT tile_col_index = tile_index - tile_row_index * num_tile_cols;
-
-    const IndexT offset = batch_index * src_rows * src_cols;
-
-    {
-      IndexT col_in_tile = threadIdx.x;
-      IndexT col_in_matrix = tile_col_index * kMov4TileSize + threadIdx.x;
+  IndexT offset = blockIdx.z * rows * cols;
+  IndexT col_in_matrix = blockIdx.x * kTileSize + threadIdx.x;
 
 #pragma unroll
-      for (IndexT row_in_tile = threadIdx.y; row_in_tile < kMov4TileSize;
-           row_in_tile += kBlockRows) {
-        IndexT row_in_matrix = row_in_tile + tile_row_index * kMov4TileSize;
-        if (col_in_matrix < src_cols && row_in_matrix < src_rows) {
-          tile[row_in_tile][col_in_tile] =
-              src[offset + row_in_matrix * src_cols + col_in_matrix];
-        }
-      }
+  for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
+    IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
+
+    if (col_in_matrix < cols && row_in_matrix < rows) {
+      tile[tile_y][threadIdx.x] =
+          src[offset + row_in_matrix * cols + col_in_matrix];
     }
-    __syncthreads();
-    {
-      IndexT col_in_tile = threadIdx.x;
-      IndexT col_in_matrix = tile_row_index * kMov4TileSize + threadIdx.x;
+  }
+
+  const IndexT dst_rows = cols;
+  const IndexT dst_cols = rows;
+  col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
+
+  __syncthreads();
 
 #pragma unroll
-      for (IndexT row_in_tile = threadIdx.y; row_in_tile < kMov4TileSize;
-           row_in_tile += kBlockRows) {
-        IndexT row_in_matrix = row_in_tile + tile_col_index * kMov4TileSize;
-        if (col_in_matrix < dst_cols && row_in_matrix < dst_rows) {
-          dst[offset + row_in_matrix * dst_cols + col_in_matrix] =
-              tile[col_in_tile][row_in_tile];
-        }
-      }
+  for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
+    IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
+
+    if (col_in_matrix < dst_cols && row_in_matrix < dst_rows) {
+      dst[offset + row_in_matrix * dst_cols + col_in_matrix] =
+          tile[threadIdx.x][tile_y];
     }
-    __syncthreads();
   }
 }
 
 template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
 inline void LaunchBatchTransposeKernel(
     const phi::GPUContext& ctx, const PermuteParams<Rank, IndexT>& params,
-    const IndexT& num_batches, const IndexT& rows, const IndexT& cols,
-    const T* src, T* dst) {
-  IndexT num_tile_rows = (rows + kMov4TileSize - 1) / kMov4TileSize;
-  IndexT num_tile_cols = (cols + kMov4TileSize - 1) / kMov4TileSize;
-  constexpr int32_t kCudaMaxBlocksNum = 8192;
-  const int32_t block_nums = num_batches * num_tile_rows * num_tile_cols;
-  int32_t blocks = std::min(block_nums, kCudaMaxBlocksNum);
+    const std::vector<size_t>& in_dims, const T* src, T* dst) {
+  IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
+  IndexT rows = (Rank == 2) ? in_dims[0] : in_dims[1];
+  IndexT cols = (Rank == 2) ? in_dims[1] : in_dims[2];
 
-  BatchTransposeKernel<
-      T, MovementSize,
-      IndexT><<<blocks, dim3(kMov4TileSize, kBlockRows), 0, ctx.stream()>>>(
-      src, dst, rows, cols, num_tile_rows, num_tile_cols, block_nums);
+  IndexT num_tile_rows = (rows + kTileSize - 1) / kTileSize;
+  IndexT num_tile_cols = (cols + kTileSize - 1) / kTileSize;
+
+  dim3 blocks(num_tile_cols, num_tile_rows, num_batches);
+  dim3 threads(kTileSize, kBlockRows, 1);
+
+  BatchTransposeKernel<T, MovementSize,
+                       IndexT><<<blocks, threads, 0, ctx.stream()>>>(
+      src, dst, rows, cols);
 }
 
-template <size_t Rank, typename IndexT>
-inline bool CheckLaunchBatchTranspose(const int* perm,
-                                      const IndexT& num_batches,
-                                      const IndexT& rows, const IndexT& cols) {
-  bool result = false;
-  bool greater_than_tile =
-      (rows < kMov4TileSize || cols < kMov4TileSize) ? false : true;
-
-  if (greater_than_tile) {
-    if (num_batches == 1 && perm[1] == 0 && perm[0] == 1) {
-      // 2D tensor case: (0, 1) -> (1, 0)
-      result = true;
-    } else if (Rank == 3 && perm[2] == 1 && perm[1] == 2) {
-      // 3D tensor case: (0, 1, 2) -> (0, 2, 1)
-      return true;
-    }
+template <size_t Rank>
+inline bool LaunchCheck(const std::vector<int>& perm) {
+  if (Rank == 2 && perm[1] == 0 && perm[0] == 1) {
+    // For target 2D case: (0, 1) -> (1, 0)
+    return true;
+  } else if (Rank == 3 && perm[2] == 1 && perm[1] == 2) {
+    // For target 3D case: (0, 1, 2) -> (0, 2, 1)
+    return true;
   }
-  return result;
+  return false;
 }
 
 template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
@@ -911,20 +883,12 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   auto params = PermuteParams<Rank, IndexT>(in_dims, perm, count);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, count);
 
-  if (Rank == 2 || Rank == 3) {
-    IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
-    IndexT rows = (Rank == 2) ? in_dims[0] : in_dims[1];
-    IndexT cols = (Rank == 2) ? in_dims[1] : in_dims[2];
-
-    if (CheckLaunchBatchTranspose<Rank, IndexT>(params.perm, num_batches, rows,
-                                                cols)) {
-      LaunchBatchTransposeKernel<T, Rank, MovementSize, IndexT>(
-          ctx, params, num_batches, rows, cols, src, dst);
-    } else {
-      GeneralPermuteKernel<T, IndexT, Rank, MovementSize><<<
-          config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-          params, src, dst);
-    }
+  // BatchTransposeKernel only works for condition that Rank == 2 or
+  // Rank == 3, however direct phi::Copy has been estabulished to deal
+  // with Rank == 1, yet Rank < 4 can be set as branch judgement.
+  if ((Rank < 4) && LaunchCheck<Rank>(perm)) {
+    LaunchBatchTransposeKernel<T, Rank, MovementSize, IndexT>(
+        ctx, params, in_dims, src, dst);
   } else {
     GeneralPermuteKernel<T, IndexT, Rank, MovementSize><<<
         config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
@@ -1043,28 +1007,25 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    SimplifyThenLaunch<phi::GPUContext, T>(rank, dev_ctx, in, out, perm);
-    // auto* tuner =
-    //     phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext,
-    //     T>);
-    // if (!tuner->CheckInit()) {
-    //   tuner->AddCallBack(phi::autotune::MakeCallback<T>(
-    //       SimplifyThenLaunch<phi::GPUContext, T>));
-    //   tuner->FinishInit();
-    // }
+    auto* tuner =
+        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
+    if (!tuner->CheckInit()) {
+      tuner->AddCallBack(phi::autotune::MakeCallback<T>(
+          SimplifyThenLaunch<phi::GPUContext, T>));
+      tuner->FinishInit();
+    }
 
-    // auto key = GetTransposeKey<T>(rank, in, perm);
-    // auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    // if (cache.Find(key)) {
-    //   auto index = cache.Get(key);
-    //   tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    // } else {
-    //   // All avaliable kernels have ran while picking the best kernel, so
-    //   // there may be no need for another RunBestKernel.
-    //   auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out,
-    //   perm);
-    //   cache.Set(key, index);
-    // }
+    auto key = GetTransposeKey<T>(rank, in, perm);
+    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    if (cache.Find(key)) {
+      auto index = cache.Get(key);
+      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    } else {
+      // All avaliable kernels have ran while picking the best kernel, so
+      // there may be no need for another RunBestKernel.
+      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
+      cache.Set(key, index);
+    }
   }
 }
 

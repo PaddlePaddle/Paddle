@@ -70,8 +70,8 @@ class DimsAndPermSimplifier {
     dims_.resize(rank);
     size_t simplified_movement_size =
         GetMovementSize(elem_size, rank, *in_dims, perm, src, dst);
-
     (*in_dims)[rank - 1] /= (simplified_movement_size / elem_size);
+
     Simplifyperm(rank, *in_dims, perm);
 
     movement_size_ = GetMovementSize(simplified_movement_size, rank_, dims_,
