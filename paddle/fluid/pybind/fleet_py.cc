@@ -337,7 +337,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", py::overload_cast<int, int64_t*, int, int>(&GraphGpuWrapper::graph_neighbor_sample))
-      .def("graph_neighbor_sample", py::overload_cast<int, std::vector<int64_t>&, int>(&GraphGpuWrapper::graph_neighbor_sample))
+      .def("graph_neighbor_sample", py::overload_cast<int, int, std::vector<int64_t>&, int>(&GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
