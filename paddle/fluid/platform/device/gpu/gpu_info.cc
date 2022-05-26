@@ -149,8 +149,8 @@ class RecordedGpuMallocHelper {
     if (FLAGS_enable_gpu_memory_usage_log) {
       // A fake UPDATE to trigger the construction of memory stat instances,
       // make sure that they are destructed after RecordedGpuMallocHelper.
-      MEMORY_STAT_UPDATE(DeviceReserved, dev_id, 0);
-      MEMORY_STAT_UPDATE(DeviceAllocated, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Allocated, dev_id, 0);
     }
   }
 
@@ -161,16 +161,17 @@ class RecordedGpuMallocHelper {
     if (FLAGS_enable_gpu_memory_usage_log) {
       if (FLAGS_enable_gpu_memory_usage_log_mb) {
         std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
-                  << MEMORY_STAT_PEAK_VALUE(DeviceReserved, dev_id_) / 1048576.0
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) /
+                         1048576.0
                   << ", Allocated = "
-                  << MEMORY_STAT_PEAK_VALUE(DeviceAllocated, dev_id_) /
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) /
                          1048576.0
                   << std::endl;
       } else {
         std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : Reserved = "
-                  << MEMORY_STAT_PEAK_VALUE(DeviceReserved, dev_id_)
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
                   << ", Allocated = "
-                  << MEMORY_STAT_PEAK_VALUE(DeviceAllocated, dev_id_)
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_)
                   << std::endl;
       }
     }
@@ -232,7 +233,7 @@ class RecordedGpuMallocHelper {
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(DeviceReserved, dev_id_, size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
@@ -271,7 +272,7 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(DeviceReserved, dev_id_, -size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /

@@ -94,7 +94,7 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
     }
   }
 
-  MEMORY_STAT_UPDATE(HostReserved, 0, size);
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
 
   return p;
 }
@@ -113,7 +113,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
   free(p);
 #endif
 
-  MEMORY_STAT_UPDATE(HostReserved, 0, -size);
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
