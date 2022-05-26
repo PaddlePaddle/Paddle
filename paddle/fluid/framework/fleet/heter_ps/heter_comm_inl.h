@@ -412,11 +412,18 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
         dst_place, reinterpret_cast<char*>(d_val_bufs[cur_stream]->ptr()),
         src_place, h_vals + cur_len, sizeof(ValType) * tmp_len, cur_use_stream);
 
+  #if defined(PADDLE_WITH_CUDA)
     tables_[dev_num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
         reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
         cur_use_stream);
-
+  #elif defined(PADDLE_WITH_XPU_KP)
+    tables_[dev_num]->insert(
+        place,
+        reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
+        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
+        cur_use_stream);
+  #endif
     cur_stream += 1;
     cur_len += tmp_len;
   }
@@ -883,7 +890,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
       BKCL_FLOAT, BKCL_ADD, stream);
 
   // update
-  tables_[dev_id]->update(d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
+  tables_[dev_id]->update(place, d_fid_seq_ptr, d_fgrad_all_ptr, h_fid_seq -> size(), stream);
 
 #else
   int total_device = resource_->total_device();
@@ -962,10 +969,17 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
     AnyDeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->WRLock();
+  #if defined(PADDLE_WITH_CUDA)
     tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                        reinterpret_cast<GradType*>(node.val_storage),
                        h_right[i] - h_left[i] + 1,
                        resource_->remote_stream(i, dev_num));
+  #elif defined(PADDLE_WITH_XPU_KP)
+    tables_[i]->update(place, reinterpret_cast<KeyType*>(node.key_storage),
+                    reinterpret_cast<GradType*>(node.val_storage),
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, dev_num));
+  #endif
   }
 
   for (int i = 0; i < total_device; ++i) {
