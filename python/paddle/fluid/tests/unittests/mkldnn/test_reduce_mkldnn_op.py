@@ -92,6 +92,16 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.outputs = {'Out': self.inputs['X'].sum()}
 
 
+class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
+        TestReduceDefaultWithGradOneDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
+        self.attrs = {'dim': tuple(), 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.inputs['X']}
+
+
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
