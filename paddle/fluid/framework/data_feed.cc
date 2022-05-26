@@ -52,9 +52,6 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
   device_key_size_ = h_device_keys_->size();
   d_device_keys_ =
       memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
-  for (size_t i = 0; i < h_device_keys_->size(); i++) {
-    VLOG(2) << "h_device_keys_[" << i << "] = " << (*h_device_keys_)[i];
-  }
   CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
                              device_key_size_ * sizeof(int64_t),
                              cudaMemcpyHostToDevice, stream_));
@@ -67,7 +64,6 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
   cursor_ = 0;
   jump_rows_ = 0;
   device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());
-  VLOG(2) << "device_keys_ = " << (uint64_t)device_keys_;
   d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(int64_t));
   cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(int64_t), stream_);
   d_sample_keys_ =

@@ -870,8 +870,11 @@ struct BufState {
   }
 
   int GetNextBatch() {
+    cursor += len;
     int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
-    cursor += tmp_len;
+    if (tmp_len == 0) {
+      return 0;
+    }
     len = tmp_len;
     central_word = -1;
     step = -1;
