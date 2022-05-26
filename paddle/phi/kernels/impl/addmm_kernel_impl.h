@@ -48,8 +48,10 @@ void AddmmKernel(const Context& dev_ctx,
   if (input.dims().size() == 1) {
     if (input.dims()[0] == x.dims()[0]) {
       input_dims = {x.dims()[0], 1};
-    } else {
+    } else if (input.dims()[0] == y.dims()[1]) {
       input_dims = {1, y.dims()[1]};
+    } else {
+      input_dims = {1, 1};
     }
     input_2d.Resize(input_dims);
   }

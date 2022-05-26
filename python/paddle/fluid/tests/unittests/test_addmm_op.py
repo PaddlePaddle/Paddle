@@ -285,10 +285,52 @@ class TestAddMMAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_api_normal(self):
+    def test_api_normal_1(self):
         data_x = np.ones((2, 2)).astype(np.float32)
         data_y = np.ones((2, 2)).astype(np.float32)
         data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output = paddle.tensor.addmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(data_x,
+                                                                    data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+
+        paddle.enable_static()
+
+    def test_api_normal_2(self):
+        data_x = np.ones((3, 10)).astype(np.float32)
+        data_y = np.ones((10, 3)).astype(np.float32)
+        data_input = np.ones((3)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output = paddle.tensor.addmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(data_x,
+                                                                    data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+
+        paddle.enable_static()
+
+    def test_api_normal_3(self):
+        data_x = np.ones((3, 10)).astype(np.float32)
+        data_y = np.ones((10, 3)).astype(np.float32)
+        data_input = np.ones((1)).astype(np.float32)
         data_alpha = 0.1
         data_beta = 1.0
 

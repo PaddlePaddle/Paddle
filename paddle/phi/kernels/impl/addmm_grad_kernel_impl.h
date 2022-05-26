@@ -47,8 +47,10 @@ void AddmmGradKernel(const Context& dev_ctx,
   if (input.dims().size() == 1) {
     if (input.dims()[0] == x.dims()[0]) {
       in_dims = {x.dims()[0], 1};
-    } else {
+    } else if (input.dims()[0] == y.dims()[1]) {
       in_dims = {1, y.dims()[1]};
+    } else {
+      in_dims = {1, 1};
     }
     input_grad->Resize(in_dims);
   }
