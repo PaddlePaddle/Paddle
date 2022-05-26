@@ -335,7 +335,6 @@ void BindGraphGpuWrapper(py::module* m) {
   py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
       *m, "GraphGpuWrapper")
       .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
-      // .def(py::init<>())
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -356,6 +355,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("init_search_level", &GraphGpuWrapper::init_search_level)
       .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
       .def("get_partition", &GraphGpuWrapper::get_partition)
+      .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
+      .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif

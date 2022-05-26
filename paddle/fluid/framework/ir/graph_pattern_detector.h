@@ -110,6 +110,7 @@ struct PDNode {
   // Assertions, helper functions to simplify the pattern definition.
   PDNode* assert_is_op();
   PDNode* assert_is_op(const std::string& op_type);
+  PDNode* assert_is_not_op_type(const std::string& op_type);
   PDNode* assert_is_var();
   PDNode* assert_var_dtype(proto::VarType::Type dtype);
   PDNode* assert_is_not_ctrl_var();
@@ -1056,7 +1057,7 @@ struct Pool : public PatternBase {
 };
 
 // Elementwise ops
-// Forward pass for element-wise operators (add, mul)
+// Forward pass for element-wise operators
 // elementwise_out is the result of the operator
 struct Elementwise : public PatternBase {
   Elementwise(PDPattern* pattern, const std::string& name_scope)

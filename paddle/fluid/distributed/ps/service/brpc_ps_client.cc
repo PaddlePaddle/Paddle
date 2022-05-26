@@ -261,7 +261,7 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 }
 
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
-  uint32_t feasign_size = 0;
+  int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
     LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
                                                   "err:"

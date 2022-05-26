@@ -91,8 +91,8 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<LoDTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
-    auto x0_dims = ins[0]->dims();
-    auto y_dims = out->dims();
+    const auto& x0_dims = ins[0]->dims();
+    const auto& y_dims = out->dims();
     size_t bs = x0_lod[0].size() - 1;
     out->Resize({static_cast<int64_t>(bs), y_dims[1]});
     framework::LoD y_lod(1);
@@ -122,7 +122,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
-      auto x_dims = ins[i]->dims();
+      const auto& x_dims = ins[i]->dims();
       auto x_lod = ins[i]->lod()[0];
       const T* src = ins[i]->data<T>();
       T* dst = y_data + i * w;

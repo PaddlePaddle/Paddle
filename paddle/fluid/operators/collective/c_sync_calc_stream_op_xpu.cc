@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/storage.h"
+#include "paddle/fluid/operators/collective/c_sync_calc_stream_op.h"
 
-namespace phi {
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-void TensorStorage::Realloc(size_t size) {
-  this->Clear();
-  data_ = alloc_->Allocate(size);
-  size_ = size;
-}
-
-}  // namespace phi
+REGISTER_OP_XPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>)

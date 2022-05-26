@@ -37,6 +37,7 @@ nv_library(tensorrt_converter
                 anchor_generator_op.cc
                 yolo_box_op.cc
                 yolo_box_head_op.cc
+                arg_max_op.cc
                 roi_align_op.cc
                 affine_channel_op.cc
                 multiclass_nms_op.cc
