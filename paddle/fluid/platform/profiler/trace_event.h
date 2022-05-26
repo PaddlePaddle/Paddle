@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -128,6 +129,26 @@ struct MemsetEventInfo {
   uint32_t value;
 };
 
+struct OperatorSupplementInfo {
+  OperatorSupplementInfo() = default;
+  OperatorSupplementInfo(
+      uint64_t timestamp_ns, const std::map < std::string,
+      const std::vector<std::vector<int64_t>>& input_shapes,
+      const std::map<std::string, std::vector<std::string>>& dtypes,
+      std::vector<std::string>* callstack)
+      : timestamp_ns(timestamp_ns),
+        input_shapes(input_shapes),
+        dtypes(dtypes),
+        callstack(callstack)
+        // timestamp of the record
+        uint64_t timestamp_ns;
+  // input shapes
+  std::map < std::string, std::vector<std::vector<int64_t>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  // call stack
+  std::vector<std::string>* callstack;
+}
+
 struct HostTraceEvent {
   HostTraceEvent() = default;
   HostTraceEvent(const std::string& name, TracerEventType type,
@@ -139,8 +160,7 @@ struct HostTraceEvent {
         start_ns(start_ns),
         end_ns(end_ns),
         process_id(process_id),
-        thread_id(thread_id),
-        mem_events_idx(mem_events_idx) {}
+        thread_id(thread_id) {}
   // record name
   std::string name;
   // record type, one of TracerEventType
@@ -153,8 +173,6 @@ struct HostTraceEvent {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
-  // indx of memory record happened
-  std::vector<uint64_t> mem_events_idx;
 };
 
 struct RuntimeTraceEvent {

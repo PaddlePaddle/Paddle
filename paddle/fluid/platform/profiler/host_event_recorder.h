@@ -311,6 +311,23 @@ class HostEventInfoSupplement {
     }
   }
 
+  void RecordInputShape(const InferShapeContext &shape_ctx,
+                        const RuntimeContext &ctx) {
+    for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
+      input_shape[it->first] = shape_ctx.GetInputsDim(it->first)
+    }
+  }
+
+  void RecordCallStack(const std::string &type, const AttributeMap &attrs) {
+    const std::vector<std::string> *callstack = nullptr;
+    auto iter =
+        attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+    if (iter != attrs.end()) {
+      callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+      if (callstack->empty()) callstack = nullptr;
+    }
+  }
+
  private:
   using ThreadEventPtrMapRegistry = framework::ThreadDataRegistry<
       std::map<TracerEventType, std::stack<RecordEvent *>>>;
