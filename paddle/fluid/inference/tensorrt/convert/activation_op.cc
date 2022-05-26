@@ -79,6 +79,36 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
+    if (op_type_ == "STanh") {
+      const float scale_a =
+          op_desc.HasAttr("scale_a")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 1.0f;
+      const float scale_b =
+          op_desc.HasAttr("scale_b")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale_b"))
+              : 1.0f;
+      layer->setAlpha(scale_a);
+      layer->setBeta(scale_b);
+    }
+    if (op_type_ == "softplus") {
+      const float threshold =
+          op_desc.HasAttr("threshold")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 1.0f;
+      const float scale = op_desc.HasAttr("scale")
+                              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                              : 1.0f;
+      layer->setAlpha(threshold);
+      layer->setBeta(scale);
+    }
+    if (op_type_ == "thresholded_relu") {
+      const float threshold =
+          op_desc.HasAttr("threshold")
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 1.0f;
+      layer->setAlpha(threshold);
+    }
 #endif
 
     auto output_name = op_desc.Output("Out")[0];
@@ -104,7 +134,7 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
             "softsign", nvinfer1::ActivationType::kSOFTSIGN} {
             "softplus", nvinfer1::ActivationType::kSOFTPLUS} {
             "scaled_tanh", nvinfer1::ActivationType::kSCALED_TANH} {
-            "threasholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
+            "thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
@@ -126,32 +156,32 @@ class Relu6OpConverter : public ActivationOpConverter {
   Relu6OpConverter() { op_type_ = "relu6"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class EluOpConverter : public ActivationOpConverter {
  public:
   EluOpConverter() { op_type_ = "elu"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class SeluOpConverter : public ActivationOpConverter {
  public:
   SeluOpConverter() { op_type_ = "selu"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class SoftsignOpConverter : public ActivationOpConverter {
  public:
   SoftsignOpConverter() { op_type_ = "softsign"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class SoftplusOpConverter : public ActivationOpConverter {
  public:
   SoftplusOpConverter() { op_type_ = "softplus"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class ScaledTanhOpConverter : public ActivationOpConverter {
  public:
   ScaledTanhOpConverter() { op_type_ = "scaled_tanh"; }
 };
 
-class HardSigmoidOpConverter : public ActivationOpConverter {
+class TreasholdedReluOpConverter : public ActivationOpConverter {
  public:
   ThreasholdedReluOpConverter() { op_type_ = "threasholded_relu"; }
 };
