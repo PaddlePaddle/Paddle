@@ -351,7 +351,7 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .GetZeroAllocator(place_)
                   .get());
           gpu_context->SetGenerator(
-              framework::GetDefaultCUDAGenerator(place_.GetDeviceId()).get());
+              framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
