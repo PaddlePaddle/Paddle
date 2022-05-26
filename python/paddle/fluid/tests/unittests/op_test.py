@@ -878,10 +878,21 @@ class OpTest(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 paddle.device.cuda.synchronize()
             et = time.time()
+            first_input_key = list(self.inputs.keys())[0]
+            first_input_dtype = self.inputs[first_input_key].dtype
+
+            # prepare attributes
+            attrs_outputs = {}
+            if hasattr(self, "attrs"):
+                for attrs_name in self.attrs:
+                    if self.attrs[attrs_name] is not None:
+                        attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
             print("mode:", "eager", " # op:", self.op_type, "# func:",
                   forward_or_grad, "# input:",
-                  str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
-                  "# place:", place, "# time:", (et - st))
+                  str(str(self.inputs)[0:50]), "# dtype:", first_input_dtype,
+                  "# attrs:", attrs_outputs, "# place:", place, "# time:",
+                  (et - st))
             # print("===== time: ", (et - st))
             print("===== check_eager for ", self.op_type,
                   " in op test, end =====]", '\n')
@@ -962,11 +973,14 @@ class OpTest(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 paddle.device.cuda.synchronize()
             et = time.time()
+            first_input_key = list(self.inputs.keys())[0]
+            first_input_dtype = self.inputs[first_input_key].dtype
             mode = "eager-mid" if in_dygraph_mode() else "legacy"
             print("mode:", mode, "# op:", self.op_type, "# func:",
                   forward_or_grad, "# input:",
-                  str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
-                  "# place:", place, "# time:", (et - st))
+                  str(str(self.inputs)[0:50]), "# dtype:", first_input_dtype,
+                  "# attrs:", attrs_outputs, "# place:", place, "# time:",
+                  (et - st))
             # print("===== time: ", (et - st))
             if _in_legacy_dygraph():
                 print("===== check_legacy for ", self.op_type,
@@ -1424,11 +1438,7 @@ class OpTest(unittest.TestCase):
                 currently don't support check between checkers.
             """
 
-            def __init__(self,
-                         op_test,
-                         expect_dict,
-                         tmp_inputs=None,
-                         tmp_attrs=None):
+            def __init__(self, op_test, expect_dict):
                 """ expect_dict is the self.outputs
                     support : {str: [numpy]} and {str: [(str, numpy), (str, numpy)]}
                 """
@@ -1437,8 +1447,8 @@ class OpTest(unittest.TestCase):
                 self.op_test = op_test  # stop the op_test object.
                 self.op_type = op_test.op_type
 
-                self.tmp_inputs = tmp_inputs
-                self.tmp_attrs = tmp_attrs
+                # self.tmp_inputs = tmp_inputs
+                # self.tmp_attrs = tmp_attrs
 
             def init(self):
                 pass
@@ -1701,15 +1711,13 @@ class OpTest(unittest.TestCase):
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
 
-            dygraph_checker = DygraphChecker(self, self.outputs, self.inputs,
-                                             self.attrs)
+            dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
-            eager_checker = EagerChecker(self, self.outputs, self.inputs,
-                                         self.attrs)
+            eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
 
@@ -2128,11 +2136,15 @@ class OpTest(unittest.TestCase):
                 if core.is_compiled_with_cuda():
                     paddle.device.cuda.synchronize()
                 et = time.time()
+                first_input_key = list(self.inputs.keys())[0]
+                first_input_dtype = self.inputs[first_input_key].dtype
+
                 mode = "eager-mid" if in_dygraph_mode() else "legacy"
                 print("mode:", mode, "# op:", self.op_type, "# func:", "grad",
                       "# input:",
-                      str(str(self.inputs)[0:50]), "# attrs:", self.attrs,
-                      "# place:", place, "# time:", (et - st))
+                      str(str(self.inputs)[0:50]), "# dtype:",
+                      first_input_dtype, "# attrs:", attrs_outputs, "# place:",
+                      place, "# time:", (et - st))
                 # print("===== time: ", (et - st))
                 if _in_legacy_dygraph():
                     print("===== check_legacy for ", self.op_type,
