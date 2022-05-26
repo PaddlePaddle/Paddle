@@ -45,13 +45,7 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* y_grad) {
   auto in_dims = input.dims();
   if (input.dims().size() == 1) {
-    if (input.dims()[0] == x.dims()[0]) {
-      in_dims = {x.dims()[0], 1};
-    } else if (input.dims()[0] == y.dims()[1]) {
-      in_dims = {1, y.dims()[1]};
-    } else {
-      in_dims = {1, 1};
-    }
+    in_dims = {1, input.dims()[0]};
     input_grad->Resize(in_dims);
   }
   int total_elems = 0;

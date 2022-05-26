@@ -221,7 +221,44 @@ class TestAddMMOp3(OpTest):
         self.check_grad(['Input'], 'Out', no_grad_set=None)
 
 
-class TestAddMMOp4(unittest.TestCase):
+class TestAddMMOp4(OpTest):
+    # test broadcast
+    def setUp(self):
+        self.op_type = "addmm"
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.inputs = {
+            'Input': np.random.random((100)).astype(self.dtype),
+            'X': np.random.random((20, 10)).astype(self.dtype),
+            'Y': np.random.random((10, 100)).astype(self.dtype),
+        }
+        self.attrs = {
+            'Alpha': 0.5,
+            'Beta': 2.0,
+        }
+        self.outputs = {'Out': self.attrs['Beta'] * self.inputs['Input'] + \
+                        self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])}
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input', 'X', 'Y'], 'Out')
+
+    def test_check_grad_x(self):
+        self.check_grad(['X'], 'Out', no_grad_set=None)
+
+    def test_check_grad_y(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=None)
+
+    def test_check_grad_input(self):
+        self.check_grad(['Input'], 'Out', no_grad_set=None)
+
+
+class TestAddMMOp5(unittest.TestCase):
     def test_api_with_dygraph(self):
         np_input = np.random.random((20, 30)).astype(np.float32)
         np_x = np.random.random((20, 6)).astype(np.float32)
