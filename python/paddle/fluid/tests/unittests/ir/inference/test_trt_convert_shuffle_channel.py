@@ -85,7 +85,6 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
         self.trt_param.max_batch_size = 9
-
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
