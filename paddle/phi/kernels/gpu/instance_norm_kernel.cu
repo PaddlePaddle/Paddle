@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 
-#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
 
 namespace phi {
@@ -51,8 +51,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         "the size of X's dimensions is [%d]",
                         x_dims.size()));
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(
-      x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
   DenseTensor x_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
