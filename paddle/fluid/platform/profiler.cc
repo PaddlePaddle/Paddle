@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
-#include "paddle/fluid/platform/profiler/host_mem_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
@@ -98,7 +97,6 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
   role_ = role;
   type_ = type;
   start_ns_ = PosixInNsec();
-  HostEventInfoSupplement::GetInstance().PushEventPtr(this);
 }
 
 RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
@@ -129,7 +127,6 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   role_ = role;
   type_ = type;
   start_ns_ = PosixInNsec();
-  HostEventInfoSupplement::GetInstance().PushEventPtr(this);
 }
 
 RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
@@ -162,7 +159,6 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
   name_ = new std::string(name);
   start_ns_ = PosixInNsec();
   attr_ = new std::string(attr);
-  HostEventInfoSupplement::GetInstance().PushEventPtr(this);
 }
 
 void RecordEvent::OriginalConstruct(const std::string &name,
@@ -195,22 +191,21 @@ void RecordEvent::End() {
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     uint64_t end_ns = PosixInNsec();
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(
-          shallow_copy_name_, start_ns_, end_ns, role_, type_, mem_events_idx_);
+      HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+          shallow_copy_name_, start_ns_, end_ns, role_, type_);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, type_, mem_events_idx_);
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, type_);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, type_, *attr_, mem_events_idx_);
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+            *name_, start_ns_, end_ns, role_, type_, *attr_);
         delete attr_;
       }
       delete name_;
     }
     // use this flag to avoid double End();
     is_enabled_ = false;
-    HostEventInfoSupplement::GetInstance().PopEventPtr();
     return;
   }
 
@@ -236,9 +231,23 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
     return;
   }
   auto start_end_ns = PosixInNsec();
-  HostEventRecorder::GetInstance().RecordEvent(name, start_end_ns, start_end_ns,
-                                               EventRole::kOrdinary, type,
-                                               mem_events_idx_);
+  HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+      name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
+}
+
+RecordOpInfoSupplement::RecordOpInfoSupplement(const std::string& type, const AttributeMap& attrs, const InferShapeContext& shape_ctx, const RuntimeContext& ctx)
+{
+ for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
+      input_shape[it->first] = shape_ctx.GetInputsDim(it->first)
+    }
+
+    const std::vector<std::string>* callstack = nullptr;
+    auto iter =
+        attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+    if (iter != attrs.end()) {
+      callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+      if (callstack->empty()) callstack = nullptr;
+    }
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
@@ -276,8 +285,8 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostMemEventRecorder::GetInstance().RecordMemEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
-        TracerMemEventType::Allocate, size, place.DebugString(),
-        current_allocated, current_reserved);
+        TracerMemEventType::Allocate, size, place, current_allocated,
+        current_reserved);
     return;
   }
   auto &events = address_memevent_[place];
@@ -309,7 +318,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
     HostMemEventRecorder::GetInstance().RecordMemEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
-        TracerMemEventType::Free, -size, place.DebugString(), current_allocated,
+        TracerMemEventType::Free, -size, place, current_allocated,
         current_reserved);
     return;
   }
@@ -389,9 +398,8 @@ void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder::GetInstance().RecordEvent(
-        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined,
-        std::vector<uint64_t>());
+    HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
+        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
     return;
   }
   GetEventList().Record(EventType::kMark, name, g_thread_id);
@@ -585,7 +593,8 @@ void DisableHostEventRecorder() {
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -597,8 +606,9 @@ std::string PrintHostEvents() {
   return oss.str();
 }
 
-static void EmulateEventPushAndPop(const HostEventSection &host_sec,
-                                   std::map<uint64_t, ThreadEvents> *out) {
+static void EmulateEventPushAndPop(
+    const HostEventSection<CommonEvent> &host_sec,
+    std::map<uint64_t, ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
@@ -645,7 +655,8 @@ static void EmulateEventPushAndPop(const HostEventSection &host_sec,
   }
 }
 
-static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
+static void EmulateCPURecordsAdd(
+    const HostEventSection<CommonEvent> &host_sec) {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -673,7 +684,8 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return thr_events;

@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -37,7 +38,6 @@ class MemTraceEventNode {
   ~MemTraceEventNode();
 
   // getter
-  uint64_t Id() const { return mem_event_.id; }
   TracerMemEventType Type() const { return mem_event_.type; }
   uint64_t Addr() const { return mem_event_.addr; }
   uint64_t TimeStampNs() const { return mem_event_.timestamp_ns; }
@@ -52,6 +52,29 @@ class MemTraceEventNode {
   // data
   MemTraceEvent mem_event_;
 };
+
+class OperatorSupplementEventNode {
+ public:
+  // constructor
+  explicit OperatorSupplementEventNode(
+      const OperatorSupplementEvent& op_supplement_event)
+      : op_supplement_event_(op_supplement_event) {}
+  // destructor
+  ~OperatorSupplementEventNode() {}
+  // getter
+  std::map < std::string, std::vector<std::vector<int64_t>>& InputShapes() {
+    return op_supplement_event_.input_shapes;
+  }
+  std::map<std::string, std::vector<std::string>>& Dtypes() {
+    return op_supplement_event_.dtypes;
+  }
+  std::string CallStack() { return op_supplement_event_.callstack; }
+
+ private:
+  // data
+  OperatorSupplementEvent op_supplement_event_;
+
+}
 
 class DeviceTraceEventNode {
  public:
@@ -159,9 +182,6 @@ class HostTraceEventNode {
   uint64_t Duration() const {
     return host_event_.end_ns - host_event_.start_ns;
   }
-  const std::vector<uint64_t>& MemEventIdx() const {
-    return host_event_.mem_events_idx;
-  }
 
   // member function
   void AddChild(HostTraceEventNode* node) { children_.push_back(node); }
@@ -169,6 +189,9 @@ class HostTraceEventNode {
     runtime_node_ptrs_.push_back(node);
   }
   void AddMemNode(MemTraceEventNode* node) { mem_node_ptrs_.push_back(node); }
+  void SetOperatorSupplementNode(OperatorSupplementEventNode* node) {
+    op_supplement_node_ptr_ = node;
+  }
   const std::vector<HostTraceEventNode*>& GetChildren() const {
     return children_;
   }
@@ -179,6 +202,11 @@ class HostTraceEventNode {
   const std::vector<MemTraceEventNode*>& GetMemTraceEventNodes() const {
     return mem_node_ptrs_;
   }
+
+  const OperatorSupplementEventNode* GetOperatorSupplementEventNode() const {
+    return op_supplement_node_ptr_;
+  }
+
   void LogMe(BaseLogger* logger) { logger->LogHostTraceEventNode(*this); }
 
  private:
@@ -190,6 +218,7 @@ class HostTraceEventNode {
   std::vector<HostTraceEventNode*> children_;
   // memory events happened in this event period
   std::vector<MemTraceEventNode*> mem_node_ptrs_;
+  OperatorSupplementEventNode* op_supplement_node_ptr_;
 };
 
 class NodeTrees {
@@ -198,29 +227,29 @@ class NodeTrees {
   NodeTrees(const std::list<HostTraceEvent>& host_events,
             const std::list<RuntimeTraceEvent>& runtime_events,
             const std::list<DeviceTraceEvent>& device_events,
-            const std::list<MemTraceEvent>& mem_events) {
+            const std::list<MemTraceEvent>& mem_events,
+            const std::list<OperatorSupplementEvent>& op_supplement_events) {
     std::vector<HostTraceEventNode*> host_event_nodes;
     std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes;
     std::vector<DeviceTraceEventNode*> device_event_nodes;
-    std::map<uint64_t, MemTraceEventNode*> mem_event_nodes_map;
-    for (auto it = mem_events.begin(); it != mem_events.end(); ++it) {
-      mem_event_nodes_map[(*it).id] = new MemTraceEventNode(*it);
-    }
+    std::vector<MemTraceEventNode*> mem_event_nodes;
+    std::vector<OperatorSupplementEventNode*> op_supplement_event_nodes;
     // encapsulate event into nodes
     for (auto it = host_events.begin(); it != host_events.end(); ++it) {
       host_event_nodes.push_back(new HostTraceEventNode(*it));
-      auto host_event_node = host_event_nodes.back();
-      for (auto mem_event_idx_it = host_event_node->MemEventIdx().begin();
-           mem_event_idx_it != host_event_node->MemEventIdx().end();
-           ++mem_event_idx_it) {
-        host_event_node->AddMemNode(mem_event_nodes_map[*mem_event_idx_it]);
-      }
     }
     for (auto it = runtime_events.begin(); it != runtime_events.end(); ++it) {
       runtime_event_nodes.push_back(new CudaRuntimeTraceEventNode(*it));
     }
     for (auto it = device_events.begin(); it != device_events.end(); ++it) {
       device_event_nodes.push_back(new DeviceTraceEventNode(*it));
+    }
+    for (auto it = mem_events.begin(); it != mem_events.end(); ++it) {
+      mem_event_nodes.push_back(new MemTraceEventNode(*it));
+    }
+    for (auto it = op_supplement_events.begin();
+         it != op_supplement_events.end(); ++it) {
+      op_supplement_event_nodes.push_back(new OperatorSupplementEventNode(*it));
     }
     // build tree
     BuildTrees(host_event_nodes, runtime_event_nodes, device_event_nodes);

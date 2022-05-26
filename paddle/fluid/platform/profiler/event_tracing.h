@@ -39,9 +39,6 @@ struct RecordInstantEvent {
    */
   explicit RecordInstantEvent(const char* name, TracerEventType type,
                               uint32_t level = kDefaultTraceLevel);
-
- private:
-  std::vector<uint64_t> mem_events_idx_;
 };
 
 // Host event tracing. A trace starts when an object of this clas is created and
@@ -49,7 +46,6 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
-  friend class HostEventInfoSupplement;
   /**
    * @param name: If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.
@@ -110,9 +106,9 @@ class RecordEvent {
   std::vector<uint64_t> mem_events_idx_;
 };
 
-// Host event tracing. A trace starts when an object of this clas is created and
-// stops when the object is destroyed.
-// Chrome Trace Viewer Format: Duration Event/Complte Event
+// Memory event tracing. A trace marks memory manipulation such as allocation
+// and free.
+// The events can be used to draw memory variation curve.
 class RecordMemEvent {
  public:
   /**
@@ -129,6 +125,14 @@ class RecordMemEvent {
       const void* ptr, const Place& place, size_t size,
       uint64_t current_allocated, uint64_t current_reserved,
       const TracerMemEventType type = TracerMemEventType::Allocate);
+};
+
+class RecordOpInfoSupplement {
+ public:
+  explicit RecordOpInfoSupplement(const std::string& type,
+                                  const AttributeMap& attrs,
+                                  const InferShapeContext& shape_ctx,
+                                  const RuntimeContext& ctx);
 };
 
 }  // namespace platform

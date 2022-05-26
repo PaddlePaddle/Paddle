@@ -45,7 +45,8 @@ class BaseAPI(object):
                     'infer_meta'])
             self.kernel = self.parse_kernel(api_item_yaml['kernel'])
             self.support_selected_rows_kernel = False if len(self.kernel[
-                'func']) == 1 else True
+                'func']) == 1 or not self.kernel['func'][1].endswith(
+                    '_sr') else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map, self.view_map = self.parse_inplace_and_view(
                 api_item_yaml)
@@ -223,16 +224,18 @@ class BaseAPI(object):
 
         if len(temp_list) == 1:
             out_type, out_name, size_expr = parse_output_item(temp_list[0])
-            return [out_type], [out_name], size_expr
+            return [out_type], [out_name], [size_expr]
         else:
             out_type_list = []
             out_name_list = []
+            out_size_expr_list = []
             for output_item in temp_list:
                 out_type, out_name, size_expr = parse_output_item(output_item)
                 out_type_list.append(out_type)
                 out_name_list.append(out_name)
+                out_size_expr_list.append(size_expr)
 
-            return out_type_list, out_name_list, size_expr
+            return out_type_list, out_name_list, out_size_expr_list
 
     def parse_infer_meta(self, infer_meta_config):
         infer_meta = infer_meta_config
@@ -248,13 +251,15 @@ class BaseAPI(object):
         #    backend : str, the names of param to choose the kernel backend, default is None
         #    layout : str, the names of param to choose the kernel layout, default is None
         #    data_type : str, the names of param to choose the kernel data_type, default is None
+        #    dispatch : {}, the key is kernel_func, the value is type of inputs and outputs for kernel (example: {kernel_name : (['dense','sparse_coo']#input,['sparse_coo']#output)})
         kernel = {
             'func': [],
             'param': None,
             'backend': None,
             'layout': None,
             'data_type': None,
-            'use_gpudnn': 'false'
+            'use_gpudnn': 'false',
+            'dispatch': {}
         }
         if 'backend' in kernel_config and len(kernel_config['backend']) > 0:
             kernel['backend'] = kernel_config['backend']
@@ -268,17 +273,21 @@ class BaseAPI(object):
             kernel['use_gpudnn'] = kernel_config['use_gpudnn']
             if isinstance(kernel['use_gpudnn'], bool):
                 kernel['use_gpudnn'] = str(kernel['use_gpudnn']).lower()
-        kernel['func'] = [
-            kernel_fn.strip() for kernel_fn in kernel_config['func'].split(',')
-        ]
+        kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
+            kernel_config['func'])
 
-        if len(kernel['func']) == 2:
-            assert kernel['func'][0] == self.api, \
-                    f"{self.api} : Kernel func error: If kernel has two func config, the name of first func should be same with api name({self.api}), \
-                      but now is {kernel['func'][0]}."
-            assert kernel['func'][1].endswith('_sr'), \
-                    f"{self.api} : Kernel func error: If kernel has two func config, the name of second func should be a selected_rows kernel (the func name endwith '_sr'), \
-                      but now is {kernel['func'][1]}."
+        def parse_kernel_in_out_type(in_out_str):
+            if len(in_out_str) == 0:
+                return None
+            tmp_in_out_list = in_out_str[1:-1].split('->')
+            inputs = [item.strip() for item in tmp_in_out_list[0].split(',')]
+            outputs = [item.strip() for item in tmp_in_out_list[1].split(',')]
+            return (inputs, outputs)
+
+        for func_item in kernel_funcs:
+            kernel['func'].append(func_item[0])
+            kernel['dispatch'][func_item[0]] = parse_kernel_in_out_type(
+                func_item[1])
 
         return kernel
 
@@ -304,7 +313,7 @@ class BaseAPI(object):
                     view_map = {}
                 in_out_mapping_list = api_item_yaml[mode].split(',')
                 for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
+                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
                     in_val = result.group('in')
                     out_val = result.group('out')
                     assert in_val in self.inputs['names'], \
@@ -434,7 +443,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 vars_list = kernel['data_type'].split(',')
                 assert len(
                     vars_list
-                ) == 1, f"{api} api: The number of params to set data_type only allows 2, but received {len(vars_list)}."
+                ) == 1, f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
                 kernel_select_code = kernel_select_code + f"""
   kernel_data_type = ParseDataType({vars_list[0].strip()});
 """
@@ -833,14 +842,16 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         if self.is_base_api:
             api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
+                if self.api[-1] == '_':
+                    api_code = ""
                 api_code = api_code + self.gene_base_api_code(inplace_flag=True)
             return api_code
 
         else:
-            inveke_func_name = self.invoke.split('(')[0].strip()
-            if inveke_func_name in self.attrs['names']:
+            invoke_func_name = self.invoke.split('(')[0].strip()
+            if invoke_func_name in self.attrs['names']:
                 # Adjust the param whose name is same with api invoked.
-                pattern = r'\W' + inveke_func_name + '[^A-Za-z0-9_(]'
+                pattern = r'\W' + invoke_func_name + '[^A-Za-z0-9_(]'
 
                 def adjust_name(matched):
                     matched_str = matched.group()

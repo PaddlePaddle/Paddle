@@ -129,9 +129,9 @@ struct MemsetEventInfo {
   uint32_t value;
 };
 
-struct OperatorSupplementInfo {
-  OperatorSupplementInfo() = default;
-  OperatorSupplementInfo(
+struct OperatorSupplementEvent {
+  OperatorSupplementEvent() = default;
+  OperatorSupplementEvent(
       uint64_t timestamp_ns, const std::map < std::string,
       const std::vector<std::vector<int64_t>>& input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
@@ -146,15 +146,14 @@ struct OperatorSupplementInfo {
   std::map < std::string, std::vector<std::vector<int64_t>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
-  std::vector<std::string>* callstack;
+  std::string callstack;
 }
 
 struct HostTraceEvent {
   HostTraceEvent() = default;
   HostTraceEvent(const std::string& name, TracerEventType type,
                  uint64_t start_ns, uint64_t end_ns, uint64_t process_id,
-                 uint64_t thread_id,
-                 const std::vector<uint64_t>& mem_events_idx)
+                 uint64_t thread_id)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -276,13 +275,11 @@ struct DeviceTraceEvent {
 
 struct MemTraceEvent {
   MemTraceEvent() = default;
-  MemTraceEvent(uint64_t id, uint64_t timestamp_ns, uint64_t addr,
-                TracerMemEventType type, uint64_t process_id,
-                uint64_t thread_id, int64_t increase_bytes,
+  MemTraceEvent(uint64_t timestamp_ns, uint64_t addr, TracerMemEventType type,
+                uint64_t process_id, uint64_t thread_id, int64_t increase_bytes,
                 const std::string& place, uint64_t current_allocated,
                 uint64_t current_reserved)
-      : id(id),
-        timestamp_ns(timestamp_ns),
+      : timestamp_ns(timestamp_ns),
         addr(addr),
         type(type),
         process_id(process_id),
@@ -292,7 +289,6 @@ struct MemTraceEvent {
         current_allocated(current_allocated),
         current_reserved(current_reserved) {}
 
-  uint64_t id;  // not owned, designed for performance
   // timestamp of the record
   uint64_t timestamp_ns;
   // memory addr of allocation or free

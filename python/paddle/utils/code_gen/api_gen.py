@@ -111,10 +111,10 @@ class ForwardAPI(BaseAPI):
 {code_indent}  {return_type} api_output{inplace_assign};"""
 
             if return_type == 'std::vector<Tensor>':
-                assert self.outputs['out_size_expr'] is not None, \
+                assert self.outputs['out_size_expr'][0] is not None, \
                      f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr']}, kernel_backend, &api_output);"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
 
             else:
                 output_create = output_create + f"""
@@ -195,7 +195,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -222,9 +221,14 @@ namespace experimental {
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
+    apis = []
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
+    for each_api_yaml in api_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -259,6 +263,7 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to api yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/api.yaml')
 
     parser.add_argument(

@@ -17,7 +17,6 @@
 #include <cstring>
 #include <functional>
 #include <string>
-#include <vector>
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -27,24 +26,17 @@ namespace platform {
 struct CommonEvent {
  public:
   CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type,
-              const std::vector<uint64_t> &mem_events_idx)
+              EventRole role, TracerEventType type)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
         role(role),
-        type(type),
-        mem_events_idx(mem_events_idx) {}
+        type(type) {}
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
               const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type, const std::string &attr_str,
-              const std::vector<uint64_t> &mem_events_idx)
-      : start_ns(start_ns),
-        end_ns(end_ns),
-        role(role),
-        type(type),
-        mem_events_idx(mem_events_idx) {
+              EventRole role, TracerEventType type, const std::string &attr_str)
+      : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
     name = buf;
@@ -55,13 +47,8 @@ struct CommonEvent {
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
               const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type,
-              const std::vector<uint64_t> &mem_events_idx)
-      : start_ns(start_ns),
-        end_ns(end_ns),
-        role(role),
-        type(type),
-        mem_events_idx(mem_events_idx) {
+              EventRole role, TracerEventType type)
+      : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
     name = buf;
@@ -73,8 +60,43 @@ struct CommonEvent {
   EventRole role = EventRole::kOrdinary;
   TracerEventType type = TracerEventType::NumTypes;
   const char *attr = nullptr;  // not owned, designed for performance
-  std::vector<uint64_t> mem_events_idx;
 };
+
+struct CommonMemEvent {
+ public:
+  CommonMemEvent(uint64_t timestamp_ns, uint64_t addr, TracerMemEventType type,
+                 int64_t increase_bytes, const Place &place,
+                 uint64_t current_allocated, uint64_t current_reserved)
+      : timestamp_ns(timestamp_ns),
+        addr(addr),
+        type(type),
+        increase_bytes(increase_bytes),
+        place(place),
+        current_allocated(current_allocated),
+        current_reserved(current_reserved) {}
+  uint64_t timestamp_ns;
+  uint64_t addr;
+  TracerMemEventType type;
+  int64_t increase_bytes;
+  Place place;
+  uint64_t current_allocated;
+  uint64_t current_reserved;
+};
+
+struct OperatorSupplementOriginEvent {
+ public:
+  OperatorSupplementOriginEvent(
+      const std::map<std::string, std::vector<DDim>> &input_shapes,
+      const std::map<std::string, std::vector<proto::VarType::Type>> &dtypes,
+      std::vector<std::string> *callstack)
+      : input_shapes(input_shape), dtypes(dtypes), callstack(callstack) {}
+  uint64_t timestamp_ns;
+  // input shapes
+  std::map<std::string, std::vector<DDim>> input_shapes;
+  std::map<std::string, std::vector<proto::VarType::Type>> dtypes;
+  // call stack
+  std::vector<std::string> *callstack;
+}
 
 }  // namespace platform
 }  // namespace paddle
