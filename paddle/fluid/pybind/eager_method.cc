@@ -494,7 +494,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   }
 
   paddle::experimental::Tensor* grad;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
@@ -525,6 +526,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
               std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
           dense_tensor->MoveMemoryHolder();
         }
+      }
+      if (is_leaf) {
+        std::static_pointer_cast<egr::GradNodeAccumulation>(
+            EagerUtils::grad_node())
+            ->SetIsEmpty(true);
       }
     }
   }

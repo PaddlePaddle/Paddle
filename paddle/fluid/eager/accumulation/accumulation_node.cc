@@ -28,8 +28,9 @@
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
-                            const paddle::experimental::Tensor& t) {
-  if (!tensor->defined() || !tensor->initialized()) {
+                            const paddle::experimental::Tensor& t,
+                            bool is_empty) {
+  if (!tensor->defined() || !tensor->initialized() || is_empty) {
     // Simply copy tensor->impl
     *tensor = t;
   } else {
@@ -91,7 +92,8 @@ GradNodeAccumulation::operator()(
 
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    CopyOrAddTensor(grad.get(), grad_out);
+    CopyOrAddTensor(grad.get(), grad_out, is_empty_);
+    is_empty_ = false;
   }
 
   // Apply Reduce Hooks
