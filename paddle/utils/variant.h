@@ -13,6 +13,15 @@
 
 #pragma once
 
+// gcc >= 9 has a bug that creates a false positive warning.
+// Reference:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92145
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89381
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+
 /*
    variant synopsis
 
@@ -2190,6 +2199,18 @@ class impl : public copy_assignment<traits<Ts...>> {
     }
   }
 
+  inline const std::type_info &type() const {
+    return visitation::alt::visit_alt_at(
+        this->index(),
+#ifdef MPARK_GENERIC_LAMBDAS
+        [](auto &alt) -> const std::type_info & { return typeid(alt.value); }
+#else
+        typer {}
+#endif
+        ,
+        *this);
+  }
+
  private:
 #ifndef MPARK_GENERIC_LAMBDAS
   struct swapper {
@@ -2197,6 +2218,13 @@ class impl : public copy_assignment<traits<Ts...>> {
     inline void operator()(ThisAlt &this_alt, ThatAlt &that_alt) const {
       using std::swap;
       swap(this_alt.value, that_alt.value);
+    }
+  };
+
+  struct typer {
+    template <typename Alt>
+    inline const std::type_info &operator()(Alt &alt) const {
+      return typeid(alt.value);
     }
   };
 #endif
@@ -2422,6 +2450,8 @@ class variant {
                 lib::is_nothrow_swappable<Ts>::value)...>::value) {
     impl_.swap(that.impl_);
   }
+
+  inline const std::type_info &type() noexcept { return impl_.type(); }
 
  private:
   detail::impl<Ts...> impl_;
@@ -2828,3 +2858,7 @@ struct hash<paddle::monostate> {
 };
 
 }  // namespace std
+
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif

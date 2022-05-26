@@ -44,7 +44,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -94,8 +93,12 @@ def generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
     dygraph_source_file.write(source_include(dygraph_include_header_file))
     dygraph_source_file.write(namespace[0])
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
+    apis = []
+    for each_api_yaml in api_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                apis.extend(api_list)
 
     for api in apis:
         foward_api = ForwardAPI(api)
@@ -131,6 +134,7 @@ def main():
         description='Generate PaddlePaddle C++ Sparse API files')
     parser.add_argument(
         '--api_yaml_path',
+        nargs='+',
         help='path to api yaml file',
         default='python/paddle/utils/code_gen/api.yaml')
 

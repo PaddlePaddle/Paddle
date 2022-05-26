@@ -94,13 +94,12 @@ def calculate_density(x):
         float: The density of :attr:`x`.
     Examples:
         .. code-block:: python
-
+          import paddle
           import numpy as np
-          import paddle.static.sparsity as sparsity
 
           x = np.array([[0, 1, 3, 0],
                         [1, 1, 0, 1]])
-          sparsity.calculate_density(x) # 0.625
+          paddle.incubate.asp.calculate_density(x) # 0.625
     """
     x_flattened = x.flatten()
     return float(np.nonzero(x_flattened)[0].size) / x_flattened.size

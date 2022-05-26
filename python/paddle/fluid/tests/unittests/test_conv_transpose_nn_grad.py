@@ -27,6 +27,9 @@ from decorator_helper import prog_scope
 
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
+    def conv_transpose_wrapper(self, x):
+        return paddle.nn.functional.conv2d_transpose(x[0], x[1], groups=1)
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]
@@ -55,6 +58,11 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         else:
             gradient_checker.double_grad_check(
                 [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper, [x] + w,
+            y,
+            x_init=[x_arr] + w_arr,
+            place=place)
 
     def test_grad(self):
         places = []
@@ -67,6 +75,10 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
 
 class TestConvTranspose2DoubleGradCheck_AsyPadding(
         TestConvTransposeDoubleGradCheck):
+    def conv_transpose_wrapper(self, x):
+        return paddle.nn.functional.conv2d_transpose(
+            x[0], x[1], groups=1, padding=[1, 0, 0, 1])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
@@ -100,10 +112,19 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         else:
             gradient_checker.double_grad_check(
                 [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper, [x] + w,
+            y,
+            x_init=[x_arr] + w_arr,
+            place=place)
 
 
 class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         TestConvTransposeDoubleGradCheck):
+    def conv_transpose_wrapper(self, x):
+        return paddle.nn.functional.conv2d_transpose(
+            x[0], x[1], groups=1, padding="SAME")
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
@@ -137,10 +158,19 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         else:
             gradient_checker.double_grad_check(
                 [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper, [x] + w,
+            y,
+            x_init=[x_arr] + w_arr,
+            place=place)
 
 
 class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         TestConvTransposeDoubleGradCheck):
+    def conv_transpose_wrapper(self, x):
+        return paddle.nn.functional.conv2d_transpose(
+            x[0], x[1], groups=1, padding="VALID")
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
@@ -174,10 +204,19 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         else:
             gradient_checker.double_grad_check(
                 [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper, [x] + w,
+            y,
+            x_init=[x_arr] + w_arr,
+            place=place)
 
 
 class TestConvTranspose2DoubleGradCheck_ChannelLast(
         TestConvTransposeDoubleGradCheck):
+    def conv_transpose_wrapper(self, x):
+        return paddle.nn.functional.conv2d_transpose(
+            x[0], x[1], groups=1, padding=[1, 1], data_format="NHWC")
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 3, 2]
@@ -213,6 +252,11 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         else:
             gradient_checker.double_grad_check(
                 [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper, [x] + w,
+            y,
+            x_init=[x_arr] + w_arr,
+            place=place)
 
 
 if __name__ == "__main__":

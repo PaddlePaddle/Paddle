@@ -34,6 +34,12 @@ cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
   return cast_type;
 }
 
+cnnlCastDataType_t GetCastDataType(const DataType& src_type,
+                                   const DataType& dst_type) {
+  return GetCastDataType(framework::TransToProtoVarType(src_type),
+                         framework::TransToProtoVarType(dst_type));
+}
+
 bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type) {
   for (auto it = MLU_SUPPORTED_CAST_TYPE.begin();
        it != MLU_SUPPORTED_CAST_TYPE.end(); ++it) {
@@ -688,8 +694,9 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
     const cnnlTensorDescriptor_t diff_y_desc, void* back_out) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSparseSoftmaxCrossEntropyWithLogits(
-      handle, mode, x_desc, input, label_desc, label, y_desc, output,
+  const cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSparseSoftmaxCrossEntropyWithLogits_v2(
+      handle, prefer, mode, x_desc, input, label_desc, label, y_desc, output,
       diff_y_desc, back_out));
 }
 
@@ -697,14 +704,14 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                   const bool exclusive, const bool reverse,
                                   const cnnlTensorDescriptor_t input_desc,
                                   const void* input,
-                                  const cnnlTensorDescriptor_t ouput_desc,
+                                  const cnnlTensorDescriptor_t output_desc,
                                   void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   // NAN propagation mode: Only support CNNL_NOT_PROPAGATE_NAN now.
   cnnlNanPropagation_t mode = CNNL_NOT_PROPAGATE_NAN;
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlCumsum(handle, input_desc, input, axis,
-                                        exclusive, reverse, mode, ouput_desc,
+                                        exclusive, reverse, mode, output_desc,
                                         output));
 }
 
@@ -805,17 +812,17 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 }
 
 /* static */ void MLUCnnl::ApplyAdam(
-    const ExecutionContext& ctx, const cnnlTensorDescriptor_t grad_desc,
-    const void* grad, const void* lr, const void* beta1, const void* beta2,
-    const void* beta1_power, const void* beta2_power, const void* epsilon,
-    const bool use_nesterov, const cnnlTensorDescriptor_t var_desc, void* var,
-    const cnnlTensorDescriptor_t m_desc, void* m,
-    const cnnlTensorDescriptor_t v_desc, void* v) {
+    const ExecutionContext& ctx, const cnnlTensorDescriptor_t var_desc,
+    void* var, const cnnlTensorDescriptor_t m_desc, void* m,
+    const cnnlTensorDescriptor_t v_desc, void* v,
+    const cnnlTensorDescriptor_t grad_desc, const void* grad, const void* lr,
+    const void* beta1, const void* beta2, const void* beta1_power,
+    const void* beta2_power, const void* epsilon, const bool use_nesterov) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlApplyAdam(
-      handle, grad_desc, var, grad_desc, m, grad_desc, v, grad_desc, grad, lr,
-      beta1, beta2, beta1_power, beta2_power, epsilon, use_nesterov));
+      handle, var_desc, var, m_desc, m, v_desc, v, grad_desc, grad, lr, beta1,
+      beta2, beta1_power, beta2_power, epsilon, use_nesterov));
 }
 
 /* static */ void MLUCnnl::ApplyAdaMax(
@@ -2077,6 +2084,45 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   }
 }
 
+/* static */ void MLUCnnl::LayerNormForward(
+    const ExecutionContext& ctx, int axis, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t weight_bias_desc,
+    const void* weight, const void* bias, float eps,
+    const cnnlTensorDescriptor_t y_desc, void* y,
+    const cnnlTensorDescriptor_t mean_rstd_desc, void* saved_mean,
+    void* saved_rstd) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlGetLayerNormOpWorkspaceSize(handle, axis, x_desc, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlLayerNormForward(handle, x_desc, x, axis, weight_bias_desc, weight,
+                           bias, eps, workspace_ptr, workspace_size, y_desc, y,
+                           mean_rstd_desc, saved_mean, saved_rstd));
+}
+
+/* static */ void MLUCnnl::LayerNormBackward(
+    const ExecutionContext& ctx, int axis, const cnnlTensorDescriptor_t x_desc,
+    const void* x, const cnnlTensorDescriptor_t diff_z_desc, const void* diff_z,
+    const cnnlTensorDescriptor_t weight_bias_desc, const void* weight,
+    const cnnlTensorDescriptor_t mean_rstd_desc, const void* saved_mean,
+    const void* saved_rstd, const cnnlTensorDescriptor_t diff_x_desc,
+    void* diff_x, void* diff_weight, void* diff_bias) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlLayerNormBackward(
+      handle, x_desc, x, axis, diff_z_desc, diff_z, weight_bias_desc, weight,
+      mean_rstd_desc, saved_mean, saved_rstd, diff_x_desc, diff_x, diff_weight,
+      diff_bias));
+}
+
 /* static */ void MLUCnnl::QuantizeParam(
     const ExecutionContext& ctx, const cnnlQuantizeMode_t mode,
     const int bitwidth, const cnnlTensorDescriptor_t input_desc,
@@ -2673,17 +2719,16 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                         output_desc, output));
 }
 
-/* static */ void MLUCnnl::ScatterNd(const ExecutionContext& ctx,
-                                     const cnnlTensorDescriptor_t indices_desc,
-                                     const void* indices,
-                                     const cnnlTensorDescriptor_t updates_desc,
-                                     const void* updates,
-                                     const cnnlTensorDescriptor_t output_desc,
-                                     void* output) {
+/* static */ void MLUCnnl::ScatterNd(
+    const ExecutionContext& ctx, cnnlScatterNdMode_t mode,
+    const cnnlTensorDescriptor_t indices_desc, const void* indices,
+    const cnnlTensorDescriptor_t updates_desc, const void* updates,
+    const cnnlTensorDescriptor_t input_desc, const void* input,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlScatterNd(handle, indices_desc, indices,
-                                           updates_desc, updates, output_desc,
-                                           output));
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlScatterNd_v2(handle, mode, indices_desc, indices, updates_desc,
+                       updates, input_desc, input, output_desc, output));
 }
 
 /* static */ void MLUCnnl::BitWise(
@@ -2735,6 +2780,27 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
 
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlReciprocal(handle, input_desc, input, output_desc, output));
+}
+
+/* static */ void MLUCnnl::EmbeddingBackward(
+    const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+    const cnnlTensorDescriptor_t indices_desc, const void* indices,
+    const cnnlTensorDescriptor_t diff_desc, const void* diff,
+    const cnnlTensorDescriptor_t output_desc, void* output) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetEmbeddingBackwardWorkspaceSize(
+      handle, diff_desc, output_desc, scale_grad_by_freq, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlEmbeddingBackward(
+      handle, padding_idx, scale_grad_by_freq, indices_desc, indices, diff_desc,
+      diff, workspace_ptr, workspace_size, output_desc, output));
 }
 
 }  // namespace operators
