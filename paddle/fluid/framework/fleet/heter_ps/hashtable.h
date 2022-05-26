@@ -34,11 +34,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
-#elif defined(__xpu__)
+#elif defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#if defined(__xpu__)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
+#endif
 #endif
 
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
@@ -72,27 +76,12 @@ class XPUCacheArray {
   }
 
   void print() {}
-
-#if defined(__xpu__)
-  __device__ ValType* find(const KeyType& key) {
-    for (int i = 0; i < size_; i++) {
-      if (keys[i] == key) return &vals[i];
-    }
-    return NULL;
-  }
-  __device__ bool insert(const KeyType& key, const ValType& val) {
-    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
-    // one batch
-    if (size_ == capacity_) {
-      return false;
-    } else {
-      keys[size_] = key;
-      vals[size_] = val;
-      size_++;
-      return true;
-    }
-  }
-#endif
+  KeyType* get_keys() {return keys;}
+  ValType* get_vals() {return vals;}
+  uint32_t get_xpu_id() {return xpu_id_;}
+  uint32_t get_xpu_num() {return xpu_num_;}
+  // ValType* find(const KeyType& key) { return NULL; }
+  // bool insert(const KeyType& key, const ValType& val) { return true; }
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
@@ -102,6 +91,8 @@ class XPUCacheArray {
   long long size_;
   KeyType* keys;
   ValType* vals;
+  uint32_t xpu_id_;
+  uint32_t xpu_num_;
 };
 #endif
 
@@ -114,11 +105,11 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+  void insert(const paddle::platform::Place& place, const KeyType* d_keys, const ValType* d_vals, size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
+  void insert(const paddle::platform::Place& place, const KeyType* d_keys, size_t len, char* pool, size_t start_index,
               StreamType stream);
 
   template <typename StreamType>
@@ -148,11 +139,11 @@ class HashTable {
 
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+  void update(const paddle::platform::Place& place, const KeyType* d_keys, const GradType* d_grads, size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len,
+  void update(const paddle::platform::Place& place, const KeyType* d_keys, const char* d_grads, size_t len,
               StreamType stream);
 
 #endif

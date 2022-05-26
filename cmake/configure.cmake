@@ -108,6 +108,11 @@ if(WITH_XPU_KP)
     add_definitions(-DPADDLE_WITH_XPU_KP)
 endif()
 
+if(WITH_XPU_AVOID_CORE)
+    message(STATUS "Compile with XPU_AVOID_CORE")
+    add_definitions(-DPADDLE_WITH_XPU_AVOID_CORE)
+endif()
+
 if(WITH_XPU_CACHE_BFID)
     message(STATUS "Compile with XPU_CACHE")
     add_definitions(-DPADDLE_WITH_XPU_CACHE_BFID)

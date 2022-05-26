@@ -47,6 +47,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_XPU_KP      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
+option(WITH_XPU_AVOID_CORE      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_CACHE_BFID      "Compile PaddlePaddle with BAIDU XPU compiler with cache-bfid in PSGPUWrapper " OFF)
 option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)

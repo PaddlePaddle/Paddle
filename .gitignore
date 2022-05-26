@@ -66,3 +66,6 @@ paddle/infrt/tests/lit.cfg.py
 paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc
 paddle/fluid/pybind/eager_final_state_op_function_impl.h
 paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h
+
+build*/
+.build*/

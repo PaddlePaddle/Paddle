@@ -255,6 +255,10 @@ void PSGPUWorker::TrainFilesWithProfiler() {
           break;
         }
       }
+#ifdef PADDLE_WITH_XPU_AVOID_CORE
+      VLOG(0) << "PSGPUWorker::TrainFilesWithProfiler op->Run hacked";
+      continue;
+#endif
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
