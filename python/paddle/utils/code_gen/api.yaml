@@ -613,6 +613,12 @@
     func : elu
   backward : elu_grad
 
+- api : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor
+  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  backward : embedding_grad
+
 - api : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
