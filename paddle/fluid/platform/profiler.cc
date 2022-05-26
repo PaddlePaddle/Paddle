@@ -235,19 +235,19 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
       name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
 }
 
-RecordOpInfoSupplement::RecordOpInfoSupplement(const std::string& type, const AttributeMap& attrs, const InferShapeContext& shape_ctx, const RuntimeContext& ctx)
-{
- for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
-      input_shape[it->first] = shape_ctx.GetInputsDim(it->first)
-    }
+RecordOpInfoSupplement::RecordOpInfoSupplement(
+    const std::string &type, const AttributeMap &attrs,
+    const InferShapeContext &shape_ctx, const RuntimeContext &ctx) {
+  for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
+    input_shape[it->first] = shape_ctx.GetInputsDim(it->first)
+  }
 
-    const std::vector<std::string>* callstack = nullptr;
-    auto iter =
-        attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-    if (iter != attrs.end()) {
-      callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
-      if (callstack->empty()) callstack = nullptr;
-    }
+  const std::vector<std::string> *callstack = nullptr;
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    if (callstack->empty()) callstack = nullptr;
+  }
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
