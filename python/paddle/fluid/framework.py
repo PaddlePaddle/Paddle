@@ -83,6 +83,11 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _global_flags_ = core.globals()
 
+if os.environ.get('FLAGS_enable_eager_mode') == '1':
+    pass
+else:
+    raise Exception('FLAGS_enable_eager_mode is not set 1')
+
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
 # build a fast execution system for dynamic mode. But we can't just remove all legacy
