@@ -153,7 +153,8 @@ void HostMemoryStatUpdate(const std::string& stat_type, int dev_id,
   [&] {                                                                      \
     PADDLE_ENFORCE_EQ(id, 0, paddle::platform::errors::OutOfRange(           \
                                  "Only support device id 0 for host memory " \
-                                 "stats, not support device id: %d"));       \
+                                 "stats, not support device id: %d",         \
+                                 id));                                       \
     return paddle::memory::Stat<                                             \
                paddle::memory::HostMemoryStat##item##0>::GetInstance()       \
         ->func(__VA_ARGS__);                                                 \
