@@ -83,10 +83,15 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _global_flags_ = core.globals()
 
-if os.environ.get('FLAGS_enable_eager_mode') == '1':
-    pass
-else:
-    raise Exception('FLAGS_enable_eager_mode is not set 1')
+
+def _check_eager():
+    if _in_eager_mode_:
+        warnings.warn(" ======== Now, in the eager mode")
+    else:
+        warnings.warn(" ======== Now, in the legacy mode")
+
+
+_check_eager()
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
