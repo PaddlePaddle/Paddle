@@ -33,6 +33,7 @@ import paddle.incubate.autotune
 
 from . import nn  #noqa: F401
 from . import sparse  #noqa: F401
+from . import asp  #noqa: F401
 
 __all__ = [
     'LookAhead',

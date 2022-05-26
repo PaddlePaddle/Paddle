@@ -205,7 +205,7 @@ class GroupShardedStage3(nn.Layer):
             for param in list(self._unslice_params):
                 param.clear_gradient(False)
                 tmp_var = param.cuda(DEV_ID)
-                param._clear_data()
+
                 if tmp_var.dtype == Type.fp32.value and param2dtype[
                         param.name] == Type.fp16.value:
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
@@ -272,6 +272,8 @@ class GroupShardedStage3(nn.Layer):
                 master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
+            if self._offload:
+                param.master_weight = paddle.cast(param, Type.fp32.value).cpu()
             param2dtype[param.name] = param.dtype
             p_align = self._param2align(param)
             self._unslice_params2align[param.name] = p_align
@@ -369,7 +371,6 @@ class GroupShardedStage3(nn.Layer):
         tmp_var.get_tensor().set(param_cpu.get_tensor(), core.CPUPlace())
         del tmp_var
         param.get_tensor()._set_dims(param_shape)
-        param._clear_data()
 
         # Current rank param_storage
         if self._offload:
@@ -379,6 +380,9 @@ class GroupShardedStage3(nn.Layer):
                 value=tmp_tensor,
                 place=core.CPUPlace(),
                 name="slice@" + param.name)
+            with device_guard():
+                param.master_weight = paddle.cast(param.fw_storage,
+                                                  Type.fp32.value)
         else:
             param.fw_storage = core.eager.Tensor(
                 value=buffer._slice(start, end), name="slice@" + param.name)
@@ -389,6 +393,7 @@ class GroupShardedStage3(nn.Layer):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
             master_tensor.name = param.name
             self._optim._master_weights[param.fw_storage.name] = master_tensor
+        param._clear_data()
 
     def _register_forward_hooks(self, layer):
         """
@@ -480,9 +485,8 @@ class GroupShardedStage3(nn.Layer):
             collective.all_reduce(tensor=grad_storage.buffer, group=self._group)
         if self._offload:
             for param in list(self._unslice_params):
-                tmp_var = _device2cpu(param, convert_dtype=True)
-                tmp_var._share_buffer_to(param)
-                del tmp_var
+                param._clear_data()
+                param.master_weight._share_buffer_to(param)
 
             for grad_storage in self._grad_storages.values():
                 for p in grad_storage._params:
@@ -568,7 +572,8 @@ class GroupShardedStage3(nn.Layer):
                     del self._task_flow.full_param[param.name]
 
                     if self._offload:
-                        param.fw_storage = _device2cpu(param.fw_storage, True)
+                        param.fw_storage._clear_data()
+                        param.master_weight._share_buffer_to(param.fw_storage)
 
         return allreduce_
 
@@ -856,6 +861,7 @@ def _PartitionParam(param):
     if not hasattr(param, "fw_storage"):
         setattr(param, "fw_storage", None)
         setattr(param, "bw_storage", None)
+        setattr(param, "master_weight", None)
         setattr(param, "status", "all")
         setattr(param, "use_count", 0)
     return param
@@ -864,6 +870,7 @@ def _PartitionParam(param):
 def _UnsliceParam(param):
     if not hasattr(param, "unslice"):
         setattr(param, "unslice", True)
+        setattr(param, "master_weight", None)
     return param
 
 
