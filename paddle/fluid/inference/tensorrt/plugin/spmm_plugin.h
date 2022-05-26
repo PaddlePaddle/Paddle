@@ -39,6 +39,8 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/dynload/cusparseLt.h"
 
+using namespace std;
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -77,6 +79,7 @@ class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream) noexcept override;
+
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const noexcept override;
@@ -128,7 +131,8 @@ class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
   int optim_alg_;       // the index of optimal algorithm
   float weight_scale_;  // record the weight scale from constructor
   void* weight_compressed_;      // host compressed weight
-  void* weight_compressed_dev_;  // device compressed weight
+  void* weight_compressed_dev_;  //  device compressed weight
+  shared_ptr<void> weight_compressed_dev_global_; // shared pointer to the device compressed weight 
   size_t compressed_size_;       // size of compressed weight
   bool has_bias_;                // there is bias or not
   void* bias_;                   // host bias
