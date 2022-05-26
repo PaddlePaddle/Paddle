@@ -529,7 +529,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
       }
       if (is_leaf) {
         std::static_pointer_cast<egr::GradNodeAccumulation>(
-            EagerUtils::grad_node())
+            egr::EagerUtils::grad_node())
             ->SetIsEmpty(true);
       }
     }
