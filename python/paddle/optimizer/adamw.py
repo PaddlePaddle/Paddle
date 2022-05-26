@@ -108,7 +108,7 @@ class AdamW(Optimizer):
             beta1 = paddle.to_tensor([0.9], dtype="float32")
             beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            op = paddle.optimizer.AdamW(learning_rate=0.1,
+            opt = paddle.optimizer.AdamW(learning_rate=0.1,
                     parameters=linear.parameters(),
                     beta1=beta1,
                     beta2=beta2,
