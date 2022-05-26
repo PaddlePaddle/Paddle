@@ -335,4 +335,87 @@ void PowGradKernel(const Context& dev_ctx,
   functor(*place, x_flatten, nullptr, dout_flatten, dx_flatten);
 }
 
+template <typename T, typename Context>
+void SqrtDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& dx,
+                          const DenseTensor& ddx,
+                          DenseTensor* dout,
+                          DenseTensor* ddout) {
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
+}
+
+// rsqrt Grad: dx = -0.5 * dy * y * y * y
+// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3 / y) * dx * ddx
+template <typename T, typename Context>
+void RsqrtDoubleGradKernel(const Context& dev_ctx,
+                           const DenseTensor& out,
+                           const DenseTensor& dx,
+                           const DenseTensor& ddx,
+                           DenseTensor* dout,
+                           DenseTensor* ddout) {
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::RsqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &dx, &ddx, dout, ddout);
+}
+
+template <typename T, typename Context>
+void CeluDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& dout,
+                          const DenseTensor& ddx,
+                          float alpha,
+                          DenseTensor* dx,
+                          DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::CELUGradGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = alpha;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void SquareDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& dout,
+                            const DenseTensor& ddx,
+                            DenseTensor* dx,
+                            DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SquareGradGradFunctor<T> functor;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
 }  // namespace phi
