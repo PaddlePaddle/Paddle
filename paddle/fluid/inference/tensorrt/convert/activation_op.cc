@@ -64,6 +64,12 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(0.);
       layer->setBeta(6.);
     }
+    if (op_type_ == "elu") {
+      const float alpha = op_desc.HasAttr("alpha")
+                              ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
+                              : 1.0f;
+      layer->setAlpha(alpha);
+    }
 #endif
 
     auto output_name = op_desc.Output("Out")[0];
@@ -84,13 +90,12 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
 #endif
-        {"elu", nvinfer1::ActivationType::kELU}
-        {"selu", nvinfer1::ActivationType::kSELU}
-        {"softsign", nvinfer1::ActivationType::kSOFTSIGN}
-        {"softplus", nvinfer1::ActivationType::kSOFTPLUS}
-        {"scaled_tanh", nvinfer1::ActivationType::kSCALED_TANH}
-        {"threasholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}
-};
+        {"elu", nvinfer1::ActivationType::kELU} {
+            "selu", nvinfer1::ActivationType::kSELU} {
+            "softsign", nvinfer1::ActivationType::kSOFTSIGN} {
+            "softplus", nvinfer1::ActivationType::kSOFTPLUS} {
+            "scaled_tanh", nvinfer1::ActivationType::kSCALED_TANH} {
+            "threasholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
