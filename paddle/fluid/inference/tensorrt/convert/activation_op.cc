@@ -69,6 +69,16 @@ class ActivationOpConverter : public OpConverter {
                               : 1.0f;
       layer->setAlpha(alpha);
     }
+    if (op_type_ == "selu") {
+      const float alpha = op_desc.HasAttr("alpha")
+                              ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
+                              : 1.0f;
+      const float scale = op_desc.HasAttr("scale")
+                              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                              : 1.0f;
+      layer->setAlpha(alpha);
+      layer->setBeta(scale);
+    }
 #endif
 
     auto output_name = op_desc.Output("Out")[0];
