@@ -29,7 +29,7 @@ template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& d_y,
-                            paddle::optional<const DenseTensor&> scale,
+                            const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             float epsilon,
