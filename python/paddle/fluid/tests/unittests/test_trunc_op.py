@@ -31,6 +31,7 @@ class TestTruncOp(OpTest):
         self.op_type = "trunc"
         self.python_api = paddle.trunc
         self.init_dtype_type()
+        self.__class__.exist_fp64_check_grad = True
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
