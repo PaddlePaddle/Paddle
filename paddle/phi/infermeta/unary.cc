@@ -1305,17 +1305,6 @@ void NanmedianInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(out_dim));
 }
 
-void NanmedianGradInferMeta(const MetaTensor& x,
-                            const MetaTensor& median_index,
-                            const MetaTensor& out_grad,
-                            const IntArray& axes,
-                            bool keep_dim,
-                            MetaTensor* x_grad) {
-  auto x_dims = x.dims();
-  x_grad->set_dims(x_dims);
-  x_grad->set_dtype(x.dtype());
-}
-
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,

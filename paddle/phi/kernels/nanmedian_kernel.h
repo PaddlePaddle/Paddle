@@ -58,7 +58,8 @@ void PreprocessMedianKernel(const Context& dev_ctx,
   for (int i = 0; i < ndims; i++) {
     trans_dim[i] = input_dim[perm[i]];
   }
-  x->mutable_data<T>(trans_dim, dev_ctx.GetPlace());
+  x->Resize(trans_dim);
+  dev_ctx.template Alloc<T>(x);
   funcs::TransCompute<Context, T>(ndims, dev_ctx, input, x, perm);
 
   x->Resize(make_ddim(reshape));

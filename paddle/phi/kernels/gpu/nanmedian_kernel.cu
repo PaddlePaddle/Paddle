@@ -141,8 +141,6 @@ void ProcessMedianKernel(const Context& dev_ctx,
                          int64_t* m_ptr) {
   bool should_ignore_nan = ignore_nan;
   auto stream = dev_ctx.stream();
-  auto* ctx =
-      reinterpret_cast<const paddle::platform::CUDADeviceContext*>(&dev_ctx);
 
   const T* x_ptr = x.data<T>();
   T* o_ptr = dev_ctx.template Alloc<T>(out);
