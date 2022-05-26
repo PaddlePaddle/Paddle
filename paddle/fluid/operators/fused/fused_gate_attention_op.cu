@@ -407,18 +407,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     // backward output
     auto *query_grad = ctx.Output<Tensor>(framework::GradVarName("Query"));
     query_grad->mutable_data<T>(ctx.GetPlace());
-    auto *q_transpose_out_grad =
-        ctx.Output<Tensor>(framework::GradVarName("QueryTransposeOut"));
-    auto *k_transpose_out_grad =
-        ctx.Output<Tensor>(framework::GradVarName("KeyTransposeOut"));
-    auto *v_transpose_out_grad =
-        ctx.Output<Tensor>(framework::GradVarName("ValueTransposeOut"));
-    auto *qkv_transpose_out_grad =
-        ctx.Output<Tensor>(framework::GradVarName("QKVTransposeOut"));
     auto *nonbatched_bias_grad =
         ctx.Output<Tensor>(framework::GradVarName("NonbatchedBias"));
-    auto *softmax_out_grad =
-        ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
     auto *fmha_out_grad = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -439,24 +429,14 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     }
 
     // 3. Gradient of FMHA
-    if (merge_qkv) {
-      qkv_transpose_out_grad->mutable_data<T>(ctx.GetPlace());
-    } else {
-      q_transpose_out_grad->mutable_data<T>(ctx.GetPlace());
-      k_transpose_out_grad->mutable_data<T>(ctx.GetPlace());
-      v_transpose_out_grad->mutable_data<T>(ctx.GetPlace());
-    }
     if (nonbatched_bias_grad) {
       nonbatched_bias_grad->mutable_data<T>(ctx.GetPlace());
     }
-    softmax_out_grad->mutable_data<T>(ctx.GetPlace());
 
     auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeBackward(
         q_transpose_out, k_transpose_out, v_transpose_out, qkv_transpose_out,
-        softmax_out, fmha_out_grad, softmax_out_grad, nullptr,
-        nonbatched_bias_grad, q_transpose_out_grad, k_transpose_out_grad,
-        v_transpose_out_grad, qkv_transpose_out_grad, &config);
+        softmax_out, fmha_out_grad, nullptr, nonbatched_bias_grad, &config);
 
     bool use_addto = has_gating ? true : false;
     if (merge_qkv) {

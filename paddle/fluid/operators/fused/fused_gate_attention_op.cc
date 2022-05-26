@@ -196,8 +196,6 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                      "fused_gate_attention_arad");
       ctx->SetOutputDim(framework::GradVarName("QKVWeight"),
                         ctx->GetInputDim("QKVWeight"));
-      ctx->SetOutputDim(framework::GradVarName("QKVTransposeOut"),
-                        ctx->GetInputDim("QKVTransposeOut"));
     } else {
       OP_INOUT_CHECK(ctx->HasInput("QueryWeight"), "Input", "QueryWeight",
                      "fused_aate_attention_arad");
@@ -206,10 +204,7 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("ValueWeight"), "Input", "ValueWeight",
                      "fused_aate_attention_arad");
 
-      std::vector<std::string> qkv_var_names = {
-          "QueryWeight",       "KeyWeight",       "ValueWeight",
-          "QueryTransposeOut", "KeyTransposeOut", "ValueTransposeOut"};
-      for (auto& name : qkv_var_names) {
+      for (auto& name : {"QueryWeight", "KeyWeight", "ValueWeight"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
       }
     }
@@ -218,9 +213,7 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                    "fused_aate_attention_arad");
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
-      std::vector<std::string> gate_var_names = {"GateWeight", "GateBias",
-                                                 "GateOut"};
-      for (auto& name : gate_var_names) {
+      for (auto& name : {"GateWeight", "GateBias", "GateOut"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
       }
     }
@@ -230,8 +223,6 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("NonbatchedBias"));
     }
 
-    ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
-                      ctx->GetInputDim("SoftmaxOut"));
     ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
                       ctx->GetInputDim("FMHAOut"));
 
@@ -262,8 +253,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetOutput(framework::GradVarName("QKVWeight"),
                     this->InputGrad("QKVWeight"));
       op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
-      op->SetOutput(framework::GradVarName("QKVTransposeOut"),
-                    this->OutputGrad("QKVTransposeOut"));
     } else {
       op->SetInput("Key", this->Input("Key"));
       op->SetOutput(framework::GradVarName("Key"), this->InputGrad("Key"));
@@ -276,7 +265,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       for (auto& name :
            {"QueryTransposeOut", "KeyTransposeOut", "ValueTransposeOut"}) {
         op->SetInput(name, this->Output(name));
-        op->SetOutput(framework::GradVarName(name), this->OutputGrad(name));
       }
     }
 
@@ -291,8 +279,6 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
 
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
-    op->SetOutput(framework::GradVarName("SoftmaxOut"),
-                  this->OutputGrad("SoftmaxOut"));
 
     bool has_gating = BOOST_GET_CONST(bool, op->GetAttr("has_gating"));
     if (has_gating) {
