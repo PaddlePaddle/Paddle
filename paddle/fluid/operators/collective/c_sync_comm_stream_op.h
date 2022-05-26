@@ -15,49 +15,68 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_CNCL)
+#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
 template <typename T>
-class CSyncCalcStreamKernel : public framework::OpKernel<T> {
+class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
-
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto place = ctx.GetPlace();
-    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
-    platform::GpuStreamSync(dev_ctx->stream());
+    platform::GpuStreamSync(stream);
 
-#elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
+#elif defined(PADDLE_WITH_ASCEND_CL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
-
-    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::NPUStreamSync(dev_ctx->stream());
+                          "Sync comm stream op can run on npu place only for "
+                          "now, but we got %s, please check the environment.",
+                          place.DebugString()));
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
+    platform::NPUStreamSync(stream);
 
 #elif defined(PADDLE_WITH_CNCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on mlu place only for now."));
-
-    auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::MLUStreamSync(dev_ctx->stream());
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::CNCLCommContext::Instance().Get(ring_id, place)->stream();
+    platform::MLUStreamSync(stream);
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
-
-    auto dev_ctx = static_cast<platform::XPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    dev_ctx->Wait();
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto comm_dev_ctx = platform::BKCLCommContext::Instance()
+                            .Get(ring_id, place)
+                            ->dev_context();
+    comm_dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
