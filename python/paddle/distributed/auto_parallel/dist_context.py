@@ -118,6 +118,9 @@ class DistributedContext:
         # flag whether scale gradient with dp size
         self._gradient_scale = True
 
+        # flag whether using `to_static`
+        self._dygraph_mode = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
