@@ -41,15 +41,11 @@ class MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 
-  MetaTensor() : is_nullopt_(true), tensor_(nullptr) {}
+  MetaTensor() : tensor_(nullptr) {}
 
   // supporting implicit construction is easier to use
-  MetaTensor(TensorBase* tensor) : tensor_(tensor) {  // NOLINT
-    if (!tensor) {
-      is_nullopt_ = true;
-    }
-  }
-  MetaTensor(const TensorBase& tensor)  // NOLINT
+  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
+  MetaTensor(const TensorBase& tensor)                 // NOLINT
       : tensor_(const_cast<TensorBase*>(&tensor)) {}
   MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
 
@@ -74,18 +70,16 @@ class MetaTensor {
 
   virtual bool initialized() const;
 
-  operator unspecified_bool_type() const {
-    return is_nullopt_ ? 0 : unspecified_bool_true;
+  virtual operator unspecified_bool_type() const {
+    return tensor_ == nullptr ? 0 : unspecified_bool_true;
   }
 
-  bool operator!() const { return is_nullopt_; }
+  virtual bool operator!() const { return tensor_ == nullptr; }
 
  protected:
-  bool is_nullopt_{false};
-
- private:
   static void unspecified_bool_true() {}
 
+ private:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;

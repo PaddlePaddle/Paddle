@@ -28,13 +28,9 @@ namespace framework {
 class CompatMetaTensor : public phi::MetaTensor {
  public:
   explicit CompatMetaTensor(bool is_runtime)
-      : is_runtime_(is_runtime), initialized_(false) {
-    is_nullopt_ = true;
-  }
+      : is_runtime_(is_runtime), initialized_(false) {}
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
-      : var_(std::move(var)), is_runtime_(is_runtime) {
-    is_nullopt_ = false;
-  }
+      : var_(std::move(var)), is_runtime_(is_runtime) {}
 
   CompatMetaTensor(CompatMetaTensor&&) = default;
   CompatMetaTensor& operator=(CompatMetaTensor&&) = default;
@@ -62,6 +58,12 @@ class CompatMetaTensor : public phi::MetaTensor {
   void share_meta(const MetaTensor& meta_tensor) override;
 
   bool initialized() const override { return initialized_; };
+
+  operator unspecified_bool_type() const override {
+    return initialized_ ? unspecified_bool_true : 0;
+  }
+
+  bool operator!() const override { return !initialized_; }
 
  private:
   const LoD& GetRuntimeLoD() const {
