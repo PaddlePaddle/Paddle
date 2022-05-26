@@ -191,6 +191,111 @@ void ArangeInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
+void InstanceNormInferMeta(const MetaTensor& x,
+                           paddle::optional<const MetaTensor&> scale,
+                           paddle::optional<const MetaTensor&> bias,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* saved_mean,
+                           MetaTensor* saved_variance,
+                           MetaConfig config) {
+  PADDLE_ENFORCE_NE(y,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "The y in InstanceNormInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(
+      saved_mean,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The saved_mean in InstanceNormInferMeta can't be nullptr."));
+  PADDLE_ENFORCE_NE(
+      saved_variance,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The saved_variance in InstanceNormInferMeta can't be nullptr."));
+  const auto x_dims = x.dims();
+  PADDLE_ENFORCE_NE(phi::product(x_dims),
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "The Input variable X has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function."));
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input X must "
+          "greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims,
+          x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input X must "
+          "smaller than or equal to 5, But received: the shape of input "
+          "X = [%s], the dimension of input X = [%d]",
+          x_dims,
+          x_dims.size()));
+  auto N = x_dims[0];
+  auto C = x_dims[1];
+  auto NxC = N * C;
+  const auto scale_ptr = scale.get_ptr();
+  if (scale_ptr) {
+    auto scale_dim = scale_ptr->dims();
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "ShapeError: the dimension of scale must equal to 1."
+            "But received: the shape of scale is [%s], the dimension "
+            "of scale is [%d]",
+            scale_dim,
+            scale_dim.size()));
+    bool check = !((!config.is_runtime) && (phi::product(scale_dim) <= 0));
+    if (check) {
+      PADDLE_ENFORCE_EQ(scale_dim[0],
+                        C,
+                        phi::errors::InvalidArgument(
+                            "ShapeError: the shape of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C,
+                            scale_dim[0]));
+    }
+  }
+  const auto bias_ptr = bias.get_ptr();
+  if (bias_ptr) {
+    auto bias_dim = bias_ptr->dims();
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "ShapeError: the dimension of bias must equal to 1."
+            "But received: the shape of bias is [%s],the dimension "
+            "of bias is [%d]",
+            bias_dim,
+            bias_dim.size()));
+    bool check = !((!config.is_runtime) && (phi::product(bias_dim) <= 0));
+    if (check) {
+      PADDLE_ENFORCE_EQ(bias_dim[0],
+                        C,
+                        phi::errors::InvalidArgument(
+                            "ShapeError: the shape of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C,
+                            bias_dim[0]));
+    }
+  }
+  y->set_dims(x_dims);
+  saved_mean->set_dims({NxC});
+  saved_variance->set_dims({NxC});
+  y->share_lod(x);
+  y->set_dtype(x.dtype());
+  y->set_layout(x.layout());
+}
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,

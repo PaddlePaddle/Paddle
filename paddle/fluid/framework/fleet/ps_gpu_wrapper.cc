@@ -239,9 +239,6 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
   for (int i = 0; i < thread_keys_shard_num_; i++) {
     for (int j = 0; j < multi_mf_dim_; j++) {
-      if (i == 0 && j == multi_mf_dim_ - 1) {
-        gpu_task->feature_dim_keys_[i][j].push_back(0);
-      }
       VLOG(0) << "GpuPs shard: " << i << "mf dim: " << index_dim_vec_[j]
               << " key len: " << gpu_task->feature_dim_keys_[i][j].size();
       gpu_task->value_dim_ptr_[i][j].resize(

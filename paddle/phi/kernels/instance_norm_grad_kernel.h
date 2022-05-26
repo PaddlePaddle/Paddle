@@ -30,4 +30,19 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad);
 
+template <typename T, typename Context>
+void InstanceNormDoubleGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  paddle::optional<const DenseTensor&> scale,
+                                  const DenseTensor& saved_mean,
+                                  const DenseTensor& saved_variance,
+                                  const DenseTensor& dy,
+                                  paddle::optional<const DenseTensor&> ddx,
+                                  paddle::optional<const DenseTensor&> ddscale,
+                                  paddle::optional<const DenseTensor&> ddbias,
+                                  float epsilon,
+                                  DenseTensor* dx,
+                                  DenseTensor* dscale,
+                                  DenseTensor* ddy);
+
 }  // namespace phi

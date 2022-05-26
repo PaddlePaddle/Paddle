@@ -312,6 +312,63 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void InstanceNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& y_grad,
+                               paddle::optional<const MetaTensor&> scale,
+                               const MetaTensor& saved_mean,
+                               const MetaTensor& saved_variance,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad,
+                               MetaTensor* bias_grad) {
+  PADDLE_ENFORCE_NE(
+      x_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
+  const auto x_dims = x.dims();
+  const int C = x_dims[1];
+  x_grad->set_dims(x_dims);
+  x_grad->set_dtype(x.dtype());
+  x_grad->set_layout(x.layout());
+  if (scale_grad) {
+    scale_grad->set_dims({C});
+  }
+  if (bias_grad) {
+    bias_grad->set_dims({C});
+  }
+}
+void InstanceNormDoubleGradInferMeta(
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> scale,
+    const MetaTensor& saved_mean,
+    const MetaTensor& saved_variance,
+    const MetaTensor& dy,
+    paddle::optional<const MetaTensor&> ddx,
+    paddle::optional<const MetaTensor&> ddscale,
+    paddle::optional<const MetaTensor&> ddbias,
+    float epsilon,
+    MetaTensor* dx,
+    MetaTensor* dscale,
+    MetaTensor* ddy) {
+  PADDLE_ENFORCE_NE(
+      dx,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
+  const auto x_dims = x.dims();
+  const int C = x_dims[1];
+  dx->set_dims(x_dims);
+  dx->set_dtype(x.dtype());
+  dx->set_layout(x.layout());
+  if (dscale) {
+    dscale->set_dims({C});
+  }
+  if (ddy) {
+    ddy->share_dims(x);
+  }
+}
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());

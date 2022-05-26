@@ -52,6 +52,15 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void InstanceNormInferMeta(const MetaTensor& x,
+                           paddle::optional<const MetaTensor&> scale,
+                           paddle::optional<const MetaTensor&> bias,
+                           float epsilon,
+                           MetaTensor* y,
+                           MetaTensor* saved_mean,
+                           MetaTensor* saved_variance,
+                           MetaConfig config = MetaConfig());
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,

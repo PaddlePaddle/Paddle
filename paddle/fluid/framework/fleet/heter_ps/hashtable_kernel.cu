@@ -106,6 +106,23 @@ __global__ void dy_mf_search_kernel(Table* table,
       for (int j = 0; j < cur->mf_dim + 1; ++j) {
         cur->mf[j] = input.mf[j];
       }
+    } else {
+      if (keys[i] != 0) {
+        printf("warning::pull miss key: %d", keys[i]);
+      }
+      FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
+      cur->delta_score = 0;
+      cur->show = 0;
+      cur->clk = 0;
+      cur->slot = -1;
+      cur->lr = 0;
+      cur->lr_g2sum = 0;
+      cur->mf_size = 0;
+      cur->mf_dim = 8;
+      cur->cpu_ptr;
+      for (int j = 0; j < cur->mf_dim + 1; j++) {
+        cur->mf[j] = 0;
+      }
     }
   }
 }
@@ -138,7 +155,9 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
-      printf("warning: push miss key: %d", keys[i]);
+      if (keys[i] != 0) {
+        printf("warning::push miss key: %d", keys[i]);
+      }
     }
   }
 }
