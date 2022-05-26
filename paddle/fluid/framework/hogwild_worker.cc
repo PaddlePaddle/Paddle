@@ -179,8 +179,6 @@ void HogwildWorker::TrainFilesWithProfiler() {
     PrintFetchVars();
 #ifdef PADDLE_WITH_HETERPS
     dev_ctx_->Wait();
-    VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
-            << " seconds, ins_num: " << total_inst;
     for (size_t i = 0; i < op_name.size(); ++i) {
       VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
               << ", mean time: " << op_total_time[i] / total_inst
@@ -202,6 +200,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+  VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+          << " seconds, ins_num: " << total_inst << " read time: " << read_time
+          << "seconds ";
 
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
@@ -256,7 +257,7 @@ void HogwildWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
   timeline.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(0) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
 
   if (need_dump_field_ || need_dump_param_) {
