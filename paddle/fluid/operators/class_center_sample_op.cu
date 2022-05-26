@@ -416,14 +416,13 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                    1) *
                   vec_size;
     int device_id = ctx.GetPlace().GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
+    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    if (!fix_seed) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;
       increment = seed_offset.second;
     } else {
-      std::random_device rnd;
-      seed_data = fix_seed ? seed + rank : rnd();
+      seed_data = seed + rank;
       increment = offset;
     }
     RandomSampleClassCenter<T><<<NumBlocks(num_classes), kNumCUDAThreads, 0,

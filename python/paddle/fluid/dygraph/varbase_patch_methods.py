@@ -101,8 +101,11 @@ def monkey_patch_varbase():
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
+        param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
+            for key in param_keys:
+                attr_kwargs[key] = getattr(self, key)
         else:
             attr_names = []
             for name in dir(self):
@@ -904,10 +907,8 @@ def monkey_patch_varbase():
                     #[1, 2, 3, 4, 5]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_values(self)
-        elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_csr_values(self)
+        if self.is_sparse_coo() or self.is_sparse_csr():
+            return _C_ops.final_state_sparse_values(self)
         else:
             raise ValueError(
                 "only SparseCooTensor and SparseCsrTensor have method values")

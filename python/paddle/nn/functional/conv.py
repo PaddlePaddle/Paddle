@@ -129,10 +129,13 @@ def _conv_nd(x,
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
-            tmp_bias = _C_ops.final_state_reshape(
-                bias, bias.shape +
-                [1 for i in range(len(x.shape) - channel_dim - 1)])
-            return _C_ops.final_state_add(pre_bias, tmp_bias)
+            if len(bias.shape) < len(x.shape):
+                tmp_bias = _C_ops.final_state_reshape(
+                    bias, bias.shape +
+                    [1 for i in range(len(x.shape) - channel_dim - 1)])
+                return _C_ops.final_state_add(pre_bias, tmp_bias)
+            else:
+                return _C_ops.final_state_add(pre_bias, bias)
         else:
             return pre_bias
     if in_dynamic_mode():
