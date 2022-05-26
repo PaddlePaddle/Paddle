@@ -56,10 +56,15 @@ class AllGatherOpDesc:
         shape (list): The tensor shape.
     """
 
-    def __init__(self, group, shape):
+    def __init__(self, group, shape, is_bool=False):
         self._group = group
         self._desc = "all_gather"
         self._shape = shape
+        self._is_bool = is_bool
+
+    @property
+    def is_bool(self):
+        return self._is_bool
 
     @property
     def group(self):
@@ -85,11 +90,16 @@ class SendOpDesc:
         dst (int): The destination process to receive.
     """
 
-    def __init__(self, partition_index, dst):
+    def __init__(self, partition_index, dst, is_bool=False):
         self._dst = dst
         self._partition_index = partition_index
         self._desc = "send"
         self._shape = []
+        self._is_bool = False
+
+    @property
+    def is_bool(self):
+        return self._is_bool
 
     @property
     def partition_index(self):
@@ -122,11 +132,16 @@ class RecvOpDesc:
         src (int): The source process to send.
     """
 
-    def __init__(self, partition_index, src):
+    def __init__(self, partition_index, src, is_bool=False):
         self._src = src
         self._partition_index = partition_index
         self._desc = "recv"
         self._shape = []
+        self._is_bool = is_bool
+
+    @property
+    def is_bool(self):
+        return self._is_bool
 
     @property
     def partition_index(self):
@@ -221,6 +236,25 @@ class Inserter:
     """Insert op required in the reshard process."""
 
     @staticmethod
+    def insert_cast_op(block, idx, tensor, op_role, tensor_type):
+        new_var_name = paddle.fluid.unique_name.generate_with_ignorable_key(
+            ".".join(["cast", 'tmp@RESHARD']))
+
+        out = block.create_var(
+            name=new_var_name, dtype=tensor_type, type=tensor.type)
+        block._insert_op(
+            idx,
+            type='cast',
+            inputs={'X': [tensor]},
+            outputs={'Out': [out]},
+            attrs={
+                'in_dtype': tensor.dtype,
+                'out_dtype': out.dtype,
+                'op_role': op_role
+            })
+        return out
+
+    @staticmethod
     def insert_send_op(block, idx, tensor, dst, op_role):
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
@@ -285,7 +319,6 @@ class Inserter:
             "infer_flags": infer_flags,
             'op_role': op_role
         }
-        helper = LayerHelper('slice', **locals())
         out = block.create_var(
             name=new_var_name, dtype=tensor.dtype, type=tensor.type)
         block._insert_op(
@@ -319,9 +352,7 @@ class Inserter:
     @staticmethod
     def insert_fill_constant_op(block, idx, op_role):
         """Insert fill constant op into block at the given index."""
-        helper = LayerHelper("fill_constant", **locals())
         with paddle.static.program_guard(block.program):
-            # out = helper.create_variable_for_type_inference(dtype="int32")
             out = block.create_var(
                 name=paddle.fluid.unique_name.generate_with_ignorable_key(
                     ".".join(["fill_constant", 'tmp@RESHARD'])),
@@ -954,27 +985,9 @@ class Resharder:
                             raise ValueError(
                                 "it is not supported that tensor processes is a union and need reshard"
                             )
-                    if dist_tensor.serial_tensor.dtype == paddle.bool:
-                        raise ValueError("Bool var is not supported reshard.")
-                        # for op in sub_block.ops:
-                        #     for var_name in op.input_arg_names:
-                        #         if var_name == tensor_name:
-                        #             dist_op_attr = self.dist_context.get_dist_op_for_program(
-                        #                 op).dist_attr
-                        #             var_dims_mapping = dist_op_attr.get_input_dims_mapping(
-                        #                 var_name)
-                        #             if var_dims_mapping != tensor_dims_mapping:
-                        #                 is_reshard = True
-                        #                 break
                     is_reshard = True
                 # process_mesh
                 if tensor_process_mesh != op_process_mesh:
-                    # when processes length is not the same, the dims mapping must be replicative now
-                    # if len(tensor_process_mesh.processes) != len(
-                    #         op_process_mesh.processes):
-                    #     assert self.is_unshard(tensor_dims_mapping)
-                    #     assert self.is_unshard(op_input_dims_mapping)
-                    # else:
                     if tensor_process_mesh not in self.dist_context.process_meshes:
                         if not is_reshard:
                             return is_reshard
@@ -982,31 +995,7 @@ class Resharder:
                             raise ValueError(
                                 "it is not supported that tensor processes is a union and need reshard"
                             )
-                    if dist_tensor.serial_tensor.dtype == paddle.bool:
-                        raise ValueError("Bool var is not supported reshard.")
-
-                    # for while op, it should find the process mesh of op actually used the tensor as input
-                    # if dist_op.serial_op.type == "while":
-                    #     sub_block = self.auto_parallel_main_prog.blocks[
-                    #         dist_op.serial_op.attr("sub_block").id]
-                    #     is_reshard = True
-                    # for op in sub_block.ops:
-                    #     for var_name in op.input_arg_names:
-                    #         if var_name == tensor_name:
-                    #             dist_op_attr = self.dist_context.get_dist_op_for_program(
-                    #                 op).dist_attr
-                    #             process_mesh = dist_op_attr.process_mesh
-                    #             if process_mesh == op_process_mesh:
-                    #                 is_reshard = True
-                    #                 break
-                    # else:
                     is_reshard = True
-
-                if tensor_name == "linear_7.tmp_1" and dist_op.serial_op.type == "write_to_array":
-                    print("****~~~~~", tensor_dims_mapping,
-                          op_input_dims_mapping, tensor_process_mesh,
-                          op_process_mesh, is_reshard)
-
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
                 tensor_name)
@@ -1020,8 +1009,6 @@ class Resharder:
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
                 if tensor_process_mesh != op_process_mesh:
-                    if dist_tensor.serial_tensor.dtype == paddle.bool:
-                        raise ValueError("Bool var is not supported reshard.")
                     if tensor_process_mesh not in self.dist_context.process_meshes:
                         if not is_reshard:
                             return is_reshard
@@ -1212,10 +1199,16 @@ class Resharder:
                         all_partition_index_list.append(source_partition_index)
 
                         # append send and recv op desc
-                        send_op_desc = SendOpDesc(source_partition_index,
-                                                  target_process)
-                        recv_op_desc = RecvOpDesc(source_partition_index,
-                                                  to_send_process)
+                        is_bool = (
+                            dist_tensor.serial_tensor.dtype == paddle.bool)
+                        send_op_desc = SendOpDesc(
+                            source_partition_index,
+                            target_process,
+                            is_bool=is_bool)
+                        recv_op_desc = RecvOpDesc(
+                            source_partition_index,
+                            to_send_process,
+                            is_bool=is_bool)
                         op_desc_seq[to_send_process].append(send_op_desc)
                         op_desc_seq[target_process].append(recv_op_desc)
                         has_sent.append(source_partition_index)
@@ -1298,7 +1291,7 @@ class Resharder:
                             shape=to_slice_tensor_shape)
                     allgather_shape = None if not serial else dist_tensor.local_sizes(
                         rank=process)
-                    op_desc_seq[process] = [AllGatherOpDesc(group=group, shape=allgather_shape),
+                    op_desc_seq[process] = [AllGatherOpDesc(group=group, shape=allgather_shape, is_bool=(source_tensor.dtype == paddle.bool)),
                                             ConcatOpDesc(partition_index_list=all_partition_index_list), slice_op_desc] \
                         if len(group) > 1 else [slice_op_desc]
 
@@ -1331,13 +1324,31 @@ class Resharder:
                 if not self.has_allgather[
                         var_name] or op_desc.group not in list(
                             map(lambda x: x[0], self.has_allgather[var_name])):
-                    tensor_list, idx_offset = Inserter.insert_allgather_op(
-                        block, idx, source_tensor, op_desc.group,
-                        reshard_op.attr('op_role'))
-                    idx += idx_offset
-                    tensor_name_list = [var.name for var in tensor_list]
-                    self.has_allgather[var_name].append(
-                        [op_desc.group, tensor_name_list])
+                    if op_desc.is_bool:
+                        out_cast = Inserter.insert_cast_op(
+                            block, idx, source_tensor,
+                            reshard_op.attr('op_role'), paddle.int32)
+                        tensor_list, idx_offset = Inserter.insert_allgather_op(
+                            block, idx + 1, out_cast, op_desc.group,
+                            reshard_op.attr('op_role'))
+                        idx += idx_offset
+                        tensor_name_list = []
+                        for var in tensor_list:
+                            out_cast = Inserter.insert_cast_op(
+                                block, idx, var,
+                                reshard_op.attr('op_role'), paddle.bool)
+                            tensor_name_list.append(out_cast.name)
+                            idx += 1
+                        self.has_allgather[var_name].append(
+                            [op_desc.group, tensor_name_list])
+                    else:
+                        tensor_list, idx_offset = Inserter.insert_allgather_op(
+                            block, idx, source_tensor, op_desc.group,
+                            reshard_op.attr('op_role'))
+                        idx += idx_offset
+                        tensor_name_list = [var.name for var in tensor_list]
+                        self.has_allgather[var_name].append(
+                            [op_desc.group, tensor_name_list])
                 else:
                     for item in self.has_allgather[var_name]:
                         if op_desc.group == item[0]:
@@ -1354,10 +1365,19 @@ class Resharder:
                 if var_name not in self.has_sent.keys():
                     self.has_sent[var_name] = []
                 if op_desc.dst not in self.has_sent[var_name]:
-                    Inserter.insert_send_op(block, idx, source_tensor,
-                                            op_desc.dst,
-                                            reshard_op.attr('op_role'))
-                    idx += 1
+                    if op_desc.is_bool:
+                        out_cast = Inserter.insert_cast_op(
+                            block, idx, source_tensor,
+                            reshard_op.attr('op_role'), paddle.int32)
+                        Inserter.insert_send_op(block, idx + 1, out_cast,
+                                                op_desc.dst,
+                                                reshard_op.attr('op_role'))
+                        idx += 2
+                    else:
+                        Inserter.insert_send_op(block, idx, source_tensor,
+                                                op_desc.dst,
+                                                reshard_op.attr('op_role'))
+                        idx += 1
                     self.has_sent[var_name].append(op_desc.dst)
 
             elif isinstance(op_desc, RecvOpDesc):
@@ -1368,17 +1388,33 @@ class Resharder:
                     shape = []
                     for index in partition_index:
                         shape.append(index[1] - index[0])
-                    recv_tensor = block.create_var(
-                        name=unique_name.generate(var_name + "@recv"),
-                        shape=shape,
-                        dtype=source_tensor.dtype,
-                        type=source_tensor.type)
-                    Inserter.insert_recv_op(block, idx, recv_tensor,
-                                            op_desc.src,
-                                            reshard_op.attr('op_role'))
-                    tensor_list.append(recv_tensor)
-                    idx += 1
-                    self.has_recv[var_name][op_desc.src] = recv_tensor
+                    if op_desc.is_bool:
+                        recv_tensor = block.create_var(
+                            name=unique_name.generate(var_name + "@recv"),
+                            shape=shape,
+                            dtype=paddle.int32,
+                            type=source_tensor.type)
+                        Inserter.insert_recv_op(block, idx, recv_tensor,
+                                                op_desc.src,
+                                                reshard_op.attr('op_role'))
+                        out_cast = Inserter.insert_cast_op(
+                            block, idx + 1, recv_tensor,
+                            reshard_op.attr('op_role'), paddle.bool)
+                        tensor_list.append(out_cast)
+                        idx += 2
+                        self.has_recv[var_name][op_desc.src] = out_cast
+                    else:
+                        recv_tensor = block.create_var(
+                            name=unique_name.generate(var_name + "@recv"),
+                            shape=shape,
+                            dtype=source_tensor.dtype,
+                            type=source_tensor.type)
+                        Inserter.insert_recv_op(block, idx, recv_tensor,
+                                                op_desc.src,
+                                                reshard_op.attr('op_role'))
+                        tensor_list.append(recv_tensor)
+                        idx += 1
+                        self.has_recv[var_name][op_desc.src] = recv_tensor
                 else:
                     tensor_list.append(self.has_recv[var_name][op_desc.src])
 
