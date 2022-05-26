@@ -597,6 +597,14 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
                                   q.src_nodes, q.sample_size, q.len,
                                   cpu_switch);
 }
+
+NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
+                                                            int64_t* key,
+                                                            int sample_size,
+                                                            int len) {
+    return graph_neighbor_sample(gpu_id, 0, key, sample_size, len);
+}
+
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id, int idx,
                                                             int64_t* key,
                                                             int sample_size,

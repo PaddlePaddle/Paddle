@@ -55,15 +55,15 @@ struct GpuPsCommGraph {
   void display_on_cpu() {
     VLOG(0) << "neighbor_size = " << neighbor_size;
     VLOG(0) << "node_size = " << node_size;
-    for (size_t i = 0; i < neighbor_size; i++) {
+    for (int64_t i = 0; i < neighbor_size; i++) {
       VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
     }
-    for (size_t i = 0; i < node_size; i++) {
+    for (int64_t i = 0; i < node_size; i++) {
       VLOG(0) << "node i " << node_list[i].node_id
               << " neighbor_size = " << node_list[i].neighbor_size;
       std::string str;
       int offset = node_list[i].neighbor_offset;
-      for (size_t j = 0; j < node_list[i].neighbor_size; j++) {
+      for (int64_t j = 0; j < node_list[i].neighbor_size; j++) {
         if (j > 0) str += ",";
         str += std::to_string(neighbor_list[j + offset]);
       }

@@ -113,6 +113,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
+                                             int sample_size, int len);
   NeighborSampleResult graph_neighbor_sample(int gpu_id, int idx, int64_t *key,
                                              int sample_size, int len);
   NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
