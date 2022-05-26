@@ -57,6 +57,26 @@ class TaskSimilarityAnalyse:
             (sumofx2 - float(sum1**2) / n) * (sumofy2 - float(sum2**2) / n))
         return num / den
 
+    #in case that data's length is different
+    def window_smooth(sefl, x, y):
+        x_len = len(x)
+        y_len = len(y)
+        if x_len == y_len:
+            return self.relation_cal_2(x, y)
+        max_ = x
+        min_ = y
+        if y_len > x_len:
+            max_ = y
+            min_ = x
+        max_score = 0
+        min_len = len(min_)
+        max_len = len(max_)
+        for i in range(max_len - min_len):
+            tmp_slice = slice(i, i + min_len)
+            tmp_score = relation_cal_2(max_[tmp_slice], min_)
+            max_score = max(max_score, tmp_score)
+        return max_score
+
     #calculate tasks relation in pearson
     def get_similarity_score(self, data):
         file_list = data
@@ -65,7 +85,7 @@ class TaskSimilarityAnalyse:
         pair_sum = 0
         for i in range(file_num):
             for j in range(i + 1, file_num):
-                result_sum += self.relation_cal_2(file_list[i], file_list[j])
+                result_sum += self.window_smooth(file_list[i], file_list[j])
                 pair_sum += 1
 
         return float(result_sum / pair_sum)
