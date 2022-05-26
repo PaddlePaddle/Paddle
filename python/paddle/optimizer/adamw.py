@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from collections import defaultdict
 from .optimizer import Optimizer
 from .lr import LRScheduler
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, Parameter
+from ..fluid import unique_name
+from ..fluid import layers
+from ..fluid.layer_helper import LayerHelper
 from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
