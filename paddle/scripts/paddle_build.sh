@@ -62,6 +62,7 @@ function init() {
     export FLAGS_call_stack_level=2
     export TESTING_DEBUG_MODE=ON
     export GLOG_v=6
+    
 
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
