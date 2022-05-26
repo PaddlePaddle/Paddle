@@ -61,6 +61,7 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
     export TESTING_DEBUG_MODE=ON
+    export GLOG_v=6
     
 
     # set CI_SKIP_CPP_TEST if only *.py changed
