@@ -49,10 +49,16 @@ class TestFloatTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.float32
 
+    def test_check_grad(self):
+        pass
+
 
 class TestIntTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.int32
+
+    def test_check_grad(self):
+        pass
 
 
 class TestTruncAPI(unittest.TestCase):
