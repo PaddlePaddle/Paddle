@@ -146,7 +146,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& y_grad,
-                               const paddle::optional<MetaTensor>& scale,
+                               const MetaTensor& scale,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
                                float epsilon,
@@ -154,19 +154,18 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
                                MetaTensor* scale_grad,
                                MetaTensor* bias_grad);
 
-void InstanceNormDoubleGradInferMeta(
-    const MetaTensor& x,
-    const paddle::optional<MetaTensor>& scale,
-    const MetaTensor& saved_mean,
-    const MetaTensor& saved_variance,
-    const MetaTensor& dy,
-    const paddle::optional<MetaTensor>& ddx,
-    const paddle::optional<MetaTensor>& ddscale,
-    const paddle::optional<MetaTensor>& ddbias,
-    float epsilon,
-    MetaTensor* dx,
-    MetaTensor* dscale,
-    MetaTensor* ddy);
+void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& saved_mean,
+                                     const MetaTensor& saved_variance,
+                                     const MetaTensor& dy,
+                                     const MetaTensor& ddx,
+                                     const MetaTensor& ddscale,
+                                     const MetaTensor& ddbias,
+                                     float epsilon,
+                                     MetaTensor* dx,
+                                     MetaTensor* dscale,
+                                     MetaTensor* ddy);
 
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 

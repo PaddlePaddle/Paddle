@@ -53,8 +53,8 @@ void ArangeInferMeta(const MetaTensor& start,
                      MetaTensor* out);
 
 void InstanceNormInferMeta(const MetaTensor& x,
-                           const paddle::optional<MetaTensor>& scale,
-                           const paddle::optional<MetaTensor>& bias,
+                           const MetaTensor& scale,
+                           const MetaTensor& bias,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* saved_mean,

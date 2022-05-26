@@ -192,8 +192,8 @@ void ArangeInferMeta(const MetaTensor& start,
 }
 
 void InstanceNormInferMeta(const MetaTensor& x,
-                           const paddle::optional<MetaTensor>& scale,
-                           const paddle::optional<MetaTensor>& bias,
+                           const MetaTensor& scale,
+                           const MetaTensor& bias,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* saved_mean,
@@ -242,9 +242,8 @@ void InstanceNormInferMeta(const MetaTensor& x,
   auto N = x_dims[0];
   auto C = x_dims[1];
   auto NxC = N * C;
-  const auto scale_ptr = scale.get_ptr();
-  if (scale_ptr) {
-    auto scale_dim = scale_ptr->dims();
+  if (scale) {
+    auto scale_dim = scale.dims();
     PADDLE_ENFORCE_EQ(
         scale_dim.size(),
         1UL,
@@ -265,9 +264,8 @@ void InstanceNormInferMeta(const MetaTensor& x,
                             scale_dim[0]));
     }
   }
-  const auto bias_ptr = bias.get_ptr();
-  if (bias_ptr) {
-    auto bias_dim = bias_ptr->dims();
+  if (bias) {
+    auto bias_dim = bias.dims();
     PADDLE_ENFORCE_EQ(
         bias_dim.size(),
         1UL,
