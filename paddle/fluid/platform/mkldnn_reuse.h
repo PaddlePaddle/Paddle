@@ -710,7 +710,6 @@ class BroadcastDataMKLDNNHandler
                              Tensor* out, float scale_x, float scale_y,
                              const std::vector<int64_t>& extended_x_dims)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-
     const auto src0_tz = phi::vectorize(out->dims());
     const auto src0_md =
         dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
