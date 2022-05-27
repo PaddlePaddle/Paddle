@@ -182,8 +182,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::Variable *inside_var =
           cur_scope.FindLocalVar(inside_grad_name);
       if (inside_var == nullptr) {
-        assign_zero_outside_grads.push_back(outside_grad_name);
-        assign_zero_inputs.push_back(inputs[i]);
+        assign_zero_outside_grads.emplace_back(outside_grad_name);
+        assign_zero_inputs.emplace_back(inputs[i]);
         continue;
       }
       platform::DeviceContext *dev_ctx =
@@ -191,6 +191,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
+    // Assign zero to the grad_vars that are in outside_grads but not in
+    // inside_grads
     AssignZeroToParentScope(place, parent_scope, assign_zero_inputs,
                             assign_zero_outside_grads);
   }
