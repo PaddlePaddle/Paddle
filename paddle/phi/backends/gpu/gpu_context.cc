@@ -215,23 +215,6 @@ struct GPUContext::Impl {
                            &max_grid_dim_size_);
     phi::InitStream(&stream_);
     InitEigenDevice();
-    phi::InitBlasHandle(&blas_handle_, stream_);
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
-    phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-        blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
-#endif
-#if CUDA_VERSION >= 11000
-    phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-        blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif
-#endif
-    phi::InitBlasLtHandle(&blaslt_handle_);
-    phi::InitDnnHandle(&dnn_handle_, stream_, place_);
-    phi::InitSolverHandle(&solver_handle_, stream_);
-    phi::InitSparseHandle(&sparse_handle_, stream_);
     InitDnnWorkspace();
   }
 
@@ -247,23 +230,6 @@ struct GPUContext::Impl {
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
     phi::InitStream(&stream_);
-    phi::InitBlasHandle(&blas_handle_, stream_);
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
-    phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-        blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
-#endif
-#if CUDA_VERSION >= 11000
-    phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-        blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif
-#endif
-    phi::InitBlasLtHandle(&blaslt_handle_);
-    phi::InitDnnHandle(&dnn_handle_, stream_, place_);
-    phi::InitSolverHandle(&solver_handle_, stream_);
-    phi::InitSparseHandle(&sparse_handle_, stream_);
   }
 
   void PartialInitWithAllocator() {
@@ -357,7 +323,26 @@ struct GPUContext::Impl {
     return eigen_device_;
   }
 
-  blasHandle_t GetBlasHandle() const {
+  blasHandle_t GetBlasHandle() {
+    if (!blas_handle_) {
+      phi::InitBlasHandle(&blas_handle_, stream_);
+    }
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 9000
+    if (!blas_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+#if CUDA_VERSION >= 11000
+    if (!blas_tf32_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+    }
+#endif
+#endif
     PD_CHECK(blas_handle_ != nullptr, "the gpu blas handle is nullptr.");
     return blas_handle_;
   }
@@ -374,12 +359,14 @@ struct GPUContext::Impl {
 
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
-  blasLtHandle_t GetBlasLtHandle() const {
+  blasLtHandle_t GetBlasLtHandle() {
+    if (!blaslt_handle_) phi::InitBlasLtHandle(&blaslt_handle_);
     PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
     return blaslt_handle_;
   }
 
   dnnHandle_t GetDnnHandle() {
+    if (!dnn_handle_) phi::InitDnnHandle(&dnn_handle_, stream_, place_);
     PD_CHECK(dnn_handle_ != nullptr, "the gpu dnn handle is nullptr.");
     return dnn_handle_;
   }
@@ -400,7 +387,8 @@ struct GPUContext::Impl {
 
   void SetDnnHandle(dnnHandle_t handle) { dnn_handle_ = handle; }
 
-  solverHandle_t GetSolverHandle() const {
+  solverHandle_t GetSolverHandle() {
+    if (!solver_handle_) InitSolverHandle(&solver_handle_, stream_);
     PD_CHECK(solver_handle_ != nullptr, "the gpu solver handle is nullptr.");
     return solver_handle_;
   }
@@ -462,8 +450,26 @@ struct GPUContext::Impl {
 #endif
   }
 
-  inline void CublasCall(
-      const std::function<void(blasHandle_t)>& callback) const {
+  inline void CublasCall(const std::function<void(blasHandle_t)>& callback) {
+    if (!blas_handle_) {
+      phi::InitBlasHandle(&blas_handle_, stream_);
+    }
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 9000
+    if (!blas_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+#if CUDA_VERSION >= 11000
+    if (!blas_tf32_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+    }
+#endif
+#endif
     if (blas_tf32_tensor_core_handle_ != nullptr) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
@@ -474,7 +480,24 @@ struct GPUContext::Impl {
   }
 
   inline void TensorCoreCublasCallIfAvailable(
-      const std::function<void(blasHandle_t)>& callback) const {
+      const std::function<void(blasHandle_t)>& callback) {
+    if (!blas_handle_) phi::InitBlasHandle(&blas_handle_, stream_);
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 9000
+    if (!blas_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
+    }
+#endif
+#if CUDA_VERSION >= 11000
+    if (!blas_tf32_tensor_core_handle_) {
+      phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+      PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+          blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+    }
+#endif
+#endif
     if (blas_tensor_core_handle_ != nullptr) {
       std::lock_guard<std::mutex> guard(blas_tensor_core_mtx_);
       callback(blas_tensor_core_handle_);
