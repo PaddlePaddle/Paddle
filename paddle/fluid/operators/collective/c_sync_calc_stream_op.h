@@ -18,6 +18,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class CSyncCalcStreamOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+};
+
 template <typename T>
 class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
