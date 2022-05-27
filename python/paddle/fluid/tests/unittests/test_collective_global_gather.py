@@ -38,7 +38,7 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
             static_mode="0",
             eager_mode=False)
 
-    def test_global_gather_nccl_dygraph(self):
+    def test_global_gather_nccl_dygraph_eager(self):
         self.check_with_place(
             "collective_global_gather_dygraph.py",
             "global_gather",
