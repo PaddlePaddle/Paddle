@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplexOp(OpTest):
@@ -101,6 +102,30 @@ class TestMultiplexODygrap(unittest.TestCase):
         index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
+
+    def test_dygraph_final_state_api(self):
+        with fluid.dygraph.guard():
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            inputs[0].stop_gradient = False
+            inputs[1].stop_gradient = False
+            res = paddle.multiplex(inputs, index)
+            res.backward()
+            with _test_eager_guard():
+                inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+                index_eager = paddle.to_tensor(
+                    np.array([[1], [0]]).astype(np.int32))
+                inputs_eager[0].stop_gradient = False
+                inputs_eager[1].stop_gradient = False
+                res_eager = paddle.multiplex(inputs_eager, index_eager)
+                res_eager.backward()
+                self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
+                self.assertEqual((inputs[0].grad.numpy() ==
+                                  inputs_eager[0].grad.numpy()).all(), True)
+                self.assertEqual((inputs[1].grad.numpy() ==
+                                  inputs_eager[1].grad.numpy()).all(), True)
 
 
 if __name__ == '__main__':

@@ -23,6 +23,11 @@ class StringTensorUtils {
   static StringTensorMeta* GetMutableMeta(StringTensor* tensor) {
     return &(tensor->meta_);
   }
+
+  static const std::shared_ptr<phi::Allocation>& GetHolder(
+      const StringTensor& tensor) {
+    return tensor.holder_;
+  }
 };
 
 }  // namespace phi

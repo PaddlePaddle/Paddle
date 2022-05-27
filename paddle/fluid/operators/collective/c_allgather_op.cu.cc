@@ -18,7 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -35,6 +37,18 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*in);
+      out_tensor.push_back(*out);
+      auto task = pg->AllGather(in_tensor, out_tensor);
+      task->Wait();
+      return;
+    }
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(

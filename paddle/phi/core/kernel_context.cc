@@ -73,13 +73,13 @@ void KernelContext::EmplaceBackOutputsWithoutSetRange(
                   std::make_move_iterator(outputs.end()));
 }
 
-void KernelContext::EmplaceBackAttr(paddle::any attr) {
+void KernelContext::EmplaceBackAttr(Attribute attr) {
   attrs_.emplace_back(std::move(attr));
 }
 
 void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
   if (idx < input_range_.size()) {
-    input_range_[idx] = range;
+    input_range_[idx] = std::move(range);
   } else if (idx == input_range_.size()) {
     input_range_.emplace_back(range);
   } else {
@@ -93,7 +93,7 @@ void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
 
 void KernelContext::AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
   if (idx < output_range_.size()) {
-    output_range_[idx] = range;
+    output_range_[idx] = std::move(range);
   } else if (idx == output_range_.size()) {
     output_range_.emplace_back(range);
   } else {
@@ -112,5 +112,35 @@ const std::pair<int, int>& KernelContext::InputRangeAt(size_t idx) const {
 const std::pair<int, int>& KernelContext::OutputRangeAt(size_t idx) const {
   return output_range_.at(idx);
 }
+
+template <typename AttrType>
+const AttrType& KernelContext::AttrAt(size_t idx) const {
+  try {
+    return paddle::get<AttrType>(attrs_.at(idx));
+  } catch (paddle::bad_variant_access const& ex) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in Op Kernel Context."));
+  }
+}
+
+template const bool& KernelContext::AttrAt(size_t idx) const;
+template const int& KernelContext::AttrAt(size_t idx) const;
+template const int64_t& KernelContext::AttrAt(size_t idx) const;
+template const float& KernelContext::AttrAt(size_t idx) const;
+template const double& KernelContext::AttrAt(size_t idx) const;
+template const std::string& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<bool>& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<int>& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<int64_t>& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<float>& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<double>& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<std::string>& KernelContext::AttrAt(
+    size_t idx) const;
+template const Scalar& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<Scalar>& KernelContext::AttrAt(size_t idx) const;
+template const IntArray& KernelContext::AttrAt(size_t idx) const;
+template const DataType& KernelContext::AttrAt(size_t idx) const;
+template const DataLayout& KernelContext::AttrAt(size_t idx) const;
+template const Place& KernelContext::AttrAt(size_t idx) const;
 
 }  // namespace phi

@@ -33,7 +33,7 @@ class GradTestNode : public egr::GradNodeBase {
   std::string name() override { return "GradTestNode"; }
   std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override {
+      bool create_graph = false, bool is_new_grad = false) override {
     val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
     phi::DenseTensorMeta meta =

@@ -35,7 +35,7 @@ KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature UnsqueezeGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "unsqueeze_grad", {"XShape", GradVarName("Out")}, {}, {GradVarName("X")});
+      "unsqueeze_grad", {"XShape", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 }  // namespace phi
 PD_REGISTER_BASE_KERNEL_NAME(unsqueeze2, unsqueeze);

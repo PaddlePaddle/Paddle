@@ -53,6 +53,7 @@ __global__ void relu_cuda_double_backward_kernel(const data_t* out_data,
 }
 
 std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
+  CHECK_GPU_INPUT(x);
   auto out = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
   int numel = x.size();
@@ -70,6 +71,9 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& out,
                                                const paddle::Tensor& grad_out) {
+  CHECK_GPU_INPUT(x);
+  CHECK_GPU_INPUT(out);
+  CHECK_GPU_INPUT(grad_out);
   auto grad_x = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
   int numel = out.size();

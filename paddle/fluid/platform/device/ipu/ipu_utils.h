@@ -229,9 +229,6 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(boost::blank) const { RaiseError(); }
 };
 
-std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
-    const std::string& opt_type);
-
 int RequestIpus(const int num_ipus);
 
 }  // namespace ipu

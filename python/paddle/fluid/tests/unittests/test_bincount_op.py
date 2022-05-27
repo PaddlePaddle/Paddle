@@ -126,6 +126,7 @@ class TestBincountOp(OpTest):
     # without weights
     def setUp(self):
         self.op_type = "bincount"
+        self.python_api = paddle.bincount
         self.init_test_case()
         self.inputs = {"X": self.np_input}
         self.attrs = {"minlength": self.minlength}
@@ -137,13 +138,14 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
 
 class TestCase1(TestBincountOp):
     # with weights(FLOAT32)
     def setUp(self):
         self.op_type = "bincount"
+        self.python_api = paddle.bincount
         self.init_test_case()
         self.inputs = {"X": self.np_input, "Weights": self.np_weights}
         self.attrs = {"minlength": self.minlength}
@@ -163,6 +165,7 @@ class TestCase2(TestBincountOp):
     # with weights(other)
     def setUp(self):
         self.op_type = "bincount"
+        self.python_api = paddle.bincount
         self.init_test_case()
         self.inputs = {"X": self.np_input, "Weights": self.np_weights}
         self.attrs = {"minlength": self.minlength}

@@ -162,20 +162,30 @@ class TestGraphSampleNeighbors(unittest.TestCase):
         self.assertRaises(ValueError, check_perm_buffer_error)
 
     def test_sample_result_with_eids(self):
-        # Note: Currently return eid results is not initialized.
         paddle.disable_static()
         row = paddle.to_tensor(self.row)
         colptr = paddle.to_tensor(self.colptr)
         nodes = paddle.to_tensor(self.nodes)
         eids = paddle.to_tensor(self.edges_id)
+        perm_buffer = paddle.to_tensor(self.edges_id)
 
-        out_neighbors, out_count, _ = paddle.incubate.graph_sample_neighbors(
+        out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
             row,
             colptr,
             nodes,
             eids=eids,
             sample_size=self.sample_size,
             return_eids=True)
+
+        out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
+            row,
+            colptr,
+            nodes,
+            eids=eids,
+            perm_buffer=perm_buffer,
+            sample_size=self.sample_size,
+            return_eids=True,
+            flag_perm_buffer=True)
 
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -188,7 +198,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
             eids = paddle.static.data(
                 name="eids", shape=self.edges_id.shape, dtype=self.nodes.dtype)
 
-            out_neighbors, out_count, _ = paddle.incubate.graph_sample_neighbors(
+            out_neighbors, out_count, out_eids = paddle.incubate.graph_sample_neighbors(
                 row,
                 colptr,
                 nodes,
@@ -202,7 +212,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 'nodes': self.nodes,
                 'eids': self.edges_id
             },
-                          fetch_list=[out_neighbors, out_count])
+                          fetch_list=[out_neighbors, out_count, out_eids])
 
 
 if __name__ == "__main__":

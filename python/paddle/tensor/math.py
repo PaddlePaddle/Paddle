@@ -899,15 +899,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    def get_dtype(x, dtype):
-        if dtype is not None:
-            return (True, dtype)
-        src_type = convert_dtype(x.dtype)
-        if src_type in ['bool','int32', 'int64']:
-            return (True, 'int64')
-        return (False, src_type)
-
-    dtype_flag, dtype = get_dtype(x, dtype)
+    dtype_flag = False
+    if dtype is not None:
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
         if reduce_all_flag:
@@ -915,17 +910,14 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             axis = axis if axis != None and axis != [] else [0]
 
-        out_dtype = convert_np_dtype_to_dtype_(dtype)
-        out = _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
-        return out
+        return _C_ops.final_state_sum(x, axis, dtype, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag, 'in_dtype',
-                                       x.dtype, 'out_dtype',
-                                       convert_np_dtype_to_dtype_(dtype))
+                                       x.dtype, 'out_dtype', dtype)
         else:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
@@ -939,7 +931,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if dtype_flag:
         attrs.update({
             'in_dtype': x.dtype,
-            'out_dtype': convert_np_dtype_to_dtype_(dtype)
+            'out_dtype': dtype
         })
 
     check_variable_and_dtype(
@@ -953,7 +945,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
         out = helper.create_variable_for_type_inference(
-            dtype=convert_np_dtype_to_dtype_(dtype))
+            dtype=dtype)
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -2674,9 +2666,10 @@ ${comment}
             #         [12, 15, 18, 16, 20, 24],
             #         [21, 24, 27, 28, 32, 36]])
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.kron(x, y)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_kron(x, y)
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
@@ -2725,7 +2718,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
             y = paddle.cumsum(data, dtype='float64')
             print(y.dtype)
-            # VarType.FP64
+            # paddle.float64
     """
     if axis is None:
         flatten = True
@@ -3348,6 +3341,9 @@ def conj(x, name=None):
           #        [(4-4j), (5-5j), (6-6j)]])
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_conj(x)
+
     if paddle.in_dynamic_mode():
         return _C_ops.conj(x)
 
@@ -3525,9 +3521,10 @@ def logit(x, eps=None, name=None):
 
     if eps == None:
         eps = 0.0
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.logit(x, 'eps', eps)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_logit(x, eps)
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'logit')
     helper = LayerHelper("logit", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -3564,7 +3561,7 @@ def lerp(x, y, weight, name=None):
             x = paddle.arange(1., 5., dtype='float32')
             y = paddle.empty([4], dtype='float32')
             y.fill_(10.)
-            out = paddle.lerp(start, end, 0.5)
+            out = paddle.lerp(x, y, 0.5)
             # out: [5.5., 6., 6.5, 7.]
 
     """
@@ -3634,6 +3631,9 @@ def erfinv(x, name=None):
             # out: [0, 0.4769, -inf]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv( x )
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
     if paddle.in_dynamic_mode():
@@ -3999,15 +3999,21 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
-            'infer_flags', infer_flags, *attrs_2)
+
+        if in_dygraph_mode():
+            input_back = _C_ops.final_state_slice(new_input, axes, starts_2, ends_2, infer_flags,
+                                            [])
+        else:
+            input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
+                'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:
-            op = getattr(_C_ops, "logical_xor")
-            out = op(input_back, input_front)
+            if in_dygraph_mode():
+                return _C_ops.final_state_logical_xor(input_back, input_front)
+            else:
+                return _C_ops.logical_xor(input_back, input_front)
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
-        return out
+            return elementwise_sub(input_back, input_front, axis=axis)
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')

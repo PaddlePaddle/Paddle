@@ -356,10 +356,15 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();
-  // Preserve LoD
-  auto lod = meta_.lod;
-  *this = src;
-  meta_.lod = lod;
+  holder_ = src.holder_;
+  meta_.is_scalar = src.meta_.is_scalar;
+  meta_.dims = src.meta_.dims;
+  meta_.dtype = src.meta_.dtype;
+  meta_.layout = src.meta_.layout;
+  meta_.offset = src.meta_.offset;
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = src.format_;
+#endif
   return *this;
 }
 

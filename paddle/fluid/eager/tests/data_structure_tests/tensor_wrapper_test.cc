@@ -41,7 +41,7 @@ TEST(TensorWrapper, Basic) {
   et1.set_autograd_meta(auto_grad0);
   et1.set_name("et1");
   auto tw0 = egr::TensorWrapper(et1, true);
-  auto recover_et1 = tw0.recover(std::make_shared<eager_test::GradTestNode>());
+  auto recover_et1 = tw0.recover();
   CHECK_EQ(recover_et1.name(), std::string("et1"));
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).first,
            egr::EagerUtils::OutRankInfo(et1).first);
@@ -67,7 +67,7 @@ TEST(TensorWrapper, Basic) {
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
   et2.set_autograd_meta(auto_grad1);
   auto tw1 = egr::TensorWrapper(et2, false);
-  auto recover_et2 = tw1.recover(grad_test_node1);
+  auto recover_et2 = tw1.recover();
   CHECK_EQ(recover_et2.name(), std::string("et2@Saved"));
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).first,
            egr::EagerUtils::OutRankInfo(et2).first);
@@ -76,7 +76,5 @@ TEST(TensorWrapper, Basic) {
   // Test Raw recover
   paddle::experimental::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3, true);
-  CHECK(
-      tw2.recover(std::make_shared<eager_test::GradTestNode>()).initialized() ==
-      false);
+  CHECK(tw2.recover().initialized() == false);
 }

@@ -22,8 +22,17 @@ import os
 ### Global Variables ###
 ########################
 ops_to_fill_zero_for_empty_grads = set([
-    "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
-    "sigmoid_triple_grad"
+    "split_grad",
+    "rnn_grad",
+    "matmul_double_grad",
+    "matmul_triple_grad",
+    "sigmoid_double_grad",
+    "sigmoid_triple_grad",
+    "add_double_grad",
+    "add_triple_grad",
+    "multiply_double_grad",
+    "multiply_triple_grad",
+    "conv2d_grad_grad",
 ])
 
 # For API dispatch used at python-level
@@ -136,7 +145,7 @@ def RemoveConstAndReference(string):
 
 
 def GetGradNodeName(string):
-    return f"FinalGradNode{string}"
+    return f"GradNode{string}Final"
 
 
 def GetDygraphForwardFunctionName(string):
@@ -226,7 +235,7 @@ def ParseYamlReturns(string):
     returns = [x.strip() for x in string.strip().split(",")]
 
     for i in range(len(returns)):
-        ret = returns[i]
+        ret = returns[i].split("{")[0].strip()
 
         ret_name = ""
         if "(" in ret and ")" in ret:

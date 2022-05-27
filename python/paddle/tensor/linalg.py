@@ -17,7 +17,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -257,7 +257,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         if in_dygraph_mode():
             if dim is None:
-                return _C_ops.final_state_frobenius_norm(input, keepdim, True)
+                return _C_ops.final_state_frobenius_norm(input, [], keepdim,
+                                                         True)
             return _C_ops.final_state_frobenius_norm(input, dim, keepdim, False)
         if _in_legacy_dygraph():
             if dim is None:
@@ -551,6 +552,9 @@ def dist(x, y, p=2, name=None):
             out = paddle.dist(x, y, float("-inf"))
             print(out) # out = [0.]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_dist(x, y, p)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')
@@ -1059,47 +1063,52 @@ def t(input, name=None):
     the paddle.transpose function which perm dimensions set 0 and 1.
 
     Args:
-        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
 
-    For Example:
-
-        .. code-block:: text
-
-             # Example 1 (0-D tensor)
-             x = tensor([0.79])
-             paddle.t(x) = tensor([0.79])
-
-             # Example 2 (1-D tensor)
-             x = tensor([0.79, 0.84, 0.32])
-             paddle.t(x) = tensor([0.79, 0.84, 0.32])
-
-             # Example 3 (2-D tensor)
-             x = tensor([0.79, 0.84, 0.32],
-                        [0.64, 0.14, 0.57])
-             paddle.t(x) = tensor([0.79, 0.64],
-                                  [0.84, 0.14],
-                                  [0.32, 0.57])
-
-     Examples:
+    Examples:
 
         .. code-block:: python
+           :name: code-example
+             import paddle
+             
+             # Example 1 (0-D tensor)
+             x = paddle.to_tensor([0.79])
+             paddle.t(x) # [0.79]
+             
+             # Example 2 (1-D tensor)
+             x = paddle.to_tensor([0.79, 0.84, 0.32])
+             paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
+             paddle.t(x).shape # [3]
 
-            import paddle
-            x = paddle.ones(shape=[2, 3], dtype='int32')
-            x_transposed = paddle.t(x)
-            print(x_transposed.shape)
-            # [3, 2]
+             # Example 3 (2-D tensor)
+             x = paddle.to_tensor([[0.79, 0.84, 0.32],
+                                  [0.64, 0.14, 0.57]])
+             x.shape # [2, 3]
+             paddle.t(x)
+             # [[0.79000002, 0.63999999],
+             #  [0.83999997, 0.14000000],
+             #  [0.31999999, 0.56999999]]
+             paddle.t(x).shape # [3, 2]
+
     """
     if len(input.shape) > 2:
         raise ValueError(
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape))
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.final_state_transpose(input, perm)
+        return out
+
+    if _in_legacy_dygraph():
         if len(input.shape) == 1:
             return input
         # 2-D tensor
@@ -1284,8 +1293,26 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             #      [1, 1, 1, 1]]
 
     """
+    if in_dygraph_mode():
+        if isinstance(tol, Variable):
+            if tol.dtype != x.dtype:
+                tol_tensor = cast(tol, x.dtype)
+            else:
+                tol_tensor = tol
+            use_default_tol = False
+            return _C_ops.final_state_matrix_rank_tol(
+                x, tol_tensor, use_default_tol, hermitian)
 
-    if paddle.in_dynamic_mode():
+        if tol is None:
+            tol_attr = 0.0
+            use_default_tol = True
+        else:
+            tol_attr = float(tol)
+            use_default_tol = False
+        return _C_ops.final_state_matrix_rank(x, tol_attr, use_default_tol,
+                                              hermitian)
+
+    if _in_legacy_dygraph():
         if tol is None:
             tol_tensor = None
             tol_attr = 0.0
@@ -1311,7 +1338,6 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     if tol is None:
         attrs['use_default_tol'] = True
     elif isinstance(tol, Variable):
-        check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
         attrs['use_default_tol'] = False
         if tol.dtype != x.dtype:
             inputs['TolTensor'] = cast(tol, x.dtype)
@@ -1466,10 +1492,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    # if in_dygraph_mode():
-    #     return _C_ops.final_state_bincount(x, weights, minlength)
-
-    if _in_legacy_dygraph():
+    if _non_static_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1580,7 +1603,10 @@ def det(x, name=None):
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_det(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
@@ -2252,8 +2278,10 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.multi_dot(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
     for id, item in enumerate(x):
@@ -2720,6 +2748,10 @@ def triangular_solve(x,
         print(out)
         # [7, -2, -5]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_triangular_solve(x, y, upper, transpose,
+                                                   unitriangular)
+
     if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',

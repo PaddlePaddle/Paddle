@@ -276,10 +276,10 @@ void LerpInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       MetaTensor* out) {
+void LinspaceRawInferMeta(const MetaTensor& start,
+                          const MetaTensor& stop,
+                          const MetaTensor& number,
+                          MetaTensor* out) {
   auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
       (s_dims.size() == 1) && (s_dims[0] == 1),
@@ -303,6 +303,14 @@ void LinspaceInferMeta(const MetaTensor& start,
                                    step_dims));
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(start.dtype());
+}
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       DataType dtype,
+                       MetaTensor* out) {
+  LinspaceRawInferMeta(start, stop, number, out);
 }
 
 void NllLossRawInferMeta(const MetaTensor& input,

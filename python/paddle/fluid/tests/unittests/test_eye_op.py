@@ -28,6 +28,7 @@ class TestEyeOp(OpTest):
         '''
 	Test eye op with specified shape
         '''
+        self.python_api = paddle.eye
         self.op_type = "eye"
 
         self.inputs = {}
@@ -39,7 +40,7 @@ class TestEyeOp(OpTest):
         self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestEyeOp1(OpTest):
@@ -47,6 +48,7 @@ class TestEyeOp1(OpTest):
         '''
 	Test eye op with default parameters
         '''
+        self.python_api = paddle.eye
         self.op_type = "eye"
 
         self.inputs = {}
@@ -54,7 +56,7 @@ class TestEyeOp1(OpTest):
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestEyeOp2(OpTest):
@@ -62,6 +64,7 @@ class TestEyeOp2(OpTest):
         '''
         Test eye op with specified shape
         '''
+        self.python_api = paddle.eye
         self.op_type = "eye"
 
         self.inputs = {}
@@ -69,7 +72,7 @@ class TestEyeOp2(OpTest):
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class API_TestTensorEye(unittest.TestCase):

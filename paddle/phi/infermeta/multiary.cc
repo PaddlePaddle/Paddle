@@ -21,7 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors) {
   std::vector<DDim> dims;
   dims.reserve(tensors.size());
   for (const MetaTensor* tensor : tensors) {
@@ -92,88 +93,6 @@ void AdagradInferMeta(const MetaTensor& param,
   moment_out->set_dtype(moment.dtype());
 }
 
-void AdamInferMeta(const MetaTensor& param,
-                   const MetaTensor& grad,
-                   const MetaTensor& learning_rate,
-                   const MetaTensor& moment1,
-                   const MetaTensor& moment2,
-                   const MetaTensor& beta1_pow,
-                   const MetaTensor& beta2_pow,
-                   paddle::optional<const MetaTensor&> master_param,
-                   paddle::optional<const MetaTensor&> skip_update,
-                   const Scalar& beta1,
-                   const Scalar& beta2,
-                   const Scalar& epsilon,
-                   bool lazy_mode,
-                   int64_t min_row_size_to_use_multithread,
-                   bool multi_precision,
-                   bool use_global_beta_pow,
-                   MetaTensor* param_out,
-                   MetaTensor* moment1_out,
-                   MetaTensor* moment2_out,
-                   MetaTensor* beta1_pow_out,
-                   MetaTensor* beta2_pow_out,
-                   MetaTensor* master_param_outs) {
-  auto lr_dims = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(
-      phi::product(lr_dims),
-      1,
-      errors::InvalidArgument(
-          "The number of LearningRate shall be 1, but received %d. Maybe "
-          "the Input variable LearningRate has not "
-          "been initialized. You may need to confirm "
-          "if you put exe.run(startup_program) "
-          "after optimizer.minimize function.",
-          phi::product(lr_dims)));
-  auto beta1_pow_dims = beta1_pow.dims();
-  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
-  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
-                    1,
-                    errors::InvalidArgument(
-                        "The size of Beta1 power accumulator should be greater "
-                        "than 0, but received %d.",
-                        phi::product(beta1_pow_dims)));
-  auto beta2_pow_dims = beta2_pow.dims();
-  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
-  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
-                    1,
-                    errors::InvalidArgument(
-                        "The size of Beta2 power accumulator should be greater "
-                        "than 0, but received %d.",
-                        phi::product(beta2_pow_dims)));
-
-  auto param_dims = param.dims();
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      moment1.dims(),
-      errors::InvalidArgument(
-          "Param and Moment1 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment1 dims: [%s].",
-          param_dims,
-          moment1.dims()));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      moment2.dims(),
-      errors::InvalidArgument(
-          "Param and Moment2 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment2 dims: [%s].",
-          param_dims,
-          moment2.dims()));
-
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
-
-  moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(moment1.dtype());
-  moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(moment2.dtype());
-
-  beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
-  beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
-}
-
 void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& grad,
                      const MetaTensor& learning_rate,
@@ -230,56 +149,7 @@ void AdamaxInferMeta(const MetaTensor& param,
   inf_norm_out->set_dtype(inf_norm.dtype());
 }
 
-void AdamwInferMeta(const MetaTensor& param,
-                    const MetaTensor& grad,
-                    const MetaTensor& learning_rate,
-                    const MetaTensor& moment1,
-                    const MetaTensor& moment2,
-                    const MetaTensor& beta1_pow,
-                    const MetaTensor& beta2_pow,
-                    paddle::optional<const MetaTensor&> master_param,
-                    paddle::optional<const MetaTensor&> skip_update,
-                    const Scalar& beta1,
-                    const Scalar& beta2,
-                    const Scalar& epsilon,
-                    float lr_ratio,
-                    float coeff,
-                    bool with_decay,
-                    bool lazy_mode,
-                    int64_t min_row_size_to_use_multithread,
-                    bool multi_precision,
-                    bool use_global_beta_pow,
-                    MetaTensor* param_out,
-                    MetaTensor* moment1_out,
-                    MetaTensor* moment2_out,
-                    MetaTensor* beta1_pow_out,
-                    MetaTensor* beta2_pow_out,
-                    MetaTensor* master_param_outs) {
-  AdamInferMeta(param,
-                grad,
-                learning_rate,
-                moment1,
-                moment2,
-                beta1_pow,
-                beta2_pow,
-                master_param,
-                skip_update,
-                beta1,
-                beta2,
-                epsilon,
-                lazy_mode,
-                min_row_size_to_use_multithread,
-                multi_precision,
-                use_global_beta_pow,
-                param_out,
-                moment1_out,
-                moment2_out,
-                beta1_pow_out,
-                beta2_pow_out,
-                master_param_outs);
-}
-
-void AddNInferMeta(const std::vector<MetaTensor*>& x,
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config) {
   auto N = x.size();
@@ -642,7 +512,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
   const auto& input_dims = GetMetaTensorsDim(x);
@@ -696,7 +566,7 @@ void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
   }
 }
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -1488,7 +1358,7 @@ void InterpolateInferMeta(
   }
 }
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 
@@ -1551,7 +1421,8 @@ void MomentumInferMeta(const MetaTensor& param,
   }
 }
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
   const size_t inputs_num = inputs_dims.size();
@@ -1624,7 +1495,7 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -1803,8 +1674,8 @@ void RmspropInferMeta(const MetaTensor& param,
 }
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
                   paddle::optional<const MetaTensor&> sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
@@ -1910,7 +1781,7 @@ void SGDInferMeta(const MetaTensor& param,
   param_out->set_dtype(param.dtype());
 }
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out) {
   PADDLE_ENFORCE_GT(x.size(),
@@ -1956,7 +1827,7 @@ void StackInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
-void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
   for (size_t i = 0; i < x.size(); ++i) {
     out[i]->share_meta(*x[i]);

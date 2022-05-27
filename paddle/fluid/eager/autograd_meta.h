@@ -107,6 +107,8 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
 
+  void ResetGradNode() { grad_node_.reset(); }
+
   void SetSingleOutRankWithSlot(size_t slot_id, size_t rank) {
     out_slot_id_ = slot_id;
     out_rank_ = rank;
