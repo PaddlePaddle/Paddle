@@ -519,6 +519,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
       if (grad->initialized()) {
         if (set_to_zero) {
           grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+          if (is_leaf) {
+            std::static_pointer_cast<egr::GradNodeAccumulation>(
+                egr::EagerUtils::grad_node(self->tensor))
+                ->SetFakeEmpty(true);
+          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
@@ -527,11 +532,6 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
           dense_tensor->MoveMemoryHolder();
         }
       }
-    }
-    if (is_leaf) {
-      std::static_pointer_cast<egr::GradNodeAccumulation>(
-          egr::EagerUtils::grad_node(self->tensor))
-          ->SetIsEmpty(true);
     }
   }
 

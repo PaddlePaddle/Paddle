@@ -64,11 +64,11 @@ class GradNodeAccumulation : public GradNodeBase {
         new GradNodeAccumulation(nullptr));
   }
 
-  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
+  void SetFakeEmpty(bool is_empty) { is_fake_empty_ = is_fake_empty_; }
 
  private:
   // TODO(Jiabin): remove this when we make our clear gradient really cleared;
-  bool is_empty_ = {false};
+  bool is_fake_empty_ = {false};
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
   std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
   std::function<paddle::experimental::Tensor(
