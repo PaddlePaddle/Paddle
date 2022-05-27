@@ -24,16 +24,24 @@ namespace ir {
 namespace {
 
 template <typename T_out>
-void QuantizeParams(const LoDTensor& params, LoDTensor* int_params,
-                    const std::vector<float>& scales) {
-  auto length = params.numel() / scales.size();
-  int_params->Resize(params.dims());
-  auto int_params_data = int_params->mutable_data<T_out>(CPUPlace());
-  const float* params_data = params.data<float>();
-  for (int64_t i = 0; i < params.numel(); i++) {
-    int_params_data[i] =
-        static_cast<T_out>(std::round(params_data[i] * scales[i / length]));
+void QuantizeParams(LoDTensor* param_tensor, const std::vector<float>& scales) {
+  std::vector<T_out> tmp_data;
+  tmp_data.reserve(param_tensor->numel());
+
+  auto length = param_tensor->numel() / scales.size();
+
+  const float* param_data = param_tensor->data<float>();
+  for (int64_t i = 0; i < param_tensor->numel(); ++i) {
+    tmp_data[i] =
+        static_cast<T_out>(std::round(param_data[i] * scales[i / length]));
   }
+
+  auto dims = param_tensor->dims();
+  param_tensor->clear();
+  param_tensor->Resize(dims);
+
+  auto int_param_data = param_tensor->mutable_data<T_out>(CPUPlace());
+  std::copy_n(tmp_data.data(), param_tensor->numel(), int_param_data);
 }
 
 ir::Node* FindOpInput(ir::Node* op, const std::string& input_name) {
@@ -67,9 +75,7 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   }
 
   auto filter_var = scope->GetVar(conv_filter->Name());
-  auto filter_v = conv_filter->Var();
-  if (filter_var == nullptr || filter_v == nullptr ||
-      filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+  if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
     VLOG(4) << "Skipping convolution (id: " << conv_op->id()
             << ") because it's a bug that it is detected again.";
     return true;
@@ -79,58 +85,29 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   return false;
 }
 
-VarDesc CreatePersistableVarDesc(const std::string& name,
-                                 const proto::VarType_Type& type,
-                                 const std::vector<int64_t>& shape) {
-  VarDesc var_desc(name);
-  var_desc.SetShape(shape);
-  var_desc.SetDataType(type);
-  var_desc.SetPersistable(true);
-  return var_desc;
-}
-
-void QuantizeConvFilter(Scope* scope, ir::Graph* g,
-                        const std::string& name_scope, ir::Node* conv_op,
-                        ir::Node* conv_filter, int found_count) {
-  VarDesc int_weights_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope,
-                           "conv2d_int8_filter" + std::to_string(found_count)),
-      proto::VarType_Type::VarType_Type_INT8, conv_filter->Var()->GetShape());
-
-  ir::Node* int_weights_node = g->CreateVarNode(&int_weights_desc);
-  auto* int_weights =
-      scope->Var(int_weights_node->Name())->GetMutable<LoDTensor>();
-
+void QuantizeConvFilter(Scope* scope, ir::Graph* g, ir::Node* conv_op,
+                        ir::Node* conv_filter) {
   const auto scale_weights =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
-  QuantizeParams<int8_t>(scope->GetVar(conv_filter->Name())->Get<LoDTensor>(),
-                         int_weights, scale_weights);
-  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 
-  ConnectInput(conv_op, "Filter", int_weights_node);
-  GraphSafeRemoveNodes(g, {conv_filter});
+  auto* weight_tensor =
+      scope->GetVar(conv_filter->Name())->GetMutable<LoDTensor>();
+
+  QuantizeParams<int8_t>(weight_tensor, scale_weights);
+
+  conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 }
 
-void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
-                      ir::Node* conv_op, int found_count) {
-  std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
-  auto bias = scope->GetVar(conv_bias_name)->Get<LoDTensor>();
-
-  VarDesc int_biases_desc = CreatePersistableVarDesc(
-      patterns::PDNodeName(name_scope,
-                           "conv2d_int32_bias" + std::to_string(found_count)),
-      proto::VarType::Type::VarType_Type_INT32, phi::vectorize(bias.dims()));
-
-  ir::Node* int_biases_node = g->CreateVarNode(&int_biases_desc);
-  auto* int_bias = scope->Var(int_biases_node->Name())->GetMutable<LoDTensor>();
-
+void QuantizeConvBias(Scope* scope, ir::Graph* g, ir::Node* conv_op) {
   const auto bias_scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Bias_scales");
-  QuantizeParams<int32_t>(bias, int_bias, bias_scales);
-  conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 
-  ConnectInput(conv_op, "Bias", int_biases_node);
-  GraphSafeRemoveNodes(g, {FindOpInput(conv_op, conv_bias_name)});
+  std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
+  auto* bias_tensor = scope->GetVar(conv_bias_name)->GetMutable<LoDTensor>();
+
+  QuantizeParams<int32_t>(bias_tensor, bias_scales);
+
+  conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
 }
 
 }  // namespace
@@ -204,12 +181,10 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph,
       return;
     }
 
-    QuantizeConvFilter(scope, g, name_scope_, conv_op, conv_filter,
-                       params_to_int8_conv_found);
+    QuantizeConvFilter(scope, g, conv_op, conv_filter);
 
     if (HasBias(conv_op)) {
-      QuantizeConvBias(scope, g, name_scope_, conv_op,
-                       params_to_int8_conv_found);
+      QuantizeConvBias(scope, g, conv_op);
     }
     params_to_int8_conv_found++;
   };
