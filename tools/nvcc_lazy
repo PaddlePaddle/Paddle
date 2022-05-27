@@ -47,4 +47,3 @@ sed -i -e '/__try____cudaRegisterAll\(.*{\)/a static void __sti____cudaRegisterA
 sed -i -e 's/{\(__device_stub__\)/{__try____cudaRegisterAll(1);\1/' $STUBF
 /usr/bin/env bash ${BUILDSH}.post
 rm -rf $BUILDDIR
-
