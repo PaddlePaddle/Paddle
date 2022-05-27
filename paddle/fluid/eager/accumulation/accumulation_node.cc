@@ -30,32 +30,38 @@ namespace egr {
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t,
                             bool is_fake_empty) {
-  if (!tensor->defined() || !tensor->initialized() || is_fake_empty) {
-    // Simply copy tensor->impl
+  if (is_fake_empty) {
     *tensor = t;
   } else {
-    // Accumulation
-    if (LIKELY(t.is_dense_tensor())) {
-      if (LIKELY(tensor->is_dense_tensor())) {
-        paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
+    if (!tensor->defined() || !tensor->initialized()) {
+      // Simply copy tensor->impl
+      *tensor = t;
+    } else {
+      // Accumulation
+      if (LIKELY(t.is_dense_tensor())) {
+        if (LIKELY(tensor->is_dense_tensor())) {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
+                                                                      tensor);
+        } else {
+          // TODO(jiabin): Support Other TensorBase later
+          // TODO(zhanlve): Replace SelectedRowsAddTensor with
+          // add_dygraph_function once it's supported
+          paddle::experimental::Tensor new_buffer(
+              std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+          paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
+          tensor->set_impl(new_buffer.impl());
+        }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
-        // add_dygraph_function once it's supported
-        paddle::experimental::Tensor new_buffer(
-            std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
-        paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
-        tensor->set_impl(new_buffer.impl());
-      }
-    } else {
-      // TODO(jiabin): Support Other TensorBase later
-      // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function
-      // once it's supported
-      if (tensor->is_dense_tensor()) {
-        paddle::imperative::SelectedRowsAddToTensor(t, tensor);
-      } else {
-        *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
-                            paddle::experimental::Tensor>(t, *tensor));
+        // add_dygraph_function
+        // once it's supported
+        if (tensor->is_dense_tensor()) {
+          paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+        } else {
+          *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
+                              paddle::experimental::Tensor>(t, *tensor));
+        }
       }
     }
   }
