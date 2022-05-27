@@ -2131,7 +2131,6 @@ static std::string GenerateSingleOpBase(
         const char* GRAD_INS_GRAD_TENSOR_TEMPLATE = "grads[%d][0]";
         std::string grads_tensor_str = paddle::string::Sprintf(
             GRAD_INS_GRAD_TENSOR_TEMPLATE, fwd_output_position);
-        std::string ampersand_flag_str = "&";
         generated_grad_function_body += paddle::string::Sprintf(
             CHECK_BACKWARD_INPLACE_TEMPLATE, can_be_inplaced_name,
             hooked_grads_tensor_str, bwd_inplace_input_name,
