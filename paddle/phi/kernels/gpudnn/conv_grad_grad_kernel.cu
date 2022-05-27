@@ -47,8 +47,8 @@ void ConvCudnnGradGradKernel(
     const DenseTensor& input,
     const DenseTensor& filter,
     const DenseTensor& out_grad,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -670,8 +670,8 @@ void ConvCudnnGradGradKernel(
 template <typename T, typename Context>
 void DepthwiseConvCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,
@@ -711,8 +711,8 @@ void DepthwiseConvCudnnGradGradKernel(
 template <typename T, typename Context>
 void Conv3DCudnnGradGradKernel(
     const Context& ctx,
-    paddle::optional<const DenseTensor&> input_grad_grad,
-    paddle::optional<const DenseTensor&> filter_grad_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
     const DenseTensor& out_grad,
     const DenseTensor& input,
     const DenseTensor& filter,

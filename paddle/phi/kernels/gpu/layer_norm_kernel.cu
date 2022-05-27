@@ -55,8 +55,8 @@ template class LayerNormDirectCUDAFunctor<float>;
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,
                      const DenseTensor &x,
-                     paddle::optional<const DenseTensor &> scale_opt,
-                     paddle::optional<const DenseTensor &> bias_opt,
+                     const paddle::optional<DenseTensor> &scale_opt,
+                     const paddle::optional<DenseTensor> &bias_opt,
                      float epsilon,
                      int begin_norm_axis,
                      bool is_test,

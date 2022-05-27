@@ -31,7 +31,7 @@ void AssignKernel(const Context& dev_ctx,
 // this looks weird
 template <typename Context>
 void AssignRawKernel(const Context& dev_ctx,
-                     paddle::optional<const DenseTensor&> x,
+                     const paddle::optional<DenseTensor>& x,
                      DenseTensor* out);
 
 template <typename Context>

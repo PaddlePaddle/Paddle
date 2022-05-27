@@ -249,25 +249,14 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   return nullptr;
 }
 
-std::shared_ptr<phi::DenseTensor> PrepareData(
+paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return PrepareData(*input, target_args_def, transform_flag);
+    return {*PrepareData(*input, target_args_def, transform_flag)};
   }
-  return {nullptr};
-}
-
-std::shared_ptr<phi::DenseTensor> PrepareData(
-    const paddle::optional<const Tensor&> input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
-  if (input.get_ptr() != nullptr) {
-    return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
-  }
-
-  return {nullptr};
+  return paddle::none;
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(

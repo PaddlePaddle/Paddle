@@ -23,13 +23,27 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
+
 namespace phi {
+
+template <typename T>
+using ConstEigenArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenVectorArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using EigenArrayMap =
+    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& d_y,
-                            paddle::optional<const DenseTensor&> scale,
+                            const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             float epsilon,
@@ -136,11 +150,199 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                                    .broadcast(bcast));
 }
 
+template <typename T, typename Context>
+void InstanceNormDoubleGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const paddle::optional<DenseTensor>& scale,
+                                  const DenseTensor& saved_mean,
+                                  const DenseTensor& saved_variance,
+                                  const DenseTensor& dy,
+                                  const paddle::optional<DenseTensor>& ddx,
+                                  const paddle::optional<DenseTensor>& ddscale,
+                                  const paddle::optional<DenseTensor>& ddbias,
+                                  float epsilon,
+                                  DenseTensor* dx,
+                                  DenseTensor* dscale,
+                                  DenseTensor* ddy) {
+  const auto* Scale = scale.get_ptr();
+  const auto* ddScale = ddscale.get_ptr();
+  const auto* ddX = ddx.get_ptr();
+  const auto* ddBias = ddbias.get_ptr();
+  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  const auto& x_dims = x.dims();
+  int N, C, H, W, D;
+  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  const int sample_size = x.numel() / N / C;
+  const int NxC = N * C;
+
+  const T* mean_data = saved_mean.data<T>();
+  const T* inv_var_data = saved_variance.data<T>();
+  DenseTensor mean_tensor;
+  DenseTensor inv_var_tensor;
+  ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, NxC);
+  ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
+  ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
+
+  DenseTensor mean_tile;
+  mean_tile.Resize({sample_size, NxC});
+  dev_ctx.template Alloc<T>(&mean_tile);
+  EigenArrayMap<T> mean_tile_data(mean_tile.data<T>(), sample_size, NxC);
+  DenseTensor inv_var_tile;
+  inv_var_tile.Resize({sample_size, NxC});
+  dev_ctx.template Alloc<T>(&inv_var_tile);
+  EigenArrayMap<T> inv_var_tile_data(inv_var_tile.data<T>(), sample_size, NxC);
+
+  mean_tile_data = mean_arr.transpose().replicate(sample_size, 1);
+  inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, 1);
+
+  DenseTensor Scale_data;
+  if (!Scale) {
+    Scale_data.Resize({C});
+    dev_ctx.template Alloc<T>(&Scale_data);
+    set_constant(dev_ctx, &Scale_data, static_cast<T>(1));
+  }
+  ConstEigenVectorArrayMap<T> scale_arr(
+      Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
+
+  DenseTensor scale_tile;
+  scale_tile.Resize({sample_size, NxC});
+  dev_ctx.template Alloc<T>(&scale_tile);
+  EigenArrayMap<T> scale_tile_data(scale_tile.data<T>(), sample_size, NxC);
+  scale_tile_data = scale_arr.transpose().replicate(sample_size, N);
+  ConstEigenArrayMap<T> dy_arr(dy.data<T>(), sample_size, NxC);
+  ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, NxC);
+  // math: dx = scale * ((x - mean) * inv_var / HxW * (np.mean(ddx,
+  //          axis=(h,w)) * np.sum(dy, axis=(h,w)) -
+  //          np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
+  //          axis=(h,w)) * inv_var.pow(2) *
+  //          np.sum(ddx * (x - mean), axis=(h,w))) + inv_var.pow(3) / HxW *
+  //          np.sum(ddx * (x - mean)) *
+  //          (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW *
+  //          np.sum(dy, axis=(h,w)) * (x - mean) *
+  //          (np.mean(ddx, axis=(h,w)) - ddx)) + ddr * (dy * inv_var -
+  //          inv_var * np.mean(dy, axis=(h,w)) - inv_var.pow(3) *
+  //          (x - mean) * np.mean(dy * (x - mean),  axis=(h,w)))
+
+  DenseTensor x_sub_mean_mul_invstd;
+  x_sub_mean_mul_invstd.Resize({sample_size, NxC});
+  dev_ctx.template Alloc<T>(&x_sub_mean_mul_invstd);
+  EigenArrayMap<T> x_sub_mean_mul_invstd_arr(
+      x_sub_mean_mul_invstd.data<T>(), sample_size, NxC);
+  x_sub_mean_mul_invstd_arr = (x_arr - mean_tile_data) * inv_var_tile_data;
+
+  if (dx) {
+    dev_ctx.template Alloc<T>(dx);
+    set_constant(dev_ctx, dx, static_cast<T>(0));
+    EigenArrayMap<T> dx_arr(dx->data<T>(), sample_size, NxC);
+    if (ddX) {
+      dx_arr +=
+          x_sub_mean_mul_invstd_arr * inv_var_tile_data * inv_var_tile_data /
+          sample_size *
+          (ddx_arr.colwise().sum() * dy_arr.colwise().sum() / sample_size -
+           (dy_arr * ddx_arr).colwise().sum() +
+           3. * (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() *
+               (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+               sample_size);
+      dx_arr += (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                sample_size * inv_var_tile_data * inv_var_tile_data *
+                (dy_arr.colwise().sum() / sample_size - dy_arr);
+      dx_arr += (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                sample_size * inv_var_tile_data * inv_var_tile_data *
+                (ddx_arr.colwise().sum() / sample_size - ddx_arr);
+      dx_arr = scale_tile_data * dx_arr;
+    }
+    if (ddScale) {
+      ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
+      DenseTensor ddscale_tile;
+      ddscale_tile.Resize({sample_size, NxC});
+      dev_ctx.template Alloc<T>(&ddscale_tile);
+      EigenArrayMap<T> ddscale_tile_data(
+          ddscale_tile.data<T>(), sample_size, NxC);
+      ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
+      dx_arr += (dy_arr * inv_var_tile_data -
+                 dy_arr.colwise().sum() / sample_size * inv_var_tile_data -
+                 x_sub_mean_mul_invstd_arr * inv_var_tile_data *
+                     (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                     sample_size) *
+                ddscale_tile_data;
+    }
+  }
+  if (dscale) {
+    // math: dscale = inv_var * (dy - np.mean(dy, axis=(h,w) - (x-mean) *
+    //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(h,w)))) * ddx
+    dev_ctx.template Alloc<T>(dscale);
+    set_constant(dev_ctx, dscale, static_cast<T>(0));
+    EigenVectorArrayMap<T> dscale_arr(dscale->data<T>(), C);
+    if (ddX) {
+      DenseTensor first_grad;
+      first_grad.Resize({sample_size, NxC});
+      dev_ctx.template Alloc<T>(&first_grad);
+      set_constant(dev_ctx, &first_grad, static_cast<T>(0));
+      EigenArrayMap<T> first_grad_arr(first_grad.data<T>(), sample_size, NxC);
+      first_grad_arr +=
+          inv_var_tile_data *
+          (dy_arr -
+           dy_arr.colwise().sum().replicate(sample_size, 1) / sample_size -
+           x_sub_mean_mul_invstd_arr *
+               (dy_arr * x_sub_mean_mul_invstd_arr)
+                   .colwise()
+                   .sum()
+                   .replicate(sample_size, 1) /
+               sample_size);
+      first_grad_arr = first_grad_arr * ddx_arr;
+      for (int nc = 0; nc < NxC; ++nc) {
+        int c = nc % C;
+        dscale_arr(c) += first_grad_arr.colwise().sum()(nc);
+      }
+    }
+  }
+  if (ddy) {
+    // math: ddy = (x - mean) * inv_var * ddscale + ddbias +
+    //           scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
+    //           np.mean(ddx * (x - mean), axis=(h,w)))
+    dev_ctx.template Alloc<T>(ddy);
+    set_constant(dev_ctx, ddy, static_cast<T>(0));
+    EigenArrayMap<T> ddy_arr(ddy->data<T>(), sample_size, NxC);
+    if (ddX) {
+      ddy_arr += scale_tile_data * inv_var_tile_data *
+                 (ddx_arr - ddx_arr.colwise().sum() / sample_size -
+                  x_sub_mean_mul_invstd_arr *
+                      (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                      sample_size);
+    }
+    if (ddScale && ddBias) {
+      ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
+      DenseTensor ddscale_tile;
+      ddscale_tile.Resize({sample_size, NxC});
+      dev_ctx.template Alloc<T>(&ddscale_tile);
+      EigenArrayMap<T> ddscale_tile_data(
+          ddscale_tile.data<T>(), sample_size, NxC);
+      ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
+
+      ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
+      DenseTensor ddbias_tile;
+      ddbias_tile.Resize({sample_size, NxC});
+      dev_ctx.template Alloc<T>(&ddbias_tile);
+      EigenArrayMap<T> ddbias_tile_data(
+          ddbias_tile.data<T>(), sample_size, NxC);
+      ddbias_tile_data = ddbias_arr.transpose().replicate(sample_size, N);
+
+      ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
+      ddy_arr += ddbias_tile_data;
+    }
+  }
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(instance_norm_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::InstanceNormGradKernel,
+                   float,
+                   double) {}
+PD_REGISTER_KERNEL(instance_norm_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormDoubleGradKernel,
                    float,
                    double) {}
