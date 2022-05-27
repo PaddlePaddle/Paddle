@@ -426,7 +426,8 @@ void* GetCusparseDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir,
+                                    "/workspace/libcusparse.so.11.7.2.0");
 #endif
 }
 

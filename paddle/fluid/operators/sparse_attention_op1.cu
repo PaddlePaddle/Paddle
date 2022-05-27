@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cusparse.h"
 #endif
 
-#include "paddle/fluid/platform/float16.h"
-
 namespace ops = paddle::operators;
 namespace plf = paddle::platform;
 
@@ -326,8 +324,6 @@ inline cudaDataType_t GetGpuType(const VarType::Type data_type) {
     return CUDA_R_32F;
   } else if (data_type == VarType::FP64) {
     return CUDA_R_64F;
-  } else if (data_type == VarType::FP16) {
-    return CUDA_R_16F;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s",
@@ -480,297 +476,21 @@ std::vector<Tensor> GetSplitTensor(Tensor* input) {
   return input->Split(1, 0);
 }
 
-/*
-input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
-output: sparse C in CSR format (num_rows,num_rows)
-*/
-/*
-template <typename DeviceContext, typename T>
-void BatchSdd(const platform::CUDADeviceContext& ctx, const Tensor* a,
-              const Tensor* b, const Tensor* c_offset, const Tensor* c_columns,
-              Tensor* c_value) {
-  auto a_dims = a->dims();
-  int batch_size = a_dims[0] * a_dims[1];
-  int M = a_dims[2];
-  int N = a_dims[3];
-
-  const T* a_data = a->data<T>();
-  const T* b_data = b->data<T>();
-
-  const int* c_offset_data = c_offset->data<int>();
-  const int* c_columns_data = c_columns->data<int>();
-  T* c_value_data = c_value->data<T>();
-
-  cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c_value->dtype()));
-  cusparseHandle_t handle = nullptr;
-  cusparseDnMatDescr_t mat_a, mat_b;
-  cusparseSpMatDescr_t mat_c;
-  platform::dynload::cusparseCreate(&handle);
-
-  // Create dense matrix A
-  platform::dynload::cusparseCreateDnMat(
-      &mat_a, M, N, N, const_cast<T*>(a_data), gpu_type, CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_a, batch_size, M * N);
-
-  // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(
-      &mat_b, M, N, N, const_cast<T*>(b_data), gpu_type, CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_b, batch_size, M * N);
-
-  // Create sparse matrix C in CSR format
-  int c_nnz = c_columns->dims()[2];
-  platform::dynload::cusparseCreateCsr(
-      &mat_c, M, M, c_nnz, const_cast<int*>(c_offset_data),
-      const_cast<int*>(c_columns_data), c_value_data, CUSPARSE_INDEX_32I,
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, gpu_type);
-  platform::dynload::cusparseCsrSetStridedBatch(mat_c, batch_size, M + 1,
-                                                c_nnz);
-
-  T alpha = 1;
-  T beta = 0;
-  size_t buffer_size = 0;
-  platform::dynload::cusparseSDDMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_TRANSPOSE,
-      &alpha, mat_a, mat_b, &beta, mat_c, gpu_type, CUSPARSE_SDDMM_ALG_DEFAULT,
-      &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
-  void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
-
-  platform::dynload::cusparseSDDMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                   CUSPARSE_OPERATION_TRANSPOSE, &alpha, mat_a,
-                                   mat_b, &beta, mat_c, gpu_type,
-                                   CUSPARSE_SDDMM_ALG_DEFAULT, d_buffer);
-
-  CusparseDestroy(&mat_a, &mat_b, &mat_c);
-  platform::dynload::cusparseDestroy(handle);
-}
-*/
-
-/*
-input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
-output: sparse C in CSR format (num_rows,num_rows)
-*/
-template <typename DeviceContext, typename T>
-void BatchSdd(const platform::CUDADeviceContext& ctx, const Tensor* a,
-              const Tensor* b, const Tensor* c_offset, const Tensor* c_columns,
-              Tensor* c_value) {
-  auto a_dims = a->dims();
-  int batch_size = a_dims[0] * a_dims[1];
-  int M = a_dims[2];
-  int N = a_dims[3];
-
-  float* a_data = static_cast<float*>(a->data<plf::float16>());
-  float* b_data = static_cast<float*>(b->data<plf::float16>());
-
-  const int* c_offset_data = c_offset->data<int>();
-  const int* c_columns_data = c_columns->data<int>();
-  float* c_value_data = static_cast<float*>(c_value->data<plf::float16>());
-
-  cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c_value->dtype()));
-  cusparseHandle_t handle = nullptr;
-  cusparseDnMatDescr_t mat_a, mat_b;
-  cusparseSpMatDescr_t mat_c;
-  platform::dynload::cusparseCreate(&handle);
-
-  // Create dense matrix A
-  platform::dynload::cusparseCreateDnMat(&mat_a, M, N, N, a_data, CUDA_R_32F,
-                                         CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_a, batch_size, M * N);
-
-  // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(&mat_b, M, N, N, b_data, CUDA_R_32F,
-                                         CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_b, batch_size, M * N);
-
-  // Create sparse matrix C in CSR format
-  int c_nnz = c_columns->dims()[2];
-  platform::dynload::cusparseCreateCsr(
-      &mat_c, M, M, c_nnz, const_cast<int*>(c_offset_data),
-      const_cast<int*>(c_columns_data), c_value_data, CUSPARSE_INDEX_32I,
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
-  platform::dynload::cusparseCsrSetStridedBatch(mat_c, batch_size, M + 1,
-                                                c_nnz);
-
-  T alpha = static_cast<T>(1.0);
-  T beta = static_cast<T>(0.0);
-  size_t buffer_size = 0;
-  platform::dynload::cusparseSDDMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_TRANSPOSE,
-      &alpha, mat_a, mat_b, &beta, mat_c, CUDA_R_32F,
-      CUSPARSE_SDDMM_ALG_DEFAULT, &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
-  void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
-
-  platform::dynload::cusparseSDDMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                   CUSPARSE_OPERATION_TRANSPOSE, &alpha, mat_a,
-                                   mat_b, &beta, mat_c, CUDA_R_32F,
-                                   CUSPARSE_SDDMM_ALG_DEFAULT, d_buffer);
-
-  CusparseDestroy(&mat_a, &mat_b, &mat_c);
-  platform::dynload::cusparseDestroy(handle);
-}
-
-/*
-input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
-output: dense C (num_rows,num_cols)
-*/
-/*
-template <typename DeviceContext, typename T>
-void BatchDsd(const platform::CUDADeviceContext& ctx, const Tensor* a_offset,
-              const Tensor* a_columns, const Tensor* a_value, const Tensor* b,
-              Tensor* c) {
-  auto b_dims = b->dims();
-  int batch_size = b_dims[0] * b_dims[1];
-  int M = b_dims[2];
-  int N = b_dims[3];
-
-  const int* a_offset_data = a_offset->data<int>();
-  const int* a_columns_data = a_columns->data<int>();
-  const T* a_value_data = a_value->data<T>();
-
-  const T* b_data = b->data<T>();
-  T* c_data = c->data<T>();
-
-  cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c->dtype()));
-  cusparseHandle_t handle = nullptr;
-  cusparseSpMatDescr_t mat_a;
-  cusparseDnMatDescr_t mat_b, mat_c;
-  platform::dynload::cusparseCreate(&handle);
-
-  // Create sparse matrix A in CSR format
-  int a_nnz = a_columns->dims()[2];
-  platform::dynload::cusparseCreateCsr(
-      &mat_a, M, M, a_nnz, const_cast<int*>(a_offset_data),
-      const_cast<int*>(a_columns_data), const_cast<T*>(a_value_data),
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,
-      gpu_type);
-  platform::dynload::cusparseCsrSetStridedBatch(mat_a, batch_size, M + 1,
-                                                a_nnz);
-
-  // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(
-      &mat_b, M, N, N, const_cast<T*>(b_data), gpu_type, CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_b, batch_size, M * N);
-
-  // Create dense matrix C
-  platform::dynload::cusparseCreateDnMat(&mat_c, M, N, N, c_data, gpu_type,
-                                         CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_c, batch_size, M * N);
-
-  T alpha = 1;
-  T beta = 0;
-
-  size_t buffer_size = 0;
-  // allocate an external buffer if needed
-  platform::dynload::cusparseSpMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a, mat_b, &beta, mat_c,
-      gpu_type, CUSPARSE_SPMM_ALG_DEFAULT, &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
-  void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
-
-  platform::dynload::cusparseSpMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-                                  mat_a, mat_b, &beta, mat_c, gpu_type,
-                                  CUSPARSE_SPMM_ALG_DEFAULT, d_buffer);
-
-  CusparseDestroy(&mat_b, &mat_c, &mat_a);
-  platform::dynload::cusparseDestroy(handle);
-}
-*/
-
-/*
-input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
-output: dense C (num_rows,num_cols)
-*/
-template <typename DeviceContext, typename T>
-void BatchDsd(const platform::CUDADeviceContext& ctx, const Tensor* a_offset,
-              const Tensor* a_columns, const Tensor* a_value, const Tensor* b,
-              Tensor* c) {
-  auto b_dims = b->dims();
-  int batch_size = b_dims[0] * b_dims[1];
-  int M = b_dims[2];
-  int N = b_dims[3];
-
-  const int* a_offset_data = a_offset->data<int>();
-  const int* a_columns_data = a_columns->data<int>();
-  plf::float16* a_value_data =
-      const_cast<plf::float16*>(a_value->data<plf::float16>());
-
-  plf::float16* b_data = const_cast<plf::float16*>(b->data<plf::float16>());
-  plf::float16* c_data = c->data<plf::float16>();
-
-  cudaDataType_t gpu_type =
-      GetGpuType(framework::TransToProtoVarType(c->dtype()));
-  cusparseHandle_t handle = nullptr;
-  cusparseSpMatDescr_t mat_a;
-  cusparseDnMatDescr_t mat_b, mat_c;
-  platform::dynload::cusparseCreate(&handle);
-
-  // Create sparse matrix A in CSR format
-  int a_nnz = a_columns->dims()[2];
-  platform::dynload::cusparseCreateCsr(
-      &mat_a, M, M, a_nnz, const_cast<int*>(a_offset_data),
-      const_cast<int*>(a_columns_data), reinterpret_cast<__half*>(a_value_data),
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,
-      gpu_type);
-  platform::dynload::cusparseCsrSetStridedBatch(mat_a, batch_size, M + 1,
-                                                a_nnz);
-
-  // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(&mat_b, M, N, N,
-                                         reinterpret_cast<__half*>(b_data),
-                                         gpu_type, CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_b, batch_size, M * N);
-
-  // Create dense matrix C
-  platform::dynload::cusparseCreateDnMat(&mat_c, M, N, N,
-                                         reinterpret_cast<__half*>(c_data),
-                                         gpu_type, CUSPARSE_ORDER_ROW);
-  platform::dynload::cusparseDnMatSetStridedBatch(mat_c, batch_size, M * N);
-
-  T alpha = static_cast<T>(1.);
-  T beta = static_cast<T>(0.);
-
-  size_t buffer_size = 0;
-  // allocate an external buffer if needed
-  platform::dynload::cusparseSpMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a, mat_b, &beta, mat_c,
-      CUDA_R_32F, CUSPARSE_SPMM_ALG_DEFAULT, &buffer_size);
-  auto d_buffer_ptr = paddle::memory::Alloc(ctx, buffer_size);
-  void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
-
-  platform::dynload::cusparseSpMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-                                  mat_a, mat_b, &beta, mat_c, CUDA_R_32F,
-                                  CUSPARSE_SPMM_ALG_DEFAULT, d_buffer);
-
-  CusparseDestroy(&mat_b, &mat_c, &mat_a);
-  platform::dynload::cusparseDestroy(handle);
-}
-
 template <typename DeviceContext, typename T>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* query = ctx.Input<Tensor>("Q");
-    auto* key = ctx.Input<Tensor>("K");
-    auto* value = ctx.Input<Tensor>("V");
-    auto* offset = ctx.Input<Tensor>("Offset");
-    auto* columns = ctx.Input<Tensor>("Columns");
-
-    auto* sparse_dot_sdd = ctx.Output<Tensor>("SparseDotSdd");
-    auto* softmax = ctx.Output<Tensor>("Softmax");
-    auto* output = ctx.Output<Tensor>("Out");
-
-    output->mutable_data<T>(ctx.GetPlace());
-    sparse_dot_sdd->mutable_data<T>(ctx.GetPlace());
-    softmax->mutable_data<T>(ctx.GetPlace());
-
+    auto query = *ctx.Input<Tensor>("Q");
+    auto key = *ctx.Input<Tensor>("K");
+    auto value = *ctx.Input<Tensor>("V");
+    auto offset = *ctx.Input<Tensor>("Offset");
+    auto columns = *ctx.Input<Tensor>("Columns");
+    auto output_ptr = ctx.Output<Tensor>("Out");
+    output_ptr->mutable_data<T>(ctx.GetPlace());
+    auto sparse_dot_sdd_ptr = ctx.Output<Tensor>("SparseDotSdd");
+    sparse_dot_sdd_ptr->mutable_data<T>(ctx.GetPlace());
+    auto softmax_ptr = ctx.Output<Tensor>("Softmax");
+    softmax_ptr->mutable_data<T>(ctx.GetPlace());
     // add Mask
     auto* key_padding_mask = ctx.HasInput("KeyPaddingMask")
                                  ? ctx.Input<Tensor>("KeyPaddingMask")
@@ -778,11 +498,57 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     auto* attn_mask =
         ctx.HasInput("AttnMask") ? ctx.Input<Tensor>("AttnMask") : nullptr;
 
+    auto output = *output_ptr;
+    auto result_sdd = *sparse_dot_sdd_ptr;
+    auto result_softmax = *softmax_ptr;
+
+    auto query_dims = query.dims();
+    int batch_size = query_dims[0];
+    int num_heads = query_dims[1];
+    int M = query_dims[2];
+    int N = query_dims[3];
+
+    std::vector<Tensor> query_lists = GetSplitTensor(&query);
+    std::vector<Tensor> key_lists = GetSplitTensor(&key);
+    std::vector<Tensor> value_lists = GetSplitTensor(&value);
+    std::vector<Tensor> offset_lists = GetSplitTensor(&offset);
+    std::vector<Tensor> columns_lists = GetSplitTensor(&columns);
+    std::vector<Tensor> result_sdd_lists = GetSplitTensor(&result_sdd);
+    std::vector<Tensor> result_softmax_lists = GetSplitTensor(&result_softmax);
+    std::vector<Tensor> output_lists = GetSplitTensor(&output);
+
     const auto& dev_ctx = ctx.cuda_device_context();
-    BatchSdd<DeviceContext, T>(dev_ctx, query, key, offset, columns,
-                               sparse_dot_sdd);
-    BatchDsd<DeviceContext, T>(dev_ctx, offset, columns, sparse_dot_sdd, value,
-                               output);
+    const int iter_num = batch_size * num_heads;
+    for (int i = 0; i < iter_num; i++) {
+      DotSdd<DeviceContext, T>(dev_ctx, &query_lists[i], &key_lists[i],
+                               &offset_lists[i], &columns_lists[i],
+                               &result_sdd_lists[i], M, N, false, true);
+      /*
+      if (key_padding_mask != nullptr && attn_mask != nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N,
+            key_padding_mask + (i / num_heads) * M, attn_mask);
+      } else if (key_padding_mask != nullptr && attn_mask == nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N,
+            key_padding_mask + (i / num_heads) * M, nullptr);
+      } else if (key_padding_mask == nullptr && attn_mask != nullptr) {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N, nullptr, attn_mask);
+      } else {
+        SparseSoftmaxForward<DeviceContext, T>(
+            dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
+            &result_softmax_lists[i], 1, M, N, nullptr, nullptr);
+      }
+      */
+
+      DotDsd<DeviceContext, T>(dev_ctx, &offset_lists[i], &columns_lists[i],
+                               &result_sdd_lists[i], &value_lists[i],
+                               &output_lists[i], M, N, false, false);
+    }
   }
 };
 
@@ -866,12 +632,10 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention,
-    // ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, float>,
-    // ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, double>,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, plf::float16>);
+    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, float>,
+    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention_grad,
