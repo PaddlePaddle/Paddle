@@ -2037,6 +2037,10 @@ static std::string GenerateSingleOpBase(
     }
   }
   generated_grad_function_body += fill_zero_str;
+  generated_grad_function_body +=
+      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> hooked_grads = "
+      "GradNode%s::ApplyGradientHooks(grads);\n";
 
   // [Generation] Get Ins Map
   std::unordered_set<std::string> dispensable_input_name_set;
@@ -2465,9 +2469,6 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
-      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
-      "egr::kSlotSmallVectorSize> hooked_grads = "
-      "GradNode%s::ApplyGradientHooks(grads);\n"
       "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
       "egr::kSlotSmallVectorSize> outputs(%d);\n"
       "  %s\n"
