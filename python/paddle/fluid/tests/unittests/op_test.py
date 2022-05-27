@@ -878,8 +878,6 @@ class OpTest(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 paddle.device.cuda.synchronize()
             et = time.time()
-            input_keys = list(self.inputs.keys())
-            first_input = self.inputs[input_keys[0]]
 
             # prepare attributes
             attrs_outputs = {}
@@ -890,9 +888,8 @@ class OpTest(unittest.TestCase):
 
             print("mode:", "eager", " # op:", self.op_type, "# func:",
                   forward_or_grad, "# input:",
-                  str(str(self.inputs)[0:50]), "# input_keys:", input_keys,
-                  "# attrs:", attrs_outputs, "# place:", place, "# time:",
-                  (et - st))
+                  str(str(self.inputs)[0:50]), "# attrs:", attrs_outputs,
+                  "# place:", place, "# time:", (et - st))
             # print("===== time: ", (et - st))
             print("===== check_eager for ", self.op_type,
                   " in op test, end =====]", '\n')
@@ -973,15 +970,12 @@ class OpTest(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 paddle.device.cuda.synchronize()
             et = time.time()
-            input_keys = list(self.inputs.keys())
-            first_input = self.inputs[input_keys[0]]
 
             mode = "eager-mid" if in_dygraph_mode() else "legacy"
             print("mode:", mode, "# op:", self.op_type, "# func:",
                   forward_or_grad, "# input:",
-                  str(str(self.inputs)[0:50]), "# input_keys:", input_keys,
-                  "# attrs:", attrs_outputs, "# place:", place, "# time:",
-                  (et - st))
+                  str(str(self.inputs)[0:50]), "# attrs:", attrs_outputs,
+                  "# place:", place, "# time:", (et - st))
             # print("===== time: ", (et - st))
             if _in_legacy_dygraph():
                 print("===== check_legacy for ", self.op_type,
@@ -2137,15 +2131,12 @@ class OpTest(unittest.TestCase):
                 if core.is_compiled_with_cuda():
                     paddle.device.cuda.synchronize()
                 et = time.time()
-                input_keys = list(self.inputs.keys())
-                first_input = self.inputs[input_keys[0]]
 
                 mode = "eager-mid" if in_dygraph_mode() else "legacy"
                 print("mode:", mode, "# op:", self.op_type, "# func:", "grad",
                       "# input:",
-                      str(str(self.inputs)[0:50]), "# input_keys:", input_keys,
-                      "# attrs:", attrs_outputs, "# place:", place, "# time:",
-                      (et - st))
+                      str(str(self.inputs)[0:50]), "# attrs:", attrs_outputs,
+                      "# place:", place, "# time:", (et - st))
                 # print("===== time: ", (et - st))
                 if _in_legacy_dygraph():
                     print("===== check_legacy for ", self.op_type,
