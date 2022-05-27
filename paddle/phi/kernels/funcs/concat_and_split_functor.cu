@@ -318,6 +318,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
+    phi::Allocation* ins_data{nullptr};
+    phi::Allocation* col_data{nullptr};
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
@@ -330,6 +332,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
                            in_num * sizeof(T*),
                            context.stream());
       dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
+      // NOTE: extend the life cycle.
+      ins_data = tmp_dev_ins_data.release();
     }
 
     if (has_same_shape) {
@@ -378,6 +382,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
                            context.stream());
       int64_t* dev_ins_col_data =
           static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
+      // NOTE: extend the life cycle.
+      col_data = tmp_dev_ins_col_data.release();
 
       ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           dev_ins_data,
@@ -387,6 +393,12 @@ struct ConcatFunctor<phi::GPUContext, T> {
           out_col,
           output->data<T>());
     }
+    context.AddStreamCallback([ins_data, col_data] {
+      if (ins_data != nullptr)
+        paddle::memory::allocation::Allocator::AllocationDeleter(ins_data);
+      if (col_data != nullptr)
+        paddle::memory::allocation::Allocator::AllocationDeleter(col_data);
+    });
 
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
@@ -477,6 +489,7 @@ class SplitFunctor<phi::GPUContext, T> {
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
     paddle::memory::allocation::AllocationPtr tmp_dev_outs_data;
+    phi::Allocation *outs_data{nullptr}, *col_data{nullptr};
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       // TODO(chentianyu03): try to find a method to remove the Alloc function
@@ -490,6 +503,8 @@ class SplitFunctor<phi::GPUContext, T> {
                            o_num * sizeof(T*),
                            context.stream());
       dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
+      // NOTE: extend the life cycle.
+      outs_data = tmp_dev_outs_data.release();
     }
 
     if (has_same_shape) {
@@ -539,6 +554,8 @@ class SplitFunctor<phi::GPUContext, T> {
                            context.stream());
       int64_t* dev_outs_col_data =
           reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
+      // NOTE: extend the life cycle.
+      col_data = tmp_dev_ins_col_data.release();
 
       SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
@@ -548,6 +565,13 @@ class SplitFunctor<phi::GPUContext, T> {
           static_cast<int>(outputs_cols_num),
           dev_out_gpu_data);
     }
+    context.AddStreamCallback([outs_data, col_data] {
+      if (outs_data != nullptr)
+        paddle::memory::allocation::Allocator::AllocationDeleter(outs_data);
+      if (col_data != nullptr)
+        paddle::memory::allocation::Allocator::AllocationDeleter(col_data);
+    });
+
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
