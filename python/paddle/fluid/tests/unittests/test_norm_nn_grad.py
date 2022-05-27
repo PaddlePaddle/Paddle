@@ -70,6 +70,72 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
 
 
+class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
+    def instance_norm_wrapper(self, x):
+        return paddle.nn.functional.instance_norm(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
+            np.random.seed()
+            shape = [2, 3, 4, 5]
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.functional.instance_norm(x)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            # check for static mode
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
+            # check for eager mode
+            gradient_checker.double_grad_check_for_dygraph(
+                self.instance_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestInstanceNormDoubleGradEagerCheckWithParams(
+        TestInstanceNormDoubleGradEagerCheck):
+    def instance_norm_wrapper(self, x):
+        instance_norm = paddle.nn.InstanceNorm2D(3)
+        return instance_norm(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
+            np.random.seed()
+            shape = [2, 3, 4, 5]
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            z = paddle.nn.InstanceNorm2D(3)(x)
+            x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+            # check for static mode
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
+            # check for eager mode
+            gradient_checker.double_grad_check_for_dygraph(
+                self.instance_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
+
+
 class TestBatchNormDoubleGradCheck(unittest.TestCase):
     def setUp(self):
         self.init_test()
