@@ -230,6 +230,7 @@ from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
 from .math import inner  # noqa: F401
 from .math import outer  # noqa: F401
+from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 
 from .random import multinomial  # noqa: F401
@@ -497,6 +498,7 @@ tensor_method_func  = [ #noqa
            'put_along_axis',
            'put_along_axis_',
            'exponential_',
+           'heaviside',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

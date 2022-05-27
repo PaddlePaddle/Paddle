@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/unary.h"
 #include "paddle/phi/kernels/strings/case_utils.h"

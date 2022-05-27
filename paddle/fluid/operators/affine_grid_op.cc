@@ -136,7 +136,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsExtra();
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
-                  "and ouput.")
+                  "and output.")
         .SetDefault(true);
     AddAttr<std::vector<int>>(
         "output_shape",

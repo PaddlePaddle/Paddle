@@ -18,6 +18,7 @@ typedef SSIZE_T ssize_t;
 #include <Python.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "pybind11/numpy.h"
@@ -76,7 +77,9 @@ class PyTensorHook : public egr::TensorHook {
 
     PyObject* res = nullptr;
     try {
-      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+      PyObject* p_tmp_var = ToPyObject(var);
+      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+      Py_DECREF(p_tmp_var);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
@@ -93,7 +96,9 @@ class PyTensorHook : public egr::TensorHook {
     if (res == Py_None) {
       return var;
     }
-    return reinterpret_cast<TensorObject*>(res)->tensor;
+    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+    Py_DECREF(res);
+    return res_tensor;
   }
 
  private:
@@ -361,12 +366,33 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static void IncreaseTensorReferenceCountUntilCopyComplete(
+    const paddle::experimental::Tensor& tensor, const platform::Place& place) {
+  auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
+
+  auto tracer = egr::Controller::Instance().GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(dev): This is an empty callback, the only way is to "reference"
+  // inner memory Holder, so it will not be destructed until the kernels
+  // launched at current stream of given place is finished, such as
+  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  auto callback = [tensor, place_]() {
+    VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
+            << place_;
+  };
+  gc->DirectClearCallback(callback);
+}
+
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor = self->tensor.copy_to(place, blocking);
+  if (!blocking) {
+    IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+  }
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -654,7 +680,9 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    RETURN_PY_NONE
+    // The original `get_tensor` method of Variable will create a empty tensor
+    phi::DenseTensor empty_tensor;
+    return ToPyObject(&empty_tensor);
   }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor =
@@ -1254,6 +1282,47 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* tensor_method_set_vocab(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Vocab>() = vocab;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_set_string_list(TensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  using Strings = std::vector<std::string>;
+  auto strings = CastPyArg2Strings(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Strings>() = strings;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_map_tensor(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      egr::IsVariableCompatTensor(self->tensor), true,
+      paddle::platform::errors::Fatal(
+          "this method is only effective for VariableCompatTensor"));
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto* var_tensor =
+      static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
+  return ToPyObject(var_tensor->Get<Vocab>());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1633,6 +1702,15 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_copy_gradient_from",
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    /** the methods to adapt old dygraph, will be removed in the future **/
+    {"set_string_list",
+     (PyCFunction)(void (*)(void))tensor_method_set_string_list,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"set_vocab", (PyCFunction)(void (*)(void))tensor_method_set_vocab,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_map_tensor",
+     (PyCFunction)(void (*)(void))tensor_method_get_map_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"indices", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,

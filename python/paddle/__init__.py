@@ -105,6 +105,7 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
+from .tensor.creation import tril_indices  #noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -270,6 +271,7 @@ from .tensor.math import fmax  # noqa: F401
 from .tensor.math import fmin  # noqa: F401
 from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
+from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
@@ -637,4 +639,6 @@ __all__ = [  # noqa
            'renorm',
            'take_along_axis',
            'put_along_axis',
+           'heaviside',
+           'tril_indices',
 ]

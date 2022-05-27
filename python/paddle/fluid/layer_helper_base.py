@@ -234,7 +234,7 @@ class LayerHelperBase(object):
                 x=g, y=norm)  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape
             # of y is a subset of the shape of x. Thus, we reshape y to squeeze
-            # to achive the subset.
+            # to achieve the subset.
             w = elementwise_mul(
                 x=v,
                 y=scale if dim is None else reshape(

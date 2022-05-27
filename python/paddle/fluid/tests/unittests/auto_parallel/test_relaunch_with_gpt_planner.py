@@ -53,6 +53,10 @@ class TestPlannerReLaunch(unittest.TestCase):
                                               "auto_parallel_rank_mapping.json")
         if os.path.exists(rank_mapping_json_path):
             os.remove(rank_mapping_json_path)
+        files_path = [path for path in os.listdir('.') if '.pkl' in path]
+        for path in files_path:
+            if os.path.exists(path):
+                os.remove(path)
         log_path = os.path.join(file_dir, "log")
         if os.path.exists(log_path):
             shutil.rmtree(log_path)

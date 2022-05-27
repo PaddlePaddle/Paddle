@@ -22,17 +22,17 @@ class FillConstantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
 
-    auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
       for (size_t i = 0; i < shape.size(); ++i) {
         PADDLE_ENFORCE_GE(
             shape[i], 0,
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+                "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i, shape[i], phi::make_ddim(shape)));
       }
     }
@@ -52,8 +52,8 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
     } else {
@@ -63,7 +63,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
@@ -97,13 +97,24 @@ class FillConstantOp : public framework::OperatorWithKernel {
       }
     }
 
+#ifdef PADDLE_WITH_MKLDNN
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return kt;
   }
 };
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
+  void operator()(framework::InferVarTypeContext *ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", data_type);
@@ -156,6 +167,10 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "3: XPUPlace. "
                  "4: NPUPlace. ")
         .SetDefault(-1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");

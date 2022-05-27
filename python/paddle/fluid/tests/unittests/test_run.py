@@ -51,7 +51,9 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
+        f for f in listdir(pth)
+        if isfile(join(pth, f)) and f.startswith(prefix) and f !=
+        f"{prefix}.gpu.log"
     ]
 
 
@@ -93,7 +95,7 @@ class Collective_Test(unittest.TestCase):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--job_id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
+        args = "--job_id test3 --devices 0,1 --master 127.0.0.1:{} --nnodes 2".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
@@ -141,7 +143,7 @@ class PS_Test(unittest.TestCase):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--job_id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
+        args = "--job_id ps3 --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)

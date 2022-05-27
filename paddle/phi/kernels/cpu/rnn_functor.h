@@ -330,7 +330,7 @@ void RnnFunc(const Context& dev_ctx,
     }
   }
 
-  DenseTensor* input_holder;
+  DenseTensor* input_holder = nullptr;
   DenseTensor* output_holder = output;
   bool has_allocate_mem = false;
 

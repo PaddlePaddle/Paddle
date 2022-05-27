@@ -41,7 +41,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
-            as axis+R. Default is 0.
+            as axis+R. Default is -1.
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
@@ -66,9 +66,10 @@ def argsort(x, axis=-1, descending=False, name=None):
                                    [4,7,7,9],
                                    [1,7,0,6]]], 
                                 dtype='float32')
-            out1 = paddle.argsort(x=x, axis=-1)
-            out2 = paddle.argsort(x=x, axis=0)
-            out3 = paddle.argsort(x=x, axis=1)
+            out1 = paddle.argsort(x, axis=-1)
+            out2 = paddle.argsort(x, axis=0)
+            out3 = paddle.argsort(x, axis=1)
+            
             print(out1)
             #[[[0 3 1 2]
             #  [0 1 2 3]
@@ -76,6 +77,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             # [[1 3 2 0]
             #  [0 1 2 3]
             #  [2 0 3 1]]]
+            
             print(out2)
             #[[[0 1 1 1]
             #  [0 0 0 0]
@@ -83,6 +85,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             # [[1 0 0 0]
             #  [1 1 1 1]
             #  [0 0 0 1]]]
+            
             print(out3)
             #[[[1 1 1 2]
             #  [0 0 2 0]
@@ -119,7 +122,7 @@ def argsort(x, axis=-1, descending=False, name=None):
 
 def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
-    This OP computes the indices of the max elements of the input tensor's
+    Computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
     Args:
@@ -130,23 +133,21 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
         keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is 'int64', and it will
+                    be int32, int64. The default value is ``int64`` , and it will
                     return the int64 indices.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+        Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            x =  paddle.to_tensor([[5,8,9,5],
-                                     [0,0,1,7],
-                                     [6,9,2,4]])
+            x = paddle.to_tensor([[5,8,9,5],
+                                 [0,0,1,7],
+                                 [6,9,2,4]])
             out1 = paddle.argmax(x)
             print(out1) # 2
             out2 = paddle.argmax(x, axis=0)
@@ -773,7 +774,7 @@ def index_sample(x, index):
 
 def masked_select(x, mask, name=None):
     """
-    This OP Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
+    Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
 
     Args:

@@ -113,10 +113,13 @@ phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
-  if (out->impl() == nullptr) {
-    out->set_impl(std::make_shared<phi::DenseTensor>());
+  if (out) {
+    if (out->impl() == nullptr) {
+      out->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    return static_cast<phi::DenseTensor*>(out->impl().get());
   }
-  return static_cast<phi::DenseTensor*>(out->impl().get());
+  return nullptr;
 }
 
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
@@ -129,6 +132,18 @@ std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
     results[i] = tensor_ptr.get();
     out->emplace_back();
     out->back().set_impl(tensor_ptr);
+  }
+  return results;
+}
+
+std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out) {
+  std::vector<phi::DenseTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    if (out->at(i)) {
+      auto tensor_ptr = std::make_shared<phi::DenseTensor>();
+      results[i] = tensor_ptr.get();
+      (*out)[i]->set_impl(tensor_ptr);
+    }
   }
   return results;
 }

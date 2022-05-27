@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/operators/norm_utils.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
@@ -351,7 +351,7 @@ void BatchNormGradRawKernel(const Context &ctx,
           x_dims.size(),
           x_dims));
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
   if (d_x) {
