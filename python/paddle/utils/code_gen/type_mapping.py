@@ -108,7 +108,7 @@ dense_output_types_map = {
 sr_input_types_map = {'Tensor': 'const phi::SelectedRows&', }
 
 sr_optional_input_types_map = {
-    'Tensor': 'paddle::optional<const phi::SelectedRows&>',
+    'Tensor': 'const paddle::optional<phi::SelectedRows>&',
 }
 
 sr_output_types_map = {'Tensor': 'phi::SelectedRows*', }
