@@ -22,6 +22,7 @@ from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
@@ -115,6 +116,11 @@ class TestInstanceNorm(unittest.TestCase):
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             self.assertTrue(np.allclose(y1, y2))
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_dygraph()
+            self.test_error()
 
 
 if __name__ == '__main__':

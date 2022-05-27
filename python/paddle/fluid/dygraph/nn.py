@@ -1137,7 +1137,11 @@ class InstanceNorm(layers.Layer):
             self.bias = None
 
     def forward(self, input):
-        if _non_static_mode():
+        if in_dygraph_mode():
+            out, _, _, = _C_ops.final_state_instance_norm(
+                input, self.scale, self.bias, self._epsilon)
+            return out
+        if _in_legacy_dygraph():
             out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
                                              'epsilon', self._epsilon)
             return out
