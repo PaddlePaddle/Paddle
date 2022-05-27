@@ -2056,7 +2056,7 @@ static std::string GenerateSingleOpBase(
   const char* CHECK_BACKWARD_INPLACE_TEMPLATE =
       "  // Check backward inplace info\n"
       "  bool %s = false;\n"
-      "  auto%s %s = %s;\n"
+      "  %s\n"
       "  if (%s.initialized()) {\n"
       "    VLOG(10) << %s.name() << \"(%s) use_count: \" << "
       "%s.impl().use_count();\n"
@@ -2096,20 +2096,19 @@ static std::string GenerateSingleOpBase(
           backward_inplace_map.count(grad_input_name)) {
         process_backward_inplace = true;
         const char* GRAD_INS_FWD_TENSOR_WRAPPER_TEMPLATE =
-            "egr::EagerUtils::RecoverTensorWrapper(&this->%s)";
+            "auto %s = egr::EagerUtils::RecoverTensorWrapper(&this->%s);";
         std::string tensor_wrapper_str = paddle::string::Sprintf(
-            GRAD_INS_FWD_TENSOR_WRAPPER_TEMPLATE, struct_fwd_input_name);
+            GRAD_INS_FWD_TENSOR_WRAPPER_TEMPLATE, bwd_inplace_input_name,
+            struct_fwd_input_name);
         const char* GRAD_INS_FWD_TENSOR_TEMPLATE =
             "(&this->%s)->get_intermidiate_tensor()";
         std::string tensor_wrapper_intermidiate_tensor_str =
             paddle::string::Sprintf(GRAD_INS_FWD_TENSOR_TEMPLATE,
                                     struct_fwd_input_name);
-        std::string ampersand_flag_str = "";
         generated_grad_function_body += paddle::string::Sprintf(
             CHECK_BACKWARD_INPLACE_TEMPLATE, can_be_inplaced_name,
-            ampersand_flag_str, bwd_inplace_input_name, tensor_wrapper_str,
-            bwd_inplace_input_name, bwd_inplace_input_name, grad_input_name,
-            bwd_inplace_input_name, bwd_inplace_input_name,
+            tensor_wrapper_str, bwd_inplace_input_name, bwd_inplace_input_name,
+            grad_input_name, bwd_inplace_input_name, bwd_inplace_input_name,
             bwd_inplace_input_name, bwd_inplace_input_name,
             tensor_wrapper_intermidiate_tensor_str, can_be_inplaced_name);
       }
@@ -2124,20 +2123,21 @@ static std::string GenerateSingleOpBase(
       if (!backward_inplace_map.empty() &&
           backward_inplace_map.count(grad_input_name)) {
         process_backward_inplace = true;
-        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE = "hooked_grads[%d][0]";
+        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE =
+            "auto& %s = hooked_grads[%d][0];";
         std::string hooked_grads_tensor_str = paddle::string::Sprintf(
-            GRAD_INS_HOOKED_GRAD_TEMPLATE, fwd_output_position);
+            GRAD_INS_HOOKED_GRAD_TEMPLATE, bwd_inplace_input_name,
+            fwd_output_position);
         const char* GRAD_INS_GRAD_TENSOR_TEMPLATE = "grads[%d][0]";
         std::string grads_tensor_str = paddle::string::Sprintf(
             GRAD_INS_GRAD_TENSOR_TEMPLATE, fwd_output_position);
         std::string ampersand_flag_str = "&";
         generated_grad_function_body += paddle::string::Sprintf(
             CHECK_BACKWARD_INPLACE_TEMPLATE, can_be_inplaced_name,
-            ampersand_flag_str, bwd_inplace_input_name, hooked_grads_tensor_str,
-            bwd_inplace_input_name, bwd_inplace_input_name, grad_input_name,
+            hooked_grads_tensor_str, bwd_inplace_input_name,
+            bwd_inplace_input_name, grad_input_name, bwd_inplace_input_name,
             bwd_inplace_input_name, bwd_inplace_input_name,
-            bwd_inplace_input_name, bwd_inplace_input_name, grads_tensor_str,
-            can_be_inplaced_name);
+            bwd_inplace_input_name, grads_tensor_str, can_be_inplaced_name);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
