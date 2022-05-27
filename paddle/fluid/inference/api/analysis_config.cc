@@ -634,8 +634,8 @@ void AnalysisConfig::Update() {
         continue;
       }
       // delete_fill_constant_op_pass is not used under trt dynamic shape
-      if ((!min_input_shape_.empty() || trt_tuned_dynamic_shape_) &&
-          pass == "delete_fill_constant_op_pass") {
+      if ((tensorrt_dynamic_shape_enabled() || shape_range_info_collected() ||
+           tuned_tensorrt_dynamic_shape()) &&
         continue;
       }
       pass_builder()->AppendPass(pass);
