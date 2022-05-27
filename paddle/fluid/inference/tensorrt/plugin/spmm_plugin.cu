@@ -678,8 +678,8 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       auto* output = static_cast<float*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       char* test_weight = new char[compressed_size_];
-      cudaMemcpy(weight_compressed_dev_global_.get(), test_weight, compressed_size_,
-             cudaMemcpyHostToDevice);
+      cudaMemcpy(test_weight, weight_compressed_dev_global_.get(), compressed_size_,
+             cudaMemcpyDeviceToHost);
       std::cout << "compressed weight:";
       for(int i=0; i<10; i++) {
         std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
@@ -691,8 +691,6 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
         std::cout << " " << static_cast<float>(reinterpret_cast<float*>(test_weight)[i]);
       }
       std::cout << std::endl;
-
-
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_p_, &beta, output, output, workSpace, &stream, 1);
