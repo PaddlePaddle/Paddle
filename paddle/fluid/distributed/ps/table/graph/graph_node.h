@@ -18,7 +18,11 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/string/string_helper.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -45,6 +49,7 @@ class Node {
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual std::string get_feature(int idx) { return std::string(""); }
+  virtual int get_feature_ids(int slot_idx, std::vector<uint64_t>* res) const { return 0; }
   virtual void set_feature(int idx, std::string str) {}
   virtual void set_feature_size(int size) {}
   virtual int get_feature_size() { return 0; }
@@ -92,6 +97,25 @@ class FeatureNode : public Node {
     } else {
       return std::string("");
     }
+  }
+
+  virtual int get_feature_ids(int slot_idx, std::vector<uint64_t>* res) const {
+    PADDLE_ENFORCE_NOT_NULL(res);
+    res->clear();
+    errno = 0;
+    if (slot_idx < (int)this->feature.size()) {
+      const char* feat_str = this->feature[slot_idx].c_str();
+      auto fields = paddle::string::split_string<std::string>(feat_str, " ");
+      char* head_ptr = NULL;
+      for (auto &field: fields) {
+        PADDLE_ENFORCE_EQ(field.empty(), false);
+        uint64_t feasign = strtoull(field.c_str(), &head_ptr, 10);
+        PADDLE_ENFORCE_EQ(field.c_str() + field.length(), head_ptr);
+        res->push_back(feasign);
+      }
+    }
+    PADDLE_ENFORCE_EQ(errno, 0);
+    return 0;
   }
 
   virtual void set_feature(int idx, std::string str) {
