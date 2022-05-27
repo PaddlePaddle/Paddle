@@ -37,7 +37,6 @@ class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
     AddComment(R"DOC(
 CSyncCalcStream Operator
-
 Call calculation stream synchronization.
 )DOC");
   }
