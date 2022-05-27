@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/executor_statistics.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -165,9 +166,16 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -189,6 +197,7 @@ PyTypeObject *g_xpuplace_pytype = nullptr;
 PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
+PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
@@ -542,6 +551,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
   BindEager(&m);
+  BindEagerStringTensor(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -844,6 +854,10 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_layout(StringToDataLayout(layout));
            })
       .def("_alloc_float",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("_alloc_float",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -872,6 +886,10 @@ PYBIND11_MODULE(core_noavx, m) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("_alloc_int",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
@@ -895,6 +913,12 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+           })
+      .def("_mutable_data",
+           [](framework::Tensor &self, paddle::platform::CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
@@ -932,6 +956,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
+      .def("_copy_from", &TensorCopyFrom<paddle::platform::CustomPlace>,
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::XPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CUDAPlace>,
@@ -945,6 +971,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_copy_from", &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CustomPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
@@ -1897,7 +1925,7 @@ All parameter, weight, gradient are variables in Paddle.
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
               
-             Args:
+            Args:
                    program (ProgramDesc): The original program.
 
              Returns:
@@ -1906,6 +1934,19 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
+  m.def("get_serialize_comile_key", [](int64_t compilation_key) {
+#ifdef PADDLE_WITH_CINN
+    auto compiler = framework::paddle2cinn::CinnCompiler::GetInstance();
+    auto s = compiler->SerializeKey(compilation_key);
+    VLOG(4) << s;
+    return s;
+#else
+    PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot get compilation key in non-CINN version, "
+                 "Please recompile or reinstall Paddle with CINN support."));
+#endif
+  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -1983,6 +2024,19 @@ All parameter, weight, gradient are variables in Paddle.
                  "Please recompile or reinstall Paddle with NPU support."));
 #else
                 return new paddle::platform::NPUDeviceContext(place);
+#endif
+        })
+        .def_static("create",
+                    [](paddle::platform::CustomPlace& place)
+                        -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use CustomPlace in CPU/GPU/XPU version, "
+                 "Please recompile or reinstall Paddle with "
+                 "CustomDevice support."));
+#else
+                return new paddle::platform::CustomDeviceContext(place);
 #endif
         })
       .def_static("create",
@@ -2089,8 +2143,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
-  py::class_<platform::CustomPlace>(m, "CustomPlace",
-                                    R"DOC(
+  py::class_<platform::CustomPlace> customplace(m, "CustomPlace",
+                                                R"DOC(
     CustomPlace is a descriptor of a device.
     It represents a custom device on which a tensor will be allocated and a model will run.
 
@@ -2099,7 +2153,9 @@ All parameter, weight, gradient are variables in Paddle.
 
           import paddle
           fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-                                             )DOC")
+                                             )DOC");
+  g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
+  customplace
       .def("__init__",
            [](platform::CustomPlace &self, const std::string &device_type,
               int dev_id) {
@@ -2156,6 +2212,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+      .def("_type", &PlaceIndex<platform::CustomPlace>)
       .def("get_device_id",
            [](const platform::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
@@ -2720,6 +2777,12 @@ All parameter, weight, gradient are variables in Paddle.
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::CustomPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -2864,9 +2927,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
-             platform::RecordEvent record_event(
-                 "StandaloneExecutor:run",
-                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
@@ -2903,6 +2963,8 @@ All parameter, weight, gradient are variables in Paddle.
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
   m.def("init_devices", []() { framework::InitDevices(); });
+  m.def("init_default_kernel_signatures",
+        []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -2965,6 +3027,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetGPUComputeCapability(place.device) >= 53;
+  });
+  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 80 support bfloat16
+    return platform::GetGPUComputeCapability(place.device) >= 80;
   });
 #endif
 
@@ -3332,6 +3398,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
+      .def("is_cnpapi_supported",
+           &paddle::platform::Profiler::IsCnpapiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -3341,7 +3409,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("stop",
            [](paddle::platform::Profiler *profiler) {
              platform::DisableHostEventRecorder();
-             return profiler->Stop();
+             auto result = profiler->Stop();
+             framework::StaticGraphExecutorPerfStatistics(
+                 result->GetNodeTrees());
+             return result;
            },
            py::return_value_policy::automatic_reference);
 
@@ -4292,7 +4363,10 @@ All parameter, weight, gradient are variables in Paddle.
              for (auto element : opt) {
                auto option_name = element.first.cast<std::string>();
                VLOG(10) << "Set option: " << option_name;
-               if (py::isinstance<py::bool_>(element.second)) {
+               if (option_name == "compilation_progress_logger") {
+                 self.SetCompilationProgressLogger(
+                     element.second.cast<py::function>());
+               } else if (py::isinstance<py::bool_>(element.second)) {
                  self.AddBoolOption(option_name, element.second.cast<bool>());
                } else if (py::isinstance<py::float_>(element.second)) {
                  self.AddDoubleOption(option_name,
@@ -4325,6 +4399,12 @@ All parameter, weight, gradient are variables in Paddle.
                      self.SetTensorLocation(
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "replicated_collectives_settings") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     self.SetReplicatedCollectivesSettings(
+                         option.first.cast<std::string>(),
+                         option.second.cast<bool>());
                    }
                  } else if (option_name == "accumulate_outer_fragment") {
                    for (auto option : element.second.cast<py::dict>()) {
@@ -4419,6 +4499,46 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
+  m.def("enable_autotune", [] {
+    return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
+  });
+
+  m.def("disable_autotune", [] {
+    return phi::autotune::AutoTuneStatus::Instance().DisableAutoTune();
+  });
+
+  m.def("set_autotune_range", [](int64_t start, int64_t stop) {
+    return phi::autotune::AutoTuneStatus::Instance().SetAutoTuneRange(start,
+                                                                      stop);
+  });
+
+  m.def("update_autotune_status",
+        [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
+
+  m.def("autotune_status", [] {
+    py::dict res;
+    phi::autotune::AutoTuneCache::Instance().UpdateStatus();
+    res["step_id"] = phi::autotune::AutoTuneStatus::Instance().StepID();
+    res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
+    res["cache_hit_rate"] =
+        phi::autotune::AutoTuneCache::Instance().CacheHitRate();
+    return res;
+  });
+
+  m.def("enable_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance()
+        .EnableLayoutAutoTune();
+  });
+
+  m.def("disable_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance()
+        .DisableLayoutAutoTune();
+  });
+
+  m.def("use_layout_autotune", [] {
+    return paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune();
+  });
+
   BindFleetWrapper(&m);
   BindIO(&m);
 
@@ -4428,6 +4548,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
+#ifdef PADDLE_WITH_PSLIB
+  BindAfsWrapper(&m);
+#endif
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
@@ -4474,7 +4597,12 @@ All parameter, weight, gradient are variables in Paddle.
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
-  BindSparseShardingTools(&m);
+#ifdef PADDLE_WITH_HETERPS
+  BindNodeQueryResult(&m);
+  BindNeighborSampleQuery(&m);
+  BindNeighborSampleResult(&m);
+  BindGraphGpuWrapper(&m);
+#endif
 #endif
 }
 }  // namespace pybind

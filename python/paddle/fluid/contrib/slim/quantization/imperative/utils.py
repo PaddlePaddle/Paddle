@@ -18,10 +18,7 @@ import numpy as np
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 
-from ..quantization_pass import _get_op_input_var_names
-from ..quantization_pass import _get_op_output_var_names
-from ..quantization_pass import _get_output_name_index
-from ..quantization_pass import _get_input_name_index
+from ..utils import _get_op_input_var_names, _get_op_output_var_names, _get_output_name_index, _get_input_name_index
 
 layer_name_map = {
     'Conv2DTranspose': paddle.nn.Conv2DTranspose,

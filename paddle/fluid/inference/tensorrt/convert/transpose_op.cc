@@ -52,11 +52,6 @@ class TransposeOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "transpose", {output_name}, test_mode);
-
-    LOG(INFO) << "transpose " << dims;
-    for (int k = 0; k < dims; ++k) {
-      LOG(INFO) << input->getDimensions().d[k];
-    }
   }
 };
 

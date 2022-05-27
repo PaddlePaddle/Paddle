@@ -26,9 +26,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvGradKernel(const Context& dev_ctx,
-                    const DenseTensor& output_grad,
                     const DenseTensor& input,
                     const DenseTensor& filter_t,
+                    const DenseTensor& output_grad,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings_t,
                     const std::string& padding_algorithm,

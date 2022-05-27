@@ -29,8 +29,8 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for shape in [[batch, 64], [batch, 32, 64], [batch, 64, 32, 128]]:
+        for batch in [1, 4]:
+            for shape in [[batch, 32], [batch, 16, 32], [batch, 32, 16, 128]]:
                 self.input_dim = len(shape)
                 for slope in [0.1, 0.5]:
                     for offset in [0.2, 0.7]:
@@ -63,23 +63,21 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.input_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
-                self.dynamic_shape.max_input_shape = {"input_data": [64, 128]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
             elif self.input_dim == 3:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [64, 128, 256]
-                }
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 64]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 32]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [4, 16, 32]}
             elif self.input_dim == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [1, 8, 8, 4]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [64, 128, 256, 512]
+                    "input_data": [4, 32, 16, 128]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 16, 64, 128]
+                    "input_data": [4, 32, 16, 128]
                 }
 
         def clear_dynamic_shape():

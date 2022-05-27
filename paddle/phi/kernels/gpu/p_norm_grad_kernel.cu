@@ -42,8 +42,9 @@ struct AbsMaxAndMinGradFunctor {
 
 template <typename T>
 struct PNormGradFunctor {
-  HOSTDEVICE explicit inline PNormGradFunctor(float porder) {
+  HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
     this->porder = static_cast<T>(porder - 1.);
+    this->eps = static_cast<T>(eps);
   }
   template <typename Context,
             typename X,
@@ -58,11 +59,12 @@ struct PNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    dx->device(place) = (*x).abs().pow(this->porder) * (*x).sign() *
-                        dy->broadcast(dim) *
-                        (*y).pow(-this->porder).broadcast(dim);
+    dx->device(place) =
+        (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
+        (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
   }
   T porder;
+  T eps;
 };
 
 template <typename T, typename Context>
@@ -96,7 +98,7 @@ void PNormGradKernel(const Context& dev_ctx,
         dev_ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
 
   } else {
-    auto functor = PNormGradFunctor<T>(porder);
+    auto functor = PNormGradFunctor<T>(porder, epsilon);
     funcs::LaunchReduceGradKernel<Context, T, PNormGradFunctor<T>>(
         dev_ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
   }

@@ -235,20 +235,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
 PDNode* MultiHeadMatmulPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
-  input0->assert_is_op_input("c_identity");
-
-  auto* c_identity0 =
-      pattern->NewNode(c_identity0_repr())->assert_is_op("c_identity");
-  auto* c_identity0_out_var = pattern->NewNode(c_identity0_out_repr())
-                                  ->assert_is_op_output("c_identity");
-  auto* c_identity1 =
-      pattern->NewNode(c_identity1_repr())->assert_is_op("c_identity");
-  auto* c_identity1_out_var = pattern->NewNode(c_identity1_out_repr())
-                                  ->assert_is_op_output("c_identity");
-  auto* c_identity2 =
-      pattern->NewNode(c_identity2_repr())->assert_is_op("c_identity");
-  auto* c_identity2_out_var = pattern->NewNode(c_identity2_out_repr())
-                                  ->assert_is_op_output("c_identity");
+  input0->assert_is_op_input("mul");
 
   // First path with scale
   auto* mul0 = pattern->NewNode(mul0_repr())->assert_is_op("mul");
@@ -401,19 +388,15 @@ PDNode* MultiHeadMatmulPattern::operator()() {
   transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
       "matmul");  // link to matmul qkv
 
-  c_identity0->LinksFrom({input0}).LinksTo({c_identity0_out_var});
-  c_identity1->LinksFrom({input0}).LinksTo({c_identity1_out_var});
-  c_identity2->LinksFrom({input0}).LinksTo({c_identity2_out_var});
-
   // Q path
-  mul0->LinksFrom({c_identity0_out_var, mul0_w_var}).LinksTo({mul0_out_var});
+  mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
   eltadd0->LinksFrom({mul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
 
   reshape2_0->LinksFrom({eltadd0_out_var}).LinksTo({reshape2_0_out_var});
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
   scale->LinksFrom({transpose2_0_out_var}).LinksTo({scale_out_var});
   // K path
-  mul1->LinksFrom({c_identity1_out_var, mul1_w_var}).LinksTo({mul1_out_var});
+  mul1->LinksFrom({input0, mul1_w_var}).LinksTo({mul1_out_var});
   eltadd1->LinksFrom({mul1_out_var, eltadd1_b_var}).LinksTo({eltadd1_out_var});
   reshape2_1->LinksFrom({eltadd1_out_var}).LinksTo({reshape2_1_out_var});
   transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
@@ -424,7 +407,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
   // V  path
-  mul2->LinksFrom({c_identity2_out_var, mul2_w_var}).LinksTo({mul2_out_var});
+  mul2->LinksFrom({input0, mul2_w_var}).LinksTo({mul2_out_var});
   eltadd2->LinksFrom({mul2_out_var, eltadd2_b_var}).LinksTo({eltadd2_out_var});
   reshape2_2->LinksFrom({eltadd2_out_var}).LinksTo({reshape2_2_out_var});
   transpose2_2->LinksFrom({reshape2_2_out_var}).LinksTo({transpose2_2_out_var});
@@ -881,7 +864,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* mul0_op_desc = mul0->Op();
 
     // all mul op has same input.
-    if (multihead_op_desc.HasAttr("Input_scale")) {
+    if (mul0_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("Input_scale",
                                 mul0_op_desc->GetAttr("Input_scale"));
     }
@@ -934,16 +917,6 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     }
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input0, input0, multihead_pattern);
-
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity0, c_identity0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity0_out, c_identity0_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity1, c_identity1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity1_out, c_identity1_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity2, c_identity2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(c_identity2_out, c_identity2_out,
-                              multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul0, mul0, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
@@ -1058,12 +1031,6 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                                                   transpose2_qkv_out,
                                                   matmul_qkv,
                                                   matmul_qkv_out,
-                                                  c_identity0,
-                                                  c_identity1,
-                                                  c_identity2,
-                                                  c_identity0_out,
-                                                  c_identity1_out,
-                                                  c_identity2_out,
                                                   mul0,
                                                   mul1,
                                                   mul2,

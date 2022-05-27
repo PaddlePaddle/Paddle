@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -31,16 +32,14 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
+    int64_t pre_idx = idx / (stride * size);
+    int64_t dim_idx = idx % (stride * size) / stride;
+    IndexT src_dim_idx = index[dim_idx];
+    int64_t input_idx =
+        idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+    output[idx] = input[input_idx];
   }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  output[idx] = input[input_idx];
 }
 
 template <typename T, typename Context>
@@ -73,23 +72,22 @@ void IndexSelectKernel(const Context& ctx,
   T* out_data = ctx.template Alloc<T>(output);
 
   int64_t numel = output->numel();
+  if (numel == 0) {
+    return;
+  }
   auto stream = ctx.stream();
+
+  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    index_select_cuda_kernel<T, int64_t><<<
-        (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-        PADDLE_CUDA_NUM_THREADS,
-        0,
-        stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
+    index_select_cuda_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
+        in_data, out_data, index_data, numel, stride, size, delta);
   } else {
     const int* index_data = index.data<int>();
-    index_select_cuda_kernel<
-        T,
-        int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-               PADDLE_CUDA_NUM_THREADS,
-               0,
-               stream>>>(
+    index_select_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
         in_data, out_data, index_data, numel, stride, size, delta);
   }
 }

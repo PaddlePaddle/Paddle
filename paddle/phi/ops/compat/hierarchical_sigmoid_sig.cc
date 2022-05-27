@@ -32,44 +32,42 @@ KernelSignature HierarchicalSigmoidOpArgumentMapping(
 
 KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorOutput(GradVarName("W"))) {
-    return KernelSignature(
-        "hierarchical_sigmoid_grad",
-        {"X",
-         "W",
-         "Label",
-         "PreOut",
-         GradVarName("Out"),
-         "PathTable",
-         "PathCode",
-         "Bias"},
-        {"num_classes",
-         "remote_prefetch",
-         "trainer_id",
-         "height_sections",
-         "epmap",
-         "table_names",
-         "is_sparse"},
-        {GradVarName("X"), GradVarName("W"), GradVarName("Bias")});
-  } else if (ctx.IsSelectedRowsOutput(GradVarName("W"))) {
-    return KernelSignature(
-        "hierarchical_sigmoid_grad_sr",
-        {"X",
-         "W",
-         "Label",
-         "PreOut",
-         GradVarName("Out"),
-         "PathTable",
-         "PathCode",
-         "Bias"},
-        {"num_classes",
-         "remote_prefetch",
-         "trainer_id",
-         "height_sections",
-         "epmap",
-         "table_names",
-         "is_sparse"},
-        {GradVarName("X"), GradVarName("W"), GradVarName("Bias")});
+  if (ctx.IsDenseTensorOutput("W@GRAD")) {
+    return KernelSignature("hierarchical_sigmoid_grad",
+                           {"X",
+                            "W",
+                            "Label",
+                            "PathTable",
+                            "PathCode",
+                            "Bias",
+                            "PreOut",
+                            "Out@GRAD"},
+                           {"num_classes",
+                            "remote_prefetch",
+                            "trainer_id",
+                            "height_sections",
+                            "epmap",
+                            "table_names",
+                            "is_sparse"},
+                           {"X@GRAD", "W@GRAD", "Bias@GRAD"});
+  } else if (ctx.IsSelectedRowsOutput("W@GRAD")) {
+    return KernelSignature("hierarchical_sigmoid_grad_sr",
+                           {"X",
+                            "W",
+                            "Label",
+                            "PathTable",
+                            "PathCode",
+                            "Bias",
+                            "PreOut",
+                            "Out@GRAD"},
+                           {"num_classes",
+                            "remote_prefetch",
+                            "trainer_id",
+                            "height_sections",
+                            "epmap",
+                            "table_names",
+                            "is_sparse"},
+                           {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }

@@ -75,7 +75,6 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    :api_attr: Static Graph
     
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
@@ -94,6 +93,7 @@ def scope_guard(scope):
         None
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -394,19 +394,16 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-    # NOTE(zhiqiu): enable STANDALONE_EXECUTOR on windows platform by default
-    # It should be enabled on all platform in the future.
 
-    import platform
-    sysstr = platform.system().lower()
-    if sysstr == 'windows':
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', 1)
-    else:
+    from ..distributed.fleet import fleet
+    if fleet._role_maker is not None:
+        warnings.warn("do not use standalone executor in fleet by default")
         env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+    else:
+        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
 
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
-        warnings.warn("STANDALONE_EXECUTOR is enabled.")
 
     return flag
 
@@ -876,7 +873,7 @@ class Executor(object):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
+                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
                     type(item))
 
         for index, item in enumerate(fetch_list):
@@ -1285,7 +1282,7 @@ class Executor(object):
 
         """
         try:
-            return self._run_impl(
+            res = self._run_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1296,6 +1293,8 @@ class Executor(object):
                 use_program_cache=use_program_cache,
                 use_prune=use_prune,
                 return_merged=return_merged)
+            core.update_autotune_status()
+            return res
         except Exception as e:
             six.reraise(*sys.exc_info())
 
@@ -1386,6 +1385,11 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
+            if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
+            ) or isinstance(place, core.CustomPlace):
+                return False
+
             compiled = isinstance(program, compiler.CompiledProgram)
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
@@ -1396,6 +1400,8 @@ class Executor(object):
                 # else:
                 #     return False
             else:
+                if isinstance(program._graph, compiler.CompiledProgram):
+                    return False
                 assert isinstance(program, Program)
                 return True
 

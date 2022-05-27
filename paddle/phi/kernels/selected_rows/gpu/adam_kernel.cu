@@ -139,8 +139,8 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
+    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     return;
   }
 
@@ -284,4 +284,9 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+}

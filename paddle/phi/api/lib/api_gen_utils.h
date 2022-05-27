@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -42,7 +41,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<Tensor>& tensor);
+    const paddle::optional<const Tensor&>& tensor);
 
 std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
 
@@ -55,6 +54,9 @@ paddle::optional<phi::MetaTensor> MakeMetaTensor(
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors);
+
+std::vector<phi::MetaTensor> MakeMetaTensor(
+    const std::vector<phi::DenseTensor*>& tensors);
 
 phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
 
@@ -70,6 +72,9 @@ phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
                                                Backend backend,
                                                std::vector<Tensor>* out);
+
+// For backward api
+std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);
 
 phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out);
 

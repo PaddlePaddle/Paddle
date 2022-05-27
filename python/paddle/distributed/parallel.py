@@ -24,19 +24,21 @@ from paddle import compat as cpt
 
 # deprecated module import
 from paddle.fluid import core
-import paddle.fluid.framework as framework
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
-import paddle.distributed.collective as collective
+from paddle.distributed import collective
+from paddle.distributed.collective import _set_group_map
+from paddle.distributed.collective import _set_group_map_by_name
+from paddle.distributed.collective import _get_group_map_by_name
 from paddle.distributed.collective import _group_map_by_name
-from paddle.distributed.collective import _group_map
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _valid_backend_list
-from paddle.distributed.collective import _default_backend
-from paddle.distributed.collective import _default_store
+from paddle.distributed.collective import _set_default_backend
+from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
 
@@ -205,10 +207,10 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
-    if backend in _valid_backend_list and framework._in_eager_mode_:
-        if _default_group_name in collective._group_map_by_name:
-            return collective._group_map_by_name[_default_group_name]
-        _default_backend = backend
+    if backend in _valid_backend_list and in_dygraph_mode():
+        if _default_group_name in _get_group_map_by_name():
+            return _get_group_map_by_name()[_default_group_name]
+        _set_default_backend(backend)
         rank = int(os.getenv("PADDLE_TRAINER_ID"))
         world_size = int(os.getenv("PADDLE_TRAINERS_NUM"))
         assert rank >= 0 and world_size > rank and world_size > 1, (
@@ -217,7 +219,9 @@ def init_parallel_env():
             "required to create a process group.")
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
-        if not master_addr or not master_port:
+        endpoints = ":".join(
+            [master_addr, master_port]) if master_addr and master_port else None
+        if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
             endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
@@ -229,11 +233,17 @@ def init_parallel_env():
         master_addr, master_port = endpoints.split(":")
         master_port = int(master_port)
         is_master = rank == 0
-        _default_store = core.TCPStore(master_addr, master_port, is_master,
-                                       world_size)
+        stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
+        default_store = core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            world_size,
+            stop_check_timeout=stop_check_timeout)
+        _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
-            _default_store,
+            default_store,
             rank,
             world_size,
             _default_group_name,
@@ -246,8 +256,8 @@ def init_parallel_env():
             ranks=ranks,
             pg=pg,
             name=_default_group_name)
-        collective._group_map_by_name[_default_group_name] = group
-        _group_map[0] = group
+        _set_group_map_by_name(_default_group_name, group)
+        _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
         return group
 

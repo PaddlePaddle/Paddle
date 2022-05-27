@@ -690,6 +690,61 @@ class TestListIndex(unittest.TestCase):
         y = x[index_t1, index_t2]
         self.assertTrue(np.array_equal(y.numpy(), y_np))
 
+    def run_getitem_list_index(self, array, index):
+        x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
+
+        y = x[index]
+        place = paddle.fluid.CPUPlace()
+
+        prog = paddle.static.default_main_program()
+        exe = paddle.static.Executor(place)
+
+        exe.run(paddle.static.default_startup_program())
+        fetch_list = [y.name]
+        array2 = array.copy()
+
+        try:
+            value_np = array2[index]
+        except:
+            with self.assertRaises(ValueError):
+                getitem_pp = exe.run(prog,
+                                     feed={x.name: array},
+                                     fetch_list=fetch_list)
+            return
+        getitem_pp = exe.run(prog, feed={x.name: array}, fetch_list=fetch_list)
+
+        print(getitem_pp)
+        self.assertTrue(
+            np.array_equal(value_np, getitem_pp[0]),
+            msg='\n numpy:{},\n paddle:{}'.format(value_np, getitem_pp[0]))
+
+    def test_static_graph_getitem_bool_index(self):
+        paddle.enable_static()
+
+        # case 1:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, False, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
+        # case 2:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([False, True, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
+        # case 3:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, True, True, True])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
     def run_setitem_list_index(self, array, index, value_np):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 

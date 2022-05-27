@@ -490,7 +490,6 @@ REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, XPULeakyReluFunctor,
                                XPULeakyReluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(reciprocal, XPUReciprocalFunctor,
                                XPUReciprocalGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(relu, XPUReluFunctor, XPUReluGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
@@ -500,6 +499,13 @@ REGISTER_ACTIVATION_XPU_KERNEL(softplus, XPUSoftPlusFunctor,
 REGISTER_ACTIVATION_XPU_KERNEL(swish, XPUSwishFunctor, XPUSwishGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(pow, XPUPowFunctor, XPUPowGradFunctor)
 
+REGISTER_OP_XPU_KERNEL(
+    relu, ops::XPUActivationKernel<ops::XPUReluFunctor<float>>,
+    ops::XPUActivationKernel<ops::XPUReluFunctor<paddle::platform::float16>>);
+REGISTER_OP_XPU_KERNEL(
+    relu_grad, ops::XPUActivationGradKernel<ops::XPUReluGradFunctor<float>>,
+    ops::XPUActivationGradKernel<
+        ops::XPUReluGradFunctor<paddle::platform::float16>>);
 REGISTER_OP_XPU_KERNEL(
     tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
     ops::XPUActivationKernel<ops::XPUTanhFunctor<paddle::platform::float16>>);

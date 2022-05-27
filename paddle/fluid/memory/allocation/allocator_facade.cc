@@ -85,7 +85,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory, false,
@@ -415,6 +415,23 @@ class AllocatorFacadePrivate {
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
+
+    // NOTE(Ruibiao): The default stream will be set when the CUDADeviceContext
+    // created. Normally, the DeviceContextPool is a global singleton and one
+    // Place only correspond to one DeviceContext. However, to support
+    // multi-stream scheduling, standalone executor creates two extra
+    // DeviceContextPools for H2D and D2H stream in StreamAnalyzer, which make
+    // one Place correspond to multiple DeviceContext and unexpectedly reset the
+    // default stream in runtime. To avoid this behavior, we do not allow
+    // changing default stream after initially setting.
+    if (allocator->GetDefaultStream() != nullptr) {
+      VLOG(5) << "The default stream for StreamSafeCUDAAllocator("
+              << allocator.get() << ") in " << place << " has been set to "
+              << allocator->GetDefaultStream()
+              << " before, not allow to change now.";
+      return;
+    }
+
     allocator->SetDefaultStream(stream);
     VLOG(8) << "Set default stream to " << stream
             << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
@@ -817,6 +834,16 @@ class AllocatorFacadePrivate {
     for (int i = 0; i < device_count; ++i) {
       platform::MLUPlace p(i);
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
+        platform::CustomPlace p(dev_type, dev_id);
+        system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      }
     }
 #endif
   }

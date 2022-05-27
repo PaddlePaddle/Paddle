@@ -33,6 +33,7 @@
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -69,13 +70,6 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kOutputVars);
   internal_var_names_ =
       ExtractInternalVarNames(input_var_names, output_var_names);
-  // check completeness of output variables in compiled result
-  for (auto&& var_name : output_var_names) {
-    PADDLE_ENFORCE_EQ(IsVariableUsed(var_name), true,
-                      platform::errors::PreconditionNotMet(
-                          "Variable(%s) not applied in CINN", var_name));
-  }
-
   // initialize all execution arguments
   InitializeArguments();
   // DEPRECATED(CtfGo): following callback assignment will be deprecated soon
@@ -235,7 +229,7 @@ void CinnLaunchContext::InitializeArguments() {
                         cinn_tensor->shape().data().size());
     cinn_buffer->type = cinn::runtime::ToRuntimeType(cinn_tensor->type());
     VLOG(4) << string::Sprintf(
-        "Append an argument:name(%s),dims(%s),type(%s)",
+        "Append an argument:name(%s),dims(%s),type(%s)", arg,
         framework::DDim(cinn_buffer->dims, cinn_buffer->dimensions).to_str(),
         cinn_tensor->type());
     name2argument_.emplace(arg, cinn_buffer.get());
@@ -400,7 +394,20 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
-  parallel_executor_->PrepareVariables(scope);
+  // instead of using the PrepareVariables function of ParallelExecutor to
+  // initialize all variables, here we only initialize internal variables
+  // because external variables are already included in parent scope.
+  for (auto&& var_name : internal_var_names_) {
+    auto* var = scope->FindVar(var_name);
+    if (var != nullptr) {
+      VLOG(5) << "internal variable:" << var_name
+              << " has been initialized beforehand in global scope, skipped.";
+      continue;
+    }
+    framework::InitializeVariable(scope->Var(var_name),
+                                  framework::proto::VarType::LOD_TENSOR);
+  }
+
   for (auto&& var_name : initialized_beforehand_vars_) {
     auto* var = scope->GetVar(var_name);
     auto* buffer = GetCinnBufferOfVar(var_name);

@@ -14,12 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -51,7 +50,7 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
-  memset(x_grad_ptr, 0, sizeof(T) * x_grad->numel());
+  memset(x_grad_ptr, 0, sizeof(T) * x_grad_values.numel());
   phi::Copy<CPUContext>(dev_ctx,
                         x.non_zero_indices(),
                         dev_ctx.GetPlace(),
@@ -82,7 +81,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
                        const SparseCooTensor& out_grad,
                        const std::vector<int>& kernel_sizes,
                        SparseCooTensor* x_grad) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolGradCPUKernel", ([&] {
         MaxPoolGradCPUKernel<T, data_t>(
             dev_ctx, x, rulebook, out, out_grad, kernel_sizes, x_grad);

@@ -50,7 +50,8 @@ inline nvinfer1::Dims VecToDims(const std::vector<int>& vec) {
     assert(false);
   }
   // Pick first nvinfer1::Dims::MAX_DIMS elements
-  nvinfer1::Dims dims{std::min(static_cast<int>(vec.size()), limit), {}};
+  nvinfer1::Dims dims;
+  dims.nbDims = std::min(static_cast<int>(vec.size()), limit);
   std::copy_n(vec.begin(), dims.nbDims, std::begin(dims.d));
   return dims;
 }

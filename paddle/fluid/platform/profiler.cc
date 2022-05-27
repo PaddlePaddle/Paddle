@@ -612,7 +612,7 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
   auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
-  return std::move(thr_events);
+  return thr_events;
 }
 
 static void DockHostEventRecorderDevicePart(

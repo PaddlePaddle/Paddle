@@ -23,12 +23,14 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
+from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.python_api = paddle.normal
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -50,6 +52,10 @@ class TestGaussianRandomOp(OpTest):
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
+
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
@@ -70,6 +76,7 @@ class TestGaussianRandomOp(OpTest):
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
+        self.python_api = paddle.normal
         self.set_attrs()
         self.inputs = {}
         self.use_mkldnn = False
@@ -92,6 +99,10 @@ class TestGaussianRandomBF16Op(OpTest):
     def test_check_output(self):
         self.check_output_with_place_customized(
             self.verify_output, place=core.CUDAPlace(0))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
@@ -340,9 +351,6 @@ class TestRandomValue(unittest.TestCase):
 
         # Different GPU generatte different random value. Only test V100 here.
         if not "V100" in paddle.device.cuda.get_device_name():
-            return
-
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
         def _check_random_value(dtype, expect, expect_mean, expect_std):

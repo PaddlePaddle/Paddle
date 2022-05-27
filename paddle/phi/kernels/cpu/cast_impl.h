@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/api/ext/dispatch.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 // See Note [ Why still include the fluid headers? ]

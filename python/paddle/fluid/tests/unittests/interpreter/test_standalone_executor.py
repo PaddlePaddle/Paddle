@@ -15,10 +15,13 @@
 import os
 os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
 import sys
+import shutil
 import unittest
 import paddle
+import json
 from paddle.fluid import core
 from paddle.fluid.core import StandaloneExecutor
+from paddle.profiler import profiler
 
 import numpy as np
 
@@ -116,6 +119,107 @@ def build_program():
     return main_program, startup_program, [mean]
 
 
+class ExecutorStatisticsTestCase(unittest.TestCase):
+    def setUp(self):
+        self.iter_n = 3
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+
+    def test_standalone_executor_statistics(self):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
+
+        paddle.seed(2020)
+        main_program, startup_program, fetch_list = build_program()
+        fetch_list = [x.name for x in fetch_list]
+
+        p = core.Place()
+        p.set_place(self.place)
+        executor = StandaloneExecutor(p, startup_program.desc,
+                                      main_program.desc, core.Scope())
+
+        helper_profiler = profiler.Profiler(
+            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
+        helper_profiler.start()
+        for i in range(self.iter_n):
+            executor.run({}, fetch_list)
+            helper_profiler.step()
+        helper_profiler.stop()
+
+        perfstat_filepath = os.environ[
+            'FLAGS_static_executor_perfstat_filepath']
+        self.assertTrue(os.path.exists(perfstat_filepath))
+        with open(perfstat_filepath, 'r') as load_f:
+            stat_res = json.load(load_f)
+            self.assertTrue(len(stat_res) > 0)
+
+        os.remove(perfstat_filepath)
+        shutil.rmtree('./profiler_log')
+
+    def test_parallel_executor_statistics(self):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
+
+        paddle.seed(2020)
+        main_program, startup_program, fetch_list = build_program()
+        fetch_list = [x.name for x in fetch_list]
+
+        main_program = paddle.fluid.compiler.CompiledProgram(main_program)
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
+        executor = paddle.static.Executor(self.place)
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+        executor.run(startup_program)
+
+        helper_profiler = profiler.Profiler(
+            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
+        helper_profiler.start()
+        for i in range(self.iter_n):
+            executor.run(main_program, fetch_list=fetch_list)
+            helper_profiler.step()
+        helper_profiler.stop()
+
+        perfstat_filepath = os.environ[
+            'FLAGS_static_executor_perfstat_filepath']
+        self.assertTrue(os.path.exists(perfstat_filepath))
+        with open(perfstat_filepath, 'r') as load_f:
+            stat_res = json.load(load_f)
+            self.assertTrue(len(stat_res) > 0)
+
+        os.remove(perfstat_filepath)
+        shutil.rmtree('./profiler_log')
+
+    def test_executor_statistics(self):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
+
+        paddle.seed(2020)
+        main_program, startup_program, fetch_list = build_program()
+        fetch_list = [x.name for x in fetch_list]
+
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
+        executor = paddle.static.Executor(self.place)
+        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+        executor.run(startup_program)
+
+        helper_profiler = profiler.Profiler(
+            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
+        helper_profiler.start()
+        for i in range(self.iter_n):
+            executor.run(main_program, fetch_list=fetch_list)
+            helper_profiler.step()
+        helper_profiler.stop()
+
+        perfstat_filepath = os.environ[
+            'FLAGS_static_executor_perfstat_filepath']
+        self.assertTrue(os.path.exists(perfstat_filepath))
+        with open(perfstat_filepath, 'r') as load_f:
+            stat_res = json.load(load_f)
+            self.assertTrue(len(stat_res) > 0)
+
+        os.remove(perfstat_filepath)
+        shutil.rmtree('./profiler_log')
+
+
 class MultiStreamModelTestCase(unittest.TestCase):
     def setUp(self):
         self.iter_n = 2
@@ -155,6 +259,7 @@ class MultiStreamModelTestCase(unittest.TestCase):
         p.set_place(self.place)
         inter_core = StandaloneExecutor(p, startup_program.desc,
                                         main_program.desc, core.Scope())
+
         outs = []
         for i in range(self.iter_n):
             outs.append(
@@ -276,6 +381,18 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         gt = self.run_raw_executor(feed, use_compiled=True)
         for x, y in zip(gt, res):
             self.assertTrue(np.array_equal(x, y))
+
+    def test_empty_program(self):
+        program = paddle.static.Program()
+        exe = paddle.static.Executor(self.place)
+        for i in range(10):
+            out = exe.run()  # old executor
+
+        for i in range(10):
+            print(i, flush=1)
+            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+            out = exe.run(program, feed=None)
+            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
 
 
 class TestException(unittest.TestCase):

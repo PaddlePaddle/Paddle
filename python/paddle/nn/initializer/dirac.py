@@ -168,14 +168,22 @@ class Dirac(Initializer):
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_out = _C_ops.reshape(out_var, 'shape', [-1])
+                tmp_out, _ = _C_ops.reshape2(out_var, None, 'shape', [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
+            x_shape = block.create_var(
+                name=unique_name.generate(".".join([out_var.name, "XShape"])),
+                dtype=out_var.dtype,
+                shape=out_var.shape,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
             block.append_op(
-                type="reshape",
+                type="reshape2",
                 inputs={"X": out_var},
                 attrs={'shape': [-1]},
-                outputs={"Out": out_var},
+                outputs={"Out": out_var,
+                         "XShape": x_shape},
                 stop_gradient=True)
 
         index_tensor = block.create_var(
@@ -185,9 +193,10 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = _C_ops.assign_value('shape', [len(idx_list)],
-                                                 'dtype', VarDesc.VarType.INT64,
-                                                 'int64_values', idx_list)
+                tmp_tensor = framework._varbase_creator()
+                _C_ops.assign_value(tmp_tensor, 'shape', [len(idx_list)],
+                                    'dtype', VarDesc.VarType.INT64,
+                                    'int64_values', idx_list)
                 tmp_tensor._share_underline_tensor_to(index_tensor)
         else:
             block.append_op(
@@ -207,9 +216,10 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = _C_ops.assign_value('shape', [len(value_list)],
-                                                 'dtype', VarDesc.VarType.FP32,
-                                                 'fp32_values', value_list)
+                tmp_tensor = framework._varbase_creator()
+                _C_ops.assign_value(tmp_tensor, 'shape', [len(value_list)],
+                                    'dtype', VarDesc.VarType.FP32,
+                                    'fp32_values', value_list)
                 tmp_tensor._share_underline_tensor_to(value_tensor)
         else:
             block.append_op(
@@ -227,7 +237,8 @@ class Dirac(Initializer):
                 tmp_out = _C_ops.final_state_scatter(out_var, index_tensor,
                                                      value_tensor, True)
                 tmp_out._share_underline_tensor_to(out_var)
-                tmp_reshape_out = _C_ops.reshape(out_var, 'shape', origin_shape)
+                tmp_reshape_out, _ = _C_ops.reshape2(out_var, None, 'shape',
+                                                     origin_shape)
                 tmp_reshape_out._share_underline_tensor_to(out_var)
                 if var.dtype != VarDesc.VarType.FP32:
                     tmp_cast_out = _C_ops.cast(out_var, 'in_dtype',
@@ -246,11 +257,19 @@ class Dirac(Initializer):
                 attrs={'overwrite': True},
                 outputs={"Out": out_var},
                 stop_gradient=True)
+            x_shape = block.create_var(
+                name=unique_name.generate(".".join([out_var.name, "XShape"])),
+                dtype=out_var.dtype,
+                shape=out_var.shape,
+                type=VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
             block.append_op(
-                type="reshape",
+                type="reshape2",
                 inputs={"X": out_var},
                 attrs={'shape': origin_shape},
-                outputs={"Out": out_var},
+                outputs={"Out": out_var,
+                         "XShape": x_shape},
                 stop_gradient=True)
             if var.dtype != VarDesc.VarType.FP32:
                 block.append_op(

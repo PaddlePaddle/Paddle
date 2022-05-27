@@ -148,6 +148,9 @@ class CtrCommonAccessor : public ValueAccessor {
   // param = 1, save delta feature
   // param = 2, save xbox base feature
   bool Save(float* value, int param) override;
+  bool SaveCache(float* value, int param,
+                 double global_cache_threshold) override;
+  bool SaveSSD(float* value) override;
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值
@@ -186,6 +189,7 @@ class CtrCommonAccessor : public ValueAccessor {
   // CtrCommonFeatureValue common_feature_value;
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
+  bool _show_scale = false;
 
  public:  // TODO(zhaocaibei123): it should be private, but we make it public
           // for unit test

@@ -14,9 +14,12 @@
 
 from __future__ import print_function
 
+import os
+os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
 import time
 import unittest
+import tempfile
 
 import numpy as np
 
@@ -35,11 +38,6 @@ epoch_num = 1
 place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
     else paddle.CPUPlace()
 
-MODEL_SAVE_DIR = "./inference"
-MODEL_SAVE_PREFIX = "./inference/resnet_v2"
-MODEL_FILENAME = "resnet_v2" + paddle.fluid.dygraph.io.INFER_MODEL_SUFFIX
-PARAMS_FILENAME = "resnet_v2" + paddle.fluid.dygraph.io.INFER_PARAMS_SUFFIX
-DY_STATE_DICT_SAVE_PATH = "./resnet_v2.dygraph"
 program_translator = paddle.jit.ProgramTranslator()
 
 if paddle.is_compiled_with_cuda():
@@ -208,133 +206,145 @@ def reader_decorator(reader):
     return __reader__
 
 
-def train(to_static):
-    """
-    Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
-    """
-    paddle.disable_static(place)
-    np.random.seed(SEED)
-    paddle.seed(SEED)
-    paddle.framework.random._manual_program_seed(SEED)
-
-    train_reader = paddle.batch(
-        reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-        batch_size=batch_size,
-        drop_last=True)
-    data_loader = paddle.io.DataLoader.from_generator(capacity=5, iterable=True)
-    data_loader.set_sample_list_generator(train_reader)
-
-    resnet = ResNet()
-    optimizer = optimizer_setting(parameter_list=resnet.parameters())
-
-    for epoch in range(epoch_num):
-        total_loss = 0.0
-        total_acc1 = 0.0
-        total_acc5 = 0.0
-        total_sample = 0
-
-        for batch_id, data in enumerate(data_loader()):
-            start_time = time.time()
-            img, label = data
-
-            pred = resnet(img)
-            loss = paddle.nn.functional.cross_entropy(input=pred, label=label)
-            avg_loss = paddle.mean(x=loss)
-            acc_top1 = paddle.metric.accuracy(input=pred, label=label, k=1)
-            acc_top5 = paddle.metric.accuracy(input=pred, label=label, k=5)
-
-            avg_loss.backward()
-            optimizer.minimize(avg_loss)
-            resnet.clear_gradients()
-
-            total_loss += avg_loss
-            total_acc1 += acc_top1
-            total_acc5 += acc_top5
-            total_sample += 1
-
-            end_time = time.time()
-            if batch_id % 2 == 0:
-                print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
-                    ( epoch, batch_id, total_loss.numpy() / total_sample, \
-                        total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
-            if batch_id == 10:
-                if to_static:
-                    paddle.jit.save(resnet, MODEL_SAVE_PREFIX)
-                else:
-                    paddle.fluid.dygraph.save_dygraph(resnet.state_dict(),
-                                                      DY_STATE_DICT_SAVE_PATH)
-                    # avoid dataloader throw abort signaal
-                data_loader._reset()
-                break
-    paddle.enable_static()
-
-    return total_loss.numpy()
-
-
-def predict_dygraph(data):
-    program_translator.enable(False)
-    paddle.disable_static(place)
-    resnet = ResNet()
-
-    model_dict, _ = paddle.fluid.dygraph.load_dygraph(DY_STATE_DICT_SAVE_PATH)
-    resnet.set_dict(model_dict)
-    resnet.eval()
-
-    pred_res = resnet(
-        paddle.to_tensor(
-            data=data, dtype=None, place=None, stop_gradient=True))
-
-    ret = pred_res.numpy()
-    paddle.enable_static()
-    return ret
-
-
-def predict_static(data):
-    exe = paddle.static.Executor(place)
-    [inference_program, feed_target_names,
-     fetch_targets] = paddle.static.load_inference_model(
-         MODEL_SAVE_DIR,
-         executor=exe,
-         model_filename=MODEL_FILENAME,
-         params_filename=PARAMS_FILENAME)
-
-    pred_res = exe.run(inference_program,
-                       feed={feed_target_names[0]: data},
-                       fetch_list=fetch_targets)
-
-    return pred_res[0]
-
-
-def predict_dygraph_jit(data):
-    paddle.disable_static(place)
-    resnet = paddle.jit.load(MODEL_SAVE_PREFIX)
-    resnet.eval()
-
-    pred_res = resnet(data)
-
-    ret = pred_res.numpy()
-    paddle.enable_static()
-    return ret
-
-
-def predict_analysis_inference(data):
-    output = PredictorTools(MODEL_SAVE_DIR, MODEL_FILENAME, PARAMS_FILENAME,
-                            [data])
-    out = output()
-    return out
-
-
 class TestResnet(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+        self.model_save_dir = os.path.join(self.temp_dir.name, "./inference")
+        self.model_save_prefix = os.path.join(self.temp_dir.name,
+                                              "./inference/resnet_v2")
+        self.model_filename = "resnet_v2" + paddle.fluid.dygraph.io.INFER_MODEL_SUFFIX
+        self.params_filename = "resnet_v2" + paddle.fluid.dygraph.io.INFER_PARAMS_SUFFIX
+        self.dy_state_dict_save_path = os.path.join(self.temp_dir.name,
+                                                    "./resnet_v2.dygraph")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def do_train(self, to_static):
+        """
+        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        """
+        paddle.disable_static(place)
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
+        train_reader = paddle.batch(
+            reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+            batch_size=batch_size,
+            drop_last=True)
+        data_loader = paddle.io.DataLoader.from_generator(
+            capacity=5, iterable=True)
+        data_loader.set_sample_list_generator(train_reader)
+
+        resnet = ResNet()
+        optimizer = optimizer_setting(parameter_list=resnet.parameters())
+
+        for epoch in range(epoch_num):
+            total_loss = 0.0
+            total_acc1 = 0.0
+            total_acc5 = 0.0
+            total_sample = 0
+
+            for batch_id, data in enumerate(data_loader()):
+                start_time = time.time()
+                img, label = data
+
+                pred = resnet(img)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label)
+                avg_loss = paddle.mean(x=loss)
+                acc_top1 = paddle.metric.accuracy(input=pred, label=label, k=1)
+                acc_top5 = paddle.metric.accuracy(input=pred, label=label, k=5)
+
+                avg_loss.backward()
+                optimizer.minimize(avg_loss)
+                resnet.clear_gradients()
+
+                total_loss += avg_loss
+                total_acc1 += acc_top1
+                total_acc5 += acc_top5
+                total_sample += 1
+
+                end_time = time.time()
+                if batch_id % 2 == 0:
+                    print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
+                        ( epoch, batch_id, total_loss.numpy() / total_sample, \
+                            total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
+                if batch_id == 10:
+                    if to_static:
+                        paddle.jit.save(resnet, self.model_save_prefix)
+                    else:
+                        paddle.fluid.dygraph.save_dygraph(
+                            resnet.state_dict(), self.dy_state_dict_save_path)
+                        # avoid dataloader throw abort signaal
+                    data_loader._reset()
+                    break
+        paddle.enable_static()
+
+        return total_loss.numpy()
+
+    def predict_dygraph(self, data):
+        program_translator.enable(False)
+        paddle.disable_static(place)
+        resnet = ResNet()
+
+        model_dict, _ = paddle.fluid.dygraph.load_dygraph(
+            self.dy_state_dict_save_path)
+        resnet.set_dict(model_dict)
+        resnet.eval()
+
+        pred_res = resnet(
+            paddle.to_tensor(
+                data=data, dtype=None, place=None, stop_gradient=True))
+
+        ret = pred_res.numpy()
+        paddle.enable_static()
+        return ret
+
+    def predict_static(self, data):
+        exe = paddle.static.Executor(place)
+        [inference_program, feed_target_names,
+         fetch_targets] = paddle.static.load_inference_model(
+             self.model_save_dir,
+             executor=exe,
+             model_filename=self.model_filename,
+             params_filename=self.params_filename)
+
+        pred_res = exe.run(inference_program,
+                           feed={feed_target_names[0]: data},
+                           fetch_list=fetch_targets)
+
+        return pred_res[0]
+
+    def predict_dygraph_jit(self, data):
+        paddle.disable_static(place)
+        resnet = paddle.jit.load(self.model_save_prefix)
+        resnet.eval()
+
+        pred_res = resnet(data)
+
+        ret = pred_res.numpy()
+        paddle.enable_static()
+        return ret
+
+    def predict_analysis_inference(self, data):
+        output = PredictorTools(self.model_save_dir, self.model_filename,
+                                self.params_filename, [data])
+        out = output()
+        return out
+
     def train(self, to_static):
         program_translator.enable(to_static)
-        return train(to_static)
+        return self.do_train(to_static)
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
-        dy_pre = predict_dygraph(image)
-        st_pre = predict_static(image)
-        dy_jit_pre = predict_dygraph_jit(image)
-        predictor_pre = predict_analysis_inference(image)
+        dy_pre = self.predict_dygraph(image)
+        st_pre = self.predict_static(image)
+        dy_jit_pre = self.predict_dygraph_jit(image)
+        predictor_pre = self.predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
@@ -359,7 +369,7 @@ class TestResnet(unittest.TestCase):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
             if paddle.fluid.core.is_compiled_with_mkldnn():
-                train(to_static=True)
+                self.train(to_static=True)
         finally:
             paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
 

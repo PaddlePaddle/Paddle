@@ -175,7 +175,7 @@ void TrtTypeConvertPass::runOnFunction() {
 namespace infrt {
 namespace trt {
 
-std::unique_ptr<mlir::Pass> createTrtTypeConvertPass() {
+std::unique_ptr<mlir::Pass> CreateTrtTypeConvertPass() {
   return std::make_unique<TrtTypeConvertPass>();
 }
 

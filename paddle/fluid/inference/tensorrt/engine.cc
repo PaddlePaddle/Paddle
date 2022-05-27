@@ -90,7 +90,9 @@ void TensorRTEngine::FreezeNetwork() {
 
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
   if (enable_int8) {
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    if (!use_dla_) {
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
 
     if (calibrator_) {
@@ -273,7 +275,7 @@ void TensorRTEngine::FreezeNetwork() {
     cur_profile_num_ = 0;
   }
 
-//  GetEngineInfo();
+  GetEngineInfo();
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,

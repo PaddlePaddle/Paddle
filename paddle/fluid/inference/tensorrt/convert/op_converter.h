@@ -67,10 +67,8 @@ class OpConverter {
     if (op_desc.Type().find("elementwise") != std::string::npos) {
       static std::unordered_set<std::string> add_tensor_op_set{
           "add", "mul", "sub", "div", "max", "min", "pow"};
-      // TODO(xingzhaolong): all mul, sub, div
-      // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
-      // "sub", "div"};
-      static std::unordered_set<std::string> add_weight_op_set{"add", "mul"};
+      static std::unordered_set<std::string> add_weight_op_set{
+          "add", "mul", "sub", "div", "pow"};
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
                         platform::errors::InvalidArgument(
                             "The input op's Input(\"Y\")."
@@ -85,8 +83,8 @@ class OpConverter {
             add_weight_op_set.count(op_type), 0,
             platform::errors::Unimplemented("Unsupported elementwise type %s",
                                             op_type.c_str()));
-        it = Registry<OpConverter>::Global().Lookup(
-            "elementwise_" + op_type + "_weight");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_weight");
         PADDLE_ENFORCE_NOT_NULL(
             it, platform::errors::Unimplemented(
                     "no OpConverter for optype [%s]", op_desc.Type()));
@@ -219,14 +217,6 @@ class OpConverter {
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
-
-//      framework::OpDesc op_desc_tmp(op, nullptr);
-//      LOG(INFO) << op_desc_tmp.Type();
-//      auto ins = op_desc_tmp.InputArgumentNames();
-//      for (size_t k = 0; k < ins.size(); ++k) {
-//        LOG(INFO) << ins[k];
-//      }
-
       ConvertOp(op, parameters, scope, engine);
     }
   }

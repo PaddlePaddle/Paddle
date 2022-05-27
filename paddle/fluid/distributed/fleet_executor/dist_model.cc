@@ -168,7 +168,7 @@ bool DistModel::Init() {
   if (!PrepareFeedAndFetch()) {
     return false;
   }
-  if (!CommInit()) {
+  if (config_.nranks > 1 && !CommInit()) {
     return false;
   }
   if (!PrepareFleetExe()) {
@@ -546,9 +546,9 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
 
   DistModelTimer timer;
   timer.tic();
-  double feed_elapse;
-  double fleet_exe_elapse;
-  double fetch_elapse;
+  double feed_elapse = 0;
+  double fleet_exe_elapse = 0;
+  double fetch_elapse = 0;
 
   if (!FeedData(input_data, scope_.get())) {
     LOG(ERROR) << "DistModel failed at feeding data.";

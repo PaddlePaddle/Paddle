@@ -25,11 +25,11 @@ def PD2TRT_Relu6_Lower : Pat<
         (PD_Relu6Op $X, $threshold),
         (TRT_ActivationOp $X, (TRT_createNvinferEnumAttr<"nvinfer1::ActivationType", "kCLIP">), (INFRT_createF32Attr<"0.0">), $threshold)>;
 
-def createTRTConv2dOp : NativeCodeCall<"createTRTConv2dOp($_builder, $0.getDefiningOp())">;
+def createTRTConv2dOp : NativeCodeCall<"createTRTConv2dOp($_builder, $0.getDefiningOp(), $1, $2)">;
 
 def PD2TRT_Conv2d_Lower : Pat<
         (PD_Conv2dOp:$old_value $Input, $Filter, $strides, $paddings, $padding_algorithm, $groups, $dilations, $data_format),
-        (createTRTConv2dOp $old_value)>;
+        (createTRTConv2dOp $old_value, $Input, $Filter)>;
 
 def createTrtPoolingOp : NativeCodeCall<"::infrt::trt::CreatePaddleTrtPoolingOp($_builder, $0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)">;
 def PD2TRT_Pooling_Lower : Pat<
@@ -50,9 +50,7 @@ def PD2TRT_Fc_Lower : Pat<
         (PD_Elementwise_addOp:$elt_out (PD_Matmul_v2Op $X, $Y, $trans_x, $trans_y), $elt_y, $axis),
         (createTrtFcOp $X, $Y, $elt_y, $elt_out)>;
 
-def createTRTShuffledOp : NativeCodeCall<"createTRTShuffledOp($_builder, $0.getDefiningOp(), $1, $2, $3)">;
-
 def PD2TRT_Flatten_contiguous_range_Lower : Pat<
-        (PD_Flatten_contiguous_rangeOp:$out $input, $start_axis, $end_axis),
-        (createTRTShuffledOp $out, $input, $start_axis, $end_axis)>;
+        (PD_Flatten_contiguous_rangeOp $input, $start_axis, $end_axis),
+        (TRT_ShuffleOp $input, $start_axis, $end_axis)>;
 #endif // PD_LOWER_TO_TRT

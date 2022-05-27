@@ -254,7 +254,6 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
-    VLOG(6) << "TensorRTEngine create context---";
     std::unique_lock<std::mutex> lock(mutex_);
     const std::thread::id tid = std::this_thread::get_id();
     if (infer_context_.find(tid) == infer_context_.end()) {
@@ -267,7 +266,6 @@ class TensorRTEngine {
       // It's ok. We will set it later.
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
       if (with_dynamic_shape_) {
-        VLOG(6) << "cur_profile_num_: " << cur_profile_num_;
         // need new profile if it's not the first
         if (cur_profile_num_ > 0) {
           infer_context_[tid]->setOptimizationProfile(cur_profile_num_);

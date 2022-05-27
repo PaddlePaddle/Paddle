@@ -8,6 +8,7 @@ nv_library(tensorrt_plugin
            hard_swish_op_plugin.cu stack_op_plugin.cu special_slice_plugin.cu
            anchor_generator_op_plugin.cu
            yolo_box_op_plugin.cu
+           yolo_box_head_op_plugin.cu
            roi_align_op_plugin.cu
            gather_nd_op_plugin.cu
            mish_op_plugin.cu

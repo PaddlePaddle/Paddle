@@ -28,6 +28,14 @@ Node *equal_handler(Graph *graph, Node *node) {
   return new_node;
 }
 
+Node *not_equal_handler(Graph *graph, Node *node) {
+  auto equal_node = CreateBaseOp(
+      graph, node, "popart_equal",
+      {GetInputVarNode("X", node), GetInputVarNode("Y", node)}, {});
+  return CreateBaseOp(graph, node, "popart_logical_not",
+                      {equal_node->outputs[0]}, node->outputs, {});
+}
+
 Node *logical_not_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_logical_not",
                       {GetInputVarNode("X", node)},
@@ -58,14 +66,15 @@ Node *less_than_handler(Graph *graph, Node *node) {
                       {GetOutputVarNode("Out", node)}, {});
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(equal, equal_handler);
+REGISTER_HANDLER(not_equal, not_equal_handler);
 REGISTER_HANDLER(logical_not, logical_not_handler);
 REGISTER_HANDLER(logical_or, logical_or_handler);
 REGISTER_HANDLER(logical_and, logical_and_handler);
 REGISTER_HANDLER(greater_than, greater_than_handler);
 REGISTER_HANDLER(less_than, less_than_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

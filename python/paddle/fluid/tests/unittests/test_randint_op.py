@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
+import os
+import paddle
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.static import program_guard, Program
-import os
 
 paddle.enable_static()
 
@@ -53,6 +54,10 @@ class TestRandintOp(OpTest):
             np.allclose(
                 hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
+    def test_check_output_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
+
 
 class TestRandintOpError(unittest.TestCase):
     def test_errors(self):
@@ -66,6 +71,10 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.randint, 5, shape=shape_tensor)
             self.assertRaises(
                 TypeError, paddle.randint, 5, shape=[shape_tensor])
+
+    def test_errors_eager(self):
+        with _test_eager_guard():
+            self.test_errors()
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -93,6 +102,10 @@ class TestRandintOp_attr_tensorlist(OpTest):
             np.allclose(
                 hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
+    def test_check_output_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
+
 
 class TestRandint_attr_tensor(OpTest):
     def setUp(self):
@@ -113,6 +126,10 @@ class TestRandint_attr_tensor(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
+
+    def test_check_output_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
 
 
 # Test python API
@@ -145,18 +162,30 @@ class TestRandintAPI(unittest.TestCase):
                 feed={'var_shape': np.array([100, 100]).astype('int64')},
                 fetch_list=[out1, out2, out3, out4, out5])
 
+    def test_api_eager(self):
+        with _test_eager_guard():
+            self.test_api()
+
 
 class TestRandintImperative(unittest.TestCase):
     def test_api(self):
-        n = 10
         paddle.disable_static()
+
+        self.run_test_case()
+
+        with _test_eager_guard():
+            self.run_test_case()
+
+        paddle.enable_static()
+
+    def run_test_case(self):
+        n = 10
         x1 = paddle.randint(n, shape=[10], dtype="int32")
         x2 = paddle.tensor.randint(n)
         x3 = paddle.tensor.random.randint(n)
         for i in [x1, x2, x3]:
             for j in i.numpy().tolist():
                 self.assertTrue((j >= 0 and j < n))
-        paddle.enable_static()
 
 
 class TestRandomValue(unittest.TestCase):
@@ -169,11 +198,17 @@ class TestRandomValue(unittest.TestCase):
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
-            return
-
         print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
+
+        self.run_test_case()
+
+        with _test_eager_guard():
+            self.run_test_case()
+
+        paddle.enable_static()
+
+    def run_test_case(self):
         paddle.set_device('gpu')
         paddle.seed(100)
 
@@ -198,7 +233,6 @@ class TestRandomValue(unittest.TestCase):
         self.assertTrue(np.array_equal(x[20, 1, 600, 600:605], expect))
         expect = [3581, 3420, -8027, -5237, -2436]
         self.assertTrue(np.array_equal(x[30, 2, 1000, 1000:1005], expect))
-        paddle.enable_static()
 
 
 if __name__ == "__main__":

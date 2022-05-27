@@ -49,10 +49,8 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            if attrs[0]['groups'] == 2:
-                return np.ones([batch, 6, 64, 64]).astype(np.float32)
-            else:
-                return np.ones([batch, 9, 64, 64]).astype(np.float32)
+            return np.ones(
+                [batch, attrs[0]['groups'] * 3, 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
@@ -60,7 +58,7 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for strides in [[1, 1], [2, 2], [1, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
                     for groups in [2, 3]:
@@ -126,32 +124,19 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if attrs[0]['groups'] == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 6, 32, 32],
-                    "output_data": [1, 24, 32, 32]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 6, 64, 64],
-                    "output_data": [4, 24, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 6, 64, 64],
-                    "output_data": [1, 24, 64, 64]
-                }
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 9, 32, 32],
-                    "output_data": [1, 24, 32, 32]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 9, 64, 64],
-                    "output_data": [4, 24, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 9, 64, 64],
-                    "output_data": [1, 24, 64, 64]
-                }
+            input_groups = attrs[0]['groups'] * 3
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, input_groups, 32, 32],
+                "output_data": [1, 24, 32, 32]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, input_groups, 64, 64],
+                "output_data": [4, 24, 64, 64]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, input_groups, 64, 64],
+                "output_data": [1, 24, 64, 64]
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

@@ -141,6 +141,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
+  for (auto node : subgraph) {
+    if (node->NodeType() == Node::Type::kOperation) {
+      VLOG(5) << "trt subgraph has op: " << (node->Op()->Type());
+    }
+  }
 
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
@@ -288,7 +293,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
   // serialization is affected by max_batch_size, but calibration is not.
-  // So we use seperate engine keys in serialization and calibration.
+  // So we use separate engine keys in serialization and calibration.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0),
       std::to_string(max_batch_size),
@@ -379,12 +384,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-
-  trt_engine->SetWithErnie(
-      (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-       graph->Has(framework::ir::kMultiheadMatmulPass)) ||
-      (graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
-       graph->Has(framework::ir::kMultiheadMatmulPass)));
+  trt_engine->SetWithErnie(graph->Has(framework::ir::kMultiheadMatmulPass));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -408,15 +408,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());
 
-//  for (size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
-//    LOG(INFO) << "========One Op Begin======";
-//    LOG(INFO) << block_desc_temp.Op(i)->Type();
-//    auto ins = block_desc_temp.Op(i)->InputArgumentNames();
-//    for (size_t j = 0; j < ins.size(); ++j) {
-//      LOG(INFO) << ins[j];
-//    }
-//    LOG(INFO) << "========One Op End======";
-//  }
+  //  for (size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
+  //    LOG(INFO) << "========One Op Begin======";
+  //    LOG(INFO) << block_desc_temp.Op(i)->Type();
+  //    auto ins = block_desc_temp.Op(i)->InputArgumentNames();
+  //    for (size_t j = 0; j < ins.size(); ++j) {
+  //      LOG(INFO) << ins[j];
+  //    }
+  //    LOG(INFO) << "========One Op End======";
+  //  }
 
   inference::Singleton<inference::tensorrt::OpConverter>::Global()
       .ConvertBlockToTRTEngine(

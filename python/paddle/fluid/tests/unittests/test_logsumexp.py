@@ -29,9 +29,16 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     return out
 
 
+def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
+    if allreduce:
+        return paddle.logsumexp(x, None, keepdim)
+    return paddle.logsumexp(x, axis, keepdim)
+
+
 class TestLogsumexp(OpTest):
     def setUp(self):
         self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
         self.shape = [2, 3, 4, 5]
         self.dtype = 'float64'
         self.axis = [-1]
@@ -61,13 +68,14 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'], ['Out'],
             user_defined_grads=self.user_defined_grads,
-            user_defined_grad_outputs=self.user_defined_grad_outputs)
+            user_defined_grad_outputs=self.user_defined_grad_outputs,
+            check_eager=True)
 
     def calc_grad(self):
         dy = np.ones(1, dtype=self.dtype)

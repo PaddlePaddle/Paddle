@@ -44,6 +44,7 @@ class Node(object):
         return self.free_ports
 
     def get_free_port(self):
+        # for loop to avoid port conflict
         for _ in range(100):
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:

@@ -181,5 +181,10 @@ void TRTGraphFusePass::runOnFunction() {
   // TODO(wilber): Implement a toposort for efficiency.
   // topoSortBlock(body);
 }
+
+std::unique_ptr<mlir::Pass> CreateTrtGraphFusePass() {
+  return std::make_unique<TRTGraphFusePass>();
+}
+
 }  // namespace trt
 }  // namespace infrt

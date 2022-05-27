@@ -101,7 +101,7 @@ class TestFTRLOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestSparseFTRLOp(unittest.TestCase):
@@ -201,4 +201,6 @@ class TestSparseFTRLOp2(TestSparseFTRLOp):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
     unittest.main()

@@ -19,6 +19,11 @@ import re
 
 from api_base import BaseAPI, PREFIX_TENSOR_NAME
 
+inplace_out_type_map = {
+    "Tensor": "Tensor&",
+    "std::vector<Tensor>": "std::vector<Tensor>&"
+}
+
 
 class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
@@ -42,38 +47,49 @@ class ForwardAPI(BaseAPI):
         else:
             return False, []
 
-    def get_return_type(self, out_type_list):
-        return out_type_list[0] if len(
-            out_type_list) == 1 else "std::tuple<" + ",".join(
-                out_type_list) + ">"
+    def get_return_type_with_intermediate(self, inplace_flag=False):
+        out_type_list = []
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if inplace_flag and out_name in self.inplace_map:
+                out_type_list.append(inplace_out_type_map[out_type])
+            else:
+                out_type_list.append(out_type)
 
-    def gene_return_type_code(self):
-        if self.is_dygraph_api or len(self.intermediate_outs) == 0:
-            return self.outputs['return_type']
+        if len(out_type_list) == 1:
+            return out_type_list[0]
         else:
-            return_out_list = []
-            for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
-                    return_out_list.append(self.outputs['types'][i])
-            return return_out_list[0] if len(
-                return_out_list) == 1 else "std::tuple<" + ",".join(
-                    return_out_list) + ">"
+            return "std::tuple<" + ", ".join(out_type_list) + ">"
+
+    def get_return_type(self, inplace_flag=False):
+        out_type_list = []
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if inplace_flag and out_name in self.inplace_map:
+                out_type_list.append(inplace_out_type_map[out_type])
+            elif self.is_dygraph_api or out_name not in self.intermediate_outs:
+                out_type_list.append(out_type)
+
+        if len(out_type_list) == 1:
+            return out_type_list[0]
+        else:
+            return "std::tuple<" + ", ".join(out_type_list) + ">"
 
     def gene_return_code(self):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
-            return "api_output"
+            return "return api_output;"
         else:
             return_out_list = []
             for i, name in enumerate(self.outputs['names']):
-                if name not in self.intermediate_outs:
+                if name.split('@')[0] not in self.intermediate_outs:
                     return_out_list.append(i)
             if len(return_out_list) == 1:
-                return f"std::get<{return_out_list[0]}>(api_output)"
+                return f"return std::get<{return_out_list[0]}>(api_output);"
             else:
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
-            return '{' + ", ".join(selected_code) + '}'
+            return 'return {' + ", ".join(selected_code) + '};'
 
     def gene_output(self,
                     output_type_list,
@@ -83,15 +99,25 @@ class ForwardAPI(BaseAPI):
         kernel_output = ""
         output_names = []
         output_create = ""
+        return_type = self.get_return_type_with_intermediate(inplace_flag)
 
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
-                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
-                    'names'][0] in self.inplace_map else ""
+                0]] if inplace_flag and self.outputs['names'][
+                    0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  {return_type} api_output{inplace_assign};"""
+
+            if return_type == 'std::vector<Tensor>':
+                assert self.outputs['out_size_expr'][0] is not None, \
+                     f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                output_create = output_create + f"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
+
+            else:
+                output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
             if not inplace_flag and self.view_map is not None and self.outputs[
@@ -103,17 +129,32 @@ class ForwardAPI(BaseAPI):
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} api_output;"""
+{code_indent}  {return_type} api_output;"""
+
+            if inplace_flag:
+                output_create = f"""
+{code_indent}  {return_type} api_output{{"""
+
+                for out_name in self.outputs['names']:
+                    if out_name in self.inplace_map:
+                        output_create = output_create + self.inplace_map[
+                            out_name] + ', '
+                    else:
+                        output_create += 'Tensor(), '
+                output_create = output_create[:-2] + '};'
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
-                if inplace_flag and self.inplace_map is not None and self.outputs[
-                        'names'][i] in self.inplace_map:
-                    output_create = output_create + f"""
-{code_indent}  std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
-                output_create = output_create + f"""
+                if output_type_list[i] == 'std::vector<Tensor>':
+                    assert self.outputs['out_size_expr'][i] is not None, \
+                        f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    output_create = output_create + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, &std::get<{i}>(api_output));"""
+
+                else:
+                    output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
@@ -154,7 +195,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -163,6 +203,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+DECLARE_bool(conv2d_disable_cudnn);
 """
 
 
@@ -179,9 +221,14 @@ namespace experimental {
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
+    apis = []
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
+    for each_api_yaml in api_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                apis.extend(api_list)
+
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -216,6 +263,7 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to api yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/api.yaml')
 
     parser.add_argument(

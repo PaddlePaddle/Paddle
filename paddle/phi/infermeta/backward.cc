@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+
 namespace phi {
 
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
@@ -64,6 +67,22 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+  auto dx_dims = do_dims;
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
@@ -100,6 +119,90 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
 
   if (ddout) {
     ddout->share_meta(dout);
+  }
+}
+
+void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
+                                          const MetaTensor& softmax,
+                                          const MetaTensor& loss_grad,
+                                          bool soft_label,
+                                          bool use_softmax,
+                                          bool numeric_stable_mode,
+                                          int ignore_index,
+                                          int axis,
+                                          MetaTensor* logits_grad,
+                                          MetaConfig config) {
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto softmax_rank = softmax_dims.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+  PADDLE_ENFORCE_LT(axis,
+                    softmax_rank,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(Logits)."));
+
+  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  for (int i = 0; i < softmax_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(
+            softmax_dims[i],
+            labels_dims[i],
+            phi::errors::InvalidArgument(
+                "Input(Logits) and Input(Label) should in same shape in "
+                "dimensions except axis."));
+      }
+    }
+  }
+
+  if (soft_label) {
+    if (config.is_runtime ||
+        (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
+      PADDLE_ENFORCE_EQ(softmax_dims[axis],
+                        labels_dims[axis],
+                        phi::errors::InvalidArgument(
+                            "If Attr(soft_label) == true, "
+                            "the axis dimension of "
+                            "Input(X) and Input(Label) should be equal."));
+    }
+  } else {
+    if (config.is_runtime || labels_dims[axis] > 0) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[axis],
+          1UL,
+          phi::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                       "the axis dimension of "
+                                       "Input(Label) should be 1."));
+    }
+  }
+
+  logits_grad->set_dims(softmax.dims());
+  logits_grad->set_dtype(softmax.dtype());
+}
+
+void DeformableConvGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& offset,
+                                 const MetaTensor& filter,
+                                 paddle::optional<const MetaTensor&> mask,
+                                 const MetaTensor& out_grad,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 int deformable_groups,
+                                 int groups,
+                                 int im2col_step,
+                                 MetaTensor* dx,
+                                 MetaTensor* offset_grad,
+                                 MetaTensor* filter_grad,
+                                 MetaTensor* mask_grad) {
+  GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
+  if (mask) {
+    UnchangedInferMeta(mask.get(), mask_grad);
   }
 }
 
@@ -141,6 +244,54 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
     dz->share_meta(z);
   }
 }
+void GeneralQuaternaryGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& z,
+                                    const MetaTensor& k,
+                                    MetaTensor* dx,
+                                    MetaTensor* dy,
+                                    MetaTensor* dz,
+                                    MetaTensor* dk) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+}
+
+void GeneralQuinaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 const MetaTensor& k,
+                                 const MetaTensor& l,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz,
+                                 MetaTensor* dk,
+                                 MetaTensor* dl) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dl) {
+    dl->share_meta(l);
+  }
+}
 
 void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
   if (dx) {
@@ -178,6 +329,52 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
+                           const std::vector<const MetaTensor*>& outputs_grad,
+                           std::vector<MetaTensor*> inputs_grad) {
+  PADDLE_ENFORCE_GT(outputs_grad.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "Number of Inputs(Out@Grad) should be larger than 1."
+                        "But received Inputs(Out@Grad)' size = %d .",
+                        outputs_grad.size()));
+  for (size_t i = 0; i < inputs.size(); i++) {
+    inputs_grad[i]->share_meta(*inputs[i]);
+  }
+}
+
+void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
+                           const MetaTensor& out_grad,
+                           std::vector<MetaTensor*> x_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      x_grad.size(),
+      errors::InvalidArgument(
+          "Number of Inputs(X) should be equal with Outputs(X@Grad)."
+          "But received Inputs(X)' size = %d , Outputs(X@Grad)' size = %d.",
+          x.size(),
+          x_grad.size()));
+  for (size_t i = 0; i < x.size(); i++) {
+    if (x_grad[i] != nullptr) {
+      x_grad[i]->set_dims(x[i]->dims());
+      x_grad[i]->share_lod(*x[i]);
+    }
+  }
+}
+
+void MultiplexGradInferMeta(const MetaTensor& ids,
+                            const MetaTensor& out_grad,
+                            std::vector<MetaTensor*> ins_grad) {
+  PADDLE_ENFORCE_NE(
+      ins_grad.empty(),
+      true,
+      errors::InvalidArgument("Output(X@Grad) should not be null."));
+  auto dout_dim = out_grad.dims();
+  for (auto in_grad : ins_grad) {
+    in_grad->set_dims(dout_dim);
+  }
 }
 
 void NllLossGradInferMeta(const MetaTensor& x,
@@ -246,6 +443,36 @@ void NllLossGradInferMeta(const MetaTensor& x,
   }
 }
 
+void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int downscale_factor,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  auto dx_dims = do_dims;
+  dx_dims[0] = do_dims[0];
+
+  if (!channel_last) {
+    dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
+    dx_dims[2] = do_dims[2] * downscale_factor;
+    dx_dims[3] = do_dims[3] * downscale_factor;
+  } else {
+    dx_dims[1] = do_dims[1] * downscale_factor;
+    dx_dims[2] = do_dims[2] * downscale_factor;
+    dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
+  }
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void PoolGradInferMeta(const MetaTensor& x,
                        const MetaTensor& out,
                        const MetaTensor& dout,
@@ -273,6 +500,20 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             float spatial_scale,
                             MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
+  dx->set_dims(out_grad.dims());
+  dx->set_dtype(dtype::ToComplex(out_grad.dtype()));
+  dx->set_layout(out_grad.layout());
+}
+
+void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
+                                const MetaTensor& x_grad_grad,
+                                MetaTensor* out_grad_grad) {
+  if (out_grad_grad != nullptr) {
+    out_grad_grad->share_dims(out_grad);
+  }
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,
@@ -307,6 +548,49 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void StackGradInferMeta(const MetaTensor& out_grad,
+                        int axis,
+                        std::vector<MetaTensor*> x_grad) {
+  auto dy_dim = out_grad.dims();
+  int rank = dy_dim.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+
+  if (axis < 0) axis += rank;
+  PADDLE_ENFORCE_LE(
+      x_grad.size(),
+      static_cast<size_t>(dy_dim[axis]),
+      phi::errors::InvalidArgument(
+          "Number of Outputs(X@Grad) should be less than or equal to dy dim "
+          "at axis, but received outputs size is:%d, dy dims is:%d.",
+          x_grad.size(),
+          static_cast<size_t>(dy_dim[axis])));
+
+  auto vec = phi::vectorize<int>(dy_dim);
+  vec.erase(vec.begin() + axis);
+
+  for (size_t i = 0; i < x_grad.size(); ++i) {
+    if (x_grad[i]) {
+      x_grad[i]->set_dims(phi::make_ddim(vec));
+      x_grad[i]->set_dtype(out_grad.dtype());
+    }
   }
 }
 

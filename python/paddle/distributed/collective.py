@@ -16,11 +16,11 @@ import numpy as np
 import os
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
-import paddle.fluid.framework as framework
 from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
@@ -139,9 +139,19 @@ _group_map_by_name = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter']
 _default_store = None  # the default tcp store
 _default_backend = None
+
+
+def _set_default_backend(backend):
+    global _default_backend
+    _default_backend = backend
+
+
+def _set_default_store(store):
+    global _default_store
+    _default_store = store
 
 
 def _get_group_map():
@@ -159,17 +169,27 @@ def _get_global_group():
 
 def _get_group_map_by_name():
     global _group_map_by_name
-    assert _default_group_name in _group_map_by_name, (
-        "Call paddle.distributed.init_parallel_env first "
-        "to initialize the distributed environment.")
     return _group_map_by_name
 
 
 def _get_default_group():
+    global _group_map_by_name
     assert _default_group_name in _group_map_by_name, (
         "Call paddle.distributed.init_parallel_env first "
         "to initialize the distributed environment.")
     return _get_group_map_by_name()[_default_group_name]
+
+
+def _set_group_map(gid, group):
+    global _group_map
+    assert gid not in _group_map
+    _group_map[gid] = group
+
+
+def _set_group_map_by_name(name, group):
+    global _group_map_by_name
+    assert name not in _group_map_by_name
+    _group_map_by_name[name] = group
 
 
 def _new_ring_id():
@@ -206,14 +226,58 @@ def _new_process_group_impl(backend,
                             world_size,
                             group_name,
                             pg_options,
-                            group_id=0):
+                            group_id=0,
+                            src_rank=None,
+                            dst_rank=None):
     pg = None
+    genv = _get_global_env()
+    if backend != 'heter':
+        assert src_rank is None and dst_rank is None, (
+            "src_rank and dst_rank "
+            "can only be set for heter backend.")
+    assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
+        place = core.CPUPlace()
+        pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
+        place = core.CUDAPlace(genv.device_id)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
     elif backend == "hccl":
-        pg = core.ProcessGroupHCCL(store, rank, world_size, group_id)
+        place = core.NPUPlace(genv.device_id)
+        pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
+    elif backend == "heter":
+        place = None
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(genv.device_id)
+        elif core.is_compiled_with_npu():
+            place = core.NPUPlace(genv.device_id)
+        cluster_id = int(os.getenv("CLUSTER_ID", "-1"))
+        assert cluster_id >= 0, "please set the CLUSTER_ID variable."
+        cluster_size = os.getenv("CLUSTER_SIZE", None)
+        assert cluster_size, "please set the CLUSTER_SIZE variable."
+        cluster_size = cluster_size.split(",")
+        cluster_size = [int(s) for s in cluster_size]
+        switch_ep = os.getenv("CLUSTER_SWITCH", None)
+        assert switch_ep, "please set the CLUSTER_SWITCH variable."
+        cluster_size_cumsum = np.cumsum(cluster_size)
+        cluster_offset = 0 if cluster_id == 0 else cluster_size_cumsum[
+            cluster_id - 1]
+        global_rank = cluster_offset + rank
+        global_world_size = cluster_size_cumsum[-1]
+        pg = core.ProcessGroupHeter(
+            store,
+            rank=global_rank,
+            world_size=global_world_size,
+            place=place,
+            gid=group_id,
+            local_rank=rank,
+            local_size=world_size,
+            gloo_rank=cluster_id,
+            gloo_size=len(cluster_size),
+            with_switch=True,
+            switch_endpoint=switch_ep,
+            src_rank=src_rank,
+            dst_rank=dst_rank)
 
     return pg
 
@@ -242,7 +306,7 @@ def barrier(group=None):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.process_group.barrier()
         task.wait()
@@ -264,6 +328,17 @@ def barrier(group=None):
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': ring_id})
+
+
+# _custom_gid provides a way for users to
+# set the group id, which is usually useful
+# to be compatible with the static mode.
+_custom_gid = None
+
+
+def _set_custom_gid(gid):
+    global _custom_gid
+    _custom_gid = gid
 
 
 def new_group(ranks=None, backend=None):
@@ -289,24 +364,28 @@ def new_group(ranks=None, backend=None):
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
 
     """
+    global _custom_gid
     global _group_map
-    if framework._in_eager_mode_:
+    if in_dygraph_mode():
         global _default_group_name
-        gid = _new_ring_id()
+        gid = _custom_gid if _custom_gid else _new_ring_id()
         group_name = _default_group_name + str(gid)
-        global_group = _get_default_group()
-        global_rank = global_group.rank
-        global_ranks = global_group.ranks
-        if ranks is None:
-            ranks = global_ranks
-        assert len(ranks) <= len(global_ranks), (
-            "Size of new group must be less than or "
-            "equal to that of the default global group.")
+        if backend != 'heter' and (ranks is None or len(ranks) > 1):
+            global_group = _get_default_group()
+            global_rank = global_group.rank
+            global_ranks = global_group.ranks
+            backend = _default_backend if backend is None else backend
+            if ranks is None:
+                ranks = global_ranks
+            assert len(ranks) <= len(global_ranks), (
+                "Size of new group must be less than or "
+                "equal to that of the default global group.")
         size = len(ranks)
-        assert size > 1, "A group must have at least two memebers."
         ranks = sorted(ranks)
-        if global_rank in ranks:
-            rank = ranks.index(global_rank)
+        if backend == 'heter' or (size > 1 and global_rank in ranks):
+            rank = 0 if backend == 'heter' else ranks.index(global_rank)
+            src_rank = ranks[0] if backend == 'heter' else None
+            dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(
                 backend,
                 _default_store,
@@ -314,7 +393,9 @@ def new_group(ranks=None, backend=None):
                 size,
                 group_name,
                 pg_options=None,
-                group_id=gid)
+                group_id=gid,
+                src_rank=src_rank,
+                dst_rank=dst_rank)
         else:
             rank = -1
             pg = None
@@ -495,7 +576,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         gsrc = group.get_group_rank(src)
         assert gsrc >= 0, ("src rank out of group, need global rank")
@@ -579,13 +660,15 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         if op == ReduceOp.SUM:
             op_type = core.ReduceOp.SUM
         elif op == ReduceOp.MAX:
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
@@ -681,13 +764,15 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         if op == ReduceOp.SUM:
             op_type = core.ReduceOp.SUM
         elif op == ReduceOp.MAX:
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
         else:
             raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group
@@ -802,9 +887,14 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        out = paddle.concat(tensor_list)
+        if len(tensor_list) == 0:
+            tensor_shape = list(tensor.shape)
+            tensor_shape[0] *= group.nranks
+            out = paddle.empty(tensor_shape, tensor.dtype)
+        else:
+            out = paddle.concat(tensor_list, axis=0)
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
@@ -899,7 +989,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         gsrc = group.get_group_rank(src)
         rank = group.rank
@@ -916,7 +1006,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         task = group.process_group.scatter(temp, tensor, gsrc)
         if use_calc_stream:
             task.wait()
@@ -924,7 +1014,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         else:
             return task
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
                                 use_calc_stream, 'ring_id', ring_id, 'nranks',
                                 nranks, 'root', gsrc)
@@ -1085,13 +1175,36 @@ def _mp_allreduce(tensor,
                   group=None,
                   use_calc_stream=True,
                   use_model_parallel=True):
-    """[it is same as allreduce above, but it suuports model parallel. And it support inplace startegy]
+    """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]
     """
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
+
+        from paddle.autograd import EagerPyLayer
+
+        class mp_allreduce_eager(EagerPyLayer):
+            @staticmethod
+            def forward(ctx, tensor, use_calc_stream, ring_id,
+                        use_model_parallel):
+                ctx.ring_id = ring_id
+                return _C_ops.c_allreduce_sum_(
+                    tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
+                    ring_id, "use_model_parallel", use_model_parallel)
+
+            @staticmethod
+            def backward(ctx, dy):
+                return _C_ops.c_identity(dy, 'use_calc_stream', True, 'ring_id',
+                                         ctx.ring_id, 'use_model_parallel',
+                                         True)
+
+        return mp_allreduce_eager.apply(tensor, use_calc_stream, ring_id,
+                                        use_model_parallel)
+
+    elif _in_legacy_dygraph():
         if op == ReduceOp.SUM:
             return _C_ops.c_allreduce_sum_(
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
@@ -1694,15 +1807,20 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
     else:
         ring_id = 0 if group is None else group.id
 
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
-    if framework._in_eager_mode_ and in_dygraph_mode():
-        out = paddle.concat(out_tensor_list, axis=0)
+    if in_dygraph_mode():
+        if len(out_tensor_list) == 0:
+            tensor_shape = list(in_tensor_list[0].shape)
+            tensor_shape[0] *= nranks
+            out = paddle.empty(tensor_shape, in_tensor_list[0].dtype)
+        else:
+            out = paddle.concat(out_tensor_list, axis=0)
         task = group.process_group.alltoall(temp, out)
         task.wait()
         out_tensor_list.clear()
@@ -1776,7 +1894,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.process_group.send(tensor, dst)
         if use_calc_stream:
@@ -1839,7 +1957,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if framework._in_eager_mode_ and in_dygraph_mode():
+    if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.process_group.recv(tensor, src)
         if use_calc_stream:

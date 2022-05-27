@@ -132,5 +132,5 @@ REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
                   ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)
+REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseKernel<float>);
+REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseKernel<float>);

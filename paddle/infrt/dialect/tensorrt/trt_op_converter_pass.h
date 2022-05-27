@@ -20,6 +20,9 @@
 
 namespace infrt {
 namespace trt {
+
+std::unique_ptr<mlir::Pass> CreateTrtOpConverterPass();
+
 /*
  * trtOpConverterPass.
  *

@@ -534,25 +534,25 @@ class TestStridedSliceAPI(unittest.TestCase):
             shape=[3, 4, 5, 6],
             append_batch_size=False,
             dtype="float64")
-        out_1 = fluid.layers.strided_slice(
+        out_1 = paddle.strided_slice(
             x,
             axes=[0, 1, 2],
             starts=[-3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1])
-        out_2 = fluid.layers.strided_slice(
+        out_2 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1])
-        out_3 = fluid.layers.strided_slice(
+        out_3 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, minus_1],
             strides=[1, 1, 1])
-        out_4 = fluid.layers.strided_slice(
+        out_4 = paddle.strided_slice(
             x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides)
 
         out_5 = x[-3:3, 0:100:2, -1:2:-1]

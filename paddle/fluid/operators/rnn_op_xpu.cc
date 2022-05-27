@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -51,41 +52,6 @@ void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
 }
 
 template <typename DeviceContext, typename T>
-void RunLSTMLayer(const framework::ExecutionContext& ctx, int seq_len,
-                  int batch_size, int xdim, int hidden_size, const T* x, T* y,
-                  const T* init_h, const T* init_c, T* last_h, T* last_c,
-                  int state_offset, const std::vector<int>& seq_len_tensor,
-                  const std::vector<const T*>& param_list, T* i_f_g_o, T* c,
-                  bool is_bidirect, int layer_idx, int offset) {
-  bool is_reverse = false;
-  if (is_bidirect) {
-    layer_idx = 2 * layer_idx + offset;
-    if (offset > 0) {
-      is_reverse = true;
-    }
-  }
-  auto w_x = param_list[0 + offset * 4];
-  auto w_h = param_list[1 + offset * 4];
-  auto b_x = param_list[2 + offset * 4];
-  auto b_h = param_list[3 + offset * 4];
-
-  auto h_0 = init_h + layer_idx * state_offset;
-  auto c_0 = init_c + layer_idx * state_offset;
-  auto last_h_ptr = last_h + layer_idx * state_offset;
-  auto last_c_ptr = last_c + layer_idx * state_offset;
-  auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  int r = xpu::lstm_train<T, T, int16_t>(
-      dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
-      (const T*)w_x, (const T*)w_h, (const T*)b_x, (const T*)b_h,
-      reinterpret_cast<T*>(y), reinterpret_cast<T*>(last_h_ptr),
-      reinterpret_cast<T*>(last_c_ptr), batch_size, xdim, hidden_size, seq_len,
-      seq_len_tensor, is_reverse, nullptr, nullptr, nullptr, nullptr,
-      reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c),
-      xpu::Activation_t::TANH, xpu::Activation_t::SIGMOID);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
-}
-
-template <typename DeviceContext, typename T>
 class RnnXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -99,7 +65,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
     auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
     auto* reserve_data = ctx.Output<Tensor>("Reserve");
-    // Attrbutes
+    // Attributes
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
@@ -114,6 +80,9 @@ class RnnXPUKernel : public framework::OpKernel<T> {
       if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
     }
     dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    phi::funcs::SetConstant<platform::XPUDeviceContext, uint8_t> ones;
+    ones(dev_ctx, dropout_mask, static_cast<uint8_t>(1));
 
     PADDLE_ENFORCE_EQ(
         mode, "LSTM",
@@ -156,23 +125,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     last_h->mutable_data<T>(ctx.GetPlace());
     last_c->mutable_data<T>(ctx.GetPlace());
+    int gate_num = 4;
+    int hidden_data_idx = (num_layers - 1);
+    hidden_data_idx += (gate_num + 1) * num_layers;
+    const int& block_size = direction_num * seq_len * batch_size * hidden_size;
+    reserve_data->Resize({hidden_data_idx, block_size});
 
-    reserve_data->Resize(
-        {num_layers * direction_num * seq_len * batch_size * hidden_size * 5});
     reserve_data->mutable_data<T>(ctx.GetPlace());
-    Tensor internal_output_1_tensor, internal_output_2_tensor;
-    T* internal_output_1_ptr = nullptr;
-    T* internal_output_2_ptr = nullptr;
-    if (num_layers >= 2) {
-      internal_output_1_tensor.Resize(output->dims());
-      internal_output_1_ptr =
-          internal_output_1_tensor.mutable_data<T>(ctx.GetPlace());
-    }
-    if (num_layers >= 3) {
-      internal_output_2_tensor.Resize(output->dims());
-      internal_output_2_ptr =
-          internal_output_2_tensor.mutable_data<T>(ctx.GetPlace());
-    }
     // get ptr from tensor
     auto x = input->data<T>();
     auto init_h_ptr = init_h->data<T>();
@@ -180,80 +139,77 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto y = output->data<T>();
     auto last_h_ptr = last_h->data<T>();
     auto last_c_ptr = last_c->data<T>();
-    auto i_f_g_o = reserve_data->data<T>();
-    auto c =
-        i_f_g_o +
-        num_layers * direction_num * seq_len * batch_size * hidden_size * 4;
+    auto i_f_g_o_ptr = reserve_data->data<T>();
+    auto c_ptr =
+        i_f_g_o_ptr + num_layers * block_size * 4;  // 4 for i_f_g_o offset
+    auto hidden_data_ptr =
+        c_ptr + num_layers * block_size * 1;  // 1 for c offset
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
+    const T* cur_input_ptr = nullptr;
+    int cur_xdim = -1;
+    T* cur_output_ptr = y;
     for (int i = 0; i < num_layers; i++) {
-      const T* cur_input_ptr = nullptr;
-      int cur_xdim = -1;
-      i_f_g_o += i * direction_num * seq_len * batch_size * hidden_size * 4;
-      c += i * direction_num * seq_len * batch_size * hidden_size;
+      auto i_f_g_o = i_f_g_o_ptr + i * block_size * 4;
+      auto c = c_ptr + i * block_size;
+
+      cur_output_ptr = y;
+      if (i < num_layers - 1 && num_layers > 1) {
+        cur_output_ptr = hidden_data_ptr + i * block_size;
+      }
 
       if (i == 0) {
         cur_input_ptr = x;
         cur_xdim = input_dim;
-      } else if (i % 2 != 0) {
-        cur_input_ptr = internal_output_1_ptr;
-        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
       } else {
-        cur_input_ptr = internal_output_2_ptr;
+        cur_input_ptr = hidden_data_ptr + (i - 1) * block_size;
         cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
       }
 
-      T* cur_output_ptr = nullptr;
-      if (i == num_layers - 1) {
-        cur_output_ptr = y;
-      } else if (i % 2 != 0) {
-        cur_output_ptr = internal_output_2_ptr;
-      } else {
-        cur_output_ptr = internal_output_1_ptr;
-      }
+      auto h_0 = init_h_ptr + direction_num * i * state_offset;
+      auto c_0 = init_c_ptr + direction_num * i * state_offset;
+      auto last_h = last_h_ptr + direction_num * i * state_offset;
+      auto last_c = last_c_ptr + direction_num * i * state_offset;
 
+      auto w_x = parameter_lists[i][0];
+      auto w_h = parameter_lists[i][1];
+      auto b_x = parameter_lists[i][2];
+      auto b_h = parameter_lists[i][3];
       if (is_bidirec) {
-        std::vector<Tensor> output_vec(2);
-        std::vector<T*> output_ptr_vec(2);
-        for (int k = 0; k < 2; ++k) {
-          output_vec[k].Resize({seq_len, batch_size, output->dims()[2] / 2});
-          output_ptr_vec[k] = output_vec[k].mutable_data<T>(ctx.GetPlace());
-        }
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            output_ptr_vec[0], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
-            is_bidirec, i, 0);
+        auto bw_x = parameter_lists[i][4];
+        auto bw_h = parameter_lists[i][5];
+        auto bb_x = parameter_lists[i][6];
+        auto bb_h = parameter_lists[i][7];
 
-        T* bw_i_f_g_o = i_f_g_o + seq_len * batch_size * hidden_size * 4;
-        T* bw_c = c + seq_len * batch_size * hidden_size;
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            output_ptr_vec[1], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], bw_i_f_g_o, bw_c,
-            is_bidirec, i, 1);
+        int r = xpu::bilstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, (const T*)bw_x, (const T*)bw_h, (const T*)bb_x,
+            (const T*)bb_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, nullptr, nullptr,
+            reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c));
 
-        // concat
-        int r = xpu::concat<T>(
-            dev_ctx.x_context(), {output_ptr_vec[0], output_ptr_vec[1]},
-            cur_output_ptr, {{seq_len, batch_size, hidden_size},
-                             {seq_len, batch_size, hidden_size}},
-            2);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_train");
       } else {
-        RunLSTMLayer<DeviceContext, T>(
-            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
-            cur_output_ptr, init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
-            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
-            is_bidirec, i, 0);
+        int r = xpu::lstm_train<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)cur_input_ptr, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)b_x,
+            (const T*)b_h, reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(last_h), reinterpret_cast<T*>(last_c),
+            batch_size, cur_xdim, hidden_size, seq_len, seq_len_tensor, nullptr,
+            nullptr, nullptr, nullptr, reinterpret_cast<T*>(i_f_g_o),
+            reinterpret_cast<T*>(c), xpu::Activation_t::TANH,
+            xpu::Activation_t::SIGMOID);
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
       }
     }
   }
@@ -261,6 +217,8 @@ class RnnXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class RnnXPUGradKernel : public framework::OpKernel<T> {
+  using XPUTyp = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // get the tensor pointer for the input
@@ -271,6 +229,7 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     auto* reserve_data = ctx.Input<Tensor>("Reserve");
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
+    const float& dropout_prob = ctx.Attr<float>("dropout_prob");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const std::string& mode = ctx.Attr<std::string>("mode");
 
@@ -284,16 +243,6 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
         mode, "LSTM",
         platform::errors::InvalidArgument(
             "XPU only support LSTM mode now, current mode is %s", mode));
-
-    PADDLE_ENFORCE_EQ(is_bidirec, false,
-                      platform::errors::InvalidArgument(
-                          "XPU only support unidirectional LSTM now"));
-
-    PADDLE_ENFORCE_EQ(
-        num_layers, 1,
-        platform::errors::InvalidArgument(
-            "XPU only support 1 layer LSTM now, current layer num is %s",
-            num_layers));
 
     auto init_h = pre_state[0];
     auto init_c = pre_state[1];
@@ -317,11 +266,12 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     }
 
     // check shape
-    int seq_len = input->dims()[0];
-    int batch_size = input->dims()[1];
-    int input_dim = input->dims()[2];
+    const int& seq_len = input->dims()[0];
+    const int& batch_size = input->dims()[1];
+    const int& input_dim = input->dims()[2];
+    const int& direction_num = is_bidirec ? 2 : 1;
     PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers,
+        init_h->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
                                           " be the same as first dim of init "
                                           "hidden, but received num_layers:%d,"
@@ -329,7 +279,7 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
                                           num_layers, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
-        init_c->dims()[0], num_layers,
+        init_c->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument(
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
@@ -351,52 +301,165 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
 
     // allocate the memory and initization the input_grad
     input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    phi::funcs::SetConstant<platform::XPUDeviceContext, T> zero;
+    zero(dev_ctx, input_grad, static_cast<T>(0.0));
+
+    Tensor a, b;
+    Tensor* dynamic_grad_pre_h = &a;
+    Tensor* dynamic_grad_pre_c = &b;
     if (init_h_grad) {
-      init_h_grad->mutable_data<T>(init_h->dims(), ctx.GetPlace());
+      init_h_grad->mutable_data<T>(last_h_grad->dims(), ctx.GetPlace());
+      zero(dev_ctx, init_h_grad, static_cast<T>(0.0));
+    } else {
+      dynamic_grad_pre_h->Resize(last_h_grad->dims());
+      dynamic_grad_pre_h->mutable_data<T>(ctx.GetPlace());
+      zero(dev_ctx, dynamic_grad_pre_h, static_cast<T>(0.0));
+      init_h_grad = dynamic_grad_pre_h;
     }
     if (init_c_grad) {
-      init_c_grad->mutable_data<T>(init_c->dims(), ctx.GetPlace());
+      init_c_grad->mutable_data<T>(last_c_grad->dims(), ctx.GetPlace());
+    } else {
+      dynamic_grad_pre_c->Resize(last_h_grad->dims());
+      dynamic_grad_pre_c->mutable_data<T>(ctx.GetPlace());
+      init_c_grad = dynamic_grad_pre_c;
+    }
+
+    Tensor temp_input_grad_1, temp_input_grad_2;
+    T* input_grad_1_ptr = nullptr;
+    T* input_grad_2_ptr = nullptr;
+    if (num_layers >= 2) {
+      temp_input_grad_1.Resize(output_grad->dims());
+      input_grad_1_ptr = temp_input_grad_1.mutable_data<T>(ctx.GetPlace());
+    }
+    if (num_layers >= 3) {
+      temp_input_grad_2.Resize(output_grad->dims());
+      input_grad_2_ptr = temp_input_grad_2.mutable_data<T>(ctx.GetPlace());
     }
 
     // get ptr from tensor
     auto x = input->data<T>();
-    auto h_0 = init_h->data<T>();
-    auto c_0 = init_c->data<T>();
-    auto w_x = parameter_lists[0][0];
-    auto w_h = parameter_lists[0][1];
+    auto init_h_ptr = init_h->data<T>();
+    auto init_c_ptr = init_c->data<T>();
     auto y = output->data<T>();
     auto y_grad = output_grad->data<T>();
     auto last_h_grad_ptr = last_h_grad->data<T>();
     auto last_c_grad_ptr = last_c_grad->data<T>();
     auto x_grad = input_grad->data<T>();
-    auto h_0_grad = init_h_grad ? init_h_grad->data<T>() : nullptr;
-    auto c_0_grad = init_c_grad ? init_c_grad->data<T>() : nullptr;
-    auto w_x_grad = parameter_lists_grad[0][0];
-    auto w_h_grad = parameter_lists_grad[0][1];
-    auto b_x_grad = parameter_lists_grad[0][2];
-    auto b_h_grad = parameter_lists_grad[0][3];
-    auto i_f_g_o = reserve_data->data<T>();
-    auto c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+    auto init_h_grad_ptr = init_h_grad->data<T>();
+    auto init_c_grad_ptr = init_c_grad->data<T>();
+    const int& block_size = direction_num * seq_len * batch_size * hidden_size;
+    auto i_f_g_o_ptr = reserve_data->data<T>();
+    auto c_ptr = i_f_g_o_ptr + num_layers * block_size * 4;
+    auto hidden_data_ptr = c_ptr + num_layers * block_size * 1;
+    int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::lstm_grad<T, T, int16_t>(
-        dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
-        (const T*)w_x, (const T*)w_h, (const T*)y, (const T*)y_grad,
-        (const T*)last_h_grad_ptr, (const T*)last_c_grad_ptr,
-        reinterpret_cast<T*>(x_grad), reinterpret_cast<T*>(h_0_grad),
-        reinterpret_cast<T*>(c_0_grad), w_x_grad, w_h_grad, b_x_grad, b_h_grad,
-        batch_size, input_dim, hidden_size, seq_len, seq_len_tensor, nullptr,
-        nullptr, nullptr, nullptr, i_f_g_o, c);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External("RnnXPUGrad(lstm) return wrong "
-                                   "value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    for (int i = num_layers - 1; i >= 0; --i) {
+      // the layer input output had saved, just use the data
+      auto w_x = parameter_lists[i][0];
+      auto w_h = parameter_lists[i][1];
+      auto bw_x = parameter_lists[i][4];
+      auto bw_h = parameter_lists[i][5];
+
+      auto i_f_g_o = i_f_g_o_ptr + i * block_size * 4;
+      auto c = c_ptr + i * block_size;
+
+      Tensor layer_input_t;
+      auto layer_input = x;
+      if (i > 0) {
+        layer_input_t.Resize(output->dims());
+        layer_input = layer_input_t.mutable_data<T>(ctx.GetPlace());
+        float scale = static_cast<float>(1.0f - dropout_prob);
+        auto hidden_data = hidden_data_ptr + (i - 1) * block_size;
+        int r = xpu::scale(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUTyp*>(hidden_data),
+                           const_cast<XPUTyp*>(layer_input), output->numel(),
+                           false, scale, 0.0f);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+      } else {
+        layer_input = x;
+      }
+
+      auto layer_output = y;
+      if (i == num_layers - 1) {
+        layer_output = y;
+      } else {
+        layer_output = hidden_data_ptr + i * block_size;
+      }
+
+      const T* cur_input_ptr = nullptr;
+      if (i == num_layers - 1) {
+        cur_input_ptr = y_grad;
+      } else if (i % 2 != 0) {
+        cur_input_ptr = input_grad_2_ptr;
+      } else {
+        cur_input_ptr = input_grad_1_ptr;
+      }
+
+      T* cur_output_ptr = nullptr;
+      int cur_xdim = -1;
+      if (i == 0) {
+        cur_output_ptr = x_grad;
+        cur_xdim = input_dim;
+      } else if (i % 2 != 0) {
+        cur_output_ptr = input_grad_1_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      } else {
+        cur_output_ptr = input_grad_2_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      }
+
+      auto w_x_grad = parameter_lists_grad[i][0];
+      auto w_h_grad = parameter_lists_grad[i][1];
+      auto b_x_grad = parameter_lists_grad[i][2];
+      auto b_h_grad = parameter_lists_grad[i][3];
+
+      auto h_0 = init_h_ptr + direction_num * i * state_offset;
+      auto c_0 = init_c_ptr + direction_num * i * state_offset;
+
+      auto h_0_grad = init_h_grad_ptr + direction_num * i * state_offset;
+      auto c_0_grad = init_c_grad_ptr + direction_num * i * state_offset;
+      auto h_t_grad = last_h_grad_ptr + direction_num * i * state_offset;
+      auto c_t_grad = last_c_grad_ptr + direction_num * i * state_offset;
+
+      if (is_bidirec) {
+        auto bw_x_grad = parameter_lists_grad[i][4];
+        auto bw_h_grad = parameter_lists_grad[i][5];
+        auto bb_x_grad = parameter_lists_grad[i][6];
+        auto bb_h_grad = parameter_lists_grad[i][7];
+
+        int r = xpu::bilstm_grad<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)layer_input, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)bw_x,
+            (const T*)bw_h, (const T*)layer_output, (const T*)cur_input_ptr,
+            (const T*)h_t_grad, (const T*)c_t_grad,
+            reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(h_0_grad), reinterpret_cast<T*>(c_0_grad),
+            w_x_grad, w_h_grad, b_x_grad, b_h_grad, bw_x_grad, bw_h_grad,
+            bb_x_grad, bb_h_grad, batch_size, cur_xdim, hidden_size, seq_len,
+            seq_len_tensor, nullptr, nullptr, nullptr, nullptr, nullptr,
+            nullptr, i_f_g_o, c);
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_grad");
+      } else {
+        int r = xpu::lstm_grad<T, T, int16_t>(
+            dev_ctx.x_context(), (const T*)layer_input, (const T*)h_0,
+            (const T*)c_0, (const T*)w_x, (const T*)w_h, (const T*)layer_output,
+            (const T*)cur_input_ptr, (const T*)h_t_grad, (const T*)c_t_grad,
+            reinterpret_cast<T*>(cur_output_ptr),
+            reinterpret_cast<T*>(h_0_grad), reinterpret_cast<T*>(c_0_grad),
+            w_x_grad, w_h_grad, b_x_grad, b_h_grad, batch_size, cur_xdim,
+            hidden_size, seq_len, seq_len_tensor, nullptr, nullptr, nullptr,
+            nullptr, i_f_g_o, c);
+
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_grad");
+      }
+    }
   }
 };
 

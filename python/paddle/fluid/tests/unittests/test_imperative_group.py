@@ -26,7 +26,7 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.nn import Linear
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):
@@ -34,7 +34,10 @@ class TestDataParallelGroup(unittest.TestCase):
         return paddle.rand(shape=shape, dtype=dtype)
 
     def assign_group_by_size(self, *args):
-        return core.assign_group_by_size(*args)
+        if in_dygraph_mode():
+            return core.eager_assign_group_by_size(*args)
+        elif _in_legacy_dygraph():
+            return core.assign_group_by_size(*args)
 
     def test_construct_group0(self):
         # one dtype & one limit capability
@@ -160,14 +163,19 @@ class TestDataParallelGroup(unittest.TestCase):
                                         [300], [1, 0, 2, 3])
         self.assertEqual([[1, 0], [3], [2]], res)
 
-
-class TestDataParallelGroupEager(TestDataParallelGroup):
-    def create_varbase(self, dtype, shape):
+    def test_construct_group_in_legacy_mode(self):
         with _test_eager_guard():
-            return paddle.rand(shape=shape, dtype=dtype)
-
-    def assign_group_by_size(self, *args):
-        return core.eager_assign_group_by_size(*args)
+            pass
+        self.test_construct_group0()
+        self.test_construct_group1()
+        self.test_construct_group2()
+        self.test_construct_group3()
+        self.test_construct_group4()
+        self.test_construct_group5()
+        self.test_construct_group6()
+        self.test_construct_group7()
+        self.test_construct_group8()
+        self.test_construct_group9()
 
 
 if __name__ == '__main__':

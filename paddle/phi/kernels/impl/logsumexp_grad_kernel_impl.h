@@ -46,7 +46,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          const DenseTensor& in,
                          const DenseTensor& out,
                          const DenseTensor& out_grad,
-                         const std::vector<int>& axis,
+                         const std::vector<int64_t>& axis,
                          bool keepdim,
                          bool reduce_all,
                          DenseTensor* in_grad) {
@@ -67,22 +67,27 @@ void LogsumexpGradKernel(const Context& dev_ctx,
   } else {
     int rank = in.dims().size();
     LogsumexpGradFunctor functor;
+    std::vector<int32_t> axis32;
+    axis32.reserve(axis.size());
+    std::for_each(axis.begin(), axis.end(), [&axis32](const int64_t& t) {
+      axis32.push_back(t);
+    });
     switch (rank) {
       case 1:
         phi::funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis);
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 2:
         phi::funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis);
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 3:
         phi::funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis);
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 4:
         phi::funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis);
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
     }
   }

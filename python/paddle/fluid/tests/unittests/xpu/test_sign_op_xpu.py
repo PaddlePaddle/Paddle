@@ -18,37 +18,69 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
+
+import paddle
+
 from op_test import OpTest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import paddle
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestXPUSignOp(OpTest):
-    def setUp(self):
-        self.op_type = "sign"
-        self.dtype = np.float32
-        self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype(self.dtype)
-        }
-        self.outputs = {'Out': np.sign(self.inputs['X'])}
-        self.attrs = {'use_xpu': True}
+class XPUTestSignOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'sign'
+        self.use_dynamic_create_class = False
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+    class TestSignOPBase(XPUOpTest):
+        def setUp(self):
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.set_case()
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out')
+        def set_case(self):
+            self.op_type = 'sign'
+            self.dtype = self.in_type
+            self.init_config()
+            self.x = np.random.uniform(-10, 10,
+                                       self.input_shape).astype(self.dtype)
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': np.sign(self.x)}
+            self.attrs = {'use_xpu': True}
 
+        def init_dtype(self):
+            self.dtype = np.float32
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+        def init_config(self):
+            self.input_shape = [864]
+
+    class XPUTestSign1(TestSignOPBase):
+        def init_config(self):
+            self.input_shape = [2, 768]
+
+    class XPUTestSign2(TestSignOPBase):
+        def init_config(self):
+            self.input_shape = [3, 8, 4096]
+
+    class XPUTestSign3(TestSignOPBase):
+        def init_config(self):
+            self.input_shape = [1024]
+
+    class XPUTestSign4(TestSignOPBase):
+        def init_config(self):
+            self.input_shape = [2, 2, 255]
+
+
+support_types = get_xpu_op_support_types('sign')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSignOP, stype)
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,7 +59,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
-    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
             << phi::product(out->dims());
 
     dev_ctx->Wait();

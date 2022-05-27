@@ -36,19 +36,6 @@ in_dim = 10
 out_dim = 20
 
 
-def init_process_group(strategy=None):
-    nranks = ParallelEnv().nranks
-    rank = ParallelEnv().local_rank
-    is_master = True if rank == 0 else False
-    current_env = copy.copy(os.environ.copy())
-    port = 6175
-    if 'PADDLE_DIST_UT_PORT' in current_env.keys():
-        port = int(current_env['PADDLE_DIST_UT_PORT'])
-    store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master, nranks)
-    group = core.ProcessGroupNCCL(store, rank, nranks)
-    return group
-
-
 class SimpleNet(fluid.Layer):
     def __init__(self, train_id):
         super(SimpleNet, self).__init__()
@@ -83,12 +70,9 @@ class SimpleNet(fluid.Layer):
 
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
-        dist.init_parallel_env()
         self.trainer_id = dist.get_rank()
-
-        process_group = init_process_group()
-        self.pg = process_group
         with _test_eager_guard():
+            self.pg = dist.init_parallel_env()
 
             model_a = SimpleNet(self.trainer_id)
             model_b = SimpleNet(self.trainer_id)
@@ -97,13 +81,9 @@ class TestDistTraning(unittest.TestCase):
             model_b.set_state_dict(state_dict)
 
             model_a = paddle.DataParallel(
-                model_a,
-                find_unused_parameters=True,
-                process_group=process_group)
+                model_a, find_unused_parameters=True, group=self.pg)
             model_b = paddle.DataParallel(
-                model_b,
-                find_unused_parameters=True,
-                process_group=process_group)
+                model_b, find_unused_parameters=True, group=self.pg)
 
             ones_input = paddle.ones(shape=(batch, in_dim))
             ones_input.stop_gradient = True
@@ -150,7 +130,7 @@ class TestDistTraning(unittest.TestCase):
             print(*args)
 
     def broadcast_param(self, param, root):
-        self.pg.broadcast(param, root)
+        self.pg.process_group.broadcast(param, root)
         return param
 
     def check_gradient(self, params):

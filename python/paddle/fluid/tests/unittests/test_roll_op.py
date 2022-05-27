@@ -25,6 +25,7 @@ from paddle.fluid import Program, program_guard
 
 class TestRollOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.roll
         self.op_type = "roll"
         self.init_dtype_type()
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
@@ -41,10 +42,10 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRollOpCase2(TestRollOp):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -90,7 +88,9 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
+                ipu_strategy.set_options({
+                    'loss_scaling': self.attrs["loss_scaling"]
+                })
                 if "use_no_bias_optimizer" in self.attrs.keys():
                     ipu_strategy.set_options({
                         "use_no_bias_optimizer":

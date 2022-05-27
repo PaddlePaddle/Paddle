@@ -27,8 +27,7 @@ from paddle.fluid import Program, program_guard
 import time
 
 paddle.enable_static()
-
-
+'''
 def bilinear_interp_np(input,
                        out_h,
                        out_w,
@@ -513,7 +512,7 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
             x_data, out_h=12, out_w=12, align_corners=True)
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))
-
+'''
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,6 +27,24 @@ template <typename T>
 struct Mul {
   __device__ T operator()(const T &a, const T &b) const { return a * b; }
 };
+
+template <typename T>
+struct Div {
+  __device__ T operator()(const T &a, const T &b) const { return a / b; }
+};
+
+template <typename T>
+struct Sub {
+  __device__ T operator()(const T &a, const T &b) const { return a - b; }
+};
+
+template <typename T>
+struct Pow {
+  __device__ T operator()(const T &a, const T &b) const {
+    return static_cast<T>(::powf(static_cast<float>(a), static_cast<float>(b)));
+  }
+};
+
 }  // namespace details
 
 template <typename T, typename Operator>
@@ -39,12 +54,11 @@ __global__ void elementwise_kernel(const size_t total, const T *x_data,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < total) {
     int idx = tid / post % n;
-    out_data[tid] = x_data[tid];
-    // #if __CUDA_ARCH__ >= 350
-    //    out_data[tid] = op(__ldg(x_data + tid), __ldg(y_data + idx));
-    // #else
-    //    out_data[tid] = op(x_data[tid], y_data[idx]);
-    // #endif
+#if __CUDA_ARCH__ >= 350
+    out_data[tid] = op(__ldg(x_data + tid), __ldg(y_data + idx));
+#else
+    out_data[tid] = op(x_data[tid], y_data[idx]);
+#endif
   }
 }
 
@@ -54,12 +68,10 @@ nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
                                   "There is only one output in TRT elementwise "
                                   "op plugin, but got output index: %d.",
                                   index));
-  //  PADDLE_ENFORCE_EQ(num_inputs, 2, platform::errors::InvalidArgument(
-  //                                       "There are 2 inputs in TRT
-  //                                       elementwise "
-  //                                       "op plugin, but got input number:
-  //                                       %d.",
-  //                                       num_inputs));
+  PADDLE_ENFORCE_EQ(num_inputs, 2, platform::errors::InvalidArgument(
+                                       "There are 2 inputs in TRT elementwise "
+                                       "op plugin, but got input number: %d.",
+                                       num_inputs));
   PADDLE_ENFORCE_NOT_NULL(
       input_dims,
       platform::errors::InvalidArgument(
@@ -108,19 +120,7 @@ int ElementWisePlugin::initialize() TRT_NOEXCEPT {
   for (int i = axis_ + dims_y_.nbDims; i < dims_x_.nbDims; ++i) {
     post_size_ *= dims_x_.d[i];
   }
-
-  cudaMalloc(&p_gpu_weight_, sizeof(float) * midd_size_);
-  cudaMemcpy(p_gpu_weight_, p_cpu_weight_, midd_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-
   return 0;
-}
-
-void ElementWisePlugin::destroy() TRT_NOEXCEPT {
-  if (p_gpu_weight_) {
-    cudaFree(p_gpu_weight_);
-    p_gpu_weight_ = nullptr;
-  }
 }
 
 int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
@@ -131,9 +131,7 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
 #endif
                                cudaStream_t stream) TRT_NOEXCEPT {
   const float *x = reinterpret_cast<const float *>(inputs[0]);
-
-  //  const float *y = reinterpret_cast<const float *>(inputs[1]);
-  const float *y = p_gpu_weight_;
+  const float *y = reinterpret_cast<const float *>(inputs[1]);
   float *out = reinterpret_cast<float *>(outputs[0]);
 
   int num = batch_size * prev_size_ * midd_size_ * post_size_;
@@ -147,6 +145,18 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
         details::Mul<float>());
+  } else if (type_ == "div") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Pow<float>());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The %s type elementwise is not implemented in trt plugin.", type_));
@@ -158,31 +168,15 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
-int ElementwisePluginDynamic::initialize() TRT_NOEXCEPT {
-  VLOG(3) << "ElementwisePluginDynamic::initialize()";
-  size_t numel = 1;
-  for (int i = 0; i < weight_dims_.nbDims; i++) {
-    numel *= weight_dims_.d[i];
-  }
-  VLOG(3) << "cudaMalloc numel: " << numel;
-  cudaMalloc(&p_gpu_weight_, sizeof(float) * numel);
-//  cudaMemcpy(p_gpu_weight_, p_cpu_weight_, numel * sizeof(float),
-//             cudaMemcpyHostToDevice);
-  return 0;
-}
+int ElementwisePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t ElementwisePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
-  return SerializedSize(type_.c_str()) + SerializedSize(axis_) +
-         SerializedSize(p_cpu_weight_) + SerializedSize(with_weight_) +
-         SerializedSize(weight_dims_);
+  return SerializedSize(type_.c_str()) + SerializedSize(axis_);
 }
 
 void ElementwisePluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, type_.c_str());
   SerializeValue(&buffer, axis_);
-  SerializeValue(&buffer, p_cpu_weight_);
-  SerializeValue(&buffer, with_weight_);
-  SerializeValue(&buffer, weight_dims_);
 }
 
 nvinfer1::DimsExprs ElementwisePluginDynamic::getOutputDimensions(
@@ -230,10 +224,8 @@ int ElementwisePluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
     void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
-  VLOG(3) << "elementwise add plugin start-------";
-
   auto x_dims = input_desc[0].dims;
-  auto y_dims = weight_dims_;
+  auto y_dims = input_desc[1].dims;
   int axis = (axis_ == -1) ? x_dims.nbDims - y_dims.nbDims : axis_;
   int batch_size = x_dims.d[0];
 
@@ -264,19 +256,11 @@ int ElementwisePluginDynamic::enqueue(
   }
 
   const float *x = static_cast<const float *>(inputs[0]);
-  //  const float *y = static_cast<const float *>(inputs[1]);
-  const float *y = p_gpu_weight_;
-  if (y == nullptr) {
-    VLOG(3) << "y is null!!!!!";
-  }
+  const float *y = static_cast<const float *>(inputs[1]);
+
   float *out = static_cast<float *>(outputs[0]);
 
   int num = prev_size * midd_size * post_size;
-  VLOG(3) << "num: " << num << "; prev_size: " << prev_size
-          << "; midd_size: " << midd_size << "; post_size: " << post_size;
-  VLOG(3) << "weight_dims_.nbDims: " << weight_dims_.nbDims << "; ["
-          << weight_dims_.d[0] << ", " << weight_dims_.d[1] << ", "
-          << weight_dims_.d[2] << ", " << weight_dims_.d[3] << "]";
   int thread = 256;
   int block = (num + thread - 1) / thread;
   if (type_ == "add") {
@@ -285,14 +269,23 @@ int ElementwisePluginDynamic::enqueue(
   } else if (type_ == "mul") {
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size, midd_size, post_size, details::Mul<float>());
+  } else if (type_ == "div") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Pow<float>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Paddle-TRT only support elementwise operation: {add, mul} currently, "
+        "Paddle-TRT only support elementwise "
+        "operation: {add, mul, div, sub, pow} currently, "
         "but got %s.",
         type_));
   }
-  //  cudaDeviceSynchronize();
-  VLOG(3) << "elementwise add plugin end-------: " << cudaGetLastError();
+
   return cudaGetLastError() != cudaSuccess;
 }
 #endif

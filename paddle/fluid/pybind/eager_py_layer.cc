@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 namespace paddle {
 namespace pybind {
@@ -229,6 +231,10 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
+    Py_XDECREF(forward_args);
+    Py_XDECREF(kwargs_value_list);
+    Py_XDECREF(backward_function);
+    Py_XDECREF(forward_fn);
     return nullptr;
   }
 
@@ -340,10 +346,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
         for (auto t : inputs_tensor[i]) {
           grad_node->SetGradOutMeta(*t, i);
         }
-        grad_node->AddEdges(&inputs_autograd_meta[i], i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
-        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
       }
     }
 
@@ -365,6 +369,14 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
     VLOG(6) << "PyLayer construct backward node finish...";
   }
 
+  if (!PyTuple_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
+  }
+  Py_XDECREF(forward_args);
+  Py_XDECREF(kwargs_value_list);
+  Py_XDECREF(backward_function);
+  Py_XDECREF(forward_fn);
+
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -378,8 +390,7 @@ PyObject* pylayer_method_register_hook(PyObject* _self, PyObject* hook) {
 PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   EAGER_TRY
   if (self->container == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->container);
   return self->container;
@@ -393,15 +404,14 @@ int tensor_properties_set_container(PyLayerObject* self, PyObject* value,
   Py_XDECREF(self->container);
   self->container = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
                                                    void* closure) {
   EAGER_TRY
   if (self->non_differentiable == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->non_differentiable);
   return self->non_differentiable;
@@ -415,15 +425,14 @@ int tensor_properties_set_non_differentiable(PyLayerObject* self,
   Py_XDECREF(self->non_differentiable);
   self->non_differentiable = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
                                               void* closure) {
   EAGER_TRY
   if (self->dirty_tensors == nullptr) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE;
   }
   Py_INCREF(self->dirty_tensors);
   return self->dirty_tensors;
@@ -437,7 +446,7 @@ int tensor_properties_set_dirty_tensors(PyLayerObject* self, PyObject* value,
   Py_XDECREF(self->dirty_tensors);
   self->dirty_tensors = value;
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 int tensor_properties_set_materialize_grads(PyLayerObject* self,
@@ -445,7 +454,7 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_TRY
   self->materialize_grads = CastPyArg2AttrBoolean(value, 0);
   return 0;
-  EAGER_CATCH_AND_THROW_RETURN_ZERO
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyMethodDef pylayer_methods[] = {
@@ -479,7 +488,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_dealloc = (destructor)PyLayerDealloc;
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
-  type->tp_new = PyLayerNew;
+  type->tp_new = (newfunc)PyLayerNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=

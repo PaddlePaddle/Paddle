@@ -28,6 +28,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -62,8 +63,10 @@ def celu(x, alpha=1.0, name=None):
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.celu(x, 'alpha', alpha)
+    if in_dygraph_mode():
+        return _C_ops.final_state_celu(x, alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
     helper = LayerHelper("celu", **locals())
@@ -111,7 +114,10 @@ def elu(x, alpha=1.0, name=None):
             #  [ 1.          15.6      ]]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_elu(x, alpha)
+
+    if _in_legacy_dygraph():
         return _C_ops.elu(x, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
@@ -175,7 +181,10 @@ def gelu(x, approximate=False, name=None):
             #  [ 0.84119201,  1.39957154]]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_gelu(x, approximate)
+
+    if _in_legacy_dygraph():
         return _C_ops.gelu(x, 'approximate', approximate)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'gelu')
@@ -383,8 +392,10 @@ def hardswish(x, name=None):
             out = F.hardswish(x) # [0., 5., 0.666667]
     """
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.hard_swish(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_hard_swish(x, 6, 6, 3)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
@@ -428,7 +439,10 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_leaky_relu(x, negative_slope)
+
+    if _in_legacy_dygraph():
         return _C_ops.leaky_relu(x, 'alpha', negative_slope)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -678,10 +692,10 @@ def maxout(x, groups, axis=1, name=None):
             #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
             #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
     """
-
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.maxout(x, 'groups', groups, 'axis', axis)
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_maxout(x, groups, axis)
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -1175,8 +1189,9 @@ def swish(x, name=None):
             x = paddle.to_tensor(np.array([-2., 0., 1.]))
             out = F.swish(x) # [-0.238406, 0., 0.731059]
     """
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_swish(x, 1.0)
+    if _in_legacy_dygraph():
         return _C_ops.swish(x, 'beta', 1.0)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
@@ -1220,7 +1235,9 @@ def mish(x, name=None):
             x = paddle.to_tensor([-5., 0., 5.])
             out = F.mish(x) # [-0.03357624, 0., 4.99955208]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mish(x, 20)
+    if _in_legacy_dygraph():
         return _C_ops.mish(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mish')
@@ -1516,6 +1533,9 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
         
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_gumbel_softmax(x, temperature, hard, axis)
+
     if in_dynamic_mode():
         return _C_ops.gumbel_softmax(x, 'temperature', temperature, 'hard',
                                      hard, 'axis', axis)

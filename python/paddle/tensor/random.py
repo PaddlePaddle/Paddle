@@ -16,13 +16,13 @@
 
 from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
 from paddle.static import Variable
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
 
 __all__ = []
 
@@ -202,7 +202,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
 def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with random values sampled from a Gaussian
+    Returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
 
     Args:
@@ -219,9 +219,7 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor filled with random values sampled from a Gaussian
@@ -239,7 +237,15 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',
@@ -327,7 +333,7 @@ def standard_normal(shape, dtype=None, name=None):
 
 def randn(shape, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with random values sampled from a standard
+    Returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
     and ``dtype``.
 
@@ -548,7 +554,14 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype,
+                                                 float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min',
                                      float(min), 'max',
@@ -687,7 +700,11 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                               0, 'dtype', dtype)
@@ -888,7 +905,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
 def randperm(n, dtype="int64", name=None):
     """
-    This OP returns a 1-D Tensor filled with random permutation values from 0
+    Returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
     Args:
@@ -919,7 +936,9 @@ def randperm(n, dtype="int64", name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
+    if _in_legacy_dygraph():
         return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
     if n < 1:

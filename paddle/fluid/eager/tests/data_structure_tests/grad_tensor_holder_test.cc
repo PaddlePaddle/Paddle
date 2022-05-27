@@ -45,7 +45,9 @@ TEST(GradTensorHolder, Constructor) {
       meta);
   paddle::experimental::Tensor et = paddle::experimental::Tensor(dt);
 
-  std::vector<std::vector<paddle::experimental::Tensor>> inputs;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      inputs;
   inputs.push_back({et});
 
   GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));

@@ -408,6 +408,13 @@ PDNode *PDNode::assert_is_op(const std::string &op_type) {
   return this;
 }
 
+PDNode *PDNode::assert_is_not_op_type(const std::string &op_type) {
+  asserts_.emplace_back([op_type](Node *x) {
+    return x && x->IsOp() && x->Op()->Type() != op_type;
+  });
+  return this;
+}
+
 PDNode *PDNode::assert_is_var() {
   asserts_.emplace_back([](Node *x) { return x && x->IsVar(); });
   return this;
@@ -720,7 +727,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(), true,
       platform::errors::InvalidArgument(
-          "First parameter of function HasOuput must be Node::Op"));
+          "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -2069,6 +2076,29 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
   return out_var;
 }
 
+PDNode *patterns::ResidualElementwise::operator()(
+    PDNode *op_var, PDNode *residual_var, const std::string elementwise_type,
+    bool as_x) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
+
+  if (as_x) {
+    op_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+    residual_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+  } else {
+    op_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+    residual_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+  }
+  auto out_var = pattern->NewNode(elementwise_out_repr())
+                     ->AsOutput()
+                     ->assert_is_op_output(elementwise_type, "Out");
+
+  elementwise_op->LinksFrom({op_var, residual_var});
+  elementwise_op->LinksTo({out_var});
+
+  return out_var;
+}
+
 PDNode *patterns::Concat::operator()() {
   auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
 
@@ -2642,41 +2672,8 @@ PDNode *patterns::UnsupportedBfloat16::operator()() {
   return op;
 }
 
-PDNode *patterns::LastBfloat16Ops::operator()() {
-  auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
-  op->LinksTo({op_out});
-  return op_out;
-}
-
-PDNode *patterns::FirstBfloat16Ops::operator()() {
-  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
-
-  auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-
-  op->LinksFrom({op_in});
-  return op;
-}
-
-PDNode *patterns::DuplicatedInputs::operator()() {
-  auto op = pattern->NewNode(op_repr())->assert_is_ops({"concat", "sum"});
-  op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-  return op;
-}
-
-PDNode *patterns::DuplicatedOutputs::operator()() {
-  auto op = pattern->NewNode(op_repr())->assert_is_ops({"split"});
+PDNode *patterns::Bloat16Ops::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";

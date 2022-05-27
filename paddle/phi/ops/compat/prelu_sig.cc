@@ -23,9 +23,9 @@ KernelSignature PReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature PReluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("prelu_grad",
-                         {"X", "Alpha", GradVarName("Out")},
+                         {"X", "Alpha", "Out@GRAD"},
                          {"data_format", "mode"},
-                         {GradVarName("X"), GradVarName("Alpha")});
+                         {"X@GRAD", "Alpha@GRAD"});
 }
 
 }  // namespace phi

@@ -56,7 +56,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
            weight_t->numel() * sizeof(float));
 
     // (hidden_in, 3, hidden_out)
-    auto weight_dims = weight_t->dims();
+    const auto& weight_dims = weight_t->dims();
 
     int hidden_in = weight_dims[0];   // channels_in
     int three = weight_dims[1];       // channels_out
@@ -329,11 +329,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
         reshape_before_fc_dim.d[4] = 1;
         auto* reshape_before_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-//        if (op_desc.HasAttr("Input_scale")) {
-          engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
-                                         1.0);
-                                         //in_scale);
-//        }
+        //        if (op_desc.HasAttr("Input_scale")) {
+        engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
+                                       1.0);
+        // in_scale);
+        //        }
         reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
         reshape_before_fc_layer->setName(
             ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
@@ -341,17 +341,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
         // add layer fc
         nvinfer1::ILayer* fc_layer = nullptr;
-//        if (op_desc.HasAttr("Input_scale")) {
-          nvinfer1::DimsHW nv_ksize(1, 1);
+        //        if (op_desc.HasAttr("Input_scale")) {
+        nvinfer1::DimsHW nv_ksize(1, 1);
         VLOG(5) << "Add Convolution and set scale";
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *reshape_before_fc_layer->getOutput(0), n,
-              nv_ksize, weight.get(), bias.get());
-//        } else {
-//          fc_layer = TRT_ENGINE_ADD_LAYER(
-//              engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
-//              n, weight.get(), bias.get());
-//        }
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution,
+                                        *reshape_before_fc_layer->getOutput(0),
+                                        n, nv_ksize, weight.get(), bias.get());
+        //        } else {
+        //          fc_layer = TRT_ENGINE_ADD_LAYER(
+        //              engine_, FullyConnected,
+        //              *reshape_before_fc_layer->getOutput(0),
+        //              n, weight.get(), bias.get());
+        //        }
 
         if (op_desc.HasAttr("fc_out_threshold")) {
           PADDLE_ENFORCE_EQ(
@@ -362,7 +363,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
         }
-        engine_->SetTensorDynamicRange(fc_layer->getOutput(0), 1.0); // debugg
+        engine_->SetTensorDynamicRange(fc_layer->getOutput(0), 1.0);  // debugg
         fc_layer->setName(
             ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 

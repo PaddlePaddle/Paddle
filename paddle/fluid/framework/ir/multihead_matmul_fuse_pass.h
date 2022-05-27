@@ -32,15 +32,6 @@ struct MultiHeadMatmulPattern : public PatternBase {
 
   // declare operator node's name
   PATTERN_DECL_NODE(input0);
-
-  PATTERN_DECL_NODE(c_identity0);
-  PATTERN_DECL_NODE(c_identity1);
-  PATTERN_DECL_NODE(c_identity2);
-
-  PATTERN_DECL_NODE(c_identity0_out);
-  PATTERN_DECL_NODE(c_identity1_out);
-  PATTERN_DECL_NODE(c_identity2_out);
-
   PATTERN_DECL_NODE(mul0);
   PATTERN_DECL_NODE(mul1);
   PATTERN_DECL_NODE(mul2);

@@ -25,6 +25,7 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
 import paddle.nn as nn
+from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(0)
 
@@ -92,7 +93,7 @@ def check(use_cuda):
         sgd.clear_grad()
 
 
-if __name__ == '__main__':
+def run_check():
     if paddle.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
@@ -110,3 +111,9 @@ if __name__ == '__main__':
         print(e)
         print(type(e))
         assert type(e) == RuntimeError
+
+
+if __name__ == '__main__':
+    with _test_eager_guard():
+        run_check()
+    run_check()

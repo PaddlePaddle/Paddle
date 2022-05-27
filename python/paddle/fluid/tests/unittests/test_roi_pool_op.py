@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
 import math
@@ -32,6 +33,7 @@ class TestROIPoolOp(OpTest):
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': self.boxes_num
         }
 
         self.attrs = {
@@ -130,16 +132,20 @@ class TestROIPoolOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float64")
+        self.boxes_num = np.array(
+            [bno + 1 for bno in range(self.batch_size)]).astype('int32')
 
     def setUp(self):
         self.op_type = "roi_pool"
+        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale: paddle.vision.ops.roi_pool(x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
+        self.python_out_sig = ["Out"]
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class BadInputTestRoiPool(unittest.TestCase):

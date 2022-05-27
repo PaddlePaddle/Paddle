@@ -844,8 +844,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(conv2d, Conv2dInferShapeFunctor,
-                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
@@ -856,8 +854,6 @@ REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad,
 REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise convolution op
-DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d, DepthwiseConv2dInferShapeFunctor,
-                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
@@ -867,8 +863,6 @@ REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
                   ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
-DECLARE_INFER_SHAPE_FUNCTOR(conv3d, Conv3dInferShapeFunctor,
-                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv3DGradMaker<paddle::framework::OpDesc>,

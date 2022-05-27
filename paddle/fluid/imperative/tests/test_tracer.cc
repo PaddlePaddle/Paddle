@@ -38,6 +38,7 @@ PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);

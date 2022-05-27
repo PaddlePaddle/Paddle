@@ -158,6 +158,19 @@ void AnalysisConfig::EnableNpu(int device_id) {
   Update();
 }
 
+void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
+                                        int device_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = device_type;
+#else
+  LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
+  use_custom_device_ = false;
+#endif
+  Update();
+}
+
 void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
                                bool ipu_enable_pipelining,
                                int ipu_batches_per_step) {
@@ -261,6 +274,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_bfloat16_);
   CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
+  CP_MEMBER(use_mkldnn_int8_);
+  CP_MEMBER(quantize_enabled_op_types_);
+  CP_MEMBER(quantize_excluded_op_ids_);
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
@@ -320,6 +336,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // fleet exe related
   CP_MEMBER(dist_config_);
+
+  // custom device related.
+  CP_MEMBER(use_custom_device_);
+  CP_MEMBER(custom_device_type_);
+  CP_MEMBER(custom_device_id_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -435,6 +456,35 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
+void AnalysisConfig::EnableMkldnnInt8(
+    const std::unordered_set<std::string> &op_list) {
+#ifdef PADDLE_WITH_MKLDNN
+  use_mkldnn_int8_ = true;
+  use_fc_padding_ = false;
+  if (!op_list.empty()) {
+    for (auto &type : op_list) {
+      if (!quantize_enabled_op_types_.count(type)) {
+        LOG(ERROR) << "There are unsupported operators in the configured "
+                      "quantization operator list. The unsupported operator "
+                      "is: "
+                   << type;
+        use_mkldnn_int8_ = false;
+        break;
+      }
+    }
+    if (use_mkldnn_int8_) {
+      quantize_enabled_op_types_.clear();
+      quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
+    }
+  }
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
+  use_mkldnn_int8_ = false;
+#endif
+
+  Update();
+}
+
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           platform::errors::PreconditionNotMet(
@@ -507,7 +557,8 @@ void AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
       ((use_npu() ^ pass_builder_->use_npu())) ||
-      ((use_ipu() ^ pass_builder_->use_ipu()))) {
+      ((use_ipu() ^ pass_builder_->use_ipu())) ||
+      ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -530,6 +581,12 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -556,6 +613,13 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy(
           *static_cast<NpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_custom_device()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and CustomDevice."));
+      pass_builder_.reset(new CustomDevicePassStrategy(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -567,6 +631,11 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
+        continue;
+      }
+      // delete_fill_constant_op_pass is not used under trt dynamic shape
+      if ((!min_input_shape_.empty() || trt_tuned_dynamic_shape_) &&
+          pass == "delete_fill_constant_op_pass") {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -632,6 +701,20 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_mkldnn_int8_) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
+                    "is enabled.";
+    } else if (!use_mkldnn_) {
+      LOG(ERROR) << "EnableMkldnnInt8() only works when MKLDNN "
+                    "is enabled.";
+    } else {
+      pass_builder()->EnableMkldnnInt8();
+    }
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -687,7 +770,13 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
-
+  if (use_custom_device_) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to enable the custom device "
+        "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
+#endif
+  }
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -731,6 +820,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
+  ss << use_mkldnn_int8_;
+  for (auto &item : quantize_enabled_op_types_) ss << item;
+  for (auto &item : quantize_excluded_op_ids_) ss << item;
   ss << ";";
   ss << model_from_memory_;
 

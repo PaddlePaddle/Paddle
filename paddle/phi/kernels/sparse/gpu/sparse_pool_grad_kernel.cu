@@ -18,13 +18,12 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -65,7 +64,7 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
   int rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
-      h_counter(kernel_size);
+      h_counter(rulebook_len, 0);
   phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
                                      rulebook_ptr,
                                      rulebook_len * sizeof(IntT),
@@ -129,7 +128,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
                        const SparseCooTensor& out_grad,
                        const std::vector<int>& kernel_sizes,
                        SparseCooTensor* x_grad) {
-  PD_DISPATCH_INTEGRAL_TYPES(
+  PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolGradGPUKernel", ([&] {
         MaxPoolGradGPUKernel<T, data_t>(
             dev_ctx, x, rulebook, out, out_grad, kernel_sizes, x_grad);

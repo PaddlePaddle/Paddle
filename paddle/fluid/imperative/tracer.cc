@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -191,7 +192,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      type + " trace_op", platform::TracerEventType::Operator, 1);
+      type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -219,24 +220,34 @@ void Tracer::TraceOpImpl(const std::string& type,
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
-  NameVarMap<VarType> new_ins = ins;
+  std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
-      new_ins = AutoCastInputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          AutoCastInputs<VarType>(type, imperative::AutoTuneLayout<VarType>(
+                                            type, ins, outs, &attrs, tracer)));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
-      new_ins = AutoCastBF16Inputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          AutoCastBF16Inputs<VarType>(type, ins));
     }
   } else if (amp_level_ == AmpLevel::O2) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
-      new_ins = CastPureFp16Inputs<VarType>(type, ins);
+      ins_amp =
+          std::make_unique<NameVarMap<VarType>>(CastPureFp16Inputs<VarType>(
+              type, imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs,
+                                                        tracer)));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
-      new_ins = CastPureBf16Inputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          CastPureBf16Inputs<VarType>(type, ins));
     }
   }
+  const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {
     if (platform::is_gpu_place(place)) {
@@ -313,7 +324,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   {
     platform::RecordEvent node_creation_record_event(
-        type + " node_creation", platform::TracerEventType::Operator, 1);
+        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(

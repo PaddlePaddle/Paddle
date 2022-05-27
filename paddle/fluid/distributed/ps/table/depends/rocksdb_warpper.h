@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
@@ -153,6 +153,5 @@ class RocksDBHandler {
   std::vector<rocksdb::ColumnFamilyHandle*> _handles;
   rocksdb::DB* _db;
 };
-}
-}
-#endif
+}  // distributed
+}  // paddle

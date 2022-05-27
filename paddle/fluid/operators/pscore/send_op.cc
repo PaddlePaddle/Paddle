@@ -47,7 +47,7 @@ class SendOp : public framework::OperatorBase {
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
-    // for common_dense_table, distributed_push_sparse op for push sparse in
+    // for memory_dense_table, distributed_push_sparse op for push sparse in
     // async
     if (is_sparse == 0 && send_varnames.size() >= 1 &&
         send_varnames[0] != "@PS_STEP_COUNTER@") {

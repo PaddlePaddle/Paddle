@@ -15,7 +15,7 @@
 
 #include <glog/logging.h>
 #include <llvm/Support/ErrorHandling.h>
-#include <llvm/include/mlir/IR/Attributes.h>
+#include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/PatternMatch.h>
@@ -58,58 +58,110 @@ template <>
 }
 
 static mlir::Value createTRTConv2dOp(mlir::PatternRewriter &rewriter,  // NOLINT
-                                     mlir::Operation *op) {
+                                     mlir::Operation *op,
+                                     mlir::Value input,
+                                     mlir::Value filter) {
   auto conv_op = ::llvm::dyn_cast<infrt::pd::Conv2dOp>(op);
   ::mlir::SmallVector<::mlir::Value, 4> operands;
-  ::mlir::Operation::operand_range Input = conv_op.getODSOperands(0);
-  ::mlir::Operation::operand_range Filter = conv_op.getODSOperands(1);
-  operands.push_back((*Input.begin()));
-  operands.push_back((*Filter.begin()));
+  operands.push_back(input);
+  operands.push_back(filter);
 
   ::mlir::SmallVector<::mlir::Type, 4> resultTypes;
   for (auto v : conv_op.getODSResults(0)) {
     resultTypes.push_back(v.getType());
   }
+
   ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
-  {
-    // TODO(weishengying) :  get out_channel_num for filter shape
-    auto tblgen_attr = rewriter.getSI32IntegerAttr(3);
-    attributes.emplace_back(rewriter.getStringAttr("out_channel_num"),
-                            tblgen_attr);
+
+  auto *filter_producer = filter.getDefiningOp();
+  auto create_inited_tensor_op =
+      llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
+          filter_producer);
+
+  CHECK_NOTNULL(create_inited_tensor_op);
+  mlir::ArrayAttr dims = create_inited_tensor_op.dims();
+  CHECK_EQ(dims.size(), 4U);
+  CHECK(dims[0].getType().isIntOrIndex());
+
+  const int32_t n_output = dims[0].cast<mlir::IntegerAttr>().getInt();
+  const int32_t filter_h = dims[2].cast<mlir::IntegerAttr>().getInt();
+  const int32_t filter_w = dims[3].cast<mlir::IntegerAttr>().getInt();
+
+  auto padding_attr = conv_op->getAttrOfType<::mlir::ArrayAttr>("paddings");
+  llvm::SmallVector<int32_t, 4> paddings(padding_attr.size());
+  for (size_t i = 0; i < padding_attr.size(); i++) {
+    paddings[i] = padding_attr[i].cast<mlir::IntegerAttr>().getInt();
   }
-  {
-    // TODO(weishengying) :  get kernel_size for filter shape
-    auto tblgen_attr = rewriter.getI32ArrayAttr({3, 3});
-    attributes.emplace_back(rewriter.getStringAttr("kernel_size"), tblgen_attr);
+
+  auto dilations_attr = conv_op->getAttrOfType<::mlir::ArrayAttr>("dilations");
+  llvm::SmallVector<int32_t> dilations(dilations_attr.size());
+  for (size_t i = 0; i < dilations_attr.size(); i++) {
+    dilations[i] = dilations_attr[i].cast<mlir::IntegerAttr>().getInt();
   }
-  {
-    auto tblgen_attr = op->getAttrOfType<::mlir::ArrayAttr>("strides");
-    attributes.emplace_back(rewriter.getStringAttr("strides"), tblgen_attr);
+
+  llvm::SmallVector<int32_t, 2> nv_paddings(2);
+  llvm::SmallVector<int32_t, 4> nv_pre_paddings(2);
+  llvm::SmallVector<int32_t, 4> nv_post_paddings(2);
+  llvm::SmallVector<int32_t, 2> nv_dilations({dilations[0], dilations[1]});
+  int32_t nv_padding_mode = 0;  // nvinfer1::PaddingMode::kEXPLICIT_ROUND_DOWN
+  auto padding_algorithm_attr =
+      conv_op->getAttrOfType<::mlir::StringAttr>("padding_algorithm");
+  if (padding_algorithm_attr.strref() == "VALID") {
+    for (size_t i = 0; i < paddings.size(); i++) {
+      paddings[i] = 0;
+    }
   }
-  {
-    auto tblgen_attr = op->getAttrOfType<::mlir::ArrayAttr>("paddings");
-    attributes.emplace_back(rewriter.getStringAttr("paddings"), tblgen_attr);
+  if (padding_algorithm_attr.strref() == "SAME") {
+    nv_padding_mode = 2;  // nvinfer1::PaddingMode::kSAME_UPPER
+    nv_dilations[0] = 1;
+    nv_dilations[1] = 1;
   }
-  {
-    auto tblgen_attr =
-        op->getAttrOfType<::mlir::StringAttr>("padding_algorithm");
-    attributes.emplace_back(rewriter.getStringAttr("padding_mode"),
-                            tblgen_attr);
+
+  if (paddings.size() == 2) {
+    nv_paddings[0] = paddings[0];
+    nv_paddings[1] = paddings[1];
+  } else {
+    CHECK_EQ(paddings.size(), 4U);
+    nv_pre_paddings[0] = paddings[0];
+    nv_pre_paddings[1] = paddings[2];
+    nv_post_paddings[0] = paddings[1];
+    nv_post_paddings[1] = paddings[3];
   }
+
+  attributes.emplace_back(rewriter.getStringAttr("out_channel_num"),
+                          rewriter.getSI32IntegerAttr(n_output));
+
+  attributes.emplace_back(rewriter.getStringAttr("kernel_size"),
+                          rewriter.getI32ArrayAttr({filter_h, filter_w}));
+
+  attributes.emplace_back(
+      rewriter.getStringAttr("dilations"),
+      rewriter.getI32ArrayAttr({nv_dilations[0], nv_dilations[1]}));
+
+  attributes.emplace_back(rewriter.getStringAttr("padding_mode"),
+                          rewriter.getSI32IntegerAttr(nv_padding_mode));
+
+  attributes.emplace_back(rewriter.getStringAttr("paddings"),
+                          rewriter.getI32ArrayAttr({paddings[0], paddings[1]}));
+
+  attributes.emplace_back(
+      rewriter.getStringAttr("pre_paddings"),
+      rewriter.getI32ArrayAttr({nv_pre_paddings[0], nv_pre_paddings[1]}));
+
+  attributes.emplace_back(
+      rewriter.getStringAttr("post_paddings"),
+      rewriter.getI32ArrayAttr({nv_post_paddings[0], nv_post_paddings[1]}));
+
   {
-    auto tblgen_attr = op->getAttrOfType<::mlir::IntegerAttr>("groups");
+    auto tblgen_attr = conv_op->getAttrOfType<::mlir::IntegerAttr>("groups");
     attributes.emplace_back(rewriter.getStringAttr("groups"), tblgen_attr);
   }
   {
-    auto tblgen_attr = op->getAttrOfType<::mlir::ArrayAttr>("dilations");
-    attributes.emplace_back(rewriter.getStringAttr("dilations"), tblgen_attr);
-  }
-  {
-    auto tblgen_attr = op->getAttrOfType<::mlir::StringAttr>("data_format");
-    attributes.emplace_back(rewriter.getStringAttr("data_format"), tblgen_attr);
+    auto tblgen_attr = conv_op->getAttrOfType<::mlir::ArrayAttr>("strides");
+    attributes.emplace_back(rewriter.getStringAttr("strides"), tblgen_attr);
   }
   return rewriter.create<trt::ConvolutionOp>(
-      op->getLoc(), resultTypes, operands, attributes);
+      conv_op->getLoc(), resultTypes, operands, attributes);
 }
 
 static inline mlir::ArrayAttr TransposeWeight(
@@ -193,51 +245,6 @@ inline ::llvm::SmallVector<::mlir::Value, 4> createTrtFcOp(
   return tblgen_repl_values;
 }
 
-static mlir::Value createTRTShuffledOp(
-    mlir::PatternRewriter &rewriter,  // NOLINT
-    mlir::Operation *op,
-    const mlir::Value &input,
-    const mlir::Attribute &start,
-    const mlir::Attribute &stop) {
-  auto flatten_op = ::llvm::dyn_cast<infrt::pd::Flatten_contiguous_rangeOp>(op);
-  ::mlir::SmallVector<::mlir::Value, 4> operands;
-  operands.push_back(input);
-
-  ::mlir::SmallVector<::mlir::Type, 4> resultTypes;
-  for (auto v : flatten_op.getODSResults(0)) {
-    resultTypes.push_back(v.getType());
-  }
-
-  ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
-  mlir::IntegerAttr start_attr = start.dyn_cast<mlir::IntegerAttr>();
-  mlir::IntegerAttr stop_attr = stop.dyn_cast<mlir::IntegerAttr>();
-
-  int start_axis = start_attr.getSInt();
-  int stop_axis = stop_attr.getSInt();
-  // TODO(weishengying) : get dim form DenseTonsor
-  int dims = 4;
-  // TODO(weishengying) : get input_dims form DenseTonsor
-  int input_dims[4] = {1, 2048, 1, 1};
-  int dim_prod = 1;
-
-  std::vector<int> flatten_dim(dims - (stop_axis - start_axis));
-  for (int i = 0, j = 0; i < dims; ++i) {
-    if (start_axis <= i + 1 && i + 1 <= stop_axis) {
-      int dim_i = input_dims[i];
-      dim_prod *= dim_i;
-      if (i + 1 == stop_axis) {
-        flatten_dim[j++] = dim_prod;
-      }
-    } else {
-      flatten_dim[j++] = input_dims[i];
-    }
-  }
-  auto reshape_arrt = rewriter.getI32ArrayAttr(flatten_dim);
-  attributes.emplace_back(rewriter.getStringAttr("reshape"), reshape_arrt);
-  return rewriter.create<trt::ShuffleOp>(
-      op->getLoc(), resultTypes, operands, attributes);
-}
-
 inline mlir::IntegerAttr CreatePoolingType(
     mlir::PatternRewriter &builder,  // NOLINT
     mlir::StringAttr pool_type) {
@@ -313,9 +320,9 @@ inline ::llvm::SmallVector<::mlir::Value, 4> CreatePaddleTrtPoolingOp(
   }
 
   // if global_pooling == true or adaptive == true, padding will be ignored
-  if (global_pooling.getValue() || adaptive.getValue()) {
-    paddings_attr = builder.getI32ArrayAttr({0, 0});
-  }
+  // if (global_pooling.getValue() || adaptive.getValue()) {
+  //   paddings_attr = builder.getI32ArrayAttr({0, 0});
+  // }
 
   // if global_pooling == true, then we should update kernel size to input dims.
   if (global_pooling.getValue() == true) {
@@ -339,17 +346,17 @@ inline ::llvm::SmallVector<::mlir::Value, 4> CreatePaddleTrtPoolingOp(
   PoolingOp pool_op;
   {
     auto ods_loc = builder.getFusedLoc({input_producer->getLoc()});
-    builder.create<PoolingOp>(ods_loc,
-                              input.getType(),
-                              input,
-                              pool_type_attr,
-                              ksize,
-                              strides,
-                              paddings_attr,
-                              padding_mode_attr,
-                              exclusive,
-                              adaptive,
-                              padding_algorithm);
+    pool_op = builder.create<PoolingOp>(ods_loc,
+                                        input.getType(),
+                                        input,
+                                        pool_type_attr,
+                                        ksize,
+                                        strides,
+                                        paddings_attr,
+                                        padding_mode_attr,
+                                        exclusive,
+                                        adaptive,
+                                        padding_algorithm);
   }
 
   for (auto v :

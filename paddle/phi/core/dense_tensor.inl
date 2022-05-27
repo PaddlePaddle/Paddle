@@ -20,22 +20,11 @@ limitations under the License. */
 
     Will be adjusted/removed/moved in the near future
 */
+
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
 explicit DenseTensor(paddle::experimental::DataType dtype);
-
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
-
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
@@ -127,23 +116,19 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-inline dnnl::memory::format_tag format() const { return format_; }
+  dnnl::memory::desc mem_desc() const;
+
+inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  mem_desc_ = mem_desc;
+  meta_.layout = DataLayout::kMKLDNN;
+}
+
+dnnl::memory::format_tag format() const;
 
 inline void set_format(const dnnl::memory::format_tag format) {
   format_ = format;
 }
 
-protected:
-/**
- * @brief the detail format of memory block which have layout as kMKLDNN
- *
- * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
- *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
- *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
- *       this field.
- */
-
-dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
 /* ------------------------------ */

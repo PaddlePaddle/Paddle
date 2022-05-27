@@ -23,6 +23,9 @@ import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+from paddle.fluid.framework import _test_eager_guard
+
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -55,273 +58,239 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     return Out
 
 
-class TestMatMulV2Op(XPUOpTest):
-    """
-    case 1
-    """
+class XPUTestMatmulV2Op(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "matmul_v2"
+        self.use_dynamic_create_class = False
 
-    def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (100, )
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulV2Op(XPUOpTest):
+        """
+        case 1
+        """
 
-    def init_kernel_type(self):
-        self.dtype = "float32"
+        def config(self):
+            self.x_shape = (100, )
+            self.y_shape = (100, )
+            self.trans_x = False
+            self.trans_y = False
 
-    def setUp(self):
-        self.use_xpu = True
-        self.init_kernel_type()
-        self.config()
-        self.op_type = "matmul_v2"
-        x = np.random.random(self.x_shape).astype(self.dtype)
-        y = np.random.random(self.y_shape).astype(self.dtype)
-        # -0.1 ~ 0.1
-        x = -0.1 + 0.2 * x
-        y = -0.1 + 0.2 * y
-        result = reference_matmul(x, y, self.trans_x, self.trans_y)
-        result = result.astype(self.dtype)
-        self.inputs = {
-            'X': x,
-            'Y': y,
-        }
-        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
-        self.outputs = {'Out': result}
+        def setUp(self):
+            self.dtype = self.in_type
+            self.config()
+            self.op_type = "matmul_v2"
+            x = np.random.random(self.x_shape).astype(self.dtype)
+            y = np.random.random(self.y_shape).astype(self.dtype)
+            # -0.1 ~ 0.1
+            x = -0.1 + 0.2 * x
+            y = -0.1 + 0.2 * y
+            result = reference_matmul(x, y, self.trans_x, self.trans_y)
+            result = result.astype(self.dtype)
+            self.inputs = {
+                'X': x,
+                'Y': y,
+            }
+            self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+            self.outputs = {'Out': result}
 
-    def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place)
+        def test_check_output(self):
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
 
-    def test_check_grad(self):
-        place = paddle.XPUPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        def test_check_grad(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
+    class TestMatMulOp2(TestMatMulV2Op):
+        """
+        case 2
+        """
 
-class TestMatMulOp2(TestMatMulV2Op):
-    """
-    case 2
-    """
+        def config(self):
+            self.x_shape = (100)
+            self.y_shape = (100, 3)
+            self.trans_x = False
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (100)
-        self.y_shape = (100, 3)
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulOp3(TestMatMulV2Op):
+        """
+        case 3
+        """
 
+        def config(self):
+            self.x_shape = (100, )
+            self.y_shape = (1, 1, 100, 2)
+            self.trans_x = False
+            self.trans_y = False
 
-class TestMatMulOp3(TestMatMulV2Op):
-    """
-    case 3
-    """
+    class TestMatMulOp4(TestMatMulV2Op):
+        """
+        case 4
+        """
 
-    def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (1, 1, 100, 2)
-        self.trans_x = False
-        self.trans_y = False
+        def config(self):
+            self.x_shape = (1, 1, 100, 1)
+            self.y_shape = (1, 100)
+            self.trans_x = False
+            self.trans_y = False
 
+    class TestMatMulOp5(TestMatMulV2Op):
+        """
+        case 5
+        """
 
-class TestMatMulOp4(TestMatMulV2Op):
-    """
-    case 4
-    """
+        def config(self):
+            self.x_shape = (1, 1, 100, 1)
+            self.y_shape = (100, )
+            self.trans_x = True
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (1, 1, 100, 1)
-        self.y_shape = (1, 100)
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulOp6(TestMatMulV2Op):
+        """
+        case 6
+        """
 
+        def config(self):
+            self.x_shape = (1, 2, 102, 10)
+            self.y_shape = (2, 10, 111)
+            self.trans_x = False
+            self.trans_y = False
 
-class TestMatMulOp5(TestMatMulV2Op):
-    """
-    case 5
-    """
+    class TestMatMulOp7(TestMatMulV2Op):
+        """
+        case 7
+        """
 
-    def config(self):
-        self.x_shape = (1, 1, 100, 1)
-        self.y_shape = (100, )
-        self.trans_x = True
-        self.trans_y = False
+        def config(self):
+            self.x_shape = (1, 2, 100, 1)
+            self.y_shape = (2, 100, 12)
+            self.trans_x = True
+            self.trans_y = False
 
+    class TestMatMulOp8(TestMatMulV2Op):
+        """
+        case 8
+        """
 
-class TestMatMulOp6(TestMatMulV2Op):
-    """
-    case 6
-    """
+        def config(self):
+            self.x_shape = (1, 1, 2, 100)
+            self.y_shape = (1, 1, 100, 2)
+            self.trans_x = False
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (1, 2, 102, 10)
-        self.y_shape = (2, 10, 111)
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulOp9(TestMatMulV2Op):
+        """
+        case 9
+        """
 
+        def config(self):
+            self.x_shape = (100, 20, 100)
+            self.y_shape = (100, 100, 100)
+            self.trans_x = False
+            self.trans_y = True
 
-class TestMatMulOp7(TestMatMulV2Op):
-    """
-    case 7
-    """
+    class TestMatMulOp10(TestMatMulV2Op):
+        """
+        case 10
+        """
 
-    def config(self):
-        self.x_shape = (1, 2, 100, 1)
-        self.y_shape = (2, 100, 12)
-        self.trans_x = True
-        self.trans_y = False
+        def config(self):
+            self.x_shape = (100, 20, 100)
+            self.y_shape = (100, 20, 100)
+            self.trans_x = True
+            self.trans_y = False
 
+    class TestMatMulOp11(TestMatMulV2Op):
+        """
+        case 11
+        """
 
-class TestMatMulOp8(TestMatMulV2Op):
-    """
-    case 8
-    """
+        def config(self):
+            self.x_shape = (2, 20, 100)
+            self.y_shape = (100, 30)
+            self.trans_x = False
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (1, 1, 2, 100)
-        self.y_shape = (1, 1, 100, 2)
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulOp12(TestMatMulV2Op):
+        """
+        case 12
+        """
 
+        def config(self):
+            self.x_shape = (1, 20, 100)
+            self.y_shape = (100, )
+            self.trans_x = False
+            self.trans_y = False
 
-class TestMatMulOp9(TestMatMulV2Op):
-    """
-    case 9
-    """
+    class TestMatMulOp13(TestMatMulV2Op):
+        """
+        case 13
+        """
 
-    def config(self):
-        self.x_shape = (100, 20, 100)
-        self.y_shape = (100, 100, 100)
-        self.trans_x = False
-        self.trans_y = True
+        def config(self):
+            self.x_shape = (2, 2, 10, 10)
+            self.y_shape = (2, 2, 10, 10)
+            self.trans_x = True
+            self.trans_y = False
 
+    class TestMatMulOp14(TestMatMulV2Op):
+        """
+        case 14_1
+        """
 
-class TestMatMulOp10(TestMatMulV2Op):
-    """
-    case 10
-    """
+        def config(self):
+            self.x_shape = (100, 2, 100, 10)
+            self.y_shape = (100, 2, 10, 90)
+            self.trans_x = False
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (100, 20, 100)
-        self.y_shape = (100, 20, 100)
-        self.trans_x = True
-        self.trans_y = False
+    class TestMatMulOp15(TestMatMulV2Op):
+        """
+        case 14_2
+        """
 
+        def config(self):
+            self.x_shape = (100, 2, 100, 10)
+            self.y_shape = (100, 2, 100, 10)
+            self.trans_x = False
+            self.trans_y = True
 
-class TestMatMulOp11(TestMatMulV2Op):
-    """
-    case 11
-    """
+    class TestMatMulOp16(TestMatMulV2Op):
+        """
+        case 16 : to check the big data
+        """
 
-    def config(self):
-        self.x_shape = (2, 20, 100)
-        self.y_shape = (100, 30)
-        self.trans_x = False
-        self.trans_y = False
+        def config(self):
+            self.x_shape = (1000, 2, 100, 100)
+            self.y_shape = (1000, 2, 100, 900)
+            self.trans_x = False
+            self.trans_y = False
 
+    class TestMatMulOp17(TestMatMulV2Op):
+        """
+        case 17 : to check the gradient for special case
+        """
 
-class TestMatMulOp12(TestMatMulV2Op):
-    """
-    case 12
-    """
+        def config(self):
+            self.x_shape = (2, 1, 100)
+            self.y_shape = (100)
+            self.trans_x = False
+            self.trans_y = False
 
-    def config(self):
-        self.x_shape = (1, 20, 100)
-        self.y_shape = (100, )
-        self.trans_x = False
-        self.trans_y = False
+    class TestMatMulOp18(TestMatMulV2Op):
+        """
+        case 18 : for ppyoloe model
+        """
 
-
-class TestMatMulOp13(TestMatMulV2Op):
-    """
-    case 13
-    """
-
-    def config(self):
-        self.x_shape = (2, 2, 10, 10)
-        self.y_shape = (2, 2, 10, 10)
-        self.trans_x = True
-        self.trans_y = False
-
-
-class TestMatMulOp14(TestMatMulV2Op):
-    """
-    case 14_1
-    """
-
-    def config(self):
-        self.x_shape = (100, 2, 100, 10)
-        self.y_shape = (100, 2, 10, 90)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulOp15(TestMatMulV2Op):
-    """
-    case 14_2
-    """
-
-    def config(self):
-        self.x_shape = (100, 2, 100, 10)
-        self.y_shape = (100, 2, 100, 10)
-        self.trans_x = False
-        self.trans_y = True
-
-
-class TestMatMulOp16(TestMatMulV2Op):
-    """
-    case 16 : to check the big data
-    """
-
-    def config(self):
-        self.x_shape = (1000, 2, 100, 100)
-        self.y_shape = (1000, 2, 100, 900)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulOp17(TestMatMulV2Op):
-    """
-    case 17 : to check the gradient for special case
-    """
-
-    def config(self):
-        self.x_shape = (2, 1, 100)
-        self.y_shape = (100)
-        self.trans_x = False
-        self.trans_y = False
+        def config(self):
+            self.x_shape = (8, 111, 4, 17)
+            self.y_shape = (17)
+            self.trans_x = False
+            self.trans_y = False
 
 
-class TestMatMulOp18(TestMatMulV2Op):
-    """
-    case 18 : for ppyoloe model
-    """
-
-    def config(self):
-        self.x_shape = (8, 111, 4, 17)
-        self.y_shape = (17)
-        self.trans_x = False
-        self.trans_y = False
-
-
-# class TestMatMulOpBroadcast1(TestMatMulV2Op):
-#     """
-#     case 14_3
-#     """
-
-#     def config(self):
-#         self.x_shape = (3, 1, 10, 10)
-#         self.y_shape = (1, 2, 10, 10)
-#         self.trans_x = True
-#         self.trans_y = True
-
-# class TestMatMulOpBroadcast2(TestMatMulV2Op):
-#     """
-#     case 14_4
-#     """
-
-#     def config(self):
-#         self.x_shape = (3, 1, 10, 10)
-#         self.y_shape = (1, 2, 10, 10)
-#         self.trans_x = False
-#         self.trans_y = True
+support_types = get_xpu_op_support_types('matmul_v2')
+for stype in support_types:
+    create_test_class(globals(), XPUTestMatmulV2Op, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()

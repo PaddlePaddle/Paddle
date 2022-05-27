@@ -40,6 +40,7 @@ class TestStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -55,20 +56,20 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 16
+        self.num_inputs = 8
 
 
 class TestStackOp2(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 20
+        self.num_inputs = 10
 
 
 class TestStackOp3(TestStackOpBase):
@@ -111,6 +112,7 @@ class TestStackBF16Op(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -128,10 +130,10 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

@@ -130,7 +130,9 @@ __forceinline__ __device__ U BlockReduceSum(U val, U *shared) {
                                             ##__VA_ARGS__)
 
 static __device__ __forceinline__ float real_sqrt(float x) { return sqrtf(x); }
-static __device__ __forceinline__ double real_sqrt(double x) { return sqrt(x); }
+static __device__ __forceinline__ double real_sqrt(double x) {
+  return ::sqrt(x);
+}
 
 template <typename T>
 struct PairForLayerNorm {
@@ -162,7 +164,7 @@ __inline__ __device__ float rsqrt_(const float val) {
 
 template <>
 __inline__ __device__ double rsqrt_(const double val) {
-  return rsqrt(val);
+  return ::rsqrt(val);
 }
 
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)

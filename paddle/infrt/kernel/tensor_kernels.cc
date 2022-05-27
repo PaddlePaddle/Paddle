@@ -119,6 +119,7 @@ void NaiveMatmul(const DenseHostTensor &x,
   const int N = w.shape().GetDim(1);
   for (int i = 0; i < M; i++) {
     for (int j = 0; j < N; j++) {
+      out_data[i * N + j] = 0;
       for (int k = 0; k < K; k++) {
         out_data[i * N + j] += x_data[i * K + k] * w_data[k * N + j];
       }
@@ -134,9 +135,11 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
                       {"shape"});
   registry->AddKernel("dt.print_tensor", INFRT_KERNEL(PrintTensor));
   registry->AddKernel("dt.fill_tensor_with_constant.f32",
-                      INFRT_KERNEL(FillTensorWithConstant<float>));
+                      INFRT_KERNEL(FillTensorWithConstant<float>),
+                      {"value"});
   registry->AddKernel("dt.fill_tensor_with_constant.f64",
-                      INFRT_KERNEL(FillTensorWithConstant<double>));
+                      INFRT_KERNEL(FillTensorWithConstant<double>),
+                      {"value"});
 
   // TensorMap related methods.
   registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParams));

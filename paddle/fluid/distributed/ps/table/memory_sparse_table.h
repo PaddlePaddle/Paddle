@@ -34,28 +34,39 @@
 namespace paddle {
 namespace distributed {
 
-class MemorySparseTable : public SparseTable {
+class MemorySparseTable : public Table {
  public:
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
   MemorySparseTable() {}
   virtual ~MemorySparseTable() {}
 
-  // unused method begin
-  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
-  virtual int32_t PushDenseParam(const float* values, size_t num) { return 0; }
-  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
   // unused method end
+  static int32_t sparse_local_shard_num(uint32_t shard_num,
+                                        uint32_t server_num) {
+    if (shard_num % server_num == 0) {
+      return shard_num / server_num;
+    }
+    size_t local_shard_num = shard_num / server_num + 1;
+    return local_shard_num;
+  }
 
-  virtual int32_t Pull(TableContext& context);
-  virtual int32_t Push(TableContext& context);
+  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+                                 uint64_t key) {
+    return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
+  }
 
-  virtual int32_t Initialize();
-  virtual int32_t InitializeShard() { return 0; }
-  virtual int32_t InitializeValue();
+  int32_t Pull(TableContext& context) override;
+  int32_t Push(TableContext& context) override;
 
-  virtual int32_t Load(const std::string& path, const std::string& param);
+  int32_t Initialize() override;
+  int32_t InitializeShard() override { return 0; }
+  int32_t InitializeValue();
 
-  virtual int32_t Save(const std::string& path, const std::string& param);
+  virtual int32_t Load(const std::string& path,
+                       const std::string& param) override;
+
+  virtual int32_t Save(const std::string& path,
+                       const std::string& param) override;
 
   int32_t LoadLocalFS(const std::string& path, const std::string& param);
   int32_t SaveLocalFS(const std::string& path, const std::string& param,
@@ -64,31 +75,28 @@ class MemorySparseTable : public SparseTable {
   int64_t LocalSize();
   int64_t LocalMFSize();
 
-  virtual std::pair<int64_t, int64_t> PrintTableStat();
-  virtual int32_t PullSparse(float* values, const PullSparseValue& pull_value);
+  std::pair<int64_t, int64_t> PrintTableStat() override;
+  int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  virtual int32_t PullSparsePtr(char** pull_values, const uint64_t* keys,
-                                size_t num);
+  int32_t PullSparsePtr(char** pull_values, const uint64_t* keys, size_t num);
 
-  virtual int32_t PushSparse(const uint64_t* keys, const float* values,
-                             size_t num);
+  int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
 
-  virtual int32_t PushSparse(const uint64_t* keys, const float** values,
-                             size_t num);
+  int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
-  virtual int32_t Flush();
-  virtual int32_t Shrink(const std::string& param);
-  virtual void Clear();
+  int32_t Flush() override;
+  virtual int32_t Shrink(const std::string& param) override;
+  void Clear() override;
 
- protected:
-  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
-                              size_t num);
+  void* GetShard(size_t shard_idx) override {
+    return &_local_shards[shard_idx];
+  }
 
  protected:
   const int _task_pool_size = 24;
-  size_t _avg_local_shard_num;
-  size_t _real_local_shard_num;
-  size_t _sparse_table_shard_num;
+  int _avg_local_shard_num;
+  int _real_local_shard_num;
+  int _sparse_table_shard_num;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::unique_ptr<shard_type[]> _local_shards;
 };

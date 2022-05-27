@@ -69,18 +69,6 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         loss = out.sum() / len(batch)
         return loss
 
-    def run_trainer(self, args):
-        if args.eager_mode:
-            self.run_trainer_in_eager_mode(args)
-        else:
-            self.run_trainer_func(args)
-
-    def run_trainer_with_spawn(self, args):
-        if args.eager_mode:
-            return self.run_trainer_with_spawn_in_eager_mode(args)
-        else:
-            return self.run_trainer_with_spawn_func(args)
-
     def run_trainer_func(self, args):
         if fluid.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -103,41 +91,36 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 model = paddle.DataParallel(
                     model, find_unused_parameters=args.find_unused_parameters)
             print_to_err(type(self).__name__, "model built in dygraph")
-            return self.model_train(args, model, opt, train_reader)
+            out_losses = self.model_train(args, model, opt, train_reader)
+            print_to_out(out_losses)
+            return out_losses
 
-    def run_trainer_in_eager_mode(self, args):
-        if fluid.core.is_compiled_with_cuda():
-            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        else:
-            assert ("Only support CUDAPlace for now.")
+    def run_trainer_with_spawn_func(self, args):
+        # 1. enable dygraph
+        paddle.disable_static()
 
-        with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            np.random.seed(seed)
-            random.seed(seed)
+        # 2. init seed
+        seed = 90
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
+        np.random.seed(seed)
+        random.seed(seed)
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
 
-            with _test_eager_guard():
-                model, train_reader, opt = self.get_model()
-                if args.update_method == "nccl2":
-                    dist.init_parallel_env()
-                    print_to_err(
-                        type(self).__name__,
-                        "begin to prepare context in dygraph with nccl2")
+        # 3. init parallel env
+        if args.update_method in ["nccl2", "gloo"]:
+            paddle.distributed.init_parallel_env()
 
-                    nranks = ParallelEnv().nranks
-                    rank = ParallelEnv().local_rank
-                    is_master = True if rank == 0 else False
-                    store = paddle.fluid.core.TCPStore(
-                        "127.0.0.1", args.dist_port, is_master, nranks)
-                    group = core.ProcessGroupNCCL(store, rank, nranks)
-                    model = paddle.DataParallel(
-                        model,
-                        process_group=group,
-                        find_unused_parameters=args.find_unused_parameters)
-                print_to_err(type(self).__name__, "model built in dygraph")
-                return self.model_train(args, model, opt, train_reader)
+        # 4. train model
+        model, train_reader, opt = self.get_model()
+        if args.update_method in ["nccl2", "gloo"]:
+            model = paddle.DataParallel(
+                model, find_unused_parameters=args.find_unused_parameters)
+
+        out_losses = self.model_train(args, model, opt, train_reader)
+        print_to_out(out_losses)
+        return out_losses
 
     def model_train(self, args, model, opt, train_reader):
         out_losses = []
@@ -157,12 +140,8 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 loss = self.run_one_loop(model, opt, data)
                 loss.backward()
                 opt.minimize(loss)
-                print_to_err(
-                    type(self).__name__,
-                    "loss at step %d: %f" % (step_id, loss.numpy()))
                 out_losses.append(loss.numpy())
                 model.clear_gradients()
-        print_to_out(out_losses)
         return out_losses
 
 

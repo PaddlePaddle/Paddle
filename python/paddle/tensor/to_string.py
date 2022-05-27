@@ -37,12 +37,11 @@ def set_printoptions(precision=None,
                      sci_mode=None,
                      linewidth=None):
     """Set the printing options for Tensor.
-    NOTE: The function is similar with numpy.set_printoptions()
 
     Args:
         precision (int, optional): Number of digits of the floating number, default 8.
         threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the begining and ending of each dimension, default 3.
+        edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
         linewidth (int, optional): Number of characters each line, default 80.
        
@@ -264,6 +263,9 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        tensor = tensor.astype('float32')
+
     np_tensor = tensor.numpy()
 
     if len(tensor.shape) == 0:
@@ -288,11 +290,11 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
     if tensor.is_sparse_coo():
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
-        indices_tensor = tensor.non_zero_indices()
-        elements_tensor = tensor.non_zero_elements()
+        indices_tensor = tensor.indices()
+        values_tensor = tensor.values()
         indices_data = 'indices=' + _format_dense_tensor(indices_tensor, indent
                                                          + len('indices='))
-        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
+        values_data = 'values=' + _format_dense_tensor(values_tensor, indent +
                                                        len('values='))
         return _template.format(
             prefix=prefix,
@@ -305,9 +307,9 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             values=values_data)
     else:
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
-        crows_tensor = tensor.non_zero_crows()
-        cols_tensor = tensor.non_zero_cols()
-        elements_tensor = tensor.non_zero_elements()
+        crows_tensor = tensor.crows()
+        cols_tensor = tensor.cols()
+        elements_tensor = tensor.values()
         crows_data = 'crows=' + _format_dense_tensor(crows_tensor, indent +
                                                      len('crows='))
         cols_data = 'cols=' + _format_dense_tensor(cols_tensor, indent +
@@ -330,6 +332,10 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     if tensor.is_sparse():
@@ -342,7 +348,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return _template.format(
             prefix=prefix,
             shape=tensor.shape,
-            dtype=tensor.dtype,
+            dtype=dtype,
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
             indent=' ' * indent,

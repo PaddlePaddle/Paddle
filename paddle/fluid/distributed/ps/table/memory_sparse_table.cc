@@ -23,13 +23,16 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
+DEFINE_bool(pserver_print_missed_key_num_every_push, false,
+            "pserver_print_missed_key_num_every_push");
+DEFINE_bool(pserver_create_value_when_push, true,
+            "pserver create value when push");
+DEFINE_bool(pserver_enable_create_feasign_randomly, false,
+            "pserver_enable_create_feasign_randomly");
+DEFINE_int32(pserver_table_save_max_retry, 3, "pserver_table_save_max_retry");
+
 namespace paddle {
 namespace distributed {
-
-// TODO(zhaocaibei123): configure
-bool FLAGS_pserver_create_value_when_push = true;
-int FLAGS_pserver_table_save_max_retry = 3;
-bool FLAGS_pserver_enable_create_feasign_randomly = false;
 
 int32_t MemorySparseTable::Initialize() {
   _shards_task_pool.resize(_task_pool_size);
@@ -47,7 +50,7 @@ int32_t MemorySparseTable::Initialize() {
 int32_t MemorySparseTable::InitializeValue() {
   _sparse_table_shard_num = static_cast<int>(_config.shard_num());
   _avg_local_shard_num =
-      SparseTable::sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
+      sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
   _real_local_shard_num = _avg_local_shard_num;
   if (_real_local_shard_num * (_shard_idx + 1) > _sparse_table_shard_num) {
     _real_local_shard_num =
@@ -142,7 +145,7 @@ int32_t MemorySparseTable::Load(const std::string& path,
         LOG(ERROR) << "MemorySparseTable load failed, retry it! path:"
                    << channel_config.path << " , retry_num=" << retry_num;
       }
-      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
+      if (retry_num > FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -213,7 +216,7 @@ int32_t MemorySparseTable::LoadLocalFS(const std::string& path,
                    << file_list[file_start_idx + i]
                    << " , retry_num=" << retry_num;
       }
-      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
+      if (retry_num > FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -293,7 +296,7 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
       if (is_write_failed) {
         _afs_client.remove(channel_config.path);
       }
-      if (retry_num > paddle::distributed::FLAGS_pserver_table_save_max_retry) {
+      if (retry_num > FLAGS_pserver_table_save_max_retry) {
         LOG(ERROR) << "MemorySparseTable save prefix failed reach max limit!";
         exit(-1);
       }
@@ -405,9 +408,13 @@ int32_t MemorySparseTable::Pull(TableContext& context) {
 
 int32_t MemorySparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
-
-  const uint64_t* keys = context.push_context.keys;
-  return PushSparse(keys, context.push_context.values, context.num);
+  if (!context.use_ptr) {
+    return PushSparse(context.push_context.keys, context.push_context.values,
+                      context.num);
+  } else {
+    return PushSparse(context.push_context.keys,
+                      context.push_context.ptr_values, context.num);
+  }
 }
 
 int32_t MemorySparseTable::PullSparse(float* pull_values,
@@ -610,12 +617,6 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys, const float* values,
 
 int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                                       const float** values, size_t num) {
-  _PushSparse(keys, values, num);
-  return 0;
-}
-
-int32_t MemorySparseTable::_PushSparse(const uint64_t* keys,
-                                       const float** values, size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
       _real_local_shard_num);

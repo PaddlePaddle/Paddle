@@ -44,10 +44,10 @@ class ConcatOpConverter : public OpConverter {
       itensors.push_back(engine_->GetITensor(input_name));
     }
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-    // if (axis == -1) {
-    if (axis < 0) {
+    if (axis == -1) {
       axis = (engine_->GetITensor(op_desc.Input("X").front())->getDimensions())
-                 .nbDims + axis;
+                 .nbDims -
+             1;
     } else {
       if (!engine_->with_dynamic_shape()) {
         axis = axis - 1;  // Remove batch dim

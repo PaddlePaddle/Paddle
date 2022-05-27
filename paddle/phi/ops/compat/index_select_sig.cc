@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature IndexSelectGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_select_grad",
-                         {"X", "Index", GradVarName("Out")},
-                         {"dim"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "index_select_grad", {"X", "Index", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
 }
 
 }  // namespace phi

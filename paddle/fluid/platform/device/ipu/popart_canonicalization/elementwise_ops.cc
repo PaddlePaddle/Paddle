@@ -93,6 +93,11 @@ Node *elementwise_mod_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_mod");
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(elementwise_sub, elementwise_sub_handler);
 REGISTER_HANDLER(elementwise_div, elementwise_div_handler);
@@ -101,8 +106,3 @@ REGISTER_HANDLER(elementwise_min, elementwise_min_handler);
 REGISTER_HANDLER(elementwise_max, elementwise_max_handler);
 REGISTER_HANDLER(elementwise_pow, elementwise_pow_handler);
 REGISTER_HANDLER(elementwise_mod, elementwise_mod_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

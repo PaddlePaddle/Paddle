@@ -147,8 +147,8 @@ class InputSpec(object):
             input = InputSpec([None, 784], 'float32', 'x')
             label = InputSpec([None, 1], 'int64', 'label')
 
-            print(input)  # InputSpec(shape=(-1, 784), dtype=VarType.FP32, name=x)
-            print(label)  # InputSpec(shape=(-1, 1), dtype=VarType.INT64, name=label)
+            print(input)  # InputSpec(shape=(-1, 784), dtype=paddle.float32, name=x)
+            print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
     """
 
     def __init__(self, shape, dtype='float32', name=None):
@@ -190,7 +190,7 @@ class InputSpec(object):
 
                 x = paddle.to_tensor(np.ones([2, 2], np.float32))
                 x_spec = InputSpec.from_tensor(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
         if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
@@ -219,7 +219,7 @@ class InputSpec(object):
 
                 x = np.ones([2, 2], np.float32)
                 x_spec = InputSpec.from_numpy(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
         return cls(ndarray.shape, ndarray.dtype, name)
@@ -241,7 +241,7 @@ class InputSpec(object):
 
                 x_spec = InputSpec(shape=[64], dtype='float32', name='x')
                 x_spec.batch(4)
-                print(x_spec) # InputSpec(shape=(4, 64), dtype=VarType.FP32, name=x)
+                print(x_spec) # InputSpec(shape=(4, 64), dtype=paddle.float32, name=x)
 
         """
         if isinstance(batch_size, (list, tuple)):
@@ -273,7 +273,7 @@ class InputSpec(object):
 
                 x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
                 x_spec.unbatch()
-                print(x_spec) # InputSpec(shape=(64,), dtype=VarType.FP32, name=x)
+                print(x_spec) # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
 
         """
         if len(self.shape) == 0:

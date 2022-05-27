@@ -61,7 +61,7 @@ TableAccessorParameter gen_param() {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  return std::move(param);
+  return param;
 }
 
 TEST(downpour_feature_value_accessor_test, test_shrink) {
@@ -164,7 +164,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   for (auto i = 0u; i < item_size; ++i) {
     float* p = new float[acc->GetAccessorInfo().update_dim];
     for (auto j = 0u; j < acc->GetAccessorInfo().update_dim; ++j) {
-      p[j] = i;
+      p[j] = i + 1;
     }
     grad[i] = p;
   }
@@ -196,9 +196,10 @@ TEST(downpour_feature_value_accessor_test, test_update) {
         ptr[idx + j] = embedx_w[j];
       }
       idx += 8;
-      for (auto j = 0u; j < 0; ++j) {
-        ptr[idx + j] = embedx_g2sum[j];
-      }
+      //      NaiveSGD has no embedx_g2sum
+      //      for (auto j = 0u; j < 0; ++j) {
+      //        ptr[idx + j] = embedx_g2sum[j];
+      //      }
     }
   };
   struct DownpourSparsePushValueTest {
@@ -247,9 +248,9 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.delta_score += acc->ShowClickScore(push_v.show, push_v.click);
 
     acc->_embed_sgd_rule->UpdateValue(&v.embed_w, &v.embed_g2sum[0],
-                                      &push_v.embed_g);
+                                      &push_v.embed_g, push_v.show);
     acc->_embedx_sgd_rule->UpdateValue(&v.embedx_w[0], &v.embedx_g2sum[0],
-                                       &push_v.embedx_g[0]);
+                                       &push_v.embedx_g[0], push_v.show);
 
     float* ptr = new float[acc->GetAccessorInfo().dim];
     v.to_array(ptr, parameter.embedx_dim());

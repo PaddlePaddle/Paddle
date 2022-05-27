@@ -339,5 +339,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         if dirname:
             fleet.save_persistables(exe, dirname=dirname)
 
+        cache_dirname = os.getenv("SAVE_CACHE_DIRNAME", None)
+        if cache_dirname:
+            fleet.save_cache_model(cache_dirname)
+
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

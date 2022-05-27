@@ -14,10 +14,7 @@
 
 #include "paddle/phi/kernels/gaussian_random_kernel.h"
 
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 #include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -26,8 +23,6 @@
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 #include "paddle/fluid/framework/generator.h"
-
-DECLARE_bool(use_curand);
 
 namespace phi {
 
@@ -64,44 +59,20 @@ void GaussianRandomKernel(const Context& dev_ctx,
                           int seed,
                           DataType dtype,
                           DenseTensor* out) {
-  auto tensor = out;
-
-  bool seed_flag = false;
+  out->Resize(phi::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
-    std::random_device rd;
-    seed = rd();
-    seed_flag = true;
-  }
-
-  tensor->Resize(phi::make_ddim(shape.GetData()));
-
-  T* data = dev_ctx.template Alloc<T>(tensor);
-
-  int64_t size = tensor->numel();
-
-  int device_id = dev_ctx.GetPlace().GetDeviceId();
-  auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
-
-  if (gen_cuda->GetIsInitPy() && seed_flag) {
-    if (FLAGS_use_curand) {
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-      funcs::normal_distribution<MT> dist;
-      funcs::normal_transform<MT> trans(static_cast<MT>(mean),
-                                        static_cast<MT>(std));
-      funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
-    } else {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      auto func = GaussianGenerator<T>(static_cast<T>(mean),
-                                       static_cast<T>(std),
-                                       seed_offset.first,
-                                       gen_offset);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, tensor, func);
-    }
+    // use global Generator seed
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::normal_distribution<MT> dist;
+    funcs::normal_transform<MT> trans(static_cast<MT>(mean),
+                                      static_cast<MT>(std));
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
+    // use OP seed
     auto func =
         GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
-    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, tensor, func);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
   }
 }
 
