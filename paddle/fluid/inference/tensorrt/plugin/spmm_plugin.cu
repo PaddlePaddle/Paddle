@@ -118,6 +118,7 @@ void SpmmPluginDynamic::cusparseLtContext::init(
   4. Init algorithm selection descriptor (alg_sel)
   5. Init plan descriptor (plan)
   */
+  std::cout << "init context" << std::endl;
   PADDLE_ENFORCE_EQ(
       is_initialized, false,
       platform::errors::InvalidArgument(
@@ -204,6 +205,7 @@ void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
 }
 
 void SpmmPluginDynamic::cusparseLtContext::destroy() {
+  std::cout << "destroy context" << std::endl;
   PADDLE_ENFORCE_EQ(is_initialized, true,
                     platform::errors::InvalidArgument(
                         "cusparseLtContext is destroy before init"));
@@ -217,6 +219,7 @@ void SpmmPluginDynamic::cusparseLtContext::destroy() {
 void SpmmPluginDynamic::cusparseLtContext::compressMatB(
     int n, int k, cudaDataType_t type, void* src, void** dest,
     size_t* compressed_size) {
+  std::cout << "compress matB" << std::endl;
   PADDLE_ENFORCE_EQ(
       is_initialized, false,
       platform::errors::InvalidArgument(
@@ -268,6 +271,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   5. Copy the compressed weight to host
   6. Convert bias precision and copy (on host)
   */
+  std::cout << "new plugin" << std::endl;
   precision_size_ = getElementSize(precision);
   element_size_ =
       (precision_ == nvinfer1::DataType::kINT8 ? 4 : precision_size_);
@@ -318,8 +322,14 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
                              &compressed_size_);
   weight_compressed_ = new char[compressed_size_];
   weight_compressed_dev_global_.reset(weight_compressed_dev_, cudaFreeFunc);
+  std::cout << "initial count: " << weight_compressed_dev_global_.use_count() << std::endl;
   cudaMemcpy(weight_compressed_, weight_compressed_dev_global_.get(), compressed_size_,
              cudaMemcpyDeviceToHost);
+  std::cout << "compressed weight:";
+  for(int i=0; i<10; i++) {
+    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+  }
+  std::cout << std::endl;
 
   has_bias_ = (bias.count != 0);
   if (has_bias_) {
@@ -368,6 +378,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   4. (Configured) Copy the bias to device
   5. (Configured) Init cuSPARSELt descriptors
   */
+  std::cout << "clone plugin" << std::endl;
   precision_size_ = getElementSize(precision);
   element_size_ =
       (precision_ == nvinfer1::DataType::kINT8 ? 4 : precision_size_);
@@ -404,6 +415,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
       weight_compressed_dev_global_(nullptr),
       bias_(nullptr),
       bias_dev_(nullptr) {
+  std::cout << "deserialization" << std::endl;
   DeserializeValue(&data, &length, &precision_);
   DeserializeValue(&data, &length, &precision_size_);
   DeserializeValue(&data, &length, &element_size_);
@@ -423,10 +435,17 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
   weight_compressed_ = new char[compressed_size_];
   deserialize_value_size(&data, &length, weight_compressed_, compressed_size_);
   //MEM: how to deal with deserialization?
-  cudaMalloc(reinterpret_cast<void**>(weight_compressed_dev_global_.get()),
+  auto* p_tmp = weight_compressed_dev_global_.get();
+  cudaMalloc(reinterpret_cast<void**>(&p_tmp),
              compressed_size_);
   cudaMemcpy(weight_compressed_dev_global_.get(), weight_compressed_, compressed_size_,
              cudaMemcpyHostToDevice);
+
+  std::cout << "compressed weight:";
+  for(int i=0; i<10; i++) {
+    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+  }
+  std::cout << std::endl;
 
   if (has_bias_) {
     bias_ = new float[out_dim_];
@@ -540,6 +559,7 @@ void SpmmPluginDynamic::configurePlugin(
   2. Copy the bias to device
   3. Search the optimal algorithm
   */
+  std::cout << "configure plugin" << std::endl;
   try {
     PADDLE_ENFORCE_EQ(nbInputs, 1,
                       platform::errors::InvalidArgument(
@@ -638,6 +658,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                const void* const* inputs, void* const* outputs,
                                void* workSpace, cudaStream_t stream) noexcept {
   try {
+    std::cout << "enqueue" << std::endl;
     PADDLE_ENFORCE_EQ(is_configured_, true,
                       platform::errors::InvalidArgument(
                           "The plugin is not configured before enqueue"));
@@ -655,16 +676,34 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     if (inputDesc->type == nvinfer1::DataType::kFLOAT) {
       const auto* const input = static_cast<const float*>(inputs[0]);
       auto* output = static_cast<float*>(outputs[0]);
+      auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
+      char* test_weight = new char[compressed_size_];
+      cudaMemcpy(weight_compressed_dev_global_.get(), test_weight, compressed_size_,
+             cudaMemcpyHostToDevice);
+      std::cout << "compressed weight:";
+      for(int i=0; i<10; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+      }
+      std::cout << std::endl;
+
+      std::cout << "weight from shared ptr:";
+      for(int i=0; i<10; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<float*>(test_weight)[i]);
+      }
+      std::cout << std::endl;
+
+
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
-          weight_compressed_dev_global_.get(), &beta, output, output, workSpace, &stream, 1);
+          weight_compressed_dev_p_, &beta, output, output, workSpace, &stream, 1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
+      auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
-          weight_compressed_dev_global_.get(), &beta, output, output, workSpace, &stream, 1);
+          weight_compressed_dev_p_, &beta, output, output, workSpace, &stream, 1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
@@ -736,7 +775,7 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
   SerializeValue(&buffer, compressed_size_);
   SerializeValue(&buffer, has_bias_);
   SerializeValue(&buffer, activation_);
-
+  std::cout << "serialize" << std::endl;
   char* d = static_cast<char*>(buffer);
   std::copy_n(static_cast<const char*>(weight_compressed_), compressed_size_,
               d);
@@ -747,10 +786,13 @@ void SpmmPluginDynamic::serialize(void* buffer) const noexcept {
 }
 
 void SpmmPluginDynamic::destroy() noexcept {
+  std::cout << "destroy plugin" << std::endl;
   delete[] reinterpret_cast<char*>(weight_compressed_);
   //MEM:
   // cudaFree(weight_compressed_dev_);
-  weight_compressed_dev_global_.reset();
+  // std::cout << "current use cout before this destroy: " << weight_compressed_dev_global_.use_count() << std::endl;
+  // weight_compressed_dev_global_.reset();
+  std::cout << "current use cout after this destroy: " << weight_compressed_dev_global_.use_count() << std::endl;
   if (has_bias_) {
     cudaFree(bias_dev_);
   }
