@@ -2980,8 +2980,8 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
 
         logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
     
-    **Note**:
-    The first element of the result is the same as the first element of the input.
+    Note:
+        The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor.
