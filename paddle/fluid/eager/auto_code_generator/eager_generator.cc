@@ -2056,7 +2056,7 @@ static std::string GenerateSingleOpBase(
   const char* CHECK_BACKWARD_INPLACE_TEMPLATE =
       "  // Check backward inplace info\n"
       "  bool %s = false;\n"
-      "  auto %s = %s;\n"
+      "  auto& %s = %s;\n"
       "  if (%s.initialized()) {\n"
       "    VLOG(10) << %s.name() << \"(%s) use_count: \" << "
       "%s.impl().use_count();\n"
