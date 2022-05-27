@@ -40,7 +40,6 @@ class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator
-
 Call communication stream synchronization.
 )DOC");
   }
