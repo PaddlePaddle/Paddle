@@ -808,3 +808,16 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Example:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+/**
+ * Preformance related FLAG
+ * Name: einsum_opt
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, EinsumOp will be optimimzed by innercache reuse, which
+ * uses more gpu memory.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    einsum_opt, false,
+    "EinsumOp backward will be speedup at the expense of more gpu memory.");

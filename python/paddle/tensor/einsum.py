@@ -983,7 +983,7 @@ def einsum(equation, *operands):
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
     import os
-    if int(os.environ.get('FLAGS_new_einsum', "0")):
+    if int(os.environ.get('FLAGS_new_einsum', "1")):
         return einsum_v2(equation, *operands)
 
     nop = len(operands)
