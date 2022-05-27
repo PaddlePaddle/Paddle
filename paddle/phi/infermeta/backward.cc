@@ -67,6 +67,22 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+  auto dx_dims = do_dims;
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
@@ -296,6 +312,63 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void InstanceNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& y_grad,
+                               paddle::optional<const MetaTensor&> scale,
+                               const MetaTensor& saved_mean,
+                               const MetaTensor& saved_variance,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad,
+                               MetaTensor* bias_grad) {
+  PADDLE_ENFORCE_NE(
+      x_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
+  const auto x_dims = x.dims();
+  const int C = x_dims[1];
+  x_grad->set_dims(x_dims);
+  x_grad->set_dtype(x.dtype());
+  x_grad->set_layout(x.layout());
+  if (scale_grad) {
+    scale_grad->set_dims({C});
+  }
+  if (bias_grad) {
+    bias_grad->set_dims({C});
+  }
+}
+void InstanceNormDoubleGradInferMeta(
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> scale,
+    const MetaTensor& saved_mean,
+    const MetaTensor& saved_variance,
+    const MetaTensor& dy,
+    paddle::optional<const MetaTensor&> ddx,
+    paddle::optional<const MetaTensor&> ddscale,
+    paddle::optional<const MetaTensor&> ddbias,
+    float epsilon,
+    MetaTensor* dx,
+    MetaTensor* dscale,
+    MetaTensor* ddy) {
+  PADDLE_ENFORCE_NE(
+      dx,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
+  const auto x_dims = x.dims();
+  const int C = x_dims[1];
+  dx->set_dims(x_dims);
+  dx->set_dtype(x.dtype());
+  dx->set_layout(x.layout());
+  if (dscale) {
+    dscale->set_dims({C});
+  }
+  if (ddy) {
+    ddy->share_dims(x);
+  }
+}
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
@@ -425,6 +498,36 @@ void NllLossGradInferMeta(const MetaTensor& x,
     dx->set_dims(x_dims);
     dx->set_dtype(x.dtype());
   }
+}
+
+void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int downscale_factor,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  PADDLE_ENFORCE_EQ(do_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        do_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  auto dx_dims = do_dims;
+  dx_dims[0] = do_dims[0];
+
+  if (!channel_last) {
+    dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
+    dx_dims[2] = do_dims[2] * downscale_factor;
+    dx_dims[3] = do_dims[3] * downscale_factor;
+  } else {
+    dx_dims[1] = do_dims[1] * downscale_factor;
+    dx_dims[2] = do_dims[2] * downscale_factor;
+    dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
+  }
+  x_grad->set_dims(dx_dims);
+  x_grad->set_dtype(out_grad.dtype());
 }
 
 void PoolGradInferMeta(const MetaTensor& x,

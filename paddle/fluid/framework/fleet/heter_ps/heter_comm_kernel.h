@@ -27,6 +27,42 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct DynamicGradMerger {
+  template <typename T>
+  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
+  operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.mf_dim = a.mf_dim;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+
+    return out;
+  }
+
+  template <typename T>
+  __device__ __forceinline__ void update_one(T& output, const T& input) {
+    output.slot = input.slot;
+    output.show = input.show;
+    output.clk = input.clk;
+    output.mf_dim = input.mf_dim;
+    output.lr_g = input.lr_g;
+    for (int i = 0; i < output.mf_dim; ++i) {
+      output.mf_g[i] = input.mf_g[i];
+    }
+  }
+  template <typename T>
+  __device__ __forceinline__ void merge_one(T& output, const T& input) {
+    output.show += input.show;
+    output.clk += input.clk;
+    output.lr_g += input.lr_g;
+    for (int i = 0; i < input.mf_dim; ++i) {
+      output.mf_g[i] += input.mf_g[i];
+    }
+  }
+};
+
 class HeterCommKernel {
  public:
   HeterCommKernel() {}
@@ -79,6 +115,24 @@ class HeterCommKernel {
                      NumRunsOutputIteratorT d_num_runs_out, int num_items,
 
                      StreamType stream = NULL, bool debug_synchronous = false);
+
+  template <typename KeyType, typename GradType, typename T,
+            typename StreamType>
+  void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
+                              GradType* d_shard_grads, GradType* d_grads,
+                              T* idx, long long len, size_t grad_value_size,
+                              const StreamType& stream);
+
+  template <typename StreamType>
+  void merge_gradient(const uint32_t* offset, const uint32_t* fea_num,
+                      const uint32_t* index, const char* input, char* output,
+                      int n, size_t grad_value_size, DynamicGradMerger& merger_,
+                      const StreamType& stream);
+
+  template <typename ValType, typename T, typename StreamType>
+  void dy_mf_fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
+                        long long len, size_t val_size,
+                        const StreamType& stream);
 
  private:
   int block_size_{256};

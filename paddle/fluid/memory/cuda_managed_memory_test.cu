@@ -107,7 +107,7 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
   uint64_t available_mem = platform::GpuAvailableMemToAlloc();
   uint64_t n_data = available_mem * 2 / sizeof(int) +
                     1;  // requires more than 2 * available_mem bytes
-  uint64_t step = 1024;
+  uint64_t step = std::max(n_data / 1024, static_cast<uint64_t>(1));
   AllocationPtr data_allocation =
       Alloc(platform::CUDAPlace(0), n_data * sizeof(int));
   AllocationPtr sum_allocation = Alloc(platform::CUDAPlace(0), sizeof(int));
@@ -115,8 +115,8 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
   int* sum = static_cast<int*>(sum_allocation->ptr());
   (*sum) = 0;
 
-  write_kernel<<<5120, 1024>>>(data, n_data, step);
-  sum_kernel<<<5120, 1024>>>(data, n_data, step, sum);
+  write_kernel<<<1, 1024>>>(data, n_data, step);
+  sum_kernel<<<1, 1024>>>(data, n_data, step, sum);
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());

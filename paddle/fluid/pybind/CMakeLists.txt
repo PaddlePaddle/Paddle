@@ -7,6 +7,9 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+  if (WITH_HETERPS)
+    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
+  endif()
 endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -38,6 +41,7 @@ if (WITH_ASCEND_CL)
 endif()
 
 if (WITH_CNCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
 endif()
 
@@ -82,10 +86,6 @@ set(PYBIND_SRCS
   generator_py.cc
   communication.cc
   cuda_streams_py.cc)
-
-if (WITH_ONNXRUNTIME)
-  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
-endif()
 
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
@@ -134,9 +134,9 @@ if (WITH_PSLIB)
 endif(WITH_PSLIB)
 if (WITH_PSCORE)
   if (WITH_ARM_BRPC)
-    set(DISTRIBUTE_COMPILE_FLAGS "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+    set(DISTRIBUTE_COMPILE_FLAGS "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   else()
-    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+    set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   endif()
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
@@ -168,10 +168,6 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
-
-  if (WITH_ONNXRUNTIME)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
-  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)

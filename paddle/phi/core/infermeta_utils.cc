@@ -30,12 +30,12 @@ void InferMetaContext::EmplaceBackOutput(MetaTensor output) {
   outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
-void InferMetaContext::EmplaceBackAttr(paddle::any attr) {
+void InferMetaContext::EmplaceBackAttr(Attribute attr) {
   attrs_.emplace_back(std::move(attr));
 }
 
 void InferMetaContext::EmplaceBackInputs(
-    paddle::SmallVector<MetaTensor, phi::kInputSmallVectorSize> inputs) {
+    paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs) {
   int index = inputs_.size();
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -43,7 +43,7 @@ void InferMetaContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 void InferMetaContext::EmplaceBackOutputs(
-    paddle::SmallVector<MetaTensor, phi::kOutputSmallVectorSize> outputs) {
+    paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs) {
   int index = outputs_.size();
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -119,6 +119,38 @@ std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
   }
   return result;
 }
+
+template <typename AttrType>
+const AttrType& InferMetaContext::AttrAt(size_t idx) const {
+  try {
+    return paddle::get<AttrType>(attrs_.at(idx));
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferMeta Context, the expected attribute "
+        "type is `%s`.",
+        std::type_index(typeid(AttrType)).name()));
+  }
+}
+
+template const bool& InferMetaContext::AttrAt(size_t idx) const;
+template const int& InferMetaContext::AttrAt(size_t idx) const;
+template const int64_t& InferMetaContext::AttrAt(size_t idx) const;
+template const float& InferMetaContext::AttrAt(size_t idx) const;
+template const double& InferMetaContext::AttrAt(size_t idx) const;
+template const std::string& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<bool>& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<int>& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<int64_t>& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<float>& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<double>& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<std::string>& InferMetaContext::AttrAt(
+    size_t idx) const;
+template const Scalar& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<Scalar>& InferMetaContext::AttrAt(size_t idx) const;
+template const IntArray& InferMetaContext::AttrAt(size_t idx) const;
+template const DataType& InferMetaContext::AttrAt(size_t idx) const;
+template const DataLayout& InferMetaContext::AttrAt(size_t idx) const;
+template const Place& InferMetaContext::AttrAt(size_t idx) const;
 
 MetaFnFactory& MetaFnFactory::Instance() {
   static MetaFnFactory g_meta_fn_map;

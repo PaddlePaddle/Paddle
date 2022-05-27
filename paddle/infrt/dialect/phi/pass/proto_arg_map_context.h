@@ -41,6 +41,7 @@ class ProtoArgumentMappingContext : public ::phi::ArgumentMappingContext {
   size_t OutputSize(const std::string& name) const override;
 
   bool IsDenseTensorInput(const std::string& name) const override;
+  bool IsDenseTensorInputs(const std::string& name) const override;
   bool IsSelectedRowsInput(const std::string& name) const override;
   bool IsDenseTensorVectorInput(const std::string& name) const override;
 

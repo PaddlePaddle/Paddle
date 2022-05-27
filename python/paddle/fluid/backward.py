@@ -28,6 +28,11 @@ from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
 import warnings
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
+
 __all__ = [
     'append_backward',
     'gradients',
@@ -474,12 +479,16 @@ def _accumulate_gradients_by_add_ops_(var_name,
     renamed_vars[var_name] = [var_name]
 
 
-def _addup_repetitive_outputs_(op_descs, block_idx):
+def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
+
+    Args:
+        grad_var_to_var(dict): used to build the mapping between grad var name and forward var name.
+        Only for auto parallel.
     """
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
@@ -527,6 +536,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                             str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
+                        # Build the mapping between the new_name and var_name (Only for auto parallel)
+                        if grad_var_to_var is not None:
+                            if var_name in grad_var_to_var:
+                                grad_var_to_var[new_name] = grad_var_to_var[
+                                    var_name]
+                            else:
+                                grad_var_to_var[new_name] = var_name
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
@@ -553,6 +569,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
+                    # Build the mapping between the new_name and var_name (Only for auto parallel)
+                    if grad_var_to_var is not None:
+                        if var_name in grad_var_to_var:
+                            grad_var_to_var[new_name] = grad_var_to_var[
+                                var_name]
+                        else:
+                            grad_var_to_var[new_name] = var_name
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
@@ -1077,6 +1100,16 @@ def _append_backward_ops_(block,
         rename_var_map(dict): used to associate target_grad var name with first grad_op input name.
             Only used in for high order gradient.
     """
+
+    # Build the mapping between the forward op and backward op (Only for auto parallel)
+    def update_distop_context(distop_context, op_grad_to_var,
+                              appending_grad_times):
+        distop_context.grad_var_to_var[appending_grad_times].update(
+            op_grad_to_var)
+        for op_desc in grad_op_desc:
+            assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+            distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
+
     if callbacks is not None:
         assert (isinstance(callbacks, (list, tuple)))
         for cb in callbacks:
@@ -1114,11 +1147,18 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
         # Build the mapping between the forward op and backward op (Only for auto parallel)
         if distop_context is not None:
-            for op_desc in grad_op_desc:
-                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
-                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
+            update_distop_context(distop_context, op_grad_to_var,
+                                  program._appending_grad_times)
+        else:
+            default_ctx = getattr(paddle.distributed.auto_parallel.dist_context,
+                                  '_g_default_distributed_context', None)
+            if default_ctx is not None:
+                distop_context = default_ctx.dist_op_context
+                update_distop_context(distop_context, op_grad_to_var,
+                                      program._appending_grad_times)
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1151,6 +1191,11 @@ def _append_backward_ops_(block,
                         rename_var_map[name] = new_name
 
                         if name in op_grad_to_var:
+                            # Build the mapping between the grad var name and var name (Only for auto parallel)
+                            if distop_context is not None:
+                                distop_context.grad_var_to_var[
+                                    program._appending_grad_times][
+                                        new_name] = op_grad_to_var[name]
                             op_grad_to_var[new_name] = op_grad_to_var[name]
                             op_grad_to_var.pop(name)
 
@@ -1183,8 +1228,14 @@ def _append_backward_ops_(block,
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
+    # record mapping bewteen grad var name and var name (Only for auto parallel)
+    grad_var_to_var = None
+    if distop_context is not None:
+        grad_var_to_var = distop_context.grad_var_to_var[
+            program._appending_grad_times]
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
+                                               grad_var_to_var)
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
@@ -1722,7 +1773,7 @@ def append_backward(loss,
 def _as_list(x):
     if x is None:
         return []
-    return list(x) if isinstance(x, collections.Sequence) else [x]
+    return list(x) if isinstance(x, Sequence) else [x]
 
 
 def _is_ancestor_block(ancestor_block, block):
@@ -2021,7 +2072,6 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 @framework.static_only
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
-    :api_attr: Static Graph
 
     Backpropagate the gradients of targets to inputs.
 
@@ -2042,8 +2092,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
+    
         .. code-block:: python
-
+          :name: code-example
             import paddle
             import paddle.nn.functional as F
 
@@ -2062,6 +2113,11 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
         framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
+
+    from ..incubate.autograd.primx import _gradients
+    from ..incubate.autograd.utils import prim_enabled
+    if prim_enabled():
+        return _gradients(targets, inputs, target_gradients)
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

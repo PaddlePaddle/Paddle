@@ -506,25 +506,27 @@ def erf(x, name=None):
 
 erf.__doc__ = r"""
 :strong:`Erf Operator`
-For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
+For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
 
 Equation:
     ..  math::
-        out = \\frac{2}{\\sqrt{\\pi}} \\int_{0}^{x}e^{- \\eta^{2}}d\\eta
+        out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
 
 Args:
 
     x (Tensor): The input tensor, it's data type should be float32, float64.
+    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 Returns:
 
-    Tensor: The output of Erf op, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
     .. code-block:: python
     
         import paddle
+        
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

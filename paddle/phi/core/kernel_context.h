@@ -22,6 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
@@ -50,19 +51,19 @@ class KernelContext {
 
   void EmplaceBackInputWithoutSetRange(const TensorBase* input);
 
-  void EmplaceBackInputs(paddle::SmallVector<const TensorBase*> inputs);
+  void EmplaceBackInputs(paddle::small_vector<const TensorBase*> inputs);
 
   void EmplaceBackInputsWithoutSetRange(
-      paddle::SmallVector<const TensorBase*> inputs);
+      paddle::small_vector<const TensorBase*> inputs);
 
   void EmplaceBackOutput(TensorBase* output);
 
   void EmplaceBackOutputWithoutSetRange(TensorBase* output);
 
-  void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
+  void EmplaceBackOutputs(paddle::small_vector<TensorBase*> outputs);
 
   void EmplaceBackOutputsWithoutSetRange(
-      paddle::SmallVector<TensorBase*> outputs);
+      paddle::small_vector<TensorBase*> outputs);
 
   void EmplaceBackAttr(Attribute attr);
 
@@ -137,12 +138,13 @@ class KernelContext {
  private:
   DeviceContext* dev_ctx_;
 
-  paddle::SmallVector<const TensorBase*> inputs_;
-  paddle::SmallVector<TensorBase*> outputs_;
-  paddle::SmallVector<Attribute> attrs_;
+  paddle::small_vector<const TensorBase*> inputs_;
+  paddle::small_vector<TensorBase*> outputs_;
+  paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs_;
 
-  paddle::SmallVector<std::pair<int, int>> input_range_;
-  paddle::SmallVector<std::pair<int, int>> output_range_;
+  paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
+  paddle::small_vector<std::pair<int, int>, kOutputSmallVectorSize>
+      output_range_;
 };
 
 }  // namespace phi

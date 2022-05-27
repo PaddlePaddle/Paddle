@@ -17,6 +17,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <iostream>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -105,40 +106,15 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     /// const float* ms, const float* g, const float* mom,
     /// float epsilon, float rho, float momentum, float lr,
     /// float *ms_out, float *mom_out, float *p_out, int n)
-    int r = xpu::rmsprop(dev_ctx.x_context(), param.template data<T>(),
-                         meanSquare.template data<T>(), grad.template data<T>(),
-                         mom.template data<T>(), epsilon, decay, momentum, lr,
+    int r = xpu::rmsprop(dev_ctx.x_context(), grad.template data<T>(),
+                         param.template data<T>(),
+                         meanSquare.template data<T>(), mom.template data<T>(),
+                         param_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_sqrt_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_out.template mutable_data<T>(ctx.GetPlace()),
-                         param_out.template mutable_data<T>(ctx.GetPlace()),
-                         param.numel());
+                         epsilon, decay, momentum, lr, param.numel());
 
-    if (r == xpu::Error_t::INVALID_PARAM) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::InvalidArgument(
-              "XPU kernel error of RmspropOp, error message: INVALID_PARAM, "
-              "please check your input & output."));
-    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::Unavailable(
-                            "XPU kernel error of RmspropOp, error message: "
-                            "RUNTIME_ERROR, please check whether Baidu "
-                            "Kunlun Card is properly installed."));
-    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::ResourceExhausted(
-                            "XPU kernel error of RmspropOp, error "
-                            "message: NO_ENOUGH_WORKSPACE, XPU "
-                            "has no enough memory."));
-    } else {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::ResourceExhausted(
-                            "XPU kernel error of RmspropOp, error "
-                            "message: OTHER "
-                            "XPU API returns error code: %d.",
-                            r));
-    }
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "rmsprop");
   }
 };
 

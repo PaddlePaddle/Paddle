@@ -220,16 +220,16 @@ message SparseAdamSGDParameter { // SparseAdamSGDRule
 
 message GraphParameter {
   optional int32 task_pool_size = 1 [ default = 24 ];
-  optional string gpups_graph_sample_class = 2
-      [ default = "CompleteGraphSampler" ];
-  optional bool use_cache = 3 [ default = false ];
-  optional int32 cache_size_limit = 4 [ default = 100000 ];
-  optional int32 cache_ttl = 5 [ default = 5 ];
-  optional GraphFeature graph_feature = 6;
-  optional string table_name = 7 [ default = "" ];
-  optional string table_type = 8 [ default = "" ];
-  optional int32 shard_num = 9 [ default = 127 ];
-  optional int32 search_level = 10 [ default = 1 ];
+  repeated string edge_types = 2;
+  repeated string node_types = 3;
+  optional bool use_cache = 4 [ default = false ];
+  optional int32 cache_size_limit = 5 [ default = 100000 ];
+  optional int32 cache_ttl = 6 [ default = 5 ];
+  repeated GraphFeature graph_feature = 7;
+  optional string table_name = 8 [ default = "" ];
+  optional string table_type = 9 [ default = "" ];
+  optional int32 shard_num = 10 [ default = 127 ];
+  optional int32 search_level = 11 [ default = 1 ];
 }
 
 message GraphFeature {
