@@ -84,9 +84,7 @@ _already_patch_varbase = False
 _global_flags_ = core.globals()
 
 if _in_eager_mode_:
-    warnings.warn(" ======== Now, in the eager mode")
-else:
-    warnings.warn(" ======== Now, in the legacy mode")
+    warnings.warn(" ======== Now, in eager mode")
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
