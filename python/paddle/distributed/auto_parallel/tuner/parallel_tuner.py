@@ -639,8 +639,28 @@ class ParallelTuner:
                 op_id].impl_idx
             dist_op.dist_attr.process_mesh = process_mesh
         self._amend_dist_attr()
-
         self._completer.complete_forward_annotation()
+        # This is a trick to avoid assign dist attr problem
+        for dist_op in self._dist_context._dist_ops_for_program.values():
+            if dist_op.serial_op.type == "assign":
+                output_tensor = dist_op.serial_op.block._var_recursive(
+                    dist_op.serial_op.output("Out")[0])
+                tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
+                    output_tensor).dist_attr.dims_mapping
+                output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
+                    output_tensor.name)
+                # print("parallel_tuner.py ", tensor_dims_mapping, output_dims_mapping)
+                if tensor_dims_mapping != output_dims_mapping:
+                    print("parallel_tuner.py ", tensor_dims_mapping,
+                          output_dims_mapping)
+                    input_tensor = dist_op.serial_op.block._var_recursive(
+                        dist_op.serial_op.input("X")[0])
+                    dist_op.dist_attr.set_output_dims_mapping(
+                        output_tensor.name, tensor_dims_mapping)
+                    dist_op.dist_attr.set_input_dims_mapping(
+                        input_tensor.name, tensor_dims_mapping)
+                    print("parallel_tuner.py dist_op assign", dist_op)
+
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
 
@@ -804,3 +824,23 @@ class ParallelTuner:
         self._dist_context._dist_ops_for_program = self._best_parallel_strategy[
             1]
         self._dist_context._process_meshes = self._best_parallel_strategy[2]
+
+        # This is a trick to avoid assign op dist attr problem
+        for dist_op in self._dist_context._dist_ops_for_program.values():
+            if dist_op.serial_op.type == "assign":
+                output_tensor = dist_op.serial_op.block._var_recursive(
+                    dist_op.serial_op.output("Out")[0])
+                tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
+                    output_tensor).dist_attr.dims_mapping
+                output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
+                    output_tensor.name)
+                # print("parallel_tuner.py ", tensor_dims_mapping, output_dims_mapping)
+                if tensor_dims_mapping != output_dims_mapping:
+                    print("parallel_tuner.py best", tensor_dims_mapping,
+                          output_dims_mapping)
+                    input_tensor = dist_op.serial_op.block._var_recursive(
+                        dist_op.serial_op.input("X")[0])
+                    dist_op.dist_attr.set_output_dims_mapping(
+                        output_tensor.name, tensor_dims_mapping)
+                    dist_op.dist_attr.set_input_dims_mapping(
+                        input_tensor.name, tensor_dims_mapping)

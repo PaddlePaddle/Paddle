@@ -273,6 +273,7 @@ class Inserter:
     def insert_recv_op(block, idx, tensor, src, op_role):
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
+        print("reshard.py recv tensor", tensor)
         block._insert_op(
             idx,
             type=op_type,
@@ -967,6 +968,7 @@ class Resharder:
         op_dist_attr = dist_op.dist_attr
         op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
         op_process_mesh = actual_process_mesh
+
         if op_input:
             op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
                 tensor_name)
@@ -1005,10 +1007,16 @@ class Resharder:
                         op_output_dims_mapping, op_process_mesh
                     ])):
                 if tensor_dims_mapping != op_output_dims_mapping:
+                    print("reshard.py output dims_mapping", dist_tensor,
+                          dist_op)
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )
                 if tensor_process_mesh != op_process_mesh:
+                    print("reshard.py tensor_process_mesh****", tensor_name,
+                          tensor_process_mesh)
+                    for process_mesh in self.dist_context.process_meshes:
+                        print("reshard.py process_mesh", process_mesh.processes)
                     if tensor_process_mesh not in self.dist_context.process_meshes:
                         if not is_reshard:
                             return is_reshard
@@ -1500,6 +1508,23 @@ class Resharder:
                                 op_dist_attr.del_input_dist_attr(old_name)
 
     def reshard(self):
+        # This is a trick to avoid global process mesh in self.dist_context.process_meshes
+        processes_set = set()
+        process_mesh_count = len(self.dist_context.process_meshes)
+        if process_mesh_count > 1:
+            global_process_mesh_idx = None
+            for process_mesh in self.dist_context.process_meshes:
+                for process in process_mesh.processes:
+                    processes_set.add(process)
+            for idx, process_mesh in enumerate(
+                    self.dist_context.process_meshes):
+                if len(set(process_mesh.processes)) == len(processes_set):
+                    global_process_mesh_idx = idx
+                    break
+            if global_process_mesh_idx is not None:
+                self.dist_context.process_meshes.pop(idx)
+            print("reshard.py++++", len(self.dist_context.process_meshes))
+
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             if block_idx in Resharder.while_block_info:
                 if "var_reshard_mapping" in Resharder.while_block_info[
@@ -1625,24 +1650,30 @@ class Resharder:
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
-                        process_mesh = dist_op.dist_attr.process_mesh
-                        if dist_tensor is not None and self.need_reshard(
-                                dist_tensor, dist_op, process_mesh, False):
-                            for index, item in enumerate(
-                                    dist_op.dist_attr.process_mesh.processes):
-                                recv_rank = dist_tensor.dist_attr.process_mesh.processes[
-                                    index]
-                                if self.rank_id == item:
-                                    Inserter.insert_send_op(block, idx + 1, var,
-                                                            recv_rank,
-                                                            op.attr('op_role'))
-                                if self.rank_id == recv_rank:
-                                    Inserter.insert_recv_op(block, idx + 1, var,
-                                                            item,
-                                                            op.attr('op_role'))
-                            cur_op_count = len(block.ops)
-                            idx_offset = idx_offset + cur_op_count - pre_op_count
-                            pre_op_count = cur_op_count
+                        process_meshes = self.get_while_op_actual_process_meshes(
+                            op, var_name
+                        ) if op.type == "while" else self.get_op_process_meshes(
+                            op)
+                        for process_mesh in process_meshes:
+                            if dist_tensor is not None and self.need_reshard(
+                                    dist_tensor, dist_op, process_mesh, False):
+                                print("reshard.py****", dist_tensor, dist_op,
+                                      process_mesh)
+                                for index, item in enumerate(
+                                        process_mesh.processes):
+                                    recv_rank = dist_tensor.dist_attr.process_mesh.processes[
+                                        index]
+                                    if self.rank_id == item:
+                                        Inserter.insert_send_op(
+                                            block, idx + 1, var, recv_rank,
+                                            op.attr('op_role'))
+                                    if self.rank_id == recv_rank:
+                                        Inserter.insert_recv_op(
+                                            block, idx + 1, var, item,
+                                            op.attr('op_role'))
+                                cur_op_count = len(block.ops)
+                                idx_offset = idx_offset + cur_op_count - pre_op_count
+                                pre_op_count = cur_op_count
                     idx = idx + idx_offset + 1
                 else:
                     idx += 1

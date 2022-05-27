@@ -286,7 +286,7 @@ class OperatorDistributedAttribute:
         self._outputs_dist_attrs[name] = dist_attr_object
 
     def del_output_dist_attr(self, name):
-        del self._inputs_dist_attrs[name]
+        del self._outputs_dist_attrs[name]
 
     def get_input_dims_mapping(self, name):
         input_dist_attr = self.get_input_dist_attr(name)
