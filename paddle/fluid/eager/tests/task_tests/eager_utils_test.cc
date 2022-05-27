@@ -263,7 +263,7 @@ TEST(EagerUtils, FillZeroForEmptyGradInputs) {
   slot_metas[0][0].SetTensorMeta(tensor_meta);
   slot_metas[0][0].SetPlace(phi::CPUPlace());
 
-  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  EagerUtils::FillZeroForEmptyGradInputs(&grads[0], slot_metas[0]);
   eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 
