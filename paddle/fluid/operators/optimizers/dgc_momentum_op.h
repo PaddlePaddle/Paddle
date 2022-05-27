@@ -72,8 +72,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* velocity_out = context.Output<framework::Tensor>("VelocityOut");
       auto* master_param_out =
           context.Output<framework::Tensor>("MasterParamOut");
-      paddle::optional<const framework::Tensor&> master_param_opt =
-          paddle::none;
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
       float mu = context.Attr<float>("mu");
       bool use_nesterov = context.Attr<bool>("use_nesterov");
       std::string regularization_method =
@@ -117,8 +116,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* param_out = context.Output<framework::Tensor>("ParamOut");
       auto* master_param_out =
           context.Output<framework::Tensor>("MasterParamOut");
-      paddle::optional<const framework::Tensor&> master_param_opt =
-          paddle::none;
+      paddle::optional<framework::Tensor> master_param_opt(paddle::none);
       if (multi_precision) {
         auto* master_param = context.Input<framework::Tensor>("MasterParam");
         master_param_opt = *master_param;
@@ -149,8 +147,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       auto* param_out = context.Output<phi::SelectedRows>("ParamOut");
       auto* master_param_out =
           context.Output<phi::SelectedRows>("MasterParamOut");
-      paddle::optional<const phi::SelectedRows&> master_param_opt =
-          paddle::none;
+      paddle::optional<phi::SelectedRows> master_param_opt(paddle::none);
       if (multi_precision) {
         auto* master_param = context.Input<phi::SelectedRows>("MasterParam");
         master_param_opt = *master_param;
