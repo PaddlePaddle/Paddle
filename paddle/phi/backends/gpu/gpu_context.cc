@@ -341,8 +341,7 @@ struct GPUContext::Impl {
 
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
-  blasLtHandle_t GetBlasLtHandle() {
-    if (!blaslt_handle_) phi::InitBlasLtHandle(&blaslt_handle_);
+  blasLtHandle_t GetBlasLtHandle() const {
     PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
     return blaslt_handle_;
   }
