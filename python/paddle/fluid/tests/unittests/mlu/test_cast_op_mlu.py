@@ -79,7 +79,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestCastOpInt32ToInt32(OpTest):
