@@ -2019,6 +2019,7 @@ static std::string GenerateSingleOpBase(
   const std::string& ins_name = "ins" + std::to_string(*outs_size);
   const std::string& outs_name = "outs" + std::to_string(*outs_size);
   const std::string& attrs_name = "attrs_map" + std::to_string(*outs_size);
+  const std::string& hooked_grads = "hooked_grads" + std::to_string(*outs_size);
 
   // [Generation] Get Full Zero
   std::string fill_zero_str = "";
@@ -2039,8 +2040,11 @@ static std::string GenerateSingleOpBase(
   generated_grad_function_body += fill_zero_str;
   generated_grad_function_body +=
       "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
-      "egr::kSlotSmallVectorSize> hooked_grads = "
-      "GradNode%s::ApplyGradientHooks(grads);\n";
+      "egr::kSlotSmallVectorSize> " +
+      hooked_grads +
+      " = "
+      "GradNode" +
+      fwd_op_type + "::ApplyGradientHooks(grads);\n";
 
   // [Generation] Get Ins Map
   std::unordered_set<std::string> dispensable_input_name_set;
@@ -2079,9 +2083,10 @@ static std::string GenerateSingleOpBase(
       size_t fwd_output_position = fwd_outputs_name_pos_map.at(
           grad_ins_grad_slotname_map.at(grad_input_name));
       const char* GRAD_INS_GRAD_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(hooked_grads[%d]) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s[%d]) },";
       ins_contents_str += paddle::string::Sprintf(
-          GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
+          GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, hooked_grads,
+          fwd_output_position);
 
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -2183,9 +2188,10 @@ static std::string GenerateSingleOpBase(
         size_t grads_position = fwd_outputs_name_pos_map.at(fwd_name);
 
         const char* GRAD_OUTS_CONTENT_TEMPLATE =
-            "{ \"%s\", egr::EagerUtils::TrySyncToVars(hooked_grads[%d]) },";
+            "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s[%d]) },";
         outs_contents_str += paddle::string::Sprintf(
-            GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
+            GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, hooked_grads,
+            grads_position);
 
       } else {
         if (dispensable_input_name_set.count(fwd_name) &&
@@ -2475,9 +2481,8 @@ static std::string GenerateGradNodeCCContents(
       "  if(NeedComplexToRealConversion()) "
       "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
-  generated_grad_function_body =
-      paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
-                              generated_grad_function_body);
+  generated_grad_function_body = paddle::string::Sprintf(
+      BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
