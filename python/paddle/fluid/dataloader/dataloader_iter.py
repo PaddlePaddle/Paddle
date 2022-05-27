@@ -169,8 +169,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # NOTE: len(self._places) batch data compose as an output
         # iteration, set blocking_queue can cache "self._prefetch_factor" iteration datas
         # at most here
-        self._blocking_queue_capacity = (
-            self._prefetch_factor - 1) * len(self._places)
+        self._blocking_queue_capacity = self._prefetch_factor * len(
+            self._places)
 
         self._init_thread()
         self._shutdown = False
