@@ -351,10 +351,12 @@ class DataLoader(object):
         num_workers(int): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
         use_buffer_reader (bool): whether to use bufferred reader. 
-            If use_buffer_reader=True, the DataLoader would prefetch next 
+            If use_buffer_reader=True, the DataLoader would prefetch
             batch data asynchronously, so it would speed up data feeding 
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
+        prefetch_factor (int): Number of batch data the DataLoader would prefetch
+            if use_buffer_reader=True. Default 2.
         use_shared_memory (bool): whether to use shared memory to speed up
             putting data into inter-process queue, set :attr:`use_shared_memory`
             as True only when the shared memory space on your machine(e.g.
@@ -485,7 +487,7 @@ class DataLoader(object):
             num_workers = 0
         self.num_workers = num_workers
 
-        assert prefetch_factor >= 2, "prefetch_factor should be greater than or equal to 2"
+        assert prefetch_factor > 0, "prefetch_factor should be a positive value"
 
         self.use_shared_memory = use_shared_memory
         if use_shared_memory and num_workers == 0:
