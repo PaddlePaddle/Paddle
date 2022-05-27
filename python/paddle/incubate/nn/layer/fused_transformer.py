@@ -82,7 +82,6 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
         self._weight_attr = weight_attr
-
         self.embed_dim = embed_dim
 
         self.linear_bias = self.create_parameter(

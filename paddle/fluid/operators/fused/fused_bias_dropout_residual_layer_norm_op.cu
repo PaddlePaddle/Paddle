@@ -83,7 +83,6 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
 
-    // get inputs.
     auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto *ln_scale = ctx.Input<Tensor>("LnScale");
     auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
@@ -99,7 +98,6 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     auto *ln_mean_data = ln_mean->data<U>();
     auto *ln_var_data = ln_var->data<U>();
 
-    // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_residual = ctx.Output<Tensor>(framework::GradVarName("Residual"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
@@ -126,12 +124,10 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     int max_seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = batch_size * max_seq_len;
-
     DropoutParam dropout_param(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param,
         ln_epsilon);
-
     fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
         ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
         dropout_mask_out_data, ln_scale_data, ln_mean_data, ln_var_data,

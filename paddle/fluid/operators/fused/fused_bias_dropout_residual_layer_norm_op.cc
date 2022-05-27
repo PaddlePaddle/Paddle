@@ -28,7 +28,6 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                    "FusedBiasDropoutResidualLnOp");
-
     OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
                    "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
@@ -42,15 +41,12 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
 
     // [batch_size, seq_len, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
-
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
-    // limin-todo:
     ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
     ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
-
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
   }
 
@@ -96,7 +92,6 @@ class FusedBiasDropoutResidualLnOpMaker
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
-
     AddAttr<bool>("dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -200,10 +195,8 @@ class FusedBiasDropoutResidualLnGradOpMaker
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("fused_bias_dropout_residual_layer_norm_grad");
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
-
     op->SetInput("X", this->Input("X"));
     op->SetInput("Residual", this->Input("Residual"));
-
     if (this->HasInput("Bias")) {
       op->SetInput("Bias", this->Input("Bias"));
       op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
@@ -230,7 +223,6 @@ class FusedBiasDropoutResidualLnGradOpMaker
     }
     op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
 
-    // backward outputs: dinput
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Residual"),
                   this->InputGrad("Residual"));
