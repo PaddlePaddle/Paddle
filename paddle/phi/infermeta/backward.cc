@@ -188,7 +188,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,
-                                 paddle::optional<const MetaTensor&> mask,
+                                 const MetaTensor& mask,
                                  const MetaTensor& out_grad,
                                  const std::vector<int>& strides,
                                  const std::vector<int>& paddings,
@@ -202,7 +202,7 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
                                  MetaTensor* mask_grad) {
   GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
   if (mask) {
-    UnchangedInferMeta(mask.get(), mask_grad);
+    UnchangedInferMeta(mask, mask_grad);
   }
 }
 
@@ -313,7 +313,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 }
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
-                               paddle::optional<const MetaTensor&> scale,
+                               const MetaTensor& scale,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
                                const MetaTensor& y_grad,
@@ -338,19 +338,18 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
     bias_grad->set_dims({C});
   }
 }
-void InstanceNormDoubleGradInferMeta(
-    const MetaTensor& x,
-    paddle::optional<const MetaTensor&> scale,
-    const MetaTensor& saved_mean,
-    const MetaTensor& saved_variance,
-    const MetaTensor& dy,
-    paddle::optional<const MetaTensor&> ddx,
-    paddle::optional<const MetaTensor&> ddscale,
-    paddle::optional<const MetaTensor&> ddbias,
-    float epsilon,
-    MetaTensor* dx,
-    MetaTensor* dscale,
-    MetaTensor* ddy) {
+void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& saved_mean,
+                                     const MetaTensor& saved_variance,
+                                     const MetaTensor& dy,
+                                     const MetaTensor& ddx,
+                                     const MetaTensor& ddscale,
+                                     const MetaTensor& ddbias,
+                                     float epsilon,
+                                     MetaTensor* dx,
+                                     MetaTensor* dscale,
+                                     MetaTensor* ddy) {
   PADDLE_ENFORCE_NE(
       dx,
       nullptr,
@@ -436,7 +435,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
 
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
-                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& weight,
                           const MetaTensor& total_weight,
                           const MetaTensor& out_grad,
                           int64_t ignore_index,
@@ -549,7 +548,7 @@ void PoolGradInferMeta(const MetaTensor& x,
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
-                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& rois_num,
                             const MetaTensor& dout,
                             int pooled_height,
                             int pooled_width,

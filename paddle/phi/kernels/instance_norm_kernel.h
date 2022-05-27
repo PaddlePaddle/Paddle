@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        paddle::optional<const DenseTensor&> scale,
-                        paddle::optional<const DenseTensor&> bias,
+                        const paddle::optional<DenseTensor>& scale,
+                        const paddle::optional<DenseTensor>& bias,
                         float epsilon,
                         DenseTensor* y,
                         DenseTensor* saved_mean,
