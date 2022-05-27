@@ -2020,6 +2020,24 @@ static std::string GenerateSingleOpBase(
   const std::string& outs_name = "outs" + std::to_string(*outs_size);
   const std::string& attrs_name = "attrs_map" + std::to_string(*outs_size);
 
+  // [Generation] Get Full Zero
+  std::string fill_zero_str = "";
+  if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
+    for (auto iter : grad_ins) {
+      const std::string& grad_input_name = iter.first;
+      if (grad_ins_grad_slotname_map.count(grad_input_name)) {
+        size_t fwd_output_position = fwd_outputs_name_pos_map.at(
+            grad_ins_grad_slotname_map.at(grad_input_name));
+        const char* FILL_ZERO_TEMPLATE =
+            "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads[%d], "
+            "this->InputMeta()[%d]);\n";
+        fill_zero_str += paddle::string::Sprintf(
+            FILL_ZERO_TEMPLATE, fwd_output_position, fwd_output_position);
+      }
+    }
+  }
+  generated_grad_function_body += fill_zero_str;
+
   // [Generation] Get Ins Map
   std::unordered_set<std::string> dispensable_input_name_set;
   for (const auto& in : in_vars) {
@@ -2469,17 +2487,9 @@ static std::string GenerateGradNodeCCContents(
       "egr::kSlotSmallVectorSize>& grads, bool "
       "create_graph, bool is_new_grad) {\n"
       "%s"
-      "%s"
       "\n}";
-  std::string fill_zero_str = "";
-  if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
-    fill_zero_str =
-        "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, "
-        "this->InputMeta());\n";
-  }
-  std::string grad_function_str =
-      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type,
-                              fill_zero_str, generated_grad_function_body);
+  std::string grad_function_str = paddle::string::Sprintf(
+      GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 
