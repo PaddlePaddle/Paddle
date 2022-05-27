@@ -2056,7 +2056,7 @@ static std::string GenerateSingleOpBase(
   const char* CHECK_BACKWARD_INPLACE_TEMPLATE =
       "  // Check backward inplace info\n"
       "  bool %s = false;\n"
-      "  auto& %s = %s;\n"
+      "  auto%s %s = %s;\n"
       "  if (%s.initialized()) {\n"
       "    VLOG(10) << %s.name() << \"(%s) use_count: \" << "
       "%s.impl().use_count();\n"
@@ -2104,13 +2104,14 @@ static std::string GenerateSingleOpBase(
         std::string tensor_wrapper_intermidiate_tensor_str =
             paddle::string::Sprintf(GRAD_INS_FWD_TENSOR_TEMPLATE,
                                     struct_fwd_input_name);
+        std::string ampersand_flag_str = "";
         generated_grad_function_body += paddle::string::Sprintf(
             CHECK_BACKWARD_INPLACE_TEMPLATE, can_be_inplaced_name,
-            bwd_inplace_input_name, tensor_wrapper_str, bwd_inplace_input_name,
-            bwd_inplace_input_name, grad_input_name, bwd_inplace_input_name,
+            ampersand_flag_str, bwd_inplace_input_name, tensor_wrapper_str,
+            bwd_inplace_input_name, bwd_inplace_input_name, grad_input_name,
             bwd_inplace_input_name, bwd_inplace_input_name,
-            bwd_inplace_input_name, tensor_wrapper_intermidiate_tensor_str,
-            can_be_inplaced_name);
+            bwd_inplace_input_name, bwd_inplace_input_name,
+            tensor_wrapper_intermidiate_tensor_str, can_be_inplaced_name);
       }
     } else if (grad_ins_grad_slotname_map.count(grad_input_name)) {
       // Fwd Tensor's Grad
@@ -2129,9 +2130,10 @@ static std::string GenerateSingleOpBase(
         const char* GRAD_INS_GRAD_TENSOR_TEMPLATE = "grads[%d][0]";
         std::string grads_tensor_str = paddle::string::Sprintf(
             GRAD_INS_GRAD_TENSOR_TEMPLATE, fwd_output_position);
+        std::string ampersand_flag_str = "&";
         generated_grad_function_body += paddle::string::Sprintf(
             CHECK_BACKWARD_INPLACE_TEMPLATE, can_be_inplaced_name,
-            bwd_inplace_input_name, hooked_grads_tensor_str,
+            ampersand_flag_str, bwd_inplace_input_name, hooked_grads_tensor_str,
             bwd_inplace_input_name, bwd_inplace_input_name, grad_input_name,
             bwd_inplace_input_name, bwd_inplace_input_name,
             bwd_inplace_input_name, bwd_inplace_input_name, grads_tensor_str,
