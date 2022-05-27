@@ -32,7 +32,7 @@ class ParamsQuantizationMkldnnPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  void Conv(Graph* graph) const;
+  void Conv(Graph* graph, bool with_residual_connection) const;
 
  private:
   const std::string name_scope_ = "params_quantization_mkldnn_pass";

@@ -66,7 +66,7 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
     return true;
   }
 
-  auto filter_var = scope->FindVar(conv_filter->Name());
+  auto filter_var = scope->GetVar(conv_filter->Name());
   auto filter_v = conv_filter->Var();
   if (filter_var == nullptr || filter_v == nullptr ||
       filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
@@ -103,7 +103,7 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
 
   const auto scale_weights =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>("Scale_weights");
-  QuantizeParams<int8_t>(scope->FindVar(conv_filter->Name())->Get<LoDTensor>(),
+  QuantizeParams<int8_t>(scope->GetVar(conv_filter->Name())->Get<LoDTensor>(),
                          int_weights, scale_weights);
   conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
 
@@ -114,7 +114,7 @@ void QuantizeConvFilter(Scope* scope, ir::Graph* g,
 void QuantizeConvBias(Scope* scope, ir::Graph* g, const std::string& name_scope,
                       ir::Node* conv_op, int found_count) {
   std::string conv_bias_name = conv_op->Op()->Input("Bias")[0];
-  auto bias = scope->FindVar(conv_bias_name)->Get<LoDTensor>();
+  auto bias = scope->GetVar(conv_bias_name)->Get<LoDTensor>();
 
   VarDesc int_biases_desc = CreatePersistableVarDesc(
       patterns::PDNodeName(name_scope,
@@ -175,10 +175,11 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
       .End();
 }
 
-void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
+void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph,
+                                        bool with_residual_data) const {
   GraphPatternDetector gpd;
-  patterns::Conv conv_pattern(gpd.mutable_pattern(), name_scope_);
-  conv_pattern();
+  patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
+  conv_pattern(with_residual_data);
 
   int params_to_int8_conv_found = 0;
 
@@ -218,6 +219,7 @@ void ParamsQuantizationMkldnnPass::Conv(ir::Graph* graph) const {
   std::stringstream msg_ss;
   msg_ss << "Quantized params of " << params_to_int8_conv_found
          << " conv2d ops";
+  if (with_residual_data) msg_ss << " with residual connection";
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
 
@@ -226,7 +228,8 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  Conv(graph);
+  Conv(graph, true);
+  Conv(graph, false);
 }
 
 }  // namespace ir
