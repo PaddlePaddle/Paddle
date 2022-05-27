@@ -541,8 +541,7 @@ TEST(Predictor, Streams) {
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
   }
 
   // internal stream, create 2 predictor.
@@ -553,8 +552,7 @@ TEST(Predictor, Streams) {
     auto predictor1 = CreatePredictor(config1);
     gpuStream_t stream1 =
         reinterpret_cast<gpuStream_t>(predictor1->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream1));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 1);
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 0);
 
     Config config2;
     config2.SetModel(FLAGS_dirname);
@@ -562,9 +560,8 @@ TEST(Predictor, Streams) {
     auto predictor2 = CreatePredictor(config2);
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream2));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
-    CHECK_NE(stream1, stream2);
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
+    CHECK_EQ(stream1, stream2);
   }
 
   // internal stream, clone
@@ -575,15 +572,13 @@ TEST(Predictor, Streams) {
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 0);
 
     auto predictor2 = predictor->Clone();
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream2));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
-    CHECK_NE(stream, stream2);
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 0);
+    CHECK_EQ(stream, stream2);
   }
 
   // external stream
@@ -604,44 +599,33 @@ TEST(Predictor, Streams) {
     CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
   }
 
-  // 2 predictor with the same stream.
+  // 2 predictor on 2 stream
   {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
     Config config;
     config.SetModel(FLAGS_dirname);
     config.EnableUseGpu(100, 0);
+    config.SetExecStream(external_stream);
     auto predictor = CreatePredictor(config);
     gpuStream_t stream =
         reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
     CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
     CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
 
+    cudaStream_t external_stream2;
+    cudaStreamCreate(&external_stream2);
     Config config2;
     config2.SetModel(FLAGS_dirname);
     config2.EnableUseGpu(100, 0);
-    config2.SetExecStream(stream);
+    config2.SetExecStream(external_stream2);
     auto predictor2 = CreatePredictor(config2);
     gpuStream_t stream2 =
         reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_EQ(stream2, stream);
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 2);
-  }
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream2));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
 
-  // 2 predictor, clone with the same stream.
-  {
-    Config config;
-    config.SetModel(FLAGS_dirname);
-    config.EnableUseGpu(100, 0);
-    auto predictor = CreatePredictor(config);
-    gpuStream_t stream =
-        reinterpret_cast<gpuStream_t>(predictor->GetExecStream());
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetGPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
-
-    auto predictor2 = predictor->Clone(stream);
-    gpuStream_t stream2 =
-        reinterpret_cast<gpuStream_t>(predictor2->GetExecStream());
-    CHECK_EQ(stream2, stream);
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 2);
+    CHECK_NE(stream, stream2);
   }
 }
 #endif

@@ -218,7 +218,9 @@ bool AnalysisPredictor::Init(
     return true;
   }
 
-  // TODO(inference): Now only gpu support private device_context.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // TODO(inference): Now only gpu with external stream support private
+  // device_context.
   if (config_.use_gpu_ && config_.use_external_stream_) {
     private_context_ = true;
   }
@@ -226,10 +228,18 @@ bool AnalysisPredictor::Init(
     if (!status_is_cloned_) {
       predictor_stream_ = config_.GetExecStream();
     }
-    InitResourceManager(predictor_stream_);
-    InitDeviceContexts();
+    // NOTE: If the external_stream equals to global_device_contexts's stream,
+    // then fallback.
+    auto global_stream =
+        static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(place_))
+            ->stream();
+    if (predictor_stream_ != global_stream) {
+      InitResourceManager(predictor_stream_);
+      InitDeviceContexts();
+    }
   }
-
+#endif
   return true;
 }
 
@@ -393,13 +403,7 @@ void *AnalysisPredictor::GetExecStream() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU) {
     if (private_context_) {
-      if (status_is_cloned_) {
-        return predictor_stream_;
-      } else {
-        return reinterpret_cast<const phi::GPUContext *>(
-                   device_contexts_.at(place_).get().get())
-            ->stream();
-      }
+      return predictor_stream_;
     } else {
       paddle::platform::DeviceContextPool &pool =
           paddle::platform::DeviceContextPool::Instance();
@@ -1455,9 +1459,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
     return true;
   }
 #endif
-  if (private_context_)
+  if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
-
+  }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
@@ -1483,7 +1487,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-  paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+  }
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
@@ -1810,6 +1816,10 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
         "function has not received a valid stream parameter."));
+  } else if (!config_.use_external_stream_ && stream != nullptr) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "config has not been configured to use external stream, but the Clone "
+        "function has received a stream parameter."));
   }
   x->predictor_stream_ = stream;
   x->Init(scope_, inference_program_);
