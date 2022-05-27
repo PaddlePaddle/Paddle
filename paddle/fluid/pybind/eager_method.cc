@@ -527,11 +527,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
           dense_tensor->MoveMemoryHolder();
         }
       }
-      if (is_leaf) {
-        std::static_pointer_cast<egr::GradNodeAccumulation>(
-            egr::EagerUtils::grad_node())
-            ->SetIsEmpty(true);
-      }
+    }
+    if (is_leaf) {
+      std::static_pointer_cast<egr::GradNodeAccumulation>(
+          egr::EagerUtils::grad_node(self->tensor))
+          ->SetIsEmpty(true);
     }
   }
 
