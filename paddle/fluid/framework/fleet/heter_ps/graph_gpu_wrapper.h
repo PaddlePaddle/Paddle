@@ -35,7 +35,8 @@ class GraphGpuWrapper {
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
                     std::vector<std::string>& node_type);
-  void upload_batch(int idx, std::vector<std::vector<int64_t>>& ids);
+  void upload_batch(int etype_id, std::vector<std::vector<int64_t>>& ids);
+  void upload_batch(int ntype_id, std::vector<std::vector<int64_t>>& ids, int slot_num);
   void add_table_feat_conf(std::string table_name, std::string feat_name,
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
@@ -60,6 +61,7 @@ class GraphGpuWrapper {
   std::vector<int64_t> graph_neighbor_sample(int gpu_id, int idx,
                                              std::vector<int64_t>& key,
                                              int sample_size);
+  void set_feature_separator(std::string ch);
 
   void init_sample_status();
   void free_sample_status();
@@ -73,6 +75,7 @@ class GraphGpuWrapper {
   std::vector<int> device_id_mapping;
   int search_level = 1;
   void* graph_table;
+  std::string feature_separator_ = std::string(" ");
 };
 #endif
 }

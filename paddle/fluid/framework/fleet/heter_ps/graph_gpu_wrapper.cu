@@ -49,6 +49,10 @@ void GraphGpuWrapper::set_up_types(std::vector<std::string> &edge_types,
   this->table_feat_conf_feat_shape.resize(node_types.size());
 }
 
+void GraphGpuWrapper::set_feature_separator(std::string ch) {
+  feature_separator_ = ch;
+}
+
 void GraphGpuWrapper::make_partitions(int idx, int64_t byte_size,
                                       int device_len) {
   ((GpuPsGraphTable *)graph_table)
@@ -156,6 +160,7 @@ void GraphGpuWrapper::init_service() {
   GpuPsGraphTable *g =
       new GpuPsGraphTable(resource, 1, id_to_edge.size(), id_to_feature.size());
   g->init_cpu_table(table_proto);
+  g->cpu_graph_table_->set_feature_separator(feature_separator_);
   graph_table = (char *)g;
 }
 
@@ -170,6 +175,26 @@ void GraphGpuWrapper::upload_batch(int idx,
     sub_graph.release_on_cpu();
     VLOG(0) << "sub graph on gpu " << i << " is built";
   }
+}
+
+// feature table
+void GraphGpuWrapper::upload_batch(int ntype_id,
+                                   std::vector<std::vector<int64_t>> &node_ids, int slot_num) {
+  GpuPsGraphTable *g = (GpuPsGraphTable *)graph_table;
+  for (int i = 0; i < node_ids.size(); i++) {
+    VLOG(0) << "begin make_gpu_ps_graph_fea, node_ids[" << i << "]_size[" << node_ids[i].size() << "]";
+    GpuPsCommGraphFea sub_graph =
+        g->cpu_graph_table_->make_gpu_ps_graph_fea(ntype_id, node_ids[i], slot_num);
+
+    // sub_graph.display_on_cpu();
+    VLOG(0) << "begin build_graph_fea_on_single_gpu, node_ids[" << i << "]_size[" << node_ids[i].size() << "]";
+    g->build_graph_fea_on_single_gpu(sub_graph, i, ntype_id);
+
+    sub_graph.release_on_cpu();
+
+    VLOG(0) << "sub graph fea on gpu " << i << " is built";
+  }
+  // g->build_graph_from_cpu(vec);
 }
 
 // void GraphGpuWrapper::test() {
@@ -236,6 +261,10 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
 // this function is contributed by Liwb5
 std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     int gpu_id, int idx, std::vector<int64_t> &key, int sample_size) {
+  std::vector<int64_t> res;
+  if (key.size() == 0) {
+      return res;
+  }
   int64_t *cuda_key;
   platform::CUDADeviceGuard guard(gpu_id);
 
@@ -256,7 +285,7 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     cumsum += actual_sample_size[i];
   }
 
-  std::vector<int64_t> cpu_key, res;
+  std::vector<int64_t> cpu_key;
   cpu_key.resize(key.size() * sample_size);
 
   cudaMemcpy(cpu_key.data(), neighbor_sample_res.val,

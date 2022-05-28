@@ -20,6 +20,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace framework {
 struct GpuPsGraphNode {
@@ -287,7 +288,65 @@ struct NodeQueryResult {
     actual_sample_size = 0;
   };
   ~NodeQueryResult() {}
+}; // end of struct NodeQueryResult
+
+struct GpuPsGraphFeaNode {
+  uint64_t node_id;
+  uint64_t feature_size, feature_offset;
+  // this node's feature is stored on [feature_offset,feature_offset +
+  // feature_size) of int64_t *feature_list;
 };
-}
-};
+
+struct GpuPsCommGraphFea {
+  uint64_t *feature_list;
+  uint8_t *slot_id_list;
+  GpuPsGraphFeaNode *node_list;
+  uint64_t feature_size, node_size;
+  // the size of feature array and graph_node_list array
+  GpuPsCommGraphFea()
+      : feature_list(NULL), slot_id_list(NULL), node_list(NULL), feature_size(0), node_size(0) {}
+  GpuPsCommGraphFea(uint64_t *feature_list_, uint8_t *slot_id_list_,
+          GpuPsGraphFeaNode *node_list_, uint64_t feature_size_, uint64_t node_size_)
+      : feature_list(feature_list_),
+        slot_id_list(slot_id_list_),
+        node_list(node_list_),
+        feature_size(feature_size_),
+        node_size(node_size_) {}
+  void init_on_cpu(uint64_t feature_size, uint64_t node_size, uint32_t slot_num) {
+    PADDLE_ENFORCE_LE(slot_num, 255);
+    this->feature_size = feature_size;
+    this->node_size = node_size;
+    this->feature_list = new uint64_t[feature_size];
+    this->slot_id_list = new uint8_t[feature_size];
+    this->node_list = new GpuPsGraphFeaNode[node_size];
+  }
+  void release_on_cpu() {
+    delete[] feature_list;
+    delete[] slot_id_list;
+    delete[] node_list;
+  }
+  void display_on_cpu() {
+    VLOG(1) << "feature_size = " << feature_size;
+    VLOG(1) << "node_size = " << node_size;
+    for (uint64_t i = 0; i < feature_size; i++) {
+      VLOG(1) << "feature_list[" << i << "] = " << feature_list[i];
+    }
+    for (uint64_t i = 0; i < node_size; i++) {
+      VLOG(1) << "node_id[" << node_list[i].node_id
+              << "] feature_size = " << node_list[i].feature_size;
+      std::string str;
+      int offset = node_list[i].feature_offset;
+      for (uint64_t j = 0; j < node_list[i].feature_size; j++) {
+        if (j > 0) str += ",";
+        str += std::to_string(slot_id_list[j + offset]);
+        str += ":";
+        str += std::to_string(feature_list[j + offset]);
+      }
+      VLOG(1) << str;
+    }
+  }
+}; // end of struct GpuPsCommGraphFea
+
+} // end of namespace framework
+} // end of namespace paddle
 #endif
