@@ -38,8 +38,7 @@ def topo_path(xs, ys, block=None):
         path, the unused variables in `xs`, and the unreached variables in `ys`
     """
 
-    if block is None:
-        block = default_main_program().current_block()
+    block = default_main_program().current_block() if block is None else block
 
     path = []
     backpath = []
@@ -529,8 +528,7 @@ def orig2prim(block=None):
             process on the current block of main program.
     """
 
-    if block is None:
-        block = default_main_program().current_block()
+    block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
     _lower(block, reverse=False)
@@ -571,8 +569,7 @@ def prim2orig(block=None):
                 prim2orig()
     """
 
-    if block is None:
-        block = default_main_program().current_block()
+    block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
     _lower(block, reverse=True)
