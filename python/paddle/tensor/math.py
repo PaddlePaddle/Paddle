@@ -3346,7 +3346,7 @@ def increment(x, value=1.0, name=None):
 
 def all(x, axis=None, keepdim=False, name=None):
     """
-    Computes the ``logical and`` of tensor elements over the given dimension.
+    Computes the the ``logical and`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3442,7 +3442,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the ``logical or`` of tensor elements over the given dimension.
+    Computes the the ``logical or`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
