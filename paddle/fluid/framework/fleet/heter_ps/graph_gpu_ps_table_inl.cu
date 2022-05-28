@@ -530,7 +530,7 @@ void GpuPsGraphTable::build_graph_fea_on_single_gpu(GpuPsCommGraphFea& g, int gp
                    g.feature_size * sizeof(int64_t));
     PADDLE_ENFORCE_EQ(cudaStatus, cudaSuccess,
                       platform::errors::InvalidArgument(
-                          "ailed to allocate memory for graph on gpu "));
+                          "ailed to allocate memory for graph-feature on gpu "));
     VLOG(0) << "sucessfully allocate " << g.feature_size * sizeof(int64_t)
             << " bytes of memory for graph-feature on gpu "
             << resource_->dev_id(gpu_id);
@@ -543,7 +543,7 @@ void GpuPsGraphTable::build_graph_fea_on_single_gpu(GpuPsCommGraphFea& g, int gp
                    g.feature_size * sizeof(uint8_t));
     PADDLE_ENFORCE_EQ(cudaStatus, cudaSuccess,
                       platform::errors::InvalidArgument(
-                          "ailed to allocate memory for graph on gpu "));
+                          "ailed to allocate memory for graph-feature on gpu "));
     VLOG(0) << "sucessfully allocate " << g.feature_size * sizeof(uint8_t)
             << " bytes of memory for graph-feature on gpu "
             << resource_->dev_id(gpu_id);
