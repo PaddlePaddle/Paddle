@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -334,8 +333,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
       std::vector<const framework::Tensor*> ins = {&x};
       std::vector<framework::Tensor*> outs = {y};
       auto functor = phi::funcs::ScaleFunctor<T>(factor);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                                &outs, functor);
+      phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
     }
   }
 }
@@ -416,8 +414,7 @@ void DropoutNdFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 
     std::vector<const framework::Tensor*> ins_ = {&x, &broadcast_mask};
     std::vector<framework::Tensor*> outs_ = {y};
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-        dev_ctx, ins_, &outs_, dst_functor);
+    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins_, &outs_, dst_functor);
 
   } else {
     if (upscale_in_train) {
@@ -437,8 +434,7 @@ void DropoutNdFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
       std::vector<const framework::Tensor*> ins = {&x};
       std::vector<framework::Tensor*> outs = {y};
       auto functor = phi::funcs::ScaleFunctor<T>(factor);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                                &outs, functor);
+      phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
     }
   }
 }
@@ -479,8 +475,7 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     std::vector<const framework::Tensor*> ins = {&grad_y};
     std::vector<framework::Tensor*> outs = {grad_x};
     auto functor = phi::funcs::ScaleFunctor<T>(factor);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
+    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   } else {
     std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
     std::vector<framework::Tensor*> outs = {grad_x};
@@ -493,12 +488,12 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
 #endif
       } else {
         factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        phi::funcs::ElementwiseKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
       }
     } else {
       factor = static_cast<MT>(1.0f);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
     }
   }
@@ -524,8 +519,7 @@ void DropoutNdGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     std::vector<const framework::Tensor*> ins = {&grad_y};
     std::vector<framework::Tensor*> outs = {grad_x};
     auto functor = phi::funcs::ScaleFunctor<T>(factor);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
+    phi::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   } else {
     framework::Tensor broadcast_mask;
     broadcast_mask.Resize(grad_y.dims());
@@ -547,12 +541,12 @@ void DropoutNdGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
 #endif
       } else {
         factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        phi::funcs::ElementwiseKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
       }
     } else {
       factor = static_cast<MT>(1.0f);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
     }
   }
