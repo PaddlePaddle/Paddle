@@ -185,6 +185,7 @@ def is_api_in_module(node, module_prefix):
         import paddle.fluid as fluid
         import paddle.fluid.dygraph as dygraph
         import paddle.fluid.layers as layers
+        import paddle.jit.dy2static as _jst
 
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
@@ -521,8 +522,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 def _inject_import_statements():
     import_statements = [
         "import paddle", "from paddle import Tensor",
-        "import paddle.fluid as fluid", "from typing import *",
-        "import numpy as np"
+        "import paddle.fluid as fluid", "import paddle.jit.dy2static as _jst",
+        "from typing import *", "import numpy as np"
     ]
     return '\n'.join(import_statements) + '\n'
 
@@ -1168,7 +1169,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = paddle.jit.dy2static.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]

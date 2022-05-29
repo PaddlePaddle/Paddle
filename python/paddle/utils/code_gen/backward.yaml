@@ -229,6 +229,7 @@
   kernel :
     func : cast_grad
     data_type : out_grad
+  no_need_buffer : x
 
 - backward_api : ceil_grad
   forward : ceil(Tensor x) -> Tensor(out)
@@ -552,8 +553,8 @@
     skip_transform : out_w, out_w_grad
 
 - backward_api : einsum_grad
-  forward : einsum (Tensor[] x, str equation) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, str equation)
+  forward : einsum (Tensor[] x, str equation) -> Tensor(out), Tensor[](inner_cache)
+  args : (Tensor[] x, Tensor[] inner_cache, Tensor out_grad, str equation)
   output : Tensor[](x_grad){x.size()}
   infer_meta :
     func : UnchangedMultiInferMeta
