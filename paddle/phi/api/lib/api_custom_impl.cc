@@ -1374,6 +1374,8 @@ void embedding_grad_impl(const Tensor& x,
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->dims());
       meta_out.set_dtype(input_weight->dtype());
+      kernel_out->set_height(input_weight->dims()[0]);
+
       using kernel_signature = void (*)(const platform::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
