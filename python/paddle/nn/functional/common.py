@@ -940,103 +940,51 @@ def dropout(x,
             attrs=attrs)
         return out
     else:  #sometimes called dropout_nd #TODO: optimize with c++
-        input_shape = x.shape
-        drop_axes = [axis] if isinstance(axis, int) else list(axis)
-        if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
-            raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
-                                .format(len(input_shape), max(drop_axes)))
-        if len(drop_axes) > len(input_shape):
-            raise ValueError(
-                "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
-                format(len(input_shape), len(drop_axes)))
-        seed = None
-        mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+        if not in_dynamic_mode():
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
+        dtype = x.dtype
+        keep_prob = 1 - p
+        if training:
+            if p == 1.:
+                return paddle.scale(x, scale=0.)
 
-        if _non_static_mode():
-            if default_main_program().random_seed != 0:
-                seed = default_main_program().random_seed
+            scale_input = paddle.scale(
+                x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
 
-            out, mask = _C_ops.dropout_nd(
-                x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
-                seed is not None, 'seed', seed if seed is not None else 0,
-                'dropout_implementation', mode, 'axes', drop_axes)
-            return out
+            #get mask shape
+            input_shape = x.shape
+            if not in_dynamic_mode():
+                input_shape_tensor = paddle.shape(x)
+            drop_axes = [axis] if isinstance(axis, int) else list(axis)
+            if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
+                raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
+                                 .format(len(input_shape), max(drop_axes)))
+            if len(drop_axes) > len(input_shape):
+                raise ValueError(
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
+                    format(len(input_shape), len(drop_axes)))
+            mask_shape = [1] * len(input_shape)
+            if not in_dynamic_mode():
+                for i in drop_axes:
+                    mask_shape[i] = input_shape_tensor[i]
+            else:
+                for i in drop_axes:
+                    mask_shape[i] = input_shape[i]
 
-        helper = LayerHelper('dropout_nd', **locals())
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'dropout')
+            #get mask
+            random_tensor = paddle.uniform(
+                mask_shape, dtype='float32', min=0., max=1.0)
+            p = full(shape=[1], fill_value=p, dtype='float32')
+            keep_mask = paddle.greater_equal(random_tensor, p)
 
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        mask = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
-
-        def get_attrs(prog, dropout_prob, is_test, seed):
-            if (seed is None or seed == 0) and prog.random_seed != 0:
-                seed = prog.random_seed
-            attrs = {
-                'dropout_prob': dropout_prob,
-                'is_test': is_test,
-                'fix_seed': seed is not None,
-                'seed': seed if seed is not None else 0,
-                'dropout_implementation': mode,
-                'axis': drop_axes
-            }
-            return attrs
-
-        attrs = get_attrs(helper.main_program, p, not training, seed)
-
-        helper.append_op(
-            type='dropout_nd',
-            inputs={'X': [x]},
-            outputs={'Out': [out],
-                     'Mask': [mask]},
-            attrs=attrs)
-        return out
-        # if not in_dynamic_mode():
-        #     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
-        # dtype = x.dtype
-        # keep_prob = 1 - p
-        # if training:
-        #     if p == 1.:
-        #         return paddle.scale(x, scale=0.)
-
-        #     scale_input = paddle.scale(
-        #         x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
-
-        #     #get mask shape
-        #     input_shape = x.shape
-        #     if not in_dynamic_mode():
-        #         input_shape_tensor = paddle.shape(x)
-        #     drop_axes = [axis] if isinstance(axis, int) else list(axis)
-        #     if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
-        #         raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
-        #                          .format(len(input_shape), max(drop_axes)))
-        #     if len(drop_axes) > len(input_shape):
-        #         raise ValueError(
-        #             "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
-        #             format(len(input_shape), len(drop_axes)))
-        #     mask_shape = [1] * len(input_shape)
-        #     if not in_dynamic_mode():
-        #         for i in drop_axes:
-        #             mask_shape[i] = input_shape_tensor[i]
-        #     else:
-        #         for i in drop_axes:
-        #             mask_shape[i] = input_shape[i]
-
-        #     #get mask
-        #     random_tensor = paddle.uniform(
-        #         mask_shape, dtype='float32', min=0., max=1.0)
-        #     p = full(shape=[1], fill_value=p, dtype='float32')
-        #     keep_mask = paddle.greater_equal(random_tensor, p)
-
-        #     scale_input = paddle.cast(scale_input, dtype)
-        #     keep_mask = paddle.cast(keep_mask, dtype)
-        #     ret = paddle.multiply(scale_input, keep_mask, name=name)
-        #     return ret
-        # else:  # test
-        #     ret = paddle.scale(
-        #         x, scale=keep_prob) if mode == 'downscale_in_infer' else x
-        #     return ret
+            scale_input = paddle.cast(scale_input, dtype)
+            keep_mask = paddle.cast(keep_mask, dtype)
+            ret = paddle.multiply(scale_input, keep_mask, name=name)
+            return ret
+        else:  # test
+            ret = paddle.scale(
+                x, scale=keep_prob) if mode == 'downscale_in_infer' else x
+            return ret
 
 
 def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
