@@ -319,18 +319,21 @@ class GeneralGrad {
             if (edge_.GetGradNode() == node) {
               auto autograd_meta = egr::AutogradMeta(edge_);
               Edge& pre_node_edge = pre_nodes_edges[i][j].GetMutableEdge();
-              // auto autograd_meta = (no_grad_var_nodes_inputmeta_map_)[node];
-              pre_node_edge.SetGradNode(
-                  std::make_shared<egr::GradNodeAccumulation>(&autograd_meta));
-
+              if (grad_node_trans_mapping_.count(node)) {
+                pre_node_edge.SetGradNode(grad_node_trans_mapping_[node]);
+              } else {
+                std::shared_ptr<GradNodeBase> shared_grad_node_accumulation =
+                    std::make_shared<egr::GradNodeAccumulation>(&autograd_meta);
+                pre_node_edge.SetGradNode(shared_grad_node_accumulation);
+                grad_node_trans_mapping_[node] = shared_grad_node_accumulation;
+              }
               auto* grad_node = pre_node_edge.GetGradNode();
-              VLOG(1) << "Setting next_node(" << node->name()
-                      << ")to AccumulationNode for node " << pre_nodes->name();
-
               copied_node_to_end_node_mapping_[node] = grad_node;
-
               input_target_nodes_inputmeta_map_[grad_node] =
                   input_target_nodes_inputmeta_map_[node];
+              VLOG(3) << "Setting next_node(" << node->name()
+                      << ")to AccumulationNode " << grad_node << " for node "
+                      << pre_nodes->name();
             }
           }
         }
@@ -349,10 +352,23 @@ class GeneralGrad {
         if (edge_.GetGradNode() == next_node.get()) {
           auto autograd_meta = egr::AutogradMeta(edge_);
           Edge& node_edge = nodes_edges[i][j].GetMutableEdge();
-          node_edge.SetGradNode(
-              std::make_shared<egr::GradNodeAccumulation>(&autograd_meta));
-          VLOG(1) << "Setting next_node(" << next_node.get()->name()
-                  << ")to AccumulationNode for node " << node->name();
+          if (grad_node_trans_mapping_.count(next_node.get())) {
+            node_edge.SetGradNode(grad_node_trans_mapping_[next_node.get()]);
+            VLOG(3) << "Setting next_node(" << next_node.get()->name()
+                    << ")to AccumulationNode "
+                    << grad_node_trans_mapping_[next_node.get()].get()
+                    << " for node " << node->name();
+          } else {
+            std::shared_ptr<GradNodeBase> shared_grad_node_accumulation =
+                std::make_shared<egr::GradNodeAccumulation>(&autograd_meta);
+            node_edge.SetGradNode(shared_grad_node_accumulation);
+            grad_node_trans_mapping_[next_node.get()] =
+                shared_grad_node_accumulation;
+            VLOG(3) << "Setting next_node(" << next_node.get()->name()
+                    << ")to AccumulationNode "
+                    << shared_grad_node_accumulation.get() << " for node "
+                    << node->name();
+          }
         }
       }
     }
@@ -382,13 +398,16 @@ class GeneralGrad {
 
           if (IsInputTargetNodes(node)) {
             if (meta.size() == 1 && IsPotentialStopNodes(next_node.get())) {
+              VLOG(3) << " trans case 1";
               SetNodeToAccumulationNode(node);
             } else if (meta.size() != 1 &&
                        IsPotentialStopNodes(next_node.get())) {
+              VLOG(3) << " trans case 2";
               SetNextNodeToAccumulationNode(node, next_node);
             }
           } else {
             if (IsNeededNodes(node) && !IsNeededNodes(next_node.get())) {
+              VLOG(3) << " trans case 3";
               SetNextNodeToAccumulationNode(node, next_node);
             }
           }
@@ -474,6 +493,7 @@ class GeneralGrad {
     orig_to_copied_node_mapping_.clear();
     copied_node_to_end_node_mapping_.clear();
     needed_nodes_.clear();
+    grad_node_trans_mapping_.clear();
   }
 
   GradNodeBase* CopyGradNode(const std::shared_ptr<GradNodeBase>& orig_node) {
@@ -571,6 +591,9 @@ class GeneralGrad {
   std::unordered_map<GradNodeBase*, GradNodeBase*>
       copied_node_to_end_node_mapping_;
   std::unordered_set<GradNodeBase*> needed_nodes_;
+  // Record which grad_node has been transformed to AccumulationNode
+  std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
+      grad_node_trans_mapping_;
 
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
