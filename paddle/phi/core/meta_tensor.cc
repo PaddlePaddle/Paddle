@@ -39,9 +39,7 @@ void MetaTensor::set_dims(const DDim& dims) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
   } else if (phi::SelectedRows::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<SelectedRows*>(tensor_)->mutable_value())
-        ->dims = dims;
+    static_cast<SelectedRows*>(tensor_)->set_height(dims[0]);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
