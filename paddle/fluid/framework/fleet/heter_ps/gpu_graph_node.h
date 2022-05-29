@@ -126,7 +126,7 @@ struct NeighborSampleQuery {
   int64_t *key;
   int sample_size;
   int len;
-  void initialize(int gpu_id, int64_t key, int sample_size, int len) {
+  void initialize(int gpu_id, uint64_t key, int sample_size, int len) {
     this->gpu_id = gpu_id;
     this->key = (int64_t *)key;
     this->sample_size = sample_size;
