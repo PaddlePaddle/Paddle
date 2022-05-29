@@ -524,103 +524,149 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-#if CUDNN_VERSION_MIN(7, 4, 1)
-      size_t workspace_size = 0;
-      size_t reserve_space_size = 0;
-      void *reserve_space_ptr = nullptr;
-      void *workspace_ptr = nullptr;
-      DenseTensor workspace_tensor;
-      DenseTensor reserve_space_tensor;
-      // Create reserve space and workspace for batch norm.
-      // Create tensor for each batchnorm op, it will be used in the
-      // backward. Thus this tensor shouldn't be temp.
-      // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
-      if (reserve_space == nullptr) {
-        reserve_space = &reserve_space_tensor;
-      }
-      PADDLE_ENFORCE_NOT_NULL(
-          reserve_space,
-          phi::errors::NotFound(
-              "The argument ReserveSpace of batch_norm op is not found."));
-      // --------------- cudnn batchnorm workspace ---------------
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::
-              cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
-                  /*handle=*/handle,
-                  /*mode=*/mode_,
-                  /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-                  /*xDesc=*/data_desc_,
-                  /*zDesc=*/nullptr,
-                  /*yDesc=*/data_desc_,
-                  /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-                  /*activationDesc=*/nullptr,
-                  /*sizeInBytes=*/&workspace_size));
-
-      // -------------- cudnn batchnorm reserve space --------------
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::
-              cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
-                  /*handle=*/handle,
-                  /*mode=*/mode_,
-                  /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
-                  /*activationDesc=*/nullptr,
-                  /*xDesc=*/data_desc_,
-                  /*sizeInBytes=*/&reserve_space_size));
-
-      reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
-      reserve_space_ptr =
-          static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
-      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-      workspace_ptr =
-          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
-              handle,
-              mode_,
-              CUDNN_BATCHNORM_OPS_BN,
-              CudnnDataType<T>::kOne(),
-              CudnnDataType<T>::kZero(),
-              data_desc_,
+      const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
+      if(use_native_kernel) {
+        const int num = transformed_x.numel();
+        const int block = 256;
+        const int max_threads = ctx.GetMaxPhysicalThreadCount();
+        const int max_blocks = std::max(max_threads / block, 1);
+        const int grid = std::min(C, max_blocks);
+        if (compute_format == DataLayout::kNCHW) {
+          BNForwardTraining<
+              T,
+              block,
+              DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
               transformed_x.template data<T>(),
-              nullptr,
-              nullptr,
-              data_desc_,
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              this_factor,
               transformed_y.template data<T>(),
-              bn_param_desc_,
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              this_factor,
-              ctx.template Alloc<BatchNormParamType<T>>(mean_out),
-              ctx.template Alloc<BatchNormParamType<T>>(variance_out),
-              epsilon,
-              ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
-              ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
-              nullptr,
-              workspace_ptr,
-              workspace_size,
-              reserve_space_ptr,
-              reserve_space_size));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnBatchNormalizationForwardTraining(
-              handle,
-              mode_,
-              CudnnDataType<T>::kOne(),
-              CudnnDataType<T>::kZero(),
-              data_desc_,
+              mean_out->template data<BatchNormParamType<T>>(),
+              variance_out->template data<BatchNormParamType<T>>(),
+              saved_mean->template data<BatchNormParamType<T>>(),
+              saved_variance->template data<BatchNormParamType<T>>());
+        } else {
+          BNForwardTraining<
+              T,
+              block,
+              DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
               transformed_x.template data<T>(),
-              data_desc_,
-              ctx.template Alloc<T>(&transformed_y),
-              bn_param_desc_,
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
-              this_factor,
-              ctx.template Alloc<BatchNormParamType<T>>(mean_out),
-              ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+              C,
+              N,
+              H * W * D,
               epsilon,
-              ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
-              ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
+              this_factor,
+              transformed_y.template data<T>(),
+              mean_out->template data<BatchNormParamType<T>>(),
+              variance_out->template data<BatchNormParamType<T>>(),
+              saved_mean->template data<BatchNormParamType<T>>(),
+              saved_variance->template data<BatchNormParamType<T>>());
+        }
+      } else {
+#if CUDNN_VERSION_MIN(7, 4, 1)
+        size_t workspace_size = 0;
+        size_t reserve_space_size = 0;
+        void *reserve_space_ptr = nullptr;
+        void *workspace_ptr = nullptr;
+        DenseTensor workspace_tensor;
+        DenseTensor reserve_space_tensor;
+        // Create reserve space and workspace for batch norm.
+        // Create tensor for each batchnorm op, it will be used in the
+        // backward. Thus this tensor shouldn't be temp.
+        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+        if (reserve_space == nullptr) {
+          reserve_space = &reserve_space_tensor;
+        }
+        PADDLE_ENFORCE_NOT_NULL(
+            reserve_space,
+            phi::errors::NotFound(
+                "The argument ReserveSpace of batch_norm op is not found."));
+        // --------------- cudnn batchnorm workspace ---------------
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::
+                cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+                    /*handle=*/handle,
+                    /*mode=*/mode_,
+                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                    /*xDesc=*/data_desc_,
+                    /*zDesc=*/nullptr,
+                    /*yDesc=*/data_desc_,
+                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
+                    /*activationDesc=*/nullptr,
+                    /*sizeInBytes=*/&workspace_size));
+
+        // -------------- cudnn batchnorm reserve space --------------
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::
+                cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+                    /*handle=*/handle,
+                    /*mode=*/mode_,
+                    /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+                    /*activationDesc=*/nullptr,
+                    /*xDesc=*/data_desc_,
+                    /*sizeInBytes=*/&reserve_space_size));
+
+        reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
+        reserve_space_ptr =
+            static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
+        workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+        workspace_ptr =
+            static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
+                handle,
+                mode_,
+                CUDNN_BATCHNORM_OPS_BN,
+                CudnnDataType<T>::kOne(),
+                CudnnDataType<T>::kZero(),
+                data_desc_,
+                transformed_x.template data<T>(),
+                nullptr,
+                nullptr,
+                data_desc_,
+                transformed_y.template data<T>(),
+                bn_param_desc_,
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                this_factor,
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+                epsilon,
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
+                nullptr,
+                workspace_ptr,
+                workspace_size,
+                reserve_space_ptr,
+                reserve_space_size));
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::cudnnBatchNormalizationForwardTraining(
+                handle,
+                mode_,
+                CudnnDataType<T>::kOne(),
+                CudnnDataType<T>::kZero(),
+                data_desc_,
+                transformed_x.template data<T>(),
+                data_desc_,
+                ctx.template Alloc<T>(&transformed_y),
+                bn_param_desc_,
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                this_factor,
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+                epsilon,
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
 #endif // CUDNN_VERSION_MIN(7, 4, 1)
+      }
 #endif
     }
   }
