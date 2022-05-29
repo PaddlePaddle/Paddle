@@ -1535,7 +1535,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                           new RuntimeInferShapeContext(*this, *runtime_ctx));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
 
-        this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
         (*pt_kernel_)(impl_->getKernelContext());
       } else {
         phi::KernelContext pt_kernel_context;
