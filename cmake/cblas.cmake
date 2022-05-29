@@ -52,6 +52,7 @@ if(NOT DEFINED CBLAS_PROVIDER)
   set(OPENBLAS_INCLUDE_SEARCH_PATHS
           ${OPENBLAS_ROOT}/include
           /usr/include
+          /usr/include/lapacke
           /usr/include/openblas
           /usr/local/opt/openblas/include)
   set(OPENBLAS_LIB_SEARCH_PATHS
@@ -75,7 +76,7 @@ if(NOT DEFINED CBLAS_PROVIDER)
     string(REGEX MATCH "OpenBLAS ([0-9]+\.[0-9]+\.[0-9]+)" tmp ${config_file})
     string(REGEX MATCH "([0-9]+\.[0-9]+\.[0-9]+)" ver ${tmp})
     
-    if (${ver} VERSION_GREATER_EQUAL "0.3.7")
+    if (${ver} VERSION_GREATER_EQUAL "0.3.5")
       set(CBLAS_PROVIDER OPENBLAS)
       set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
       set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
