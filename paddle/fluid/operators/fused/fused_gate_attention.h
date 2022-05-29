@@ -80,7 +80,10 @@ struct GateAttentionConfig {
     q_dim = query->dims()[3];
 
     if (merge_qkv) {
-      PADDLE_ENFORCE_NOT_NULL(qkv_weight);
+      PADDLE_ENFORCE_NOT_NULL(
+          qkv_weight,
+          platform::errors::NotFound("The input qkv_weight can not be nullptr "
+                                     "when merge_qkv is true."));
 
       // When q_dim == kv_dim, QKV matmul can be computed merged.
       // qkv_weight: shape=[3, num_heads, key_dim, q_dim]
@@ -93,8 +96,14 @@ struct GateAttentionConfig {
       qkv_transpose_out_dims = {3,         batch_size, seq_len_m,
                                 num_heads, seq_len_r,  key_dim};
     } else {
-      PADDLE_ENFORCE_NOT_NULL(key);
-      PADDLE_ENFORCE_NOT_NULL(query_weight);
+      PADDLE_ENFORCE_NOT_NULL(
+          key,
+          platform::errors::NotFound(
+              "The input key can not be nullptr when merge_qkv is false."));
+      PADDLE_ENFORCE_NOT_NULL(
+          query_weight,
+          platform::errors::NotFound("The input query_weight can not be "
+                                     "nullptr when merge_qkv is false."));
 
       // When q_dim != kv_dim, QKV matmul must be computed saparately.
       // key: shape=[batch_size, seq_len_m, m_size, kv_dim]
@@ -286,7 +295,10 @@ class FMHAGateRef {
     T* v_ptr = nullptr;
     if (merge_qkv_) {
       // qkv_transpose_out = transpose(qkv_out)
-      PADDLE_ENFORCE_NOT_NULL(qkv_transpose_out);
+      PADDLE_ENFORCE_NOT_NULL(
+          qkv_transpose_out,
+          platform::errors::NotFound("The input qkv_transpose_out can not be "
+                                     "nullptr when merge_qkv is true."));
 
       Tensor* qkv_out = config->GetQKVOut(dev_ctx_);
       ComputeQKVTransposeForward(*qkv_out, qkv_transpose_out);
@@ -298,9 +310,18 @@ class FMHAGateRef {
       k_ptr = q_ptr + q_size;
       v_ptr = k_ptr + q_size;
     } else {
-      PADDLE_ENFORCE_NOT_NULL(q_transpose_out);
-      PADDLE_ENFORCE_NOT_NULL(k_transpose_out);
-      PADDLE_ENFORCE_NOT_NULL(v_transpose_out);
+      PADDLE_ENFORCE_NOT_NULL(
+          q_transpose_out,
+          platform::errors::NotFound("The input q_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
+      PADDLE_ENFORCE_NOT_NULL(
+          k_transpose_out,
+          platform::errors::NotFound("The input k_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
+      PADDLE_ENFORCE_NOT_NULL(
+          v_transpose_out,
+          platform::errors::NotFound("The input v_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
 
       Tensor* query_out = config->GetQueryOut(dev_ctx_);
       Tensor* key_out = config->GetKeyOut(dev_ctx_);
@@ -377,7 +398,10 @@ class FMHAGateRef {
     Tensor v_transpose_out_grad;
     Tensor qkv_transpose_out_grad;
     if (merge_qkv_) {
-      PADDLE_ENFORCE_NOT_NULL(qkv_transpose_out);
+      PADDLE_ENFORCE_NOT_NULL(
+          qkv_transpose_out,
+          platform::errors::NotFound("The input qkv_transpose_out can not be "
+                                     "nullptr when merge_qkv is true."));
 
       int64_t q_size = config->GetQuerySize();
       q_ptr = qkv_transpose_out->data<T>();
@@ -390,9 +414,18 @@ class FMHAGateRef {
       k_grad_ptr = q_grad_ptr + q_size;
       v_grad_ptr = k_grad_ptr + q_size;
     } else {
-      PADDLE_ENFORCE_NOT_NULL(q_transpose_out);
-      PADDLE_ENFORCE_NOT_NULL(k_transpose_out);
-      PADDLE_ENFORCE_NOT_NULL(v_transpose_out);
+      PADDLE_ENFORCE_NOT_NULL(
+          q_transpose_out,
+          platform::errors::NotFound("The input q_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
+      PADDLE_ENFORCE_NOT_NULL(
+          k_transpose_out,
+          platform::errors::NotFound("The input k_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
+      PADDLE_ENFORCE_NOT_NULL(
+          v_transpose_out,
+          platform::errors::NotFound("The input v_transpose_out can not be "
+                                     "nullptr when merge_qkv is false."));
 
       q_ptr = q_transpose_out->data<T>();
       k_ptr = k_transpose_out->data<T>();
@@ -563,7 +596,9 @@ class FMHAGateRef {
                                       Tensor* src_mask_grad,
                                       Tensor* qk_out_grad,
                                       Tensor* nonbatched_bias_grad) {
-    PADDLE_ENFORCE_NOT_NULL(qk_out_grad);
+    PADDLE_ENFORCE_NOT_NULL(
+        qk_out_grad,
+        platform::errors::NotFound("The qk_out_grad can not be nullptr."));
 
     PADDLE_ENFORCE_EQ(qk_out_grad->dims(), softmax_out->dims(),
                       platform::errors::InvalidArgument(
