@@ -139,11 +139,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
-  for (auto node : subgraph) {
-    if (node->NodeType() == Node::Type::kOperation) {
-      VLOG(5) << "trt subgraph has op: " << (node->Op()->Type());
-    }
-  }
 
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
@@ -291,7 +286,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
   // serialization is affected by max_batch_size, but calibration is not.
-  // So we use separate engine keys in serialization and calibration.
+  // So we use seperate engine keys in serialization and calibration.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0),
       std::to_string(max_batch_size),
@@ -377,12 +372,18 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   Get<int>("workspace_size"), precision_mode, calibrator.get(),
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
                   opt_input_shape, disable_trt_plugin_fp16);
-  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
   trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
+  trt_engine->SetTransformerPosid(
+      Get<std::string>("tensorrt_transformer_posid"));
+  trt_engine->SetTransformerMaskid(
+      Get<std::string>("tensorrt_transformer_maskid"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-  trt_engine->SetWithErnie(graph->Has(framework::ir::kMultiheadMatmulPass));
+  trt_engine->SetWithErnie(
+      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

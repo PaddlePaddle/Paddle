@@ -55,9 +55,13 @@ void IRPassManager::CreatePasses(Argument *argument,
   int pass_num = 0;
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
-    pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
+    pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
     pass->Set("with_interleaved",
               new bool(argument->tensorrt_with_interleaved()));
+    pass->Set("tensorrt_transformer_posid",
+              new std::string(argument->tensorrt_transformer_posid()));
+    pass->Set("tensorrt_transformer_maskid",
+              new std::string(argument->tensorrt_transformer_maskid()));
     pass->Set("disable_logs", new bool(argument->disable_logs()));
     auto precision_mode = argument->tensorrt_precision_mode();
     bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;

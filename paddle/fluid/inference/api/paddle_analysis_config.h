@@ -332,14 +332,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
-  /// \brief Turn on CustomDevice.
-  ///
-  /// \param device_type device_type the custom device to use.
-  ///
-  /// \param device_id device_id the custom device to use (default is 0).
-  ///
-  void EnableCustomDevice(const std::string& device_type, int device_id);
-  ///
   /// \brief Turn on ONNXRuntime.
   ///
   void EnableONNXRuntime();
@@ -374,11 +366,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
-  /// \brief A boolean state telling whether the CustomDevice is turned on.
-  ///
-  /// \return bool Whether the CustomDevice is turned on.
-  ///
-  bool use_custom_device() const { return use_custom_device_; }
   ///
   /// \brief A boolean state telling whether the ONNXRuntime is turned on.
   ///
@@ -410,22 +397,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
-  /// \brief Get the number of IPU device .
+  /// \brief Get the the number of IPU device .
   ///
   /// \return int The number of IPU device.
   ///
   int ipu_device_num() const { return ipu_device_num_; }
-  ///
-  /// \brief Get the custom device id.
-  ///
-  /// \return int The custom device id.
-  ///
-  int custom_device_id() const { return custom_device_id_; }
-  /// \brief Get the custom device type.
-  ///
-  /// \return string The custom device type.
-  ///
-  std::string custom_device_type() const { return custom_device_type_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -625,7 +601,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
-  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_varseqlen_enabled() { return trt_use_varseqlen_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -924,11 +900,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_npu_{false};
   int npu_device_id_{0};
 
-  // CustomDevice related
-  bool use_custom_device_{false};
-  int custom_device_id_{0};
-  std::string custom_device_type_;
-
   // ONNXRuntime related
   bool use_onnxruntime_{false};
   bool enable_ort_optimization_{false};
@@ -954,8 +925,10 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
-  bool trt_use_oss_{false};
+  bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  std::string tensorrt_transformer_posid_{""};
+  std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
