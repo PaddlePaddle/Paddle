@@ -1529,7 +1529,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1, platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
-      if (enable_cache_runtime_context_) {
+      if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
+          !need_prepare_data_) {
         impl_ =
             new CacheImpl(new phi::KernelContext(),
                           new RuntimeInferShapeContext(*this, *runtime_ctx));
