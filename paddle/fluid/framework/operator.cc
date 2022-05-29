@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -1281,6 +1278,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
+// TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
+// device, it's ugly, and we will refactor in the future.
+#if defined(PADDLE_WITH_XPU_KP)
+  bool use_phi_xpu_kp = false;
+#endif
+
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
@@ -1298,21 +1301,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
 
-      pt_kernel_name = kernel_signature_->name;
-      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-      pt_kernel_.reset(
-          new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-              pt_kernel_name, pt_kernel_key)));
-
-      if (pt_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
-                << pt_kernel_name << " | kernel key: " << pt_kernel_key
-                << " | kernel: " << *pt_kernel_;
-      } else {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
-                << "` not found.";
-      }
-    } else {
       pt_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -1335,15 +1323,74 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         if (is_xpu_kp_support) {
           auto expected_kernel_key_library_type = kernel_type_->library_type_;
           kernel_type_->library_type_ = LibraryType::kKP;
-          VLOG(3) << "modifing XPU KP kernel in static graph: " << type_
+          VLOG(3) << "modifing XPU KP kernel in static graph: "
+                  << pt_kernel_name
                   << ", using_kernel_key:" << *kernel_type_.get();
           auto try_pt_kernel_key =
               TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
           if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
                                                         try_pt_kernel_key)) {
             kernel_type_->library_type_ = expected_kernel_key_library_type;
-            VLOG(3) << "modify XPU KP kernel in static graph: " << type_
-                    << " is failed " << *kernel_type_.get();
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is failed " << *kernel_type_.get();
+          } else {
+            use_phi_xpu_kp = true;
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is succeed " << *kernel_type_.get();
+          }
+        }
+      }
+#endif
+      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+      pt_kernel_.reset(
+          new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+              pt_kernel_name, pt_kernel_key)));
+
+      if (pt_kernel_->IsValid()) {
+        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
+                << pt_kernel_name << " | kernel key: " << pt_kernel_key
+                << " | kernel: " << *pt_kernel_;
+      } else {
+        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
+                << "` not found.";
+      }
+    } else {
+      pt_kernel_name = kernel_signature_->name;
+// NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
+// I can't understand it, it's really confusing.
+// But we still need to keep this to avoid errors.
+#ifdef PADDLE_WITH_XPU_KP
+      if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
+        bool use_xpu_kp_kernel_rt =
+            FLAGS_run_kp_kernel &&
+            paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+        bool use_xpu_kp_kernel_debug =
+            paddle::platform::is_in_xpu_kpwhite_list(type_);
+        if (use_xpu_kp_kernel_rt) {
+          VLOG(3) << "phi xpu_kp using rt mode in static graph";
+        }
+        if (use_xpu_kp_kernel_debug) {
+          VLOG(3) << "phi xpu_kp using debug mode in static graph";
+        }
+        bool is_xpu_kp_support =
+            (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+        if (is_xpu_kp_support) {
+          auto expected_kernel_key_library_type = kernel_type_->library_type_;
+          kernel_type_->library_type_ = LibraryType::kKP;
+          VLOG(3) << "modifing XPU KP kernel in static graph: "
+                  << pt_kernel_name
+                  << ", using_kernel_key:" << *kernel_type_.get();
+          auto try_pt_kernel_key =
+              TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+          if (!phi::KernelFactory::Instance().HasKernel(pt_kernel_name,
+                                                        try_pt_kernel_key)) {
+            kernel_type_->library_type_ = expected_kernel_key_library_type;
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is failed " << *kernel_type_.get();
+          } else {
+            use_phi_xpu_kp = true;
+            VLOG(3) << "modify XPU KP kernel in static graph: "
+                    << pt_kernel_name << " is succeed " << *kernel_type_.get();
           }
         }
       }
@@ -1360,11 +1407,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
         paddle::platform::is_in_xpu_black_list(type_);
 #endif
+#ifdef PADDLE_WITH_XPU_KP
+    bool use_xpu_kp_kernel_rt =
+        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+        paddle::platform::is_in_xpu_kpwhite_list(type_);
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+#endif
+
     if (pt_kernel_->IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
-        ) {
+#if defined(PADDLE_WITH_XPU_KP)
+        && (!is_xpu_unsupport || use_phi_xpu_kp)
+#endif
+            ) {
       run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1374,15 +1435,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // we need to select the heterogeneous kernel in fluid, but the kernel
 // registered in KP use library_type[KP], we need to modify it.
 #ifdef PADDLE_WITH_XPU_KP
-      bool use_xpu_kp_kernel_rt =
-          paddle::platform::is_xpu_place(kernel_type_->place_) &&
-          FLAGS_run_kp_kernel &&
-          paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
-      bool use_xpu_kp_kernel_debug =
-          paddle::platform::is_xpu_place(kernel_type_->place_) &&
-          paddle::platform::is_in_xpu_kpwhite_list(type_);
-      bool is_xpu_kp_support =
-          (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
       if (is_xpu_kp_support) {
         kernel_type_->library_type_ = LibraryType::kKP;
       }
@@ -1609,7 +1661,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
        paddle::platform::is_in_xpu_black_list(type_))) {
-    VLOG(3) << "missing XPU kernel: " << type_
+    VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -1625,10 +1677,10 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     if (use_xpu_kp_kernel_rt) {
-      VLOG(3) << "xpu_kp using rt mode ";
+      VLOG(3) << "fluid xpu_kp using rt mode ";
     }
     if (use_xpu_kp_kernel_debug) {
-      VLOG(3) << "xpu_kp using debug mode ";
+      VLOG(3) << "fluid xpu_kp using debug mode ";
     }
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
     if (is_xpu_kp_support) {
@@ -1645,7 +1697,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
         expected_kernel_key.place_ = platform::CPUPlace();
         kernel_iter = kernels.find(expected_kernel_key);
       } else {
-        VLOG(3) << "using XPU KP kernel: " << type_
+        VLOG(3) << "fluid using XPU KP kernel: " << type_
                 << ", using_kernel_key:" << expected_kernel_key;
       }
     }
@@ -1654,7 +1706,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
          paddle::platform::is_in_xpu_black_list(type_));
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-      VLOG(3) << "missing XPU kernel: " << type_
+      VLOG(3) << "fluid missing XPU kernel: " << type_
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
       expected_kernel_key.place_ = platform::CPUPlace();
@@ -1856,7 +1908,8 @@ Scope* OperatorWithKernel::PrepareData(
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
             (paddle::platform::MKLDNNDeviceContext::tls()
-                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
+            (tensor_in->dims().size() >= 3)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
@@ -2317,15 +2370,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+             std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+             std::type_index(typeid(paddle::optional<phi::SelectedRows>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<
-                        const std::vector<const phi::DenseTensor*>>)))) {
+             std::type_index(typeid(
+                 paddle::optional<std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2417,163 +2467,210 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
-      auto attr_iter = Attrs().find(attr_names[i]);
-      if (attr_iter != Attrs().end()) {  // shape is in the attribute
-        auto& attr = attr_iter->second;
-        if (AttrTypeID(attr) == proto::AttrType::LONGS) {
-          pt_kernel_context->EmplaceBackAttr(std::move(
-              phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
-        } else if (AttrTypeID(attr) == proto::AttrType::INTS) {
-          pt_kernel_context->EmplaceBackAttr(std::move(
-              phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
-        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
-          pt_kernel_context->EmplaceBackAttr(
-              std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to IntArray when "
-              "construct KernelContext.",
-              attr_names[i]));
-        }
-      } else {  // shape is in the input
-        auto& ins_vector = ctx.inputs.at(attr_names[i]);
-        if (ins_vector.size() == 1) {  // ShapeTensor
-          pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
-        } else {  // ShapeTensorList
-          pt_kernel_context->EmplaceBackAttr(
-              std::move(experimental::MakePhiIntArrayFromVarList(ins_vector)));
-        }
-      }
-    } else if (attr_defs[i].type_index == phi::AttributeType::SCALAR) {
-      auto attr_iter = Attrs().find(attr_names[i]);
-      if (attr_iter != Attrs().end()) {  // scalar is in the attribute
-        auto& attr = attr_iter->second;
-        if (AttrTypeID(attr) == proto::AttrType::FLOAT) {
-          pt_kernel_context->EmplaceBackAttr(
-              std::move(phi::Scalar(BOOST_GET_CONST(float, attr))));
-        } else if (AttrTypeID(attr) == proto::AttrType::STRING) {
-          pt_kernel_context->EmplaceBackAttr(
-              std::move(phi::Scalar(BOOST_GET_CONST(std::string, attr))));
-        } else if (AttrTypeID(attr) == proto::AttrType::INT) {
-          pt_kernel_context->EmplaceBackAttr(
-              std::move(phi::Scalar(BOOST_GET_CONST(int, attr))));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to Scalar when construct "
-              "KernelContext.",
-              attr_names[i]));
-        }
-      } else {
-        auto& ins_vector = ctx.inputs.at(attr_names[i]);
-        pt_kernel_context->EmplaceBackAttr(
-            std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
-      }
-
-    } else if (attr_defs[i].type_index == phi::AttributeType::SCALARS) {
-      auto& attr = Attrs().at(attr_names[i]);
-      if (AttrTypeID(attr) == proto::AttrType::INTS) {
-        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (AttrTypeID(attr) == proto::AttrType::LONGS) {
-        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (AttrTypeID(attr) == proto::AttrType::FLOATS) {
-        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (AttrTypeID(attr) == proto::AttrType::FLOAT64S) {
-        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported cast op attribute `%s` to vector<Scalar> when "
-            "construct KernelContext.",
-            attr_names[i]));
-      }
-    } else {
-      auto attr_it = attrs_.find(attr_names[i]);
-      if (attr_defs[i].type_index == phi::AttributeType::INT32) {
-        if (attr_it == attrs_.end()) {
-          auto in_it = ctx.inputs.find(attr_names[i]);
-          if (in_it != ctx.inputs.end()) {
-            // get data from input
-            auto val = experimental::MakePhiScalarFromVar(*(in_it->second[0]));
-            int32_t val_int = val.template to<int32_t>();
-            pt_kernel_context->EmplaceBackAttr(val_int);
-          } else {
-            PADDLE_THROW(platform::errors::NotFound(
-                "can not find attribute `%s` both in attribute and input ",
-                attr_names[i]));
+    VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
+            << attr_defs[i].type_index;
+    auto attr_iter = Attrs().find(attr_names[i]);
+    switch (attr_defs[i].type_index) {
+      case phi::AttributeType::SCALAR:
+        if (attr_iter != Attrs().end()) {
+          // scalar is in the attribute
+          switch (AttrTypeID(attr_iter->second)) {
+            case proto::AttrType::FLOAT:
+              pt_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(BOOST_GET_CONST(float, attr_iter->second))));
+              break;
+            case proto::AttrType::INT:
+              pt_kernel_context->EmplaceBackAttr(std::move(
+                  phi::Scalar(BOOST_GET_CONST(int, attr_iter->second))));
+              break;
+            case proto::AttrType::STRING:
+              pt_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
+                  BOOST_GET_CONST(std::string, attr_iter->second))));
+              break;
+            default:
+              PADDLE_THROW(platform::errors::Unimplemented(
+                  "Unsupported cast op attribute `%s` to Scalar when construct "
+                  "KernelContext in dygraph.",
+                  attr_names[i]));
           }
-        } else {
-          pt_kernel_context->EmplaceBackAttr(
-              BOOST_GET_CONST(int, attr_it->second));
+        } else {  // scalar is in the input
+          auto& ins_vector = ctx.inputs.at(attr_names[i]);
+          pt_kernel_context->EmplaceBackAttr(std::move(
+              experimental::MakePhiScalarFromVar(*ins_vector.front())));
         }
-      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(float, attr_it->second));
-      } else if (attr_defs[i].type_index == phi::AttributeType::BOOL) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(bool, attr_it->second));
-      } else if (attr_defs[i].type_index == phi::AttributeType::INT64) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(int64_t, attr_it->second));
-      } else if (attr_defs[i].type_index == phi::AttributeType::STRING) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(std::string, attr_it->second));
-      } else if (attr_defs[i].type_index == phi::AttributeType::DATA_TYPE) {
-        auto data_type = paddle::framework::TransToPhiDataType(
-            static_cast<framework::proto::VarType::Type>(
-                BOOST_GET_CONST(int, attr_it->second)));
-        pt_kernel_context->EmplaceBackAttr(data_type);
-      } else if (attr_defs[i].type_index == phi::AttributeType::INT64S) {
-        if (AttrTypeID(attr_it->second) == proto::AttrType::LONGS) {
-          pt_kernel_context->EmplaceBackAttr(
-              BOOST_GET_CONST(std::vector<int64_t>, attr_it->second));
-        } else if (AttrTypeID(attr_it->second) == proto::AttrType::INTS) {
-          // Emplace Back Attr according to the type of Phi_Kernel args.
-          const auto& vector_int_attr =
-              BOOST_GET_CONST(std::vector<int>, attr_it->second);
-          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
-                                                       vector_int_attr.end());
-          pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
+        break;
+      case phi::AttributeType::INT_ARRAY:
+        if (attr_iter != Attrs().end()) {
+          switch (AttrTypeID(attr_iter->second)) {
+            case proto::AttrType::INTS:
+              pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
+                  BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+              break;
+            case proto::AttrType::LONGS:
+              pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
+                  BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+              break;
+            case proto::AttrType::INT:
+              pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
+                  &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+              break;
+            case proto::AttrType::LONG:
+              pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
+                  &BOOST_GET_CONST(int64_t, attr_iter->second), 1)));
+              break;
+            default:
+              PADDLE_THROW(platform::errors::Unimplemented(
+                  "Unsupported cast op attribute `%s` to IntArray when "
+                  "construct KernelContext.",
+                  attr_names[i]));
+          }
+        } else {  // shape is in the input
+          auto& ins_vector = ctx.inputs.at(attr_names[i]);
+          if (ins_vector.size() == 1) {  // ShapeTensor
+            pt_kernel_context->EmplaceBackAttr(std::move(
+                experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
+          } else {  // ShapeTensorList
+            pt_kernel_context->EmplaceBackAttr(std::move(
+                experimental::MakePhiIntArrayFromVarList(ins_vector)));
+          }
         }
-      } else if (attr_defs[i].type_index == phi::AttributeType::INT32S) {
-        const auto& vector_int_attr =
-            BOOST_GET_CONST(std::vector<int>, attr_it->second);
-        pt_kernel_context->EmplaceBackAttr(vector_int_attr);
-      } else if (attr_defs[i].type_index == phi::AttributeType::STRINGS) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
-      } else if (attr_defs[i].type_index == phi::AttributeType::FLOAT32S) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<float>, attr_it->second));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported cast op attribute `%s` when construct "
-            "KernelContext.",
-            attr_names[i]));
+        break;
+      case phi::AttributeType::SCALARS: {
+        PADDLE_ENFORCE_NE(
+            attr_iter, Attrs().end(),
+            platform::errors::NotFound("(%s) is not found in AttributeMap when "
+                                       "buildind static KernelContext.",
+                                       attr_names[i]));
+        switch (AttrTypeID(attr_iter->second)) {
+          case proto::AttrType::INTS: {
+            const auto& vec =
+                BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::LONGS: {
+            const auto& vec =
+                BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::FLOATS: {
+            const auto& vec =
+                BOOST_GET_CONST(std::vector<float>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::FLOAT64S: {
+            const auto& vec =
+                BOOST_GET_CONST(std::vector<double>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          case proto::AttrType::BOOLEANS: {
+            const auto& vec =
+                BOOST_GET_CONST(std::vector<bool>, attr_iter->second);
+            std::vector<phi::Scalar> scalar_list;
+            scalar_list.reserve(vec.size());
+            for (const auto& val : vec) {
+              scalar_list.emplace_back(val);
+            }
+            pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+          } break;
+          default:
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported cast op attribute `%s` to vector<Scalar> when "
+                "construct KernelContext.",
+                attr_names[i]));
+        }
+      } break;
+      default: {
+        PADDLE_ENFORCE_NE(
+            attr_iter, Attrs().end(),
+            platform::errors::NotFound("(%s) is not found in AttributeMap when "
+                                       "buildind static KernelContext.",
+                                       attr_names[i]));
+        switch (attr_defs[i].type_index) {
+          case phi::AttributeType::FLOAT32:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(float, attr_iter->second));
+            break;
+          case phi::AttributeType::INT32:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(int, attr_iter->second));
+            break;
+          case phi::AttributeType::BOOL:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(bool, attr_iter->second));
+            break;
+          case phi::AttributeType::INT64:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(int64_t, attr_iter->second));
+            break;
+          case phi::AttributeType::INT32S:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<int>, attr_iter->second));
+            break;
+          case phi::AttributeType::DATA_TYPE: {
+            auto data_type = framework::TransToPhiDataType(
+                static_cast<framework::proto::VarType::Type>(
+                    BOOST_GET_CONST(int, attr_iter->second)));
+            pt_kernel_context->EmplaceBackAttr(data_type);
+          } break;
+          case phi::AttributeType::STRING:
+            pt_kernel_context->EmplaceBackAttr(
+                std::move(BOOST_GET_CONST(std::string, attr_iter->second)));
+            break;
+          case phi::AttributeType::INT64S:
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::LONGS:
+                pt_kernel_context->EmplaceBackAttr(
+                    BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second));
+                break;
+              case proto::AttrType::INTS: {
+                const auto& vector_int_attr =
+                    BOOST_GET_CONST(std::vector<int>, attr_iter->second);
+                const std::vector<int64_t> vector_int64_attr(
+                    vector_int_attr.begin(), vector_int_attr.end());
+                pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
+              } break;
+              default:
+                PADDLE_THROW(platform::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to vector<int64_t> "
+                    "when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
+            break;
+          case phi::AttributeType::FLOAT32S:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<float>, attr_iter->second));
+            break;
+          case phi::AttributeType::STRINGS:
+            pt_kernel_context->EmplaceBackAttr(
+                BOOST_GET_CONST(std::vector<std::string>, attr_iter->second));
+            break;
+          default:
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported cast op attribute `%s` when construct "
+                "KernelContext in dygraph.",
+                attr_names[i]));
+        }
       }
     }
   }

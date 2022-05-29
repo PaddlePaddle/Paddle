@@ -106,9 +106,6 @@ namespace phi {
 class ErrorSummary;
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_int64(gpu_allocator_retry_time);
-#endif
 DECLARE_int32(call_stack_level);
 
 namespace paddle {
@@ -539,7 +536,7 @@ inline void retry_sleep(unsigned milliseconds) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);    \
+      paddle::platform::retry_sleep(10000);                             \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \
@@ -727,7 +724,7 @@ inline void retry_sleep(unsigned millisecond) {
         ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
-      ::paddle::platform::retry_sleep(FLAGS_gpu_allocator_retry_time);  \
+      ::paddle::platform::retry_sleep(10000);                           \
       __cond__ = (COND);                                                \
       ++retry_count;                                                    \
     }                                                                   \

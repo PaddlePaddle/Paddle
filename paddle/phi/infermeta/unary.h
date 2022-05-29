@@ -80,6 +80,11 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
+                     const std::string& equation,
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache);
+
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
@@ -302,8 +307,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
-                      MetaTensor* xshape,
-                      MetaTensor* out);
+                      MetaTensor* out,
+                      MetaTensor* xshape);
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
                               const std::vector<int>& axes,
@@ -421,8 +426,8 @@ void UniqueRawInferMeta(const MetaTensor& x,
 
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
-                        MetaTensor* xshape,
                         MetaTensor* out,
+                        MetaTensor* xshape,
                         MetaConfig config = MetaConfig());
 
 void UnStackInferMeta(const MetaTensor& x,
@@ -431,7 +436,7 @@ void UnStackInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> outs);
 
 void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
+                        const Scalar& depth,
                         DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out);

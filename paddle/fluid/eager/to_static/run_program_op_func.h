@@ -69,9 +69,6 @@ inline void run_program_dygraph_function(
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
-    // Set Next Edges
-    grad_node->AddEdges(&p_autograd_x, /*slot id*/ 0);
-    grad_node->AddEdges(&p_autograd_params, /*slot id*/ 1);
 
     egr::EagerUtils::SetOutRankWithSlot(&p_autograd_outs, 0);
 

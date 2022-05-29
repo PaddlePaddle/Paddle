@@ -22,7 +22,7 @@ using Tensor = framework::Tensor;
 const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
-  // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits
+  // Add this check is due to Ascend SigmoidCrossEntropyWithLogits
   // and SigmoidCrossEntropyWithLogitsGrad does't supoort
   // attr normalize and ignore_index
   bool normalize = ctx.Attr<bool>("normalize");

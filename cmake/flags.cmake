@@ -142,12 +142,10 @@ set(COMMON_FLAGS
     -Wno-unused-function
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
-    -Wno-error=parentheses-equality # Warnings in pybind11
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     ${fsanitize}
 )
 
@@ -156,6 +154,10 @@ if(WITH_IPU)
         -Wno-sign-compare # Warnings in Popart
         -Wno-non-virtual-dtor # Warnings in Popart
     )
+endif()
+
+if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
+    set(COMMON_FLAGS ${COMMON_FLAGS} -faligned-new)
 endif()
 
 if(NOT APPLE)

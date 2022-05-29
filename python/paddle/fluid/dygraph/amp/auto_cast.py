@@ -276,9 +276,10 @@ def amp_guard(enable=True,
     if enable and not (tracer._expected_place.is_gpu_place() or
                        tracer._expected_place.is_xpu_place() or
                        tracer._expected_place.is_mlu_place() or
-                       tracer._expected_place.is_npu_place()):
+                       tracer._expected_place.is_npu_place() or
+                       tracer._expected_place.is_custom_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, and NPUPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
     # For npu:
@@ -292,6 +293,10 @@ def amp_guard(enable=True,
     # For mlu:
     if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
         warnings.warn('MLUPlace only support float16 amp.')
+        enable = False
+    # For custom device:
+    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+        warnings.warn('CustomPlace only support float16 amp.')
         enable = False
     # For gpu float16: Compute Capability should >= 7.
     # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.

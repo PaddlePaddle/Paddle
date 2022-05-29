@@ -35,7 +35,6 @@ from .utils import get_all_distributed_main_program
 from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 
-paddle.enable_static()
 paddle.seed(123)
 random.seed(123)
 np.random.seed(123)

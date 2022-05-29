@@ -128,6 +128,16 @@ PD_REGISTER_KERNEL(minimum_grad,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(elementwise_heaviside_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_KERNEL(elementwise_pow_grad,
                    GPU,
                    ALL_LAYOUT,

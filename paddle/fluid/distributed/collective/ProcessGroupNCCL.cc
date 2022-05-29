@@ -428,6 +428,53 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   return task;
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
+    phi::DenseTensor& tensors, int dst_rank, int offset, int length) {
+  // CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+
+  phi::DenseTensor flatten_tensor;
+  flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
+
+  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
+
+  std::vector<phi::DenseTensor> shared_tensors;
+  shared_tensors.push_back(shared_input);
+
+  auto task = PointToPoint(shared_tensors,
+                           [&](phi::DenseTensor& input, ncclComm_t comm,
+                               const gpuStream_t& stream, int dst_rank) {
+                             return platform::dynload::ncclSend(
+                                 input.data(), input.numel(),
+                                 platform::ToNCCLDataType(input.dtype()),
+                                 dst_rank, comm, stream);
+                           },
+                           dst_rank, CommType::SEND);
+  return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
+    phi::DenseTensor& tensors, int src_rank, int offset, int length) {
+  // phi::DenseTensor shared_input = tensors.Slice(offset, offset+length);
+
+  phi::DenseTensor flatten_tensor;
+  flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
+  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
+
+  std::vector<phi::DenseTensor> shared_tensors;
+  shared_tensors.push_back(shared_input);
+
+  auto task = PointToPoint(shared_tensors,
+                           [&](phi::DenseTensor& output, ncclComm_t comm,
+                               const gpuStream_t& stream, int src_rank) {
+                             return platform::dynload::ncclRecv(
+                                 output.data(), output.numel(),
+                                 platform::ToNCCLDataType(output.dtype()),
+                                 src_rank, comm, stream);
+                           },
+                           src_rank, CommType::RECV);
+  return task;
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {

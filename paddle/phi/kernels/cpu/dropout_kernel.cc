@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      paddle::optional<const DenseTensor&> seed_tensor,
+                      const paddle::optional<DenseTensor>& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,

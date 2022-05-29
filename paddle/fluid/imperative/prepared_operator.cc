@@ -233,14 +233,18 @@ PreparedOp PrepareImpl(
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
         expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-        VLOG(3) << "modifing XPU KP kernel: " << op.Type()
+        VLOG(3) << "modifing XPU KP kernel: " << pt_kernel_name
                 << ", using_kernel_key:" << expected_kernel_key;
+
         phi::KernelKey try_pt_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
         if (!phi_kernel_factory.HasKernel(pt_kernel_name, try_pt_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
-          VLOG(3) << "modify XPU KP kernel: " << op.Type() << " is failed "
-                  << expected_kernel_key;
+          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+                  << " in dynamic graph is failed " << expected_kernel_key;
+        } else {
+          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+                  << " in dynamic graph is succeed " << expected_kernel_key;
         }
       }
     }
@@ -313,9 +317,11 @@ PreparedOp PrepareImpl(
                 << " | kernel key: " << pt_cpu_kernel_key
                 << " | kernel: " << pt_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, empty_ctx, expected_kernel_key, arg_map_fn,
-                          default_kernel_signature, std::move(kernel_signature),
-                          pt_cpu_kernel, cpu_ctx);
+        return PreparedOp(
+            op, empty_ctx,
+            framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
+            arg_map_fn, default_kernel_signature, std::move(kernel_signature),
+            pt_cpu_kernel, cpu_ctx);
       }
     }
   }
@@ -332,7 +338,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-    VLOG(3) << "missing XPU kernel: " << op.Type()
+    VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -343,20 +349,20 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_XPU_KP
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
     if (use_xpu_kp_kernel_rt) {
-      VLOG(3) << "xpu_kp using rt mode ";
+      VLOG(3) << "fluid xpu_kp using rt mode ";
     }
     if (use_xpu_kp_kernel_debug) {
-      VLOG(3) << "xpu_kp using debug mode ";
+      VLOG(3) << "fluid xpu_kp using debug mode ";
     }
     if (is_xpu_kp_support) {
       expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
       kernel_iter = kernels.find(expected_kernel_key);
-      VLOG(3) << "using XPU KP kernel: " << op.Type()
+      VLOG(3) << "using fluid XPU KP kernel: " << op.Type()
               << ", using_kernel_key:" << expected_kernel_key;
     }
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
-      VLOG(3) << "missing XPU kernel: " << op.Type()
+      VLOG(3) << "fluid missing XPU kernel: " << op.Type()
               << ", expected_kernel_key:" << expected_kernel_key
               << ", fallbacking to CPU one!";
       expected_kernel_key.place_ = platform::CPUPlace();
