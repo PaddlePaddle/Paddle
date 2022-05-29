@@ -372,12 +372,18 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   Get<int>("workspace_size"), precision_mode, calibrator.get(),
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
                   opt_input_shape, disable_trt_plugin_fp16);
-  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
   trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
+  trt_engine->SetTransformerPosid(
+      Get<std::string>("tensorrt_transformer_posid"));
+  trt_engine->SetTransformerMaskid(
+      Get<std::string>("tensorrt_transformer_maskid"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-  trt_engine->SetWithErnie(graph->Has(framework::ir::kMultiheadMatmulPass));
+  trt_engine->SetWithErnie(
+      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

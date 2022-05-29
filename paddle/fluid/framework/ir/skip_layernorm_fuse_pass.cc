@@ -102,6 +102,27 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 }  // namespace patterns
 
 void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+        graph->Has(framework::ir::kMultiheadMatmulPass)) {
+      VLOG(3) << "start varseqlen skip_layernorm_fuse_pass";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen skip_layernorm_fuse_pass";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
@@ -149,7 +170,7 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_set<const Node *> del_node_set;
 
     // Create an SkipLayerNorm op node
-    OpDesc new_desc;
+    OpDesc new_desc(elementwise->Op()->Block());
     new_desc.SetType("skip_layernorm");
 
     // inputs

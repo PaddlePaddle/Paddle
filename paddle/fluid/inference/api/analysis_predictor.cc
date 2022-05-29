@@ -844,8 +844,10 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
-  argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+  argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_.SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
+  argument_.SetTensorRtTransformerMaskid(config_.tensorrt_transformer_maskid_);
   argument_.SetMinInputShape(config_.min_input_shape_);
   argument_.SetMaxInputShape(config_.max_input_shape_);
   argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -1775,6 +1777,8 @@ USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
 USE_TRT_CONVERTER(transformer_input_convert)
+USE_TRT_CONVERTER(recover_padding)
+USE_TRT_CONVERTER(remove_padding)
 #endif
 
 namespace paddle_infer {
@@ -1940,6 +1944,20 @@ void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
 #ifdef PADDLE_WITH_CUDA
   c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
+
+void InternalUtils::SetTransformerPosid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_posid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_posid_ = tensorrt_transformer_posid;
+#endif
+}
+
+void InternalUtils::SetTransformerMaskid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
 #endif
 }
 

@@ -649,8 +649,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_dynamic_shape_enabled",
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
-      .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
-      .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableTensorRtOSS)
+      .def("tensorrt_varseqlen_enabled",
+           &AnalysisConfig::tensorrt_varseqlen_enabled)
       .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
       .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
       .def("shape_range_info_collected",

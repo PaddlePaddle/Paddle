@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/transformer_input_convert_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/remove_padding_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -30,38 +30,35 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * Convert Transformer Input(pos_id, max_seqlen).
+ * Remove padding of transformer'input.
  */
-class TransformerInputConvert : public OpConverter {
+class RemovePadding : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "Convert Transformer Input(pos_id, max_seqlen), use "
-               "transformer_input_convert_plugin";
+    VLOG(3) << "Remove padding of transformer'input: Padding -> VarSeqlen";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
-          "transformer_input_convert_op: If you want to use transformer, must "
+          "remove_padding_op: If you want to use transformer, must "
           "be with dynamic shape"));
     }
 
     framework::OpDesc op_desc(op, nullptr);
     auto input_name = op_desc.Input("Input").front();
-    auto* input = engine_->GetITensor(input_name);
-    int input_num = op_desc.Input("Input").size();
 
-    // tensorrt_subgraph_pass will rename tensor
-    // auto pos_id_name = op_desc.Output("PosId").front();
-    // auto max_seqlen_name = op_desc.Output("MaxSeqlen").front();
-    auto pos_id_name = "pos_id_tensor";
-    auto max_seqlen_name = "max_seqlen_tensor";
+    std::vector<nvinfer1::ITensor*> plugin_inputs;
+    plugin_inputs.push_back(engine_->GetITensor(input_name));
+    plugin_inputs.push_back(engine_->GetITensor("pos_id"));
+    plugin_inputs.push_back(engine_->GetITensor("word_id"));
+    size_t input_num = plugin_inputs.size();
+    auto output_name = op_desc.Output("Out").front();
 
-    plugin::TransformerInputConvertPlugin* plugin =
-        new plugin::TransformerInputConvertPlugin();
+    plugin::RemovePaddingPlugin* plugin = new plugin::RemovePaddingPlugin();
     nvinfer1::ILayer* layer =
-        engine_->AddDynamicPlugin(&input, input_num, plugin);
+        engine_->AddDynamicPlugin(plugin_inputs.data(), input_num, plugin);
 
-    RreplenishLayerAndOutput(layer, "transformer_input_convert",
-                             {pos_id_name, max_seqlen_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "remove_padding_op", {output_name},
+                             test_mode);
   }
 };
 
@@ -69,4 +66,4 @@ class TransformerInputConvert : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(transformer_input_convert, TransformerInputConvert);
+REGISTER_TRT_OP_CONVERTER(remove_padding, RemovePadding);

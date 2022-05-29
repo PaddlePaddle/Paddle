@@ -608,6 +608,26 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
 }  // namespace patterns
 
 void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen multihead_matmul_fuse_pass";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen multihead_matmul_fuse_pass";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
@@ -1051,6 +1071,26 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 }
 
 void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen multihead_matmul_fuse_pass_v2";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen multihead_matmul_fuse_pass_v2";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1455,6 +1495,26 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 }
 
 void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen multihead_matmul_fuse_pass_v3";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen multihead_matmul_fuse_pass_v3";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(

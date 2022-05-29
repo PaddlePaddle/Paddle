@@ -24,23 +24,22 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-class TransformerInputConvertPlugin : public DynamicPluginTensorRT {
+class RemovePaddingPlugin : public DynamicPluginTensorRT {
  public:
-  TransformerInputConvertPlugin() {}
+  RemovePaddingPlugin() {}
 
-  TransformerInputConvertPlugin(void const* serial_data, size_t serial_length) {
-  }
+  RemovePaddingPlugin(void const* serial_data, size_t serial_length) {}
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    TransformerInputConvertPlugin* ptr = new TransformerInputConvertPlugin();
+    RemovePaddingPlugin* ptr = new RemovePaddingPlugin();
     return ptr;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "transformer_input_convert_plugin";
+    return "remove_padding_plugin";
   }
 
-  int getNbOutputs() const TRT_NOEXCEPT override { return 2; }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
 
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
@@ -87,11 +86,11 @@ class TransformerInputConvertPlugin : public DynamicPluginTensorRT {
   void serialize(void* buffer) const TRT_NOEXCEPT override {}
 };
 
-class TransformerInputConvertPluginCreator : public nvinfer1::IPluginCreator {
+class RemovePaddingPluginCreator : public nvinfer1::IPluginCreator {
  public:
-  TransformerInputConvertPluginCreator() {}
+  RemovePaddingPluginCreator() {}
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "transformer_input_convert_plugin";
+    return "remove_padding_plugin";
   }
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
@@ -108,8 +107,8 @@ class TransformerInputConvertPluginCreator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* deserializePlugin(
       const char* name, void const* serial_data,
       size_t serial_length) TRT_NOEXCEPT override {
-    TransformerInputConvertPlugin* obj =
-        new TransformerInputConvertPlugin(serial_data, serial_length);
+    RemovePaddingPlugin* obj =
+        new RemovePaddingPlugin(serial_data, serial_length);
     obj->setPluginNamespace(name);
     return obj;
   }
@@ -127,7 +126,7 @@ class TransformerInputConvertPluginCreator : public nvinfer1::IPluginCreator {
   std::string plugin_name_;
   nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
 };
-REGISTER_TRT_PLUGIN_V2(TransformerInputConvertPluginCreator);
+REGISTER_TRT_PLUGIN_V2(RemovePaddingPluginCreator);
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
