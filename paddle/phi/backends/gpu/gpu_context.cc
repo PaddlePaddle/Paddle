@@ -57,8 +57,6 @@ limitations under the License. */
 // TODO(phi): remove fluid header.
 #include "paddle/fluid/platform/enforce.h"
 
-#include <ThreadPool.h>
-
 namespace phi {
 
 namespace internal {
@@ -275,9 +273,9 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
-  Impl() : place_(GPUPlace()), thread_pool_(1) {}
+  Impl() : place_(GPUPlace()) {}
 
-  explicit Impl(const GPUPlace& place) : place_(place), thread_pool_(1) {}
+  explicit Impl(const GPUPlace& place) : place_(place) {}
 
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
@@ -507,12 +505,12 @@ struct GPUContext::Impl {
 
   void AddStreamCallback(const std::function<void()>& callback) const {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
-    // launch too
-    // many threads and result in thread oversubscription.
+    // launch too many threads and result in thread oversubscription.
     auto* callback_func = new std::function<void()>(std::move(callback));
     auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
-      last_future_ = thread_pool_.enqueue([callback_func] {
+      VLOG(4) << "Stream callback";
+      last_future_ = std::async(std::launch::async, [callback_func]() {
         std::unique_ptr<std::function<void()>> releaser(callback_func);
         (*callback_func)();
       });
@@ -584,7 +582,6 @@ struct GPUContext::Impl {
   mutable std::mutex sparse_mtx_;
   mutable std::mutex stream_call_back_mtx_;
   mutable std::future<void> last_future_;
-  mutable ::ThreadPool thread_pool_;
 
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
