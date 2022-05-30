@@ -49,7 +49,7 @@ class TestFillZerosLike2DOneDNNOpV2(OpTest):
         self.input_shape = (13, 42)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CPUPlace())
 
 
 class TestFillZerosLike4DOneDNNOpV2(TestFillZerosLike2DOneDNNOpV2):
@@ -65,9 +65,6 @@ class TestFillZerosLike5DOneDNNOpV2(TestFillZerosLike2DOneDNNOpV2):
 class TestFillZerosLikeBF16OneDNNOpV2(TestFillZerosLike2DOneDNNOpV2):
     def set_dtype(self):
         self.dtype = np.uint16
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
 
 
 class TestFillZerosLikeINT8OneDNNOpV2(TestFillZerosLike2DOneDNNOpV2):
@@ -88,22 +85,9 @@ class TestFillZerosLike2DOneDNNOp(TestFillZerosLike2DOneDNNOpV2):
         self.set_input_shape()
 
 
-class TestFillZerosLike3DOneDNNOpV2(TestFillZerosLike2DOneDNNOp):
-    def set_input_shape(self):
-        self.input_shape = (7, 5, 7)
-
-
-class TestFillZerosLike6DOneDNNOpV2(TestFillZerosLike2DOneDNNOp):
-    def set_input_shape(self):
-        self.input_shape = (7, 5, 7)
-
-
 class TestFillZerosLikeBF16OneDNNOp(TestFillZerosLike2DOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
 
 
 class TestFillZerosLikeINT8OneDNNOp(TestFillZerosLike2DOneDNNOp):

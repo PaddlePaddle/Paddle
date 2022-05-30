@@ -21,32 +21,6 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-class FillConstantMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
- public:
-  FillConstantMKLDNNHandler(Tensor* out, dnnl::engine engine,
-                            platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    const auto src0_md = dnnl::memory::desc(
-        {out->numel(), sizeof(T)}, platform::MKLDNNGetDataType<uint8_t>(),
-        dnnl::memory::format_tag::ab);
-
-    dnnl::primitive_attr attrs;
-    attrs.set_scales(DNNL_ARG_SRC_0, /* mask = */ 0, {0.0f});
-
-    this->AcquireForwardPrimitiveDescriptor(attrs, dnnl::algorithm::binary_add,
-                                            src0_md, src1_md, src0_md);
-  }
-
-  static const dnnl::memory::desc src1_md;
-};
-
-template <typename T>
-const dnnl::memory::desc FillConstantMKLDNNHandler<T>::src1_md(
-    {1, sizeof(T)}, platform::MKLDNNGetDataType<uint8_t>(),
-    dnnl::memory::format_tag::ab);
-
-template <typename T>
 class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -64,11 +38,12 @@ class FillConstantMKLDNNKernel : public framework::OpKernel<T> {
     auto shape = GetShape(ctx);
     out->Resize(shape);
 
-    FillConstantMKLDNNHandler<T> handler(out, dnnl_engine, ctx.GetPlace());
+    platform::FillConstantMKLDNNHandler<T> handler(out, dnnl_engine,
+                                                   ctx.GetPlace());
 
     dnnl::memory constant_value_memory =
-        dnnl::memory(FillConstantMKLDNNHandler<T>::src1_md, dnnl_engine,
-                     reinterpret_cast<uint8_t*>(&fill_value));
+        dnnl::memory(platform::FillConstantMKLDNNHandler<T>::src1_md,
+                     dnnl_engine, reinterpret_cast<uint8_t*>(&fill_value));
 
     auto src0_memory_p = handler.AcquireDstMemory(out);
     auto fill_constant_p = handler.AcquireForwardPrimitive();
