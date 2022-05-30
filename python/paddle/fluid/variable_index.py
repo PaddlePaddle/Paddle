@@ -204,7 +204,8 @@ def replace_ellipsis(var, item):
 
     # Remove Variable to skip bug when counting Ellipsis
     item_remove_var = [
-        ele for ele in item if not isinstance(ele, (Variable, np.ndarray))
+        ele for ele in item
+        if not isinstance(ele, (Variable, np.ndarray)) and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
@@ -218,7 +219,7 @@ def replace_ellipsis(var, item):
         return item[:-1]
     else:
         item[ell_idx:ell_idx + 1] = [slice(None)] * (
-            len(var.shape) - len(item) + 1)
+            len(var.shape) - len(item) + item.count(None) + 1)
 
     return item
 
@@ -254,6 +255,13 @@ def is_integer_or_scalar_tensor(ele):
     return False
 
 
+def is_bool_tensor(ele):
+    from .framework import Variable
+    if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    return False
+
+
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
     from .framework import Variable
     from .layers import utils
@@ -269,6 +277,38 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
                 attrs[attr_name].append(dim)
     else:
         attrs[attr_name] = attr
+
+
+# the item is a tensor of bool 
+def get_value_for_bool_tensor(var, item):
+    if len(item.shape) > len(var.shape):
+        raise IndexError("The dims of bool index doesn't match indexed array, "
+                         "the dims of bool index except to be equal or less "
+                         "than {}, but received {}.".format(
+                             len(var.shape), len(item.shape)))
+    for i, dim_len in enumerate(item.shape):
+        if dim_len != var.shape[i]:
+            raise IndexError(
+                "The dimension of bool index doesn't match indexed array along "\
+                "dimension {}, the target dimension is {}, but received {}.".
+                format(i, var.shape[i], dim_len))
+
+    def idx_not_empty(var, item):
+        from .layers.nn import where
+        from ..tensor import gather_nd
+
+        bool_2_idx = where(item == True)
+        return gather_nd(var, bool_2_idx)
+
+    def idx_empty(var):
+        var_shape = list(var.shape)
+        var_shape[0] = 0
+        return paddle.empty(var_shape, dtype=var.dtype)
+
+    from .layers.control_flow import cond
+    return cond(
+        paddle.logical_not(item.any()), lambda: idx_empty(var),
+        lambda: idx_not_empty(var, item))
 
 
 def _getitem_impl_(var, item):
@@ -298,12 +338,13 @@ def _getitem_impl_(var, item):
 
     use_strided_slice = False
     item = replace_ndarray(item)
-    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
+                slice_item):
             if isinstance(slice_item,
                           int) and var.shape[dim] is not None and var.shape[
                               dim] >= 0 and slice_item >= var.shape[dim]:
@@ -335,7 +376,13 @@ def _getitem_impl_(var, item):
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                end = MAX_INTEGER if step > 0 else -1
+                if var.shape[dim] != -1 and (
+                        paddle.fluid.framework._non_static_mode() or
+                        var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ):
+                    end = var.shape[dim] if step > 0 else -1
+                else:
+                    end = MAX_INTEGER if step > 0 else -1
 
         elif isinstance(slice_item, list):
             all_bool = True
@@ -381,27 +428,13 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, (Variable)):
+        elif isinstance(slice_item, (Variable, core.eager.Tensor)):
             if len(item) == 1:
 
-                from ..tensor import index_select, gather_nd
-                from .layers.nn import where
+                from ..tensor import index_select
 
                 if slice_item.dtype == paddle.bool:
-                    if len(slice_item.shape) > len(var.shape):
-                        raise IndexError(
-                            "The dims of bool index doesn't match indexed array, "
-                            "the dims of bool index except to be equal or less "
-                            "than {}, but received {}.".format(
-                                len(var.shape), len(slice_item.shape)))
-                    for i, dim_len in enumerate(slice_item.shape):
-                        if dim_len != var.shape[i]:
-                            raise IndexError(
-                                "The dimension of bool index doesn't match indexed array along "\
-                                "dimension {}, the target dimension is {}, but received {}.".
-                                format(i, var.shape[i], dim_len))
-                    bool_2_idx = where(slice_item == True)
-                    return gather_nd(var, bool_2_idx)
+                    return get_value_for_bool_tensor(var, slice_item)
                 else:
                     if len(slice_item.shape) == 1:
                         return index_select(var, index=slice_item, axis=0)
@@ -517,12 +550,13 @@ def _setitem_impl_(var, item, value):
     steps = []
 
     item = replace_ndarray(item)
-    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
+    item, none_axes = replace_none(item)
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
+                slice_item):
             decrease_axes.append(dim)
             start = slice_item
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
@@ -635,7 +669,7 @@ def _setitem_impl_(var, item, value):
         shape = list(value.shape)
         if dtype == core.VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in value.flat]
+            values = [int(v) for v in value.flat]
         elif dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in value.flat]
@@ -656,7 +690,7 @@ def _setitem_impl_(var, item, value):
         attrs[value_name] = values
         attrs["shape"] = shape
 
-    elif isinstance(value, Variable):
+    elif isinstance(value, (Variable, core.eager.Tensor)):
         inputs["ValueTensor"] = value
     else:
         raise TypeError(
@@ -664,23 +698,22 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
+    if paddle.fluid.framework._non_static_mode():
+        var._bump_inplace_version()
+
     cur_block = default_main_program().current_block()
     cur_block.append_op(
-        type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+        type="set_value",
+        inputs=inputs,
+        outputs={'Out': var},
+        attrs=attrs,
+        inplace_map={"Input": "Out"})
 
     return var
 
 
 # the item is a tensor of bool 
 def set_value_for_bool_tensor(var, item, value):
-
-    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
-    # so in the current version we also only support float32 and float64 tensor, 
-    # this problem will be fixed in the future.
-    if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
-        raise TypeError("Only support float and double tensor for bool index, "
-                        "but received {}.".format(var.dtype))
-
     if len(item.shape) > len(var.shape):
         raise IndexError("The dims of bool index doesn't match indexed array, "
                          "the dims of bool index except to be equal or less "

@@ -24,14 +24,15 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
 
@@ -312,11 +313,13 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
   if (ref_var.ForwardDataType() != -1) {
-    dst_tensor->mutable_data(place, ref_var.ForwardDataType());
+    dst_tensor->mutable_data(
+        place, framework::TransToPhiDataType(ref_var.ForwardDataType()));
   } else {
-    dst_tensor->mutable_data(place, ref_var.DataType());
+    dst_tensor->mutable_data(place,
+                             framework::TransToPhiDataType(ref_var.DataType()));
   }
-  operators::math::set_constant(*dev_ctx, dst_tensor, value);
+  phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }
 
 /**
@@ -739,7 +742,8 @@ PartialGradTask::PartialGradTask(
           platform::errors::InvalidArgument(
               "The %d-th grad_output's shape does not match the %d-th output",
               i, i));
-      PADDLE_ENFORCE_EQ(grad_tensor.type(), out_tensor.type(),
+      PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(grad_tensor.dtype()),
+                        framework::TransToProtoVarType(out_tensor.dtype()),
                         platform::errors::InvalidArgument(
                             "The %d-th grad_output's data type does not "
                             "match the %d-th output",
@@ -822,6 +826,8 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
 }
 
 void PartialGradTask::RunEachOp(OpBase *op) {
+  platform::RecordEvent op_type_record_event(
+      op->Type() + " grad trace_op", platform::TracerEventType::Operator, 1);
   // Prepare new inputs
   NameVarMap<VarBase> tmp_ins;
   for (auto &input_pair : op->GetInsMap()) {
@@ -904,7 +910,6 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   // Run op
   OpBase::Run(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),
               op->DefaultAttrsMap(), op->place());
-
   if (create_graph_) {
     auto double_grad_node =
         CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs, op->Attrs(),

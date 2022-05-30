@@ -18,52 +18,61 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
-from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program
 from paddle.fluid.backward import append_backward
 
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
 paddle.enable_static()
 
 
-class TestXPUWhereOp(XPUOpTest):
-    def setUp(self):
-        self.op_type = "where"
-        self.set_xpu()
-        self.init_config()
-        self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
-        self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
+class XPUTestWhereOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'where'
 
-    def init_config(self):
-        self.x = np.random.uniform(-3, 5, (100)).astype("float32")
-        self.y = np.random.uniform(-3, 5, (100)).astype("float32")
-        self.cond = np.zeros((100)).astype("bool")
+    class TestXPUWhereOp(XPUOpTest):
+        def setUp(self):
+            self.init_config()
+            self.init_data()
+            self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
+            self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-        self.place = paddle.XPUPlace(0)
+        def init_data(self):
+            self.x = np.random.uniform(-3, 5, (100)).astype(self.dtype)
+            self.y = np.random.uniform(-3, 5, (100)).astype(self.dtype)
+            self.cond = np.zeros((100)).astype("bool")
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+        def init_config(self):
+            self.op_type = "where"
+            self.dtype = self.in_type
+            self.place = paddle.XPUPlace(0)
+            self.__class__.no_need_check_grad = True
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+    class TestXPUWhereOp2(TestXPUWhereOp):
+        def init_data(self):
+            self.x = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
+            self.y = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
+            self.cond = np.ones((60, 2)).astype("bool")
+
+    class TestXPUWhereOp3(TestXPUWhereOp):
+        def init_data(self):
+            self.x = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
+            self.y = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
+            self.cond = np.array(
+                np.random.randint(
+                    2, size=(20, 2, 4)), dtype=bool)
 
 
-class TestXPUWhereOp2(TestXPUWhereOp):
-    def init_config(self):
-        self.x = np.random.uniform(-5, 5, (60, 2)).astype("float32")
-        self.y = np.random.uniform(-5, 5, (60, 2)).astype("float32")
-        self.cond = np.ones((60, 2)).astype("bool")
-
-
-class TestXPUWhereOp3(TestXPUWhereOp):
-    def init_config(self):
-        self.x = np.random.uniform(-3, 5, (20, 2, 4)).astype("float32")
-        self.y = np.random.uniform(-3, 5, (20, 2, 4)).astype("float32")
-        self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
+support_types = get_xpu_op_support_types('where')
+for stype in support_types:
+    create_test_class(globals(), XPUTestWhereOp, stype)
 
 
 class TestXPUWhereAPI(unittest.TestCase):

@@ -19,7 +19,7 @@ paddle.enable_static()
 
 import unittest
 import paddle.fluid as fluid
-from paddle.distributed import ProbabilityEntry, CountFilterEntry
+from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -50,6 +50,11 @@ class EntryAttrChecks(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             counter2 = CountFilterEntry(-1)
+
+    def showclick_entry(self):
+        showclick = ShowClickEntry("show", "click")
+        ss = showclick._to_attr()
+        self.assertEqual("show_click_entry:show:click", ss)
 
     def spaese_layer(self):
         prog = fluid.Program()
@@ -96,6 +101,9 @@ class TestEntryAttrs(EntryAttrChecks):
 
     def test_counter(self):
         self.countfilter_entry()
+
+    def test_showclick(self):
+        self.showclick_entry()
 
     def test_spaese_embedding_layer(self):
         self.spaese_layer()

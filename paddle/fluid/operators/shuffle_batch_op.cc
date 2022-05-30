@@ -44,7 +44,7 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", "Out");
     ctx->ShareDim("Seed", "SeedOut");
     ctx->ShareLoD("Seed", "SeedOut");
-    ctx->SetOutputDim("ShuffleIdx", framework::make_ddim({-1}));
+    ctx->SetOutputDim("ShuffleIdx", phi::make_ddim({-1}));
   }
 
  protected:

@@ -33,6 +33,8 @@ class SimpleFCLayer(fluid.dygraph.Layer):
 
 class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
     def test_main(self):
+        if fluid.framework.in_dygraph_mode():
+            return
         traced_layer = None
         with fluid.dygraph.guard():
             feature_size = 3

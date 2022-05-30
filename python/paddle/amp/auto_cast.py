@@ -21,7 +21,8 @@ __all__ = []
 def auto_cast(enable=True,
               custom_white_list=None,
               custom_black_list=None,
-              level='O1'):
+              level='O1',
+              dtype='float16'):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
@@ -40,7 +41,8 @@ def auto_cast(enable=True,
              observed in downstream ops. These ops will not be converted to fp16.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
-        
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+
     Examples:
 
      .. code-block:: python
@@ -52,28 +54,28 @@ def auto_cast(enable=True,
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # FP16
+            print(conv.dtype) # paddle.float32
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
-            print(conv.dtype) # FP32
+            print(conv.dtype) # paddle.float32
 
         with paddle.amp.auto_cast(custom_black_list={'conv2d'}):
             conv = conv2d(data)
-            print(conv.dtype) # FP32
+            print(conv.dtype) # paddle.float32
 
         a = paddle.rand([2,3])
         b = paddle.rand([2,3])
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
-            print(c.dtype) # FP16
+            print(c.dtype) # paddle.float32
         
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
-            print(d.dtype) # FP16
+            print(d.dtype) # paddle.float32
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list, level)
+    return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)
 
 
 def decorate(models,
@@ -105,9 +107,9 @@ def decorate(models,
         import paddle
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.amp.decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -120,7 +122,7 @@ def decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -129,5 +131,18 @@ def decorate(models,
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
+        
+        # required: gpu
+        # Demo3: optimizers is None:
+        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
+
+        model = paddle.amp.decorate(models=model3, level='O2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            output = model(data)
+            print(output.dtype) # FP16
     """
     return amp_decorate(models, optimizers, level, master_weight, save_dtype)

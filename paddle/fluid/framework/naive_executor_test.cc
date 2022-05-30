@@ -67,4 +67,4 @@ TEST(NaiveExecutor, Basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);

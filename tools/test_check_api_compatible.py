@@ -105,6 +105,11 @@ class Test_check_compatible_str(unittest.TestCase):
         argspec_o = self.argspec_str_o
         self.assertFalse(check_compatible_str(argspec_o, argspec_n))
 
+    def test_args_defaults_None(self):
+        argspec_o = """inspect.FullArgSpec(args=['filename'], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={'filename': <class 'str'>})"""
+        argspec_n = """inspect.FullArgSpec(args=['filename'], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={'filename': <class 'str'>})"""
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
 
 class Test_read_argspec_from_file(unittest.TestCase):
     def setUp(self) -> None:

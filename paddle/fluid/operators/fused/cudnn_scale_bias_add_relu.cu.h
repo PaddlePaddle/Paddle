@@ -15,8 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -44,21 +43,21 @@ struct ScaleBiasAddReluArgs {
     PADDLE_ENFORCE_EQ(
         data_shape.size(), 4U,
         platform::errors::InvalidArgument(
-            "The size of data_shape is expected to 4. But recieved "
+            "The size of data_shape is expected to 4. But received "
             "data_shape's size is %d, data_shape is [%s].",
-            data_shape.size(), framework::make_ddim(data_shape)));
+            data_shape.size(), phi::make_ddim(data_shape)));
     PADDLE_ENFORCE_EQ(
         param_shape.size(), 4U,
         platform::errors::InvalidArgument(
-            "The size of param_shape is expected to 4. But recieved "
+            "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
-            param_shape.size(), framework::make_ddim(param_shape)));
+            param_shape.size(), phi::make_ddim(param_shape)));
     PADDLE_ENFORCE_EQ(
         bitmask_shape.size(), 3U,
         platform::errors::InvalidArgument(
-            "The size of bitmask_shape is expected to 3. But recieved "
+            "The size of bitmask_shape is expected to 3. But received "
             "bitmask_shape's size is %d, bitmask_shape is [%s].",
-            bitmask_shape.size(), framework::make_ddim(bitmask_shape)));
+            bitmask_shape.size(), phi::make_ddim(bitmask_shape)));
 
     in_desc.set(data_shape, format, dtype);
     out_desc.set(data_shape, format, dtype);

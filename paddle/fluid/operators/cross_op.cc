@@ -12,66 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/cross_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 using framework::DDim;
+const int kDefaultDim = framework::DDim::kMaxRank;
 
 class CrossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of CrossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) of CrossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of CrossOp should not be null."));
-
-    auto x_dim = ctx->GetInputDim("X");
-    auto y_dim = ctx->GetInputDim("Y");
-    auto dim = ctx->Attrs().Get<int>("dim");
-
-    bool dims_match = CheckDims(x_dim, y_dim);
-    PADDLE_ENFORCE_EQ(dims_match, true,
-                      platform::errors::InvalidArgument(
-                          "The 'shape' of Input(X) should be equal to "
-                          "the 'shape' of Input(Y). But received "
-                          "Input(X).dimensions = [%s], "
-                          "Input(Y).dimensions = [%s]",
-                          x_dim, y_dim));
-
-    if (dim != kDefaultDim) {
-      PADDLE_ENFORCE_EQ(
-          dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
-          platform::errors::OutOfRange(
-              "Attr(dim) is out of range, It's expected "
-              "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-              x_dim.size(), x_dim.size() - 1, dim));
-      if (dim < 0) {
-        dim += x_dim.size();
-      }
-      PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3, true,
-                        platform::errors::InvalidArgument(
-                            "Input(X/Y).dims()[dim] should be equal to 3."
-                            "But received Input(X/Y).dims()[dim] = %d.",
-                            x_dim[dim]));
-    }
-
-    ctx->SetOutputDim("Out", x_dim);
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -153,17 +109,10 @@ class CrossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(cross, CrossInferShapeFunctor,
+                            PD_INFER_META(phi::CrossInferMeta));
 REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
-                  ops::CrossGradMaker<paddle::imperative::OpBase>);
+                  ops::CrossGradMaker<paddle::imperative::OpBase>,
+                  CrossInferShapeFunctor);
 REGISTER_OPERATOR(cross_grad, ops::CrossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    cross, ops::CrossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CrossKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CrossKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CrossKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    cross_grad, ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

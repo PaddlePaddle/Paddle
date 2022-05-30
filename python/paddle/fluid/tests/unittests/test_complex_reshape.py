@@ -17,6 +17,7 @@ import paddle
 import paddle.fluid.dygraph as dg
 import numpy as np
 import unittest
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexReshape(unittest.TestCase):
@@ -52,6 +53,11 @@ class TestComplexReshape(unittest.TestCase):
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
                     self.assertTrue(np.allclose(np.reshape(x_np, shape_), y_np))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_shape_norm_dims()
+            self.test_shape_omit_dims()
 
 
 if __name__ == "__main__":

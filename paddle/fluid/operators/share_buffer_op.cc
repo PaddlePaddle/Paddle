@@ -49,7 +49,8 @@ class ShareBufferOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), The output tensors which are the same as X. It is "
               "used to build the graph dependency")
         .AsDuplicable();
-    AddAttr<std::vector<bool>>("share_dims", "Whether to share dims")
+    AddAttr<std::vector<bool>>("share_dims_and_dtype",
+                               "Whether to share dims and data type")
         .SetDefault(std::vector<bool>());
     AddComment(
         R"DOC(Operator used to perform inplace memory reuse. It should be not exposed to Python APIs.)DOC");

@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -54,9 +54,12 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override;
 
+  bool HasAttr(const std::string& name) const override;
+
   bool HasInputs(const std::string& name) const override;
 
-  bool HasOutputs(const std::string& name) const override;
+  bool HasOutputs(const std::string& name,
+                  bool allow_null = false) const override;
 
   AttrReader Attrs() const override;
 
@@ -84,16 +87,20 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
-  // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override;
+  bool IsRunMKLDNNKernel() const override;
 
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override;
+  // TODO(paddle-dev): Can this be template?
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+  GetInputVarPtrs(const std::string& name) const override;
+
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
+  GetOutputVarPtrs(const std::string& name) const override;
 
   DDim GetInputDim(const std::string& name) const override;
 
   std::vector<DDim> GetInputsDim(const std::string& name) const override;
+
+  proto::VarType::Type GetInputVarType(const std::string& name) const override;
 
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string& name) const override;
@@ -105,6 +112,10 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string& name,
                      const std::vector<DDim>& dims) override;
+
+  const phi::ArgumentMappingFn* GetPhiArgumentMappingFn() const override;
+
+  const phi::KernelSignature* GetPhiDefaultKernelSignature() const override;
 
   void SetSkipLoD(bool skip);
 
@@ -145,6 +156,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
+  bool sikp_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -155,7 +167,7 @@ class VariableScope;
 class VariableScopeListener : public ScopeListener {
  public:
   explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name) override;
+  void onCreateVariable(const std::string& name, Variable* v) override;
   void onDeleteVariable(const std::string& name) override;
   void onRenameVariable(const std::string& old_name,
                         const std::string& new_name) override;
@@ -177,7 +189,11 @@ class VariableScope : public ScopeBase {
  public:
   explicit VariableScope(Scope* scope);
 
-  const Scope* GetScope() const;
+  Scope* GetMutableScope() const;
+
+  Scope* GetMutableLocalScope() const;
+
+  void SetLocalScope(Scope* local_scope);
 
   Variable* FindVar(const std::string& name) const;
 
@@ -199,7 +215,8 @@ class VariableScope : public ScopeBase {
 
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc);
+  void AddVar(const std::string& name, VarDesc* var_desc,
+              bool local_scope = false);
 
   void AddVar(const std::string& name, const Variable& var);
 
@@ -219,15 +236,29 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
+  const std::shared_ptr<VariableScopeListener>& Listener() const {
+    return listener_;
+  }
+
+  void SetVarSikpInplace(const std::string& name, bool skip);
+
+  bool GetVarSikpInplace(int id) const;
+
+  void ClearListener();
+
+  void ResetListener();
+
   friend class VariableScopeListener;
 
  private:
   std::vector<Variable*> var_list_;
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
-  Scope* scope_ = nullptr;
+  Scope* scope_{nullptr};
+  // TODO(zhiqiu): find a better way to support local scope.
+  Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_;
+  std::shared_ptr<VariableScopeListener> listener_{nullptr};
 };
 
 class NextInstruction {
@@ -271,112 +302,89 @@ enum class OpFuncType {
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
-  OperatorBase* operator_base_;
+  // TODO(zhiqiu): Better make it unique_ptr
+  std::shared_ptr<OperatorBase> operator_base_;
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
   std::unordered_set<int> no_data_transform_index;
 
+  std::map<int, int> inplace_back_map;
+
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
+
+  // fit for phi kernel
+  phi::Kernel* pt_kernel_{nullptr};  // not owned
+
   OpFuncType type_;
 };
 
 class Instruction {
  public:
-  Instruction(size_t id, const OpFuncNode& op_func_node,
-              const platform::DeviceContext& dev_ctx)
-      : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
-    PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
-                                 "Required id >= 0, but received id = %d", id));
-  }
+  Instruction(size_t id, OpFuncNode&& op_func_node,
+              const platform::DeviceContext& dev_ctx);
 
-  size_t Id() const { return id_; }
+  size_t Id() const;
 
-  const std::map<std::string, std::vector<int>>& Inputs() const {
-    return op_func_node_.input_index;
-  }
+  const std::map<std::string, std::vector<int>>& Inputs() const;
 
-  const std::map<std::string, std::vector<int>>& Outputs() const {
-    return op_func_node_.output_index;
-  }
+  const std::map<std::string, std::vector<int>>& Outputs() const;
 
-  const std::unordered_set<int>& NoDataTransformVars() const {
-    return op_func_node_.no_data_transform_index;
-  }
+  const std::unordered_set<int>& NoDataTransformVars() const;
 
-  OpKernelComputeFunc KernelFunc() const { return op_func_node_.kernel_func_; }
+  OpKernelComputeFunc KernelFunc() const;
 
-  OpFuncType KernelType() const { return op_func_node_.type_; }
+  phi::Kernel* PhiKernel() const;
 
-  OperatorBase* OpBase() const {
-    auto* op_base = op_func_node_.operator_base_;
-    PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
-                                         "op_base shall not be nullptr."));
-    return op_base;
-  }
+  OpFuncType KernelType() const;
 
-  NextInstruction& NextInstructions() { return next_instruction_; }
+  const std::map<int, int>& InplaceBackMap() const;
 
-  const NextInstruction& NextInstructions() const { return next_instruction_; }
+  OperatorBase* OpBase() const;
 
-  void AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+  NextInstruction& NextInstructions();
 
-  const std::vector<size_t>& GCCheckVars() const { return gc_check_var_list_; }
+  const NextInstruction& NextInstructions() const;
+
+  void AddGCCheckVar(size_t id);
+
+  const std::vector<size_t>& GCCheckVars() const;
 
   void ResetContext(const VariableValueMap& in_vars,
-                    const VariableValueMap& out_vars) {
-    runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
-    infershape_ctx_.reset(
-        new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
-    // NOTE: Because execution_ctx_ is constructed by `scope&`, so we fake an
-    // empty here to avoid illegal local reference.
-    static framework::Scope scope_;
-    execution_ctx_.reset(
-        new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
-  }
+                    const VariableValueMap& out_vars);
 
-  std::shared_ptr<RuntimeContext> InnerRuntimeContext() const {
-    return runtime_ctx_;
-  }
+  void ResetContextWithScope(const VariableValueMap& in_vars,
+                             const VariableValueMap& out_vars,
+                             const framework::Scope& scope);
+
+  std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<InterpretercoreInferShapeContext> InnerInferShapeContext()
-      const {
-    return infershape_ctx_;
-  }
+      const;
 
-  std::shared_ptr<ExecutionContext> InnerExecutionContext() const {
-    return execution_ctx_;
-  }
+  std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
-  const platform::DeviceContext& DeviceContext() const { return dev_ctx_; }
+  const platform::DeviceContext& DeviceContext() const;
 
-  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const {
-    return vec_inplace_in_to_out_;
-  }
+  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
 
-  void AddInplace(Variable* in, Variable* out) {
-    vec_inplace_in_to_out_.emplace_back(in, out);
-  }
+  void AddInplace(Variable* in, Variable* out);
 
-  const std::vector<EventInter>& InputEvents() const { return intput_events_; }
+  const std::vector<EventInter>& InputEvents() const;
 
-  const std::vector<EventInter>& OutputEvents() const { return output_events_; }
+  const std::vector<EventInter>& OutputEvents() const;
 
   void AddInputEvent(size_t var_id,
                      std::shared_ptr<platform::DeviceEvent> event,
-                     platform::DeviceType waiter_type) {
-    intput_events_.emplace_back(var_id, event, waiter_type);
-  }
+                     platform::DeviceType waiter_type);
 
   void AddOutputEvent(size_t var_id,
                       std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type) {
-    output_events_.emplace_back(var_id, event, waiter_type);
-  }
+                      platform::DeviceType waiter_type);
 
  private:
   size_t id_;
-  const OpFuncNode& op_func_node_;          // not owned
+  OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
@@ -395,6 +403,7 @@ class Instruction {
 namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+static constexpr char kFetchVarName[] = "fetch";
 
 static bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;
@@ -403,6 +412,11 @@ static bool IsMemcpyH2D(const Instruction& instr) {
 static bool IsMemcpyD2H(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyD2H;
 }
+
+static bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
 }  // namespace interpreter
 
 }  // namespace framework

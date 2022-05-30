@@ -79,9 +79,19 @@ TEST(PD_Config, interface) {
 
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
-  bool mkldnn_bf16_enabled = PD_ConfigMkldnnBfloat16Enabled(config);
-  EXPECT_TRUE(mkldnn_bf16_enabled);
 #endif
+
+  PD_ConfigEnableONNXRuntime(config);
+  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled(config);
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  EXPECT_TRUE(onnxruntime_enabled);
+#else
+  EXPECT_FALSE(onnxruntime_enabled);
+#endif
+  PD_ConfigDisableONNXRuntime(config);
+  bool onnxruntime_disabled = PD_ConfigONNXRuntimeEnabled(config);
+  EXPECT_FALSE(onnxruntime_disabled);
+  PD_ConfigEnableORTOptimization(config);
 
   PD_ConfigEnableMemoryOptim(config, true);
   bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..wrapped_decorator import wrap_decorator
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 import warnings
 import paddle
 from paddle import _C_ops
@@ -24,7 +24,7 @@ from paddle import _C_ops
 # of the original API will be called.
 def _inplace_apis_in_dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
                 "In static mode, {}() is the same as {}() and does not perform inplace operation.".

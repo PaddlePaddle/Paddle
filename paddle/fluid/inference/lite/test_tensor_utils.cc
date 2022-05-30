@@ -122,7 +122,7 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   }
 #endif
   std::vector<float> result;
-  TensorToVector(lod_tensor_n, ctx, &result);
+  paddle::framework::TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
   ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }
@@ -142,7 +142,7 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   framework::LoDTensor lod_tensor_n;
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
   std::vector<float> result;
-  TensorToVector(lod_tensor_n, ctx, &result);
+  paddle::framework::TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
   ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }

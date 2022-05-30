@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/operators/flatten_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -44,7 +44,7 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
@@ -87,7 +87,7 @@ class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(

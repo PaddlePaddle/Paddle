@@ -57,6 +57,7 @@
 | reyoung | Yang Yu |
 | [Sand3r-](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Michal Gallus |
 | [sfraczek](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Sylwester Fraczek |
+| Silv3S | Slawomir Siwek |
 | sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
@@ -83,3 +84,4 @@
 | jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |
 | mingxu1067 | Ming Huang (NVIDIA) |
 | zlsh80826 | Reese Wang (NVIDIA) |
+| leo0519 | Leo Chen (NVIDIA) |

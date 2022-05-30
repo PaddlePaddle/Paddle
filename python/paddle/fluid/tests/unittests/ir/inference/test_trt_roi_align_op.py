@@ -27,9 +27,9 @@ class TRTRoiAlignTest(InferencePassTest):
     def setUp(self):
         self.bs = 2
         self.num_rois = 4
-        self.channel = 16
-        self.height = 32
-        self.width = 32
+        self.channel = 8
+        self.height = 16
+        self.width = 16
         self.precision = AnalysisConfig.Precision.Float32
         self.serialize = False
         self.enable_trt = True

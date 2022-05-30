@@ -15,7 +15,7 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 DECLARE_uint64(gpu_memory_limit_mb);
 
@@ -30,32 +30,24 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   size_t limit = FLAGS_gpu_memory_limit_mb << 20;
 
   {
-    ASSERT_TRUE(IsCudaMallocRecorded(DEVICE_ID));
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+    ASSERT_TRUE(IsGpuMallocRecorded(DEVICE_ID));
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), 0UL);
   }
 
   size_t avail, total;
   {
     size_t actual_avail, actual_total;
-    RecordedCudaMemGetInfo(&avail, &total, &actual_avail, &actual_total,
-                           DEVICE_ID);
+    RecordedGpuMemGetInfo(&avail, &total, &actual_avail, &actual_total,
+                          DEVICE_ID);
     ASSERT_EQ(total, limit);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }
 
   {
     CUDADeviceGuard guard(DEVICE_ID);
     GpuMemoryUsage(&avail, &total);
     ASSERT_EQ(total, limit);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }
 
   gpuError_t err = gpuSuccess;
@@ -63,54 +55,41 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   void *p1 = nullptr;
   size_t size1 = limit / 4 * 3;
   {
-    err = platform::RecordedCudaMalloc(&p1, size1, DEVICE_ID);
+    err = platform::RecordedGpuMalloc(&p1, size1, DEVICE_ID);
     ASSERT_EQ(err, gpuSuccess);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_NE(p1, nullptr);
 
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size1);
   }
 
   void *p2 = nullptr;
   size_t size2 = limit / 2;
   {
-    err = platform::RecordedCudaMalloc(&p2, size2, DEVICE_ID);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(err, hipErrorOutOfMemory);
-    ASSERT_EQ(hipGetLastError(), gpuSuccess);
-#else
-    ASSERT_EQ(err, cudaErrorMemoryAllocation);
-    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
-#endif
+    err = platform::RecordedGpuMalloc(&p2, size2, DEVICE_ID);
+    ASSERT_EQ(err, gpuErrorOutOfMemory);
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_EQ(p2, nullptr);
 
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size1);
   }
 
   {
-    platform::RecordedCudaFree(p1, size1, DEVICE_ID);
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+    platform::RecordedGpuFree(p1, size1, DEVICE_ID);
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), 0UL);
   }
 
   {
-    err = platform::RecordedCudaMalloc(&p2, size2, DEVICE_ID);
+    err = platform::RecordedGpuMalloc(&p2, size2, DEVICE_ID);
     ASSERT_EQ(err, gpuSuccess);
-#ifdef PADDLE_WITH_HIP
-    ASSERT_EQ(hipGetLastError(), hipSuccess);
-#else
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
-#endif
+    ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
     ASSERT_NE(p2, nullptr);
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size2);
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), size2);
   }
 
   {
-    platform::RecordedCudaFree(p2, size2, DEVICE_ID);
-    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+    platform::RecordedGpuFree(p2, size2, DEVICE_ID);
+    ASSERT_EQ(RecordedGpuMallocSize(DEVICE_ID), 0UL);
   }
 }
 

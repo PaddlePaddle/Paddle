@@ -16,6 +16,8 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
+from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -111,9 +113,9 @@ class InstanceNorm(fluid.dygraph.Layer):
         self.bias = self.create_parameter(shape=[num_channels], is_bias=True)
 
     def forward(self, input):
-        if fluid.in_dygraph_mode():
-            out, _, _ = fluid.core.ops.instance_norm(
-                input, self.scale, self.bias, 'epsilon', self.epsilon)
+        if fluid._non_static_mode():
+            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
+                                             'epsilon', self.epsilon)
             return out
         else:
             return fluid.layers.instance_norm(
@@ -367,7 +369,7 @@ def loss_cls(cls, label, cfg):
 
 
 def calc_gradients(outputs, inputs, no_grad_set):
-    if fluid.in_dygraph_mode():
+    if fluid._non_static_mode():
         return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
@@ -452,7 +454,7 @@ def build_optimizer(layer, cfg, loss=None):
     learning_rate = 1e-3
     beta1 = 0.5
     beta2 = 0.999
-    if fluid.in_dygraph_mode():
+    if fluid._non_static_mode():
         return fluid.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=beta1,
@@ -582,7 +584,47 @@ class StaticGraphTrainModel(object):
 
 
 class TestStarGANWithGradientPenalty(unittest.TestCase):
-    def test_main(self):
+    def func_main(self):
+        self.place_test(fluid.CPUPlace())
+
+        if fluid.is_compiled_with_cuda():
+            self.place_test(fluid.CUDAPlace(0))
+
+    def place_test(self, place):
+        cfg = Config(place, False)
+
+        dataset = create_mnist_dataset(cfg)
+        dataset = paddle.reader.cache(dataset)
+
+        fluid_dygraph_loss = []
+        with fluid.dygraph.guard(cfg.place):
+            fluid_dygraph_model = DyGraphTrainModel(cfg)
+            for batch_id, (image_real, label_org,
+                           label_trg) in enumerate(dataset()):
+                loss = fluid_dygraph_model.run(image_real, label_org, label_trg)
+                fluid_dygraph_loss.append(loss)
+
+        eager_dygraph_loss = []
+        with _test_eager_guard():
+            with fluid.dygraph.guard(cfg.place):
+                eager_dygraph_model = DyGraphTrainModel(cfg)
+                for batch_id, (image_real, label_org,
+                               label_trg) in enumerate(dataset()):
+                    loss = eager_dygraph_model.run(image_real, label_org,
+                                                   label_trg)
+                    eager_dygraph_loss.append(loss)
+
+        for (g_loss_f, d_loss_f), (g_loss_e, d_loss_e) in zip(
+                fluid_dygraph_loss, eager_dygraph_loss):
+            self.assertEqual(g_loss_f, g_loss_e)
+            self.assertEqual(d_loss_f, d_loss_e)
+
+    def test_all_cases(self):
+        self.func_main()
+
+
+class TestStarGANWithGradientPenaltyLegacy(unittest.TestCase):
+    def func_main(self):
         self.place_test(fluid.CPUPlace())
 
         if fluid.is_compiled_with_cuda():
@@ -614,6 +656,10 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
             self.assertEqual(g_loss_s, g_loss_d)
             self.assertEqual(d_loss_s, d_loss_d)
 
+    def test_all_cases(self):
+        self.func_main()
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

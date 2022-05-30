@@ -18,54 +18,78 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
-from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+
 import paddle
-from paddle.static import Program, program_guard
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid import compiler, Program, program_guard
+
+import op_test
+from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 
-class TestXPUScaleOp(XPUOpTest):
-    def setUp(self):
-        self.op_type = "scale"
-        self.init_type()
-        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
-        self.attrs = {'scale': -2.3, 'use_xpu': True}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
-        }
+class XPUTestScaleOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'scale'
+        self.use_dynamic_create_class = False
 
-    def init_type(self):
-        self.dtype = np.float32
+    class TestScaleOp(XPUOpTest):
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "scale"
+            self.place = paddle.XPUPlace(0)
+            self.set_inputs()
+            self.set_attrs()
+            self.outputs = {
+                'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
+            }
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+            self.__class__.op_type = self.dtype
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out')
+        def set_inputs(self):
+            self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
 
+        def init_dtype(self):
+            if "float16" == self.in_type:
+                self.dtype = np.float16
+            if "float32" == self.in_type:
+                self.dtype = np.float32
+            if "int64" == self.in_type:
+                self.dtype = np.int64
 
-# class TestXPUScaleOpInt64(TestXPUScaleOp):
-#     def init_type(self):
-#         self.dtype = np.int64
+        def set_attrs(self):
+            self.attrs = {'scale': -2.3}
 
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place)
 
-class TestScaleFp16Op(TestXPUScaleOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
+    class TestScaleOp1(TestScaleOp):
+        def set_attrs(self):
+            self.attrs = {'scale': 3.5}
 
-    def test_check_output(self):
-        place = core.XPUPlace(0)
-        self.check_output_with_place(place, atol=0.002)
+    class TestScaleOp2(TestScaleOp):
+        def set_attrs(self):
+            self.attrs = {'scale': 6.77}
 
-    def test_check_grad(self):
-        place = core.XPUPlace(0)
-        self.check_grad_with_place(place, ["X"], "Out", max_relative_error=0.05)
+    class TestScaleOp3(TestScaleOp):
+        def set_attrs(self):
+            self.attrs = {'scale': -9.19}
+
+    class TestScaleOp4(TestScaleOp):
+        def set_attrs(self):
+            self.attrs = {'scale': 0.0}
+
+    class TestScaleOp5(TestScaleOp):
+        def set_attrs(self):
+            self.attrs = {'scale': -0.003}
 
 
 class TestScaleApiStatic(unittest.TestCase):
@@ -107,6 +131,10 @@ class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
+
+support_types = get_xpu_op_support_types('scale')
+for stype in support_types:
+    create_test_class(globals(), XPUTestScaleOp, stype)
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/layer_norm_op.h"
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 
@@ -55,8 +55,8 @@ class LayerNormOpConverter : public OpConverter {
     scale_tensor->Resize(Scale_t->dims());
 
     platform::CPUPlace cpu_place;
-    TensorCopySync((*Bias_t), cpu_place, &(*bias_tensor));
-    TensorCopySync((*Scale_t), cpu_place, &(*scale_tensor));
+    paddle::framework::TensorCopySync((*Bias_t), cpu_place, &(*bias_tensor));
+    paddle::framework::TensorCopySync((*Scale_t), cpu_place, &(*scale_tensor));
 
     auto* bias_data = bias_tensor->mutable_data<float>(platform::CPUPlace());
     auto* scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());

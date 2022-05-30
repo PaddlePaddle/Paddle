@@ -1,4 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -175,6 +176,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
+
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+    AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
+                        "fuse_gemm_epilogue_pass");
+#endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
@@ -238,6 +244,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         case BuildStrategy::ReduceStrategy::kReduce:
           multi_devices_pass =
               AppendPass("reduce_mode_multi_devices_pass").get();
+          break;
+        case BuildStrategy::ReduceStrategy::kNoReduce:
+          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
           break;
         default:
           PADDLE_THROW(
@@ -475,6 +484,7 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
+USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
@@ -502,4 +512,7 @@ USE_PASS(mkldnn_placement_pass);
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
+#endif
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+USE_PASS(fuse_gemm_epilogue_pass);
 #endif

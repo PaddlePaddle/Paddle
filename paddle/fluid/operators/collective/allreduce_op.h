@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -33,7 +33,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -41,9 +41,10 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
-    auto* sendbuff = in->data<void>();
+    auto* sendbuff = in->data();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
@@ -69,15 +70,11 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
         red_type = ncclMin;
         break;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, static_cast<ncclDataType_t>(dtype), red_type,
         comm, stream));
     if (ctx.Attr<bool>("sync_mode")) {
-#ifdef PADDLE_WITH_RCCL
-      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
-#else
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+      platform::GpuStreamSync(stream);
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

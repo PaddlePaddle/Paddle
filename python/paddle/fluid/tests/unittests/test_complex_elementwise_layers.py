@@ -19,6 +19,7 @@ from numpy.random import random as rand
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
 
 paddle_apis = {
     "add": paddle.add,
@@ -97,6 +98,12 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             # promote types cases
             self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_real_x_complex_y()
+            self.test_complex_x_real_y()
+            self.test_complex_xy()
 
 
 if __name__ == '__main__':

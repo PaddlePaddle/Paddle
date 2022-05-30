@@ -41,7 +41,7 @@ class ReduceOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
-    nvinfer1::ReduceOperation reduce_type;
+    nvinfer1::ReduceOperation reduce_type = nvinfer1::ReduceOperation::kSUM;
     if (op_type == "reduce_sum") {
       reduce_type = nvinfer1::ReduceOperation::kSUM;
     } else if (op_type == "reduce_mean") {
@@ -83,6 +83,8 @@ class ReduceOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
+    // Ensure that the output type and input type are consistent.
+    layer->getOutput(0)->setType(layer->getInput(0)->getType());
     RreplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
   }
 

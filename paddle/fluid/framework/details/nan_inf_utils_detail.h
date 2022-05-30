@@ -16,14 +16,12 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

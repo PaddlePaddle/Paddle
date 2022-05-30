@@ -13,7 +13,7 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -183,8 +183,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto dev_var = memory::Alloc(device_ctx, bytes);
     float* dev_var_data = reinterpret_cast<float*>(dev_var->ptr());
     auto cplace = platform::CPUPlace();
-    const auto gplace =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    const auto gplace = context.GetPlace();
     memory::Copy(gplace, dev_var_data, cplace, &variance[0], bytes,
                  device_ctx.stream());
 

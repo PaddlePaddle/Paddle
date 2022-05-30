@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_PSLIB
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -23,11 +22,12 @@ limitations under the License. */
 #include <unordered_map>  // NOLINT
 #include <unordered_set>  // NOLINT
 #include <vector>
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 #include "bthread/bthread.h"
+#endif
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
-
 namespace paddle {
 namespace framework {
 class DataFeed;
@@ -106,7 +106,7 @@ class HeterTask {
   double cpu_2_gpu_time{0};
   platform::Timer timeline;
 };
-#endif
+
 template <class T>
 class HeterObjectPool {
  public:
@@ -143,7 +143,7 @@ class HeterObjectPool {
   int num_{0};
 };
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 struct BthreadMutextGuard {
   BthreadMutextGuard(bthread_mutex_t* rho) {
     mutex_ = rho;
@@ -328,6 +328,6 @@ class HeterList {
   int cap_;
   int size;
 };
+#endif
 }  // namespace framework
 }  // namespace paddle
-#endif

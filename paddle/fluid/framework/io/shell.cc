@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/fluid/framework/io/shell.h"
 
 #include "paddle/fluid/platform/enforce.h"
@@ -68,7 +69,7 @@ static int close_open_fds_internal() {
 
   for (;;) {
     int bytes = 0;
-    if ((bytes = syscall(SYS_getdents, dir_fd,
+    if ((bytes = syscall(SYS_getdents64, dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
       PADDLE_THROW(platform::errors::Unavailable(

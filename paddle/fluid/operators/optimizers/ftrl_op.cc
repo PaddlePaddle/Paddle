@@ -47,16 +47,16 @@ class FTRLOp : public framework::OperatorWithKernel {
                           param_dim, ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(framework::product(lr_dim), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dim), 0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dim), 1,
                       platform::errors::InvalidArgument(
                           "Learning Rate should be a scalar, but got %d",
-                          framework::product(lr_dim)));
+                          phi::product(lr_dim)));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);

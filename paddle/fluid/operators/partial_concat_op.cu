@@ -118,8 +118,7 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
       in_data.emplace_back(in_vars[i]->data<T>());
 
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_in_array->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
                  in_data.size() * sizeof(T *), dev_ctx.stream());
 
@@ -188,8 +187,7 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     }
     auto tmp_out_array = memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_out_array->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(), tmp_out_array->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void *>(out_data.data()),
                  out_data.size() * sizeof(T *), dev_ctx.stream());
 

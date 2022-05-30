@@ -1,4 +1,5 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,8 @@
 
 STATIC_MODE_TESTING_LIST = [
     'test_affine_channel_op',
+    'test_transfer_dtype_op',
+    'test_transfer_layout_op',
     'test_concat_op',
     'test_elementwise_add_op',
     'test_elementwise_sub_op',
@@ -89,6 +92,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_case',
     'test_cast_op',
     'test_center_loss',
+    'test_channel_shuffle',
     'test_cholesky_op',
     'test_chunk_eval_op',
     'test_chunk_op',
@@ -166,6 +170,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_elementwise_div_op',
     'test_elementwise_floordiv_op',
     'test_elementwise_gradient_op',
+    'test_elementwise_heaviside_op',
     'test_elementwise_max_op',
     'test_elementwise_min_op',
     'test_elementwise_mod_op',
@@ -299,11 +304,11 @@ STATIC_MODE_TESTING_LIST = [
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_layer_norm_op_v2',
-    'test_layer_norm_fuse_pass',
     'test_learning_rate_scheduler',
     'test_linear_interp_op',
     'test_linear_interp_v2_op',
     'test_linspace',
+    'test_logspace',
     'test_load_op',
     'test_load_vars_shape_check',
     'test_locality_aware_nms_op',
@@ -347,6 +352,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_nearest_interp_v2_op',
     'test_network_with_dtype',
     'test_nll_loss',
+    'test_nms_op',
     'test_nn_functional_embedding_static',
     'test_nn_functional_hot_op',
     'test_nonzero_api',
@@ -382,6 +388,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_partial_sum_op',
     'test_pass_builder',
     'test_pixel_shuffle',
+    'test_pixel_unshuffle',
     'test_polygon_box_transform',
     'test_pool1d_api',
     'test_pool2d_api',
@@ -577,7 +584,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_ir_embedding_eltwise_layernorm_fuse_pass',
     'test_ir_fc_fuse_pass',
     'test_ir_skip_layernorm_pass',
-    'test_conv_affine_channel_fuse_pass',
     'test_conv_bias_mkldnn_fuse_pass',
     'test_conv_bn_fuse_pass',
     'test_conv_elementwise_add2_act_fuse_pass',
@@ -649,10 +655,12 @@ STATIC_MODE_TESTING_LIST = [
     'test_transpose_mkldnn_op',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_mkldnn_conv_concat_relu_mkldnn_fuse_pass',
+    'test_mkldnn_int8_scale_calculation_pass',
     'test_mkldnn_matmul_op_output_fuse_pass',
     'test_mkldnn_matmul_transpose_reshape_fuse_pass',
     'test_mkldnn_scale_matmul_fuse_pass',
     'test_mkldnn_inplace_fuse_pass',
+    'test_mkldnn_conv_affine_channel_fuse_pass',
     'test_batch_fc_op',
     'test_c_comm_init_all_op',
     'test_conv2d_fusion_op',
@@ -726,5 +734,9 @@ STATIC_MODE_TESTING_LIST = [
     'test_class_center_sample_op',
     'test_fill_diagonal_tensor_op',
     'test_fill_any_op',
+    'test_lu_op',
     'test_margin_cross_entropy_op',
+    'test_pull_gpups_sparse_op',
+    'test_fused_gemm_epilogue_op',
+    'test_fused_gemm_epilogue_grad_op',
 ]

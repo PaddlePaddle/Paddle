@@ -14,10 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#include "paddle/phi/core/lod_utils.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 }  // namespace framework
@@ -83,16 +88,16 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
       rank = in_true.dims().size();
-      in_dims = framework::slice_ddim(in_true.dims(), 1, rank);
+      in_dims = phi::slice_ddim(in_true.dims(), 1, rank);
     } else {
       rank = in_false.dims().size();
-      in_dims = framework::slice_ddim(in_false.dims(), 1, rank);
+      in_dims = phi::slice_ddim(in_false.dims(), 1, rank);
     }
 
-    auto in_dim_vec = framework::vectorize(in_dims);
+    auto in_dim_vec = phi::vectorize(in_dims);
     in_dim_vec.insert(in_dim_vec.begin(), batch_size);
 
-    framework::DDim out_dims = framework::make_ddim(in_dim_vec);
+    framework::DDim out_dims = phi::make_ddim(in_dim_vec);
     out->Resize(out_dims);
 
     out->mutable_data(place, data_type);
@@ -119,7 +124,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
           input->lod(), *in_idx, (*in_idx) + 1, 0);
       auto &lod_length = lod_and_offset.first;
 
-      framework::AppendLoD(out_lod, lod_length);
+      phi::AppendLoD(out_lod, lod_length);
 
       size_t start_offset = lod_and_offset.second.first;
       size_t end_offset = lod_and_offset.second.second;

@@ -27,9 +27,9 @@ class TestPad3dOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.value = 0.0
-        self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad3d"
+        self.python_api = paddle.nn.functional.pad
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
@@ -72,10 +72,10 @@ class TestPad3dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
@@ -83,6 +83,7 @@ class TestPad3dOp(OpTest):
         self.mode = "constant"
         self.data_format = "NCDHW"
         self.pad_value = 0.0
+        self.variable_paddings = False
 
 
 class TestCase1(TestPad3dOp):
@@ -92,6 +93,7 @@ class TestCase1(TestPad3dOp):
         self.mode = "constant"
         self.data_format = "NCDHW"
         self.value = 1.0
+        self.variable_paddings = False
 
 
 class TestCase2(TestPad3dOp):
@@ -101,6 +103,7 @@ class TestCase2(TestPad3dOp):
         self.mode = "constant"
         self.data_format = "NDHWC"
         self.value = 1.0
+        self.variable_paddings = False
 
 
 class TestCase3(TestPad3dOp):
@@ -109,6 +112,7 @@ class TestCase3(TestPad3dOp):
         self.paddings = [0, 1, 1, 0, 2, 3]
         self.mode = "reflect"
         self.data_format = "NCDHW"
+        self.variable_paddings = False
 
 
 class TestCase4(TestPad3dOp):
@@ -117,6 +121,7 @@ class TestCase4(TestPad3dOp):
         self.paddings = [0, 1, 2, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NDHWC"
+        self.variable_paddings = False
 
 
 class TestCase5(TestPad3dOp):
@@ -125,6 +130,7 @@ class TestCase5(TestPad3dOp):
         self.paddings = [0, 1, 2, 3, 2, 1]
         self.mode = "replicate"
         self.data_format = "NCDHW"
+        self.variable_paddings = False
 
 
 class TestCase6(TestPad3dOp):
@@ -133,6 +139,7 @@ class TestCase6(TestPad3dOp):
         self.paddings = [5, 4, 2, 1, 2, 3]
         self.mode = "replicate"
         self.data_format = "NDHWC"
+        self.variable_paddings = False
 
 
 class TestCase7(TestPad3dOp):
@@ -141,6 +148,7 @@ class TestCase7(TestPad3dOp):
         self.paddings = [0, 1, 2, 3, 2, 1]
         self.mode = "circular"
         self.data_format = "NCDHW"
+        self.variable_paddings = False
 
 
 class TestCase8(TestPad3dOp):
@@ -149,6 +157,27 @@ class TestCase8(TestPad3dOp):
         self.paddings = [0, 1, 2, 1, 2, 3]
         self.mode = "circular"
         self.data_format = "NDHWC"
+        self.variable_paddings = False
+
+
+class TestCase9(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 2, 3, 4, 5]
+        self.mode = "constant"
+        self.data_format = "NCDHW"
+        self.value = 1.0
+        self.variable_paddings = True
+
+
+class TestCase10(TestPad3dOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.paddings = [0, 1, 2, 3, 4, 5]
+        self.mode = "constant"
+        self.data_format = "NDHWC"
+        self.value = 1.0
+        self.variable_paddings = True
 
 
 class TestPadAPI(unittest.TestCase):
@@ -678,6 +707,30 @@ class TestPad3dAPI(unittest.TestCase):
             output = pad_circular(data)
             np_out = self._get_numpy_out(
                 input_data, pad, "circular", data_format="NCDHW")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
+    def test_pad_tensor(self):
+        paddle.disable_static()
+        for place in self.places:
+            input_shape = (3, 4, 5, 6, 7)
+            pad = [1, 2, 2, 1, 1, 0]
+            pad_tensor = paddle.to_tensor(pad)
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+
+            pad_reflection_ncdhw = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NCDHW")
+            pad_reflection_ndhwc = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NDHWC")
+            data = paddle.to_tensor(input_data)
+
+            output = pad_reflection_ncdhw(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCDHW")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
+            output = pad_reflection_ndhwc(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NDHWC")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
 

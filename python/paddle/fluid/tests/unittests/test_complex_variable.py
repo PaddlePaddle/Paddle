@@ -19,6 +19,7 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexVariable(unittest.TestCase):
@@ -56,6 +57,12 @@ class TestComplexVariable(unittest.TestCase):
             convert_dtype(core.VarDesc.VarType.COMPLEX64), "complex64")
         self.assertEqual(
             convert_dtype(core.VarDesc.VarType.COMPLEX128), "complex128")
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_attrs()
+            self.test_convert_np_dtype_to_dtype()
+            self.test_convert_dtype()
 
 
 if __name__ == '__main__':

@@ -89,21 +89,34 @@ class ScaleOpConverter : public OpConverter {
       expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       expand_layer->setReshapeDimensions(expand_shape);
       input = expand_layer->getOutput(0);
+      expand_layer->getOutput(0)->setName(
+          ("before_reshape_out: " + out_name).c_str());
+      expand_layer->setName(
+          ("Scale: before_reshape (Output: " + out_name + ")").c_str());
     }
 
     if (bias_after_scale) {
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Scale, *input, nvinfer1::ScaleMode::kUNIFORM,
           shift_weights.get(), scale_weights.get(), power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_after_scale_out: " + out_name).c_str());
+      layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
     } else {
       // add bias
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Scale, *(input), nvinfer1::ScaleMode::kUNIFORM,
           shift_weights.get(), power_weights.get(), power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_before_scale：bias_out: " + out_name).c_str());
+      layer->setName(("Scale: scale_bias (Output: " + out_name + ")").c_str());
       // mul scale
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Scale, *(layer->getOutput(0)), nvinfer1::ScaleMode::kUNIFORM,
           power_weights.get(), scale_weights.get(), power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_before_scale：scale_out: " + out_name).c_str());
+      layer->setName(("Scale: scale_scale (Output: " + out_name + ")").c_str());
     }
 
     PADDLE_ENFORCE_EQ(layer != nullptr, true,
@@ -119,6 +132,9 @@ class ScaleOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
       squeeze_layer->setReshapeDimensions(squeeze_shape);
       layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+      layer->getOutput(0)->setName(("after_reshape_out: " + out_name).c_str());
+      layer->setName(
+          ("Scale: Shuffle_reshape (Output: " + out_name + ")").c_str());
     }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
   }

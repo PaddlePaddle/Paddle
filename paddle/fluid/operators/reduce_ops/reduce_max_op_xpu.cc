@@ -16,7 +16,7 @@
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
-#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
@@ -105,11 +105,10 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
                                    " wrong value[%d %s].",
                                    r, XPUAPIErrorMsg[r]));
     // step 2. comparse out_brocast and x
-    r = xpu::elementwise_equal<T>(dev_ctx.x_context(), x_data, brocast1, equal,
-                                  x->numel());
+    r = xpu::equal<T>(dev_ctx.x_context(), x_data, brocast1, equal, x->numel());
     PADDLE_ENFORCE_EQ(
         r == xpu::Error_t::SUCCESS, true,
-        platform::errors::External("XPU elementwise_equal in reduce_max_grad "
+        platform::errors::External("XPU equal in reduce_max_grad "
                                    "op return wrong value[%d %s].",
                                    r, XPUAPIErrorMsg[r]));
     // step 3. get x_grad

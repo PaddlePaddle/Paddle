@@ -27,15 +27,16 @@ from op_test import OpTest
 class TestMVOp(OpTest):
     def setUp(self):
         self.op_type = "mv"
+        self.python_api = paddle.mv
         self.init_config()
         self.inputs = {'X': self.x, 'Vec': self.vec}
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out')
+        self.check_grad(['X', 'Vec'], 'Out', check_eager=True)
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
@@ -107,4 +108,5 @@ class TestMVError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

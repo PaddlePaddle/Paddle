@@ -25,6 +25,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid import Conv2D, Pool2D, Linear
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.framework import _test_eager_guard
 
 
 class Discriminator(fluid.Layer):
@@ -54,7 +55,7 @@ class Generator(fluid.Layer):
 
 
 class TestDygraphGAN(unittest.TestCase):
-    def test_gan_float32(self):
+    def func_test_gan_float32(self):
         seed = 90
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
@@ -226,6 +227,11 @@ class TestDygraphGAN(unittest.TestCase):
         self.assertEqual(dy_d_loss2, static_d_loss)
         for k, v in six.iteritems(dy_params2):
             self.assertTrue(np.allclose(v, static_params[k]))
+
+    def test_gan_float32(self):
+        with _test_eager_guard():
+            self.func_test_gan_float32()
+        self.func_test_gan_float32()
 
 
 if __name__ == '__main__':

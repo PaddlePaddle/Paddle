@@ -25,6 +25,7 @@ from paddle.fluid.framework import program_guard, Program
 class TestGatherTreeOp(OpTest):
     def setUp(self):
         self.op_type = "gather_tree"
+        self.python_api = paddle.nn.functional.gather_tree
         max_length, batch_size, beam_size = 5, 2, 2
         ids = np.random.randint(
             0, high=10, size=(max_length, batch_size, beam_size))
@@ -34,7 +35,7 @@ class TestGatherTreeOp(OpTest):
         self.outputs = {'Out': self.backtrace(ids, parents)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     @staticmethod
     def backtrace(ids, parents):
@@ -126,4 +127,5 @@ class TestGatherTreeOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

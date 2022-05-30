@@ -52,7 +52,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
           }
         }
       }
-      ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
 
       return;
     }
@@ -78,7 +78,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
         ctx->ShareLoD("X", /*->*/ "Out");
       } else {
         auto out_dims = std::vector<int>(shape_dim[0], -1);
-        ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+        ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
       }
       return;
     }
@@ -99,7 +99,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
         }
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
   }
 
   framework::OpKernelType GetExpectedKernelType(

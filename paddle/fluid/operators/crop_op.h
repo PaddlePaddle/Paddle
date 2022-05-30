@@ -81,7 +81,7 @@ void CropFunction(const framework::ExecutionContext& context) {
     out_dims[0] = x->dims()[0];
   }
   out->mutable_data<T>(out_dims, context.GetPlace());
-  auto x_stride = framework::stride(x->dims());
+  auto x_stride = phi::stride(x->dims());
   auto offsets = GetOffsets(context);
   int64_t offset = 0;
   for (size_t i = 0; i < offsets.size(); ++i) {

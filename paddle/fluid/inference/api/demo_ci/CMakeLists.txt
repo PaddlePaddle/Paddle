@@ -4,6 +4,7 @@ option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL.
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
+option(WITH_ONNXRUNTIME       "Compile demo with ONNXRuntime"       OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -46,6 +47,13 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
+if (WITH_ONNXRUNTIME)
+  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
+  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/include")
+
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
+endif()
 
 if (WIN32)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
@@ -54,8 +62,10 @@ if (WIN32)
     if (WITH_MKL)
       set(FLAG_OPENMP "/openmp")
     endif()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT ${FLAG_OPENMP}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4251 /wd4267 /wd4305")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd ${FLAG_OPENMP}")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT ${FLAG_OPENMP}")
     safe_set_static_flag()
@@ -74,13 +84,15 @@ if(WITH_GPU)
   if(NOT WIN32)
     set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
   else()
-    if(NOT DEFINED CUDA_LIB)
+    set(CUDA_LIB "" CACHE STRING "CUDA_LIB")
+    if("${CUDA_LIB}" STREQUAL "")
       if(DEFINED ENV{CUDA_PATH})
         set(CUDA_LIB "$ENV{CUDA_PATH}\\lib\\x64")
       else()
         set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.2\\lib\\x64")
       endif()
     endif()
+    message(STATUS "Current CUDA lib path: ${CUDA_LIB}")
   endif(NOT WIN32)
 endif()
 
@@ -149,6 +161,17 @@ else()
   endif()
 endif()
 
+if (WITH_ONNXRUNTIME)
+  if(WIN32)
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib paddle2onnx)
+  elseif(APPLE)
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib paddle2onnx)
+  else()
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0 paddle2onnx)
+  endif()
+endif()
+
+
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
@@ -187,33 +210,47 @@ endif()
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
 if(WIN32)
+  if("${CMAKE_GENERATOR}" MATCHES "Ninja")
+    set(LIB_PATH ${CMAKE_BINARY_DIR})
+  else()
+    set(LIB_PATH ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+  endif()
+
   if(USE_TENSORRT)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_SHARED_LIBRARY_SUFFIX}
-              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+              ${LIB_PATH}
             COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
-              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+              ${LIB_PATH}
     )
     if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
       add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
               COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_SHARED_LIBRARY_SUFFIX}
-                ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+                ${LIB_PATH})
     endif()
   endif()
   if(WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll ${CMAKE_BINARY_DIR}/Release
-          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll ${CMAKE_BINARY_DIR}/Release
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll  ${CMAKE_BINARY_DIR}/Release
+          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll ${LIB_PATH}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll ${LIB_PATH}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll  ${LIB_PATH}
     )
   else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
+          COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${LIB_PATH}
+    )
+  endif()
+  if(WITH_ONNXRUNTIME)
+    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.dll
+      ${LIB_PATH}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib/paddle2onnx.dll
+      ${LIB_PATH}
     )
   endif()
   if(NOT WITH_STATIC_LIB)
       add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
-        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${LIB_PATH}
       )
   endif()
 endif()

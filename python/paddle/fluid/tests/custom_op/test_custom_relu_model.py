@@ -22,6 +22,7 @@ from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_MAC
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -98,7 +99,7 @@ class TestDygraphModel(unittest.TestCase):
         self.x_spec = paddle.static.InputSpec(
             shape=[None, self.in_dim], dtype='float32', name='x')
 
-    def test_train_eval(self):
+    def func_train_eval(self):
         for device in self.devices:
             # set device
             paddle.set_device(device)
@@ -106,26 +107,34 @@ class TestDygraphModel(unittest.TestCase):
             # for train
             origin_relu_train_out = self.train_model(use_custom_op=False)
             custom_relu_train_out = self.train_model(use_custom_op=True)
-            custom_relu_dy2stat_train_out = self.train_model(
-                use_custom_op=True, dy2stat=True)  # for to_static
+            # open this when dy2stat is ready for eager 
+            if _in_legacy_dygraph():
+                custom_relu_dy2stat_train_out = self.train_model(
+                    use_custom_op=True, dy2stat=True)  # for to_static
+                self.assertTrue(
+                    np.array_equal(origin_relu_train_out,
+                                   custom_relu_dy2stat_train_out))
 
             self.assertTrue(
                 np.array_equal(origin_relu_train_out, custom_relu_train_out))
-            self.assertTrue(
-                np.array_equal(origin_relu_train_out,
-                               custom_relu_dy2stat_train_out))
 
             # for eval
             origin_relu_eval_out = self.eval_model(use_custom_op=False)
             custom_relu_eval_out = self.eval_model(use_custom_op=True)
-            custom_relu_dy2stat_eval_out = self.eval_model(
-                use_custom_op=True, dy2stat=True)  # for to_static
+            if _in_legacy_dygraph():
+                custom_relu_dy2stat_eval_out = self.eval_model(
+                    use_custom_op=True, dy2stat=True)  # for to_static
+                self.assertTrue(
+                    np.array_equal(origin_relu_eval_out,
+                                   custom_relu_dy2stat_eval_out))
 
             self.assertTrue(
                 np.array_equal(origin_relu_eval_out, custom_relu_eval_out))
-            self.assertTrue(
-                np.array_equal(origin_relu_eval_out,
-                               custom_relu_dy2stat_eval_out))
+
+    def test_train_eval(self):
+        with _test_eager_guard():
+            self.func_train_eval()
+        self.func_train_eval()
 
     def train_model(self, use_custom_op=False, dy2stat=False):
         # reset random seed

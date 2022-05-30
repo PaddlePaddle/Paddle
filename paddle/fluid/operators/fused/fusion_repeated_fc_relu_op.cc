@@ -70,11 +70,11 @@ void FusionRepeatedFCReluOp::InferShape(
                           "w_dims[%d].size() = %d.",
                           i, w_dims[i].size()));
     PADDLE_ENFORCE_EQ(
-        framework::product(b_dims[i]), w_dims[i][1],
+        phi::product(b_dims[i]), w_dims[i][1],
         platform::errors::InvalidArgument(
             "The length of Bias must be equal with w_dims[1], but received "
             "product(b_dims[%d]) = %d, w_dims[%d][1] = %d.",
-            i, framework::product(b_dims[i]), i, w_dims[i][1]));
+            i, phi::product(b_dims[i]), i, w_dims[i][1]));
   }
   ctx->SetOutputDim("Out", {i_dims[0], w_dims[sz - 1][1]});
   ctx->ShareLoD("X", /*->*/ "Out");
@@ -130,7 +130,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     int weight_sz = static_cast<int>(weights.size());
 
     auto i_dims = in->dims();
-    auto w_dims = weights[0]->dims();
+    const auto& w_dims = weights[0]->dims();
     jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
@@ -140,8 +140,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
             relus[0]->mutable_data<T>(place), attr);
 
     for (int i = 1; i < weight_sz - 1; ++i) {
-      auto i_dims = relus[i - 1]->dims();
-      auto w_dims = weights[i]->dims();
+      const auto& i_dims = relus[i - 1]->dims();
+      const auto& w_dims = weights[i]->dims();
       attr.m = i_dims[0];
       attr.n = w_dims[1];
       attr.k = w_dims[0];
@@ -150,8 +150,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
               biases[i]->data<T>(), relus[i]->mutable_data<T>(place), attr);
     }
 
-    auto i_dims_last = relus[weight_sz - 2]->dims();
-    auto w_dims_last = weights[weight_sz - 1]->dims();
+    const auto& i_dims_last = relus[weight_sz - 2]->dims();
+    const auto& w_dims_last = weights[weight_sz - 1]->dims();
     attr.m = i_dims_last[0];
     attr.n = w_dims_last[1];
     attr.k = w_dims_last[0];

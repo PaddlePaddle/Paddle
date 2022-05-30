@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -44,7 +45,6 @@ class TestConvDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
-        places = []
 
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -120,7 +120,8 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        #places = [fluid.CPUPlace()]
+        places = []
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
@@ -503,4 +504,5 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -15,10 +15,11 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -26,14 +27,13 @@ namespace math {
 template <typename T>
 struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const framework::SelectedRows& input2,
-                  framework::SelectedRows* output) {
+                  const phi::SelectedRows& input1,
+                  const phi::SelectedRows& input2, phi::SelectedRows* output) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height, input2.height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height  = "
+                                          "But received first input height  = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2.height()));
     output->set_height(in1_height);
@@ -57,13 +57,13 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
         in1_row_numel, in2_value.numel() / in2_rows.size(),
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, in2_value.numel() / in2_rows.size()));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, out_value->numel() / out_rows.size(),
         platform::errors::InvalidArgument(
             "The input and oupput width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, out_value->numel() / out_rows.size()));
 
     auto* out_data = out_value->data<T>();
@@ -72,24 +72,21 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in2_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place), out_data,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(out_place, out_data, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, out_place),
-                 out_data + in1_value.numel(),
-                 BOOST_GET_CONST(platform::CUDAPlace, in2_place), in2_data,
+    memory::Copy(out_place, out_data + in1_value.numel(), in2_place, in2_data,
                  in2_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -120,7 +117,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
+                  const phi::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output) {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
@@ -129,13 +126,13 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument(
             "The two inputs height must be equal."
-            "But recieved first input height = [%d], first input height = [%d]",
+            "But received first input height = [%d], first input height = [%d]",
             in1_height, in2_dims[0]));
     PADDLE_ENFORCE_EQ(
         in1_height, out_dims[0],
         platform::errors::InvalidArgument(
             "The input and output height must be equal."
-            "But recieved input height = [%d], output height = [%d]",
+            "But received input height = [%d], output height = [%d]",
             in1_height, out_dims[0]));
 
     auto& in1_value = input1.value();
@@ -146,28 +143,89 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2.numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2.numel() / in1_height));
     PADDLE_ENFORCE_EQ(
         in1_row_numel, output->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The input and output width must be equal."
-            "But recieved input width = [%d], output width = [%d]",
+            "But received input width = [%d], output width = [%d]",
             in1_row_numel, output->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    SetConstant<platform::CUDADeviceContext, T> functor;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
     functor(context, output, static_cast<T>(0));
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.CUDAData(context.GetPlace()), out_data,
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
+        in1_row_numel);
+
+    auto out_eigen = framework::EigenVector<T>::Flatten(*output);
+    auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
+    out_eigen.device(*context.eigen_device()) = out_eigen + in2_eigen;
+  }
+};
+
+template <typename T>
+struct SelectedRowsAddTensor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
+                  const phi::SelectedRows& input1,
+                  const framework::Tensor& input2, framework::Tensor* output) {
+    auto in1_height = input1.height();
+    auto in2_dims = input2.dims();
+    auto out_dims = output->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument(
+            "The two inputs height must be equal."
+            "But received first input height = [%d], first input height = [%d]",
+            in1_height, in2_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        in1_height, out_dims[0],
+        platform::errors::InvalidArgument(
+            "The input and output height must be equal."
+            "But received input height = [%d], output height = [%d]",
+            in1_height, out_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2.numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But received first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2.numel() / in1_height));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, output->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The input and output width must be equal."
+            "But received input width = [%d], output width = [%d]",
+            in1_row_numel, output->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* in2_data = input2.data<T>();
+    auto* out_data = output->data<T>();
+
+    phi::funcs::SetConstant<phi::GPUContext, T> functor;
+    functor(context, output, static_cast<T>(0));
+
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
+    dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
+    SelectedRowsAddTensorKernel<
+        T, block_size><<<grid, threads, 0, context.stream()>>>(
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
         in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
@@ -182,17 +240,21 @@ template struct SelectedRowsAdd<platform::CUDADeviceContext, platform::float16>;
 template struct SelectedRowsAddTensor<platform::CUDADeviceContext,
                                       platform::float16>;
 
+template struct SelectedRowsAddTensor<phi::GPUContext, float>;
+template struct SelectedRowsAddTensor<phi::GPUContext, double>;
+template struct SelectedRowsAdd<phi::GPUContext, platform::float16>;
+template struct SelectedRowsAddTensor<phi::GPUContext, platform::float16>;
+
 template <typename T>
 struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  const int64_t input2_offset,
-                  framework::SelectedRows* input2) {
+                  const phi::SelectedRows& input1, const int64_t input2_offset,
+                  phi::SelectedRows* input2) {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(
         in1_height, input2->height(),
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, input2->height()));
 
@@ -203,24 +265,23 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
+    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     if (in1_rows.size()) {
-      in2_rows.Extend(in1_rows.begin(), in1_rows.end());
+      mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
     }
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true,
                       platform::errors::InvalidArgument(
-                          "The running enviroment is not on the GPU place."));
+                          "The running environment is not on the GPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, in2_place),
-                 in2_data + input2_offset,
-                 BOOST_GET_CONST(platform::CUDAPlace, in1_place), in1_data,
+    memory::Copy(in2_place, in2_data + input2_offset, in1_place, in1_data,
                  in1_value.numel() * sizeof(T), context.stream());
   }
 };
@@ -255,14 +316,13 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  const phi::SelectedRows& input1, framework::Tensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -274,7 +334,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
@@ -282,9 +342,47 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddToTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.CUDAData(context.GetPlace()), in2_data,
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
+        in1_row_numel);
+  }
+};
+
+template <typename T>
+struct SelectedRowsAddToTensor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& context,
+                  const phi::SelectedRows& input1, framework::Tensor* input2) {
+    auto in1_height = input1.height();
+    auto in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But received first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But received first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* in2_data = input2->data<T>();
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
+    dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
+    SelectedRowsAddToTensorKernel<
+        T, block_size><<<grid, threads, 0, context.stream()>>>(
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
         in1_row_numel);
   }
 };
@@ -295,6 +393,11 @@ template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext,
                                         platform::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, float>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, platform::float16>;
 
 namespace scatter {
 
@@ -323,26 +426,24 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
   }
 }
 
-template <typename T>
-struct MergeAdd<platform::CUDADeviceContext, T> {
-  framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
-                                     const framework::SelectedRows& input,
-                                     const bool sorted_result = false) {
-    framework::SelectedRows out;
+template <typename DeviceContext, typename T>
+struct MergeAddImpl {
+  phi::SelectedRows operator()(const DeviceContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result = false) {
+    phi::SelectedRows out;
     (*this)(context, input, &out);
     return out;
   }
 
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::SelectedRows& input,
-                  framework::SelectedRows* output,
-                  const bool sorted_result = false) {
+  void operator()(const DeviceContext& context, const phi::SelectedRows& input,
+                  phi::SelectedRows* output, const bool sorted_result = false) {
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
 
-    framework::SelectedRows& out = *output;
+    phi::SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
     framework::Vector<int64_t> merge_rows(merge_rows_cpu);
@@ -352,11 +453,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -366,21 +466,23 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid1(input_rows.size(), 1);
 
+    paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
+    paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
     MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
-        input_data, input_rows.CUDAData(context.GetPlace()), out_data,
-        out.mutable_rows()->CUDAMutableData(context.GetPlace()),
-        out.rows().size(), input_width);
+        input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
+        mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
+        input_width);
+    mix_vector_out.CopyToCPU();
   }
 
-  void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<const framework::SelectedRows*>& inputs,
-                  framework::SelectedRows* output,
-                  const bool sorted_result = false) {
+  void operator()(const DeviceContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result = false) {
     if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
-    const framework::SelectedRows* has_value_input = nullptr;
+    const phi::SelectedRows* has_value_input = nullptr;
     for (auto* in : inputs) {
       if (in->rows().size() > 0) {
         has_value_input = in;
@@ -393,7 +495,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     }
     auto input_width = has_value_input->value().dims()[1];
     auto input_height = has_value_input->height();
-    framework::SelectedRows& out = *output;
+    phi::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
     for (auto* input : inputs) {
       if (input->rows().size() == 0) {
@@ -415,11 +517,10 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input_height);
     out.mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -435,22 +536,80 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       auto& input_rows = input->rows();
       dim3 grid1(input_rows.size(), 1);
 
+      paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
+      paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
-          input_data, input_rows.CUDAData(context.GetPlace()), out_data,
-          out.mutable_rows()->CUDAMutableData(context.GetPlace()),
-          out.rows().size(), input_width);
+          input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
+          mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
+          input_width);
+      mix_vector_out.CopyToCPU();
     }
   }
 };
 
-template struct MergeAdd<platform::CUDADeviceContext, float>;
-template struct MergeAdd<platform::CUDADeviceContext, double>;
-template struct MergeAdd<platform::CUDADeviceContext, int>;
-template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
-template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
-template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
-template struct MergeAdd<platform::CUDADeviceContext,
-                         platform::complex<double>>;
+template <typename T>
+struct MergeAdd<platform::CUDADeviceContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const platform::CUDADeviceContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<platform::CUDADeviceContext, T>()(context, input,
+                                                          sorted_result);
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<platform::CUDADeviceContext, T>()(context, input, output,
+                                                   sorted_result);
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<platform::CUDADeviceContext, T>()(context, inputs, output,
+                                                   sorted_result);
+  }
+};
+
+template <typename T>
+struct MergeAdd<phi::GPUContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const phi::GPUContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<phi::GPUContext, T>()(context, input, sorted_result);
+  }
+
+  void operator()(const phi::GPUContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<phi::GPUContext, T>()(context, input, output, sorted_result);
+  }
+
+  void operator()(const phi::GPUContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<phi::GPUContext, T>()(context, inputs, output, sorted_result);
+  }
+};
+
+#define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)                    \
+  template struct MergeAddImpl<platform::CUDADeviceContext, dtype>; \
+  template struct MergeAddImpl<phi::GPUContext, dtype>;             \
+  template struct MergeAdd<platform::CUDADeviceContext, dtype>;     \
+  template struct MergeAdd<phi::GPUContext, dtype>;
+
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(int)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(int64_t)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::float16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::complex<float>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::complex<double>)
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,
@@ -504,7 +663,7 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 template <typename T>
 struct UpdateToTensor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const ScatterOps& op, const framework::SelectedRows& input1,
+                  const ScatterOps& op, const phi::SelectedRows& input1,
                   framework::Tensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
@@ -516,7 +675,7 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height, in2_dims[0],
         platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
+                                          "But received first input height = "
                                           "[%d], second input height = [%d]",
                                           in1_height, in2_dims[0]));
 
@@ -528,7 +687,7 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
         in1_row_numel, input2->numel() / in1_height,
         platform::errors::InvalidArgument(
             "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
+            "But received first input width = [%d], second input width = [%d]",
             in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.template data<T>();

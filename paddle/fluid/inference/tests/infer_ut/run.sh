@@ -20,7 +20,9 @@ TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
 TENSORRT_ROOT_DIR=$5 # TensorRT ROOT dir, default to /usr/local/TensorRT
-MSVC_STATIC_CRT=$6
+WITH_ONNXRUNTIME=$6
+MSVC_STATIC_CRT=$7
+CUDA_LIB=$8/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
@@ -134,7 +136,7 @@ function compile_test() {
     cd ${build_dir}
     TEST_NAME=$1
     if [ $WIN_DETECT != "" ]; then
-        cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
              -DWITH_GPU=$TEST_GPU_CPU \
@@ -144,8 +146,10 @@ function compile_test() {
              -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
              -DWITH_GTEST=ON \
              -DCMAKE_CXX_FLAGS='/std:c++17' \
-             -DCMAKE_BUILD_TYPE=Release
-        msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj
+             -DCMAKE_BUILD_TYPE=Release \
+             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+             -DCUDA_LIB="$CUDA_LIB"
+        ninja
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \
                  -DWITH_MKL=$TURN_ON_MKL \
@@ -154,7 +158,8 @@ function compile_test() {
                  -DWITH_STATIC_LIB=OFF \
                  -DUSE_TENSORRT=$USE_TENSORRT \
                  -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-                 -DWITH_GTEST=ON
+                 -DWITH_GTEST=ON \
+                 -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         make -j$(nproc)
     fi;
     cd -
@@ -168,11 +173,7 @@ mkdir -p ${log_dir}
 cd ${build_dir}
 rm -rf *
 
-if [ $WIN_DETECT != "" ]; then
-    exe_dir=${build_dir}/Release
-else
-    exe_dir=${build_dir}
-fi;
+exe_dir=${build_dir}
 
 printf "${YELLOW} start test_resnet50 ${NC} \n";
 compile_test "test_resnet50"
@@ -308,7 +309,7 @@ echo " "
 
 if [[ -f ${exe_dir}/test_summary.txt ]];then
   echo " "
-  echo "Summary Failed Tests ..."
+  echo "Summary infer_ut Failed Tests ..."
   echo "=====================test summary======================"
   echo "The following tests Failed: "
   cat ${exe_dir}/test_summary.txt

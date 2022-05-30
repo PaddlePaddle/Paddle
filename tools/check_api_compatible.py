@@ -75,7 +75,7 @@ def check_compatible(old_api_spec, new_api_spec):
 
 def check_compatible_str(old_api_spec_str, new_api_spec_str):
     patArgSpec = re.compile(
-        r'args=(.*), varargs=.*defaults=\((.*)\), kwonlyargs=.*')
+        r'args=(.*), varargs=.*defaults=(None|\((.*)\)), kwonlyargs=.*')
     mo_o = patArgSpec.search(old_api_spec_str)
     mo_n = patArgSpec.search(new_api_spec_str)
     if not (mo_o and mo_n):
@@ -86,8 +86,10 @@ def check_compatible_str(old_api_spec_str, new_api_spec_str):
 
     args_o = eval(mo_o.group(1))
     args_n = eval(mo_n.group(1))
-    defaults_o = mo_o.group(2).split(', ')
-    defaults_n = mo_n.group(2).split(', ')
+    defaults_o = mo_o.group(2) if mo_o.group(3) is None else mo_o.group(3)
+    defaults_n = mo_n.group(2) if mo_n.group(3) is None else mo_n.group(3)
+    defaults_o = defaults_o.split(', ') if defaults_o else []
+    defaults_n = defaults_n.split(', ') if defaults_n else []
     return _check_compatible(args_o, args_n, defaults_o, defaults_n)
 
 

@@ -14,8 +14,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/interpolate_op.h"
-
+#include "paddle/phi/kernels/funcs/interpolate_function.h"
 #ifdef PADDLE_WITH_XPU
 
 namespace paddle {
@@ -31,25 +30,14 @@ inline std::vector<int> get_new_shape_xpu(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
+        tensor->dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
     framework::Tensor temp;
-    TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
     vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
   }
 
   return vec_new_shape;
-}
-
-template <typename T>
-inline std::vector<T> get_new_data_from_tensor_xpu(
-    const Tensor* new_data_tensor) {
-  std::vector<T> vec_new_data;
-  framework::Tensor cpu_starts_tensor;
-  TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-  auto* new_data = cpu_starts_tensor.data<T>();
-  vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
-  return vec_new_data;
 }
 
 template <typename T>
@@ -68,7 +56,8 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
+    phi::funcs::ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h,
+                             &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
@@ -89,7 +78,8 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
-        auto scale_data = get_new_data_from_tensor_xpu<float>(scale_tensor);
+        auto scale_data =
+            phi::funcs::get_new_data_from_tensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -118,7 +108,8 @@ class InterpolateV2XPUKernel : public framework::OpKernel<T> {
       }
       auto out_size = ctx.Input<Tensor>("OutSize");
       if (out_size != nullptr) {
-        auto out_size_data = get_new_data_from_tensor<int>(out_size);
+        auto out_size_data =
+            phi::funcs::get_new_data_from_tensor<int>(out_size);
         out_h = out_size_data[0];
         out_w = out_size_data[1];
       }
@@ -180,7 +171,8 @@ class InterpolateV2GradXPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+    phi::funcs::ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h,
+                             &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
@@ -201,7 +193,8 @@ class InterpolateV2GradXPUKernel : public framework::OpKernel<T> {
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
-        auto scale_data = get_new_data_from_tensor_xpu<float>(scale_tensor);
+        auto scale_data =
+            phi::funcs::get_new_data_from_tensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -230,7 +223,8 @@ class InterpolateV2GradXPUKernel : public framework::OpKernel<T> {
       }
       auto out_size = ctx.Input<Tensor>("OutSize");
       if (out_size != nullptr) {
-        auto out_size_data = get_new_data_from_tensor<int>(out_size);
+        auto out_size_data =
+            phi::funcs::get_new_data_from_tensor<int>(out_size);
         out_h = out_size_data[0];
         out_w = out_size_data[1];
       }

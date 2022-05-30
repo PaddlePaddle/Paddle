@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/pool3d_op_plugin.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace inference {
@@ -108,16 +108,14 @@ int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
   output_shape.insert(output_shape.begin(), batchSize);
 
   if (pool3d_type_ == Pool3DType::max) {
-    paddle::operators::math::MaxPool<float> pool_process;
-    paddle::operators::math::Pool3dDirectCUDAFunctor<
-        paddle::operators::math::MaxPool<float>, float>
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool3d_forward;
     pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, true, adaptive_, odatas[0], stream, pool_process);
   } else if (pool3d_type_ == Pool3DType::avg) {
-    paddle::operators::math::AvgPool<float> pool_process;
-    paddle::operators::math::Pool3dDirectCUDAFunctor<
-        paddle::operators::math::AvgPool<float>, float>
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool3d_forward;
     pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, true, adaptive_, odatas[0], stream, pool_process);
@@ -351,16 +349,14 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   }
 
   if (pool3d_type_ == "max") {
-    paddle::operators::math::MaxPool<float> pool_process;
-    paddle::operators::math::Pool3dDirectCUDAFunctor<
-        paddle::operators::math::MaxPool<float>, float>
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool3d_forward;
     pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    true, adaptive_, output, stream, pool_process);
   } else if (pool3d_type_ == "avg") {
-    paddle::operators::math::AvgPool<float> pool_process;
-    paddle::operators::math::Pool3dDirectCUDAFunctor<
-        paddle::operators::math::AvgPool<float>, float>
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool3d_forward;
     pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    true, adaptive_, output, stream, pool_process);

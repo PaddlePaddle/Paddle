@@ -17,10 +17,14 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Block, Variable, in_dygraph_mode
+from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -74,8 +78,7 @@ def is_sequence(seq):
     """
     if isinstance(seq, dict):
         return True
-    return (isinstance(seq, collections.Sequence) and
-            not isinstance(seq, six.string_types))
+    return (isinstance(seq, Sequence) and not isinstance(seq, six.string_types))
 
 
 def _hash_with_id(*args):
@@ -148,7 +151,7 @@ def _sequence_like(instance, args):
         return type(instance)((key, result[key])
                               for key in six.iterkeys(instance))
     elif (isinstance(instance, tuple) and hasattr(instance, "_fields") and
-          isinstance(instance._fields, collections.Sequence) and
+          isinstance(instance._fields, Sequence) and
           all(isinstance(f, six.string_types) for f in instance._fields)):
         # This is a namedtuple
         return type(instance)(*args)
@@ -363,7 +366,7 @@ def convert_shape_to_list(shape):
     """
     if isinstance(shape, (list, tuple)):
         shape = list(
-            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
                 shape))
     else:
         shape = shape.numpy().astype(int).tolist()
@@ -403,7 +406,7 @@ def try_set_static_shape_tensor(tensor, shape):
     # (-1, 2)
     
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
@@ -426,7 +429,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     # (-1, 2)
     
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         try:
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op

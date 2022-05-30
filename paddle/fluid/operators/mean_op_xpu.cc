@@ -12,14 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mean_op.h"
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class MeanXPUKernel : public framework::OpKernel<T> {
@@ -64,9 +67,7 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
     const T* dy = OG->data<T>();
     T dy0_value;
     xpu_wait(dev_ctx.x_context()->xpu_stream);
-    memory::Copy(platform::CPUPlace(), &dy0_value,
-                 BOOST_GET_CONST(platform::XPUPlace, OG->place()), dy,
-                 sizeof(T));
+    memory::Copy(platform::CPUPlace(), &dy0_value, OG->place(), dy, sizeof(T));
     float dy0_fp32 = static_cast<float>(dy0_value);
     dy0_fp32 = dy0_fp32 / static_cast<float>(IG->numel());
 

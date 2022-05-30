@@ -76,7 +76,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
               "Input(PosCount) is not null."));
     }
 
-    ctx->SetOutputDim("MAP", framework::make_ddim({1}));
+    ctx->SetOutputDim("MAP", phi::make_ddim({1}));
   }
 
  protected:

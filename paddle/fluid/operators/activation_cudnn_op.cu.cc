@@ -14,17 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_desc.h"
-#else
-#include "paddle/fluid/platform/cudnn_desc.h"
-#endif
-
-namespace paddle {
-namespace platform {
-struct CUDAPlace;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -64,13 +54,13 @@ struct CudnnActivationFunctor {
     x_desc.set(x);
     out_desc.set(GET_DATA_SAFELY(out, "Output", "Out", "CudnnActivation"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationForward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), out_desc.desc(),
         out->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationForward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), out_desc.desc(),
@@ -108,14 +98,14 @@ struct CudnnActivationGradFunctor {
     dout_desc.set(dout);
     dx_desc.set(GET_DATA_SAFELY(dx, "Output", "X@GRAD", "CudnnActivationGrad"));
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenActivationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationBackward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
         dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
         platform::CudnnDataType<T>::kZero(), dx_desc.desc(),
         dx->mutable_data<T>(ctx_.GetPlace())));
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnActivationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationBackward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
         dout_desc.desc(), dout.data<T>(), x_desc.desc(), x.data<T>(),
@@ -142,7 +132,9 @@ struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -156,7 +148,9 @@ struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
       : CudnnActivationGradFunctor<T>(ctx, 6.0,
                                       GPUDNN_ACTIVATION_CLIPPED_RELU) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -169,7 +163,9 @@ struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_SIGMOID) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -182,7 +178,9 @@ struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
       : CudnnActivationGradFunctor<T>(ctx, 0.0, GPUDNN_ACTIVATION_TANH) {}
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename Functor>
@@ -207,7 +205,8 @@ class CudnnActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    static_assert(Functor::FwdDeps() == kDepOut, "Forward deps must be Out.");
+    static_assert(Functor::FwdDeps() == ActBwdOpFwdDeps::kDepOut,
+                  "Forward deps must be Out.");
 
     const framework::Tensor *X, *Out, *dOut;
     X = Out = dOut = nullptr;

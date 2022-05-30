@@ -14,7 +14,15 @@
 
 from .pass_base import new_pass, PassManager, PassContext
 from .fuse_all_reduce import *
+from .auto_parallel_gradient_merge import *
+from .auto_parallel_sharding import *
+from .auto_parallel_amp import *
+from .auto_parallel_fp16 import *
+from .auto_parallel_recompute import *
 from .cpp_pass import *
+import os
+from .ps_trainer_pass import *
+from .ps_server_pass import *
 
 __all__ = [
     'new_pass',

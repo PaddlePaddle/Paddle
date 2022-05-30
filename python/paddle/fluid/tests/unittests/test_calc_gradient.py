@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -83,19 +84,91 @@ class TestDoubleGrad(unittest.TestCase):
 
 class TestGradientWithPrune(unittest.TestCase):
     def test_prune(self):
-        x = fluid.data(name='x', shape=[3], dtype='float32')
-        x.stop_gradient = False
-        x1, x2, x3 = fluid.layers.split(x, dim=0, num_or_sections=3)
-        y = x1 * 2
-        x1_grad = fluid.gradients(y, x)
+        with paddle.fluid.scope_guard(paddle.static.Scope()):
+            x = fluid.data(name='x', shape=[3], dtype='float32')
+            x.stop_gradient = False
+            x1, x2, x3 = fluid.layers.split(x, dim=0, num_or_sections=3)
+            y = x1 * 2
+            x1_grad = fluid.gradients(y, x)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        main = fluid.default_main_program()
-        exe.run(fluid.default_startup_program())
-        out = exe.run(main,
-                      feed={'x': np.ones([3]).astype('float32')},
-                      fetch_list=[x1_grad])
-        self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
+            exe = fluid.Executor(fluid.CPUPlace())
+            main = fluid.default_main_program()
+            exe.run(fluid.default_startup_program())
+            out = exe.run(main,
+                          feed={'x': np.ones([3]).astype('float32')},
+                          fetch_list=[x1_grad])
+            self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
+
+
+class TestDoubleGradient(unittest.TestCase):
+    def build_program(self):
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, start_prog):
+            x = paddle.static.data('x', shape=[2, 2])
+            x.stop_gradient = False
+            y = x * x
+
+            v = paddle.ones([2, 2])
+            v.stop_gradient = False
+
+            grad_y = paddle.zeros_like(y)
+            grad_y.stop_gradient = False
+            grad_x = paddle.static.gradients(y, x, grad_y)
+            # test with single targets
+            jvp = paddle.static.gradients(grad_x, grad_y, v)
+
+        return start_prog, main_prog, [grad_x, jvp]
+
+    def test_calc_gradient(self):
+        with paddle.fluid.scope_guard(paddle.static.Scope()):
+            start_prog, main_prog, fetch_list = self.build_program()
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            ans = exe.run(main_prog,
+                          feed={'x': np.ones([2, 2]).astype(np.float32)},
+                          fetch_list=fetch_list)
+            self.assertEqual(len(ans), 2)
+            self.assertListEqual(ans[0].tolist(), [[0., 0.], [0., 0.]])
+            self.assertListEqual(ans[1].tolist(), [[2., 2.], [2., 2.]])
+
+
+class TestDoubleGradient2(unittest.TestCase):
+    def build_program(self):
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, start_prog):
+            x = paddle.static.data('x', shape=[2, 2])
+            x.stop_gradient = False
+            y = x * x
+            y2 = y + x
+
+            v = paddle.ones([2, 2])
+            v.stop_gradient = False
+
+            grad_y = paddle.zeros_like(y)
+            grad_y.stop_gradient = False
+            grad_x = paddle.static.gradients(y, x, grad_y)
+            grad_x2 = paddle.static.gradients(y2, x, grad_y)
+            # test with multi targets
+            jvp = paddle.static.gradients([grad_x[0], grad_x2[0]], grad_y,
+                                          [v, v])
+
+        return start_prog, main_prog, [grad_x, jvp]
+
+    def test_calc_gradient(self):
+        with paddle.fluid.scope_guard(paddle.static.Scope()):
+            start_prog, main_prog, fetch_list = self.build_program()
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            ans = exe.run(main_prog,
+                          feed={'x': np.ones([2, 2]).astype(np.float32)},
+                          fetch_list=fetch_list)
+            self.assertEqual(len(ans), 2)
+            self.assertListEqual(ans[0].tolist(), [[0., 0.], [0., 0.]])
+            self.assertListEqual(ans[1].tolist(), [[5., 5.], [5., 5.]])
 
 
 if __name__ == "__main__":

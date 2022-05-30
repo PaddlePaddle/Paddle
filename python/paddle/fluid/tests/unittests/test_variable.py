@@ -18,7 +18,7 @@ import unittest
 from functools import reduce
 
 import paddle
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -62,6 +62,41 @@ class TestVariable(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
+
+        w = b.create_var(
+            dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
+            shape=[1],
+            name="str_var")
+        self.assertEqual(None, w.lod_level)
+
+    def test_element_size(self):
+        with fluid.program_guard(Program(), Program()):
+            x = paddle.static.data(name='x1', shape=[2], dtype='bool')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.static.data(name='x2', shape=[2], dtype='float16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.static.data(name='x3', shape=[2], dtype='float32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.static.data(name='x4', shape=[2], dtype='float64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.static.data(name='x5', shape=[2], dtype='int8')
+            self.assertEqual(x.element_size(), 1)
+
+            x = paddle.static.data(name='x6', shape=[2], dtype='int16')
+            self.assertEqual(x.element_size(), 2)
+
+            x = paddle.static.data(name='x7', shape=[2], dtype='int32')
+            self.assertEqual(x.element_size(), 4)
+
+            x = paddle.static.data(name='x8', shape=[2], dtype='int64')
+            self.assertEqual(x.element_size(), 8)
+
+            x = paddle.static.data(name='x9', shape=[2], dtype='uint8')
+            self.assertEqual(x.element_size(), 1)
 
     def test_step_scopes(self):
         prog = Program()
@@ -298,7 +333,25 @@ class TestVariable(unittest.TestCase):
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
         with self.assertRaises(ValueError):
-            res = x[[False, False]]
+            with paddle.static.program_guard(prog):
+                res = x[[False, False]]
+
+    def _test_slice_index_scalar_bool(self, place):
+        data = np.random.rand(1, 3, 4).astype("float32")
+        np_idx = np.array([True])
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            idx = paddle.assign(np_idx)
+
+            out = x[idx]
+
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=[out])
+
+        expected = [data[np_idx]]
+
+        self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
         places = [fluid.CPUPlace()]
@@ -311,6 +364,7 @@ class TestVariable(unittest.TestCase):
             self._test_slice_index_list(place)
             self._test_slice_index_ellipsis(place)
             self._test_slice_index_list_bool(place)
+            self._test_slice_index_scalar_bool(place)
 
     def _tostring(self):
         b = default_main_program().current_block()
@@ -436,13 +490,15 @@ class TestVariableSlice(unittest.TestCase):
             out1 = x[0:, None]
             out2 = x[None, 1:]
             out3 = x[None]
+            out4 = x[..., None, :, None]
 
-        outs = [out0, out1, out2, out3]
+        outs = [out0, out1, out2, out3, out4]
         exe = paddle.static.Executor(place)
         result = exe.run(prog, fetch_list=outs)
 
         expected = [
-            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None]
+            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None],
+            data[..., None, :, None]
         ]
         for i in range(len(outs)):
             self.assertEqual(outs[i].shape, expected[i].shape)
@@ -634,6 +690,61 @@ class TestListIndex(unittest.TestCase):
         y = x[index_t1, index_t2]
         self.assertTrue(np.array_equal(y.numpy(), y_np))
 
+    def run_getitem_list_index(self, array, index):
+        x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
+
+        y = x[index]
+        place = paddle.fluid.CPUPlace()
+
+        prog = paddle.static.default_main_program()
+        exe = paddle.static.Executor(place)
+
+        exe.run(paddle.static.default_startup_program())
+        fetch_list = [y.name]
+        array2 = array.copy()
+
+        try:
+            value_np = array2[index]
+        except:
+            with self.assertRaises(ValueError):
+                getitem_pp = exe.run(prog,
+                                     feed={x.name: array},
+                                     fetch_list=fetch_list)
+            return
+        getitem_pp = exe.run(prog, feed={x.name: array}, fetch_list=fetch_list)
+
+        print(getitem_pp)
+        self.assertTrue(
+            np.array_equal(value_np, getitem_pp[0]),
+            msg='\n numpy:{},\n paddle:{}'.format(value_np, getitem_pp[0]))
+
+    def test_static_graph_getitem_bool_index(self):
+        paddle.enable_static()
+
+        # case 1:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, False, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
+        # case 2:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([False, True, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
+        # case 3:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, True, True, True])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_getitem_list_index(array, index)
+
     def run_setitem_list_index(self, array, index, value_np):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
@@ -667,7 +778,7 @@ class TestListIndex(unittest.TestCase):
                              fetch_list=fetch_list)
 
         self.assertTrue(
-            np.array_equal(array2, setitem_pp[0]),
+            np.allclose(array2, setitem_pp[0]),
             msg='\n numpy:{},\n paddle:{}'.format(array2, setitem_pp[0]))
 
     def test_static_graph_setitem_list_index(self):
@@ -730,6 +841,42 @@ class TestListIndex(unittest.TestCase):
             self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
         index_mod = (index % (min(array.shape))).tolist()
         self.run_setitem_list_index(array, index_mod, value_np)
+
+    def test_static_graph_setitem_bool_index(self):
+        paddle.enable_static()
+
+        # case 1:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, False, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_setitem_list_index(array, index, value_np)
+
+        # case 2:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([False, True, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_setitem_list_index(array, index, value_np)
+
+        # case 3:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True, True, True, True])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_setitem_list_index(array, index, value_np)
+
+    def test_static_graph_setitem_bool_scalar_index(self):
+        paddle.enable_static()
+        array = np.ones((1, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([True])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_setitem_list_index(array, index, value_np)
 
     def test_static_graph_tensor_index_setitem_muti_dim(self):
         paddle.enable_static()

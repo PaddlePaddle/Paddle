@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/miopen_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -66,7 +66,7 @@ class ScopedRNNBase {
     // ------------------- miopen dropout descriptors ---------------------
     size_t state_size;
     if (!initialized_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
@@ -75,7 +75,7 @@ class ScopedRNNBase {
                              dropout_state, seed_, state_size);
 
     // ------------------- miopen rnn descriptors ---------------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
         miopenRNNlinear,
         is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, miopenLSTM,
@@ -83,7 +83,7 @@ class ScopedRNNBase {
 
     // ------------------- miopen weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, miopen_type));
     PADDLE_ENFORCE_EQ(
         weights_size_, sizeof(T) * weight_numel_,
@@ -95,10 +95,10 @@ class ScopedRNNBase {
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- miopen workspace, reserve size ---------------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
         workspace_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenGetRNNTrainingReserveSize(
             handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
             reserve_size));

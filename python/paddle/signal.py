@@ -19,7 +19,7 @@ import paddle
 from .tensor.attribute import is_complex, is_floating_point
 from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.framework import in_dygraph_mode
+from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
 from . import _C_ops
 
@@ -119,14 +119,15 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
-    if frame_length > x.shape[axis]:
-        raise ValueError(
-            f'Attribute frame_length should be less equal than sequence length, '
-            f'but got ({frame_length}) > ({x.shape[axis]}).')
+    if _non_static_mode():
+        if frame_length > x.shape[axis]:
+            raise ValueError(
+                f'Attribute frame_length should be less equal than sequence length, '
+                f'but got ({frame_length}) > ({x.shape[axis]}).')
 
     op_type = 'frame'
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
                  axis)
         op = getattr(_C_ops, op_type)
@@ -213,7 +214,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     op_type = 'overlap_add'
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('hop_length', hop_length, 'axis', axis)
         op = getattr(_C_ops, op_type)
         out = op(x, *attrs)
@@ -243,7 +244,7 @@ def stft(x,
          normalized=False,
          onesided=True,
          name=None):
-    """
+    r"""
     Short-time Fourier transform (STFT).
 
     The STFT computes the discrete Fourier transforms (DFT) of short overlapping
@@ -306,8 +307,7 @@ def stft(x,
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
     """
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'],
-        'stft')
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft')
 
     x_rank = len(x.shape)
     assert x_rank in [1, 2], \
@@ -325,8 +325,9 @@ def stft(x,
     if win_length is None:
         win_length = n_fft
 
-    assert 0 < n_fft <= x.shape[-1], \
-        f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+    if _non_static_mode():
+        assert 0 < n_fft <= x.shape[-1], \
+            f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
 
     assert 0 < win_length <= n_fft, \
         f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
@@ -359,7 +360,7 @@ def stft(x,
     x_frames = x_frames.transpose(
         perm=[0, 2,
               1])  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
-    x_frames = x_frames * window
+    x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
     if is_complex(x_frames):
@@ -398,7 +399,7 @@ def istft(x,
           length=None,
           return_complex=False,
           name=None):
-    """
+    r"""
     Inverse short-time Fourier transform (ISTFT).
 
     Reconstruct time-domain signal from the giving complex input and window tensor when
@@ -495,18 +496,22 @@ def istft(x,
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
-    if onesided:
-        assert (fft_size == n_fft // 2 + 1), \
-            'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
-    else:
-        assert (fft_size == n_fft), \
-            'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
+    if _non_static_mode():
+        if onesided:
+            assert (fft_size == n_fft // 2 + 1), \
+                'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
+        else:
+            assert (fft_size == n_fft), \
+                'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
 
     if window is not None:
         assert len(window.shape) == 1 and len(window) == win_length, \
             'expected a 1D window tensor of size equal to win_length({}), but got window with shape {}.'.format(win_length, window.shape)
     else:
-        window = paddle.ones(shape=(win_length, ))
+        window_dtype = paddle.float32 if x.dtype in [
+            paddle.float32, paddle.complex64
+        ] else paddle.float64
+        window = paddle.ones(shape=(win_length, ), dtype=window_dtype)
 
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
@@ -534,15 +539,15 @@ def istft(x,
             x = x[:, :, :n_fft // 2 + 1]
         out = fft_c2r(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
 
+    out = paddle.multiply(out, window).transpose(
+        perm=[0, 2, 1])  # (batch, n_fft, num_frames)
     out = overlap_add(
-        x=(out * window).transpose(
-            perm=[0, 2, 1]),  # (batch, n_fft, num_frames)
-        hop_length=hop_length,
-        axis=-1)  # (batch, seq_length)
+        x=out, hop_length=hop_length, axis=-1)  # (batch, seq_length)
 
     window_envelop = overlap_add(
         x=paddle.tile(
-            x=window * window, repeat_times=[n_frames, 1]).transpose(
+            x=paddle.multiply(window, window).unsqueeze(0),
+            repeat_times=[n_frames, 1]).transpose(
                 perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
         axis=-1)  # (seq_length, )
@@ -561,7 +566,7 @@ def istft(x,
         window_envelop = window_envelop[start:start + length]
 
     # Check whether the Nonzero Overlap Add (NOLA) constraint is met.
-    if window_envelop.abs().min().item() < 1e-11:
+    if _non_static_mode() and window_envelop.abs().min().item() < 1e-11:
         raise ValueError(
             'Abort istft because Nonzero Overlap Add (NOLA) condition failed. For more information about NOLA constraint please see `scipy.signal.check_NOLA`(https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.check_NOLA.html).'
         )

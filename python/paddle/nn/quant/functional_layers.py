@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph import layers
 from ...tensor import math, manipulation
+from .. import Layer
 
 __all__ = []
 
 
-class FloatFunctionalLayer(layers.Layer):
+class FloatFunctionalLayer(Layer):
     def __init__(self):
         super(FloatFunctionalLayer, self).__init__()
 

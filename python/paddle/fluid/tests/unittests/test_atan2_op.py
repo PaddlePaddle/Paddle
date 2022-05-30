@@ -36,6 +36,7 @@ def atan2_grad(x1, x2, dout):
 class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
+        self.python_api = paddle.atan2
         self.init_dtype()
 
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(self.dtype)
@@ -46,10 +47,10 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out')
+        self.check_grad(['X1', 'X2'], 'Out', check_eager=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -66,7 +67,8 @@ class TestAtan2_float(TestAtan2):
                 'Out',
                 user_defined_grads=atan2_grad(self.inputs['X1'],
                                               self.inputs['X2'],
-                                              1 / self.inputs['X1'].size))
+                                              1 / self.inputs['X1'].size),
+                check_eager=True)
 
 
 class TestAtan2_float16(TestAtan2_float):
@@ -129,4 +131,5 @@ class TestAtan2API(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

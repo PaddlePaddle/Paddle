@@ -43,6 +43,7 @@ IRPassManager::IRPassManager(Argument *argument) {
                                 "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
+  disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
   CreatePasses(argument, argument->ir_analysis_passes());
@@ -54,6 +55,27 @@ void IRPassManager::CreatePasses(Argument *argument,
   int pass_num = 0;
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+    pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
+    pass->Set("with_interleaved",
+              new bool(argument->tensorrt_with_interleaved()));
+    pass->Set("disable_logs", new bool(argument->disable_logs()));
+    auto precision_mode = argument->tensorrt_precision_mode();
+    bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
+    pass->Set("enable_int8", new bool(enable_int8));
+    pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                     argument->max_input_shape()));
+    pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
+                                     argument->min_input_shape()));
+    pass->Set("optim_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->optim_input_shape()));
+    // tuned trt dynamic_shape
+    pass->Set("trt_tuned_dynamic_shape",
+              new bool(argument->tensorrt_tuned_dynamic_shape()));
+    bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+                               argument->min_input_shape().size() > 0 &&
+                               argument->optim_input_shape().size() > 0) ||
+                              argument->tensorrt_tuned_dynamic_shape();
+    pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -85,6 +107,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
+      if (argument->quantize_enabled_op_types().count("conv2d") ||
+          argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
+        pass->Set("data_layout", new std::string("NHWC"));
+      }
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "cpu_bfloat16_placement_pass") {
@@ -99,15 +125,9 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->tensorrt_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
-
-      auto precision_mode = argument->tensorrt_precision_mode();
-      bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
-
       pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
-      pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
-      pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
 
@@ -154,26 +174,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));
-      pass->Set("trt_tuned_dynamic_shape",
-                new bool(argument->tensorrt_tuned_dynamic_shape()));
       pass->Set("trt_allow_build_at_runtime",
                 new bool(argument->tensorrt_allow_build_at_runtime()));
-      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
-                                       argument->max_input_shape()));
-      pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
-                                       argument->min_input_shape()));
-      pass->Set("optim_input_shape",
-                new std::map<std::string, std::vector<int>>(
-                    argument->optim_input_shape()));
-      bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                                 argument->min_input_shape().size() > 0 &&
-                                 argument->optim_input_shape().size() > 0) ||
-                                argument->tensorrt_tuned_dynamic_shape();
-      pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
                                         argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
@@ -187,16 +194,21 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->dlnne_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+    } else if (pass_name == "mixed_precision_configure_pass") {
+      pass->Set("gpu_fp16_disabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->gpu_fp16_disabled_op_types()));
     }
     if (pass_name == "lite_subgraph_pass") {
-      bool enable_int8 =
+      bool lite_enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("lite_ops_filter",
                 new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
-      pass->Set("enable_int8", new bool(enable_int8));
+      pass->Erase("enable_int8");
+      pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
       pass->Set("use_xpu", new bool(argument->use_xpu()));
@@ -233,7 +245,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::vector<std::string>(
                     argument->nnadapter_model_cache_token()));
     }
-    disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       bool fc_mkldnn_pass = 0;
@@ -245,9 +256,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
-
-    pass->Set("disable_logs", new bool(disable_logs_));
-
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
@@ -264,6 +272,11 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    }
+    // delete_fill_constant_op_pass is not apply under trt dynamic shape
+    if (pass->Type() == "delete_fill_constant_op_pass") {
+      bool use_dynamic = pass->Get<bool>("with_dynamic_shape");
+      if (use_dynamic) continue;
     }
     graph.reset(pass->Apply(graph.release()));
   }

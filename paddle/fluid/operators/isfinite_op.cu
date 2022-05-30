@@ -17,15 +17,32 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_OVERFLOW_CUDA_KERNEL(op_type, functor)                       \
-  REGISTER_OP_CUDA_KERNEL(                                                    \
-      op_type, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,  \
-                                   ops::functor>,                             \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,         \
-                          ops::functor>,                                      \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,        \
-                          ops::functor>,                                      \
-      ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16, \
-                          ops::functor>);
+REGISTER_OP_CUDA_KERNEL(
+    isinf, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                               ops::InfinityFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
+                        ops::InfinityFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,
+                        ops::InfinityFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16,
+                        ops::InfinityFunctor>);
 
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_OVERFLOW_CUDA_KERNEL);
+REGISTER_OP_CUDA_KERNEL(isnan,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            int, ops::NANFunctor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            float, ops::NANFunctor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            double, ops::NANFunctor>,
+                        ops::OverflowKernel<paddle::platform::CUDADeviceContext,
+                                            plat::float16, ops::NANFunctor>);
+
+REGISTER_OP_CUDA_KERNEL(
+    isfinite, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                                  ops::IsfiniteFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
+                        ops::IsfiniteFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,
+                        ops::IsfiniteFunctor>,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16,
+                        ops::IsfiniteFunctor>);

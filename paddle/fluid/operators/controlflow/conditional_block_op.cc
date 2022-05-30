@@ -15,7 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -65,6 +69,12 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_MKLDNN
+      // (jczaja) Executor on being destroyed clears oneDNN cache and
+      // reset registered model data layout. This is unwanted for nested
+      // Executors (executors declared inside control ops)
+      platform::DontClearMKLDNNCache(dev_place);
+#endif
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
@@ -143,7 +153,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                /* keep_kid_scopes */ false);
 
       AssignLocalGradientToParentScope(dev_place, cur_scope, scope,
-                                       inside_grads, outside_grads);
+                                       inside_grads, outside_grads, inputs);
       return;
     }
 
@@ -155,20 +165,25 @@ class ConditionalBlockGradOp : public ConditionalOp {
       const platform::Place &place, const framework::Scope &cur_scope,
       const framework::Scope &parent_scope,
       const std::vector<std::string> &inside_grads,
-      const std::vector<std::string> &outside_grads) const {
+      const std::vector<std::string> &outside_grads,
+      const std::vector<std::string> &inputs) const {
+    std::vector<std::string> assign_zero_outside_grads;
+    std::vector<std::string> assign_zero_inputs;
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
       VLOG(4) << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *inside_var =
-          cur_scope.FindLocalVar(inside_grad_name);
-      if (inside_var == nullptr) {
-        continue;
-      }
       framework::Variable *outside_var =
           parent_scope.FindVar(outside_grad_name);
       if (outside_var == nullptr) {
+        continue;
+      }
+      framework::Variable *inside_var =
+          cur_scope.FindLocalVar(inside_grad_name);
+      if (inside_var == nullptr) {
+        assign_zero_outside_grads.emplace_back(outside_grad_name);
+        assign_zero_inputs.emplace_back(inputs[i]);
         continue;
       }
       platform::DeviceContext *dev_ctx =
@@ -176,6 +191,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
+    // Assign zero to the grad_vars that are in outside_grads but not in
+    // inside_grads
+    AssignZeroToParentScope(place, parent_scope, assign_zero_inputs,
+                            assign_zero_outside_grads);
   }
 
   void AssignZeroToParentScope(
@@ -242,10 +261,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
     }
     VLOG(4) << "Assigning zero to " << outside_tensor;
     outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.type());
+    outside_tensor->mutable_data(place, input_tensor.dtype());
     const platform::DeviceContext *dev_ctx =
         platform::DeviceContextPool::Instance().Get(place);
-    math::set_constant(*dev_ctx, outside_tensor, 0.0f);
+    phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
     outside_tensor->set_lod(input_tensor.lod());
   }
 };
@@ -261,6 +280,28 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
         context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
       context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
                              context->GetInputsDim(ConditionalOp::kInputs));
+    }
+  }
+};
+
+class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    // NOTE(Aurelius84): VarType of Output is LoDTensor by default. In case of
+    // Input is {Tensor, LoDTensorArray}, we need synchronous the Input's
+    // VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
+    // Input@GRAD.
+    auto input_size = ctx->InputSize(ConditionalOp::kInputs);
+    auto output_size =
+        ctx->OutputSize(framework::GradVarName(ConditionalOp::kInputs));
+    PADDLE_ENFORCE_EQ(input_size, output_size,
+                      platform::errors::InvalidArgument(
+                          "input_size and output_size should be equal for "
+                          "conditional_block_grad_op."));
+    for (size_t i = 0; i < output_size; ++i) {
+      ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
+                               framework::GradVarName(ConditionalOp::kInputs),
+                               i);
     }
   }
 };
@@ -300,4 +341,5 @@ REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
                   ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
-                  ops::ConditionalBlockGradInferShape);
+                  ops::ConditionalBlockGradInferShape,
+                  ops::ConditionalBlockGradInferVarType);

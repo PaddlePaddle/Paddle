@@ -20,7 +20,9 @@ import paddle
 import paddle.static as static
 import subprocess
 import numpy as np
+from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.fluid.framework import _test_eager_guard
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -137,6 +139,23 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
     return predict_v
 
 
+def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
+    paddle.set_device(device)
+
+    t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+
+    out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.stop_gradient = False
+
+    dx = paddle.grad(
+        outputs=[out], inputs=[t], create_graph=True, retain_graph=True)
+
+    dx[0].backward()
+
+    assert dx[0].grad is not None
+    return dx[0].numpy(), dx[0].grad.numpy()
+
+
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -216,7 +235,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         "custom op out: {},\n paddle api out: {}".format(
                             out, pd_out))
 
-    def test_dynamic(self):
+    def func_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -235,6 +254,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         np.array_equal(x_grad, pd_x_grad),
                         "custom op x grad: {},\n paddle api x grad: {}".format(
                             x_grad, pd_x_grad))
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
@@ -286,6 +310,52 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 "custom op predict: {},\n custom op infer predict: {}".format(
                     predict, predict_infer))
         paddle.disable_static()
+
+    def test_func_double_grad_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
+                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+                out, dx_grad = custom_relu_double_grad_dynamic(
+                    self.custom_ops[0], device, dtype, x)
+                pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
+                    self.custom_ops[0], device, dtype, x, False)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(out,
+                                                                     pd_out))
+                self.assertTrue(
+                    np.array_equal(dx_grad, pd_dx_grad),
+                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
+                        dx_grad, pd_dx_grad))
+
+    def test_with_dataloader(self):
+        for device in self.devices:
+            paddle.set_device(device)
+            # data loader
+            transform = Compose(
+                [Normalize(
+                    mean=[127.5], std=[127.5], data_format='CHW')])
+            train_dataset = paddle.vision.datasets.MNIST(
+                mode='train', transform=transform)
+            train_loader = paddle.io.DataLoader(
+                train_dataset,
+                batch_size=64,
+                shuffle=True,
+                drop_last=True,
+                num_workers=0)
+
+            for batch_id, (image, _) in enumerate(train_loader()):
+                out = self.custom_ops[0](image)
+                pd_out = paddle.nn.functional.relu(image)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(out,
+                                                                     pd_out))
+
+                if batch_id == 5:
+                    break
 
 
 if __name__ == '__main__':

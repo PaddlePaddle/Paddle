@@ -19,14 +19,18 @@
 #define _LINUX
 #endif
 
-#ifdef _LINUX
 #ifndef likely
-#define likely(x) __builtin_expect((x), 1)
+#ifdef _LINUX
+#define likely(expr) (__builtin_expect(!!(expr), 1))
+#else
+#define likely(expr) (expr)
 #endif
 #endif
 
-#ifdef _LINUX
 #ifndef unlikely
-#define unlikely(x) __builtin_expect((x), 0)
+#ifdef _LINUX
+#define unlikely(expr) (__builtin_expect(!!(expr), 0))
+#else
+#define unlikely(expr) (expr)
 #endif
 #endif

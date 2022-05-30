@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_with_index_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,67 +32,6 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of Pooling should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of Pooling should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Mask"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Mask) of Pooling should not be null."));
-
-    auto in_x_dims = ctx->GetInputDim("X");
-
-    std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    bool adaptive = ctx->Attrs().Get<bool>("adaptive");
-
-    PADDLE_ENFORCE(
-        in_x_dims.size() == 4 || in_x_dims.size() == 5,
-        platform::errors::InvalidArgument("Pooling intput should be 4-D or 5-D "
-                                          "tensor but received %dD-Tensor",
-                                          in_x_dims.size()));
-
-    if (ctx->Attrs().Get<bool>("global_pooling")) {
-      ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        paddings[i] = 0;
-        ksize[i] = static_cast<int>(in_x_dims[i + 2]);
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(
-        in_x_dims.size() - ksize.size(), 2U,
-        platform::errors::InvalidArgument(
-            "The input size %d minus the kernel size %d should equal to 2.",
-            in_x_dims.size(), ksize.size()));
-    PADDLE_ENFORCE_EQ(
-        ksize.size(), strides.size(),
-        platform::errors::InvalidArgument(
-            "Strides size %d and pooling size %d should be the same.",
-            strides.size(), ksize.size()));
-    PADDLE_ENFORCE_EQ(
-        ksize.size(), paddings.size(),
-        platform::errors::InvalidArgument(
-            "Paddings size %d and pooling size %d should be the same.",
-            paddings.size(), ksize.size()));
-
-    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-    if (adaptive) {
-      output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
-    } else {
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                                 paddings[i], strides[i]));
-      }
-    }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-    ctx->SetOutputDim("Mask", framework::make_ddim(output_shape));
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -101,22 +44,6 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
 class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Mask"), true,
-        platform::errors::InvalidArgument("Input(Mask) must not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) must not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      platform::errors::InvalidArgument(
-                          "Output(X@GRAD) should not be null."));
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -331,40 +258,34 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(max_pool2d_with_index,
+                            MaxPool2dWithIndexInferShapeFunctor,
+                            PD_INFER_META(phi::MaxPoolWithIndexInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(max_pool2d_with_index_grad,
+                            MaxPool2dWithIndexGradInferShapeFunctor,
+                            PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
+
 REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
-                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
+                  MaxPool2dWithIndexInferShapeFunctor);
 REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
-                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
+                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
+                  MaxPool2dWithIndexGradInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(
-    max_pool2d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
-                                int>);
-REGISTER_OP_CPU_KERNEL(
-    max_pool2d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
-                                    int>,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>);
+DECLARE_INFER_SHAPE_FUNCTOR(max_pool3d_with_index,
+                            MaxPool3dWithIndexInferShapeFunctor,
+                            PD_INFER_META(phi::MaxPoolWithIndexInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(max_pool3d_with_index_grad,
+                            MaxPool3dWithIndexGradInferShapeFunctor,
+                            PD_INFER_META(phi::MaxPoolWithIndexGradInferMeta));
 
 REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
-                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>,
+                  MaxPool3dWithIndexInferShapeFunctor);
 REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
-                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    max_pool3d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
-                                int>);
-REGISTER_OP_CPU_KERNEL(
-    max_pool3d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
-                                    int>,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>);
+                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInferer,
+                  MaxPool3dWithIndexGradInferShapeFunctor);

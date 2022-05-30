@@ -501,7 +501,6 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
   reshape2_qkv_out_var->assert_is_ops_input(matmul_ops);
-
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(matmul_ops);
   auto* mul1_w_var = pattern->NewNode(mul1_w_repr())
@@ -671,6 +670,7 @@ MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
       .IsTensor()
       .End()
       .AddOutput("XShape")
+      .IsOptional()
       .IsTensor()
       .End()
       .AddAttr("shape")  // -->(B, S, H, N)  <--(B, S, N*H)
@@ -687,6 +687,7 @@ MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
       .IsTensor()
       .End()
       .AddOutput("XShape")
+      .IsOptional()
       .IsTensor()
       .End()
       .AddAttr("axis")  // {0, 2, 1, 3}
@@ -761,7 +762,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
       Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk) {
+      Node* matmul_qk, Node* reshape2_qkv) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -786,8 +787,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        framework::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = framework::make_ddim({3, bq_tensor->dims()[0]});
+        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
@@ -861,43 +862,30 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetAttr("head_number", head_number);
 
     auto* mul0_op_desc = mul0->Op();
-    auto* mul1_op_desc = mul1->Op();
-    auto* mul2_op_desc = mul2->Op();
-    if (mul0_op_desc->HasAttr("enable_int8")) {
-      multihead_op_desc.SetAttr("enable_int8",
-                                mul0_op_desc->GetAttr("enable_int8"));
-      // all mul op has same input.
-      multihead_op_desc.SetAttr("Input_scale",
-                                mul0_op_desc->GetAttr("X_scale"));
-      auto weight_scale0 = BOOST_GET_CONST(
-          std::vector<float>, mul0_op_desc->GetAttr("weight_scale"));
-      auto weight_scale1 = BOOST_GET_CONST(
-          std::vector<float>, mul1_op_desc->GetAttr("weight_scale"));
-      auto weight_scale2 = BOOST_GET_CONST(
-          std::vector<float>, mul2_op_desc->GetAttr("weight_scale"));
-      auto weight_max = std::max(weight_scale0, weight_scale1);
-      weight_max = std::max(weight_max, weight_scale2);
-      multihead_op_desc.SetAttr("weight_scale", weight_max);
 
-      auto* add0_op_desc = eltadd0->Op();
-      auto* add1_op_desc = eltadd1->Op();
-      auto* add2_op_desc = eltadd2->Op();
-      if (add0_op_desc->HasAttr("out_threshold")) {
-        auto out_scale0 =
-            BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
-        auto out_scale1 =
-            BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
-        auto out_scale2 =
-            BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
-        auto out_scale_max = std::max(out_scale0, out_scale1);
-        out_scale_max = std::max(out_scale_max, out_scale2);
-        multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
-      }
+    // all mul op has same input.
+    if (mul0_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+    }
+    auto* add0_op_desc = eltadd0->Op();
+    auto* add1_op_desc = eltadd1->Op();
+    auto* add2_op_desc = eltadd2->Op();
+    if (add0_op_desc->HasAttr("out_threshold")) {
+      auto out_scale0 =
+          BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+      auto out_scale1 =
+          BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+      auto out_scale2 =
+          BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+      auto out_scale_max = std::max(out_scale0, out_scale1);
+      out_scale_max = std::max(out_scale_max, out_scale2);
+      multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
     }
 
     auto* softmax_qk_op_desc = softmax_qk->Op();
     auto* matmul_qk_op_desc = matmul_qk->Op();
-    if (matmul_qk_op_desc->HasAttr("X_scale")) {
+    if (matmul_qk_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
       if (softmax_qk_op_desc->HasAttr("out_threshold")) {
         auto qkv_plugin_scale = BOOST_GET_CONST(
@@ -905,7 +893,10 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
         multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
       }
     }
-
+    if (reshape2_qkv->Op()->HasAttr("out_threshold")) {
+      multihead_op_desc.SetAttr("out_threshold",
+                                reshape2_qkv->Op()->GetAttr("out_threshold"));
+    }
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
     IR_NODE_LINK_TO(input0, multihead);
@@ -1008,7 +999,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 eltadd0, eltadd1, eltadd2, matmul_qk);
+                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
@@ -1130,6 +1121,7 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .IsTensor()
       .End()
       .AddOutput("XShape")
+      .IsOptional()
       .IsTensor()
       .End()
       .AddAttr("shape")  // -->(B, S, H, N)  <--(B, S, N*H)
@@ -1146,6 +1138,7 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .IsTensor()
       .End()
       .AddOutput("XShape")
+      .IsOptional()
       .IsTensor()
       .End()
       .AddAttr("axis")  // {0, 2, 1, 3}
@@ -1243,8 +1236,8 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        framework::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = framework::make_ddim({3, bq_tensor->dims()[0]});
+        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();

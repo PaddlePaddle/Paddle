@@ -261,7 +261,7 @@ class TensorDataset(Dataset):
     """
 
     def __init__(self, tensors):
-        if not framework.in_dygraph_mode():
+        if not framework._non_static_mode():
             raise RuntimeError(
                 "TensorDataset con only be used in imperative mode")
         assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \

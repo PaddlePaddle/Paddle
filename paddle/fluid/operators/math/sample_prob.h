@@ -17,10 +17,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace platform {
@@ -52,7 +52,7 @@ class SampleWithProb {
                   const std::size_t num_samples, const Tensor* L, Tensor* S,
                   Tensor* P) {
     // UNDERSTAND: dimension issues
-    const auto lbl_dim = L->dims();
+    const auto& lbl_dim = L->dims();
     const int batch_size = lbl_dim[0];
     const int num_true = lbl_dim[1];
     const int num_sampled_classes = num_true + num_samples;

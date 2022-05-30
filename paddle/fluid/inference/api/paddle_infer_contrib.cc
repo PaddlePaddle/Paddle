@@ -27,7 +27,7 @@ using paddle::PaddleDType;
 void* TensorUtils::CudaMallocPinnedMemory(size_t size) {
 #if defined(PADDLE_WITH_CUDA)
   void* ptr = nullptr;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMallocHost(&ptr, size));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&ptr, size));
   return ptr;
 #else
   return nullptr;
@@ -36,7 +36,7 @@ void* TensorUtils::CudaMallocPinnedMemory(size_t size) {
 
 void TensorUtils::CudaFreePinnedMemory(void* ptr) {
 #if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaFreeHost(ptr));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(ptr));
 #endif
 }
 

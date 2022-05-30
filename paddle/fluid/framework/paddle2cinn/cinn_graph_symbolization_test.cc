@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 namespace paddle {
@@ -48,7 +49,8 @@ class CinnGraphSymbolizationForTest {
     return OpMapperContext(*cinn_symbol_->CreateCinnScope(feed_map),
                            cinn_symbol_->target_, builder,
                            &cinn_symbol_->var_map_,
-                           &cinn_symbol_->var_model_to_program_map_);
+                           &cinn_symbol_->var_model_to_program_map_,
+                           &cinn_symbol_->fetch_var_names_);
   }
 
   FeedInfoMap GetFeedInfoMapFromInput() {
@@ -205,7 +207,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
       LoDTensor tensor;
       DDim dims = {256, 1024};
       tensor.Resize(dims);
-      tensor.mutable_data(platform::CPUPlace(), proto::VarType::FP32);
+      tensor.mutable_data(
+          platform::CPUPlace(),
+          framework::TransToPhiDataType(framework::proto::VarType::FP32));
       return tensor;
     };
 #define FillFeedList(Name) feed_targets[#Name] = create_tensor();
@@ -292,6 +296,7 @@ TEST_F(CinnGraphSymbolizationTest, basic) {
   ASSERT_NO_THROW((*symbol_)());
   ASSERT_FALSE(symbol_->var_map().empty());
   ASSERT_FALSE(symbol_->var_model_to_program_map().empty());
+  ASSERT_TRUE(symbol_->GetFetchIds().empty());
 }
 
 }  // namespace paddle2cinn

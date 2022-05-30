@@ -134,7 +134,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(
         context.template device_context<platform::CUDADeviceContext>(), out,
         static_cast<T>(0));
@@ -151,18 +151,18 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       if (lod_length && in_i.IsInitialized()) {
         in_data.emplace_back(in_i.data<T>());
       }
-    } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
+    } else if (in_vars[i]->IsType<phi::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
   }
 
-  // compute select rows seperately.
+  // compute select rows separately.
   if (!selectrow_index.empty()) {
     std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
     int64_t length = 0;
     for (auto index : selectrow_index) {
-      auto &sr = in_vars[index]->Get<framework::SelectedRows>();
+      auto &sr = in_vars[index]->Get<phi::SelectedRows>();
       auto &sr_value = sr.value();
       auto &sr_rows = sr.rows();
 
@@ -196,8 +196,8 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto tmp_sr_in_out_array =
           memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
-      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                   tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
+      memory::Copy(dev_ctx.GetPlace(), tmp_sr_in_out_array->ptr(),
+                   platform::CPUPlace(),
                    reinterpret_cast<void *>(sr_in_out_data.data()),
                    sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
 
@@ -214,8 +214,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   if (!in_data.empty()) {
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 tmp_in_array->ptr(), platform::CPUPlace(),
+    memory::Copy(dev_ctx.GetPlace(), tmp_in_array->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
                  in_data.size() * sizeof(T *), dev_ctx.stream());
 
@@ -236,13 +235,13 @@ class SumKernel<platform::CUDADeviceContext, T>
 
     if (out_var->IsType<framework::LoDTensor>()) {
       SumToLoDTensor<T>(context);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    } else if (out_var->IsType<phi::SelectedRows>()) {
       SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Ouput(out) must be Tensor,  SelectedRows or "
+          "Expected type of Output(out) must be Tensor,  SelectedRows or "
           "LodTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
@@ -259,4 +258,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);

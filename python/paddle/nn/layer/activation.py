@@ -14,8 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-from ...fluid import core
-from ...fluid.framework import in_dygraph_mode
 from ...framework import ParamAttr
 from ..initializer import Constant
 from paddle.framework import get_default_dtype
@@ -73,7 +71,13 @@ class ELU(Layer):
 
     .. math::
 
-        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
+        ELU(x)=
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * (e^{x} - 1),& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -363,13 +367,15 @@ class PReLU(Layer):
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
             1 - a single parameter `alpha` is used for all input channels;
-            Number of channels - a seperate `alpha` is used for each input channel.
+            Number of channels - a separate `alpha` is used for each input channel.
             Default is 1.
         init (float, optional): Init value of learnable `weight`. Default is 0.25.
         weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`.
             Default is None. For more information, please refer to :ref:`api_paddle_ParamAttr`.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
 
     Shape:
         - input: Tensor with any shape. Default dtype is float32.
@@ -400,13 +406,18 @@ class PReLU(Layer):
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
 
-    def __init__(self, num_parameters=1, init=0.25, weight_attr=None,
+    def __init__(self,
+                 num_parameters=1,
+                 init=0.25,
+                 weight_attr=None,
+                 data_format="NCHW",
                  name=None):
         super(PReLU, self).__init__()
         self._num_parameters = num_parameters
         self._init = init
         self._weight_attr = weight_attr
         self._name = name
+        self._data_format = data_format
 
         self._weight = self.create_parameter(
             attr=self._weight_attr,
@@ -416,12 +427,13 @@ class PReLU(Layer):
             default_initializer=Constant(self._init))
 
     def forward(self, x):
-        return F.prelu(x, self._weight)
+        return F.prelu(x, self._weight, data_format=self._data_format)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'num_parameters={}, init={}, dtype={}{}'.format(
-            self._num_parameters, self._init, self._dtype, name_str)
+        return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
+            self._num_parameters, self._data_format, self._init, self._dtype,
+            name_str)
 
 
 class ReLU(Layer):
@@ -867,6 +879,51 @@ class Swish(Layer):
         return name_str
 
 
+class Mish(Layer):
+    r"""
+    Mish Activation.
+
+    ..  math::
+
+        softplus(x) = \begin{cases}
+                x, \text{if } x > \text{threshold} \\
+                \ln(1 + e^{x}),  \text{otherwise}
+            \end{cases}
+
+        Mish(x) = x * \tanh(softplus(x))
+    
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-5., 0., 5.])
+            m = paddle.nn.Mish()
+            out = m(x) # [-0.03357624, 0., 4.99955208]
+
+    """
+
+    def __init__(self, name=None):
+        super(Mish, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.mish(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
+
+
 class Tanhshrink(Layer):
     """
     Tanhshrink Activation
@@ -1281,3 +1338,55 @@ class Maxout(Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'groups={}, axis={}{}'.format(self._groups, self._axis, name_str)
+
+
+class Softmax2D(Layer):
+    r"""
+    Softmax2D Activation.
+    Given a Tensor with shape (B, C, H, W) or (C, H, W), it will apply Softmax to each location (C, h_i, w_j).
+    The sum of result in each location (C, H_i, W_j) will be one.
+
+    Shape:
+        - Input: :math:`(B, C, H, W)` or :math:`(C, H, W)`
+        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)`(same as input)
+
+    Return:
+        A Tensor of the same shape and dtype as input with value in range [0, 1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([1, 2, 3, 4])
+            # [[[[0.42496058 0.1172187  0.14664008 0.8151267 ]
+            #    [0.24430142 0.42052492 0.60372984 0.79307914]
+            #    [0.4539401  0.90458065 0.10235776 0.62009853]]
+
+            #   [[0.11731581 0.16053623 0.05667042 0.91876775]
+            #    [0.9413854  0.30770817 0.6788164  0.9543593 ]
+            #    [0.4145064  0.75909156 0.11598814 0.73599935]]]]
+            m = paddle.nn.Softmax2D()
+            out = m(x)
+            # [[[[0.5763103  0.48917228 0.5224772  0.4741129 ]
+            #    [0.3324591  0.5281743  0.48123717 0.45976716]
+            #    [0.5098571  0.5363083  0.49659243 0.4710572 ]]
+
+            #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
+            #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
+            #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+    """
+
+    def __init__(self, name=None):
+        super(Softmax2D, self).__init__()
+        self._dtype = None
+        self._name = name
+
+    def forward(self, x):
+        assert x.ndim == 3 or x.ndim == 4, "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
+            x.ndim)
+        return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str

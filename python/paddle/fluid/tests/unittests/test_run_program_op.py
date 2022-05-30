@@ -20,10 +20,12 @@ import numpy as np
 import six
 
 import paddle
+from paddle import _C_ops
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
 from paddle.fluid.layers.utils import _hash_with_id
+from paddle.fluid.framework import _in_eager_mode_
 
 paddle.enable_static()
 
@@ -95,11 +97,9 @@ class RunProgramOpTest(unittest.TestCase):
             return fluid.default_main_program().desc, fwd_op_num
 
     def prepare_attrs(self):
-        return {
-            'global_block': self.program_desc.block(0),
-            'start_op_index': 0,
-            'end_op_index': self.fwd_op_num
-        }
+        return ('global_block', self.program_desc.block(0), 'start_op_index', 0,
+                'end_op_index', self.fwd_op_num, 'program_id',
+                _hash_with_id(self.program_desc, self))
 
     def get_param_grad_names(self):
         grad_names = []
@@ -127,8 +127,12 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            var = core.VarBase(
-                value=np_value, name=name, place=place, zero_copy=True)
+            if _in_eager_mode_:
+                var = core.eager.Tensor(
+                    value=np_value, name=name, place=place, zero_copy=True)
+            else:
+                var = core.VarBase(
+                    value=np_value, name=name, place=place, zero_copy=True)
             var.stop_gradient = stop_gradient
             return var
 
@@ -162,12 +166,15 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        outputs['OutScope'] = framework._varbase_creator(
-            type=core.VarDesc.VarType.STEP_SCOPES,
-            name="program_out_scope",
-            persistable=True)
-        inner_scope = core.Scope()
-        outputs['OutScope'].value().set_scope(inner_scope)
+        if _in_eager_mode_:
+            outputs['OutScope'] = [core.Scope()]
+        else:
+            outputs['OutScope'] = framework._varbase_creator(
+                type=core.VarDesc.VarType.STEP_SCOPES,
+                name="program_out_scope",
+                persistable=True)
+            inner_scope = core.Scope()
+            outputs['OutScope'].value().set_scope(inner_scope)
 
         outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
@@ -175,34 +182,28 @@ class RunProgramOpTest(unittest.TestCase):
     def calc_dygraph_output(self, place):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
-        self.attrs['program_id'] = _hash_with_id(self.program_desc)
 
         with fluid.dygraph.guard(place):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
-            framework._dygraph_tracer().trace_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=self.attrs)
+            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
+                               outputs['OutScope'], outputs['DOut'],
+                               *self.attrs)
             return outputs['Out']
 
     def calc_dygraph_grad(self, place):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
-        self.attrs['program_id'] = _hash_with_id(self.program_desc)
 
         with fluid.dygraph.guard(place):
             # Step 1. run forward
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
 
-            framework._dygraph_tracer().trace_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=self.attrs)
+            _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
+                               outputs['OutScope'], outputs['DOut'],
+                               *self.attrs)
 
             for param in input_param_list:
                 var_type = self._get_grad_vartype(param.name)

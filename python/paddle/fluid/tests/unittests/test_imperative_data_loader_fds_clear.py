@@ -18,6 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.io import Dataset, DataLoader
+from paddle.fluid.framework import _test_eager_guard
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -75,18 +76,28 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
             if step_id == 30:
                 break
 
-    def test_data_loader_break(self):
+    def func_test_data_loader_break(self):
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
                 break
 
-    def test_data_loader_continue_break(self):
+    def test_data_loader_break(self):
+        with _test_eager_guard():
+            self.func_test_data_loader_break()
+        self.func_test_data_loader_break()
+
+    def func_test_data_loader_continue_break(self):
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
+
+    def test_data_loader_continue_break(self):
+        with _test_eager_guard():
+            self.func_test_data_loader_continue_break()
+        self.func_test_data_loader_continue_break()
 
 
 class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):

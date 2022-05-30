@@ -28,6 +28,27 @@ class Identity(nn.Layer):
         return input
 
 
+def fuse_conv_bn(model):
+    is_train = False
+    if model.training:
+        model.eval()
+        is_train = True
+    fuse_list = []
+    tmp_pair = [None, None]
+    for name, layer in model.named_sublayers():
+        if isinstance(layer, nn.Conv2D):
+            tmp_pair[0] = name
+        if isinstance(layer, nn.BatchNorm2D):
+            tmp_pair[1] = name
+
+        if tmp_pair[0] and tmp_pair[1] and len(tmp_pair) == 2:
+            fuse_list.append(tmp_pair)
+            tmp_pair = [None, None]
+    model = fuse_layers(model, fuse_list)
+    if is_train:
+        model.train()
+
+
 def fuse_layers(model, layers_to_fuse, inplace=False):
     '''
        fuse layers in layers_to_fuse

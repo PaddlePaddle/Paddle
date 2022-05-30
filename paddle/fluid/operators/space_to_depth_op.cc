@@ -113,7 +113,7 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
     output_shape[2] = x_dims[2] / blocksize;
     output_shape[3] = x_dims[3] / blocksize;
 
-    auto out_dims = framework::make_ddim(output_shape);
+    auto out_dims = phi::make_ddim(output_shape);
 
     ctx->SetOutputDim("Out", out_dims);
 

@@ -22,6 +22,7 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard
 
 
 class Config(object):
@@ -200,7 +201,7 @@ class EncoderNet(fluid.dygraph.Layer):
                                                                          0.02))
         bias_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Normal(0.0, 0.02), learning_rate=2.0)
-        if fluid.framework.in_dygraph_mode():
+        if fluid.framework._non_static_mode():
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32")
             h_0 = to_variable(h_0)
@@ -371,7 +372,7 @@ class OCRAttention(fluid.dygraph.Layer):
 
 
 class TestDygraphOCRAttention(unittest.TestCase):
-    def test_while_op(self):
+    def test_ocr_test(self):
         seed = 90
         epoch_num = 1
         if core.is_compiled_with_cuda():
@@ -400,7 +401,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 i * Config.max_length,
                 dtype='int64').reshape([1, Config.max_length])))
 
-        with fluid.dygraph.guard():
+        def run_dygraph():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
@@ -451,6 +452,16 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     dy_param_value = {}
                     for param in ocr_attention.parameters():
                         dy_param_value[param.name] = param.numpy()
+
+            return dy_out, dy_param_init_value, dy_param_value
+
+        with fluid.dygraph.guard():
+            dy_out, dy_param_init_value, dy_param_value = run_dygraph()
+
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                eager_out, eager_param_init_value, eager_param_value = run_dygraph(
+                )
 
         with new_program_scope():
             paddle.seed(seed)
@@ -536,6 +547,17 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(np.allclose(value, dy_param_value[key], rtol=1e-05))
+
+        # check eager here
+        self.assertTrue(np.allclose(static_out, eager_out))
+
+        for key, value in six.iteritems(static_param_init_value):
+            self.assertTrue(np.array_equal(value, eager_param_init_value[key]))
+
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(
+                np.allclose(
+                    value, eager_param_value[key], rtol=1e-05))
 
 
 if __name__ == '__main__':

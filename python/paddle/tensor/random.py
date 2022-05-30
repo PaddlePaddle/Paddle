@@ -14,13 +14,15 @@
 
 # TODO: define random functions  
 
-from ..fluid import core
-from ..fluid.framework import in_dygraph_mode, Variable, convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.layer_helper import LayerHelper
+from ..framework import core
+from ..framework import convert_np_dtype_to_dtype_, dygraph_only
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops
+from paddle.static import Variable
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph, _current_expected_place
 
 __all__ = []
 
@@ -66,6 +68,9 @@ def bernoulli(x, name=None):
     """
 
     if in_dygraph_mode():
+        return _C_ops.final_state_bernoulli(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
@@ -76,6 +81,49 @@ def bernoulli(x, name=None):
     helper.append_op(
         type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={})
     out.stop_gradient = True
+    return out
+
+
+def poisson(x, name=None):
+    r"""
+    This OP returns a tensor filled with random number from a Poisson Distribution.
+
+    .. math::
+
+        out_i \sim Poisson (lambda = x_i)
+
+    Args:
+        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type 
+            should be float32, float64.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('cpu')
+            paddle.seed(100)
+
+            x = paddle.uniform([2,3], min=1.0, max=5.0)
+            out = paddle.poisson(x)
+            #[[2., 5., 0.],
+            # [5., 1., 3.]]
+
+    """
+
+    if paddle.in_dynamic_mode():
+        return _C_ops.poisson(x)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
+
+    helper = LayerHelper("poisson", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={})
     return out
 
 
@@ -131,6 +179,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
+        return _C_ops.final_state_multinomial(x, num_samples, replacement)
+
+    if _in_legacy_dygraph():
         return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
                                   replacement)
 
@@ -151,7 +202,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
 def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with random values sampled from a Gaussian
+    Returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
 
     Args:
@@ -168,9 +219,7 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor filled with random values sampled from a Gaussian
@@ -189,6 +238,14 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_gaussian_random(shape,
+                                                  float(mean),
+                                                  float(std), seed, dtype,
+                                                  place)
+
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.gaussian_random('shape', shape, 'mean',
                                       float(mean), 'std',
@@ -276,7 +333,7 @@ def standard_normal(shape, dtype=None, name=None):
 
 def randn(shape, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with random values sampled from a standard
+    Returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
     and ``dtype``.
 
@@ -379,7 +436,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [1.00780561 3.78457445 5.81058198]  # random
 
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_type(mean, 'mean', (int, float, Variable), 'normal')
         check_type(std, 'std', (int, float, Variable), 'normal')
         if isinstance(mean, Variable):
@@ -411,7 +468,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         return gaussian(shape=shape, mean=mean, std=std, name=name)
 
     out = out * std + mean
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         out.stop_grediant = True
     return out
 
@@ -499,6 +556,13 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
+        return _C_ops.final_state_uniform_random(shape, dtype,
+                                                 float(min),
+                                                 float(max), seed,
+                                                 _current_expected_place())
+
+    if _in_legacy_dygraph():
+        shape = utils.convert_shape_to_list(shape)
         return _C_ops.uniform_random('shape', shape, 'min',
                                      float(min), 'max',
                                      float(max), 'seed', seed, 'dtype', dtype)
@@ -555,8 +619,8 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
-    return core.ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
-                                            seed)
+    return _C_ops.uniform_random_inplace_(x, 'min', min, 'max', max, 'seed',
+                                          seed)
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
@@ -637,6 +701,10 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        shape = utils.convert_shape_to_list(shape)
+        place = _current_expected_place()
+        return _C_ops.final_state_randint(low, high, shape, dtype, place)
+    if _in_legacy_dygraph():
         shape = utils.convert_shape_to_list(shape)
         return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                               0, 'dtype', dtype)
@@ -803,7 +871,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             "randint_like's low must less then high, but received low = {0}, "
             "high = {1}".format(low, high))
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
                              0, 'dtype', core.VarDesc.VarType.INT64)
@@ -837,7 +905,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
 
 def randperm(n, dtype="int64", name=None):
     """
-    This OP returns a 1-D Tensor filled with random permutation values from 0
+    Returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
     Args:
@@ -869,6 +937,8 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
+        return _C_ops.final_state_randperm(n, dtype, _current_expected_place())
+    if _in_legacy_dygraph():
         return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
     if n < 1:
@@ -937,3 +1007,49 @@ def rand(shape, dtype=None, name=None):
 
     """
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+
+
+def exponential_(x, lam=1.0, name=None):
+    r"""
+    This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
+
+    ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 
+    
+    .. math::
+
+        f(x) = \lambda e^{-\lambda x}
+
+    Args:
+        x(Tensor):  Input tensor. The data type should be float32, float64.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns: 
+        Tensor: Input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.set_device('cpu')
+            paddle.seed(100)
+
+            x = paddle.empty([2,3])
+            x.exponential_()
+            # [[0.80643415, 0.23211166, 0.01169797],
+            #  [0.72520673, 0.45208144, 0.30234432]]
+
+    """
+    if paddle.in_dynamic_mode():
+        return _C_ops.exponential_(x, "lambda", lam)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
+
+    helper = LayerHelper("exponential", **locals())
+    helper.append_op(
+        type='exponential',
+        inputs={"X": x},
+        outputs={'Out': x},
+        attrs={"lambda": lam})
+    return x

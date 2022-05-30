@@ -28,13 +28,13 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
             if dims == 1:
-                return np.ones([64]).astype(np.float32)
+                return np.ones([32]).astype(np.float32)
             elif dims == 2:
-                return np.ones([3, 64]).astype(np.float32)
+                return np.ones([3, 32]).astype(np.float32)
             elif dims == 3:
-                return np.ones([3, 64, 64]).astype(np.float32)
+                return np.ones([3, 32, 32]).astype(np.float32)
             else:
-                return np.ones([1, 3, 64, 64]).astype(np.float32)
+                return np.ones([1, 3, 32, 32]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
             for approximate in [True, False]:
@@ -69,27 +69,25 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
-                self.dynamic_shape.max_input_shape = {"input_data": [128]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [64]}
+                self.dynamic_shape.max_input_shape = {"input_data": [64]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [32]}
             elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 64]}
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32]}
             elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 32, 32]}
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [10, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 64, 64]}
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32, 32]}
             else:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 32, 32]
+                    "input_data": [1, 3, 16, 16]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 3, 64, 64]
+                    "input_data": [4, 3, 32, 32]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 64, 64]
+                    "input_data": [1, 3, 32, 32]
                 }
 
         def clear_dynamic_shape():
@@ -98,10 +96,20 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if attrs[0]['approximate'] == True or self.dims == 1:
+            valid_version = (7, 0, 0)
+            compile_version = paddle_infer.get_trt_compile_version()
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            self.assertTrue(compile_version == runtime_version)
+            # Dimension one only runs on Paddle OP
+            if self.dims == 1:
                 return 0, 3
-            else:
+            if compile_version >= valid_version:
                 return 1, 2
+            else:
+                if attrs[0]['approximate'] == True:
+                    return 0, 3
+                else:
+                    return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
@@ -126,18 +134,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dims == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When input dims is 2, pulgin will product a 4 dims output.")
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

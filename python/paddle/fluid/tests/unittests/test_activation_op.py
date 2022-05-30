@@ -18,13 +18,14 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -50,6 +51,8 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
+        self.check_eager = True
+        self.python_api = paddle.exp
 
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -59,12 +62,18 @@ class TestActivation(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -76,6 +85,7 @@ class TestActivation(OpTest):
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
+        self.python_api = paddle.expm1
         self.init_dtype()
 
         np.random.seed(2049)
@@ -86,7 +96,10 @@ class TestExpm1(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestExpm1API(unittest.TestCase):
@@ -181,6 +194,34 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSigmoidBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = 1 / (1 + np.exp(-x))
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestSilu(TestActivation):
@@ -848,6 +889,8 @@ def ref_softshrink(x, threshold=0.5):
 class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
+        self.check_eager = True
+        self.python_api = paddle.nn.functional.softshrink
         self.init_dtype()
 
         threshold = 0.8
@@ -862,7 +905,7 @@ class TestSoftshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSoftshrinkAPI(unittest.TestCase):
@@ -930,6 +973,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
+        self.python_api = paddle.sqrt
         self.init_dtype()
 
         np.random.seed(1023)
@@ -942,12 +986,45 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSqrtBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        out = np.sqrt(x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
 
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.python_api = paddle.rsqrt
         self.init_dtype()
 
         np.random.seed(1024)
@@ -960,7 +1037,8 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.0005, check_eager=True)
 
 
 class TestAbs(TestActivation):
@@ -983,12 +1061,14 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
+        self.check_eager = True
+        self.python_api = paddle.ceil
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1006,6 +1086,8 @@ class TestCeil(TestActivation):
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
+        self.check_eager = True
+        self.python_api = paddle.floor
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1145,9 +1227,65 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestAcosh(TestActivation):
+    def setUp(self):
+        self.op_type = "acosh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(2, 3, [10, 12]).astype(self.dtype)
+        out = np.arccosh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAsinh(TestActivation):
+    def setUp(self):
+        self.op_type = "asinh"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(1, 2, [10, 12]).astype(self.dtype)
+        out = np.arcsinh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
+class TestAtanh(TestActivation):
+    def setUp(self):
+        self.op_type = "atanh"
+        self.init_dtype()
+
+        np.random.seed(400)
+        x = np.random.uniform(-0.9, 0.9, [10, 12]).astype(self.dtype)
+        out = np.arctanh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
+        self.check_eager = True
+        self.python_api = paddle.round
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1618,7 +1756,7 @@ class TestHardSwish(TestActivation):
     def setUp(self):
         self.op_type = 'hard_swish'
         self.init_dtype()
-
+        self.python_api = paddle.nn.functional.hardswish
         skip_check_grad_ci(reason="not implemented yet")
 
         np.random.seed(1024)
@@ -1640,7 +1778,10 @@ class TestHardSwish(TestActivation):
             return
 
         return  # not implemented yet
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestHardswishAPI(unittest.TestCase):
@@ -1701,6 +1842,11 @@ class TestHardswishAPI(unittest.TestCase):
                 name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardswish(x_fp16)
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+            self.test_errors()
+
 
 class TestSoftRelu(TestActivation):
     def setUp(self):
@@ -1742,7 +1888,7 @@ class TestSoftReluOpError(unittest.TestCase):
 
 
 def elu(x, alpha):
-    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+    out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
 
 
@@ -1753,7 +1899,7 @@ class TestELU(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
-        alpha = 1.
+        alpha = self.get_alpha()
         out = elu(x, alpha)
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
         # is differentiable, so we can skip modifications like x[np.abs(x) < 0.005] = 0.02 here
@@ -1765,6 +1911,14 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def get_alpha(self):
+        return 1.
+
+
+class TestELUAlpha(TestELU):
+    def get_alpha(self):
+        return -0.2
 
 
 class TestELUAPI(unittest.TestCase):
@@ -1827,6 +1981,18 @@ class TestELUAPI(unittest.TestCase):
             self.elu(x_fp16)
 
 
+class TestELUInplaceAPI(TestELUAPI):
+    # test paddle.nn.functional.elu_
+    def executed_api(self):
+        self.elu = F.elu_
+
+    def test_alpha_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        self.assertRaises(Exception, F.elu_, x, -0.2)
+        paddle.enable_static()
+
+
 def celu(x, alpha):
     out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x / alpha) - 1))
     return out_ref.astype(x.dtype)
@@ -1837,6 +2003,7 @@ class TestCELU(TestActivation):
         self.op_type = "celu"
         self.init_dtype()
 
+        self.python_api = paddle.nn.functional.celu
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.5
@@ -1848,7 +2015,7 @@ class TestCELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestCELUAPI(unittest.TestCase):
@@ -1914,16 +2081,16 @@ class TestCELUAPI(unittest.TestCase):
                 name='x_fp16', shape=[10, 12], dtype='float16')
             self.celu(x_fp16)
 
-
-class TestELUInplaceAPI(TestELUAPI):
-    # test paddle.nn.functional.elu_
-    def executed_api(self):
-        self.elu = F.elu_
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+            self.test_errors()
 
 
 class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
+        self.python_api = paddle.reciprocal
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1936,12 +2103,17 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
+        self.check_eager = True
+        self.python_api = paddle.log
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1954,7 +2126,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = fluid.layers.data(
@@ -1969,6 +2141,8 @@ class TestLog(TestActivation):
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"
+        self.check_eager = True
+        self.python_api = paddle.log2
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -1980,7 +2154,7 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2018,6 +2192,8 @@ class TestLog2(TestActivation):
 class TestLog10(TestActivation):
     def setUp(self):
         self.op_type = "log10"
+        self.check_eager = True
+        self.python_api = paddle.log10
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -2029,7 +2205,7 @@ class TestLog10(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2067,6 +2243,8 @@ class TestLog10(TestActivation):
 class TestLog1p(TestActivation):
     def setUp(self):
         self.op_type = "log1p"
+        self.check_eager = True
+        self.python_api = paddle.log1p
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2079,7 +2257,7 @@ class TestLog1p(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -2112,6 +2290,7 @@ class TestLog1p(TestActivation):
 class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
+        self.python_api = paddle.square
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2124,12 +2303,48 @@ class TestSquare(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.007, check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSquareBF16(OpTest):
+    def setUp(self):
+        self.op_type = "square"
+        self.python_api = paddle.square
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        out = np.square(x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.5, check_eager=True)
 
 
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.python_api = paddle.pow
+        self.check_eager = True
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2140,15 +2355,20 @@ class TestPow(TestActivation):
         self.attrs = {'factor': 3.0}
         self.outputs = {'Out': out}
 
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
 
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.check_eager = False
+        self.python_api = paddle.pow
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2164,12 +2384,12 @@ class TestPow_factor_tensor(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
     def test_api(self):
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
@@ -2363,6 +2583,35 @@ class TestSoftplus(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftplusBF16(OpTest):
+    def setUp(self):
+        self.op_type = "softplus"
+        self.init_dtype()
+
+        beta = 2
+        threshold = 15
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
+        out = ref_softplus(x, beta, threshold)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'beta': beta, "threshold": threshold}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
 
 
 class TestSoftplusAPI(unittest.TestCase):
@@ -2697,7 +2946,9 @@ def ref_swish(x):
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
+        self.python_api = paddle.nn.functional.swish
         self.init_dtype()
+        self.check_eager = True
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -2709,7 +2960,10 @@ class TestSwish(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
 class TestSwishAPI(unittest.TestCase):
@@ -2744,6 +2998,10 @@ class TestSwishAPI(unittest.TestCase):
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
 
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+
     def test_fluid_api(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
@@ -2767,6 +3025,90 @@ class TestSwishAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
             F.swish(x_fp16)
+
+
+def ref_mish(x, threshold=20.):
+    softplus = np.select([x <= threshold, x > threshold],
+                         [np.log(1 + np.exp(x)), x])
+    return x * np.tanh(softplus)
+
+
+class TestMish(TestActivation):
+    def setUp(self):
+        self.op_type = "mish"
+        self.python_api = paddle.fluid.layers.nn.mish
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        out = ref_mish(x)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
+class TestMishAPI(unittest.TestCase):
+    # test paddle.nn.Mish, paddle.nn.functional.mish
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.mish(x)
+            mish = paddle.nn.Mish()
+            out2 = mish(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_mish(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.mish(x)
+        mish = paddle.nn.Mish()
+        out2 = mish(x)
+        out_ref = ref_mish(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.mish(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_mish(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.mish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.mish, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            F.mish(x_fp16)
 
 
 #------------------ Test Error Activation----------------------
@@ -2801,6 +3143,9 @@ create_test_error_class('sin')
 create_test_error_class('sqrt')
 create_test_error_class('tanh')
 create_test_error_class('tan')
+create_test_error_class('acosh')
+create_test_error_class('asinh')
+create_test_error_class('atanh')
 
 
 #------------------ Test Cudnn Activation----------------------
@@ -2872,6 +3217,9 @@ create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
+create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
+create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
@@ -2898,6 +3246,7 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish, grad_atol=0.85)
 create_test_act_fp16_class(TestHardSwish)
+create_test_act_fp16_class(TestMish, grad_atol=0.9)
 
 
 def create_test_act_bf16_class(parent,

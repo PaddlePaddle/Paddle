@@ -37,7 +37,7 @@ void* GetTensorRtPluginHandle();
 extern std::once_flag tensorrt_plugin_dso_flag;
 extern void* tensorrt_plugin_dso_handle;
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_POINTER_WRAP(__name)                    \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_POINTER_WRAP_(__name)                   \
   struct DynLoad__##__name {                                                  \
     template <typename... Args>                                               \
     void* operator()(Args... args) {                                          \
@@ -55,7 +55,7 @@ extern void* tensorrt_plugin_dso_handle;
   };                                                                          \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP(__name)                \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP_(__name)               \
   struct DynLoad__##__name {                                                  \
     template <typename... Args>                                               \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {          \
@@ -72,7 +72,7 @@ extern void* tensorrt_plugin_dso_handle;
   };                                                                          \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                      \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP_(__name)                     \
   struct DynLoad__##__name {                                                   \
     template <typename... Args>                                                \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
@@ -109,10 +109,10 @@ extern void* tensorrt_plugin_dso_handle;
 #define TENSORRT_PLUGIN_RAND_ROUTINE_EACH(__macro) \
   __macro(initLibNvInferPlugins);
 
-TENSORRT_RAND_ROUTINE_EACH_POINTER(DECLARE_DYNAMIC_LOAD_TENSORRT_POINTER_WRAP)
+TENSORRT_RAND_ROUTINE_EACH_POINTER(DECLARE_DYNAMIC_LOAD_TENSORRT_POINTER_WRAP_)
 TENSORRT_RAND_ROUTINE_EACH_NON_POINTER(
-    DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP)
-TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP)
+    DECLARE_DYNAMIC_LOAD_TENSORRT_NON_POINTER_WRAP_)
+TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP_)
 
 #endif  // end of NV_TENSORRT_MAJOR
 

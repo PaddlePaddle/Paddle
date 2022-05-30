@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
@@ -43,9 +43,9 @@ class ProfilerGuard {
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+      auto cuda_place = place;
       cost_info_->device_memory_bytes =
-          platform::RecordedCudaMallocSize(cuda_place.device);
+          platform::RecordedGpuMallocSize(cuda_place.device);
 #endif
     }
   }

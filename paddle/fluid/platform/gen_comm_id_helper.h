@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
+    defined(PADDLE_WITH_CNCL)
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -46,9 +49,19 @@ class SocketServer {
  public:
   SocketServer() = default;
 
-  ~SocketServer() { CloseSocket(server_fd_); }
+  ~SocketServer() {
+    if (server_fd_ != -1) {
+      CloseSocket(server_fd_);
+    }
+  }
 
   int socket() const { return server_fd_; }
+
+  void Release() {
+    VLOG(3) << "Server will be closed by external call.";
+    CloseSocket(server_fd_);
+    server_fd_ = -1;
+  }
 
   static SocketServer& GetInstance(const std::string& end_point);
 

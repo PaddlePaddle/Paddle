@@ -17,9 +17,12 @@ if(APPLE AND WITH_ARM)
     cmake_minimum_required(VERSION 3.19.2)
     cmake_policy(VERSION 3.19.2)
 else(APPLE AND WITH_ARM)
-    cmake_minimum_required(VERSION 3.10)
+    cmake_minimum_required(VERSION 3.15)
     cmake_policy(VERSION 3.10)
 endif(APPLE AND WITH_ARM)
+# use to get_property location of static lib
+# https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
+cmake_policy(SET CMP0026 OLD)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -43,25 +46,36 @@ option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_XPU_KP      "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
+option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
+option(WITH_IPU         "Compile PaddlePaddle with Graphcore IPU"    OFF)
 # NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"          OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
+include(experimental)       # experimental build options
 
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
+if (WITH_GPU AND WITH_XPU_KP)
+    message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
 endif()
 if (WITH_GPU AND WITH_ASCEND)
     message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
 endif()
 if (WITH_GPU AND WITH_ROCM)
     message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if (WITH_GPU AND WITH_MLU)
+    message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -87,7 +101,11 @@ if(APPLE AND WITH_ARM)
 endif()
 
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+    if(WITH_ARM_BRPC)
+        set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+    else()
+        set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+    endif()
 endif()
 
 if(WIN32)
@@ -121,6 +139,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+    add_definitions("-DNOMINMAX")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -215,9 +235,11 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN   "Compile PaddlePaddle with CINN" OFF)
+option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
+option(WITH_CNCL   "Compile PaddlePaddle with CNCL support"             OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
@@ -225,10 +247,22 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
-option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_PYPI   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_ALL   "PaddlePaddle next-level release strategy for all arches cubin package"             OFF)
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
+option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
+option(WITH_ARM_BRPC "Supprot Brpc in Arm"    OFF)
+
+if(WITH_RECORD_BUILDTIME)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
+else()            
+    include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
+endif()
+unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -241,6 +275,10 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
+endif()
+
+if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
+set(WITH_CUSTOM_DEVICE ON)
 endif()
 
 if(WIN32)
@@ -265,11 +303,26 @@ if (NOT WITH_GPU AND WITH_NCCL)
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
+# force WITH_XPU on when WITH_XPU_KP
+if (WITH_XPU_KP AND NOT WITH_XPU)
+    MESSAGE(WARNING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP. Force WITH_XPU=ON.")
+    set(WITH_XPU ON CACHE STRING
+        "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
+endif()
+
 if (NOT WITH_XPU AND WITH_XPU_BKCL)
     MESSAGE(WARNING
         "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
     set(WITH_XPU_BKCL OFF CACHE STRING
         "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if (NOT WITH_MLU AND WITH_CNCL)
+    MESSAGE(WARNING
+        "Disable CNCL when compiling without MLU. Force WITH_MLU=OFF.")
+    set(WITH_MLU OFF CACHE STRING
+        "Disable CNCL when compiling without MLU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -288,6 +341,7 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+
 if(WITH_GPU)
     include(cuda)
     # lite subgraph compilation depends on CUDNN_ROOT,
@@ -300,10 +354,18 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_MLU)
+    include(neuware)
+endif()
+
 if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
 endif(WITH_ROCM)
+
+if(WITH_XPU_KP)
+    include(xpu_kp)
+endif()
 
 if (NOT WITH_ROCM AND WITH_RCCL)
     MESSAGE(WARNING
@@ -321,14 +383,23 @@ else()
      endif()
 endif()
 
+if(WITH_HETERPS AND WITH_PSLIB)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+endif()
+
 if(WITH_DISTRIBUTE)
     if(LINUX)
         set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
     endif()
-    if(WITH_ASCEND_CL)
+    if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
         # disable WITH_PSCORE for NPU before include third_party
         MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
         set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
+    if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
+        # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
+        MESSAGE(WARNING "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496" FORCE)
     endif()
 endif()
 
@@ -342,7 +413,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
@@ -414,3 +484,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
+list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/includes.txt" ${all_inc_dirs})

@@ -140,6 +140,32 @@ TEST(QuantizerPlacementPass, default_attr_value) {
   DefaultAttrTest(5);
 }
 
+void EnabledOpTypesTest(
+    std::initializer_list<std::string> quantize_enabled_op_types,
+    std::string missing_op) {
+  auto prog = BuildProgramDesc();
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  auto pass = PassRegistry::Instance().Get("cpu_quantize_placement_pass");
+  pass->Set("quantize_enabled_op_types",
+            new std::unordered_set<std::string>(quantize_enabled_op_types));
+
+  try {
+    graph.reset(pass->Apply(graph.release()));
+  } catch (paddle::platform::EnforceNotMet& err) {
+    std::string ex_msg = err.what();
+    std::string expected_msg =
+        "Pass attribute quantize_enabled_op_types contains operator " +
+        missing_op + " that is not supported by OneDNN quantization.";
+    EXPECT_TRUE(ex_msg.find(expected_msg) != std::string::npos);
+  }
+}
+
+TEST(QuantizerPlacementPass, unsupported_op_type) {
+  // Dropout op is not supported by OneDNN quantization
+  EnabledOpTypesTest({"conv2d", "dropout"}, "dropout");
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

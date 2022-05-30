@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/huber_loss_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,36 +26,6 @@ namespace operators {
 class HuberLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "HuberLoss");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "HuberLoss");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-
-    PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Input(input) rank and Input(label) rank should be "
-                          "same, but received input rank(%d) != label rank(%d)",
-                          x_dims.size(), y_dims.size()));
-
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(y_dims);
-    if (ctx->IsRuntime() || !contain_unknown_dim) {
-      PADDLE_ENFORCE_EQ(
-          x_dims, y_dims,
-          platform::errors::InvalidArgument(
-              "The Input(input) and Input(label) should have the same "
-              "shape, but received input shape [%s] != label shape [%s]",
-              x_dims, y_dims));
-    }
-
-    auto out_dims = y_dims;
-    ctx->SetOutputDim("Residual", out_dims);
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 template <typename AttrType>
@@ -139,14 +112,11 @@ class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(huber_loss, HuberLossInferShapeFunctor,
+                            PD_INFER_META(phi::HuberLossInferMeta));
+
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
                   ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
-                  ops::HuberLossGradOpMaker<paddle::imperative::OpBase>);
+                  ops::HuberLossGradOpMaker<paddle::imperative::OpBase>,
+                  HuberLossInferShapeFunctor);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HuberLossKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, double>);

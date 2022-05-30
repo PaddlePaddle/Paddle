@@ -24,221 +24,158 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid import core
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 np.random.seed(10)
 
 
 #Situation 1: repeat_times is a list (without tensor)
-class TestTileOpRank1(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.init_data()
+class XPUTestTileOpRank1(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'tile'
+        self.use_dynamic_create_class = False
 
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float32")}
-        self.attrs = {'repeat_times': self.repeat_times}
-        output = np.tile(self.inputs['X'], self.repeat_times)
-        self.outputs = {'Out': output}
+    class TestTileOpRank1(XPUOpTest):
+        def setUp(self):
+            self.dtype = self.in_type
+            self.__class__.no_need_check_grad = True
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "tile"
+            self.init_data()
+            self.inputs = {
+                'X': np.random.random(self.ori_shape).astype(self.dtype)
+            }
+            self.attrs = {'repeat_times': self.repeat_times}
+            output = np.tile(self.inputs['X'], self.repeat_times)
+            self.outputs = {'Out': output}
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+        def init_data(self):
+            self.ori_shape = [100]
+            self.repeat_times = [2]
 
-    def init_data(self):
-        self.ori_shape = [100]
-        self.repeat_times = [2]
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+    #with dimension expanding
+    class TestTileOpRank2Expanding(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = [120]
+            self.repeat_times = [2, 2]
 
-    def test_check_grad(self):
-        pass
+    class TestTileOpRank2(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = [12, 14]
+            self.repeat_times = [2, 3]
 
+    class TestTileOpRank3_Corner(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = (2, 10, 5)
+            self.repeat_times = (1, 1, 1)
 
-#with dimension expanding
-class TestTileOpRank2Expanding(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = [120]
-        self.repeat_times = [2, 2]
+    class TestTileOpRank3_Corner2(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = (2, 10, 5)
+            self.repeat_times = (2, 2)
 
+    class TestTileOpRank3(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = (2, 4, 15)
+            self.repeat_times = (2, 1, 4)
 
-class TestTileOpRank2(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = [12, 14]
-        self.repeat_times = [2, 3]
-
-
-class TestTileOpRank3_Corner(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = (2, 10, 5)
-        self.repeat_times = (1, 1, 1)
-
-
-class TestTileOpRank3_Corner2(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = (2, 10, 5)
-        self.repeat_times = (2, 2)
-
-
-class TestTileOpRank3(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = (2, 4, 15)
-        self.repeat_times = (2, 1, 4)
-
-
-class TestTileOpRank4(TestTileOpRank1):
-    def init_data(self):
-        self.ori_shape = (2, 4, 5, 7)
-        self.repeat_times = (3, 2, 1, 2)
+    class TestTileOpRank4(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = (2, 4, 5, 7)
+            self.repeat_times = (3, 2, 1, 2)
 
 
 # Situation 2: repeat_times is a list (with tensor)
-class TestTileOpRank1_tensor_attr(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.init_data()
-        repeat_times_tensor = []
-        for index, ele in enumerate(self.repeat_times):
-            repeat_times_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'tile'
+        self.use_dynamic_create_class = False
 
-        self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
-            'repeat_times_tensor': repeat_times_tensor,
-        }
-        self.attrs = {"repeat_times": self.infer_repeat_times}
-        output = np.tile(self.inputs['X'], self.repeat_times)
-        self.outputs = {'Out': output}
+    class TestTileOpRank1_tensor_attr(XPUOpTest):
+        def setUp(self):
+            self.dtype = self.in_type
+            self.__class__.no_need_check_grad = True
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "tile"
+            self.init_data()
+            repeat_times_tensor = []
+            for index, ele in enumerate(self.repeat_times):
+                repeat_times_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+            self.inputs = {
+                'X': np.random.random(self.ori_shape).astype(self.dtype),
+                'repeat_times_tensor': repeat_times_tensor,
+            }
+            self.attrs = {"repeat_times": self.infer_repeat_times}
+            output = np.tile(self.inputs['X'], self.repeat_times)
+            self.outputs = {'Out': output}
 
-    def init_data(self):
-        self.ori_shape = [100]
-        self.repeat_times = [2]
-        self.infer_repeat_times = [-1]
+        def init_data(self):
+            self.ori_shape = [100]
+            self.repeat_times = [2]
+            self.infer_repeat_times = [-1]
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def test_check_grad(self):
-        pass
+    class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+        def init_data(self):
+            self.ori_shape = [12, 14]
+            self.repeat_times = [1, 1]
+            self.infer_repeat_times = [1, -1]
 
-
-class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
-    def init_data(self):
-        self.ori_shape = [12, 14]
-        self.repeat_times = [1, 1]
-        self.infer_repeat_times = [1, -1]
-
-
-class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
-    def init_data(self):
-        self.ori_shape = [12, 14]
-        self.repeat_times = [2, 3]
-        self.infer_repeat_times = [-1, 3]
+    class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+        def init_data(self):
+            self.ori_shape = [12, 14]
+            self.repeat_times = [2, 3]
+            self.infer_repeat_times = [-1, 3]
 
 
 # Situation 3: repeat_times is a tensor
-class TestTileOpRank1_tensor(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.init_data()
+class XPUTestTileOpRank1_tensor(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'tile'
+        self.use_dynamic_create_class = False
 
-        self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
-            'RepeatTimes': np.array(self.repeat_times).astype("int32"),
-        }
-        self.attrs = {}
-        output = np.tile(self.inputs['X'], self.repeat_times)
-        self.outputs = {'Out': output}
+    class TestTileOpRank1_tensor(XPUOpTest):
+        def setUp(self):
+            self.dtype = self.in_type
+            self.__class__.no_need_check_grad = True
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "tile"
+            self.init_data()
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
+            self.inputs = {
+                'X': np.random.random(self.ori_shape).astype(self.dtype),
+                'RepeatTimes': np.array(self.repeat_times).astype("int32"),
+            }
+            self.attrs = {}
+            output = np.tile(self.inputs['X'], self.repeat_times)
+            self.outputs = {'Out': output}
 
-    def init_data(self):
-        self.ori_shape = [100]
-        self.repeat_times = [2]
+        def init_data(self):
+            self.ori_shape = [100]
+            self.repeat_times = [2]
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
-    def test_check_grad(self):
-        pass
-
-
-class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
-    def init_data(self):
-        self.ori_shape = [12, 14]
-        self.repeat_times = [2, 3]
-
-
-# Situation 4: input x is Integer
-class TestTileOpInteger(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.inputs = {
-            'X': np.random.randint(
-                10, size=(4, 4, 5)).astype("int32")
-        }
-        self.attrs = {'repeat_times': [2, 1, 4]}
-        output = np.tile(self.inputs['X'], (2, 1, 4))
-        self.outputs = {'Out': output}
-
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+    class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+        def init_data(self):
+            self.ori_shape = [12, 14]
+            self.repeat_times = [2, 3]
 
 
-# Situation 5: input x is Integer
-class TestTileOpInt64_t(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.inputs = {
-            'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int64")
-        }
-        self.attrs = {'repeat_times': [2, 1, 4]}
-        output = np.tile(self.inputs['X'], (2, 1, 4))
-        self.outputs = {'Out': output}
-
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
-
-
-# Situation 6: input x is Bool
-class TestTileOpBool(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.place = paddle.XPUPlace(0)
-        self.op_type = "tile"
-        self.inputs = {
-            'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("bool")
-        }
-        self.attrs = {'repeat_times': [2, 1, 4]}
-        output = np.tile(self.inputs['X'], (2, 1, 4))
-        self.outputs = {'Out': output}
-
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
+support_types = get_xpu_op_support_types('tile')
+for stype in support_types:
+    create_test_class(globals(), XPUTestTileOpRank1, stype)
+    create_test_class(globals(), XPUTestTileOpRank1_tensor_attr, stype)
+    create_test_class(globals(), XPUTestTileOpRank1_tensor, stype)
 
 
 # Test python API

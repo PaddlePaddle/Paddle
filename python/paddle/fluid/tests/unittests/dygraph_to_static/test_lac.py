@@ -19,6 +19,7 @@ import numpy as np
 import unittest
 
 import os
+import tempfile
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
@@ -27,6 +28,8 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.framework import _non_static_mode
+from paddle import _C_ops
 
 SEED = 2020
 
@@ -167,6 +170,11 @@ class LinearChainCRF(fluid.dygraph.Layer):
         self._transition = value
 
     def forward(self, input, label, length=None):
+        if _non_static_mode():
+            _, _, _, log_likelihood = _C_ops.linear_chain_crf(
+                input, self._transition, label, length, "is_test",
+                self._is_test)
+            return log_likelihood
 
         alpha = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -218,6 +226,9 @@ class CRFDecoding(fluid.dygraph.Layer):
         self._transition = value
 
     def forward(self, input, label=None, length=None):
+        if _non_static_mode():
+            return _C_ops.crf_decoding(input, self._transition, label, length,
+                                       "is_test", self._is_test)
 
         viterbi_path = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -245,6 +256,11 @@ class ChunkEval(fluid.dygraph.Layer):
         self.excluded_chunk_types = excluded_chunk_types
 
     def forward(self, input, label, seq_length=None):
+        if _non_static_mode():
+            return _C_ops.chunk_eval(
+                input, label, seq_length, "num_chunk_types",
+                self.num_chunk_types, "chunk_scheme", self.chunk_scheme,
+                "excluded_chunk_types", self.excluded_chunk_types or [])
 
         precision = self._helper.create_variable_for_type_inference(
             dtype="float32")
@@ -391,11 +407,6 @@ class Args(object):
     base_learning_rate = 0.01
     bigru_num = 2
     print_steps = 1
-    model_save_dir = "./inference"
-    model_save_prefix = "./inference/lac"
-    model_filename = "lac" + INFER_MODEL_SUFFIX
-    params_filename = "lac" + INFER_PARAMS_SUFFIX
-    dy_param_path = "./lac_dy_param"
 
 
 def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
@@ -443,84 +454,86 @@ def create_dataloader(reader, place):
     return data_loader
 
 
-def do_train(args, to_static):
-    program_translator.enable(to_static)
-    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-    ) else fluid.CPUPlace()
-    with fluid.dygraph.guard(place):
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-
-        reader = get_random_input_data(args.batch_size, args.vocab_size,
-                                       args.num_labels)
-        train_loader = create_dataloader(reader, place)
-
-        model = LexNet(args)
-        optimizer = fluid.optimizer.AdamOptimizer(
-            learning_rate=args.base_learning_rate,
-            parameter_list=model.parameters())
-        chunk_eval = ChunkEval(
-            int(math.ceil((args.num_labels - 1) / 2.0)), "IOB")
-
-        step = 0
-        chunk_evaluator = fluid.metrics.ChunkEvaluator()
-        chunk_evaluator.reset()
-
-        loss_data = []
-        for epoch_id in range(args.epoch):
-            for batch in train_loader():
-                words, targets, length = batch
-                start_time = time.time()
-                avg_cost, crf_decode = model(words, targets, length)
-                loss_data.append(avg_cost.numpy()[0])
-
-                # backward and optimization
-                avg_cost.backward()
-                optimizer.minimize(avg_cost)
-                model.clear_gradients()
-                end_time = time.time()
-
-                if step % args.print_steps == 0:
-                    (precision, recall, f1_score, num_infer_chunks,
-                     num_label_chunks, num_correct_chunks) = chunk_eval(
-                         input=crf_decode, label=targets, seq_length=length)
-                    outputs = [avg_cost, precision, recall, f1_score]
-                    avg_cost, precision, recall, f1_score = [
-                        np.mean(x.numpy()) for x in outputs
-                    ]
-
-                    print(
-                        "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"
-                        % (step, avg_cost, precision, recall, f1_score,
-                           end_time - start_time))
-
-                step += 1
-        # save inference model
-        if to_static:
-            fluid.dygraph.jit.save(
-                layer=model,
-                path=args.model_save_prefix,
-                input_spec=[input_specs[0], input_specs[-1]],
-                output_spec=[crf_decode])
-        else:
-            fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
-
-        return np.array(loss_data)
-
-
 class TestLACModel(unittest.TestCase):
     def setUp(self):
         self.args = Args()
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
+        self.model_save_prefix = os.path.join(self.model_save_dir, 'lac')
+        self.model_filename = "lac" + INFER_MODEL_SUFFIX
+        self.params_filename = "lac" + INFER_PARAMS_SUFFIX
+        self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
-    def train(self, to_static):
-        out = do_train(self.args, to_static)
-        return out
+    def train(self, args, to_static):
+        program_translator.enable(to_static)
+        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.dygraph.guard(place):
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
+
+            reader = get_random_input_data(args.batch_size, args.vocab_size,
+                                           args.num_labels)
+            train_loader = create_dataloader(reader, place)
+
+            model = LexNet(args)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                learning_rate=args.base_learning_rate,
+                parameter_list=model.parameters())
+            chunk_eval = ChunkEval(
+                int(math.ceil((args.num_labels - 1) / 2.0)), "IOB")
+
+            step = 0
+            chunk_evaluator = fluid.metrics.ChunkEvaluator()
+            chunk_evaluator.reset()
+
+            loss_data = []
+            for epoch_id in range(args.epoch):
+                for batch in train_loader():
+                    words, targets, length = batch
+                    start_time = time.time()
+                    avg_cost, crf_decode = model(words, targets, length)
+                    loss_data.append(avg_cost.numpy()[0])
+
+                    # backward and optimization
+                    avg_cost.backward()
+                    optimizer.minimize(avg_cost)
+                    model.clear_gradients()
+                    end_time = time.time()
+
+                    if step % args.print_steps == 0:
+                        (precision, recall, f1_score, num_infer_chunks,
+                         num_label_chunks, num_correct_chunks) = chunk_eval(
+                             input=crf_decode, label=targets, seq_length=length)
+                        outputs = [avg_cost, precision, recall, f1_score]
+                        avg_cost, precision, recall, f1_score = [
+                            np.mean(x.numpy()) for x in outputs
+                        ]
+
+                        print(
+                            "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"
+                            % (step, avg_cost, precision, recall, f1_score,
+                               end_time - start_time))
+
+                    step += 1
+            # save inference model
+            if to_static:
+                fluid.dygraph.jit.save(
+                    layer=model,
+                    path=self.model_save_prefix,
+                    input_spec=[input_specs[0], input_specs[-1]],
+                    output_spec=[crf_decode])
+            else:
+                fluid.dygraph.save_dygraph(model.state_dict(),
+                                           self.dy_param_path)
+
+            return np.array(loss_data)
 
     def test_train(self):
-        st_out = self.train(to_static=True)
-        dy_out = self.train(to_static=False)
+        st_out = self.train(self.args, to_static=True)
+        dy_out = self.train(self.args, to_static=False)
         self.assertTrue(
             np.allclose(dy_out, st_out),
             msg="dygraph output:\n{},\nstatic output:\n {}.".format(dy_out,
@@ -550,8 +563,7 @@ class TestLACModel(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.args.dy_param_path +
-                                               ".pdparams")
+            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
             model.set_dict(model_dict)
             model.eval()
 
@@ -570,10 +582,10 @@ class TestLACModel(unittest.TestCase):
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.model_save_dir,
+             self.model_save_dir,
              executor=exe,
-             model_filename=self.args.model_filename,
-             params_filename=self.args.params_filename)
+             model_filename=self.model_filename,
+             params_filename=self.params_filename)
 
         words, targets, length = batch
         pred_res = exe.run(
@@ -586,7 +598,7 @@ class TestLACModel(unittest.TestCase):
     def predict_dygraph_jit(self, batch):
         words, targets, length = batch
         with fluid.dygraph.guard(self.place):
-            model = fluid.dygraph.jit.load(self.args.model_save_prefix)
+            model = fluid.dygraph.jit.load(self.model_save_prefix)
             model.eval()
 
             pred_res = model(to_variable(words), to_variable(length))
@@ -595,4 +607,5 @@ class TestLACModel(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

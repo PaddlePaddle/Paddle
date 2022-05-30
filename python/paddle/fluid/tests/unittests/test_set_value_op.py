@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -69,7 +70,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
-    def test_api(self):
+    def func_test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
@@ -81,6 +82,11 @@ class TestSetValueApi(TestSetValueBase):
         self.assertTrue(
             (self.data == dynamic_out).all(),
             msg=error_msg.format("dynamic", self.data, dynamic_out))
+
+    def test_api(self):
+        with _test_eager_guard():
+            self.func_test_api()
+        self.func_test_api()
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -125,6 +131,14 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
     def _get_answer(self):
         self.data[0:, 1:2, :] = self.value
+
+
+class TestSetValueItemSlice5(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, 1:1, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:1, :] = self.value
 
 
 class TestSetValueItemSliceInWhile(TestSetValueApi):
@@ -406,6 +420,14 @@ class TestSetValueItemNone9(TestSetValueApi):
 
     def _get_answer(self):
         self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
+
+
+class TestSetValueItemNone10(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+    def _get_answer(self):
+        self.data[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
 
 
 # 1.5 item is list or Tensor of bol
@@ -979,9 +1001,9 @@ class TestBackward(unittest.TestCase):
             fetch_list=[var.name + "@GRAD", z.name + "@GRAD"])
 
         self.assertTrue((var_grad == z_grad[0, :]).all())
-
-    def test_dynamic(self):
         paddle.disable_static()
+
+    def func_test_dynamic(self):
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -989,12 +1011,16 @@ class TestBackward(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
-        # 
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_test_dynamic()
+        self.func_test_dynamic()
 
 
 class TestGradientTruncated(unittest.TestCase):
-    def test_consistent_with_competitor(self):
+    def func_test_consistent_with_competitor(self):
         paddle.disable_static()
 
         def set_value(t, value):
@@ -1163,8 +1189,13 @@ class TestGradientTruncated(unittest.TestCase):
 
         x[0, :] = value
 
-        self.assertTrue(~x.stop_gradient)
-        self.assertTrue(~x.is_leaf)
+        self.assertTrue(not x.stop_gradient)
+        self.assertTrue(not x.is_leaf)
+
+    def test_consistent_with_competitor(self):
+        with _test_eager_guard():
+            self.func_test_consistent_with_competitor()
+        self.func_test_consistent_with_competitor()
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -1312,6 +1343,61 @@ class TestGradientTruncated(unittest.TestCase):
                 self.assertTrue((numel(out1[0][0:5:3].shape) == out3[0]).all())
 
             array = array[0]
+        paddle.disable_static()
+
+
+class TestSetValueInplace(unittest.TestCase):
+    def test_inplace(self):
+        paddle.disable_static()
+        with paddle.fluid.dygraph.guard():
+            paddle.seed(100)
+            a = paddle.rand(shape=[1, 4])
+            a.stop_gradient = False
+            b = a[:]
+            c = b
+            b[paddle.to_tensor(0)] = 1.0
+
+            self.assertTrue(id(b) == id(c))
+            self.assertTrue(np.array_equal(b.numpy(), c.numpy()))
+            self.assertEqual(b.inplace_version, 1)
+
+        paddle.enable_static()
+
+
+class TestSetValueInplaceLeafVar(unittest.TestCase):
+    def test_inplace_var_become_leaf_var(self):
+        paddle.disable_static()
+
+        a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
+        with paddle.fluid.dygraph.guard():
+            paddle.seed(100)
+            a = paddle.rand(shape=[1, 4])
+            b = paddle.rand(shape=[1, 4])
+            a.stop_gradient = False
+            b.stop_gradient = False
+            c = a / b
+            c.sum().backward()
+            a_grad_1 = a.grad.numpy()
+            b_grad_1 = b.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            paddle.seed(100)
+            a = paddle.rand(shape=[1, 4])
+            b = paddle.rand(shape=[1, 4])
+            a.stop_gradient = False
+            b.stop_gradient = False
+            c = a / b
+            d = paddle.zeros((4, 4))
+            self.assertTrue(d.stop_gradient)
+            d[0, :] = c
+            self.assertFalse(d.stop_gradient)
+            d[0, :].sum().backward()
+            a_grad_2 = a.grad.numpy()
+            b_grad_2 = b.grad.numpy()
+
+        self.assertTrue(np.array_equal(a_grad_1, a_grad_2))
+        self.assertTrue(np.array_equal(b_grad_1, b_grad_2))
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ import paddle.fluid.core as core
 
 from paddle.fluid.executor import Executor
 from paddle.fluid import framework
-
+from paddle.fluid.framework import _test_eager_guard
 paddle.enable_static()
 
 
@@ -554,13 +554,18 @@ class TestDynamicDecode(unittest.TestCase):
                 },
                 fetch_list=[output])[0]
 
-    def test_dynamic_basic_decoder(self):
+    def func_dynamic_basic_decoder(self):
         paddle.disable_static()
         src = paddle.to_tensor(np.random.randint(8, size=(8, 4)))
         src_length = paddle.to_tensor(np.random.randint(8, size=(8)))
         model = Seq2SeqModel(**self.model_hparams)
         probs, samples, sample_length = model(src, src_length)
         paddle.enable_static()
+
+    def test_dynamic_basic_decoder(self):
+        with _test_eager_guard():
+            self.func_dynamic_basic_decoder()
+        self.func_dynamic_basic_decoder()
 
 
 class ModuleApiTest(unittest.TestCase):
@@ -624,7 +629,6 @@ class ModuleApiTest(unittest.TestCase):
         else:
             fluid.disable_dygraph()
         gen = paddle.seed(self._random_seed)
-        gen._is_init_py = False
         paddle.framework.random._manual_program_seed(self._random_seed)
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
@@ -708,8 +712,15 @@ class TestBeamSearch(ModuleApiTest):
         ]
         return inputs
 
-    def test_check_output(self):
+    def func_check_output(self):
+        self.setUp()
+        self.make_inputs()
         self.check_output()
+
+    def test_check_output(self):
+        with _test_eager_guard():
+            self.func_check_output()
+        self.func_check_output()
 
 
 if __name__ == '__main__':

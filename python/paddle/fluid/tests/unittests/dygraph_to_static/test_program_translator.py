@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+import paddle.jit.dy2static as _jst
 
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -75,40 +77,38 @@ class StaticCode1():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dy2static.convert_ifelse(
+        x_v = _jst.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
             (x_v, ), (x_v, ))
-        __return_0 = paddle.jit.dy2static.create_bool_as_type(label is not None,
-                                                              False)
+        __return_0 = _jst.create_bool_as_type(label is not None, False)
 
         def true_fn_1(__return_0, __return_value_0, label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
-            __return_0 = paddle.jit.dy2static.create_bool_as_type(
-                label is not None, True)
+            __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
             return __return_0, __return_value_0
 
         def false_fn_1(__return_0, __return_value_0):
             return __return_0, __return_value_0
 
-        __return_0, __return_value_0 = (paddle.jit.dy2static.convert_ifelse(
+        __return_0, __return_value_0 = _jst.convert_ifelse(
             label is not None, true_fn_1, false_fn_1,
             (__return_0, __return_value_0, label, x_v),
-            (__return_0, __return_value_0), (__return_0, __return_value_0)))
+            (__return_0, __return_value_0), (__return_0, __return_value_0))
 
         def true_fn_2(__return_0, __return_value_0, x_v):
-            __return_1 = paddle.jit.dy2static.create_bool_as_type(
-                paddle.jit.dy2static.convert_logical_not(__return_0), True)
+            __return_1 = _jst.create_bool_as_type(
+                _jst.convert_logical_not(__return_0), True)
             __return_value_0 = x_v
             return __return_value_0
 
         def false_fn_2(__return_value_0):
             return __return_value_0
 
-        __return_value_0 = paddle.jit.dy2static.convert_ifelse(
-            paddle.jit.dy2static.convert_logical_not(__return_0), true_fn_2,
-            false_fn_2, (__return_0, __return_value_0,
-                         x_v), (__return_value_0, ), (__return_value_0, ))
+        __return_value_0 = _jst.convert_ifelse(
+            _jst.convert_logical_not(__return_0), true_fn_2, false_fn_2,
+            (__return_0, __return_value_0,
+             x_v), (__return_value_0, ), (__return_value_0, ))
         return __return_value_0
 
 
@@ -127,40 +127,38 @@ class StaticCode2():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dy2static.convert_ifelse(
+        x_v = _jst.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_3, false_fn_3, (x_v, ),
             (x_v, ), (x_v, ))
-        __return_2 = paddle.jit.dy2static.create_bool_as_type(label is not None,
-                                                              False)
+        __return_2 = _jst.create_bool_as_type(label is not None, False)
 
         def true_fn_4(__return_2, __return_value_1, label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
-            __return_2 = paddle.jit.dy2static.create_bool_as_type(
-                label is not None, True)
+            __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
             return __return_2, __return_value_1
 
         def false_fn_4(__return_2, __return_value_1):
             return __return_2, __return_value_1
 
-        __return_2, __return_value_1 = paddle.jit.dy2static.convert_ifelse(
-            label is not None, true_fn_4, false_fn_4, (
-                __return_2, __return_value_1, label, x_v),
+        __return_2, __return_value_1 = _jst.convert_ifelse(
+            label is not None, true_fn_4, false_fn_4,
+            (__return_2, __return_value_1, label, x_v),
             (__return_2, __return_value_1), (__return_2, __return_value_1))
 
         def true_fn_5(__return_2, __return_value_1, x_v):
-            __return_3 = paddle.jit.dy2static.create_bool_as_type(
-                paddle.jit.dy2static.convert_logical_not(__return_2), True)
+            __return_3 = _jst.create_bool_as_type(
+                _jst.convert_logical_not(__return_2), True)
             __return_value_1 = x_v
             return __return_value_1
 
         def false_fn_5(__return_value_1):
             return __return_value_1
 
-        __return_value_1 = paddle.jit.dy2static.convert_ifelse(
-            paddle.jit.dy2static.convert_logical_not(__return_2), true_fn_5,
-            false_fn_5, (__return_2, __return_value_1,
-                         x_v), (__return_value_1, ), (__return_value_1, ))
+        __return_value_1 = _jst.convert_ifelse(
+            _jst.convert_logical_not(__return_2), true_fn_5, false_fn_5,
+            (__return_2, __return_value_1,
+             x_v), (__return_value_1, ), (__return_value_1, ))
         return __return_value_1
 
 
@@ -231,7 +229,9 @@ class TestEnableDeclarative(unittest.TestCase):
             dygraph_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
             dygraph_output = dygraph_func(self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_get_program(self):
 
@@ -253,7 +253,9 @@ class TestEnableDeclarative(unittest.TestCase):
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_program(
                 simple_func, self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_declarative(self):
 
@@ -297,5 +299,66 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
             self.program_translator.get_program(net.forward, self.x)
 
 
+class SwitchModeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(SwitchModeNet, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static
+    def foo(self):
+        return True
+
+
+@paddle.jit.to_static
+def switch_mode_funciton():
+    return True
+
+
+class TestFunctionTrainEvalMode(unittest.TestCase):
+    def test_switch_mode(self):
+        paddle.disable_static()
+        switch_mode_funciton.eval()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, False)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, False)
+
+        switch_mode_funciton.train()
+        switch_mode_funciton()
+        self.assertEqual(switch_mode_funciton._training, True)
+        _, partial_layer = switch_mode_funciton.program_cache.last()[-1]
+        self.assertEqual(partial_layer.training, True)
+
+    def test_raise_error(self):
+        paddle.disable_static()
+        net = SwitchModeNet()
+
+        self.assertEqual(net.training, True)
+        with self.assertRaises(RuntimeError):
+            net.forward.eval()
+
+        net.eval()
+        self.assertEqual(net.training, False)
+        with self.assertRaises(RuntimeError):
+            net.foo.train()
+
+
+class TestRemoveCommentInDy2St(unittest.TestCase):
+    def func_with_comment(self):
+        # Comment1
+        x = paddle.to_tensor([1, 2, 3])
+        # Comment2
+        # Comment3
+        y = paddle.to_tensor([4, 5, 6])
+
+    def test_remove_comment(self):
+        code_string = func_to_source_code(self.func_with_comment)
+        self.assertEqual('#' not in code_string, True)
+
+
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

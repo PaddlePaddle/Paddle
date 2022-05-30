@@ -27,6 +27,7 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import six
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -210,9 +211,14 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def test_ptb_rnn(self):
+    def func_test_ptb_rnn(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_cpu_float32(is_sparse)
+
+    def test_ptb_rnn(self):
+        with _test_eager_guard():
+            self.func_test_ptb_rnn()
+        self.func_test_ptb_rnn()
 
     def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90
@@ -260,7 +266,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                if i % 5 == 0:
+                if i % 5 == 0 and _in_legacy_dygraph():
                     outs, traced_layer = TracedLayer.trace(
                         ptb_model, [x, y, init_hidden, init_cell])
                     outs_static = traced_layer([x, y, init_hidden, init_cell])

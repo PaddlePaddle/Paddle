@@ -140,7 +140,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
         x = paddle.to_tensor(a)
         y = paddle.to_tensor(b)
-        res = core.ops.elementwise_mul(x, y)
+        res = _C_ops.elementwise_mul(x, y)
 
         # expected
         expected = LOWEST_WARNING_POSTION

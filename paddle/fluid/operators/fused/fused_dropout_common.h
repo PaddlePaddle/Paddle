@@ -21,12 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
-#include "paddle/fluid/operators/math/functors.h"
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -43,9 +43,17 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const platform::CUDADeviceContext &ctx, const uint32_t rows,
     const uint32_t cols, const int vec_size) {
   const uint32_t tmp_cols = cols / vec_size;
-  int threads = std::max(
-      static_cast<uint32_t>(32),
-      std::min(tmp_cols, static_cast<uint32_t>(ctx.GetMaxThreadsPerBlock())));
+  // NOTE(wangxi): We set max_block_size to 512, for `FusedResidualDropoutBias`
+  // needs too many register resources. If data_type is float16, CUDA
+  // error(701) will occur when block_size is 1024. Which error is
+  // 'cudaErrorLaunchOutOfResources', this indicates that a launch did not
+  // occur because it did not have appropriate resources.
+  // Of course, this kernel can be optimized later to reduce the use
+  // of registers.
+  int threads =
+      std::max(static_cast<uint32_t>(32),
+               std::min(tmp_cols, static_cast<uint32_t>(std::min(
+                                      ctx.GetMaxThreadsPerBlock(), 512))));
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
   const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
@@ -93,7 +101,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 template <typename T>
 inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
                     const size_t size) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
+  PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
 }
 

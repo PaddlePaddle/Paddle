@@ -15,59 +15,337 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
-from ..utils import is_valid_list_index
+from ..utils import is_valid_list_index, is_prim_op
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import set_dist_op_desc_original_id
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
+__op_not_need_param_init__ = ["while", "cond"]
+
+
+def prim_operator_data_parallel_functor(ctx, src_op):
+    dist_op_context = ctx.dist_op_context
+    main_block = dist_op_context.work_block
+    startup_block = dist_op_context.startup_block
+
+    var_name = src_op.output_arg_names[0]
+    if var_name in ctx.grads_params:
+        assert var_name not in ctx.synced_gradient, "in primtive mode, grad is already {} synced".format(
+            var_name)
+        ctx.synced_gradient.add(var_name)
+        sync_group = new_process_group(ctx.data_parallel_group)
+
+        allreduce_op = main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': [var_name]},
+            outputs={'Out': [var_name]},
+            attrs={
+                'ring_id': sync_group.id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Backward
+            })
+
+        param = ctx.grads_params[var_name]
+        startup_block = dist_op_context.startup_block
+        new_op = startup_block.append_op(
+            type='c_broadcast',
+            inputs={'X': [param]},
+            outputs={'Out': [param]},
+            attrs={
+                'ring_id': sync_group.id,
+                'root': 0,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Forward
+            })
+
+        grad_var = main_block.var(var_name)
+        dims_mapping = ctx.get_tensor_dist_attr_for_program(
+            grad_var).dims_mapping
+        dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        process_mesh = dist_attr.process_mesh
+        op_attr = OperatorDistributedAttribute()
+        op_attr.process_mesh = process_mesh
+        op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
+        op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
+        ctx.set_op_dist_attr_for_program(allreduce_op, op_attr)
+
+    return
+
 
 class DistributedDefault(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedDefault, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedDefault, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("default",
-                                             DistributedDefault("default"))
+register_distributed_operator_impl_container(DistributedDefault("default"))
 
 
 # Replicated Default
 class DistributedDefaultImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedDefaultImpl0, self).__init__()
-        self._name = name
+        super(DistributedDefaultImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
     def is_input_compatible(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        batch_dim_mappings = []
+        input_names = op_desc.input_names()
+        xshape_arg_names = []
+        if "XShape" in input_names:
+            xshape_arg_names = op_desc.input("XShape")
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                continue
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 2:
+                    batch_dim_mappings.append(dims_mapping[1])
+
+        if compute_compatible_dim_mapping(batch_dim_mappings) is None:
+            return False
+
+        return True
 
     def is_output_compatible(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        output_names = op_desc.output_names()
+        batch_dim_mappings = []
+        xshape_arg_names = []
+        if "XShape" in output_names:
+            xshape_arg_names = op_desc.output("XShape")
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                continue
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 2:
+                    batch_dim_mappings.append(dims_mapping[1])
+
+        if compute_compatible_dim_mapping(batch_dim_mappings) is None:
+            return False
+
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        batch_dim_mappings = []
+        # Check input compatibility
+        input_names = op_desc.input_names()
+        xshape_arg_names = []
+        if "XShape" in input_names:
+            xshape_arg_names = op_desc.input("XShape")
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                continue
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 2:
+                    batch_dim_mappings.append(dims_mapping[1])
+
+        # Check output compatibility
+        output_names = op_desc.output_names()
+        xshape_arg_names = []
+        if "XShape" in output_names:
+            xshape_arg_names = op_desc.output("XShape")
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                continue
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+                if len(dims_mapping) >= 2:
+                    batch_dim_mappings.append(dims_mapping[1])
+
+        # Check batch dim mapping compatibility
+        if not all(batch_dim_mappings[0] == dim_mapping
+                   for dim_mapping in batch_dim_mappings):
+            return False
+
+        return True
 
     def update_dims_mapping(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        changed = False
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+
+        if op_desc.type() == "while":
+            return False
+
+        input_names = op_desc.input_names()
+        input_xshape_arg_names = []
+        if "XShape" in input_names:
+            input_xshape_arg_names = op_desc.input("XShape")
+
+        output_names = op_desc.output_names()
+        output_xshape_arg_names = []
+        if "XShape" in output_names:
+            output_xshape_arg_names = op_desc.output("XShape")
+
+        batch_dim_mappings = []
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if arg_name not in input_xshape_arg_names:
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                batch_dim_mappings.append(dims_mapping[1])
+        for arg_name in op_desc.output_arg_names():
+            if op_desc.type() == "fill_zeros_like":
+                input_tensor = dist_op.get_serial_input(op_desc.input_arg_names(
+                )[0])
+                if input_tensor.is_parameter:
+                    continue
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in output_xshape_arg_names:
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
+            else:
+                batch_dim_mappings.append(dims_mapping[1])
+
+        if not batch_dim_mappings:
+            return changed
+
+        compatible_dim_mapping = compute_compatible_dim_mapping(
+            batch_dim_mappings)
+        if compatible_dim_mapping is None:
+            return False
+
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if arg_name not in input_xshape_arg_names:
+                if len(dims_mapping) >= 1 and \
+                    compatible_dim_mapping != dims_mapping[0]:
+                    dims_mapping[0] = compatible_dim_mapping
+                    changed = True
+            else:
+                if len(dims_mapping) >= 2 and \
+                    compatible_dim_mapping != dims_mapping[1]:
+                    dims_mapping[1] = compatible_dim_mapping
+                    changed = True
+        for arg_name in op_desc.output_arg_names():
+            if op_desc.type() == "fill_zeros_like":
+                input_tensor = dist_op.get_serial_input(op_desc.input_arg_names(
+                )[0])
+                if input_tensor.is_parameter:
+                    continue
+            if op_desc.type() in ["shape", "slice"]:
+                continue
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in output_xshape_arg_names:
+                if len(dims_mapping
+                       ) >= 1 and compatible_dim_mapping != dims_mapping[0]:
+                    dims_mapping[0] = compatible_dim_mapping
+                    changed = True
+            else:
+                if len(dims_mapping
+                       ) >= 2 and compatible_dim_mapping != dims_mapping[1]:
+                    dims_mapping[1] = compatible_dim_mapping
+                    changed = True
+
+        return changed
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        startup_block = dist_op_context.get_dst_startup_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        varname_mapping = dist_op_context.get_varname_mapping()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -85,16 +363,25 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(src_op.desc)
+        set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        main_block._sync_with_cpp()
+        # data parallel synchronization for primtive operators
+        from paddle.incubate.autograd import prim_enabled
+        if prim_enabled():
+            assert is_prim_op(src_op)
+            prim_operator_data_parallel_functor(ctx, src_op)
+            return
 
         # param initialization sync
+        if src_op.type in __op_not_need_param_init__:
+            return
+
         for varname in dist_op_desc.input_arg_names():
             if startup_block.has_var(varname) and startup_block.var(
                     varname
@@ -139,19 +426,44 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         op_attr.set_input_dims_mapping(param.name, dims_mapping)
                         ctx.set_op_dist_attr_for_program(new_op, op_attr)
 
-                startup_block._sync_with_cpp()
-
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
+        main_block = dist_op_context.work_block
+        backward_op = dist_op_context.cur_src_op
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
-        rank_id = dist_op_context.get_rank_id()
+        rank_id = dist_op_context.rank_id
+
+        # check validation of inputs / outputs
+        for input_name in backward_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                backward_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in backward_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                backward_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
+
+        # replicate op in dist program
+        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc.copy_from(backward_op.desc)
+        # Refer to the related dist op
+        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
+        for input_name in backward_op.desc.input_names():
+            dist_op_desc.set_input(input_name, kwargs[input_name])
+        for output_name in backward_op.desc.output_names():
+            dist_op_desc.set_output(output_name, kwargs[output_name])
+
+        main_block._sync_with_cpp()
 
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
@@ -159,8 +471,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
-                if "@GRAD" not in varname and not main_block.var(
-                        varname).is_parameter:
+                if "@GRAD" not in varname and not is_parameter_related(
+                        varname, main_block):
 
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     process_mesh = dist_attr.process_mesh
@@ -184,28 +496,19 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         if need_gradient_allreduce:
             allreduce_vars = []
-            for input_name in backward_op.desc.input_names():
-                for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and main_block.var(
-                            varname).is_parameter:
-                        assert len(
-                            backward_op.desc.input(input_name)
-                        ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(
-                            backward_op.desc.input(input_name))
-
-                        assert varname + "@GRAD" in backward_op.desc.output_arg_names(
-                        ), "parameter's grad [{}] not found in the grad op's output".format(
-                            varname + "@GRAD")
-                        assert len(
-                            backward_op.desc.output(input_name + "@GRAD")
-                        ) == 1, "parameter grad of grad op should be length 1, but got [{}]".format(
-                            backward_op.desc.output(input_name + "@GRAD"))
-                        allreduce_vars.append(
-                            backward_op.desc.output(input_name + "@GRAD")[0])
+            for output_name in backward_op.desc.output_names():
+                for varname in backward_op.desc.output(output_name):
+                    if varname in kwargs["grad_var_to_var"]:
+                        fwd_name = kwargs["grad_var_to_var"][varname]
+                        if fwd_name not in main_block.vars:
+                            continue
+                        if is_parameter_related(fwd_name, main_block):
+                            allreduce_vars.append(varname)
 
             if len(allreduce_vars) > 0:
 
                 for varname in allreduce_vars:
+                    added_ops = []
 
                     grad_var = main_block.var(varname)
                     allreduce_op = main_block.append_op(
@@ -217,20 +520,23 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Backward
                         })
+                    added_ops.append(allreduce_op)
 
-                    scale_op = main_block.append_op(
-                        type='scale',
-                        inputs={'X': grad_var},
-                        outputs={'Out': grad_var},
-                        attrs={
-                            'scale': 1.0 / dp_degree,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                    if ctx.gradient_scale:
+                        scale_op = main_block.append_op(
+                            type='scale',
+                            inputs={'X': grad_var},
+                            outputs={'Out': grad_var},
+                            attrs={
+                                'scale': 1.0 / dp_degree,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                        added_ops.append(scale_op)
 
                     dims_mapping = ctx.get_tensor_dist_attr_for_program(
                         grad_var).dims_mapping
                     process_mesh = dist_attr.process_mesh
-                    for op in [allreduce_op, scale_op]:
+                    for op in added_ops:
                         op_attr = OperatorDistributedAttribute()
                         op_attr.process_mesh = process_mesh
                         op_attr.set_output_dims_mapping(grad_var.name,

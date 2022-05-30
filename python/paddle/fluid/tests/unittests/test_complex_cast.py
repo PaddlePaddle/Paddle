@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexCastOp(unittest.TestCase):
@@ -67,6 +68,12 @@ class TestComplexCastOp(unittest.TestCase):
             np.allclose(c_64.cast('complex128').numpy(), c_128.numpy()))
         self.assertTrue(
             np.allclose(c_128.cast('complex128').numpy(), c_64.numpy()))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_complex64_complex128()
+            self.test_real_to_complex()
+            self.test_complex_to_real()
 
 
 if __name__ == '__main__':

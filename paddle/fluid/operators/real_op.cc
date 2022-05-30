@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/real_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,14 +23,6 @@ namespace operators {
 class RealOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Real");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Real");
-
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 class RealOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -87,19 +82,13 @@ DECLARE_INPLACE_OP_INFERER(RealGradOpInplaceInferer,
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(real, RealInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(real, ops::RealOp, ops::RealOpMaker,
                   ops::RealGradOpMaker<::paddle::framework::OpDesc>,
-                  ops::RealGradOpMaker<::paddle::imperative::OpBase>);
+                  ops::RealGradOpMaker<::paddle::imperative::OpBase>,
+                  RealInferShapeFunctor);
 REGISTER_OPERATOR(real_grad, ops::RealGradOp);
-
-REGISTER_OP_CPU_KERNEL(real, ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex<float>>,
-                       ops::RealKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(real_grad,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<float>>,
-                       ops::RealGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<double>>);

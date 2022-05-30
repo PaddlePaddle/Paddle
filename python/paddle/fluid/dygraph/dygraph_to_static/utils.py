@@ -185,13 +185,14 @@ def is_api_in_module(node, module_prefix):
         import paddle.fluid as fluid
         import paddle.fluid.dygraph as dygraph
         import paddle.fluid.layers as layers
+        import paddle.jit.dy2static as _jst
 
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
 
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
-    except NameError:
+    except Exception:
         return False
 
 
@@ -227,7 +228,7 @@ def is_numpy_api(node):
         # TODO: find a better way
         if not module_result:
             return func_str.startswith("numpy.") or func_str.startswith("np.")
-    except NameError:
+    except Exception:
         return False
 
 
@@ -521,8 +522,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 def _inject_import_statements():
     import_statements = [
         "import paddle", "from paddle import Tensor",
-        "import paddle.fluid as fluid", "from typing import *",
-        "import numpy as np"
+        "import paddle.fluid as fluid", "import paddle.jit.dy2static as _jst",
+        "from typing import *", "import numpy as np"
     ]
     return '\n'.join(import_statements) + '\n'
 
@@ -547,7 +548,13 @@ def func_to_source_code(function, dedent=True):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".
             format(type(function).__name__))
-    source_code = inspect.getsource(function)
+    source_code_list, _ = inspect.getsourcelines(function)
+    # Replace comments with blank lines so that error messages are not misplaced
+    source_code_list = [
+        line if not line.lstrip().startswith('#') else '\n'
+        for line in source_code_list
+    ]
+    source_code = ''.join(source_code_list)
     if dedent:
         source_code = textwrap.dedent(source_code)
 
@@ -1045,7 +1052,8 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
+        if isinstance(self.node.iter,
+                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,
@@ -1161,7 +1169,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = paddle.jit.dy2static.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]

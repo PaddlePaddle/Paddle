@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_as_v2_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -47,7 +47,7 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<framework::Tensor>("X");
     auto in_dims = in0->dims();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
@@ -67,7 +67,7 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
     }
     auto* out0 = context.Output<framework::Tensor>("Out");
 
-    framework::DDim out_dims = framework::make_ddim(target_shape);
+    framework::DDim out_dims = phi::make_ddim(target_shape);
 
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.GetPlace());

@@ -94,6 +94,17 @@ function(inference_analysis_api_test target install_dir filename)
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
+function(inference_analysis_api_int8_test target install_dir filename)
+    inference_analysis_test(${target} SRCS ${filename}
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${install_dir}/model
+             --infer_data=${install_dir}/data.txt
+             --refer_result=${install_dir}/result.txt
+             --accuracy=0.8
+             --batch_size=5
+             --enable_int8=true)
+endfunction()
+
 function(inference_multiple_models_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -157,7 +168,7 @@ function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary 
              --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
-function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
+function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path enable_quant_int8)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}
@@ -165,6 +176,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --infer_data=${data_path}
              --batch_size=50
              --enable_int8=true
+             --enable_quant_int8=${enable_quant_int8}
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
@@ -284,13 +296,16 @@ set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data_without_verify(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
 
-#Ernie
+# Ernie
 set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" aa59192dd41ed377f9f168e3a1309fa6 "Ernie_data.txt.tar.gz" 5396e63548edad7ca561e7e26a9476d1)
 download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz" 73beea65abda2edb61c1662cd3180c62)
-inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+if (WITH_GPU)
+    inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+endif()
+inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc)
 
-#Ernie large
+# Ernie large
 set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz" edb2113eec93783cad56ed76d47ba57f)
 download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz" 1facda98eef1085dc9d435ebf3f23a73)
@@ -329,6 +344,15 @@ inference_analysis_test(test_analyzer_transformer_profile SRCS analyzer_transfor
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+
+# VIT-OCR
+set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit")
+if (NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
+    inference_download_and_uncompress_without_verify(${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz")
+endif()
+inference_analysis_test(test_analyzer_vit_ocr SRCS analyzer_vit_ocr_tester.cc
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
@@ -426,7 +450,7 @@ if(WITH_MKLDNN)
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   download_int8_data_without_verify(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
-#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
+#  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg19 int8
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
@@ -438,6 +462,23 @@ if(WITH_MKLDNN)
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
   inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
+
+ # mobilenetv3_large_x1_0 int8
+ set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
+ set(INT8_MOBILENETV3_FILE_NAME "MobileNetV3_large_x1_0_infer.tar")
+ if (NOT EXISTS ${INT8_MOBILENETV3_LARGE_MODEL_DIR}/${INT8_MOBILENETV3_FILE_NAME})
+    inference_download_and_uncompress_without_verify(${INT8_MOBILENETV3_LARGE_MODEL_DIR} "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/" ${INT8_MOBILENETV3_FILE_NAME})
+ endif()
+ inference_analysis_test_run(test_analyzer_int8_mobilenetv3_large 
+    COMMAND ${INT8_IMG_CLASS_TEST_APP} 
+    ARGS --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
+        --infer_data=${IMAGENET_DATA_PATH} 
+        --warmup_batch_size=50
+        --batch_size=1
+        --enable_int8=true 
+        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI} 
+        --iterations=100
+        --with_accuracy_layer=false)
 
   ### BFLOAT16 tests
 
@@ -457,6 +498,17 @@ if(WITH_MKLDNN)
 
   # mobilenetv2 bfloat16
   inference_analysis_api_bfloat16_test_run(test_analyzer_bfloat16_mobilenetv2 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
+
+  # mobilenetv3_large 
+  inference_analysis_test_run(test_analyzer_bfloat16_mobilenetv3_large
+  COMMAND ${BF16_IMG_CLASS_TEST_APP}
+      ARGS --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
+        --infer_data=${IMAGENET_DATA_PATH} 
+        --batch_size=1
+        --enable_bf16=true
+        --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+        --iterations=100
+        --with_accuracy_layer=false)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -512,7 +564,20 @@ if(WITH_MKLDNN)
       download_quant_data_without_verify(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
   endif(NOT LINUX)
   download_quant_data_without_verify(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
-  inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
+  inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH} false)
+
+  # Quant2 MobileNetV1
+  inference_analysis_api_quant_test_run(test_analyzer_quant2_mobilenetv1_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${IMAGENET_DATA_PATH} true)
+
+  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+  # with weight scales in `fake_channel_wise_dequantize_max_abs` operators
+  set(QUANT2_RESNET50_CHANNELWISE_MODEL_DIR "${QUANT_DATA_DIR}/ResNet50_quant2_channelwise")
+  set(QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
+  if(NOT LINUX)
+      download_quant_data_without_verify(${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
+  endif(NOT LINUX)
+  set(QUANT2_RESNET50_MODEL ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise)
+  inference_analysis_api_quant_test_run(test_analyzer_quant2_resnet50_channelwise_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL} ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
 
   ### Other tests
  
@@ -539,7 +604,9 @@ endif()
 # bert, max_len=20, embedding_dim=128
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data_without_verify(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+if (WITH_GPU)
+    inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+endif()
 
 # multiple models prediction
 set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
@@ -676,6 +743,12 @@ inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zeroco
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${OCR_INSTALL_DIR}/model)        
 
+if(WITH_DISTRIBUTE AND WITH_PSCORE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+    inference_analysis_test(test_analyzer_dist_model SRCS analyzer_dist_model_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model)
+endif()
+
 inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${OCR_INSTALL_DIR}/model --infer_data=${OCR_INSTALL_DIR}/data.txt --refer_result=${OCR_INSTALL_DIR}/result.txt)    
@@ -723,18 +796,24 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_quant_performance_benchmark PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
-set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
-set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
+if (WITH_GPU)
+    set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
+endif()
 if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
     if(WITH_MKLDNN)
@@ -743,4 +822,32 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
+endif()
+
+if (WITH_IPU)
+    #word2vec sample
+    set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec/word2vec.inference.model")
+    inference_analysis_test(ipu_word2vec_sample SRCS ipu_word2vec_sample.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${WORD2VEC_INSTALL_DIR})
+
+    # ERNIE
+    set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+    inference_analysis_api_test(ipu_ernie_test ${ERNIE_INSTALL_DIR} ipu_ernie_test.cc
+            ARGS --warmup=true --repeat=10)
+    inference_analysis_api_test(ipu_ernie_fp16_test ${ERNIE_INSTALL_DIR} ipu_ernie_fp16_test.cc
+            ARGS --warmup=true --repeat=10)
+
+    # Resnet50
+    set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+    inference_analysis_test(ipu_resnet50_test SRCS ipu_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+    inference_analysis_test(ipu_resnet50_fp16_test SRCS ipu_resnet50_fp16_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+
+    # Only support Resnet50 and Ernie currently
+    inference_analysis_api_test(ipu_multi_model_profile SRCS ipu_multi_model_profile.cc
+        ARGS --model_name="Resnet50" --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
 endif()

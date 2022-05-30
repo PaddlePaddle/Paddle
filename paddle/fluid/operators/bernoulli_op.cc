@@ -49,30 +49,6 @@ class BernoulliOp : public framework::OperatorWithKernel {
   }
 };
 
-// It seems that Eigen::Tensor::random in GPU will SEGFAULT.
-// Use std::random and thrust::random(thrust is a std library in CUDA) to
-// implement uniform random.
-template <typename T>
-class BernoulliOpKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto x = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
-    auto *in_data = x->data<T>();
-    auto *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    int64_t size = x->numel();
-    std::uniform_real_distribution<T> dist(0.0, 1.0);
-    auto gen_ptr = framework::DefaultCPUGenerator();
-    auto engine = gen_ptr->GetCPUEngine();
-
-    for (int64_t i = 0; i < size; ++i) {
-      out_data[i] = BernoulliFunctor(in_data[i], dist(*engine));
-    }
-  }
-};  // namespace operators
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -82,7 +58,3 @@ REGISTER_OPERATOR(
     bernoulli, ops::BernoulliOp, ops::BernoulliOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(bernoulli,
-                       ops::BernoulliOpKernel<plat::CPUDeviceContext, float>,
-                       ops::BernoulliOpKernel<plat::CPUDeviceContext, double>);

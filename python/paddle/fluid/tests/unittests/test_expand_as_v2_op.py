@@ -21,76 +21,62 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestExpandAsOpRank1(OpTest):
+class TestExpandAsBasic(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
         x = np.random.rand(100).astype("float64")
         target_tensor = np.random.rand(2, 100).astype("float64")
-        self.inputs = {'X': x}
+        self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [2, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
-class TestExpandAsOpRank2(OpTest):
+class TestExpandAsOpRank2(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
         x = np.random.rand(10, 12).astype("float64")
         target_tensor = np.random.rand(10, 12).astype("float64")
-        self.inputs = {'X': x}
+        self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
-    def test_check_output(self):
-        self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestExpandAsOpRank3(OpTest):
+class TestExpandAsOpRank3(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
         x = np.random.rand(2, 3, 20).astype("float64")
         target_tensor = np.random.rand(2, 3, 20).astype("float64")
-        self.inputs = {'X': x}
+        self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
-    def test_check_output(self):
-        self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestExpandAsOpRank4(OpTest):
+class TestExpandAsOpRank4(TestExpandAsBasic):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
         x = np.random.rand(1, 1, 7, 16).astype("float64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
-        self.inputs = {'X': x}
+        self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestExpandAsV2Error(unittest.TestCase):
@@ -129,4 +115,5 @@ class TestExpandAsV2API(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

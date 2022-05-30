@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lgamma_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -35,16 +38,6 @@ $$out = log\Gamma(x)$$
 class LgammaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Lgamma");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Lgamma");
-
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 template <typename T>
@@ -83,17 +76,12 @@ class LgammaGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(lgamma, LgammaInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(lgamma, ops::LgammaOp, ops::LgammaOpMaker,
                   ops::LgammaGradMaker<paddle::framework::OpDesc>,
-                  ops::LgammaGradMaker<paddle::imperative::OpBase>);
+                  ops::LgammaGradMaker<paddle::imperative::OpBase>,
+                  LgammaInferShapeFunctor);
 
 REGISTER_OPERATOR(lgamma_grad, ops::LgammaGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    lgamma, ops::LgammaKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LgammaKernel<paddle::platform::CPUDeviceContext, double>)
-
-REGISTER_OP_CPU_KERNEL(
-    lgamma_grad,
-    ops::LgammaGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LgammaGradKernel<paddle::platform::CPUDeviceContext, double>);

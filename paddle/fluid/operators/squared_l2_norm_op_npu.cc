@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/squared_l2_norm_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -66,7 +66,7 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &broadcast_runner =
         NpuOpRunner("BroadcastToD", {*out_grad}, {broadcasted_out_grad},
-                    {{"shape", framework::vectorize(x_grad->dims())}});
+                    {{"shape", phi::vectorize(x_grad->dims())}});
     broadcast_runner.Run(stream);
     // mul x
     Tensor tmp_x_grad;

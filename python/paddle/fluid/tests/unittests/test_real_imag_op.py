@@ -39,6 +39,7 @@ class TestRealOp(OpTest):
         paddle.enable_static()
         # op test attrs
         self.op_type = "real"
+        self.python_api = paddle.real
         self.dtype = np.float64
         self.init_input_output()
         # backward attrs
@@ -58,14 +59,15 @@ class TestRealOp(OpTest):
             self.grad_out.shape)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestImagOp(TestRealOp):
@@ -74,6 +76,7 @@ class TestImagOp(TestRealOp):
         paddle.enable_static()
         # op test attrs
         self.op_type = "imag"
+        self.python_api = paddle.imag
         self.dtype = np.float64
         self.init_input_output()
         # backward attrs

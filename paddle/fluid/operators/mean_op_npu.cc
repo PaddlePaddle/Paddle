@@ -9,12 +9,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mean_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
@@ -59,20 +61,20 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     IG->mutable_data<T>(context.GetPlace());
 
     // ones
-    Tensor ones(grad->type());
+    Tensor ones(grad->dtype());
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
     const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
-    Tensor mean_tensor(grad->type());
+    Tensor mean_tensor(grad->dtype());
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     FillNpuTensorWithConstant<T>(
         &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
-    Tensor mean_ma(grad->type());
+    Tensor mean_ma(grad->dtype());
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
     const auto& runner_mul_1 =

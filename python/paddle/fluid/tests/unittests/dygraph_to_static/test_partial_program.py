@@ -118,7 +118,8 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
-            if isinstance(dy_var, fluid.core.VarBase):
+            if isinstance(dy_var,
+                          (fluid.core.VarBase, fluid.core.eager.Tensor)):
                 self.assertTrue(np.allclose(dy_var.numpy(), st_var.numpy()))
             else:
                 self.assertTrue(dy_var, st_var)
@@ -134,22 +135,23 @@ class TestWithTrainAndEval(unittest.TestCase):
             x = fluid.dygraph.to_variable(x_data)
             linear_net(x)
 
-            _, partial_layer = linear_net.forward.program_cache.last()[-1]
+            _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
             # check default mode is for training
-            self.assertEqual(partial_layer.program,
-                             partial_layer._train_program)
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
 
             # switch to run test program after `eval()`
             linear_net.eval()
             linear_net(x)
-            self.assertEqual(partial_layer.program,
-                             partial_layer._infer_program)
+            _, eval_partial_layer = linear_net.forward.program_cache.last()[-1]
+            self.assertEqual(eval_partial_layer.program,
+                             eval_partial_layer._infer_program)
 
             # switch back into training
             linear_net.train()
             linear_net(x)
-            self.assertEqual(partial_layer.program,
-                             partial_layer._train_program)
+            self.assertEqual(train_partial_layer.program,
+                             train_partial_layer._train_program)
 
 
 class TestWithNoGrad(unittest.TestCase):

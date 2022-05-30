@@ -17,6 +17,7 @@ import paddle
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexGetitemLayer(unittest.TestCase):
@@ -92,6 +93,15 @@ class TestComplexGetitemLayer(unittest.TestCase):
                 x_var_slice = x_var[0][1:3][0:4:2]
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_case1()
+            self.test_case2()
+            self.test_case3()
+            self.test_case4()
+            self.test_case5()
+            self.test_case6()
 
 
 if __name__ == '__main__':

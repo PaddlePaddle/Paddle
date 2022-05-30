@@ -105,7 +105,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(dist_op.dist_attr.process_mesh,
                          ProcessMesh(process_mesh2))
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
-        self.assertEqual(dist_op.dist_attr.impl_idx, -2)
+        self.assertEqual(dist_op.dist_attr.impl_idx, 0)
         self.assertTrue(dist_op.dist_attr.is_annotated("process_mesh"))
 
         data2_dist_attr = dist_op.dist_attr.get_input_dist_attr(data2.name)
@@ -138,7 +138,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         dist_op = dist_context.get_dist_op_for_program(last_op)
         self.assertEqual(dist_op.dist_attr.process_mesh, None)
         self.assertEqual(dist_op.dist_attr.impl_type, "default")
-        self.assertEqual(dist_op.dist_attr.impl_idx, -2)
+        self.assertEqual(dist_op.dist_attr.impl_idx, 0)
         self.assertFalse(dist_op.dist_attr.is_annotated("process_mesh"))
 
         data2_dist_attr = dist_op.dist_attr.get_input_dist_attr(data2.name)

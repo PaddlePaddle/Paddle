@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 import unittest
 import paddle
-
-import os
 
 paddle.enable_static()
 
@@ -74,11 +74,12 @@ class TestExponentialDecay(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(loss)
+        optimizer.minimize([loss])
         fleet.init_server()
 
 
 if __name__ == '__main__':
     os.environ["GLOG_v"] = "4"
     os.environ["GLOG_logtostderr"] = "1"
+
     unittest.main()

@@ -17,7 +17,11 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +46,7 @@ class FlattenOp : public framework::OperatorWithKernel {
             "The axis should be less than or equal to input tensor's rank."));
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -103,12 +107,14 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Flatten Operator
 
@@ -190,7 +196,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
             "The axis should be less than or equal to input tensor's rank"));
 
     const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -203,7 +209,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
     for (int i = 0; i < in_dims.size(); ++i) {
       xshape_dims[i + 1] = in_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
 
@@ -251,7 +257,7 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "Flatten2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
@@ -268,82 +274,24 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
 class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenContiguousRange");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "FlattenContiguousRange");
     const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
     const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
-    const auto &in_dims = ctx->GetInputDim("X");
-    int in_dims_size = in_dims.size();
-    int real_start_axis = start_axis, real_stop_axis = stop_axis;
-    if (start_axis < 0) {
-      real_start_axis = start_axis + in_dims_size;
-    }
-    if (stop_axis < 0) {
-      real_stop_axis = stop_axis + in_dims_size;
-    }
-    PADDLE_ENFORCE_GE(
-        real_stop_axis, real_start_axis,
-        platform::errors::InvalidArgument("The stop_axis should be greater"
-                                          "than or equal to start_axis."));
 
-    const auto &out_dims =
-        GetOutputShape(real_start_axis, real_stop_axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (in_dims[0] == out_dims[0]) {
-      // Only pass LoD when the first dimension of output and Input(X)
-      // are the same.
-      ctx->ShareLoD("X", "Out");
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    CompatMetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    std::unique_ptr<CompatMetaTensor> xshape(nullptr);
+    if (ctx->HasOutput("XShape")) {
+      xshape = std::move(std::unique_ptr<CompatMetaTensor>(new CompatMetaTensor(
+          ctx->GetOutputVarPtrs("XShape")[0], ctx->IsRuntime())));
     }
-    if (!ctx->HasOutput("XShape")) return;
-    // OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
-    std::vector<int64_t> xshape_dims(in_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < in_dims.size(); ++i) {
-      xshape_dims[i + 1] = in_dims[i];
-    }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", "XShape");
-  }
-
-  static std::vector<int32_t> GetOutputShape(const int start_axis,
-                                             const int stop_axis,
-                                             const framework::DDim &in_dims) {
-    int64_t outer = 1;
-    std::vector<int32_t> out_shape;
-    int in_dims_size = in_dims.size();
-    out_shape.reserve(in_dims_size - stop_axis + start_axis);
-
-    for (int i = 0; i < start_axis; ++i) {
-      out_shape.push_back(in_dims[i]);
-    }
-    for (int i = start_axis; i <= stop_axis; i++) {
-      if (in_dims[i] == -1 || outer == -1) {
-        outer = -1;
-      } else {
-        outer *= in_dims[i];
-      }
-    }
-    out_shape.push_back(outer);
-    for (int i = stop_axis + 1; i < in_dims_size; i++) {
-      out_shape.push_back(in_dims[i]);
-    }
-
-    return out_shape;
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasOutput("XShape")) {
-      return framework::KernelSignature("flatten_contiguous_range.mid", {"X"},
-                                        {"start_axis", "stop_axis"},
-                                        {"Out", "XShape"});
-    } else {
-      return framework::KernelSignature("flatten_contiguous_range", {"X"},
-                                        {"start_axis", "stop_axis"}, {"Out"});
-    }
+    phi::FlattenWithXShapeInferMeta(x, start_axis, stop_axis, &out,
+                                    xshape.get());
   }
 };
 
@@ -418,10 +366,14 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
                    "FlattenContiguousRangeGrad");
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
-    auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    context->SetOutputDim(framework::GradVarName("X"), x_dims);
-    context->ShareLoD("XShape", framework::GradVarName("X"));
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor xshape(context->GetInputVarPtrs("XShape")[0],
+                            context->IsRuntime());
+    CompatMetaTensor dx(
+        context->GetOutputVarPtrs(framework::GradVarName("X"))[0],
+        context->IsRuntime());
+    phi::KernelWithXShapeInferMeta(xshape, &dx);
   }
 
  protected:
@@ -497,30 +449,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten_contiguous_range,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
-                                      double>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
-                                      uint8_t>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
-                                      int8_t>,
-    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
-                                      int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    flatten_contiguous_range_grad,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          float>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          double>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          uint8_t>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          int>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          int8_t>,
-    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
-                                          int64_t>);

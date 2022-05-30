@@ -24,6 +24,8 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest, convert_float_to_uint16, convert_uint16_to_float)
+from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSumOp(OpTest):
@@ -297,6 +299,32 @@ def create_test_sum_fp16_class(parent):
     globals()[cls_name] = TestSumFp16Case
 
 
+#----------- test bf16 -----------
+class TestSumBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "sum"
+        self.init_kernel_type()
+        x0 = np.random.random((3, 40)).astype(np.float32)
+        x1 = np.random.random((3, 40)).astype(np.float32)
+        x2 = np.random.random((3, 40)).astype(np.float32)
+        y = x0 + x1 + x2
+        self.inputs = {
+            "X": [("x0", convert_float_to_uint16(x0)),
+                  ("x1", convert_float_to_uint16(x1)),
+                  ("x2", convert_float_to_uint16(x2))]
+        }
+        self.outputs = {'Out': convert_float_to_uint16(y)}
+
+    def init_kernel_type(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
+
+
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -319,6 +347,27 @@ class API_Test_Add_n(unittest.TestCase):
             sum_value = paddle.add_n([input0, input0])
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
+
+    def test_dygraph_final_state_api(self):
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                input0 = paddle.ones(shape=[2, 3], dtype='float32')
+                input1 = paddle.ones(shape=[2, 3], dtype='float32')
+                input0.stop_gradient = False
+                input1.stop_gradient = False
+                expected_result = np.empty((2, 3))
+                expected_result.fill(2)
+                sum_value = paddle.add_n([input0, input1])
+                self.assertEqual((sum_value.numpy() == expected_result).all(),
+                                 True)
+
+                expected_grad_result = np.empty((2, 3))
+                expected_grad_result.fill(1)
+                sum_value.backward()
+                self.assertEqual(
+                    (input0.grad.numpy() == expected_grad_result).all(), True)
+                self.assertEqual(
+                    (input1.grad.numpy() == expected_grad_result).all(), True)
 
 
 class TestRaiseSumError(unittest.TestCase):
@@ -382,11 +431,11 @@ class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
             with fluid.dygraph.guard():
-                fluid.core.ops.sum([])
+                fluid._C_ops.sum([])
 
         def test_list_of_none_input():
             with fluid.dygraph.guard():
-                fluid.core.ops.sum([None])
+                fluid._C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
@@ -44,6 +45,10 @@ TEST(BestFitAllocator, concurrent_cuda) {
 
   platform::CUDAPlace gpu(0);
   platform::CUDADeviceContext dev_ctx(gpu);
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu, dev_ctx.stream())
+                           .get());
+  dev_ctx.PartialInitWithAllocator();
 
   auto th_main = [&](std::random_device::result_type seed) {
     std::default_random_engine engine(seed);

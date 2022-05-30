@@ -37,8 +37,7 @@ class ClassCenterSampleOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("RemappedLabel", x_dims);
     auto num_samples = ctx->Attrs().Get<int>("num_samples");
-    ctx->SetOutputDim("SampledLocalClassCenter",
-                      framework::make_ddim({num_samples}));
+    ctx->SetOutputDim("SampledLocalClassCenter", phi::make_ddim({num_samples}));
   }
 
  protected:

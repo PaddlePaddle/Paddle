@@ -70,7 +70,8 @@ class DequeueOp : public framework::OperatorBase {
                             "Op(dequeue), but poped %d element.",
                             lod_tensor_vec.size()));
       for (size_t j = 0; j < lod_tensor_vec.size(); ++j) {
-        TensorCopySync(lod_tensor_vec[j], dev_place, out_tensor);
+        paddle::framework::TensorCopySync(lod_tensor_vec[j], dev_place,
+                                          out_tensor);
       }
     }
   }

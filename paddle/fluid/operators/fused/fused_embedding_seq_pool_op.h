@@ -21,16 +21,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
@@ -179,7 +179,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       const int m = batch_size * idx_width;
       const int n = table_width;
       const int k = table_height;
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
       blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
                  (const int *)csr_colmuns, (const int *)csr_row_idx,
                  (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
@@ -200,8 +200,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     DDim table_dim;
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
-    } else if (table_var->IsType<SelectedRows>()) {
-      auto *table_t = context.Input<SelectedRows>("W");
+    } else if (table_var->IsType<phi::SelectedRows>()) {
+      auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -215,7 +215,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     if (is_sparse) {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *d_table =
+          context.Output<phi::SelectedRows>(framework::GradVarName("W"));
       // runtime shape
       d_table->set_height(table_dim[0]);
 
@@ -276,7 +277,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                           csr_colmuns, csr_row_idx, padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
       LOG(INFO) << "num seq = " << num_seq << " width = " << width;

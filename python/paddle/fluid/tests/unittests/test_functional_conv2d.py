@@ -534,4 +534,5 @@ class TestFunctionalConv2DErrorCase13(TestFunctionalConv2DErrorCase12):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

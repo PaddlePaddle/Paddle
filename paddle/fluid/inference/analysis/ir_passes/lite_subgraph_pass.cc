@@ -268,13 +268,15 @@ void LiteSubgraphPass::SetUpEngine(
   auto nnadapter_model_cache_token =
       Get<std::vector<std::string>>("nnadapter_model_cache_token");
 
-  lite_api::TargetType target_type;
+  lite_api::TargetType target_type = TARGET(kX86);
   if (use_gpu) {
     target_type = TARGET(kCUDA);
   } else if (use_xpu) {
     target_type = TARGET(kXPU);
   } else if (use_nnadapter) {
+#ifdef LITE_WITH_NNADAPTER
     target_type = TARGET(kNNAdapter);
+#endif
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);

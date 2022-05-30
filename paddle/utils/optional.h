@@ -17,15 +17,17 @@
 // You are welcome to contact the author at:
 //  fernando_cacciola@hotmail.com
 //
-#ifndef PADDLE_OPTIONAL_OPTIONAL_FLC_19NOV2002_HPP
-#define PADDLE_OPTIONAL_OPTIONAL_FLC_19NOV2002_HPP
+#pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <new>
 #include <type_traits>
 
 #include "none.h"
+
+namespace paddle {
 
 // Daniel Wallin discovered that bind/apply.hpp badly interacts with the apply<>
 // member template of a factory as used in the optional<> implementation.
@@ -38,7 +40,6 @@ void construct(Factory const& factory, void* address) {
 }
 }
 
-namespace paddle {
 template <typename T>
 class optional;
 
@@ -99,7 +100,11 @@ class reference_content {
  public:  // structors
   ~reference_content() {}
 
+// TODO(zhiqiu): remove it
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   reference_content(RefT r) : content_(r) {}
+#pragma GCC diagnostic pop
 
   reference_content(const reference_content& operand)
       : content_(operand.content_) {}
@@ -865,5 +870,3 @@ inline void optional_swap(optional<T>& x, optional<T>& y) {
 }  // namespace optional_detail
 
 }  // namespace paddle
-
-#endif

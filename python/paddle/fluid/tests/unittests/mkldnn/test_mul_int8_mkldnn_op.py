@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 '''
@@ -159,4 +160,5 @@ class TestMKLDNNMulOpS8U8WithFlatten(TestMKLDNNMulOpS8S8WithFlatten):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

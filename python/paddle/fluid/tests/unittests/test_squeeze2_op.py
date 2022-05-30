@@ -27,6 +27,10 @@ paddle.enable_static()
 class TestSqueezeOp(OpTest):
     def setUp(self):
         self.op_type = "squeeze2"
+        self.python_api = paddle.squeeze
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
@@ -36,10 +40,10 @@ class TestSqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)

@@ -15,13 +15,8 @@
 #include "paddle/fluid/framework/ir/fuse_bn_add_act_pass.h"
 #include <string>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
 
 namespace paddle {
 namespace framework {

@@ -14,6 +14,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <string>
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
@@ -33,6 +34,13 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
     auto* lr = learning_rate->data<T>();
 
+    auto regularization_method = ctx.Attr<std::string>("regularization_method");
+    auto regularization_coeff = ctx.Attr<float>("regularization_coeff");
+    if (regularization_method != "l2_decay") {
+      // only support l2_decay
+      regularization_coeff = 0.0f;
+    }
+
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
                       platform::errors::PermissionDenied(
@@ -44,28 +52,16 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     auto grad = ctx.Input<framework::Tensor>("Grad");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
+    // int momentum(Context* ctx, const T* param, const T* velocity, const T*
+    // grad, T* param_out, T* velocity_out, int len, const float* lr, int
+    // use_nesterov, float mu, float l2_weight_decay);
     int r = xpu::momentum(dev_ctx.x_context(), param->data<float>(),
                           velocity->data<float>(), grad->data<float>(),
                           param_out->data<float>(), velocity_out->data<float>(),
-                          param_out->numel(), lr, use_nesterov, mu);
-    if (r == xpu::Error_t::INVALID_PARAM) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::InvalidArgument(
-              "XPU kernel error of MomentumOp, error message: INVALID_PARAM, "
-              "please check your input & output."));
-    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::Unavailable(
-              "XPU kernel error of MomentumOp, error message: RUNTIME_ERROR, "
-              "please check whether Baidu Kunlun card is properly installed."));
-    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::ResourceExhausted(
-                            "XPU kernel error of MomentumOp, error message: "
-                            "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
-    }
+                          param_out->numel(), lr, use_nesterov, mu,
+                          regularization_coeff);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "momentum");
   }
 };
 }  // namespace operators

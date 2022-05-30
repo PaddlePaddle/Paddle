@@ -75,7 +75,7 @@ class FCOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The attribute in_num_col_dims used to flatten Input to "
             "a 2-D tensor, is expected to be less than the number of "
-            "Input's dimensions. But recieved in_num_col_dims is %d, "
+            "Input's dimensions. But received in_num_col_dims is %d, "
             "the number of Input's dimensions is %d, Input's shape is %s.",
             in_num_col_dims, in_dims.size(), in_dims));
 
@@ -93,7 +93,7 @@ class FCOp : public framework::OperatorWithKernel {
           in_dims.size() >= 2 && in_dims.size() <= 4, true,
           platform::errors::Unimplemented(
               "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-              "use_mkldnn is set. But recieved the number of Input's "
+              "use_mkldnn is set. But received the number of Input's "
               "dimensions is %d, Input's shape is %s.",
               in_dims.size(), in_dims));
     }
@@ -102,7 +102,7 @@ class FCOp : public framework::OperatorWithKernel {
     FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims,
                  padding_weights);
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
     ctx->ShareLoD("Input", "Out");
   }
 

@@ -122,3 +122,20 @@ func TestMkldnn(t *testing.T) {
 
 	config.SetBfloat16Op([]string{"fc", "mul"})
 }
+
+func TestONNXRuntime(t *testing.T) {
+	config := NewConfig()
+	config.SetModelDir("modelDir")
+	t.Log(config.ModelDir())
+
+	config.EnableONNXRuntime()
+	t.Logf("ONNXRuntimeEnabled:%+v", config.ONNXRuntimeEnabled())
+
+	config.DisableONNXRuntime()
+	t.Logf("ONNXRuntimeEnabled:%+v", config.ONNXRuntimeEnabled())
+
+	config.EnableORTOptimization()
+
+	config.SetCpuMathLibraryNumThreads(4)
+	t.Logf("CpuMathLibraryNumThreads:%+v", config.CpuMathLibraryNumThreads())
+}

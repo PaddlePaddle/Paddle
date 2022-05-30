@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/determinant_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,11 +24,6 @@ namespace operators {
 class DeterminantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "determinant");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "determinant");
-  }
 };
 
 class DeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -43,19 +42,6 @@ Determinant Operator.)DOC");
 class DeterminantGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
-                   "DeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "DeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "DeterminantGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
-                   framework::GradVarName("Input"), "DeterminantGradOp");
-
-    ctx->SetOutputDim(framework::GradVarName("Input"),
-                      ctx->GetInputDim("Input"));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -162,19 +148,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SlogDeterminantGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(determinant, DeterminantInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
                   ops::DeterminantGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DeterminantGradOpMaker<paddle::imperative::OpBase>);
+                  ops::DeterminantGradOpMaker<paddle::imperative::OpBase>,
+                  DeterminantInferShapeFunctor);
 
-REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
-
-REGISTER_OP_CPU_KERNEL(determinant,
-                       ops::DeterminantKernel<plat::CPUDeviceContext, float>,
-                       ops::DeterminantKernel<plat::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    determinant_grad, ops::DeterminantGradKernel<plat::CPUDeviceContext, float>,
-    ops::DeterminantGradKernel<plat::CPUDeviceContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(determinant_grad, DeterminantGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp,
+                  DeterminantGradInferShapeFunctor);
 
 REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,

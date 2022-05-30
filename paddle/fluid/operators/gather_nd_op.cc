@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather_nd_op.h"
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,48 +24,10 @@ class GatherNdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of GatherNdOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) of GatherNdOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of GatherNdOp should not be null."));
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto x_dims_size = x_dims.size();
-    auto index_dims = ctx->GetInputDim("Index");
-    auto index_dims_size = index_dims.size();
-
-    PADDLE_ENFORCE_LE(
-        index_dims[index_dims_size - 1], x_dims_size,
-        platform::errors::InvalidArgument(
-            "Input(Index).shape[-1] should be no greater than Input(X).rank"));
-    PADDLE_ENFORCE_GE(index_dims_size, 1UL,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(Index) should be greater than 1"));
-
-    std::vector<int64_t> result_dims;
-    // The result dims is
-    //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
-    for (int i = 0; i < index_dims_size - 1; ++i) {
-      result_dims.emplace_back(index_dims[i]);
-    }
-    for (int i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
-      result_dims.emplace_back(x_dims[i]);
-    }
-
-    ctx->SetOutputDim("Out", framework::make_ddim(result_dims));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<framework::Tensor>("X");
     const auto& x_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(
         x_type,
@@ -79,11 +40,6 @@ class GatherNdOp : public framework::OperatorWithKernel {
 class GatherNdGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -173,21 +129,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd, GatherNdInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd_grad, GatherNdGradInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdGradInferMeta));
+
 REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GatherNdGradOpMaker<paddle::imperative::OpBase>);
+                  ops::GatherNdGradOpMaker<paddle::imperative::OpBase>,
+                  GatherNdInferShapeFunctor);
 
 REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
-                  ops::GatherNdGradNoNeedBufferVarInferer);
-
-REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
-                       ops::GatherNdOpKernel<double>,
-                       ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
-                       ops::GatherNdOpKernel<uint8_t>);
-
-REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
-                       ops::GatherNdGradOpKernel<double>,
-                       ops::GatherNdGradOpKernel<int64_t>,
-                       ops::GatherNdGradOpKernel<int>,
-                       ops::GatherNdGradOpKernel<uint8_t>);
+                  ops::GatherNdGradNoNeedBufferVarInferer,
+                  GatherNdGradInferShapeFunctor);

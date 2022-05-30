@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/beam_search_decode_op.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -192,7 +193,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
     framework::VisitDataType(
-        scores->at(0).type(),
+        framework::TransToProtoVarType(scores->at(0).dtype()),
         BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores,
                                 beam_size, end_id));
   }

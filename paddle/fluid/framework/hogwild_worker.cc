@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ctime>
+
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -20,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
@@ -79,11 +81,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
         LoDTensor *root_tensor =
             root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
-#define MemsetCallback(cpp_type, proto_type)                     \
-  do {                                                           \
-    if (root_tensor->type() == proto_type) {                     \
-      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim); \
-    }                                                            \
+#define MemsetCallback(cpp_type, proto_type)                                  \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim);              \
+    }                                                                         \
   } while (0)
         _ForEachDataType_(MemsetCallback);
       }
@@ -217,6 +219,10 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
+  platform::SetDeviceId(thread_id_);
+#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto &op : ops_) {
       bool need_skip = false;
@@ -242,9 +248,12 @@ void HogwildWorker::TrainFiles() {
     ++batch_cnt;
     PrintFetchVars();
     thread_scope_->DropKids();
+#ifdef PADDLE_WITH_HETERPS
+    dev_ctx_->Wait();
+#endif
   }
   timeline.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
 
   if (need_dump_field_ || need_dump_param_) {

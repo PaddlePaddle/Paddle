@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
+import paddle
 
 from decorator_helper import prog_scope
 
@@ -42,6 +43,7 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -76,6 +78,14 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
         self.data_layout = 'NCHW'
         self.use_global_stats = False
         self.shape = [2, 3, 4, 5]
+        self.channel_index = 1
+
+    def batch_norm_wrapper(self, x):
+        batch_norm = paddle.nn.BatchNorm2D(
+            self.shape[self.channel_index],
+            data_format=self.data_layout,
+            use_global_stats=self.use_global_stats)
+        return batch_norm(x[0])
 
     @prog_scope()
     def func(self, place):
@@ -93,8 +103,15 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
             gradient_checker.double_grad_check(
                 [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
+            gradient_checker.double_grad_check_for_dygraph(
+                self.batch_norm_wrapper, [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place)
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -107,6 +124,7 @@ class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
         self.data_layout = 'NHWC'
         self.use_global_stats = False
         self.shape = [2, 3, 4, 5]
+        self.channel_index = 3
 
 
 class TestBatchNormDoubleGradCheckCase2(TestBatchNormDoubleGradCheck):
@@ -114,6 +132,7 @@ class TestBatchNormDoubleGradCheckCase2(TestBatchNormDoubleGradCheck):
         self.data_layout = 'NCHW'
         self.use_global_stats = True
         self.shape = [2, 3, 4, 5]
+        self.channel_index = 1
 
 
 class TestBatchNormDoubleGradCheckCase3(TestBatchNormDoubleGradCheck):
@@ -121,6 +140,7 @@ class TestBatchNormDoubleGradCheckCase3(TestBatchNormDoubleGradCheck):
         self.data_layout = 'NHWC'
         self.use_global_stats = True
         self.shape = [2, 3, 4, 5]
+        self.channel_index = 3
 
 
 class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
@@ -128,6 +148,14 @@ class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
         self.data_layout = 'NCHW'
         self.use_global_stats = False
         self.shape = [2, 2, 3, 4, 5]
+        self.channel_index = 1
+
+    def batch_norm_wrapper(self, x):
+        batch_norm = paddle.nn.BatchNorm3D(
+            self.shape[self.channel_index],
+            data_format=self.data_layout,
+            use_global_stats=self.use_global_stats)
+        return batch_norm(x[0])
 
 
 class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
@@ -164,6 +192,7 @@ class TestBatchNormDoubleGradCheckCase6(TestBatchNormDoubleGradCheckCase5):
         self.data_layout = 'NCHW'
         self.use_global_stats = True
         self.shape = [2, 3, 4, 5]
+        self.channel_index = 1
 
 
 if __name__ == "__main__":

@@ -15,23 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
+DECLARE_INFER_SHAPE_FUNCTOR(arg_max, ArgMaxInferShapeFunctor,
+                            PD_INFER_META(phi::ArgMinMaxInferMeta));
+
 REGISTER_OPERATOR(
     arg_max, paddle::operators::ArgMinMaxOp, paddle::operators::ArgMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ArgMaxInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(
-    arg_max,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext, double>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int32_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int16_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    uint8_t>);
 REGISTER_OP_VERSION(arg_max)
     .AddCheckpoint(
         R"ROC(

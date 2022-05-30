@@ -67,10 +67,8 @@ class OpConverter {
     if (op_desc.Type().find("elementwise") != std::string::npos) {
       static std::unordered_set<std::string> add_tensor_op_set{
           "add", "mul", "sub", "div", "max", "min", "pow"};
-      // TODO(xingzhaolong): all mul, sub, div
-      // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
-      // "sub", "div"};
-      static std::unordered_set<std::string> add_weight_op_set{"add", "mul"};
+      static std::unordered_set<std::string> add_weight_op_set{
+          "add", "mul", "sub", "div", "pow"};
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
                         platform::errors::InvalidArgument(
                             "The input op's Input(\"Y\")."
@@ -144,8 +142,9 @@ class OpConverter {
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
 
-    bool has_out_scale = op_desc.HasAttr("out_threshold");
-    if (has_out_scale) {
+    size_t output_num = op_desc.OutputNames().size();
+    // only one out settensordynamicRange
+    if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       std::string output_name = "";
@@ -166,6 +165,47 @@ class OpConverter {
       engine->SetTensorDynamicRange(output_itensor, out_scale);
       VLOG(1) << "Set out scale = " << out_scale << " for tensor "
               << output_name << ".";
+    }
+    // outs settensordynamicRange
+    for (size_t i = 0; i < output_num; ++i) {
+      if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
+        float out_scale = BOOST_GET_CONST(
+            float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
+        std::string output_name =
+            op_desc.Output(op_desc.OutputNames()[i]).front();
+        auto* output_itensor = engine->GetITensor(output_name);
+        engine->SetTensorDynamicRange(output_itensor, out_scale);
+        VLOG(1) << "Set out scale = " << out_scale << " for tensor "
+                << output_name << ".";
+      }
+    }
+
+    // quant_dequant_linear support for paddle trt
+
+    std::vector<std::string> inputs_name = op_desc.InputNames();
+    std::vector<std::string> outputs_name = op_desc.OutputNames();
+
+    for (size_t i = 0; i < inputs_name.size(); i++) {
+      if (op_desc.HasAttr(inputs_name[i])) {
+        std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
+        auto* input_itensor = engine->GetITensor(input_tensor_name);
+        float input_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
+        engine->SetTensorDynamicRange(input_itensor, input_scale);
+        VLOG(1) << "Set input tensor scale = " << input_scale
+                << " for tensor: " << input_tensor_name << ".";
+      }
+    }
+    for (size_t i = 0; i < outputs_name.size(); i++) {
+      if (op_desc.HasAttr(outputs_name[i])) {
+        std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
+        auto* output_itensor = engine->GetITensor(output_tensor_name);
+        float output_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
+        engine->SetTensorDynamicRange(output_itensor, output_scale);
+        VLOG(1) << "Set output tensor scale = " << output_scale
+                << " for tensor: " << output_tensor_name << ".";
+      }
     }
   }
 

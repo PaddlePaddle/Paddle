@@ -15,7 +15,7 @@
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {
 namespace platform {
 struct CUDADeviceEventWrapper {
@@ -26,7 +26,7 @@ struct CUDADeviceEventWrapper {
         platform::errors::PreconditionNotMet(
             "Required device shall be CUDAPlace, but received %d. ", place));
 
-    device_id_ = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    device_id_ = place.device;
     PADDLE_ENFORCE_GT(
         device_id_, -1,
         platform::errors::PreconditionNotMet(
@@ -53,7 +53,7 @@ void DeviceEventRecordCUDA(DeviceEvent* event, const DeviceContext* context) {
       platform::errors::PreconditionNotMet(
           "Failed to dynamic_cast context into CUDADeviceContext."));
 
-  wrapper->inner_event_.Record(*cuda_dev_ctx->context()->Stream());
+  wrapper->inner_event_.Record(cuda_dev_ctx->stream());
 }
 
 bool DeviceEventQueryCUDA(const DeviceEvent* event) {
@@ -82,8 +82,7 @@ void DeviceEventCUDAWaitCUDA(const DeviceEvent* event,
       platform::errors::PreconditionNotMet(
           "Failed to dynamic_cast context into CUDADeviceContext."));
   // calling cudaStreamWaitEvent(stream, event, 0)
-  cuda_dev_ctx->context()->Stream()->WaitEvent(
-      wrapper->inner_event_.GetRawCudaEvent());
+  cuda_dev_ctx->WaitEvent(wrapper->inner_event_.GetRawCudaEvent());
 }
 
 void DeviceEventCPUWaitCUDA(const DeviceEvent* event,

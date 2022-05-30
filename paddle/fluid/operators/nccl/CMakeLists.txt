@@ -12,7 +12,6 @@ endif()
 
 if(WITH_GPU OR WITH_ROCM)
     op_library(nccl_op DEPS nccl_common)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
     set(OPERATOR_DEPS ${OPERATOR_DEPS} nccl_common PARENT_SCOPE)
 endif()
 

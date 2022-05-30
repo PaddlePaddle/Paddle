@@ -11,20 +11,23 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 class MaskedSelectXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto input = context.Input<framework::Tensor>("X");
     auto mask = context.Input<framework::Tensor>("Mask");
     auto out = context.Output<framework::Tensor>("Y");
     auto* mask_data = mask->data<bool>();
-    auto* input_data = input->data<T>();
+    auto* input_data = reinterpret_cast<const XPUType*>(input->data<T>());
     auto input_dim = input->dims();
     auto mask_dim = mask->dims();
     PADDLE_ENFORCE_EQ(
@@ -41,37 +44,25 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
     int* out_size = RAII_GUARD.alloc_l3_or_gm<int32_t>(1);
     int out_size_cpu;
 
-    int ret = xpu::nonzero_count(dev_ctx.x_context(), mask_data, out_size,
-                                 mask->numel());
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU nonzero_count kernel return wrong value[%d %s]",
-                          ret, XPUAPIErrorMsg[ret]));
-
-    if (dev_ctx.x_context()->xpu_stream) {
-      dev_ctx.Wait();
-    }
-    ret = xpu_memcpy(static_cast<void*>(&out_size_cpu),
-                     static_cast<const void*>(out_size), sizeof(int32_t),
-                     XPU_DEVICE_TO_HOST);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External("XPU xpu_memcpy return wrong "
-                                                 "value[%d %s]",
-                                                 ret, XPUAPIErrorMsg[ret]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        xpu::nonzero_count(dev_ctx.x_context(), mask_data, out_size,
+                           mask->numel()),
+        "nonzero_count ");
+    memory::Copy(platform::CPUPlace(), static_cast<void*>(&out_size_cpu),
+                 mask->place(), static_cast<void*>(out_size), sizeof(int32_t));
 
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);
-    auto out_data = out->mutable_data<T>(context.GetPlace());
+    auto out_data =
+        reinterpret_cast<XPUType*>(out->mutable_data<T>(context.GetPlace()));
 
-    auto input_shape = framework::vectorize<int>(input_dim);
-    auto mask_shape = framework::vectorize<int>(mask_dim);
+    auto input_shape = phi::vectorize<int>(input_dim);
+    auto mask_shape = phi::vectorize<int>(mask_dim);
 
-    ret = xpu::masked_select(dev_ctx.x_context(), input_data, mask_data,
-                             out_data, input_shape, mask_shape);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU masked_select kernel return wrong value[%d %s]",
-                          ret, XPUAPIErrorMsg[ret]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        xpu::masked_select(dev_ctx.x_context(), input_data, mask_data, out_data,
+                           input_shape, mask_shape, out_size_cpu),
+        "masked_select");
   }
 };
 
@@ -81,6 +72,7 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_XPU_KERNEL(masked_select, ops::MaskedSelectXPUKernel<float>,
+                       ops::MaskedSelectXPUKernel<paddle::platform::float16>,
                        ops::MaskedSelectXPUKernel<int>,
                        ops::MaskedSelectXPUKernel<int64_t>);
 #endif

@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
+from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -179,6 +180,84 @@ class TestLambOpV2Group(TestLambOpV2):
         out.backward()
         adam.step()
         adam.clear_gradients()
+
+
+class TestLambOpMultiPrecision(unittest.TestCase):
+    def check_main(self, x_np, place, multi_precision=False, seed=10, n=10):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            paddle.seed(seed)
+            with paddle.static.amp.fp16_guard():
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32')
+                linear = paddle.nn.Linear(10, 2)
+                hidden = linear(x)
+                loss = paddle.mean(hidden)
+
+            original_optimizer = paddle.optimizer.Lamb(learning_rate=1e-3)
+            original_optimizer._multi_precision = multi_precision
+            if multi_precision:
+                optimizer = paddle.static.amp.decorate(
+                    original_optimizer, use_pure_fp16=True, use_fp16_guard=True)
+            else:
+                optimizer = original_optimizer
+            optimizer.minimize(loss)
+
+        weight, bias = linear.weight, linear.bias
+        exe = paddle.static.Executor(place)
+        scope = paddle.static.Scope()
+        x = main_prog.global_block().var(x.name)
+        if x.dtype == core.VarDesc.VarType.FP16:
+            x_np = x_np.astype(np.float16)
+
+        def get_parameter(var):
+            name = var if isinstance(var, (str, bytes)) else var.name
+            params = original_optimizer._get_parameter(name, scope)
+            assert isinstance(params, (list, tuple))
+            params = list(params)
+            assert len(params) == 2
+            if multi_precision:
+                params[0] = np.array(params[0])
+                params[1] = np.array(params[1])
+                self.assertTrue(
+                    np.array_equal(params[0], params[1].astype(np.float16)))
+                return params[0].astype(np.float32)
+            else:
+                self.assertTrue(params[0] is not None)
+                self.assertTrue(params[1] is None)
+                params[0] = np.array(params[0])
+                return params[0]
+
+        with paddle.static.scope_guard(scope):
+            exe.run(startup_prog)
+            if multi_precision:
+                optimizer.amp_init(place)
+
+            weight_np, bias_np = None, None
+            for i in range(n):
+                feed_dict = {x.name: x_np}
+                weight_np, bias_np = exe.run(main_prog,
+                                             feed=feed_dict,
+                                             fetch_list=[weight, bias])
+                weight_np = weight_np.astype('float32')
+                bias_np = bias_np.astype('float32')
+                self.assertTrue(
+                    np.array_equal(weight_np, get_parameter(weight)))
+                self.assertTrue(np.array_equal(bias_np, get_parameter(bias)))
+            return weight_np, bias_np
+
+    @switch_to_static_graph
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        place = paddle.CUDAPlace(0)
+        x_np = np.random.random(size=[5, 10]).astype('float32')
+        weight_1, bias_1 = self.check_main(x_np, place, multi_precision=False)
+        weight_2, bias_2 = self.check_main(x_np, place, multi_precision=True)
+        self.assertTrue(np.all(np.abs(weight_1 - weight_2) < 1e-3))
+        self.assertTrue(np.all(np.abs(bias_1 - bias_2) < 1e-7))
 
 
 if __name__ == "__main__":

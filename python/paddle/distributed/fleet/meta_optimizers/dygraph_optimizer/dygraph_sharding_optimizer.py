@@ -13,6 +13,7 @@
 # limitations under the License.
 
 ######
+
 from functools import reduce
 
 import paddle
@@ -20,7 +21,7 @@ from paddle import framework
 from ...utils.log_util import logger
 
 
-def _is_trainable(param: paddle.Tensor) -> bool:
+def _is_trainable(param):
     return not param.stop_gradient
 
 
@@ -41,13 +42,8 @@ class DygraphShardingOptimizer(object):
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-    def __init__(
-            self,
-            hcg,
-            user_defined_strategy,
-            params,
-            inner_optimizer_class,
-            **inner_optimizer_kargs, ):
+    def __init__(self, hcg, user_defined_strategy, params,
+                 inner_optimizer_class, **inner_optimizer_kargs):
 
         if not isinstance(params, list):
             raise TypeError(
@@ -174,7 +170,7 @@ class DygraphShardingOptimizer(object):
         result = self._inner_optimizer.minimize(loss, startup_program,
                                                 parameters, no_grad_set)
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
         return result
@@ -185,7 +181,7 @@ class DygraphShardingOptimizer(object):
         # actually updating
         self._inner_optimizer.step()
 
-        # sync parameters accross sharding ranks
+        # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
     # TODO is it a good way to make _grad_clip a property

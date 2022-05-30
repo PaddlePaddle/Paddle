@@ -18,10 +18,12 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid import ParamAttr, initializer
+import paddle
 
 
 class TestCreateParameterError(unittest.TestCase):
-    def test_errors(self):
+    def func_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_shape():
@@ -48,6 +50,12 @@ class TestCreateParameterError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_default_initializer)
 
+    def test_errors(self):
+        with fluid.framework._test_eager_guard():
+            self.func_errors()
+        self.func_errors()
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

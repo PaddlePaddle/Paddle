@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -26,19 +26,22 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 class TestSumOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.attrs = {'dim': [0]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp_fp16(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
@@ -50,7 +53,7 @@ class TestSumOp_fp16(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -58,11 +61,48 @@ class TestSumOp_fp16(OpTest):
         return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSumOp_bf16(OpTest):
+    def setUp(self):
+        np.random.seed(100)
+        self.python_api = paddle.sum
+        self.op_type = "reduce_sum"
+        self.dtype = np.uint16
+        self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
+        self.attrs = {'dim': [0, 1, 2]}
+        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        self.gradient = self.calc_gradient()
+
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True)
+
+    def calc_gradient(self):
+        x = self.x
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return [grad]
 
 
 class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -76,7 +116,7 @@ class TestSumOp_fp16_withInt(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -84,41 +124,47 @@ class TestSumOp_fp16_withInt(OpTest):
         return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True)
 
 
 class TestSumOp5D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
         }
+        self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp6D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
         }
+        self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp8D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 3, 1, 2, 1, 4, 3, 10)).astype("float64")
@@ -127,10 +173,10 @@ class TestSumOp8D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -141,6 +187,7 @@ class TestMaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_max"
+        self.python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-1]}
         self.outputs = {
@@ -148,7 +195,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -159,6 +206,7 @@ class TestMinOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [2]}
         self.outputs = {
@@ -166,7 +214,7 @@ class TestMinOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestMin6DOp(OpTest):
@@ -174,6 +222,7 @@ class TestMin6DOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {
             'X': np.random.random((2, 4, 3, 5, 6, 10)).astype("float64")
         }
@@ -183,7 +232,7 @@ class TestMin6DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestMin8DOp(OpTest):
@@ -191,6 +240,7 @@ class TestMin8DOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {
             'X': np.random.random((2, 4, 3, 5, 6, 3, 2, 4)).astype("float64")
         }
@@ -200,12 +250,17 @@ class TestMin8DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
+
+
+def raw_reduce_prod(x, dim=[0], keep_dim=False):
+    return paddle.prod(x, dim, keep_dim)
 
 
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -215,15 +270,16 @@ class TestProdOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -238,15 +294,16 @@ class TestProd6DOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = raw_reduce_prod
         self.init_data_type()
         self.inputs = {
             'X': np.random.random(
@@ -262,26 +319,28 @@ class TestProd8DOp(OpTest):
         ) else "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAllOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -290,23 +349,25 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1, )}
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -315,12 +376,13 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
@@ -329,12 +391,13 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -346,7 +409,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -364,17 +427,19 @@ class TestAllOpError(unittest.TestCase):
 class TestAnyOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -383,23 +448,25 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': [1]}
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -408,12 +475,13 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1, ), 'keep_dim': True}
         self.outputs = {
@@ -422,12 +490,13 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -439,7 +508,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -569,6 +638,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_max"
+        self.python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-2, -1]}
         self.outputs = {
@@ -576,7 +646,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -587,6 +657,7 @@ class TestReduceMinOpMultiAxises(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [1, 2]}
         self.outputs = {
@@ -594,7 +665,7 @@ class TestReduceMinOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestKeepDimReduceSumMultiAxises(OpTest):
@@ -740,17 +811,24 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=shape, dtype=x_dtype)
-            result_sum = paddle.sum(x=data, axis=attr_axis, dtype=attr_dtype)
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data("data", shape=shape, dtype=x_dtype)
+                result_sum = paddle.sum(x=data,
+                                        axis=attr_axis,
+                                        dtype=attr_dtype)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            input_data = np.random.rand(*shape).astype(x_dtype)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+                exe = fluid.Executor(place)
+                input_data = np.random.rand(*shape).astype(x_dtype)
+                res, = exe.run(feed={"data": input_data},
+                               fetch_list=[result_sum])
 
-        self.assertTrue(
-            np.allclose(
-                res, np.sum(input_data.astype(attr_dtype), axis=np_axis)))
+            self.assertTrue(
+                np.allclose(
+                    res, np.sum(input_data.astype(attr_dtype), axis=np_axis)))
 
     def test_static(self):
         shape = [10, 10]
@@ -759,10 +837,12 @@ class API_TestSumOp(unittest.TestCase):
         self.run_static(shape, "bool", axis, attr_dtype=None)
         self.run_static(shape, "bool", axis, attr_dtype="int32")
         self.run_static(shape, "bool", axis, attr_dtype="int64")
+        self.run_static(shape, "bool", axis, attr_dtype="float16")
 
         self.run_static(shape, "int32", axis, attr_dtype=None)
         self.run_static(shape, "int32", axis, attr_dtype="int32")
         self.run_static(shape, "int32", axis, attr_dtype="int64")
+        self.run_static(shape, "int32", axis, attr_dtype="float64")
 
         self.run_static(shape, "int64", axis, attr_dtype=None)
         self.run_static(shape, "int64", axis, attr_dtype="int64")
@@ -771,6 +851,7 @@ class API_TestSumOp(unittest.TestCase):
         self.run_static(shape, "float32", axis, attr_dtype=None)
         self.run_static(shape, "float32", axis, attr_dtype="float32")
         self.run_static(shape, "float32", axis, attr_dtype="float64")
+        self.run_static(shape, "float32", axis, attr_dtype="int64")
 
         self.run_static(shape, "float64", axis, attr_dtype=None)
         self.run_static(shape, "float64", axis, attr_dtype="float32")

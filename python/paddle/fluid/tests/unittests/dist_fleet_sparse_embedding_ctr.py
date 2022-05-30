@@ -98,11 +98,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 
+        entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
         dnn_embedding = fluid.contrib.layers.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
+            entry=entry,
             param_attr=fluid.ParamAttr(
                 name="deep_embedding", initializer=init))
         dnn_pool = fluid.layers.sequence_pool(
@@ -123,6 +125,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,
+            entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)))
@@ -177,6 +180,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
+            fleet.load_model(model_dir, mode=1)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ import copy
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedModule
@@ -26,7 +26,7 @@ from .dist_attribute import OperatorDistributedAttribute
 
 
 def _static_mode_check():
-    if in_dygraph_mode():
+    if _non_static_mode():
         raise RuntimeError("Auto-parallel only supports static mode for now, "
                            "please use paddle.enable_static() first.")
 

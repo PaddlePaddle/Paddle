@@ -20,6 +20,7 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+import paddle.fluid.core as core
 
 from ifelse_simple_func import *
 
@@ -365,5 +366,99 @@ class TestNewVarCreateInOneBranch(unittest.TestCase):
         self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
 
 
+class TestDy2StIfElseRetInt1(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int1
+        self.out = self.get_dy2stat_out()
+
+    def get_dy2stat_out(self):
+        ProgramTranslator().enable(True)
+        static_func = paddle.jit.to_static(self.dyfunc)
+        out = static_func(self.x)
+        ProgramTranslator().enable(False)
+        return out
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out[1], int)
+
+
+class TestDy2StIfElseRetInt2(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int2
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out[1], (paddle.Tensor, core.eager.Tensor))
+
+
+class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int3
+        self.out = self.get_dy2stat_out()
+
+    def test_ast_to_func(self):
+        self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
+
+
+class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
+    def setUp(self):
+        self.x = np.random.random([5]).astype('float32')
+        self.dyfunc = dyfunc_ifelse_ret_int4
+
+    def test_ast_to_func(self):
+        ProgramTranslator().enable(True)
+        with self.assertRaises(TypeError):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
+        # Why need set `_in_declarative_mode_` here? 
+        # In Dy2St we use `with _switch_declarative_mode_guard_()` to indicate 
+        # that the code block is under @to_static, but in this UT 
+        # an exception is thrown during Dy2St, making the `_in_declarative_mode_` 
+        # a wrong value. So We need set `_in_declarative_mode_` to False manually.
+        paddle.fluid.dygraph.base._in_declarative_mode_ = False
+        ProgramTranslator().enable(False)
+
+
+class IfElseNet(paddle.nn.Layer):
+    def __init__(self):
+        super(IfElseNet, self).__init__()
+        self.param = self.create_parameter(
+            shape=[3, 2], dtype='float32', is_bias=False)
+
+    @paddle.jit.to_static
+    def forward(self, a, b, c):
+        a = paddle.matmul(a, self.param)
+        a = paddle.reshape(a, (2, 4))
+        cond = paddle.to_tensor([10])
+        if cond == 10:
+            a_argmax = a.argmax(axis=-1)
+            b = b + self.param
+        else:
+            print(c)
+        return b
+
+
+class TestDy2StIfElseBackward(unittest.TestCase):
+    def test_run_backward(self):
+        a = paddle.randn((4, 3), dtype='float32')
+        a.stop_gradient = False
+        b = paddle.to_tensor([10]).astype('float32')
+        b.stop_gradient = False
+        c = paddle.to_tensor([2])
+        c.stop_gradient = False
+
+        net = IfElseNet()
+        net.train()
+        out = net(a, b, c)
+        out.backward()
+        self.assertTrue(np.allclose((b + net.param).numpy(), out.numpy()))
+
+
 if __name__ == '__main__':
-    unittest.main()
+    with paddle.fluid.framework._test_eager_guard():
+        unittest.main()

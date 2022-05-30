@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +30,7 @@ class InverseKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *input, output);
   }
 };
@@ -48,19 +48,22 @@ class InverseGradKernel : public framework::OpKernel<T> {
     if (a_grad) {
       a_grad->mutable_data<T>(context.GetPlace());
 
-      auto blas = math::GetBlas<DeviceContext, T>(context);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
       auto& dev_ctx = context.template device_context<DeviceContext>();
       framework::Tensor tmp_out =
           context.AllocateTmpTensor<T, DeviceContext>(a_inv->dims(), dev_ctx);
 
       auto mat_dim_a0 =
-          math::CreateMatrixDescriptor(a_inv_grad->dims(), 0, false);
-      auto mat_dim_b0 = math::CreateMatrixDescriptor(a_inv->dims(), 0, true);
+          phi::funcs::CreateMatrixDescriptor(a_inv_grad->dims(), 0, false);
+      auto mat_dim_b0 =
+          phi::funcs::CreateMatrixDescriptor(a_inv->dims(), 0, true);
       blas.MatMul(*a_inv_grad, mat_dim_a0, *a_inv, mat_dim_b0, T(1), &tmp_out,
                   T(0));
 
-      auto mat_dim_a1 = math::CreateMatrixDescriptor(a_inv->dims(), 0, true);
-      auto mat_dim_b1 = math::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
+      auto mat_dim_a1 =
+          phi::funcs::CreateMatrixDescriptor(a_inv->dims(), 0, true);
+      auto mat_dim_b1 =
+          phi::funcs::CreateMatrixDescriptor(tmp_out.dims(), 0, false);
       blas.MatMul(*a_inv, mat_dim_a1, tmp_out, mat_dim_b1, T(-1), a_grad, T(0));
     }
   }

@@ -89,7 +89,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
         else:
             assign_loop_var_names.append(name)
 
-    while_func_name = "paddle.jit.dy2static.convert_while_loop"
+    while_func_name = "_jst.convert_while_loop"
     while_node_str = "[{}] = {}({}, {}, [{}])".format(
         ",".join(assign_loop_var_names), while_func_name, condition_name,
         body_name, ",".join(loop_var_names))
@@ -693,7 +693,7 @@ class LoopTransformer(gast.NodeTransformer):
         new_body = node.body
         new_body.append(
             gast.Return(value=generate_name_node(
-                loop_var_names, ctx=gast.Load())))
+                loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_BODY_PREFIX),
             args=gast.arguments(

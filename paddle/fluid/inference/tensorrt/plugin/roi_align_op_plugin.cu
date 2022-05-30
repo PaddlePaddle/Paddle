@@ -58,14 +58,12 @@ __inline__ __device__ T BilinearInterpolate(const T* input_data,
 }
 
 template <typename T, typename OutT, bool USE_SMEM>
-__global__ void GPUROIAlignOpt(const int nthreads,
-                               const T* __restrict__ input_data,
-                               const T* __restrict__ input_rois,
-                               const float spatial_scale, const int channels,
-                               const int height, const int width,
-                               const int pooled_height, const int pooled_width,
-                               const int sampling_ratio, const int num_rois,
-                               OutT* __restrict__ output_data) {
+__global__ void GPUROIAlignOpt(
+    const int nthreads, const T* __restrict__ input_data,
+    const T* __restrict__ input_rois, const float spatial_scale,
+    const int channels, const int height, const int width,
+    const int pooled_height, const int pooled_width, const int sampling_ratio,
+    const int num_rois, const bool aligned, OutT* __restrict__ output_data) {
   const int batch = blockIdx.x;
   const int channel = blockIdx.y;
   const T* offset_input_data =
@@ -84,21 +82,28 @@ __global__ void GPUROIAlignOpt(const int nthreads,
     const int roi_idx = (idx / pooled_width / pooled_height) % num_rois;
     const int n = batch * num_rois + roi_idx;
     const float4 rois_offset = reinterpret_cast<const float4*>(input_rois)[n];
-    const T roi_xmin = rois_offset.x * spatial_scale;
-    const T roi_ymin = rois_offset.y * spatial_scale;
-    const T roi_xmax = rois_offset.z * spatial_scale;
-    const T roi_ymax = rois_offset.w * spatial_scale;
-    const T roi_width = max(roi_xmax - roi_xmin, static_cast<T>(1.f));
-    const T roi_height = max(roi_ymax - roi_ymin, static_cast<T>(1.f));
-    const T bin_size_h = roi_height / static_cast<T>(pooled_height);
-    const T bin_size_w = roi_width / static_cast<T>(pooled_width);
+    const T roi_offset = aligned ? static_cast<T>(0.5) : 0;
+    const T roi_xmin = rois_offset.x * spatial_scale - roi_offset;
+    const T roi_ymin = rois_offset.y * spatial_scale - roi_offset;
+    const T roi_xmax = rois_offset.z * spatial_scale - roi_offset;
+    const T roi_ymax = rois_offset.w * spatial_scale - roi_offset;
+
+    T roi_width = roi_xmax - roi_xmin;
+    T roi_height = roi_ymax - roi_ymin;
+    if (!aligned) {
+      roi_width = max(roi_width, static_cast<T>(1.));
+      roi_height = max(roi_height, static_cast<T>(1.));
+    }
+    const T bin_size_h =
+        static_cast<T>(roi_height) / static_cast<T>(pooled_height);
+    const T bin_size_w =
+        static_cast<T>(roi_width) / static_cast<T>(pooled_width);
     const int roi_bin_grid_h = (sampling_ratio > 0)
                                    ? sampling_ratio
                                    : ceil(roi_height / pooled_height);
     const int roi_bin_grid_w =
         (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
-    const T count = roi_bin_grid_h * roi_bin_grid_w;
-
+    const T count = max(roi_bin_grid_h * roi_bin_grid_w, 1);
     T output_val = 0.f;
     for (int iy = 0; iy < roi_bin_grid_h; ++iy) {
       const T y = roi_ymin + ph * bin_size_h +
@@ -132,12 +137,13 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                                              const int pooled_height,
                                              const int pooled_width,
                                              float spatial_scale,
-                                             int sampling_ratio)
+                                             int sampling_ratio, bool aligned)
     : data_type_(data_type),
       pooled_height_(pooled_height),
       pooled_width_(pooled_width),
       spatial_scale_(spatial_scale),
-      sampling_ratio_(sampling_ratio) {
+      sampling_ratio_(sampling_ratio),
+      aligned_(aligned) {
   bool data_type_is_valid = data_type_ == nvinfer1::DataType::kFLOAT ||
                             data_type_ == nvinfer1::DataType::kHALF;
   PADDLE_ENFORCE_EQ(data_type_is_valid, true,
@@ -187,6 +193,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(void const* data, size_t length) {
   DeserializeValue(&data, &length, &pooled_width_);
   DeserializeValue(&data, &length, &spatial_scale_);
   DeserializeValue(&data, &length, &sampling_ratio_);
+  DeserializeValue(&data, &length, &aligned_);
   int smem_per_block = -1;
   int device = -1;
   cudaGetDevice(&device);
@@ -204,7 +211,7 @@ nvinfer1::IPluginV2DynamicExt* RoiAlignPluginDynamic::clone() const
     TRT_NOEXCEPT {
   auto* plugin =
       new RoiAlignPluginDynamic(data_type_, pooled_height_, pooled_width_,
-                                spatial_scale_, sampling_ratio_);
+                                spatial_scale_, sampling_ratio_, aligned_);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
@@ -272,14 +279,15 @@ int RoiAlignPluginDynamic::enqueue_impl(
         output_size, static_cast<const T*>(inputs[0]),
         static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
         width, pooled_height_, pooled_width_, sampling_ratio_, rois_num / batch,
-        static_cast<OutT*>(outputs[0]));
+        aligned_, static_cast<OutT*>(outputs[0]));
   } else {
     GPUROIAlignOpt<
-        T, OutT, true><<<blocks, threads, width * height * sizeof(T), stream>>>(
+        T, OutT,
+        false><<<blocks, threads, width * height * sizeof(T), stream>>>(
         output_size, static_cast<const T*>(inputs[0]),
         static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
         width, pooled_height_, pooled_width_, sampling_ratio_, rois_num / batch,
-        static_cast<OutT*>(outputs[0]));
+        aligned_, static_cast<OutT*>(outputs[0]));
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -313,6 +321,10 @@ const char* RoiAlignPluginDynamic::getPluginType() const TRT_NOEXCEPT {
   return "roi_align_plugin_dynamic";
 }
 
+const char* RoiAlignPluginDynamic::getPluginVersion() const TRT_NOEXCEPT {
+  return "2";
+}
+
 int RoiAlignPluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
 int RoiAlignPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
@@ -326,6 +338,7 @@ size_t RoiAlignPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   serialize_size += SerializedSize(pooled_width_);
   serialize_size += SerializedSize(spatial_scale_);
   serialize_size += SerializedSize(sampling_ratio_);
+  serialize_size += SerializedSize(aligned_);
   return serialize_size;
 }
 
@@ -335,6 +348,7 @@ void RoiAlignPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, pooled_width_);
   SerializeValue(&buffer, spatial_scale_);
   SerializeValue(&buffer, sampling_ratio_);
+  SerializeValue(&buffer, aligned_);
 }
 
 void RoiAlignPluginDynamic::destroy() TRT_NOEXCEPT {}
@@ -357,7 +371,7 @@ const char* RoiAlignPluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
 
 const char* RoiAlignPluginDynamicCreator::getPluginVersion() const
     TRT_NOEXCEPT {
-  return "1";
+  return "2";
 }
 
 const nvinfer1::PluginFieldCollection*

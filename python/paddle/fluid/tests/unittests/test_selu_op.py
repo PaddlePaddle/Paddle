@@ -42,6 +42,7 @@ def ref_selu(x,
 class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
+        self.python_api = paddle.nn.functional.selu
         self.x_shape = [3, 5, 5, 10]
         self.dtype = np.float64
         self.init_x_shape()

@@ -54,9 +54,6 @@ class TestNPUNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-
         self.check_grad_with_place(
             self.place, ['X'], 'Out', max_relative_error=0.006)
 

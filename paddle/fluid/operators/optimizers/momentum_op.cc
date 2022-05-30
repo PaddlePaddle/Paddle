@@ -108,9 +108,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::MomentumOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(momentum)
     .AddCheckpoint(

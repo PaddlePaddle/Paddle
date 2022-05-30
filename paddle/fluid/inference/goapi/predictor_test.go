@@ -66,6 +66,42 @@ func TestNewPredictor(t *testing.T) {
 	cloned.ClearIntermediateTensor()
 }
 
+func TestONNXRuntimePredictor(t *testing.T) {
+	t.Logf("Version:\n%+v", Version())
+	config := NewConfig()
+	config.SetModel("./mobilenetv1/inference.pdmodel", "./mobilenetv1/inference.pdiparams")
+	config.EnableONNXRuntime()
+	config.EnableORTOptimization()
+	predictor := NewPredictor(config)
+	inNames := predictor.GetInputNames()
+	t.Logf("InputNames:%+v", inNames)
+	outNames := predictor.GetOutputNames()
+	t.Logf("OutputNames:%+v", outNames)
+
+	inHandle := predictor.GetInputHandle(inNames[0])
+	inHandle.Reshape([]int32{1, 3, 224, 224})
+	t.Logf("inHandle name:%+v, shape:%+v", inHandle.Name(), inHandle.Shape())
+
+	data := make([]float32, numElements([]int32{1, 3, 224, 224}))
+	for i := 0; i < int(numElements([]int32{1, 3, 224, 224})); i++ {
+		data[i] = float32(i%255) * 0.1
+	}
+	inHandle.CopyFromCpu(data)
+	t.Logf("inHandle Type:%+v", inHandle.Type())
+
+	predictor.Run()
+
+	outHandle := predictor.GetOutputHandle(outNames[0])
+	t.Logf("outHandle name:%+v", outHandle.Name())
+
+	outShape := outHandle.Shape()
+	t.Logf("outHandle Shape:%+v", outShape)
+	outData := make([]float32, numElements(outShape))
+	outHandle.CopyToCpu(outData)
+	t.Log(outData)
+}
+
+
 func TestFromBuffer(t *testing.T) {
 	modelFile, err := os.Open("./mobilenetv1/inference.pdmodel")
 	if err != nil {

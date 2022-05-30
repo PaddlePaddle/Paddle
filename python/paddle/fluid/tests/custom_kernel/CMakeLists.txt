@@ -1,0 +1,2 @@
+py_test(test_custom_kernel_dot SRCS test_custom_kernel_dot.py)
+py_test(test_custom_kernel_load SRCS test_custom_kernel_load.py)

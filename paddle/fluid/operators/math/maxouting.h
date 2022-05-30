@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +30,7 @@ class MaxOutFunctor {
                   const int axis = 1);
 };
 
-template <typename DeviceContext, class T>
+template <typename DeviceContext, typename T>
 class MaxOutGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,

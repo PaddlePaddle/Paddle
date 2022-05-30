@@ -20,6 +20,8 @@ namespace framework {
 namespace interpreter {
 void RecordEvent(const Instruction& instruction, const platform::Place& place);
 
+void RecordEvent(const Instruction& instruction);
+
 void WaitEvent(const Instruction& instruction, const platform::Place& place);
 
 }  // namespace interpreter

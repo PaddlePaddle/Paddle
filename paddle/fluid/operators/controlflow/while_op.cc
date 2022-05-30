@@ -17,6 +17,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -60,12 +63,18 @@ class WhileOp : public framework::OperatorBase {
 
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(), paddle::framework::make_ddim({1}),
+        cond.dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The shape of Input(Condition) of WhileOp must be 1. But now "
             "the Condition's shape is ",
             cond.dims().to_str(), ".\n"));
 
+#ifdef PADDLE_WITH_MKLDNN
+    // (jczaja) Executor on being destroyed clears oneDNN cache and
+    // resets registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    platform::DontClearMKLDNNCache(dev_place);
+#endif
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
@@ -375,8 +384,9 @@ class WhileGradOp : public framework::OperatorBase {
               var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["dtype"] = inside_tensor.type();
-            attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
+            attrs["dtype"] =
+                framework::TransToProtoVarType(inside_tensor.dtype());
+            attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];
@@ -516,10 +526,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(kOutputs);
     ctx->HasInputs(framework::GradVarName(kOutputs));
     auto pg_ig_names = ctx->Outputs(kXGRAD);
-    std::vector<framework::InferShapeVarPtr> in_var_ptrs =
-        ctx->GetInputVarPtrs(kX);
-    std::vector<framework::InferShapeVarPtr> out_var_ptrs =
-        ctx->GetOutputVarPtrs(kXGRAD);
+    auto in_var_ptrs = ctx->GetInputVarPtrs(kX);
+    auto out_var_ptrs = ctx->GetOutputVarPtrs(kXGRAD);
     PADDLE_ENFORCE_EQ(in_var_ptrs.size(), out_var_ptrs.size(),
                       platform::errors::InvalidArgument(
                           "The size of Inputs(X) must be the same as "

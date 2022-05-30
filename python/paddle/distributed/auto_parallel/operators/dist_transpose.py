@@ -22,29 +22,61 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedTranspose2, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedTranspose2, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    "transpose2", DistributedTranspose2("transpose2"))
+    DistributedTranspose2("transpose2"))
 
 
 class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedTranspose2Impl, self).__init__()
-        self._name = name
+        super(DistributedTranspose2Impl, self).__init__(name)
         self._forward_implemented = False
-        self._backward_implemented = True
+        self._backward_implemented = False
 
     def is_input_compatible(self, dist_op):
         return True
 
     def is_output_compatible(self, dist_op):
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)):
+            return False
+
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        perm = op_desc.attr('axis')
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
+        for i in range(len(x_dims_mapping)):
+            new_dims_mapping[i] = x_dims_mapping[perm[i]]
+
+        if len(x_dims_mapping) != len(out_dims_mapping):
+            return False
+
+        if new_dims_mapping != out_dims_mapping:
+            return False
+
+        if x_shape_dims_mapping[0] != -1:
+            return False
+
+        if x_shape_dims_mapping[1:] != x_dims_mapping[:]:
+            return False
+
         return True
 
     def update_dims_mapping(self, dist_op):
@@ -83,8 +115,12 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         return changed
 
     @staticmethod
+    def forward(ctx, *args, **kwargs):
+        DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
+
+    @staticmethod
     def backward(ctx, *args, **kwargs):
-        pass
+        DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl(

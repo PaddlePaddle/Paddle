@@ -25,6 +25,8 @@ import paddle
 import paddle.fluid.core as core
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "Only test cuda Random Generator")
 class TestGeneratorSeed(unittest.TestCase):
     """
     Test cases for cpu generator seed.
@@ -70,15 +72,13 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
-        paddle.seed(12312321111)
-        x = fluid.layers.gaussian_random([120], dtype="float32")
-        st1 = paddle.get_cuda_rng_state()
-        x1 = fluid.layers.gaussian_random([120], dtype="float32")
-        paddle.set_cuda_rng_state(st1)
-        x2 = fluid.layers.gaussian_random([120], dtype="float32")
-        paddle.seed(12312321111)
-        x3 = fluid.layers.gaussian_random([120], dtype="float32")
-        x_np = x.numpy()
+        st = paddle.get_cuda_rng_state()
+        x1 = paddle.randn([120], dtype="float32")
+        paddle.set_cuda_rng_state(st)
+        x2 = paddle.randn([120], dtype="float32")
+        paddle.set_cuda_rng_state(st)
+        x3 = paddle.randn([120], dtype="float32")
+
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
@@ -86,18 +86,18 @@ class TestGeneratorSeed(unittest.TestCase):
         if core.is_compiled_with_cuda():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
             self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            self.assertTrue(np.allclose(x2_np, x3_np))
 
     def test_generator_randint_dygraph(self):
         """Test Generator seed."""
 
         fluid.enable_dygraph()
 
-        gen = paddle.seed(12312321111)
+        paddle.seed(12312321111)
         x = paddle.randint(low=10, shape=[10], dtype="int32")
-        st1 = gen.get_state()
+        st1 = paddle.get_cuda_rng_state()
         x1 = paddle.randint(low=10, shape=[10], dtype="int32")
-        gen.set_state(st1)
+        paddle.set_cuda_rng_state(st1)
         x2 = paddle.randint(low=10, shape=[10], dtype="int32")
         paddle.seed(12312321111)
         x3 = paddle.randint(low=10, shape=[10], dtype="int32")
@@ -108,7 +108,6 @@ class TestGeneratorSeed(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             print(">>>>>>> randint dygraph >>>>>>>")
-            self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
     def test_gen_TruncatedNormal_initializer(self):

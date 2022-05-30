@@ -205,6 +205,13 @@ def lambda_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
     return learning_rate * lr_lambda(epoch_num)
 
 
+def multiplicative_lr(epoch_num, learning_rate, lr_lambda, verbose=False):
+    latest_lr = learning_rate
+    for i in range(epoch_num):
+        latest_lr = latest_lr * lr_lambda(i + 1)
+    return latest_lr
+
+
 def piecewise_lr(epoch_num, boundaries, values, verbose=False):
     assert len(boundaries) + 1 == len(values)
     for i in range(len(boundaries)):
@@ -314,17 +321,81 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
     return learning_rate * math.pow(gamma, epoch_num // step_size)
 
 
+def one_cycle_lr(epoch_num,
+                 max_learning_rate,
+                 total_steps,
+                 divide_factor=25,
+                 end_learning_rate=0.0001,
+                 phase_pct=0.3,
+                 anneal_strategy='cos',
+                 three_phase=False,
+                 verbose=False):
+    initial_lr = max_learning_rate / divide_factor
+    if three_phase:
+        _end_steps = [
+            float(phase_pct * total_steps) - 1,
+            float(2 * phase_pct * total_steps) - 2, total_steps - 1
+        ]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': initial_lr,
+            },
+            {
+                'start_lr': initial_lr,
+                'end_lr': end_learning_rate,
+            },
+        ]
+    else:
+        _end_steps = [float(phase_pct * total_steps) - 1, total_steps - 1]
+        _schedule_phases = [
+            {
+                'start_lr': initial_lr,
+                'end_lr': max_learning_rate,
+            },
+            {
+                'start_lr': max_learning_rate,
+                'end_lr': end_learning_rate,
+            },
+        ]
+
+    if anneal_strategy == 'cos':
+
+        def anneal_func(start, end, pct):
+            cos_out = math.cos(math.pi * pct) + 1
+            return end + (start - end) / 2.0 * cos_out
+    else:
+
+        def anneal_func(start, end, pct):
+            return (end - start) * pct + start
+
+    start_step = 0
+    for i, phase in enumerate(_schedule_phases):
+        end_step = _end_steps[i]
+        if epoch_num <= end_step or i == len(_schedule_phases) - 1:
+            pct = (epoch_num - start_step) / (end_step - start_step)
+            computed_lr = anneal_func(phase['start_lr'], phase['end_lr'], pct)
+            break
+        start_step = end_step
+
+    return computed_lr
+
+
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
+        scheduler = paddle_api(**kwarg)
+        adam = paddle.optimizer.Adam(learning_rate=scheduler)
+
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             x = paddle.static.data(name='x', shape=[3, 4, 5])
-            y = paddle.static.data(name='y', shape=[3, 4, 5])
-            z = paddle.static.nn.fc(x, 100)
-            loss = paddle.mean(z)
-            scheduler = paddle_api(**kwarg)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
+            loss = paddle.mean(x)
+
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
             test_prog = main_prog.clone()
@@ -332,14 +403,12 @@ class TestLRScheduler(unittest.TestCase):
         num = 0
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
+
         for epoch in range(5):
             for batch_id in range(2):
                 out = exe.run(
                     main_prog,
-                    feed={
-                        'x': np.random.randn(3, 4, 5).astype('float32'),
-                        'y': np.random.randn(3, 4, 5).astype('float32')
-                    },
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name)
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -349,10 +418,7 @@ class TestLRScheduler(unittest.TestCase):
             for batch_id in range(2):
                 out = exe.run(
                     test_prog,
-                    feed={
-                        'x': np.random.randn(3, 4, 5).astype('float32'),
-                        'y': np.random.randn(3, 4, 5).astype('float32')
-                    },
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=lr_var.name)
             self.assertEqual(out, np.array(python_func(num, **kwarg)))
             scheduler.step()
@@ -365,13 +431,12 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
-                        compiled_train_prog,
-                        feed={
-                            'x': np.random.randn(12, 4, 5).astype('float32'),
-                            'y': np.random.randn(12, 4, 5).astype('float32')
-                        },
-                        fetch_list=lr_var.name)
+                    _ = exe.run(compiled_train_prog,
+                                feed={
+                                    'x':
+                                    np.random.randn(12, 4, 5).astype('float32')
+                                },
+                                fetch_list=lr_var.name)
                 scopes = compiled_train_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -392,13 +457,12 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
-                        compiled_test_prog,
-                        feed={
-                            'x': np.random.randn(12, 4, 5).astype('float32'),
-                            'y': np.random.randn(12, 4, 5).astype('float32')
-                        },
-                        fetch_list=lr_var.name)
+                    _ = exe.run(compiled_test_prog,
+                                feed={
+                                    'x':
+                                    np.random.randn(12, 4, 5).astype('float32')
+                                },
+                                fetch_list=lr_var.name)
                 scopes = compiled_test_prog._executor.local_scopes()
                 out = np.array(scopes[0].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
@@ -467,6 +531,33 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.MultiStepDecay(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate='test', total_steps=20)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=-1.5, total_steps=20)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, end_learning_rate='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, end_learning_rate=-1)
+        with self.assertRaises(TypeError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=-10)
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1, total_steps=20, anneal_strategy='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.OneCycleLR(
+                max_learning_rate=0.1,
+                total_steps=20,
+                phase_pct=0.6,
+                three_phase=True)
 
         func_api_kwargs = [(noam_lr, paddle.optimizer.lr.NoamDecay, {
             "d_model": 0.01,
@@ -519,10 +610,46 @@ class TestLRScheduler(unittest.TestCase):
             "learning_rate": 0.5,
             "lr_lambda": lambda x: 0.95**x,
             "verbose": True
+        }), (multiplicative_lr, paddle.optimizer.lr.MultiplicativeDecay, {
+            "learning_rate": 0.5,
+            "lr_lambda": lambda x: 0.95,
+            "verbose": True
         }), (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
             "learning_rate": 0.5,
             "T_max": 10,
             "verbose": False
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.1,
+            "total_steps": 20,
+            "divide_factor": 5,
+            "end_learning_rate": 0.0001,
+            "anneal_strategy": 'cos',
+            "phase_pct": 0.3,
+            "three_phase": False,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.5,
+            "total_steps": 20,
+            "divide_factor": 10,
+            "end_learning_rate": 0.001,
+            "anneal_strategy": 'linear',
+            "phase_pct": 0.4,
+            "three_phase": False,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 1.0,
+            "total_steps": 20,
+            "divide_factor": 9,
+            "end_learning_rate": 0.0001,
+            "anneal_strategy": 'cos',
+            "phase_pct": 0.3,
+            "three_phase": True,
+        }), (one_cycle_lr, paddle.optimizer.lr.OneCycleLR, {
+            "max_learning_rate": 0.3,
+            "total_steps": 20,
+            "divide_factor": 25,
+            "end_learning_rate": 0.0005,
+            "anneal_strategy": 'linear',
+            "phase_pct": 0.2,
+            "three_phase": True,
         })]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
@@ -551,4 +678,5 @@ class TestLRScheduler(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

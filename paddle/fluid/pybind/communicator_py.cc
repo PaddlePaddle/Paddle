@@ -23,8 +23,8 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 
 #include "paddle/fluid/operators/distributed/communicator.h"
-#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/large_scale_kv.h"
+#include "paddle/fluid/operators/distributed/ps/service/communicator/communicator_common.h"
 
 namespace py = pybind11;
 

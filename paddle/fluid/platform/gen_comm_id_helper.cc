@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
+    defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -35,6 +36,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_CNCL)
+#include <cncl.h>
 #endif
 
 DECLARE_int32(get_host_by_name_time);
@@ -153,6 +158,16 @@ int CreateListenSocket(const std::string& ep) {
   // not enter the TIME-WAIT state. But this is obviously not as convenient
   // as the reuse method.
   int opt = 1;
+
+  // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
+  linger ling;
+  ling.l_onoff = 1;
+  ling.l_linger = 0;
+
+  CHECK_SYS_CALL(
+      setsockopt(server_fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling)),
+      "setsockopt set linger");
+
 #if defined(SO_REUSEPORT)
   // since Linux kernel 3.9
   CHECK_SYS_CALL(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
@@ -419,6 +434,9 @@ INSTANT_TEMPLATE(BKCLUniqueId)
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 INSTANT_TEMPLATE(HcclRootInfo)
+#endif
+#ifdef PADDLE_WITH_CNCL
+INSTANT_TEMPLATE(cnclCliqueId)
 #endif
 }  // namespace platform
 }  // namespace paddle

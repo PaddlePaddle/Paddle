@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/benchmark/op_tester_config.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

@@ -20,6 +20,7 @@ import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -53,7 +54,7 @@ class TestJitCustomAttrs(unittest.TestCase):
         self.int64_vec_attr = [10000000000, 10000000000, 10000000000]
         self.str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
-    def test_attr_value(self):
+    def func_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
         out = custom_attrs.attr_test(
@@ -65,7 +66,12 @@ class TestJitCustomAttrs(unittest.TestCase):
 
         self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
 
-    def test_const_attr_value(self):
+    def test_attr_value(self):
+        with _test_eager_guard():
+            self.func_attr_value()
+        self.func_attr_value()
+
+    def func_const_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
         out = custom_attrs.const_attr_test(
@@ -76,6 +82,11 @@ class TestJitCustomAttrs(unittest.TestCase):
         out.backward()
 
         self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+
+    def test_const_attr_value(self):
+        with _test_eager_guard():
+            self.func_const_attr_value()
+        self.func_const_attr_value()
 
 
 if __name__ == '__main__':

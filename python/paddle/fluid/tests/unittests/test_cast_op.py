@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -52,6 +53,7 @@ class TestCastOpFp16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -67,6 +69,7 @@ class TestCastOpFp32ToFp16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP16)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -82,6 +85,7 @@ class TestCastOpBf16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()
@@ -97,6 +101,7 @@ class TestCastOpFp32ToBf16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.BF16)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()
@@ -109,15 +114,20 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
-            # The input dtype of cast_op must be bool, float16, float32, float64, int32, int64, uint8.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int16')
-            self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
 
-            def test_dtype_type():
-                x4 = fluid.layers.data(name='x4', shape=[4], dtype='int32')
-                output = fluid.layers.cast(x=x4, dtype='int16')
 
-            self.assertRaises(TypeError, test_dtype_type)
+class TestCastOpEager(unittest.TestCase):
+    def test_eager(self):
+        with paddle.fluid.dygraph.base.guard():
+            with _test_eager_guard():
+                x = paddle.ones([2, 2], dtype="float16")
+                x.stop_gradient = False
+                out = paddle.cast(x, "float32")
+                self.assertTrue(
+                    np.array_equal(out, np.ones([2, 2]).astype("float32")))
+                out.backward()
+                self.assertTrue(np.array_equal(x.gradient(), x.numpy()))
+                self.assertTrue(x.gradient().dtype == np.float16)
 
 
 if __name__ == '__main__':

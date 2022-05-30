@@ -25,7 +25,6 @@
 namespace paddle {
 namespace framework {
 class OpKernelType;
-class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
@@ -36,8 +35,23 @@ class Tensor;
 namespace paddle {
 namespace framework {
 
+struct CastDataLayout {
+  CastDataLayout(const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis, const framework::Tensor& in,
+                 framework::Tensor* out)
+      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
+
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+  const std::vector<int> axis_;
+
+  template <typename T>
+  void apply();
+};
+
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDataType = mkldnn::memory::data_type;
+using MKLDNNDataType = dnnl::memory::data_type;
 
 inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
@@ -45,6 +59,10 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
       return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
       return MKLDNNMemoryFormat::nchw;
+    case DataLayout::kNCDHW:
+      return MKLDNNMemoryFormat::ncdhw;
+    case DataLayout::kNDHWC:
+      return MKLDNNMemoryFormat::ndhwc;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert layout %s to MKLDNN format.",
@@ -58,6 +76,10 @@ inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
       return DataLayout::kNHWC;
     case MKLDNNMemoryFormat::nchw:
       return DataLayout::kNCHW;
+    case MKLDNNMemoryFormat::ncdhw:
+      return DataLayout::kNCDHW;
+    case MKLDNNMemoryFormat::ndhwc:
+      return DataLayout::kNDHWC;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert MKLDNN format to paddle layout."));

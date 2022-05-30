@@ -16,7 +16,7 @@ limitations under the License. */
 // HIP not support cudnnSpatialTfGridGeneratorForward
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +108,7 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
     const T* output_grad_data = output_grad->data<T>();
     T* theta_grad_data = theta_grad->mutable_data<T>(ctx.GetPlace());
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnSpatialTfGridGeneratorBackward(
             handle, cudnn_st_desc, output_grad_data, theta_grad_data));
   }

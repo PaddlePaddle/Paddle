@@ -12,76 +12,114 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+#include <chrono>
 #include <iostream>
 #include <string>
-
-#include <chrono>
-#include <map>
-#include <memory>
-#include <unordered_map>
-#include <vector>
 
 // #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(fill_constant);
-USE_OP(uniform_random);
+USE_OP_ITSELF(fill_constant);
+USE_OP_ITSELF(uniform_random);
 USE_OP(lookup_table);
-USE_OP(transpose2);
-USE_OP(reshape2);
-USE_OP(split);
-USE_OP(slice);
-USE_OP(concat);
-USE_OP(matmul);
-USE_OP(elementwise_add);
-USE_OP(sigmoid);
-USE_OP(tanh);
-USE_OP(elementwise_mul);
-USE_OP(softmax_with_cross_entropy);
-USE_OP(reduce_mean);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
-USE_OP(reduce_mean_grad);
-USE_OP(reshape2_grad);
-USE_OP(softmax_with_cross_entropy_grad);
-USE_OP(elementwise_add_grad);
-USE_OP(matmul_grad);
-USE_OP(square);
-USE_OP(transpose2_grad);
-USE_OP(concat_grad);
-USE_OP(elementwise_mul_grad);
-USE_OP(sigmoid_grad);
-USE_OP(tanh_grad);
+USE_OP_ITSELF(transpose2);
+USE_OP_ITSELF(reshape2);
+USE_OP_ITSELF(split);
+USE_OP_ITSELF(slice);
+USE_OP_ITSELF(concat);
+USE_OP_ITSELF(matmul);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(sigmoid);
+USE_OP_ITSELF(tanh);
+USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(softmax_with_cross_entropy);
+USE_OP_ITSELF(reduce_mean);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
+USE_OP_ITSELF(reduce_mean_grad);
+USE_OP_ITSELF(reshape2_grad);
+USE_OP_ITSELF(softmax_with_cross_entropy_grad);
+USE_OP_ITSELF(elementwise_add_grad);
+USE_OP_ITSELF(matmul_grad);
+USE_OP_ITSELF(square);
+USE_OP_ITSELF(transpose2_grad);
+USE_OP_ITSELF(concat_grad);
+USE_OP_ITSELF(elementwise_mul_grad);
+USE_OP_ITSELF(sigmoid_grad);
+USE_OP_ITSELF(tanh_grad);
 USE_OP(sum);
-USE_OP(slice_grad);
-USE_OP(lookup_table_grad);
-USE_OP(sqrt);
-USE_OP(elementwise_max);
-USE_OP(elementwise_div);
-USE_OP(sgd);
+USE_OP_ITSELF(slice_grad);
+USE_OP_ITSELF(lookup_table_grad);
+USE_OP_ITSELF(sqrt);
+USE_OP_ITSELF(elementwise_max);
+USE_OP_ITSELF(elementwise_div);
+USE_OP_ITSELF(sgd);
 USE_OP(squared_l2_norm);
+USE_OP_ITSELF(memcpy_h2d);
+USE_OP_ITSELF(memcpy_d2h);
 
-paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(concat_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_raw, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(divide, KPS, ALL_LAYOUT);
+#ifdef PADDLE_WITH_XPU_KP
+PD_DECLARE_KERNEL(max_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(maximum, GPU, ALL_LAYOUT);
+#else
+PD_DECLARE_KERNEL(max_raw, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(maximum, KPS, ALL_LAYOUT);
+#endif
+PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(mean_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sgd, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(slice, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+
+DECLARE_double(eager_delete_tensor_gb);
+
+namespace paddle {
+namespace framework {
+
+ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
   fin.read(&buffer[0], buffer.size());
   fin.close();
-
-  paddle::framework::ProgramDesc program_desc(buffer);
+  ProgramDesc program_desc(buffer);
   return program_desc;
 }
 
-int main(int argc, char* argv[]) {
-  paddle::framework::InitDevices();
-  std::cout << "main" << std::endl;
-  int64_t batch_size = std::stoi(argv[1]);
-  paddle::framework::InitDevices();
-  auto place = paddle::platform::CUDAPlace(0);
-  auto test_prog = load_from_file("lm_startup_program");
+TEST(StandaloneExecutor, run) {
+  FLAGS_eager_delete_tensor_gb = 0.1;
+  int64_t batch_size = 20;
 
+  auto place = platform::CUDAPlace(0);
+  auto test_prog = load_from_file("lm_startup_program");
   auto main_prog = load_from_file("lm_main_program");
 
   auto& global_block = main_prog.Block(0);
@@ -101,12 +139,13 @@ int main(int argc, char* argv[]) {
   shape3[0] = batch_size;
   op3->SetAttr("shape", shape3);
 
-  paddle::framework::Scope scope;
-  paddle::framework::StandaloneExecutor exec(place, test_prog, main_prog,
-                                             &scope);
-
+  Scope scope;
+  StandaloneExecutor exec(place, test_prog, main_prog, &scope);
+  exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
+
   // ProfilerStart("new_executor.prof");
+
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
@@ -114,11 +153,15 @@ int main(int argc, char* argv[]) {
 
     exec.Run({}, {}, {});
   }
+
   // ProfilerStop();
+
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
   std::cout << "time cost " << diff.count() << std::endl;
-
-  return 1;
+  // ASSERT_LT(diff.count(), 30);
 }
+
+}  // namespace framework
+}  // namespace paddle

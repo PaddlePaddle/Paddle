@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -26,53 +30,13 @@ class SGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
-                      platform::errors::NotFound(
-                          "Input(Param) of SGDOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Grad"), true,
-        platform::errors::NotFound("Input(Grad) of SGDOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
-                      platform::errors::NotFound(
-                          "Input(LearningRate) of SGDOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
-                      platform::errors::NotFound(
-                          "Output(ParamOut) of SGDOp should not be null."));
-
-    auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
-                      platform::errors::NotFound(
-                          "Maybe the Input variable LearningRate has not "
-                          "been initialized. You may need to confirm "
-                          "if you put exe.run(startup_program) "
-                          "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      platform::errors::InvalidArgument(
-                          "Learning rate should have 1 element. But received "
-                          "LearningRate dims [%s]",
-                          framework::product(lr_dims)));
-    auto param_dim = ctx->GetInputDim("Param");
-    if (ctx->GetInputsVarType("Grad")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(
-          param_dim, ctx->GetInputDim("Grad"),
-          platform::errors::InvalidArgument(
-              "SGD Operator's input Param and Grad dimensions do not match. "
-              "The Param %s shape is [%s], but the Grad %s shape is [%s].",
-              ctx->Inputs("Param")[0], param_dim, ctx->Inputs("Grad")[0],
-              ctx->GetInputDim("Grad")));
-    }
-    ctx->SetOutputDim("ParamOut", param_dim);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       const auto *param_var = ctx.InputVar("Param");
       const auto *grad_var = ctx.InputVar("Grad");
@@ -80,7 +44,7 @@ class SGDOp : public framework::OperatorWithKernel {
       // supported cases
       bool dense_param_sparse_grad =
           param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<framework::SelectedRows>();
+          grad_var->IsType<phi::SelectedRows>();
       bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
                                   grad_var->IsType<framework::LoDTensor>();
 
@@ -97,8 +61,9 @@ class SGDOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
@@ -126,13 +91,24 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
+
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
 
 SGD operator
@@ -149,13 +125,10 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(sgd, SGDInferShapeFunctor,
+                            PD_INFER_META(phi::SgdInferMeta));
 REGISTER_OPERATOR(
     sgd, ops::SGDOp, ops::SGDOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SGDOpInferVarType, SGDInferShapeFunctor);

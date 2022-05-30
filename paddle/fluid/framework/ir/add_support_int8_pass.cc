@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,7 @@ namespace framework {
 namespace ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
-#define GET_NODES        \
-  GET_IR_NODE(prev_op);  \
-  GET_IR_NODE(prev_out); \
-  GET_IR_NODE(quant_op); \
-  GET_IR_NODE(quant_out);
+#define GET_NODES GET_IR_NODE(quant_op);
 
 void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "add_support_int8";
@@ -37,10 +33,57 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_NODES;
-    if (prev_op->Op()->HasAttr("out_threshold") &&
-        quant_op->Op()->HasAttr("out_threshold")) {
-      quant_op->Op()->SetAttr("support_int8", true);
+
+    bool inscale_flag = false;
+    bool outscale_flag = false;
+    auto* quanted_op_desc = quant_op->Op();
+    // If inputs'tensors have the inputs_scale, then save it's index in
+    // input_quant_tensor_index
+    // OP'Attr hasn't std::vector<std::pair< >>. To do: Support multi-tensor
+    // scale for one input
+    for (size_t i = 0; i < quanted_op_desc->InputNames().size(); i++) {
+      if (quanted_op_desc->Input(quanted_op_desc->InputNames()[i]).size() > 0 &&
+          quanted_op_desc->HasAttr(
+              "Input_scale_" +
+              quanted_op_desc->Input(quanted_op_desc->InputNames()[i])[0])) {
+        inscale_flag = true;
+        quanted_op_desc->SetAttr(
+            quanted_op_desc->InputNames()[i],
+            quanted_op_desc->GetAttr(
+                "Input_scale_" +
+                quanted_op_desc->Input(quanted_op_desc->InputNames()[i])[0]));
+      }
     }
+
+    // If outputs'tensors have the outputs_scale, then save it's index in
+    // output_quant_tensor_index
+    // OP'Attr hasn't std::vector<std::pair< >>. To do: Support multi-tensor
+    // scale for one output
+    for (auto out_node : quant_op->outputs) {
+      for (auto out_op_node : out_node->outputs) {
+        for (auto name : out_op_node->Op()->InputNames()) {
+          for (auto input_name : out_op_node->Op()->Input(name)) {
+            if (out_op_node->Op()->HasAttr("Input_scale_" + input_name)) {
+              for (size_t i = 0; i < quanted_op_desc->OutputNames().size();
+                   i++) {
+                if (quanted_op_desc->Output(quanted_op_desc->OutputNames()[i])
+                            .size() > 0 &&
+                    input_name ==
+                        quanted_op_desc->Output(
+                            quanted_op_desc->OutputNames()[i])[0]) {
+                  outscale_flag = true;
+                  quanted_op_desc->SetAttr(
+                      quanted_op_desc->OutputNames()[i],
+                      out_op_node->Op()->GetAttr("Input_scale_" + input_name));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    quanted_op_desc->SetAttr("support_int8", inscale_flag && outscale_flag);
+    quanted_op_desc->Flush();
     found_count++;
   };
   gpd(graph, handler);

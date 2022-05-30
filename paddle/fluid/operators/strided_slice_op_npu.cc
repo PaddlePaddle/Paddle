@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/strided_slice_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/fluid/operators/slice_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -112,16 +112,16 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
 
     // out dims calculation
     std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
-    StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                        decrease_axis, out_dims_vector.data(), axes.size(),
-                        false);
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    phi::funcs::StridedSliceOutDims(starts, ends, strides, axes, infer_flags,
+                                    in_dims, decrease_axis,
+                                    out_dims_vector.data(), axes.size(), false);
+    framework::DDim out_dims(phi::make_ddim(out_dims_vector));
 
     // check whether need to reverse (false: stride > 0; true: stride < 0)
     std::vector<int> reverse_vector(starts.size(), 0);
-    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), in_dims, infer_flags,
-                        decrease_axis, starts.size());
+    phi::funcs::StridedSliceFunctor(starts.data(), ends.data(), strides.data(),
+                                    axes.data(), reverse_vector.data(), in_dims,
+                                    infer_flags, decrease_axis, starts.size());
 
     // construct the starts_indices, ends_indices and strides_indices tensor for
     // calling StridedSlice op
@@ -145,12 +145,12 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     ends_indices_tensor.mutable_data<int64_t>({D}, place);
     strides_indices_tensor.mutable_data<int64_t>({D}, place);
 
-    TensorFromVector(starts_indices_vector, ctx.device_context(),
-                     &starts_indices_tensor);
-    TensorFromVector(ends_indices_vector, ctx.device_context(),
-                     &ends_indices_tensor);
-    TensorFromVector(strides_indices_vector, ctx.device_context(),
-                     &strides_indices_tensor);
+    paddle::framework::TensorFromVector(
+        starts_indices_vector, ctx.device_context(), &starts_indices_tensor);
+    paddle::framework::TensorFromVector(
+        ends_indices_vector, ctx.device_context(), &ends_indices_tensor);
+    paddle::framework::TensorFromVector(
+        strides_indices_vector, ctx.device_context(), &strides_indices_tensor);
 
     auto out_dims_origin = out_dims;
     if (decrease_axis.size() > 0) {
@@ -172,7 +172,7 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
       if (new_out_shape.size() == 0) {
         new_out_shape.push_back(1);
       }
-      out_dims_origin = framework::make_ddim(new_out_shape);
+      out_dims_origin = phi::make_ddim(new_out_shape);
     }
 
     bool need_reverse = false;
@@ -199,9 +199,9 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     if (need_reverse) {
       Tensor out_tmp;
       out_tmp.mutable_data<T>(out_dims, place);
-      TensorCopy(*out, place,
-                 ctx.template device_context<platform::DeviceContext>(),
-                 &out_tmp);
+      paddle::framework::TensorCopy(
+          *out, place, ctx.template device_context<platform::DeviceContext>(),
+          &out_tmp);
 
       Tensor reverse_axis;
       std::vector<int> reverse_axis_vector;
@@ -212,8 +212,8 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
       }
       reverse_axis.mutable_data<int>(
           {static_cast<int>(reverse_axis_vector.size())}, place);
-      TensorFromVector(reverse_axis_vector, ctx.device_context(),
-                       &reverse_axis);
+      paddle::framework::TensorFromVector(reverse_axis_vector,
+                                          ctx.device_context(), &reverse_axis);
 
       const auto& runner_reverse =
           NpuOpRunner("ReverseV2", {out_tmp, reverse_axis}, {*out});
@@ -317,14 +317,15 @@ class StridedSliceGradNPUKernel : public framework::OpKernel<T> {
     }
 
     std::vector<int64_t> out_dims_vector(input_dims.size(), -1);
-    StridedSliceOutDims(starts, ends, strides, axes, infer_flags, input_dims,
-                        decrease_axis, out_dims_vector.data(), axes.size(),
-                        false);
+    phi::funcs::StridedSliceOutDims(starts, ends, strides, axes, infer_flags,
+                                    input_dims, decrease_axis,
+                                    out_dims_vector.data(), axes.size(), false);
 
     std::vector<int> reverse_vector(starts.size(), 0);
-    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), input_dims, infer_flags,
-                        decrease_axis, starts.size());
+    phi::funcs::StridedSliceFunctor(starts.data(), ends.data(), strides.data(),
+                                    axes.data(), reverse_vector.data(),
+                                    input_dims, infer_flags, decrease_axis,
+                                    starts.size());
 
     std::vector<int64_t> starts_indices_vector(D, 0);
     std::vector<int64_t> ends_indices_vector(out_dims_vector.begin(),
@@ -346,16 +347,20 @@ class StridedSliceGradNPUKernel : public framework::OpKernel<T> {
     ends_indices_tensor.mutable_data<int64_t>({D}, place);
     strides_indices_tensor.mutable_data<int64_t>({D}, place);
 
-    TensorFromVector(starts_indices_vector, dev_ctx, &starts_indices_tensor);
-    TensorFromVector(ends_indices_vector, dev_ctx, &ends_indices_tensor);
-    TensorFromVector(strides_indices_vector, dev_ctx, &strides_indices_tensor);
+    paddle::framework::TensorFromVector(starts_indices_vector, dev_ctx,
+                                        &starts_indices_tensor);
+    paddle::framework::TensorFromVector(ends_indices_vector, dev_ctx,
+                                        &ends_indices_tensor);
+    paddle::framework::TensorFromVector(strides_indices_vector, dev_ctx,
+                                        &strides_indices_tensor);
 
     std::vector<int64_t> input_dims_vector;
     for (int i = 0; i < input_dims.size(); i++) {
       input_dims_vector.push_back(input_dims[i]);
     }
     Tensor input_dims_tensor;
-    TensorFromVector(input_dims_vector, dev_ctx, &input_dims_tensor);
+    paddle::framework::TensorFromVector(input_dims_vector, dev_ctx,
+                                        &input_dims_tensor);
 
     bool need_reverse = false;
     for (size_t axis = 0; axis < axes.size(); axis++) {
@@ -382,7 +387,8 @@ class StridedSliceGradNPUKernel : public framework::OpKernel<T> {
       }
       reverse_axis.mutable_data<int>(
           {static_cast<int>(reverse_axis_vector.size())}, place);
-      TensorFromVector(reverse_axis_vector, dev_ctx, &reverse_axis);
+      paddle::framework::TensorFromVector(reverse_axis_vector, dev_ctx,
+                                          &reverse_axis);
 
       Tensor dout_tmp;
       dout_tmp.mutable_data<T>(dout->dims(), place);

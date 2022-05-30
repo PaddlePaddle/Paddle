@@ -26,6 +26,7 @@ enum ApiType {
   NCCL = 5;
   CUFFT = 6;
   CU = 7;
+  CUSPARSE = 8;
 }
 
 message MessageDesc {

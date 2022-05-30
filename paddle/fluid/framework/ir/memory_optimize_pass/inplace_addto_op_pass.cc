@@ -178,9 +178,11 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     auto *out_generated_op = dynamic_cast<details::ComputationOpHandle *>(
         out_var_ptr->GeneratedOp());
 
-    // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
+    // FIXME(zengjinle): the "custom_fused_dense_grad" is only used for
+    // MLPerf temporarily. Replace it with the formal op type in the future.
     if (right_generated_op->Name() != "conv2d_grad" &&
-        right_generated_op->Name() != "resnet_unit_grad") {
+        right_generated_op->Name() != "resnet_unit_grad" &&
+        right_generated_op->Name() != "custom_fused_dense_grad") {
       continue;
     }
 
@@ -277,7 +279,7 @@ static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
   grad_add_op_desc->SetInput("X", {in_var_1->Name()});
   grad_add_op_desc->SetOutput("Out", {out_var->Name()});
   grad_add_op_desc->SetOutput("XOut", {in_var_1->Name()});
-  grad_add_op_desc->SetAttr("share_dims", std::vector<bool>(1, true));
+  grad_add_op_desc->SetAttr("share_dims_and_dtype", std::vector<bool>(1, true));
 
   // Add share_buffer op between in_var_0 and in_var_1
   OpDesc share_buffer_op;
@@ -285,7 +287,7 @@ static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
   share_buffer_op.SetInput("X", {in_var_0->Name()});
   share_buffer_op.SetOutput("Out", {in_var_1->Name()});
   share_buffer_op.SetOutput("XOut", {in_var_0->Name()});
-  share_buffer_op.SetAttr("share_dims", std::vector<bool>(1, false));
+  share_buffer_op.SetAttr("share_dims_and_dtype", std::vector<bool>(1, false));
 
   auto *new_share_buffer_op = graph->CreateOpNode(&share_buffer_op);
   new_share_buffer_op->inputs.push_back(in_var_0);

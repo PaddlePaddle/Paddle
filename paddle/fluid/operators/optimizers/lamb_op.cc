@@ -64,31 +64,31 @@ class LambOp : public framework::OperatorWithKernel {
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(
-        framework::product(lr_dims), 0,
+        phi::product(lr_dims), 0,
         platform::errors::InvalidArgument(
             "The number of LearningRate shall not be 0, but received %d. Maybe "
             "the Input variable LearningRate has not "
             "been initialized. You may need to confirm "
             "if you put exe.run(startup_program) "
             "after optimizer.minimize function.",
-            framework::product(lr_dims)));
+            phi::product(lr_dims)));
     PADDLE_ENFORCE_EQ(
-        framework::product(lr_dims), 1,
+        phi::product(lr_dims), 1,
         platform::errors::InvalidArgument(
             "Learning rate should have 1 dimension, but received %d.",
-            framework::product(lr_dims)));
+            phi::product(lr_dims)));
     auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-    PADDLE_ENFORCE_GE(framework::product(beta1_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims), 1,
                       platform::errors::InvalidArgument(
                           "The size of Beta1 power accumulator should be "
                           "greater than 0, but received %d.",
-                          framework::product(beta1_pow_dims)));
+                          phi::product(beta1_pow_dims)));
     auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-    PADDLE_ENFORCE_GE(framework::product(beta2_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims), 1,
                       platform::errors::InvalidArgument(
                           "The size of Beta2 power accumulator should be "
                           "greater than 0, but received %d.",
-                          framework::product(beta2_pow_dims)));
+                          phi::product(beta2_pow_dims)));
 
     auto param_dims = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
@@ -152,6 +152,14 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Moment2", "(Tensor) Input second moment.");
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
+    AddInput("MasterParam",
+             "(LoDTensor, default LoDTensor<float>) "
+             "Input master parameter that has to be updated.")
+        .AsDispensable();
+    AddInput(
+        "SkipUpdate",
+        "(Tensor) Input tensor to determine whether to update the parameter.")
+        .AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter.");
     AddOutput("Moment1Out", "(Tensor) Output first moment.");
@@ -159,6 +167,8 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator")
         .AsDispensable();
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator")
+        .AsDispensable();
+    AddOutput("MasterParamOut", "(Tensor) Output master parameter.")
         .AsDispensable();
     AddAttr<float>("weight_decay", "(float) Weight decay rate.");
     AddAttr<float>("beta1",
@@ -173,6 +183,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-6) "
                    "Constant for numerical stability.")
         .SetDefault(1.0e-6f);
+    AddAttr<bool>(
+        "multi_precision",
+        "(bool, default false) Whether to enable multi-precision mode.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.

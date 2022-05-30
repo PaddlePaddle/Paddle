@@ -114,6 +114,24 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     endif()
 
+    if (WITH_ONNXRUNTIME)
+        set(dst_dir "${DST}/third_party/install/onnxruntime")
+        copy(${TARGET}
+                SRCS ${ONNXRUNTIME_INC_DIR} ${ONNXRUNTIME_LIB_DIR}
+                DSTS ${dst_dir} ${dst_dir})
+
+        set(dst_dir "${DST}/third_party/install/paddle2onnx")
+        if(WIN32)
+            copy(${TARGET}
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_SHARED_LIB} ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include ${dst_dir}/lib ${dst_dir}/lib)
+        else()
+            copy(${TARGET}
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include ${dst_dir}/lib)
+        endif()
+    endif()
+
     set(dst_dir "${DST}/third_party/install/gflags")
     copy(${TARGET}
             SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
@@ -189,6 +207,7 @@ copy(inference_lib_dist
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+
 if(WIN32)
     if(WITH_STATIC_LIB)
         set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
@@ -216,18 +235,46 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
+# copy api headers for phi & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/include/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/all.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+
+# the header file of phi is copied to the experimental directory,
+# the include path of phi needs to be changed to adapt to inference api path
+add_custom_command(TARGET inference_lib_dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/phi_header.cmake"
+        COMMENT "Change phi header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING
@@ -291,7 +338,7 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto)
+set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)
@@ -304,7 +351,7 @@ copy(fluid_lib_dist
 
 set(module "string")
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/*.h ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/tinyformat/*.h 
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
         )
 
@@ -360,7 +407,8 @@ function(version version_file)
             "WITH_GPU: ${WITH_GPU}\n"
             "WITH_ROCM: ${WITH_ROCM}\n"
             "WITH_ASCEND_CL: ${WITH_ASCEND_CL}\n"
-            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n")
+            "WITH_ASCEND_CXX11: ${WITH_ASCEND_CXX11}\n"
+            "WITH_IPU: ${WITH_IPU}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
@@ -368,13 +416,17 @@ function(version version_file)
     endif()
     if(WITH_ROCM)
         file(APPEND ${version_file}
-                "HIP version: ${HIP_VERSION}\n"
+                "HIP version: v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     if(WITH_ASCEND_CL)
         file(APPEND ${version_file}
                 "Ascend Toolkit version: ${ASCEND_TOOLKIT_VERSION}\n"
                 "Ascend Driver version: ${ASCEND_DRIVER_VERSION}\n")
+    endif()
+    if(WITH_IPU)
+        file(APPEND ${version_file}
+                "PopART version: ${POPART_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

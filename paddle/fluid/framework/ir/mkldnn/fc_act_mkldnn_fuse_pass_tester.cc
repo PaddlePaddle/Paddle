@@ -201,6 +201,36 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
   }
 }
 
+TEST(FuseFCActOneDNNPass, FuseWithMish) {
+  auto prog =
+      test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
+  test::CreateOp(&prog, "fc",
+                 {
+                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                 },
+                 {{"Out", "fc_y"}});
+  test::CreateOp(&prog, "mish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+
+  Graph graph(prog);
+  constexpr int removed_nodes_count = 2;
+
+  EXPECT_TRUE(test::RunPassAndAssert(&graph, "fc_act_mkldnn_fuse_pass", "x",
+                                     "act_y", removed_nodes_count));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"mish", 0}}));
+
+  for (const auto* node : graph.Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == "fc") {
+      const auto* op = node->Op();
+      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("activation_type"));
+      auto act_type =
+          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+      EXPECT_EQ(act_type.compare("mish"), 0);
+    }
+  }
+}
+
 TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
   auto prog =
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});

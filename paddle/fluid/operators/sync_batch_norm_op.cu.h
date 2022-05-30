@@ -21,19 +21,19 @@ limitations under the License. */
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
-#include "paddle/fluid/platform/miopen_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/norm_utils.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -190,9 +190,10 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *comm = dev_ctx.nccl_comm();
     if (comm) {
-      int dtype = platform::ToNCCLDataType(mean_out->type());
+      int dtype = platform::ToNCCLDataType(
+          framework::TransToProtoVarType(mean_out->dtype()));
       // In-place operation
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
     }
@@ -464,9 +465,10 @@ void SyncBatchNormGradFunctor(
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto *comm = dev_ctx.nccl_comm();
   if (comm) {
-    int dtype = platform::ToNCCLDataType(scale->type());
+    int dtype = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(scale->dtype()));
     // In-place operation
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
   }

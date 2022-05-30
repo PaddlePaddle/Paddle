@@ -43,7 +43,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   get_data_from_feeder=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  use_ir_memory_optimize=True,
+                                  use_ir_memory_optimize=False,
                                   enable_inplace=True,
                                   fuse_elewise_add_act_ops=False,
                                   fuse_all_optimizer_ops=False,

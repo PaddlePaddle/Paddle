@@ -167,6 +167,13 @@ if(WIN32 OR APPLE)
         SET(WITH_PSLIB OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
     endif()
 
+    if(WITH_ARM_BRPC)
+        MESSAGE(WARNING
+            "Windows or Mac is not supported with ARM_BRPC in Paddle yet."
+            "Force WITH_ARM_BRPC=OFF")
+        SET(WITH_ARM_BRPC OFF CACHE STRING "Disable ARM_BRPC package in Windows and MacOS" FORCE)
+    endif()
+
     if(WITH_LIBMCT)
         MESSAGE(WARNING
             "Windows or Mac is not supported with LIBMCT in Paddle yet."
@@ -250,6 +257,12 @@ IF(WITH_TESTING OR WITH_DISTRIBUTE)
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
 
+if(WITH_ONNXRUNTIME)
+    include(external/onnxruntime)            # download, build, install onnxruntime、paddle2onnx
+    include(external/paddle2onnx)          
+    list(APPEND third_party_deps extern_onnxruntime extern_paddle2onnx)
+endif()
+
 if(WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         include(external/cub)       # download cub
@@ -278,6 +291,11 @@ if(WITH_XPU)
     list(APPEND third_party_deps extern_xpu)
 endif(WITH_XPU)
 
+if(WITH_MLU)
+    include(external/concurrentqueue) # download, build, install concurrentqueue
+    list(APPEND third_party_deps extern_concurrentqueue)
+endif(WITH_MLU)
+
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
     list(APPEND third_party_deps extern_pslib)
@@ -294,8 +312,10 @@ if(WITH_PSLIB)
 
         include(external/leveldb)
         list(APPEND third_party_deps extern_leveldb)
-        include(external/brpc)
-        list(APPEND third_party_deps extern_brpc)
+        if(NOT WITH_HETERPS)
+            include(external/brpc)
+            list(APPEND third_party_deps extern_brpc)
+        endif()
     endif()
 endif(WITH_PSLIB)
 
@@ -325,17 +345,20 @@ if (WITH_PSCORE)
 
     include(external/leveldb)
     list(APPEND third_party_deps extern_leveldb)
-
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
+    
+    if (WITH_ARM_BRPC)
+        include(external/arm_brpc)
+        list(APPEND third_party_deps extern_arm_brpc)
+    else()
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
+    endif()
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
 
-    if (WITH_HETERPS)
-        include(external/rocksdb)     # download, build, install libmct
-        list(APPEND third_party_deps extern_rocksdb)
-    endif()
+    include(external/rocksdb)     # download, build, install rocksdb
+    list(APPEND third_party_deps extern_rocksdb)
 endif()
 
 if(WITH_XBYAK)
@@ -390,5 +413,15 @@ if (WIN32)
     include(external/dirent)
     list(APPEND third_party_deps extern_dirent)
 endif (WIN32)
+
+if (WITH_INFRT)
+    include(external/llvm)
+    list(APPEND third_party_deps ${llvm_libs})
+endif()
+
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
