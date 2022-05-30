@@ -26,7 +26,7 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
-  paddle::framework::TensorCopy(x, x.place(), dev_ctx, out);
+  paddle::framework::TensorCopy(x, x.place(), out);
 }
 
 template <typename Context>
