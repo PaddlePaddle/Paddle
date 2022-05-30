@@ -1350,7 +1350,8 @@ void embedding_grad_impl(const Tensor& x,
     } else {
       auto* kernel_out = SetKernelOutput(kernel_key.backend(), weight_grad);
       phi::MetaTensor meta_out(kernel_out);
-      phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
+      meta_out.set_dims(input_weight->GetCompleteDims());
+      meta_out.set_dtype(input_weight->dtype());
       using kernel_signature = void (*)(const platform::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
