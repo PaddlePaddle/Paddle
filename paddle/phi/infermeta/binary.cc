@@ -886,13 +886,13 @@ void DropoutInferMeta(const MetaTensor& x,
 }
 
 void DropoutNdInferMeta(const MetaTensor& x,
-                        paddle::optional<const MetaTensor&> seed_tensor,
+                        const MetaTensor& seed_tensor,
                         float p,
                         bool is_test,
                         const std::string& mode,
                         int seed,
                         bool fix_seed,
-                        const IntArray& axes,
+                        const std::vector<int>& axes,
                         MetaTensor* out,
                         MetaTensor* mask) {
   auto x_dims = x.dims();
@@ -901,13 +901,14 @@ void DropoutNdInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   if (mask != nullptr) {
-    std::vector<int32_t> tmp(x.dims().size(), 1);
+    std::vector<int64_t> mask_dims(x.dims().size(), 1);
 
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
-                  [&tmp, &x_dims](const int64_t& t) { tmp[t] = x_dims[t]; });
+    std::for_each(
+        axes.begin(), axes.end(), [&mask_dims, &x_dims](const int64_t& t) {
+          mask_dims[t] = x_dims[t];
+        });
 
-    mask->set_dims(make_ddim(tmp));
+    mask->set_dims(make_ddim(mask_dims));
     mask->set_dtype(DataType::UINT8);
   }
 }

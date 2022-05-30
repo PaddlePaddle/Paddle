@@ -128,8 +128,7 @@ class FMHARef {
       auto functor = phi::funcs::ScaleFunctor<T>(alpha);
       std::vector<const framework::Tensor*> ins = {&q_tensor};
       std::vector<framework::Tensor*> outs = {&q_tensor};
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx_, ins,
-                                                                &outs, functor);
+      phi::funcs::ElementwiseKernel<T>(dev_ctx_, ins, &outs, functor);
     }
 
     // q*k^t, batched_gemm

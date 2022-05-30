@@ -97,13 +97,13 @@ void DropoutRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     paddle::optional<const DenseTensor&> seed_tensor,
+                     const paddle::optional<DenseTensor>& seed_tensor,
                      float p,
                      bool is_test,
                      const std::string& mode,
                      int seed,
                      bool fix_seed,
-                     const IntArray& axis,
+                     const std::vector<int>& axes,
                      DenseTensor* out,
                      DenseTensor* mask) {
   auto* y = out;

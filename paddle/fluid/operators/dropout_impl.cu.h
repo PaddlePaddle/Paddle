@@ -32,8 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
@@ -409,7 +409,7 @@ void DropoutNdFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 
     std::vector<const framework::Tensor*> ins = {mask};
     std::vector<framework::Tensor*> outs = {&broadcast_mask};
-    phi::funcs::BroadcastKernel<ElementwiseType::kUnary, uint8_t, uint8_t>(
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary, uint8_t, uint8_t>(
         dev_ctx, ins, &outs, -1, kps::IdentityFunctor<uint8_t>());
 
     std::vector<const framework::Tensor*> ins_ = {&x, &broadcast_mask};
@@ -519,7 +519,7 @@ void DropoutNdGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     std::vector<const framework::Tensor*> ins = {&grad_y};
     std::vector<framework::Tensor*> outs = {grad_x};
     auto functor = phi::funcs::ScaleFunctor<T>(factor);
-    phi::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   } else {
     framework::Tensor broadcast_mask;
     broadcast_mask.Resize(grad_y.dims());
@@ -527,7 +527,7 @@ void DropoutNdGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
 
     std::vector<const framework::Tensor*> ins_ = {&mask};
     std::vector<framework::Tensor*> outs_ = {&broadcast_mask};
-    phi::funcs::BroadcastKernel<ElementwiseType::kUnary, uint8_t, uint8_t>(
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary, uint8_t, uint8_t>(
         dev_ctx, ins_, &outs_, -1, kps::IdentityFunctor<uint8_t>());
 
     std::vector<const framework::Tensor*> ins = {&grad_y, &broadcast_mask};
