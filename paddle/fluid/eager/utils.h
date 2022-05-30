@@ -125,7 +125,7 @@ class EagerUtils {
   static AutogradMeta* nullable_autograd_meta(
       const paddle::experimental::Tensor& target);
   static AutogradMeta* nullable_autograd_meta(
-      paddle::optional<const paddle::experimental::Tensor&> target);
+      const paddle::optional<paddle::experimental::Tensor>& target);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::experimental::Tensor>& targets);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
@@ -172,6 +172,9 @@ class EagerUtils {
   static void HandleViewBetweenInputAndOutput(
       const std::shared_ptr<EagerVariable>& input_var,
       const std::shared_ptr<EagerVariable>& view_output_var);
+  static void HandleViewBetweenInputAndOutput(
+      const paddle::experimental::Tensor& input_tensor,
+      paddle::experimental::Tensor* view_output_tensor);
 
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(TensorWrapper* tw);

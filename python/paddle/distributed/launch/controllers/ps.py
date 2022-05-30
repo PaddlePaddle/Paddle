@@ -171,6 +171,7 @@ class PSController(Controller):
 
         for i in range(server_num):
             e = {
+                "PADDLE_NNODES": "{}".format(self.job.replicas),
                 "PADDLE_PSERVERS_IP_PORT_LIST": ",".join(server_endpoints),
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
                 "PADDLE_PORT":
@@ -186,6 +187,7 @@ class PSController(Controller):
 
         for i in range(trainer_num):
             e = {
+                "PADDLE_NNODES": "{}".format(self.job.replicas),
                 "PADDLE_PSERVERS_IP_PORT_LIST": ",".join(server_endpoints),
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
                 "PADDLE_PORT":

@@ -73,7 +73,7 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 }
 
 AutogradMeta* EagerUtils::nullable_autograd_meta(
-    paddle::optional<const paddle::experimental::Tensor&> target) {
+    const paddle::optional<paddle::experimental::Tensor>& target) {
   if (target.get_ptr() != nullptr) {
     return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
   }
@@ -267,6 +267,33 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
 
     VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
             << ") and Input Var(" << input_var->name()
+            << "), share allocation and inplace version.";
+  }
+}
+
+void EagerUtils::HandleViewBetweenInputAndOutput(
+    const paddle::experimental::Tensor& input_tensor,
+    paddle::experimental::Tensor* view_output_tensor) {
+  PADDLE_ENFORCE_EQ(
+      input_tensor.initialized(), true,
+      paddle::platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized!", input_tensor.name()));
+
+  if (input_tensor.is_dense_tensor()) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl());
+    if (view_output_tensor->impl() == nullptr) {
+      view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto view_output_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
+    view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_dense_tensor->ShareInplaceVersionCounterWith(
+        *input_dense_tensor);
+
+    VLOG(3) << "Perform View between Output Tensor("
+            << view_output_tensor->name() << ") and Input Tensor("
+            << input_tensor.name()
             << "), share allocation and inplace version.";
   }
 }

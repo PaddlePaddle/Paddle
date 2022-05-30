@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace phi {
 namespace sparse {
 

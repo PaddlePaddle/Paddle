@@ -1782,6 +1782,7 @@ USE_TRT_CONVERTER(gather);
 USE_TRT_CONVERTER(anchor_generator);
 USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(yolo_box_head);
+USE_TRT_CONVERTER(arg_max);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);

@@ -1,5 +1,5 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,21 +20,20 @@ import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
 
 
-class TestASPHelper(unittest.TestCase):
+class TestASPStaticOptimize(unittest.TestCase):
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
 
         def build_model():
             img = fluid.data(
-                name='img', shape=[None, 3, 32, 32], dtype='float32')
+                name='img', shape=[None, 3, 24, 24], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = fluid.layers.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu")
@@ -87,7 +86,7 @@ class TestASPHelper(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.set_excluded_layers(program, ['fc_1', 'conv2d_0'])
+        paddle.incubate.asp.set_excluded_layers(['fc_1', 'conv2d_0'], program)
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False
@@ -96,7 +95,7 @@ class TestASPHelper(unittest.TestCase):
             self.assertTrue(
                 ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.reset_excluded_layers(program)
+        paddle.incubate.asp.reset_excluded_layers(program)
         ref = [
             False, False, True, False, True, False, True, False, True, False,
             True, False
@@ -109,7 +108,7 @@ class TestASPHelper(unittest.TestCase):
         param_names = self.__get_param_names(self.main_program.global_block()
                                              .all_parameters())
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.optimizer = sparsity.decorate(self.optimizer)
+            self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
         param_names_after_minimize = self.__get_param_names(
             self.main_program.global_block().all_parameters())
@@ -119,7 +118,7 @@ class TestASPHelper(unittest.TestCase):
 
     def test_asp_training(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.optimizer = sparsity.decorate(self.optimizer)
+            self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
 
         place = paddle.CPUPlace()
@@ -129,10 +128,10 @@ class TestASPHelper(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
-        sparsity.prune_model(self.main_program)
+        paddle.incubate.asp.prune_model(self.main_program)
 
-        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-            10, size=(64, 1)))
+        data = (np.random.randn(32, 3, 24, 24), np.random.randint(
+            10, size=(32, 1)))
         exe.run(self.main_program, feed=feeder.feed([data]))
 
         for param in self.main_program.global_block().all_parameters():
@@ -149,7 +148,7 @@ class TestASPHelper(unittest.TestCase):
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.optimizer = fluid.contrib.mixed_precision.decorator.decorate(
                     self.optimizer)
-                self.optimizer = sparsity.decorate(self.optimizer)
+                self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 
             exe = fluid.Executor(place)
@@ -157,10 +156,10 @@ class TestASPHelper(unittest.TestCase):
                 feed_list=[self.img, self.label], place=place)
 
             exe.run(self.startup_program)
-            sparsity.prune_model(self.main_program)
+            paddle.incubate.asp.prune_model(self.main_program)
 
-            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                10, size=(64, 1)))
+            data = (np.random.randn(32, 3, 24, 24), np.random.randint(
+                10, size=(32, 1)))
             exe.run(self.main_program, feed=feeder.feed([data]))
 
             for param in self.main_program.global_block().all_parameters():

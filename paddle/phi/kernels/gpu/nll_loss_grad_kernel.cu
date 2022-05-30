@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void NllLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& labels,
-                       paddle::optional<const DenseTensor&> weight,
+                       const paddle::optional<DenseTensor>& weight,
                        const DenseTensor& total_weight,
                        const DenseTensor& dout,
                        int64_t ignore_index,
