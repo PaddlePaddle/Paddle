@@ -316,7 +316,9 @@ class AllocatorFacadePrivate {
       WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
     }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     WrapStatAllocator();
+#endif
 
     CheckAllocThreadSafe();
 
