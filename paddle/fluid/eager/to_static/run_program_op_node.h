@@ -379,8 +379,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
-    egr::EagerUtils::FillZeroForEmptyGradInputs(&hooked_grads[0],
-                                                this->InputMeta()[0]);
+    egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
+                                                       this->InputMeta()[0]);
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
