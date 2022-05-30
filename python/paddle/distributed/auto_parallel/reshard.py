@@ -542,6 +542,8 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
+                if block.vars[var].is_data:
+                    continue
                 block._remove_var(var)
 
     @staticmethod

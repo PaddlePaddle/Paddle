@@ -55,7 +55,7 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
-            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
+            serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
             # Apply pre optimization passes
@@ -72,8 +72,6 @@ class Parallelizer:
                                      serial_optimizer, dist_params_grads)
             # Do reshard process
             set_grad_var_shape(dist_main_prog, self._dist_context)
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
@@ -89,10 +87,6 @@ class Parallelizer:
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
-            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
-            # Apply pre optimization passes
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()

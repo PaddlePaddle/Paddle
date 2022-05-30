@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
 namespace paddle {
@@ -84,7 +83,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     } else {
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
-          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }

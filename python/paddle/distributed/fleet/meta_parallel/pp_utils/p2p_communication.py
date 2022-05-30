@@ -18,6 +18,7 @@ from ...utils.log_util import logger
 import numpy as np
 from paddle import _C_ops
 import paddle.fluid.core as core
+from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 _hcg = None
 _use_cache = False
@@ -148,9 +149,15 @@ _send_recv_meta = SendRecvMeta()
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
-    tensor_numel = np.prod(tensor.shape)
-    assert tensor_numel != 0, "can't send/recv zero element"
-    return mp_degree > 1 and tensor_numel % mp_degree == 0
+
+    if _in_legacy_dygraph():
+        tensor_numel = np.prod(tensor.shape)
+        assert tensor_numel != 0, "can't send/recv zero element"
+        return mp_degree > 1 and tensor_numel % mp_degree == 0
+    elif in_dygraph_mode():
+        # TODO(shenliang03) support mp+pp optimizer in future. 
+        # (partial_send/partial_recv/partial_allgather_)
+        return False
 
 
 def send_partial(tensor,

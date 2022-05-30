@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"

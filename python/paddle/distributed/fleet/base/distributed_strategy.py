@@ -534,7 +534,7 @@ class DistributedStrategy(object):
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor', 'DownpourCtrAccessor',
             'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
-            'DownpourDoubleUnitAccessor'
+            'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'
         ]
         from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
@@ -616,6 +616,8 @@ class DistributedStrategy(object):
 
             if accessor_class.find("Double") >= 0:
                 table_data.accessor.accessor_class = 'CtrDoubleAccessor'
+            elif accessor_class.find("Dymf") >= 0:
+                table_data.accessor.accessor_class = 'CtrDymfAccessor'
             else:
                 table_data.accessor.accessor_class = 'CtrCommonAccessor'
 

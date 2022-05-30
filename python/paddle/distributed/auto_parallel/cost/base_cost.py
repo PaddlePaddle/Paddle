@@ -412,6 +412,7 @@ class CommContext:
             return
         self.beta = {}
         self.hops = {}
+        assert cluster is not None
         self.cluster = cluster
         # if cluster has no info about those vars, it will be set by default
         self.base_ring = None

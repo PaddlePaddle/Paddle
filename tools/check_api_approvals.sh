@@ -103,11 +103,11 @@ fi
 
 
 if [ -n "${echo_list}" ];then
-  echo "****************"
+  echo "**************************************************************"
   echo "Please find RD for approval first, and then find TPM for approval."
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
-  echo "****************"
+  echo "**************************************************************"
 
   # L40 L48 L62 has fetch the result out, but there are splitted.
   if [ "${api_spec_diff}" != "" -o "${api_doc_spec_diff}" != "" ] ; then

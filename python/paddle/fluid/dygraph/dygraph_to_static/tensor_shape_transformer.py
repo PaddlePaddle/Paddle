@@ -42,7 +42,7 @@ def create_convert_shape_node(var_shape_node,
         if slice_node is not None and slice_is_num(slice_node):
             args.append(ast_to_source_code(slice_node.slice).strip())
 
-        convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({}, in_control_flow={})".format(
+        convert_var_shape_func = "_jst.convert_var_shape({}, in_control_flow={})".format(
             ",".join(args), in_control_flow)
         api_shape_node = gast.parse(convert_var_shape_func).body[0].value
 
@@ -59,14 +59,14 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', globals())".format(
+    eval_exist_func = "_jst.eval_if_exist_else_none('{}', globals())".format(
         api_shape_name)
     args = [attr_shape_name, eval_exist_func]
 
     if slice_node is not None and slice_is_num(slice_node):
         args.append(ast_to_source_code(slice_node.slice).strip())
-    choose_shape_func = "paddle.jit.dy2static.choose_shape_attr_or_api({})".format(
-        ",".join(args))
+    choose_shape_func = "_jst.choose_shape_attr_or_api({})".format(",".join(
+        args))
     choose_shape_node = gast.parse(choose_shape_func).body[0].value
     if slice_node is not None and not slice_is_num(slice_node):
         return gast.Subscript(
@@ -84,7 +84,7 @@ class ShapeAttributeTransformer(gast.NodeTransformer):
     def visit_Attribute(self, node):
         if node.attr == 'shape':
             args = ast_to_source_code(node.value).strip()
-            convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape_simple({})".format(
+            convert_var_shape_func = "_jst.convert_var_shape_simple({})".format(
                 args)
             api_shape_node = gast.parse(convert_var_shape_func).body[0].value
             return api_shape_node

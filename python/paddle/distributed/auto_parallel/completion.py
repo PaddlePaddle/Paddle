@@ -818,7 +818,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -843,10 +843,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops, dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops,
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -983,7 +985,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -1045,11 +1047,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops[:first_backward_op_idx],
-                    dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops[:first_backward_op_idx],
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 if grad_op.type == "concat" and forward_op.type == "split":
@@ -1306,3 +1309,70 @@ class Completer:
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr)
                     continue
+
+    def complete_prim_annotation(self, serial_main_program=None):
+        """
+        fill default data parallel annotation for program with primitive operators.
+
+        Arguments:
+            serial_main_program: partial annotated serial_main_program.
+        Returns:
+            serial_main_program: completed annotated serial_main_program.
+        """
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context.serial_main_program = serial_main_program
+
+        import time
+
+        start_time = time.time()
+        self._dist_context._is_initialized = True
+
+        start_time = time.time()
+        self._dist_context._init_dist_attr_for_program()
+
+        start_time = time.time()
+        self._init_global_mesh_for_program()
+
+        # Do the validation check and amend some completion
+        start_time = time.time()
+        self._dist_context.amend_dist_attr_for_program()
+        self._dist_context.validate_dist_attr_for_program()
+
+    def _init_global_mesh_for_program(self):
+        # Copy the dist tensors and dist ops annotated by users from the default context
+        # global mesh
+        from paddle.distributed.auto_parallel.process_group import get_world_process_group
+        world_ranks = get_world_process_group().ranks
+
+        for block in self._dist_context._serial_main_program.blocks:
+            for tensor in block.vars.values():
+                # Copy the distributed tensors in the default context
+                dist_tensor = self._dist_context.get_dist_tensor_for_program(
+                    tensor)
+                assert dist_tensor is not None
+                dist_tensor.dist_attr.process_mesh = world_ranks
+            for op in block.ops:
+                # Copy the distributed operators in the default context
+                dist_op = self._dist_context.get_dist_op_for_program(op)
+                assert dist_op is not None
+                dist_op.dist_attr.process_mesh = world_ranks
+
+                # Find the most compatible implemenetations from the distributed operator
+                op_dist_impls = find_best_compatible_distributed_operator_impl(
+                    dist_op, fwd=True)
+                if op_dist_impls is not None:
+                    backup_op_dist_attr = copy.deepcopy(dist_op.dist_attr)
+                    for op_dist_impl in op_dist_impls:
+                        dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+                        if op_dist_impl.is_auto_compatible(dist_op):
+                            if op_dist_impl.type == "elementwise":
+                                dist_op.dist_attr.impl_type = "default"
+                            else:
+                                dist_op.dist_attr.impl_type = op_dist_impl.type
+                            # op_dist_attr.impl_type = op_dist_impl.type
+                            dist_op.dist_attr.impl_idx = op_dist_impl.idx
+                            break
+                        else:
+                            dist_op.dist_attr = backup_op_dist_attr

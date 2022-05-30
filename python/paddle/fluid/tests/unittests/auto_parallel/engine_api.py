@@ -128,8 +128,7 @@ def train_semi_auto():
     engine.prepare(optimizer, loss)
     engine.fit(dataset,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               sample_generator=True)
+               steps_per_epoch=batch_num * batch_size)
 
     eval_dataset = MyDataset(batch_size)
     engine.prepare(optimizer, loss, mode='eval')
@@ -172,15 +171,14 @@ def train_full_auto():
         inputs_spec=inputs_spec,
         labels_spec=labels_spec,
         strategy=dist_strategy)
-    # engine.prepare(optimizer, loss)
-    # engine.fit(dataset,
-    #            batch_size=batch_size,
-    #            steps_per_epoch=batch_num * batch_size,
-    #            sample_generator=True)
+    engine.prepare(optimizer, loss)
+    engine.fit(dataset,
+               batch_size=batch_size,
+               steps_per_epoch=batch_num * batch_size)
 
-    eval_dataset = MyDataset(batch_size)
-    engine.prepare(optimizer, loss, mode='eval')
-    engine.evaluate(eval_dataset, batch_size)
+    # eval_dataset = MyDataset(batch_size)
+    # engine.prepare(optimizer, loss, mode='eval')
+    # engine.evaluate(eval_dataset, batch_size)
 
     # test_dataset = MyDataset(batch_size)
     # engine.prepare(mode='predict')

@@ -47,10 +47,8 @@ def relu(x, name=None):
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    if x.is_sparse_coo():
-        return _C_ops.final_state_sparse_coo_relu(x)
-    elif x.is_sparse_csr():
-        return _C_ops.final_state_sparse_csr_relu(x)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_relu(x)
     else:
         raise ValueError(
             "Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor"
@@ -87,10 +85,8 @@ def tanh(x, name=None):
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    if x.is_sparse_coo():
-        return _C_ops.final_state_sparse_coo_tanh(x)
-    elif x.is_sparse_csr():
-        return _C_ops.final_state_sparse_csr_tanh(x)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_tanh(x)
     else:
         raise ValueError(
             "Currently, sparse.tanh only support the input of SparseCooTensor or SparseCsrTensor"
@@ -127,10 +123,8 @@ def sqrt(x, name=None):
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    if x.is_sparse_coo():
-        return _C_ops.final_state_sparse_coo_sqrt(x)
-    elif x.is_sparse_csr():
-        return _C_ops.final_state_sparse_csr_sqrt(x)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_sqrt(x)
     else:
         raise ValueError(
             "Currently, sparse.sqrt only support the input of SparseCooTensor or SparseCsrTensor"
@@ -167,10 +161,8 @@ def sin(x, name=None):
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    if x.is_sparse_coo():
-        return _C_ops.final_state_sparse_coo_sin(x)
-    elif x.is_sparse_csr():
-        return _C_ops.final_state_sparse_csr_sin(x)
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_sin(x)
     else:
         raise ValueError(
             "Currently, sparse.sin only support the input of SparseCooTensor or SparseCsrTensor"
