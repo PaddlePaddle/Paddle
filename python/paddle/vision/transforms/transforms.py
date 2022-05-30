@@ -1042,10 +1042,10 @@ class RandomCrop(BaseTransform):
         size (sequence|int): Desired output size of the crop. If size is an
             int instead of sequence like (h, w), a square crop (size, size) is
             made.
-        padding (int|sequence|optional): Optional padding on each border
+        padding (int|sequence, optional): Optional padding on each border
             of the image. If a sequence of length 4 is provided, it is used to pad left, 
             top, right, bottom borders respectively. Default: None, without padding.
-        pad_if_needed (boolean|optional): It will pad the image if smaller than the
+        pad_if_needed (boolean, optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
         fill (float|tuple, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
