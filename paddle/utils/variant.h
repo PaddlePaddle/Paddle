@@ -3,6 +3,9 @@
 // Modify the following points:
 // 1. modify namespace mpark to namespace paddle
 // 2. add type() member function for variant class
+// 3. remove the visitation implementation under the branhch with
+// MPARK_CPP14_CONSTEXPR defined since lib::cpp14::array could not be converted
+// to std::initializer_list in Paddle's compilation
 
 // MPark.Variant
 //
@@ -2706,6 +2709,7 @@ inline constexpr bool operator!=(monostate, monostate) noexcept {
   return false;
 }
 
+/*
 #ifdef MPARK_CPP14_CONSTEXPR
 namespace detail {
 
@@ -2723,13 +2727,14 @@ inline constexpr bool all(std::initializer_list<bool> bs) {
 template <typename Visitor, typename... Vs>
 inline constexpr decltype(auto) visit(Visitor &&visitor, Vs &&... vs) {
   return (detail::all(
-              lib::array<bool, sizeof...(Vs)>{!vs.valueless_by_exception()...})
+              std::array<bool, sizeof...(Vs)>{!vs.valueless_by_exception()...})
               ? (void)0
               : throw_bad_variant_access()),
          detail::visitation::variant::visit_value(
              lib::forward<Visitor>(visitor), lib::forward<Vs>(vs)...);
 }
 #else
+*/
 namespace detail {
 
 template <std::size_t N>
@@ -2753,12 +2758,12 @@ inline constexpr DECLTYPE_AUTO visit(Visitor &&visitor, Vs &&... vs)
              : throw_bad_variant_access()),
         detail::visitation::variant::visit_value(lib::forward<Visitor>(visitor),
                                                  lib::forward<Vs>(vs)...))
-#endif
+    //#endif
 
-template <typename... Ts>
-inline auto swap(variant<Ts...> &lhs,
-                 variant<Ts...> &rhs) noexcept(noexcept(lhs.swap(rhs)))
-    -> decltype(lhs.swap(rhs)) {
+    template <typename... Ts>
+    inline auto swap(variant<Ts...> &lhs,
+                     variant<Ts...> &rhs) noexcept(noexcept(lhs.swap(rhs)))
+        -> decltype(lhs.swap(rhs)) {
   lhs.swap(rhs);
 }
 

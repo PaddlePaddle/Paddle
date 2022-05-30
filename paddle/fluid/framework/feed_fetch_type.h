@@ -26,7 +26,7 @@ namespace framework {
 using FeedType = paddle::variant<LoDTensor, Strings>;
 using FeedList = std::vector<FeedType>;
 
-using FetchType = paddle::variant<LoDTensor, LoDTensorArray>;
+using FetchType = paddle::variant<LoDTensor, LoDTensorArray, framework::Vocab>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
