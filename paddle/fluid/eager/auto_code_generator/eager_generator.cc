@@ -2150,10 +2150,9 @@ static std::string GenerateSingleOpBase(
       if (!backward_inplace_map.empty() &&
           backward_inplace_map.count(grad_input_name)) {
         process_backward_inplace = true;
-        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE =
-            "auto& %s = hooked_grads[%d][0];";
+        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE = "auto& %s = %s[%d][0];";
         std::string hooked_grads_tensor_str = paddle::string::Sprintf(
-            GRAD_INS_HOOKED_GRAD_TEMPLATE, bwd_inplace_input_name,
+            GRAD_INS_HOOKED_GRAD_TEMPLATE, bwd_inplace_input_name, hooked_grads,
             fwd_output_position);
         const char* GRAD_INS_GRAD_TENSOR_TEMPLATE = "grads[%d][0]";
         std::string grads_tensor_str = paddle::string::Sprintf(
