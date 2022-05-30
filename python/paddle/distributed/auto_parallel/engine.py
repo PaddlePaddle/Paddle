@@ -249,7 +249,7 @@ class Engine:
         # TODO: evaluate after training
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
-            "train model is not ready, please call `engine.prepare(mode='train')` first."
+            "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
 
@@ -273,7 +273,7 @@ class Engine:
                  return_numpy=True):
         self.mode = 'eval'
         assert self.mode in self._dist_main_progs, \
-            "eval model is not ready, please call `engine.prepare(mode='eval')` first."
+            "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
         for step, data in enumerate(eval_dataloader):
@@ -294,7 +294,7 @@ class Engine:
                 return_numpy=True):
         self.mode = 'predict'
         assert self.mode in self._dist_main_progs, \
-            "predict model is not ready, please call `engine.prepare(mode='predict')` first."
+            "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
 
         outputs = []
