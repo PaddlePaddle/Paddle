@@ -51,7 +51,7 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
-            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
+            serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
             # Apply pre optimization passes
