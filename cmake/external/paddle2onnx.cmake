@@ -49,7 +49,7 @@ if (WIN32)
 elseif (APPLE)
   SET(PADDLE2ONNX_URL           "")
 else ()
-  SET(PADDLE2ONNX_URL           "https://bj.bcebos.com/paddle2onnx/model_zoo/paddle2onnx-x64-linux-cpp.tgz")
+  SET(PADDLE2ONNX_URL           "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v0.9.7/paddle2onnx-linux-x64-0.9.7.tgz")
 endif()
 
 ExternalProject_Add(

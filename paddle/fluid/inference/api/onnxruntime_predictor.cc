@@ -100,10 +100,10 @@ bool ONNXRuntimePredictor::Init() {
   if (config_.model_from_memory()) {
     paddle2onnx::Export(config_.prog_file().data(), config_.prog_file().size(),
                         config_.params_file().data(),
-                        config_.params_file().size(), &onnx_proto, out_size);
+                        config_.params_file().size(), &onnx_proto, &out_size);
   } else {
     paddle2onnx::Export(config_.prog_file().c_str(),
-                        config_.params_file().c_str(), &onnx_proto, out_size);
+                        config_.params_file().c_str(), &onnx_proto, &out_size);
   }
 
   Ort::SessionOptions session_options;
