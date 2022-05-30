@@ -716,11 +716,11 @@ class BroadcastDataMKLDNNHandler
                            platform::GetPlainMKLDNNFormat(src0_tz.size()));
     const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
-    dnnl::primitive_attr attrs;
-    attrs.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
-    attrs.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
+    attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
 
-    this->AcquireForwardPrimitiveDescriptor(attrs, algo, src0_md, src1_md,
+    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             src0_md);
   }
 

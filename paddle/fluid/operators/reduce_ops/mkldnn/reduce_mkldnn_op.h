@@ -31,9 +31,9 @@ inline std::vector<int64_t> CalculateReducedDims(
 
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
-  std::vector<int64_t> output_dims = phi::vectorize(input->dims());
+  std::vector<int64_t> output_dims(phi::vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
-    // handle negative dims, f.e. -1 means last dimension
+    // handle negative dims, f.e. "-1" means rightmost dimension
     reduce_dims[i] = (reduce_dims[i] >= 0)
                          ? reduce_dims[i]
                          : input->dims().size() + reduce_dims[i];
@@ -79,7 +79,7 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           x->mem_desc(), platform::to_void_cast(x->data<T>()));
 
-      // reuse same mem desc since it is a simple copy
+      // reuse mem desc since it is a simple copy
       auto reorder_dst_memory_p =
           reorder_handler.AcquireDstMemory(out, x->mem_desc(), ctx.GetPlace());
 
@@ -126,7 +126,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto dims = ctx.Attr<std::vector<int>>("dim");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto dout_tz = CalculateReducedDims(dx, dout, dims, reduce_all, keep_dim);
