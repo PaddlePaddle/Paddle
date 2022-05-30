@@ -133,20 +133,4 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   }
   auto profiler_result = profiler->Stop();
   auto nodetree = profiler_result->GetNodeTrees();
-  std::set<std::string> host_events;
-  std::map<std::string, std::vector<uint64_t>> mem_events_indx_map;
-  std::map<std::string, std::vector<MemTraceEventNode*>> mem_events_map;
-  for (const auto pair : nodetree->Traverse(true)) {
-    for (const auto evt : pair.second) {
-      host_events.insert(evt->Name());
-      mem_events_indx_map[evt->Name()] = evt->MemEventIdx();
-      mem_events_map[evt->Name()] = evt->GetMemTraceEventNodes();
-    }
-  }
-  EXPECT_EQ(host_events.count("TestTracerForMem_phase1"), 1u);
-  EXPECT_EQ(host_events.count("TestTracerForMem_phase2"), 1u);
-  EXPECT_EQ(mem_events_indx_map["TestTracerForMem_phase1"].size(), 2u);
-  EXPECT_EQ(mem_events_indx_map["TestTracerForMem_phase2"].size(), 2u);
-  EXPECT_EQ(mem_events_map["TestTracerForMem_phase1"].size(), 2u);
-  EXPECT_EQ(mem_events_map["TestTracerForMem_phase2"].size(), 2u);
 }

@@ -34,24 +34,23 @@ using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
 using paddle::platform::ProfilerResult;
 using paddle::platform::MemTraceEvent;
+using paddle::platform::OperatorSupplementEvent;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
   std::list<DeviceTraceEvent> device_events;
-  const std::list<MemTraceEvent> mem_events;
+  std::list<MemTraceEvent> mem_events;
+  std::list<OperatorSupplementEvent> op_supplement_events;
   host_events.push_back(HostTraceEvent(std::string("dataloader#1"),
                                        TracerEventType::Dataloader, 1000, 10000,
-                                       10, 10, std::vector<uint64_t>()));
-  host_events.push_back(HostTraceEvent(std::string("op1"),
-                                       TracerEventType::Operator, 11000, 20000,
-                                       10, 10, std::vector<uint64_t>()));
-  host_events.push_back(HostTraceEvent(std::string("op2"),
-                                       TracerEventType::Operator, 21000, 30000,
-                                       10, 10, std::vector<uint64_t>()));
-  host_events.push_back(HostTraceEvent(std::string("op3"),
-                                       TracerEventType::Operator, 31000, 40000,
-                                       10, 11, std::vector<uint64_t>()));
+                                       10, 10));
+  host_events.push_back(HostTraceEvent(
+      std::string("op1"), TracerEventType::Operator, 11000, 20000, 10, 10));
+  host_events.push_back(HostTraceEvent(
+      std::string("op2"), TracerEventType::Operator, 21000, 30000, 10, 10));
+  host_events.push_back(HostTraceEvent(
+      std::string("op3"), TracerEventType::Operator, 31000, 40000, 10, 11));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
@@ -78,7 +77,8 @@ TEST(SerializationLoggerTest, dump_case0) {
       DeviceTraceEvent(std::string("memset1"), TracerEventType::Memset, 66000,
                        69000, 0, 10, 11, 5, MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case0.pb");
-  NodeTrees tree(host_events, runtime_events, device_events, mem_events);
+  NodeTrees tree(host_events, runtime_events, device_events, mem_events,
+                 op_supplement_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);
   EXPECT_EQ(nodes[10].size(), 4u);
@@ -108,6 +108,7 @@ TEST(SerializationLoggerTest, dump_case1) {
   std::list<RuntimeTraceEvent> runtime_events;
   std::list<DeviceTraceEvent> device_events;
   std::list<MemTraceEvent> mem_events;
+  std::list<OperatorSupplementEvent> op_supplement_events;
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
@@ -134,7 +135,8 @@ TEST(SerializationLoggerTest, dump_case1) {
       DeviceTraceEvent(std::string("memset1"), TracerEventType::Memset, 66000,
                        69000, 0, 10, 11, 5, MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case1.pb");
-  NodeTrees tree(host_events, runtime_events, device_events, mem_events);
+  NodeTrees tree(host_events, runtime_events, device_events, mem_events,
+                 op_supplement_events);
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree.Traverse(true);
   EXPECT_EQ(nodes[10].size(), 1u);
