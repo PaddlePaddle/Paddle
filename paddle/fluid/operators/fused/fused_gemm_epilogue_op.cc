@@ -327,8 +327,20 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("DBias",
               "The output grad tensor to bias of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
-    AddAttr<bool>("trans_x", "").SetDefault(false);
-    AddAttr<bool>("trans_y", "").SetDefault(false);
+    AddAttr<bool>(
+        "trans_x",
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+    [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "trans_y",
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+    [d0, d1] -> [d1, d0].)DOC")
+        .SetDefault(false);
 
     AddAttr<std::string>(
         "activation_grad",
