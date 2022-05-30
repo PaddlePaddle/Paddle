@@ -132,17 +132,17 @@ class TensorDistributedAttribute:
                         key, dist_attr)
             self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
 
-    def reset(self, skip_dist_attr_field_names=None):
-        if skip_dist_attr_field_names is None or \
-            (skip_dist_attr_field_names is not None \
-                and "process_mesh" not in skip_dist_attr_field_names):
-            self._process_mesh = None
-        if skip_dist_attr_field_names is None or \
-            (skip_dist_attr_field_names is not None \
-                and "dims_mapping" not in skip_dist_attr_field_names):
-            for i, _ in enumerate(self._dims_mapping):
-                self._dims_mapping[i] = -1
-        self._is_annotated = {}
+    # def reset(self, skip_dist_attr_field_names=None):
+    #     if skip_dist_attr_field_names is None or \
+    #         (skip_dist_attr_field_names is not None \
+    #             and "process_mesh" not in skip_dist_attr_field_names):
+    #         self._process_mesh = None
+    #     if skip_dist_attr_field_names is None or \
+    #         (skip_dist_attr_field_names is not None \
+    #             and "dims_mapping" not in skip_dist_attr_field_names):
+    #         for i, _ in enumerate(self._dims_mapping):
+    #             self._dims_mapping[i] = -1
+    #     self._is_annotated = {}
 
     def is_annotated(self, dist_attr_field_name):
         return self._is_annotated.get(dist_attr_field_name, False)
@@ -274,8 +274,8 @@ class OperatorDistributedAttribute:
         dist_attr_object.init(dist_attr)
         self._inputs_dist_attrs[name] = dist_attr_object
 
-    def del_input_dist_attr(self, name):
-        del self._inputs_dist_attrs[name]
+    # def del_input_dist_attr(self, name):
+    #     del self._inputs_dist_attrs[name]
 
     def get_output_dist_attr(self, name):
         return self._outputs_dist_attrs.get(name, None)
@@ -285,8 +285,8 @@ class OperatorDistributedAttribute:
         dist_attr_object.init(dist_attr)
         self._outputs_dist_attrs[name] = dist_attr_object
 
-    def del_output_dist_attr(self, name):
-        del self._inputs_dist_attrs[name]
+    # def del_output_dist_attr(self, name):
+    #     del self._inputs_dist_attrs[name]
 
     def get_input_dims_mapping(self, name):
         input_dist_attr = self.get_input_dist_attr(name)
@@ -382,18 +382,18 @@ class OperatorDistributedAttribute:
                         "ProcessMeshes in DistributedOperator must be the same."
         self.process_mesh = shared_process_mesh
 
-    def reset(self, skip_dist_attr_field_names=None):
-        for tensor_dist_attr in self.inputs_dist_attrs.values():
-            tensor_dist_attr.reset(skip_dist_attr_field_names)
-        for tensor_dist_attr in self.outputs_dist_attrs.values():
-            tensor_dist_attr.reset(skip_dist_attr_field_names)
-        if skip_dist_attr_field_names is None or \
-            (skip_dist_attr_field_names is not None \
-                and "process_mesh" not in skip_dist_attr_field_names):
-            self._process_mesh = None
-        self.impl_type = "default"
-        self.impl_idx = 0
-        self._is_annotated = {}
+    # def reset(self, skip_dist_attr_field_names=None):
+    #     for tensor_dist_attr in self.inputs_dist_attrs.values():
+    #         tensor_dist_attr.reset(skip_dist_attr_field_names)
+    #     for tensor_dist_attr in self.outputs_dist_attrs.values():
+    #         tensor_dist_attr.reset(skip_dist_attr_field_names)
+    #     if skip_dist_attr_field_names is None or \
+    #         (skip_dist_attr_field_names is not None \
+    #             and "process_mesh" not in skip_dist_attr_field_names):
+    #         self._process_mesh = None
+    #     self.impl_type = "default"
+    #     self.impl_idx = 0
+    #     self._is_annotated = {}
 
     def is_annotated(self, attr_name):
         return self._is_annotated.get(attr_name, False)

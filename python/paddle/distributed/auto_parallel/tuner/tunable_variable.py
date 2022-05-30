@@ -89,7 +89,6 @@ class Choice(TunableVariable):
             raise TypeError(
                 "Choice can contain only one type of value, but found values: {} with types: {}."
                 .format(str(values), str(types)))
-        self._is_unknown_type = False
 
         if isinstance(values[0], str):
             values = [str(v) for v in values]
@@ -108,11 +107,9 @@ class Choice(TunableVariable):
             if default is not None:
                 default = bool(default)
         else:
-            self._is_unknown_type = True
-            self._indices = [i for i in range(len(values))]
-            # raise TypeError(
-            #     "Choice can only contain str, int, float, or boll, but found: {} "
-            #     .format(str(values)))
+            raise TypeError(
+                "Choice can only contain str, int, float, or boll, but found: {} "
+                .format(str(values)))
         self.values = values
 
         if default is not None and default not in values:
@@ -131,11 +128,7 @@ class Choice(TunableVariable):
 
     def random(self, seed=None):
         rng = np.random.default_rng(seed)
-        if self._is_unknown_type:
-            indice = rng.choice(self._indices)
-            return self.values[indice]
-        else:
-            return rng.choice(self.values)
+        return rng.choice(self.values)
 
     def get_state(self):
         state = super(Choice, self).get_state()

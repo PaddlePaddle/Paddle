@@ -42,12 +42,10 @@ class Parallelizer:
     def parallel_all(self):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
-        print("begin parallel all", flush=True)
         for rank in all_ranks:
-            self._dist_context._backup(serial=True, dist=True)
+            # self._dist_context._backup(serial=True, dist=True)
             self.parallel(rank)
-            self._dist_context._restore(serial=True, dist=True)
-            print("finish rank ", rank, flush=True)
+            # self._dist_context._restore(serial=True, dist=True)
 
     def parallel(self, rank):
         serial_main_program = self._dist_context.serial_main_program

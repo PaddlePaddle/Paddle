@@ -158,7 +158,6 @@ class Completer:
             return False
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         if fwd:
-            # print("tensor fwd 1", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
             dims_mapping_list = []
             for pred_op_node in tensor_node.inputs:
                 if pred_op_node.op() is not None:
@@ -182,9 +181,7 @@ class Completer:
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
-            # print("tensor fwd 2", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
         else:
-            # print("tensor bwd 1", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
             dims_mapping_list = []
             for succ_op_node in tensor_node.outputs:
                 if succ_op_node.op() is not None:
@@ -208,7 +205,6 @@ class Completer:
                 (compatible_dims_mapping != tensor_dims_mapping):
                 tensor_dist_attr.dims_mapping = compatible_dims_mapping
                 changed = True
-            # print("tensor bwd 2", tensor_desc.name(), tensor_desc.original_id(), tensor_dist_attr, changed, flush=True)
         return changed
 
     def _update_op_node_dims_mapping(self, op_node, fwd=True):
@@ -226,7 +222,6 @@ class Completer:
         op_dist_attr = dist_op.dist_attr
         original_op_dist_attr = copy.deepcopy(op_dist_attr)
         if fwd:
-            # print("op fwd 1", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
             for tensor_node in op_node.inputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -255,7 +250,6 @@ class Completer:
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=True)
-            # print("op fwd 2", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, op_dist_impls, flush=True)
             if op_dist_impls is not None:
                 not_compatible = True
                 backup_op_dist_attr = copy.deepcopy(op_dist_attr)
@@ -283,9 +277,7 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
-            # print("op fwd 3", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
         else:
-            # print("op bwd 1", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
@@ -314,7 +306,6 @@ class Completer:
             # Find the most compatible implemenetations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False)
-            # print("op bwd 2", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, op_dist_impls, flush=True)
             if op_dist_impls is not None:
                 not_compatible = True
                 backup_op_dist_attr = copy.deepcopy(op_dist_attr)
@@ -342,7 +333,6 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
-            # print("op bwd 3", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, flush=True)
         return changed
 
     def _update_dims_mapping_between_graphs(self):
@@ -775,9 +765,6 @@ class Completer:
 
         self._dist_context.initialize()
 
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
-        # self._dist_context.validate_dist_attr_for_program()
-
         self._prepare()
 
         self._update_process_mesh()
@@ -792,8 +779,6 @@ class Completer:
 
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
-
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
 
         self._dist_context.validate_dist_attr_for_program()
 
@@ -1360,7 +1345,7 @@ class Completer:
                 dist_op.dist_attr.process_mesh = world_ranks
 
                 # Find the most compatible implemenetations from the distributed operator
-                op_dist_impls = find_best_compatible_distributed_operator_impl(
+                op_dist_impls = find_compatible_distributed_operator_impls(
                     dist_op, fwd=True)
                 if op_dist_impls is not None:
                     backup_op_dist_attr = copy.deepcopy(dist_op.dist_attr)
