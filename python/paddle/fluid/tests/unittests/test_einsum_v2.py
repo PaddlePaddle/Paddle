@@ -478,5 +478,17 @@ class TestStaticGraphShape(unittest.TestCase):
         self.assertEqual(C.shape, (-1, 384))
 
 
+class TestBF16(unittest.TestCase):
+    """
+    EinsumOp support bfloat16 type, add unittest here for the correctness.
+    """
+
+    def test_shape(self):
+        A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
+        B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
+        C = paddle.einsum('i,i->', A, B)
+        self.assertEqual(C.item(), 8.0)
+
+
 if __name__ == "__main__":
     unittest.main()
