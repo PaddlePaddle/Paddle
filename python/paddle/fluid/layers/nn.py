@@ -7902,15 +7902,15 @@ def image_resize(input,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = _C_ops.linear_interp(x, actual_shape, *dy_attr)
+            out = _C_ops.linear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "bilinear":
-            out = _C_ops.bilinear_interp(x, actual_shape, *dy_attr)
+            out = _C_ops.bilinear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "trilinear":
-            out = _C_ops.trilinear_interp(x, actual_shape, *dy_attr)
+            out = _C_ops.trilinear_interp(input, actual_shape, *dy_attr)
         elif resample_type == "nearest":
-            out = _C_ops.nearest_interp(x, actual_shape, *dy_attr)
+            out = _C_ops.nearest_interp(input, actual_shape, *dy_attr)
         elif resample_type == "bicubic":
-            out = _C_ops.bicubic_interp(x, actual_shape, *dy_attr)
+            out = _C_ops.bicubic_interp(input, actual_shape, *dy_attr)
         return out
 
     out = helper.create_variable_for_type_inference(dtype)
