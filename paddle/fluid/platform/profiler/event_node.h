@@ -63,6 +63,7 @@ class OperatorSupplementEventNode {
   ~OperatorSupplementEventNode() {}
   // getter
   std::string Name() const { return op_supplement_event_.op_type; }
+  uint64_t TimeStampNs() const { return op_supplement_event_.timestamp_ns; }
   std::map<std::string, std::vector<std::vector<int64_t>>>& InputShapes() {
     return op_supplement_event_.input_shapes;
   }
@@ -254,7 +255,8 @@ class NodeTrees {
       op_supplement_event_nodes.push_back(new OperatorSupplementEventNode(*it));
     }
     // build tree
-    BuildTrees(host_event_nodes, runtime_event_nodes, device_event_nodes);
+    BuildTrees(host_event_nodes, runtime_event_nodes, device_event_nodes,
+               mem_event_nodes, op_supplement_event_nodes);
   }
 
   explicit NodeTrees(
@@ -276,11 +278,15 @@ class NodeTrees {
  private:
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map_;
   void BuildTrees(const std::vector<HostTraceEventNode*>&,
-                  std::vector<CudaRuntimeTraceEventNode*>&,
-                  const std::vector<DeviceTraceEventNode*>&);
+                  const std::vector<CudaRuntimeTraceEventNode*>&,
+                  const std::vector<DeviceTraceEventNode*>&,
+                  const std::vector<MemTraceEventNode*>&,
+                  const std::vector<OperatorSupplementEventNode*>&);
   HostTraceEventNode* BuildTreeRelationship(
       std::vector<HostTraceEventNode*> host_event_nodes,
-      std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes);
+      std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes,
+      std::vector<MemTraceEventNode*> mem_event_nodes,
+      std::vector<OperatorSupplementEventNode*> op_supplement_event_nodes);
 };
 
 }  // namespace platform
