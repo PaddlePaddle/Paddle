@@ -15,6 +15,7 @@
 import logging
 import os
 import time
+import tempfile
 import unittest
 
 import numpy as np
@@ -371,8 +372,21 @@ def predict_static(args, batch_generator):
 
 
 class TestTransformer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDwon(self):
+        self.temp_dir.cleanup()
+
     def prepare(self, mode='train'):
         args = util.ModelHyperParams()
+        args.save_dygraph_model_path = os.path.join(
+            self.temp_dir.name, args.save_dygraph_model_path)
+        args.save_static_model_path = os.path.join(self.temp_dir.name,
+                                                   args.save_static_model_path)
+        args.inference_model_dir = os.path.join(self.temp_dir.name,
+                                                args.inference_model_dir)
+        args.output_file = os.path.join(self.temp_dir.name, args.output_file)
         batch_generator = util.get_feed_data_reader(args, mode)
         return args, batch_generator
 

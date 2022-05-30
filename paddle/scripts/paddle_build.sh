@@ -344,6 +344,7 @@ function abort(){
 }
 
 function check_style() {
+    set +x
     trap 'abort' 0
     set -e
 
@@ -368,7 +369,7 @@ function check_style() {
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
-    done 
+    done
 
     export PATH=${OLD_PATH}
     
@@ -378,6 +379,7 @@ function check_style() {
         exit 4
     fi
     trap : 0
+    set -x 
 }
 
 #=================================================
@@ -981,9 +983,6 @@ function generate_upstream_develop_api_spec() {
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
 
     cd ${PADDLE_ROOT}
     git checkout .
@@ -995,6 +994,9 @@ function generate_upstream_develop_api_spec() {
     if [ "$url_return" == '200' ];then
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         cmake_gen $1
         build $2
     fi
@@ -1817,7 +1819,14 @@ function precise_card_test() {
     echo "****************************************************************"
     
     tmpfile=$tmp_dir/$testcases".log"
+    tmpfile1=$tmp_dir/$testcases"-gpu.log"
+    nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
+    gpu_memory_pid=$!
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    kill ${gpu_memory_pid}
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
+    rm -rf $tmpfile1
     set +m
 }
 
@@ -1909,8 +1918,11 @@ set -x
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
     wait;
 
-    #generate ut map
+    #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+
+    #generate ut mem map
+    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir 
 }
 
 function get_failedUts_precise_map_file {
@@ -2974,20 +2986,11 @@ function build_develop() {
 }
 
 function check_coverage_build() {
-    if [ ! "${buildSize}" ];then
-        echo "build size not found"
-        exit 1
-    fi
-
-    if [ ${WITH_COVERAGE} != "ON" ];then
-        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
-        exit 1
-    fi
-
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3053,6 +3056,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
+        set +x
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
@@ -3064,6 +3068,7 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -3135,13 +3140,15 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      check_coverage_build)
+        check_coverage_build
         ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 

@@ -36,6 +36,14 @@ epoch = 2
 batch_size = 32
 linear_size = 1000
 
+strategy = fleet.DistributedStrategy()
+strategy.hybrid_configs = {
+    "dp_degree": 2,
+    "mp_degree": 1,
+    "pp_degree": 1,
+    "sharding_degree": 1
+}
+
 np.random.seed(seed)
 paddle.seed(seed)
 
@@ -109,4 +117,5 @@ def test_sharding_stage2_offload():
 if __name__ == '__main__':
     with _test_eager_guard():
         pass
+    fleet.init(is_collective=True, strategy=strategy)
     test_sharding_stage2_offload()

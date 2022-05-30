@@ -666,7 +666,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  // step2: remove unneccessary downstream ops
+  // step2: remove unnecessary downstream ops
   // for example, a->b->c
   // a: b, c
   // b: c

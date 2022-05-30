@@ -49,7 +49,7 @@ def set_config(config=None):
             dictionary, the key is the tuning type, and the value is a dictionary
             of the corresponding tuning parameters. If it is a string, the path of
             a json file will be specified and the tuning configuration will be set
-            by the the json file. Default: None, auto-tuning for kernel, layout and
+            by the json file. Default: None, auto-tuning for kernel, layout and
             dataloader will be enabled.
 
     Examples:

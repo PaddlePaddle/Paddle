@@ -26,7 +26,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-class SwishPlugin : public PluginTensorRT {
+class SwishPlugin : public PluginTensorRTV2Ext {
  private:
   float beta_;
 
@@ -55,13 +55,24 @@ class SwishPlugin : public PluginTensorRT {
 
   int initialize() TRT_NOEXCEPT override;
 
-  SwishPlugin* clone() const TRT_NOEXCEPT override {
-    return new SwishPlugin(beta_, with_fp16_);
+  nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override {
+    auto* plugin = new SwishPlugin(beta_, with_fp16_);
+    plugin->data_format_ = data_format_;
+    plugin->data_type_ = data_type_;
+    plugin->input_dims_ = input_dims_;
+    return plugin;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
     return "swish_plugin";
   }
+
+  nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types,
+      int nb_inputs) const TRT_NOEXCEPT override {
+    return input_types[0];
+  }
+
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
@@ -71,6 +82,12 @@ class SwishPlugin : public PluginTensorRT {
   int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
 #endif
               void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+
+  void terminate() TRT_NOEXCEPT override;
+  void destroy() TRT_NOEXCEPT override { delete this; }
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "2"; }
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
 };
 
 class SwishPluginCreator : public TensorRTPluginCreator {
@@ -79,7 +96,7 @@ class SwishPluginCreator : public TensorRTPluginCreator {
     return "swish_plugin";
   }
 
-  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "2"; }
 
   nvinfer1::IPluginV2* deserializePlugin(
       const char* name, const void* serial_data,
