@@ -863,8 +863,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     auto* mul0_op_desc = mul0->Op();
 
-    // all mul op has same input.
-    if (multihead_op_desc.HasAttr("Input_scale")) {
+    // all mul op has same input. Set int8 attr: Input_scale
+    if (mul0_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("Input_scale",
                                 mul0_op_desc->GetAttr("Input_scale"));
     }
