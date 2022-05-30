@@ -984,24 +984,12 @@ void MultiSlotDataFeed::PutToFeedVec(
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
-      /*
-      VLOG(4) << "MultiSlotDataFeed::PutToFeedVec feasign(f): ";
-      for (auto e : feasign) {
-        VLOG(4) << e << ", ";
-      }
-      */
       float* tensor_ptr =
           feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec[i].GetUint64Data();
-      /*
-      VLOG(4) << "MultiSlotDataFeed::PutToFeedVec feasign(u): ";
-      for (auto e : feasign) {
-        VLOG(4) << e << ", ";
-      }
-      */
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, &feasign[0],
