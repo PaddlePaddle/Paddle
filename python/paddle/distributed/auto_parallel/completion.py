@@ -771,7 +771,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -796,10 +796,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops, dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops,
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -935,7 +937,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -997,11 +999,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops[:first_backward_op_idx],
-                    dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops[:first_backward_op_idx],
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 if grad_op.type == "concat" and forward_op.type == "split":
