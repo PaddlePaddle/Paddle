@@ -1026,9 +1026,13 @@ class TheOnePSRuntime(RuntimeBase):
 
             fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
-        if self.is_heter_ps_mode == False and not self.context['use_ps_gpu']:
-            self._pull_all_dense(scopes, send_ctx, dense_map)
-            fleet.util.barrier()
+        if not self.context['use_ps_gpu']:
+            if self.is_heter_ps_mode == True and not self.role_maker._is_first_worker(
+            ):
+                self._communicator.pull_dense(init_params)
+            else:
+                self._pull_all_dense(scopes, send_ctx, dense_map)
+        fleet.util.barrier()
 
         if self.context[
                 'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode == True:
