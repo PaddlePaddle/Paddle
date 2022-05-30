@@ -2631,24 +2631,25 @@ PDNode *patterns::Bfloat16Placement::operator()(
 PDNode *patterns::OrphanedBfloat16::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
   prev_op->assert_more([&](Node *node) {
-    return !node->Op()->HasAttr("mkldnn_data_type") ||
-           node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
   auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
   //auto *prev_out = pattern->NewNode(prev_out_repr())->AsIntermediate();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
-    return !node->Op()->HasAttr("mkldnn_data_type") ||
-           node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
   });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
   //auto *op_out = pattern->NewNode(op_out_repr())->AsIntermediate();
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
   next_op->assert_more([&](Node *node) {
-    return !node->Op()->HasAttr("mkldnn_data_type") ||
-           node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
 
   prev_op->LinksTo({prev_out});
