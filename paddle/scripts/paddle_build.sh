@@ -360,6 +360,10 @@ function check_style() {
     # pre-commit use python3.8.0 
     OLD_PATH=$PATH
     export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
+    
+    if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
+        pip install pre-commit==2.17.0
+    fi
 
     pre-commit install
     clang-format --version
