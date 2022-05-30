@@ -238,8 +238,15 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type, const AttributeMap &attrs,
     const InferShapeContext &shape_ctx, const RuntimeContext &ctx) {
+  if (FLAGS_enable_host_event_recorder_hook == false) {
+    return;
+  }
+  std::map<std::string, std::vector<DDim>> input_shapes;
+  std::map<std::string, std::vector<proto::VarType::Type>> dtypes;
   for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
-    input_shape[it->first] = shape_ctx.GetInputsDim(it->first)
+    input_shapes[it->first] =
+        shape_ctx.GetInputsDim(it->first) dtypes[it->first] =
+            shape_ctx.GetInputsVarType(it->first);
   }
 
   const std::vector<std::string> *callstack = nullptr;
@@ -248,6 +255,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;
   }
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
+      PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
 RecordMemEvent::RecordMemEvent(const void *ptr, const Place &place, size_t size,
@@ -283,7 +292,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
     return;
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
-    HostMemEventRecorder::GetInstance().RecordMemEvent(
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Allocate, size, place, current_allocated,
         current_reserved);
@@ -316,7 +325,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place,
     return;
   std::lock_guard<std::mutex> guard(mtx_);
   if (FLAGS_enable_host_event_recorder_hook) {  // new MemRecord
-    HostMemEventRecorder::GetInstance().RecordMemEvent(
+    HostEventRecorder<CommonMemEvent>::GetInstance().RecordEvent(
         PosixInNsec(), reinterpret_cast<uint64_t>(ptr),
         TracerMemEventType::Free, -size, place, current_allocated,
         current_reserved);

@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include <sstream>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
@@ -59,7 +59,6 @@ void ProcessHostMemEvents(
     }
     for (const auto& evt : thr_sec.events) {
       MemTraceEvent event;
-      event.id = evt.id;  // not owned, designed for performance
       event.timestamp_ns = evt.timestamp_ns;
       event.addr = evt.addr;
       event.type = evt.type;
@@ -70,6 +69,51 @@ void ProcessHostMemEvents(
       event.process_id = host_mem_events.process_id;
       event.thread_id = tid;
       collector->AddMemEvent(std::move(event));
+    }
+  }
+}
+
+void ProcessOperatorSupplementEvents(
+    const HostEventSection<OperatorSupplementOriginEvent>& op_supplement_events,
+    TraceEventCollector* collector) {
+  for (const auto& thr_sec : op_supplement_events.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    if (thr_sec.thread_name != kDefaultThreadName) {
+      collector->AddThreadName(tid, thr_sec.thread_name);
+    }
+    for (const auto& evt : thr_sec.events) {
+      OperatorSupplementEvent event;
+      event.timestamp_ns = evt.timestamp_ns;
+      event.op_type = evt.op_type;
+      std::map < std::string, std::vector<std::vector<int64_t>> input_shapes;
+      std::map<std::string, std::vector<std::string>> dtypes;
+      std::string callstack;
+      for (auto it = evt.input_shapes.begin(); it != evt.input_shapes.end();
+           it++) {
+        input_shapes[it->first].reserve(it->second.size());
+        for (auto idx = 0; idx < it->second.size(); idx++) {
+          for (auto dim_idx = 0; dim_idx < it->second.at(idx).size();
+               dim_idx++) {
+            input_shapes[it->first].at(idx).at(dim_idx) =
+                it->second.at(idx).at(dim_idx);
+          }
+        }
+      }
+      for (auto it = evt.dtypes.begin(); it != evt.dtypes.end(); it++) {
+        dtypes[it->first].reserve(it->second.size());
+        for (auto idx = 0; idx < it->second.size(); idx++) {
+          dtypes[it->first].at[idx] =
+              framework::proto::VarType::TypeName(it->second.at(idx));
+        }
+      }
+
+      std::ostringstream result_string;
+      std::copy(evt.callstack->begin(), evt.callstack->end(),
+                std::ostream_iterator<std::string>(result_string, "\n"));
+
+      event.process_id = op_supplement_events.process_id;
+      event.thread_id = tid;
+      collector->AddOperatorSupplementEvent(std::move(event));
     }
   }
 }
@@ -110,6 +154,10 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   HostEventSection<CommonMemEvent> host_mem_events =
       HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
   ProcessHostMemEvents(host_mem_events, collector);
+  HostEventSection<OperatorSupplementOriginEvent> op_supplement_events =
+      HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
+          .GatherEvents();
+  ProcessOperatorSupplementEvents(op_supplement_events, collector);
 }
 
 }  // namespace platform

@@ -62,6 +62,7 @@ class OperatorSupplementEventNode {
   // destructor
   ~OperatorSupplementEventNode() {}
   // getter
+  std::string Name() const { return op_supplement_event_.op_type; }
   std::map < std::string, std::vector<std::vector<int64_t>>& InputShapes() {
     return op_supplement_event_.input_shapes;
   }
@@ -69,6 +70,8 @@ class OperatorSupplementEventNode {
     return op_supplement_event_.dtypes;
   }
   std::string CallStack() { return op_supplement_event_.callstack; }
+  uint64_t ProcessId() const { return op_supplement_event_.process_id; }
+  uint64_t ThreadId() const { return op_supplement_event_.thread_id; }
 
  private:
   // data

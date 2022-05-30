@@ -17,8 +17,10 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace platform {
@@ -86,16 +88,27 @@ struct CommonMemEvent {
 struct OperatorSupplementOriginEvent {
  public:
   OperatorSupplementOriginEvent(
-      const std::map<std::string, std::vector<DDim>> &input_shapes,
-      const std::map<std::string, std::vector<proto::VarType::Type>> &dtypes,
-      std::vector<std::string> *callstack)
-      : input_shapes(input_shape), dtypes(dtypes), callstack(callstack) {}
+      std::function<void *(size_t)> arena_allocator, uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
+      const std::map<std::string, std::vector<framework::proto::VarType::Type>>
+          &dtypes,
+      const std::vector<std::string> *callstack)
+      : timestamp_ns(timestamp_ns),
+        input_shapes(input_shape),
+        dtypes(dtypes),
+        callstack(callstack) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    op_type = buf;
+  }
   uint64_t timestamp_ns;
+  const char *op_type = nullptr;  // not owned, designed for performance
   // input shapes
-  std::map<std::string, std::vector<DDim>> input_shapes;
-  std::map<std::string, std::vector<proto::VarType::Type>> dtypes;
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   // call stack
-  std::vector<std::string> *callstack;
+  const std::vector<std::string> *callstack;
 }
 
 }  // namespace platform

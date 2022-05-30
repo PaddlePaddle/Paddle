@@ -40,6 +40,10 @@ class TraceEventCollector {
 
   void AddMemEvent(MemTraceEvent&& event) { mem_events_.push_back(event); }
 
+  void AddOperatorSupplementEvent(OperatorSupplementEvent&& event) {
+    op_supplement_events_.push_back(event);
+  }
+
   const std::list<HostTraceEvent>& HostEvents() const { return host_events_; }
 
   const std::list<RuntimeTraceEvent>& RuntimeEvents() const {
@@ -52,6 +56,10 @@ class TraceEventCollector {
 
   const std::list<MemTraceEvent>& MemEvents() const { return mem_events_; }
 
+  const std::list<OperatorSupplementEvent>& OperatorSupplementEvents() const {
+    return op_supplement_events_;
+  }
+
   const std::unordered_map<uint64_t, std::string>& ThreadNames() const {
     return thread_names_;
   }
@@ -61,6 +69,8 @@ class TraceEventCollector {
     host_events_.clear();
     runtime_events_.clear();
     device_events_.clear();
+    mem_events_.clear();
+    op_supplement_events_.clear();
   }
 
  private:
@@ -69,6 +79,7 @@ class TraceEventCollector {
   std::list<RuntimeTraceEvent> runtime_events_;
   std::list<DeviceTraceEvent> device_events_;
   std::list<MemTraceEvent> mem_events_;
+  std::list<OperatorSupplementEvent> op_supplement_events_;
 };
 
 }  // namespace platform
