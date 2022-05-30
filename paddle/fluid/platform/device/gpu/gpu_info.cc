@@ -225,9 +225,9 @@ class RecordedGpuMallocHelper {
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
-      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
-               << " MB";
       result = cudaMalloc(ptr, size);
+      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
+               << " MB, result=" << result;
     }
 #endif
     if (result == gpuSuccess) {
