@@ -99,6 +99,7 @@ def fused_feedforward(x,
             # required: gpu
             import paddle
             import numpy as np
+            
             x_data = np.random.random((1, 8, 8)).astype("float32")
             linear1_weight_data = np.random.random((8, 8)).astype("float32")
             linear2_weight_data = np.random.random((8, 8)).astype("float32")
