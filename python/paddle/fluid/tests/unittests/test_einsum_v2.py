@@ -484,10 +484,13 @@ class TestBF16(unittest.TestCase):
     """
 
     def test_shape(self):
-        A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
-        B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
-        C = paddle.einsum('i,i->', A, B)
-        self.assertEqual(C.item(), 8.0)
+        if paddle.is_compiled_with_cuda():
+            A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
+            A = A.cuda()
+            B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
+            B = B.cuda()
+            C = paddle.einsum('i,i->', A, B)
+            self.assertEqual(C.item(), 8.0)
 
 
 if __name__ == "__main__":
