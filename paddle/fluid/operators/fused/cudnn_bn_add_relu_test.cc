@@ -103,7 +103,7 @@ void ComputeSumAndSquareSum(const framework::Tensor &cpu_x,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
   // x is in NHWC format.
-  auto dims = cpu_x.dims();
+  const auto &dims = cpu_x.dims();
   int64_t c = dims[3];
 
   const T *cpu_x_ptr = cpu_x.data<T>();

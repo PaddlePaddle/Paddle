@@ -933,10 +933,7 @@ class AllocatorFacadePrivate {
 
   void WrapStatAllocator() {
     for (auto& pair : allocators_) {
-      // Now memory stats is only supported for GPU
-      if (platform::is_gpu_place(pair.first)) {
-        pair.second = std::make_shared<StatAllocator>(pair.second);
-      }
+      pair.second = std::make_shared<StatAllocator>(pair.second);
     }
   }
 

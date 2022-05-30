@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void PsroiPoolGradKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
-                         paddle::optional<const DenseTensor&> rois_num,
+                         const paddle::optional<DenseTensor>& rois_num,
                          const DenseTensor& dout,
                          int pooled_height,
                          int pooled_width,
@@ -32,7 +32,7 @@ void PsroiPoolGradKernel(const Context& ctx,
                          float spatial_scale,
                          DenseTensor* dx) {
   if (dx) {
-    auto in_dims = x.dims();
+    const auto& in_dims = x.dims();
     int input_channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];

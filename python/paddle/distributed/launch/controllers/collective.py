@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller
+from .controller import Controller, ControleMode
 
 import json
 import os
@@ -23,8 +23,10 @@ import time
 class CollectiveController(Controller):
     @classmethod
     def enable(cls, ctx):
+        # collective is the default mode
         if ctx:
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False
@@ -85,6 +87,7 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
+                "PADDLE_NNODES": "{}".format(self.job.replicas),
                 ## compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
@@ -106,6 +109,7 @@ class CollectiveElasticController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False

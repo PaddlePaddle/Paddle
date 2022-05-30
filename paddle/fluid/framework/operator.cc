@@ -1908,7 +1908,8 @@ Scope* OperatorWithKernel::PrepareData(
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
             (paddle::platform::MKLDNNDeviceContext::tls()
-                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
+            (tensor_in->dims().size() >= 3)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
@@ -2369,15 +2370,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+             std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+             std::type_index(typeid(paddle::optional<phi::SelectedRows>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<
-                        const std::vector<const phi::DenseTensor*>>)))) {
+             std::type_index(typeid(
+                 paddle::optional<std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),

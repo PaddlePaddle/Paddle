@@ -85,7 +85,7 @@ def parse_args():
     base_group.add_argument(
         "--run_mode",
         type=str,
-        default="collective",
+        default=None,
         help="run mode of the job, collective/ps/ps-heter")
 
     base_group.add_argument(
@@ -125,7 +125,7 @@ def parse_args():
     ps_group.add_argument(
         "--gloo_port", type=int, default=6767, help="gloo http port")
     ps_group.add_argument(
-        "--with_gloo", type=str, default="0", help="use gloo or not")
+        "--with_gloo", type=str, default="1", help="use gloo or not")
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")

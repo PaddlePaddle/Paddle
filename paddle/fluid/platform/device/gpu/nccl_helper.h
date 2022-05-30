@@ -50,6 +50,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclInt64;
   } else if (type == framework::proto::VarType::FP16) {
     return ncclFloat16;
+  } else if (type == framework::proto::VarType::INT8) {
+    return ncclInt8;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));

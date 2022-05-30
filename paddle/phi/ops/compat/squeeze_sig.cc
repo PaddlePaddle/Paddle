@@ -18,7 +18,7 @@
 namespace phi {
 
 KernelSignature SqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("squeeze", {"X"}, {"axes"}, {"XShape", "Out"});
+  return KernelSignature("squeeze", {"X"}, {"axes"}, {"Out", "XShape"});
 }
 
 KernelSignature SqueezeGradOpArgumentMapping(

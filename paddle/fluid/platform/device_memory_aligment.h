@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {

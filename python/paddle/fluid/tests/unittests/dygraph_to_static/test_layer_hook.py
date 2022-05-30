@@ -14,8 +14,9 @@
 
 import unittest
 import paddle
-
+import os
 import numpy as np
+import tempfile
 
 
 def forward_post_hook1(layer, input, output):
@@ -54,7 +55,11 @@ class TestNestLayerHook(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([4, 10])
-        self.path = "./net_hook"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, 'net_hook')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def train_net(self, to_static=False):
         paddle.seed(2022)
