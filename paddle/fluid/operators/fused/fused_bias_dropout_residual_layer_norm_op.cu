@@ -16,10 +16,9 @@ limitations under the License. */
 #include <cub/cub.cuh>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -43,7 +42,6 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *ln_mean = ctx.Output<Tensor>("LnMean");
     auto *ln_var = ctx.Output<Tensor>("LnVariance");
     auto *y = ctx.Output<Tensor>("Y");
-
     auto *x_data = input_x->data<T>();
     auto *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
     auto *residual_data = (residual == nullptr) ? nullptr : residual->data<T>();
@@ -58,16 +56,15 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());
 
     const auto input_x_dims = input_x->dims();
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-    int bsz_seq = batch_size * max_seq_len;
-
+    int bsz_seq = 1;
+    for (int i = 0; i < input_x_dims.size() - 1; i++) {
+      bsz_seq *= input_x_dims[i];
+    }
+    int dim_embed = input_x_dims[input_x_dims.size() - 1];
     DropoutParam dropout_param(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param,
         ln_epsilon);
-
     // output = layernorm(residual + dropout(input + bias))
     fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
         ctx.cuda_device_context(), x_data, residual_data, bias_data,
@@ -90,7 +87,6 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
         ctx.Input<Tensor>("BiasDropoutResidualOut");
     auto *ln_mean = ctx.Input<Tensor>("LnMean");
     auto *ln_var = ctx.Input<Tensor>("LnVariance");
-
     auto *d_y_data = d_y->data<T>();
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
     auto *dropout_mask_out_data = dropout_mask_out->data<uint8_t>();
@@ -105,7 +101,6 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
         ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
     auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
     auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
-
     auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
     auto *d_residual_data = d_residual->mutable_data<T>(ctx.GetPlace());
     auto *d_bias_dropout_residual_out_data =
@@ -120,10 +115,11 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
                               : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
 
     const auto input_x_dims = d_y->dims();
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-    int bsz_seq = batch_size * max_seq_len;
+    int bsz_seq = 1;
+    for (int i = 0; i < input_x_dims.size() - 1; i++) {
+      bsz_seq *= input_x_dims[i];
+    }
+    int dim_embed = input_x_dims[input_x_dims.size() - 1];
     DropoutParam dropout_param(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param,

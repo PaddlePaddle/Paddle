@@ -38,15 +38,17 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
                    "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y",
                    "FusedBiasDropoutResidualLnOp");
-
-    // [batch_size, seq_len, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
+    int left = 1;
+    for (int i = 0; i < x_dim.size() - 1; i++) {
+      left *= x_dim[i];
+    }
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
-    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("LnMean", {left});
+    ctx->SetOutputDim("LnVariance", {left});
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
   }
 
@@ -66,7 +68,6 @@ class FusedBiasDropoutResidualLnOpMaker
     AddInput("X", "The input tensor.");
     AddInput("Residual", "The residual tensor.");
     AddInput("Bias", "The linear bias tensor.").AsDispensable();
-
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
@@ -75,7 +76,6 @@ class FusedBiasDropoutResidualLnOpMaker
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
-
     AddOutput("BiasDropoutResidualOut", "Output of bias + dropout + residual.")
         .AsIntermediate();
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
@@ -84,7 +84,6 @@ class FusedBiasDropoutResidualLnOpMaker
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
     AddOutput("Y", "Result.");
-
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
@@ -145,14 +144,12 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<bool>("dropout_is_test"), false,
         platform::errors::InvalidArgument(
             "GradOp is only callable when dropout_is_test is false"));
-
     OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
                    "FusedBiasDropoutResidualLnGrad");
     OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
                    "FusedBiasDropoutResidualLnGrad");
     OP_INOUT_CHECK(ctx->HasInput("BiasDropoutResidualOut"), "Input",
                    "BiasDropoutResidualOut", "FusedBiasDropoutResidualLnGrad");
-
     if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
       ctx->SetOutputDim(framework::GradVarName("LnScale"),
                         ctx->GetInputDim("LnScale"));
@@ -222,7 +219,6 @@ class FusedBiasDropoutResidualLnGradOpMaker
                    this->Output("BiasDropoutResidualOut"));
     }
     op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
-
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Residual"),
                   this->InputGrad("Residual"));

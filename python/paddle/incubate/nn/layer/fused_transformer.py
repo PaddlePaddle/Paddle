@@ -73,17 +73,13 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
                  bias_attr=None,
                  epsilon=1e-5,
                  name=None):
-
         super(FusedBiasDropoutResidualLayerNorm, self).__init__()
-
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
                                "but recieved {}".format(embed_dim))
-
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
         self._weight_attr = weight_attr
         self.embed_dim = embed_dim
-
         self.linear_bias = self.create_parameter(
             shape=[embed_dim],
             attr=self._bias_attr,
@@ -95,7 +91,6 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             default_initializer=Constant(value=1.0))
         self.ln_bias = self.create_parameter(
             attr=self._bias_attr, shape=[embed_dim], is_bias=True)
-
         self.dropout_rate = dropout_rate
         self._epsilon = epsilon
 

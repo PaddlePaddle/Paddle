@@ -229,12 +229,11 @@ def fused_bias_dropout_residual_layer_norm(x,
         y = layer_norm(residual + dropout(bias + x))
 
     Parameters:
-        x (Tensor): The input tensor. The shape is
-            `[batch\_size, sequence\_len, embed\_dim]`.
+        x (Tensor): The input tensor. The shape is `[*, embed\_dim]`.
         residual (Tensor): The residual tensor. The shape is same as x.
         bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        ln_scale (Tensor, optional): The weight tensor of layernorm. Default None.
-        ln_bias (Tensor, optional): The bias tensor of layernorm. Default None.
+        ln_scale (Tensor, optional): The weight tensor of layernorm. The shape is `[embed_dim]`. Default None.
+        ln_bias (Tensor, optional): The bias tensor of layernorm. The shape is `[embed_dim]`. Default None.
         dropout_rate (float, optional): The dropout probability used on attention
             weights to drop some attention targets for the dropout after attention.
             0 for no dropout. Default 0.5.
@@ -271,24 +270,32 @@ def fused_bias_dropout_residual_layer_norm(x,
             residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
             # linear bias: [embed_dim]
             bias = paddle.rand(shape=[128], dtype="float32")
-
             # output: [batch_size, seq_len, embed_dim]
             output = F.fused_bias_dropout_residual_layer_norm(
                 x, residual, bias)
             # [2, 4, 128]
             print(output.shape)
     """
-
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
+    if ln_scale is not None:
+        assert len(ln_scale.
+                   shape) == 1, "The dims of the shape of ln_scale should be 1."
+        assert x.shape[len(x.shape) - 1] == ln_scale.shape[
+            0], "The dim of ln_scale must equal to the last dim of x."
+    if ln_bias is not None:
+        assert len(
+            ln_bias.shape) == 1, "The dims of the shape of ln_bias should be 1."
+        assert x.shape[len(x.shape) - 1] == ln_bias.shape[
+            0], "The dim of ln_bias must equal to the last dim of x."
+
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-
         _, _, _, _, final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
             x, residual, bias, ln_scale, ln_bias, 'dropout_rate', dropout_rate,
             'ln_epsilon', ln_epsilon, 'dropout_is_test', not training,
@@ -304,7 +311,6 @@ def fused_bias_dropout_residual_layer_norm(x,
                                  'fused_bias_dropout_residual_layer_norm')
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'fused_bias_dropout_residual_layer_norm')
-
         # set inputs
         inputs = dict()
         inputs['X'] = [x]
@@ -315,10 +321,8 @@ def fused_bias_dropout_residual_layer_norm(x,
             inputs['LnScale'] = [ln_scale]
         if ln_bias:
             inputs['LnBias'] = [ln_bias]
-
         if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
             seed = helper.main_program.random_seed
-
         # set attrs
         attrs = {
             'ln_epsilon': ln_epsilon,
@@ -328,7 +332,6 @@ def fused_bias_dropout_residual_layer_norm(x,
             'dropout_seed': seed if seed is not None else 0,
             'dropout_implementation': mode,
         }
-
         # set outputs
         dropout_mask_out = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
@@ -351,7 +354,6 @@ def fused_bias_dropout_residual_layer_norm(x,
                 'Y': final_out,
             },
             attrs=attrs)
-
         return final_out
 
 
