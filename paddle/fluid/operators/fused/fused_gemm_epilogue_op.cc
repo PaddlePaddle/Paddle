@@ -292,7 +292,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput("DBias")) {
       std::vector<int64_t> dbias_dims;
-      dbias_dims.push_back(y_dims[1]);
+      dbias_dims.push_back(trans_y ? y_dims[0] : y_dims[1]);
       ctx->SetOutputDim("DBias", phi::make_ddim(dbias_dims));
     }
   }

@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
@@ -152,13 +153,13 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     const auto* y_data = y->data<T>();
     const auto* x_data = x->data<T>();
 
-    cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+    auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
         lt_handle, operation_desc, y_desc, x_desc, out_desc, alpha, beta,
         y_data, x_data, out_data, stream, workspace->ptr(), workspace_size);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
         lt_handle, operation_desc, alpha, y_data, y_desc, x_data, x_desc, beta,
-        out_data, out_desc, out_data, out_desc, nullptr, workspace->ptr(),
+        out_data, out_desc, out_data, out_desc, algo, workspace->ptr(),
         workspace_size, stream));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -251,6 +252,10 @@ struct FusedGEMMGradTrait<true, true> {
   static constexpr auto kYGradBTrans = true;
 };
 
+static constexpr auto BoolToCuBlasEnum(bool transpose) {
+  return transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
+}
+
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  public:
@@ -276,6 +281,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
  private:
   template <bool TransX, bool TransY>
   static void ComputeImpl(const framework::ExecutionContext& ctx) {
+    using Trait = FusedGEMMGradTrait<TransX, TransY>;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
@@ -288,19 +294,16 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
     std::string activation_grad = ctx.Attr<std::string>("activation_grad");
 
-    bool transpose_x = ctx.Attr<bool>("trans_x");
-    bool transpose_y = ctx.Attr<bool>("trans_y");
-
-    VLOG(10) << "trans_x = " << transpose_x << " , trans_y = " << transpose_y
+    VLOG(10) << "trans_x = " << TransX << " , trans_y = " << TransY
              << " , activation_grad = " << activation_grad;
 
     auto x_mat_dims =
-        phi::flatten_to_2d(x->dims(), transpose_x ? 1 : x->dims().size() - 1);
+        phi::flatten_to_2d(x->dims(), TransX ? 1 : x->dims().size() - 1);
 
     // (M * K) * (K * N)
-    int64_t M = transpose_x ? x_mat_dims[1] : x_mat_dims[0];
-    int64_t K = transpose_y ? y->dims()[1] : y->dims()[0];
-    int64_t N = transpose_y ? y->dims()[0] : y->dims()[1];
+    int64_t M = TransX ? x_mat_dims[1] : x_mat_dims[0];
+    int64_t K = TransY ? y->dims()[1] : y->dims()[0];
+    int64_t N = TransY ? y->dims()[0] : y->dims()[1];
 
     VLOG(10) << "M = " << M << " , K = " << K << " , N = " << N;
 
@@ -333,62 +336,79 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     }
 
     cublasLtMatrixLayout_t dout_desc = nullptr, dout_trans_desc = nullptr;
+    cublasLtMatrixLayout_t x_desc = nullptr, x_trans_desc = nullptr;
+    cublasLtMatrixLayout_t y_desc = nullptr, y_trans_desc = nullptr;
+    cublasLtMatrixLayout_t dx_desc = nullptr, dy_desc = nullptr;
+    cublasLtMatmulDesc_t dx_operation_desc = nullptr,
+                         dy_operation_desc = nullptr;
+
+    DEFINE_PADDLE_SCOPE_GUARD([&] {
+      auto descs = {dout_desc, dout_trans_desc, x_desc,  x_trans_desc,
+                    y_desc,    y_trans_desc,    dx_desc, dy_desc};
+      for (auto desc : descs) {
+        if (desc) {
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              platform::dynload::cublasLtMatrixLayoutDestroy(desc));
+        }
+      }
+
+      if (dx_operation_desc) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cublasLtMatmulDescDestroy(dx_operation_desc));
+      }
+
+      if (dy_operation_desc) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cublasLtMatmulDescDestroy(dy_operation_desc));
+      }
+    });
+
+    auto x_row = TransX ? K : M;
+    auto x_col = TransX ? M : K;
+    auto y_row = TransY ? N : K;
+    auto y_col = TransY ? K : N;
+    auto z_row = TransX ? N : M;
+    auto z_col = TransX ? M : N;
+
+    // dx = func(dout, y)
     if (dx) {
-      cublasOperation_t trans_dout = transpose_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-      cublasOperation_t trans_y =
-          (transpose_x ^ transpose_y) ? CUBLAS_OP_N : CUBLAS_OP_T;
+      constexpr auto kXGradAIsDZ = (Trait::kXGradA == FusedGEMMGradInType::kDZ);
+      cublasLtMatrixLayout_t *dx_dout_desc, *dx_y_desc;
 
-      cublasLtMatrixLayout_t dout_desc_for_dx, y_desc, dx_desc;
-      if (trans_dout == CUBLAS_OP_T) {
+      if (TransX) {
+        dx_dout_desc = &dout_trans_desc;
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&dout_trans_desc,
-                                                          mat_type, M, N, M));
-        dout_desc_for_dx = dout_trans_desc;
+            platform::dynload::cublasLtMatrixLayoutCreate(
+                dx_dout_desc, mat_type, z_row, z_col, z_row));
       } else {
+        dx_dout_desc = &dout_desc;
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&dout_desc, mat_type,
-                                                          N, M, N));
-        dout_desc_for_dx = dout_desc;
+            platform::dynload::cublasLtMatrixLayoutCreate(
+                dx_dout_desc, mat_type, z_col, z_row, z_col));
       }
 
-      if (transpose_y) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, K,
-                                                          N, K));
-      } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, N,
-                                                          K, N));
-      }
+      dx_y_desc = &y_trans_desc;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          dx_y_desc, mat_type, y_col, y_row, y_col));
+
+      auto& a_desc = kXGradAIsDZ ? (*dx_dout_desc) : (*dx_y_desc);
+      auto& b_desc = kXGradAIsDZ ? (*dx_y_desc) : (*dx_dout_desc);
+      auto a_trans = BoolToCuBlasEnum(Trait::kXGradATrans);
+      auto b_trans = BoolToCuBlasEnum(Trait::kXGradBTrans);
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &dx_desc, mat_type, K, M, K));
+          &dx_desc, mat_type, x_col, x_row, x_col));
 
-      cublasLtMatmulDesc_t dx_operation_desc = NULL;
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
           &dx_operation_desc, compute_type, scale_type));
-
-      if (transpose_x) {
-        // dx = B * dout
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_dout,
-                sizeof(trans_dout)));
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_y,
-                sizeof(trans_y)));
-      } else {
-        // dx = dout * B
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_dout,
-                sizeof(trans_dout)));
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y,
-                sizeof(trans_y)));
-      }
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &a_trans,
+              sizeof(a_trans)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dx_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &b_trans,
+              sizeof(b_trans)));
 
       cublasLtEpilogue_t epiloque_func_for_dx =
           get_epilogue_type_(activation_grad);
@@ -403,89 +423,81 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
                 &aux_data, sizeof(aux_data)));
-        int64_t aux_ld = transpose_x ? M : K;
+        int64_t aux_ld = TransX ? M : K;
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
                 &aux_ld, sizeof(aux_ld)));
       }
 
-      memory::allocation::AllocationPtr dx_workspace =
-          memory::Alloc(dev_ctx, workspace_size);
+      auto dx_workspace = memory::Alloc(dev_ctx, workspace_size);
 
-      dx->mutable_data<T>(ctx.GetPlace());
-      auto* dx_data = dx->data<T>();
+      auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
       const auto* y_data = y->data<T>();
       const auto* dout_data = dout->data<T>();
+      const auto* a_data = kXGradAIsDZ ? dout_data : y_data;
+      const auto* b_data = kXGradAIsDZ ? y_data : dout_data;
 
-      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
-          lt_handle, dx_operation_desc, y_desc, dout_desc, dx_desc, alpha, beta,
-          y_data, dout_data, dx_data, stream, dx_workspace->ptr(),
-          workspace_size);
+      auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, dx_operation_desc, b_desc, a_desc, dx_desc, alpha, beta,
+          b_data, a_data, dx_data, stream, dx_workspace->ptr(), workspace_size);
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-          lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
-          dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
-          nullptr, dx_workspace->ptr(), workspace_size, stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatmulDescDestroy(dx_operation_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatrixLayoutDestroy(y_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatrixLayoutDestroy(dx_desc));
+          lt_handle, dx_operation_desc, alpha, b_data, b_desc, a_data, a_desc,
+          beta, dx_data, dx_desc, dx_data, dx_desc, algo, dx_workspace->ptr(),
+          workspace_size, stream));
     }
 
+    // dy = func(dout, x)
     if (dy) {
-      cublasOperation_t trans_dout = transpose_y ? CUBLAS_OP_T : CUBLAS_OP_N;
-      cublasOperation_t trans_x =
-          (transpose_x ^ transpose_y) ? CUBLAS_OP_N : CUBLAS_OP_T;
+      constexpr auto kYGradAIsDZ = (Trait::kYGradA == FusedGEMMGradInType::kDZ);
 
-      cublasLtMatrixLayout_t dout_desc_for_dx;
-      if (trans_dout == CUBLAS_OP_T) {
+      cublasLtMatrixLayout_t *dy_dout_desc = nullptr, *dy_x_desc = nullptr;
+      if (TransX) {
+        dy_dout_desc = &dout_trans_desc;
         if (dout_trans_desc == nullptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cublasLtMatrixLayoutCreate(&dout_trans_desc,
-                                                            mat_type, M, N, M));
+              platform::dynload::cublasLtMatrixLayoutCreate(
+                  dy_dout_desc, mat_type, z_row, z_col, z_row));
         }
-        dout_desc_for_dx = dout_trans_desc;
       } else {
+        dy_dout_desc = &dout_desc;
         if (dout_desc == nullptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cublasLtMatrixLayoutCreate(&dout_desc,
-                                                            mat_type, N, M, N));
+              platform::dynload::cublasLtMatrixLayoutCreate(
+                  dy_dout_desc, mat_type, z_col, z_row, z_col));
         }
-        dout_desc_for_dx = dout_desc;
       }
 
-      cublasLtMatmulDesc_t dy_operation_desc = NULL;
+      dy_x_desc = &x_trans_desc;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          dy_x_desc, mat_type, x_col, x_row, x_col));
+
+      auto& a_desc = kYGradAIsDZ ? (*dy_dout_desc) : (*dy_x_desc);
+      auto& b_desc = kYGradAIsDZ ? (*dy_x_desc) : (*dy_dout_desc);
+      auto a_trans = BoolToCuBlasEnum(Trait::kYGradATrans);
+      auto b_trans = BoolToCuBlasEnum(Trait::kYGradBTrans);
+
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+          &dy_desc, mat_type, y_col, y_row, y_col));
+
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
           &dy_operation_desc, compute_type, scale_type));
 
-      if (transpose_y) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_dout,
-                sizeof(trans_dout)));
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_x,
-                sizeof(trans_x)));
-      } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_dout,
-                sizeof(trans_dout)));
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatmulDescSetAttribute(
-                dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x,
-                sizeof(trans_x)));
-      }
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &a_trans,
+              sizeof(a_trans)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescSetAttribute(
+              dy_operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &b_trans,
+              sizeof(b_trans)));
 
       cublasLtEpilogue_t epiloque_func_for_dy;
       if (dbias == nullptr) {
         epiloque_func_for_dy = CUBLASLT_EPILOGUE_DEFAULT;
       } else {
-        if (transpose_y) {
+        if (TransY) {
           epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADB;
         } else {
           epiloque_func_for_dy = CUBLASLT_EPILOGUE_BGRADA;
@@ -505,45 +517,22 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 &dbias_data, sizeof(dbias_data)));
       }
 
-      cublasLtMatrixLayout_t x_desc = NULL, dy_desc = NULL;
-      if (transpose_x) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, M,
-                                                          K, M));
-      } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, K,
-                                                          M, K));
-      }
-
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &dy_desc, mat_type, N, K, N));
-
-      memory::allocation::AllocationPtr dy_workspace =
-          memory::Alloc(dev_ctx, workspace_size);
-
+      auto dy_workspace = memory::Alloc(dev_ctx, workspace_size);
       auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
       const auto* dout_data = dout->data<T>();
       const auto* x_data = x->data<T>();
+      const auto* a_data = kYGradAIsDZ ? dout_data : x_data;
+      const auto* b_data = kYGradAIsDZ ? x_data : dout_data;
 
-      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
-          lt_handle, dy_operation_desc, dout_desc, x_desc, dy_desc, alpha, beta,
-          dout_data, x_data, dy_data, stream, dy_workspace->ptr(),
-          workspace_size);
+      auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, dy_operation_desc, b_desc, a_desc, dy_desc, alpha, beta,
+          b_data, a_data, dy_data, stream, dy_workspace->ptr(), workspace_size);
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-          lt_handle, dy_operation_desc, alpha, dout_data, dout_desc, x_data,
-          x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, nullptr,
-          dy_workspace->ptr(), workspace_size, stream));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatmulDescDestroy(dy_operation_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatrixLayoutDestroy(x_desc));
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cublasLtMatrixLayoutDestroy(dy_desc));
+          lt_handle, dy_operation_desc, alpha, b_data, b_desc, a_data, a_desc,
+          beta, dy_data, dy_desc, dy_data, dy_desc, algo, dy_workspace->ptr(),
+          workspace_size, stream));
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatrixLayoutDestroy(dout_desc));
   }
 
  private:

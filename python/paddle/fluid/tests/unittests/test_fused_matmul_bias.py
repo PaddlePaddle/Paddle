@@ -17,7 +17,6 @@ import paddle.fluid.core as core
 import unittest
 import numpy as np
 from paddle.incubate.nn.functional import fused_matmul_bias
-from custom_setup_ops import custom_fused_dense
 
 
 def is_fused_matmul_bias_supported():
@@ -62,19 +61,6 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
     return dx, dy, dbias
 
 
-def _fused_matmul_bias(x, y, bias, trans_x, trans_y):
-    if bias is None:
-        return paddle.matmul(x, y, trans_x, trans_y)
-    else:
-        return custom_fused_dense(
-            x=x,
-            y=y,
-            bias=bias,
-            transx=trans_x,
-            transy=trans_y,
-            use_addto=False)
-
-
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
@@ -108,43 +94,35 @@ class TestFusedMatmulBias(unittest.TestCase):
             bias = None
 
         z = fused_matmul_bias(x, y, bias, trans_x, trans_y)
-        #z = paddle.matmul(x, y, trans_x, trans_y)
-        #if bias is not None:
-        #    z = z + bias
         z_np = matmul(x_np, y_np, bias_np, trans_x, trans_y)
         self.assertTrue(np.array_equal(z.numpy(), z_np))
 
         z_grad_np = self.rand_data(z_np.shape, dtype)
         paddle.autograd.backward(z, grad_tensors=[paddle.to_tensor(z_grad_np)])
 
-        print(trans_x, trans_y, need_bias)
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
             x_np, y_np, bias_np, z_grad_np, trans_x, trans_y)
         self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_np))
         self.assertEqual(y_grad_np.shape, y_np.shape)
-        print(y.grad.numpy(), y_grad_np)
         self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_np))
 
         if need_bias:
-            print(bias.grad.numpy(), bias_grad_np)
-            if not np.array_equal(bias.grad.numpy(), bias_grad_np):
-                print('Failure....')
             self.assertTrue(np.array_equal(bias.grad.numpy(), bias_grad_np))
         else:
             self.assertTrue(bias_grad_np is None)
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))
-        for trans_x in [False]:
+        for trans_x in [False, True]:
             for trans_y in [False, True]:
                 for need_bias in [False, True]:
                     self.rand_test_base(m, n, k, trans_x, trans_y, need_bias,
                                         dtype, seed)
 
     def test_fp32(self):
-        self.rand_test(3, 4, 5, np.float32)
+        self.rand_test(30, 40, 50, np.float32)
 
-    def _test_fp16(self):
+    def test_fp16(self):
         self.rand_test(4, 5, 7, np.float16)
 
 
