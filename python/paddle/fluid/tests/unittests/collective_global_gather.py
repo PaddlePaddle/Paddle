@@ -76,7 +76,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         tot_expert = n_expert * world_size
         paddle.disable_static()
 
-        # use legacy dygraph to call paddle.distributed.alltoall()
+        # Call paddle.distributed.alltoall() under legacy dygraph
         _enable_legacy_dygraph()
         np.random.seed(os.getpid())
         local_expert_count = np.random.randint(
