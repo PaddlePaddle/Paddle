@@ -103,7 +103,6 @@ class RecordEvent {
   TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
-  std::vector<uint64_t> mem_events_idx_;
 };
 
 // Memory event tracing. A trace marks memory manipulation such as allocation
