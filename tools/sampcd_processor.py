@@ -328,6 +328,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         # detect sample codes using >>> to format and consider this situation as wrong
         logger.info(htype + " name:" + name)
         logger.info("-----------------------")
+        print("srccom: ", srccom)
         if srccom.find("Examples:") != -1:
             logger.info("----example code check----")
             if srccom.find(">>>") != -1:
@@ -342,7 +343,7 @@ Please use '.. code-block:: python' to format the sample code.""")
             logger.error(
                 "Error: No sample code found! Please check if the API comment contais string 'Examples:' correctly"
             )
-            exit(1)
+            return []
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
@@ -462,6 +463,7 @@ def get_filenames(full_test=False):
                 # paddle.Tensor.<lambda>
                 continue
             if hasattr(api_obj, '__doc__') and api_obj.__doc__:
+                print("api_obj.__doc__: ", api_obj.__doc__)
                 sample_code_filenames = sampcd_extract_to_file(api_obj.__doc__,
                                                                api)
                 for tfname in sample_code_filenames:
