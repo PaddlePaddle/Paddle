@@ -276,13 +276,16 @@ class Engine:
             "eval model is not ready, please call `engine.prepare(mode='eval')` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
-        outputs = []
         for step, data in enumerate(eval_dataloader):
-            logs, outs = self._eval_step(data, use_program_cache, return_numpy)
-            outputs.append(outs)
-            predict_logs = {"eval_" + name: val for name, val in logs.items()}
-            self._logger.info(predict_logs)
-        return outputs
+            eval_logs = dict()
+            outs = self._eval_step(data, use_program_cache, return_numpy)
+            eval_logs["eval_loss"] = outs[0] if len(outs) > 0 else []
+            for metric in self._metrics:
+                results = metric.accumulate()
+                for i, res in enumerate(to_list(results)):
+                    eval_logs["eval_" + metric.name()[i]] = res
+            self._logger.info(eval_logs)
+        return eval_logs
 
     def predict(self,
                 test_data,
@@ -308,56 +311,52 @@ class Engine:
 
     def _train_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = self._fetch_vars[self.mode]["loss"][0]
-        if fetch_var.name not in dist_main_prog.global_block().vars:
-            loss = self._executor.run(dist_main_prog,
-                                      use_program_cache=use_program_cache)
-            logs["loss"] = None
-        else:
-            loss = self._executor.run(dist_main_prog,
-                                      fetch_list=to_list(fetch_var),
-                                      use_program_cache=use_program_cache,
-                                      return_numpy=return_numpy)
-            logs["loss"] = loss
+        fetch_vars = self._fetch_vars[self.mode]["loss"]
+        fetch_list = self._fetch_list(fetch_vars)
+
+        loss = self._executor.run(self.main_program,
+                                  fetch_list=fetch_list,
+                                  use_program_cache=use_program_cache,
+                                  return_numpy=return_numpy)
+        logs["loss"] = loss
         return logs, loss
 
     def _eval_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = self._fetch_vars[self.mode]["loss"][0]
+        metrics = self._fetch_vars[self.mode]["metrics"]
+        losses = self._fetch_vars[self.mode]["loss"]
+        fetch_loss = self._fetch_list(losses)
+        fetch_metrics = self._fetch_list(metrics)
+        fetch_list = fetch_loss + fetch_metrics
 
-        if fetch_var.name not in dist_main_prog.global_block().vars:
-            outs = self._executor.run(dist_main_prog,
-                                      use_program_cache=use_program_cache)
-            logs["loss"] = outs
-        else:
-            outs = self._executor.run(dist_main_prog,
-                                      fetch_list=fetch_var,
-                                      use_program_cache=use_program_cache,
-                                      return_numpy=return_numpy)
-            logs["loss"] = outs
-        return logs, outs
+        res = self._executor.run(self.main_program,
+                                 fetch_list=fetch_list,
+                                 use_program_cache=use_program_cache,
+                                 return_numpy=return_numpy)
+        if not res[len(fetch_loss):]:
+            return res[:len(fetch_loss)]
+        for metric in self._metrics:
+            metric.update(*res[len(fetch_loss):])
+        return res[:len(fetch_loss)]
 
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = []
-        for var in self._fetch_vars[self.mode]["outputs"]:
-            if var.name in dist_main_prog.global_block().vars:
-                fetch_var.append(var)
+        fetch_vars = self._fetch_vars[self.mode]["outputs"]
+        fetch_list = self._fetch_list(fetch_vars)
 
-        if fetch_var is []:
-            outs = self._executor.run(dist_main_prog,
-                                      use_program_cache=use_program_cache)
-            logs["pred"] = outs
-        else:
-            outs = self._executor.run(dist_main_prog,
-                                      fetch_list=fetch_var,
-                                      use_program_cache=use_program_cache,
-                                      return_numpy=return_numpy)
-            logs["pred"] = outs
+        outs = self._executor.run(self.main_program,
+                                  fetch_list=fetch_list,
+                                  use_program_cache=use_program_cache,
+                                  return_numpy=return_numpy)
+        logs["pred"] = outs
         return logs, outs
+
+    def _fetch_list(self, fetch_vars):
+        fetch_list = []
+        for var in fetch_vars:
+            if var.name in self.main_program.global_block().vars:
+                fetch_list.append(var.name)
+        return fetch_list
 
     def _create_dataloader(self,
                            dataset,
@@ -513,10 +512,6 @@ class Engine:
     @mode.setter
     def mode(self, mode):
         self._mode = mode
-
-    @property
-    def metrics(self):
-        return self._metrics
 
     @property
     def main_program(self):
