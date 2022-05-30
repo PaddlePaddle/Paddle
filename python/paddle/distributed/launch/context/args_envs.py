@@ -100,6 +100,12 @@ def parse_args():
         default=None,
         help="accelerate devices. as --gpus,npus,xps")
 
+    base_group.add_argument(
+        "--device_num",
+        type=int,
+        default=None,
+        help="the number of accelerate devices.")
+
     base_group.add_argument("--host", type=str, default=None, help="host ip")
 
     base_group.add_argument(
