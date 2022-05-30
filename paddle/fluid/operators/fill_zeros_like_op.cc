@@ -77,8 +77,8 @@ class FillZerosLikeOp2 : public FillZerosLikeOp {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
-#ifdef PADDLE_WITH_MKLDNN
 
+#ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
