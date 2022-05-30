@@ -48,11 +48,9 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         self.x_type = np.float32
         self.atol = 1e-4
         self.training = True
-
         self.batch_size = 8
         self.query_length = 128
         self.embed_dim = 1024
-
         self.dropout_prob = 0.0
         self.weight_attr = None
         self.bias_attr = None
@@ -79,7 +77,6 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
     def GetBaselineOut(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
 
-        # todo: 
         if self.tensor_linear_bias is not None:
             out = self.tensor_x + self.tensor_linear_bias
         else:
@@ -117,12 +114,12 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         return final_out, self.tensor_x.grad, self.tensor_residual.grad, tensor_linear_bias_grad
 
     def test_fused_op(self):
-        final_out_ref, x_grad_ref, residual_grad_ref, linear_bias_grad_ref = self.GetBaselineOut(
+        out_ref, x_grad_ref, residual_grad_ref, linear_bias_grad_ref = self.GetBaselineOut(
         )
-        final_out, x_grad, residual_grad, linear_bias_grad = self.GetFusedBiasDropoutResidualLayerNormOut(
+        out, x_grad, residual_grad, linear_bias_grad = self.GetFusedBiasDropoutResidualLayerNormOut(
         )
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=self.atol)
+            out_ref, out.numpy(), rtol=1e-5, atol=self.atol)
         np.testing.assert_allclose(
             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=self.atol)
         np.testing.assert_allclose(

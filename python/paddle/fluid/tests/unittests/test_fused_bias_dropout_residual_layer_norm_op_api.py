@@ -53,7 +53,6 @@ def compute_reference(x, residual, ln_scale, ln_bias, linear_bias):
     has_bias = True
     if ln_bias is None:
         has_bias = False
-
     # bias add, dropout, residual add, layer_norm.
     if linear_bias is not None:
         linear_bias_out = x + linear_bias
@@ -82,11 +81,9 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
 
     def config(self):
         self.training = True
-
         self.batch_size = 1
         self.query_length = 2
         self.embed_dim = 4
-
         self.dropout_prob = 0.0
         self.weight_attr = None
 
@@ -130,7 +127,6 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
             name='Residual',
             shape=[self.batch_size, self.query_length, self.embed_dim],
             dtype=self.x_type)
-
         final_out = fused_op(x, residual)
 
         place = paddle.CUDAPlace(0)
@@ -174,11 +170,6 @@ class TestFusedBiasDropoutResidualLayerNormAPIBiasIsNone(
     def setBiasAttr(self):
         self.bias_attr = False
 
-
-# class TestFusedBiasDropoutResidualLayerNormAPIFp16(TestFusedBiasDropoutResidualLayerNormAPI):
-#     def setXType(self):
-#         self.x_type = np.float16
-#         self.atol = 1e-4
 
 if __name__ == "__main__":
     unittest.main()
