@@ -74,8 +74,8 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
         self.force_fp32_output = False
 
     def setUp(self):
-        self.input_type = np.uint16
-        self.dtype = np.uint16
+        self.input_type = "bfloat16"
+        self.dtype = "bfloat16"
         self.mkldnn_data_type = "bfloat16"
         self.init_op_type()
         self.init_test_case()
