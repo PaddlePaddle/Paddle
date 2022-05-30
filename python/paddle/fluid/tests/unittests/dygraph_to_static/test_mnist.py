@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+import os
+import tempfile
 from time import time
 
 import numpy as np
@@ -134,6 +136,10 @@ class TestMNIST(unittest.TestCase):
             paddle.dataset.mnist.train(),
             batch_size=self.batch_size,
             drop_last=True)
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
 
 class TestMNISTWithToStatic(TestMNIST):
@@ -227,9 +233,10 @@ class TestMNISTWithToStatic(TestMNIST):
 
     def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
         if to_static:
-            infer_model_path = "./test_mnist_inference_model_by_jit_save"
-            model_save_dir = "./inference"
-            model_save_prefix = "./inference/mnist"
+            infer_model_path = os.path.join(
+                self.temp_dir.name, 'test_mnist_inference_model_by_jit_save')
+            model_save_dir = os.path.join(self.temp_dir.name, 'inference')
+            model_save_prefix = os.path.join(model_save_dir, 'mnist')
             model_filename = "mnist" + INFER_MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
             fluid.dygraph.jit.save(

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"

@@ -17,6 +17,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -66,6 +69,12 @@ class WhileOp : public framework::OperatorBase {
             "the Condition's shape is ",
             cond.dims().to_str(), ".\n"));
 
+#ifdef PADDLE_WITH_MKLDNN
+    // (jczaja) Executor on being destroyed clears oneDNN cache and
+    // resets registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    platform::DontClearMKLDNNCache(dev_place);
+#endif
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 

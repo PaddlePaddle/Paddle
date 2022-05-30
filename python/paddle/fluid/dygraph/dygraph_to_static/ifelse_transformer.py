@@ -536,7 +536,7 @@ def create_convert_ifelse_node(return_name_ids,
     return_vars = create_name_nodes(return_name_ids)
 
     convert_ifelse_layer = gast.parse(
-        'paddle.jit.dy2static.convert_ifelse('
+        '_jst.convert_ifelse('
         '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'.
         format(
             pred=ast_to_source_code(pred),
