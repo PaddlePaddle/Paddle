@@ -2986,20 +2986,11 @@ function build_develop() {
 }
 
 function check_coverage_build() {
-    if [ ! "${buildSize}" ];then
-        echo "build size not found"
-        exit 1
-    fi
-
-    if [ ${WITH_COVERAGE} != "ON" ];then
-        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
-        exit 1
-    fi
-
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3149,13 +3140,15 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      check_coverage_build)
+        check_coverage_build
         ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
