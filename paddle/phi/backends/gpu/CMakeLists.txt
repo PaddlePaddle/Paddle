@@ -7,4 +7,4 @@ elseif(WITH_ROCM)
 endif()
 
 cc_library(gpu_resources SRCS gpu_resources.cc DEPS phi_device_context phi_gpu_info)
-cc_library(gpu_context SRCS gpu_context.cc DEPS phi_device_context phi_gpu_info eigen3 gpu_resources simple_threadpool)
+cc_library(gpu_context SRCS gpu_context.cc DEPS phi_device_context phi_gpu_info eigen3 gpu_resources)
