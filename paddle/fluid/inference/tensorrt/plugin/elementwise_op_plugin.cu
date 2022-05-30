@@ -35,6 +35,19 @@ template <typename T>
 struct Div {
   __device__ T operator()(const T &a, const T &b) const { return a / b; }
 };
+
+template <typename T>
+struct Sub {
+  __device__ T operator()(const T &a, const T &b) const { return a - b; }
+};
+
+template <typename T>
+struct Pow {
+  __device__ T operator()(const T &a, const T &b) const {
+    return static_cast<T>(::powf(static_cast<float>(a), static_cast<float>(b)));
+  }
+};
+
 }  // namespace details
 
 template <typename T, typename Operator>
@@ -139,6 +152,14 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
         details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Pow<float>());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The %s type elementwise is not implemented in trt plugin.", type_));
@@ -254,12 +275,18 @@ int ElementwisePluginDynamic::enqueue(
   } else if (type_ == "div") {
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size, midd_size, post_size, details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Pow<float>());
   } else {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("Paddle-TRT only support elementwise "
-                                        "operation: {add, mul, div} currently, "
-                                        "but got %s.",
-                                        type_));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Paddle-TRT only support elementwise "
+        "operation: {add, mul, div, sub, pow} currently, "
+        "but got %s.",
+        type_));
   }
 
   return cudaGetLastError() != cudaSuccess;

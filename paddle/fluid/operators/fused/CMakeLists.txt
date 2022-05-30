@@ -11,6 +11,8 @@ register_operators(EXCLUDES
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
     skip_layernorm_op
+    yolo_box_head_op
+    yolo_box_post_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
     fusion_gru_op
@@ -22,7 +24,8 @@ register_operators(EXCLUDES
     fused_multi_transformer_op
     fused_bias_dropout_residual_layer_norm_op
     resnet_unit_op
-    fused_gemm_epilogue_op)
+    fused_gemm_epilogue_op
+    fused_gate_attention_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -54,7 +57,10 @@ if (WITH_GPU OR WITH_ROCM)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     op_library(skip_layernorm_op)
+    op_library(yolo_box_head_op)
+    op_library(yolo_box_post_op)
     op_library(fused_embedding_eltwise_layernorm_op)
+    op_library(fused_gate_attention_op)
     # fusion_group
     if(NOT APPLE AND NOT WIN32)
         op_library(fusion_group_op DEPS device_code)

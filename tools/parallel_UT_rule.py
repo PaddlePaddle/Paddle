@@ -824,7 +824,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_mean_op', 'test_is_tensor', 'test_run_program_op',
     'test_cuda_random_seed', 'test_linear_interp_op',
     'test_fuse_all_reduce_pass', 'tensor_util_test', 'test_median',
-    'test_linear', 'test_imperative_qat_amp',
+    'test_nanmedian', 'test_linear', 'test_imperative_qat_amp',
     'test_truncated_gaussian_random_op', 'test_lstm_cudnn_op',
     'copy_same_tensor_test', 'test_squeeze2_op',
     'naive_best_fit_allocator_test', 'test_model', 'test_py_reader_combination',

@@ -411,6 +411,86 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
+def affine(img,
+           angle,
+           translate,
+           scale,
+           shear,
+           interpolation='nearest',
+           fill=0,
+           center=None):
+    """Affine the image by matrix.
+
+    Args:
+        img (PIL.Image): Image to be affined.
+        translate (sequence or int): horizontal and vertical translations
+        scale (float): overall scale ratio
+        shear (sequence or float): shear angle value in degrees between -180 to 180, clockwise direction.
+            If a sequence is specified, the first value corresponds to a shear parallel to the x axis, while
+            the second value corresponds to a shear parallel to the y axis.
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
+            If int, it is used for all channels respectively.
+        center (sequence, optional): Optional center of rotation. Origin is the upper left corner.
+            Default is the center of the image.
+
+    Returns:
+        np.array: Affined image.
+
+    """
+    cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+
+    h, w = img.shape[0:2]
+
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    if center is None:
+        center = (w / 2.0, h / 2.0)
+
+    M = np.ones([2, 3])
+    # Rotate and Scale
+    R = cv2.getRotationMatrix2D(angle=angle, center=center, scale=scale)
+
+    # Shear
+    sx = math.tan(shear[0] * math.pi / 180)
+    sy = math.tan(shear[1] * math.pi / 180)
+    M[0] = R[0] + sy * R[1]
+    M[1] = R[1] + sx * R[0]
+
+    # Translation
+    tx, ty = translate
+    M[0, 2] = tx
+    M[1, 2] = ty
+
+    if len(img.shape) == 3 and img.shape[2] == 1:
+        return cv2.warpAffine(
+            img,
+            M,
+            dsize=(w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpAffine(
+            img,
+            M,
+            dsize=(w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
+
+
 def rotate(img,
            angle,
            interpolation='nearest',
@@ -505,6 +585,56 @@ def rotate(img,
         return cv2.warpAffine(
             img,
             M, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
+
+
+def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
+    """Perspective the image.
+
+    Args:
+        img (np.array): Image to be perspectived.
+        startpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the original image,
+        endpoints (list[list[int]]): [top-left, top-right, bottom-right, bottom-left] of the transformed image.
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to cv2.INTER_NEAREST.
+            when use cv2 backend, support method are as following: 
+            - "nearest": cv2.INTER_NEAREST, 
+            - "bilinear": cv2.INTER_LINEAR, 
+            - "bicubic": cv2.INTER_CUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        np.array: Perspectived image.
+
+    """
+    cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+    h, w = img.shape[0:2]
+
+    startpoints = np.array(startpoints, dtype="float32")
+    endpoints = np.array(endpoints, dtype="float32")
+    matrix = cv2.getPerspectiveTransform(startpoints, endpoints)
+
+    if len(img.shape) == 3 and img.shape[2] == 1:
+        return cv2.warpPerspective(
+            img,
+            matrix,
+            dsize=(w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
+    else:
+        return cv2.warpPerspective(
+            img,
+            matrix,
+            dsize=(w, h),
             flags=_cv2_interp_from_str[interpolation],
             borderValue=fill)
 

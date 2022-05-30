@@ -65,6 +65,9 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
+std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
+                                                      ssize_t arg_pos);
+std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -96,6 +99,7 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
+PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value);
 
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
@@ -181,7 +185,7 @@ paddle::Place CastPyArg2Place(PyObject* obj, const std::string& op_type,
 paddle::DataType CastPyArg2DataType(PyObject* obj, const std::string& op_type,
                                     ssize_t arg_pos);
 
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
