@@ -127,6 +127,9 @@ class TestFusedMatmulBias(unittest.TestCase):
         self.rand_test(4, 5, 7, np.float16)
 
 
+@unittest.skipIf(
+    not is_fused_matmul_bias_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestFusedLinear(unittest.TestCase):
     def check_fused_linear(self, transpose):
         x = paddle.randn([30, 40])
@@ -142,6 +145,9 @@ class TestFusedLinear(unittest.TestCase):
         self.check_fused_linear(True)
 
 
+@unittest.skipIf(
+    not is_fused_matmul_bias_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestStaticGraph(unittest.TestCase):
     def test_static_graph(self):
         paddle.enable_static()
