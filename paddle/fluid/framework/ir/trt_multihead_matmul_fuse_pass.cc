@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/framework/ir/trt_multihead_matmul_fuse_pass.h"
 
 #include <string>
 
@@ -47,7 +47,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
-  MultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
+  TrtMultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
 
   multihead_pattern();
   // Create New OpDesc
@@ -233,7 +233,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   return fusion_count;
 }
 
-PDNode* MultiHeadMatmulPattern::operator()() {
+PDNode* TrtMultiHeadMatmulPattern::operator()() {
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_op_input("mul");
 
@@ -422,7 +422,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
   return transpose2_2_out_var;
 }
 
-PDNode* MultiHeadMatmulV3Pattern::operator()() {
+PDNode* TrtMultiHeadMatmulV3Pattern::operator()() {
   std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
@@ -607,14 +607,34 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
 }
 }  // namespace patterns
 
-void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen trt_multihead_matmul_fuse_pass";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen trt_multihead_matmul_fuse_pass";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
   AddStatis(fusion_count);
 }
 
-MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
+TrtMultiHeadMatmulV2FusePass::TrtMultiHeadMatmulV2FusePass() {
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -745,14 +765,14 @@ MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
       .End();
 }
 
-int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
-                                             const std::string& name_scope,
-                                             Scope* scope) const {
+int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
+                                                const std::string& name_scope,
+                                                Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
-  patterns::MultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
+  patterns::TrtMultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
 
   multihead_pattern();
   // Create New OpDesc
@@ -864,7 +884,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* mul0_op_desc = mul0->Op();
 
     // all mul op has same input.
-    if (mul0_op_desc->HasAttr("Input_scale")) {
+    if (multihead_op_desc.HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("Input_scale",
                                 mul0_op_desc->GetAttr("Input_scale"));
     }
@@ -912,7 +932,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
-          << "Op compat check in multihead_matmul_fuse_pass_v2 failed.";
+          << "Op compat check in trt_multihead_matmul_fuse_pass_v2 failed.";
       return;
     }
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
@@ -1050,7 +1070,27 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
   return fusion_count;
 }
 
-void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen trt_multihead_matmul_fuse_pass_v2";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen trt_multihead_matmul_fuse_pass_v2";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1065,7 +1105,7 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
+TrtMultiHeadMatmulV3FusePass::TrtMultiHeadMatmulV3FusePass() {
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
       .IsTensor()
@@ -1196,14 +1236,14 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .End();
 }
 
-int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
-                                             const std::string& name_scope,
-                                             Scope* scope) const {
+int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
+                                                const std::string& name_scope,
+                                                Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
-  patterns::MultiHeadMatmulV3Pattern multihead_pattern(pattern, name_scope);
+  patterns::TrtMultiHeadMatmulV3Pattern multihead_pattern(pattern, name_scope);
 
   multihead_pattern();
   // Create New OpDesc
@@ -1454,7 +1494,27 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
   return fusion_count;
 }
 
-void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
+void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass)) {
+      VLOG(3) << "start varseqlen trt_multihead_matmul_fuse_pass_v3";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen trt_multihead_matmul_fuse_pass_v3";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1473,14 +1533,14 @@ void MultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(multihead_matmul_fuse_pass,
-              paddle::framework::ir::MultiHeadMatmulFusePass);
+REGISTER_PASS(trt_multihead_matmul_fuse_pass,
+              paddle::framework::ir::TrtMultiHeadMatmulFusePass);
 
-REGISTER_PASS(multihead_matmul_fuse_pass_v2,
-              paddle::framework::ir::MultiHeadMatmulV2FusePass);
-REGISTER_PASS(multihead_matmul_fuse_pass_v3,
-              paddle::framework::ir::MultiHeadMatmulV3FusePass);
-REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
+REGISTER_PASS(trt_multihead_matmul_fuse_pass_v2,
+              paddle::framework::ir::TrtMultiHeadMatmulV2FusePass);
+REGISTER_PASS(trt_multihead_matmul_fuse_pass_v3,
+              paddle::framework::ir::TrtMultiHeadMatmulV3FusePass);
+REGISTER_PASS_CAPABILITY(trt_multihead_matmul_fuse_pass_v2)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
@@ -1490,7 +1550,7 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
             .EQ("scale", 0)
             .LE("matmul", 1)
             .EQ("softmax", 0));
-REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v3)
+REGISTER_PASS_CAPABILITY(trt_multihead_matmul_fuse_pass_v3)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)

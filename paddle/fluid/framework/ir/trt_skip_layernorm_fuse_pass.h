@@ -1,8 +1,11 @@
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,9 +31,9 @@ namespace ir {
 //                 |
 class Graph;
 
-class SkipLayerNormFusePass : public FusePassBase {
+class TrtSkipLayerNormFusePass : public FusePassBase {
  public:
-  SkipLayerNormFusePass() {
+  TrtSkipLayerNormFusePass() {
     AddOpCompat(OpCompat("elementwise_add"))
         .AddInput("X")
         .IsTensor()
@@ -73,7 +76,7 @@ class SkipLayerNormFusePass : public FusePassBase {
         .End();
   }
 
-  virtual ~SkipLayerNormFusePass() {}
+  virtual ~TrtSkipLayerNormFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

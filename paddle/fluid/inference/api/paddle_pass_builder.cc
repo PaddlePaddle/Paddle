@@ -92,11 +92,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "add_support_int8_pass",                 //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //
-      "embedding_eltwise_layernorm_fuse_pass",        //
+      "trt_embedding_eltwise_layernorm_fuse_pass",    //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
-      "multihead_matmul_fuse_pass_v2",                //
-      "multihead_matmul_fuse_pass_v3",                //
-      "skip_layernorm_fuse_pass",                     //
+      "trt_multihead_matmul_fuse_pass_v2",            //
+      "trt_multihead_matmul_fuse_pass_v3",            //
+      "trt_skip_layernorm_fuse_pass",                 //
       "preln_skip_layernorm_fuse_pass",               //
       //      "set_transformer_input_convert_pass",           //
       "conv_bn_fuse_pass",                           //

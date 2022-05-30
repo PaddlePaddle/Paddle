@@ -45,12 +45,14 @@ namespace patterns {
 //                    |
 //               elt_out_var
 //
-struct Embedding2Eltwise1Pattern : public PatternBase {
-  Embedding2Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
+struct TrtEmbedding2Eltwise1Pattern : public PatternBase {
+  TrtEmbedding2Eltwise1Pattern(PDPattern* pattern,
+                               const std::string& name_scope)
       : PatternBase(pattern, name_scope, "embedding2_eltwise1") {}
 
   void operator()();
-
+  PATTERN_DECL_NODE(feed1);
+  PATTERN_DECL_NODE(feed2);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table2_x);
   PATTERN_DECL_NODE(lookup_table1_w);
@@ -75,10 +77,12 @@ struct Embedding2Eltwise1Pattern : public PatternBase {
 //                      |
 //                 elt_out_var
 //
-struct Embedding1Eltwise1Pattern : public PatternBase {
-  Embedding1Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
+struct TrtEmbedding1Eltwise1Pattern : public PatternBase {
+  TrtEmbedding1Eltwise1Pattern(PDPattern* pattern,
+                               const std::string& name_scope)
       : PatternBase(pattern, name_scope, "embedding1_eltwise1") {}
   void operator()();
+  PATTERN_DECL_NODE(feed1);
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table1_w);
   PATTERN_DECL_NODE(lookup_table1);
@@ -97,8 +101,8 @@ struct Embedding1Eltwise1Pattern : public PatternBase {
 //    \       |        /
 //       layer_norm
 //
-struct SkipLayerNorm : public PatternBase {
-  SkipLayerNorm(PDPattern* pattern, const std::string& name_scope)
+struct TrtSkipLayerNorm : public PatternBase {
+  TrtSkipLayerNorm(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "skip_layernorm") {}
   void operator()();
   PATTERN_DECL_NODE(eltwise_add);
@@ -113,7 +117,7 @@ struct SkipLayerNorm : public PatternBase {
 };
 }  // namespace patterns
 
-// The EmbeddingEltwiseLayerNormFusePass detect the following pattern:
+// The TrtEmbeddingEltwiseLayerNormFusePass detect the following pattern:
 //
 // inputs                           operator            output
 // --------------------------------------------------------------------
@@ -146,16 +150,16 @@ struct SkipLayerNorm : public PatternBase {
 //                                                 |
 //                                            layer_norm
 
-class EmbeddingEltwiseLayerNormFusePass : public FusePassBase {
+class TrtEmbeddingEltwiseLayerNormFusePass : public FusePassBase {
  public:
-  EmbeddingEltwiseLayerNormFusePass();
-  virtual ~EmbeddingEltwiseLayerNormFusePass() {}
+  TrtEmbeddingEltwiseLayerNormFusePass();
+  virtual ~TrtEmbeddingEltwiseLayerNormFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const;
   int BuildFusion(Graph* graph, const std::string& name_scope
                   /*const Scope* scope*/) const;
-  const std::string name_scope_{"embedding_eltwise_layernorm_fuse"};
+  const std::string name_scope_{"trt_embedding_eltwise_layernorm_fuse"};
 };
 
 }  // namespace ir

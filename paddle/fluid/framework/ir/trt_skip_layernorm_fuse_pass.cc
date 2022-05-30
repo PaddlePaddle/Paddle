@@ -1,15 +1,18 @@
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
+#include "paddle/fluid/framework/ir/trt_skip_layernorm_fuse_pass.h"
 
 #include <string>
 
@@ -29,8 +32,8 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct SkipLayerNorm : public PatternBase {
-  SkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
+struct TrtSkipLayerNorm : public PatternBase {
+  TrtSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "skip_layernorm") {}
 
   PDNode *operator()(PDNode *x, PDNode *y);
@@ -49,7 +52,7 @@ struct SkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_variance);
 };
 
-PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
+PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   // Create nodes for elementwise add op.
   x->assert_is_op_input("elementwise_add", "X");
   y->assert_is_op_input("elementwise_add", "Y");
@@ -98,7 +101,28 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
-void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+        graph->Has(framework::ir::kMultiheadMatmulPass)) {
+      VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Use transformer'varseqlen need "
+          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+    }
+  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
+        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
+        "reconfig"));
+  }
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
@@ -115,8 +139,8 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "Y")
                 ->assert_var_not_persistable();
-  patterns::SkipLayerNorm fused_pattern(gpd.mutable_pattern(),
-                                        "skip_layernorm_fuse");
+  patterns::TrtSkipLayerNorm fused_pattern(gpd.mutable_pattern(),
+                                           "skip_layernorm_fuse");
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -131,7 +155,7 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
-    VLOG(4) << "handle SkipLayerNorm fuse";
+    VLOG(4) << "handle TrtSkipLayerNorm fuse";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
@@ -145,8 +169,8 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     std::unordered_set<const Node *> del_node_set;
 
-    // Create an SkipLayerNorm op node
-    OpDesc new_desc;
+    // Create an TrtSkipLayerNorm op node
+    OpDesc new_desc(elementwise->Op()->Block());
     new_desc.SetType("skip_layernorm");
 
     // inputs
@@ -195,9 +219,9 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(skip_layernorm_fuse_pass,
-              paddle::framework::ir::SkipLayerNormFusePass);
-REGISTER_PASS_CAPABILITY(skip_layernorm_fuse_pass)
+REGISTER_PASS(trt_skip_layernorm_fuse_pass,
+              paddle::framework::ir::TrtSkipLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(trt_skip_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)
