@@ -512,7 +512,7 @@ struct Loader {
   static __device__ void Apply(const Array &in,
                                ArgsT *args,
                                int num,
-                               int data_offset,
+                               int64_t data_offset,
                                bool is_boundary) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
@@ -673,7 +673,7 @@ struct ElementwiseWriteDataCaller {
   __device__ __forceinline__ void operator()(
       phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
-      int block_offset,
+      int64_t block_offset,
       int num) {
     OutT dst[NumOuts][VecSize];
 #pragma unroll
@@ -695,7 +695,7 @@ template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
-                                             int block_offset,
+                                             int64_t block_offset,
                                              int num) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
         outs[0] + block_offset, src, num);
@@ -749,15 +749,14 @@ __device__ void VectorizedElementwiseKernelImpl(
     const phi::Array<const _ptr_ char *__restrict__, Arity> &in,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
-    int data_offset,
+    int64_t offset,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
 
-  Unroller<Loader, VecSize, Arity>::step(
-      in, args, num, data_offset, IsBoundary);
+  Unroller<Loader, VecSize, Arity>::step(in, args, num, offset, IsBoundary);
 
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
@@ -766,46 +765,48 @@ __device__ void VectorizedElementwiseKernelImpl(
                                      Arity>()(func, args, result);
 
   ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
-      outs, result, data_offset, num);
+      outs, result, offset, num);
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
     phi::Array<const _ptr_ char *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
-    int size,
-    int main_offset,
+    int64_t numel,
+    int64_t main_offset,
     Functor func) {
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
-  for (; data_offset < main_offset; data_offset += stride) {
+  int64_t offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
+  int64_t stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  for (; offset < main_offset; offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
                                     Arity,
                                     NumOuts,
                                     VecSize,
                                     false>(
-        ins, outs, VecSize * BLOCK_NUM_X, data_offset, func);
+        ins, outs, VecSize * BLOCK_NUM_X, offset, func);
   }
 
-  int num = size - data_offset;
-  if (num > 0) {
+  int remain = numel - offset;
+  if (remain > 0) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
                                     Arity,
                                     NumOuts,
                                     VecSize,
-                                    true>(ins, outs, num, data_offset, func);
+                                    true>(ins, outs, remain, offset, func);
   }
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
-void ElementwiseCudaKernel(const KPDevice &ctx,
-                           const std::vector<const DenseTensor *> &ins,
-                           std::vector<DenseTensor *> *outs,
-                           Functor func) {
-  auto numel =
-      (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
+void LaunchElementwiseCudaKernel(const KPDevice &ctx,
+                                 const std::vector<const DenseTensor *> &ins,
+                                 std::vector<DenseTensor *> *outs,
+                                 Functor func) {
+  // There are at least 1 output, but maybe 0 input (ins.size() == 0).
+  // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
+  // type.
+  int64_t numel = (*outs)[0]->numel();
   phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
@@ -817,7 +818,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
+  int64_t main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
   VectorizedElementwiseKernel<OutT,
                               Functor,
                               Arity,
@@ -827,8 +828,8 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 #else
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
-                    gpu_config.GetBlockSize();
+  int64_t main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) *
+                        VecSize * gpu_config.GetBlockSize();
   auto stream = ctx.stream();
   VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize><<<
       gpu_config.block_per_grid,
@@ -877,15 +878,15 @@ void ElementwiseKernel(const KPDevice &ctx,
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {
     case 4:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
+      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
           ctx, ins, outs, func);
       break;
     case 2:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
           ctx, ins, outs, func);
       break;
     case 1:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
           ctx, ins, outs, func);
       break;
     default: {
