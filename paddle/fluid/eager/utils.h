@@ -236,7 +236,7 @@ class EagerUtils {
   /**
     * Fill Zero
     * **/
-  static void FillZeroForEmptyGradInputs(
+  static void FillZeroForEmptyOptionalGradInput(
       std::vector<paddle::experimental::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);
   static void FillZeroForEmptyGradInput(paddle::experimental::Tensor* in_grad,

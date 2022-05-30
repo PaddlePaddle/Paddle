@@ -2030,7 +2030,7 @@ static std::string GenerateSingleOpBase(
         size_t fwd_output_position = fwd_outputs_name_pos_map.at(
             grad_ins_grad_slotname_map.at(grad_input_name));
         const char* FILL_ZERO_TEMPLATE =
-            "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads[%d], "
+            "egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[%d], "
             "this->InputMeta()[%d]);\n";
         fill_zero_str += paddle::string::Sprintf(
             FILL_ZERO_TEMPLATE, fwd_output_position, fwd_output_position);
