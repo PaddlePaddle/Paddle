@@ -35,6 +35,7 @@ env_args_mapping = {
     'PADDLE_TRAINERS_ENDPOINTS': 'trainers',
     'PADDLE_GLOO_PORT': 'gloo_port',
     'PADDLE_WITH_GLOO': 'with_gloo',
+    'PADDLE_DEVICE_NUM': 'device_num'
 }
 
 
