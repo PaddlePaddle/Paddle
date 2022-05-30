@@ -327,7 +327,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
              cudaMemcpyDeviceToHost);
   std::cout << "compressed weight:";
   for(int i=0; i<10; i++) {
-    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+    std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(weight_compressed_)[i]);
   }
   std::cout << std::endl;
 
@@ -342,7 +342,12 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
                           "SpmmPluginDynamic only supports FLOAT bias"));
 
     bias_ = new float[out_dim_];
-    convertAndCopy(bias, nvinfer1::DataType::kFLOAT, bias_);
+    std::cout << "overwriting bias!!!!!!!!" << std::endl;
+    for (int i=0; i<bias.count; ++i) {
+      static_cast<float*>(bias_)[i] = 0.0;
+    }
+    // std::copy_n(static_cast<const float*>(bias.values), bias.count, static_cast<float*>(bias_));
+    // convertAndCopy(bias, nvinfer1::DataType::kFLOAT, bias_);
   }
 
   cudaFree(weight_dev);
@@ -445,13 +450,13 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
          cudaMemcpyDeviceToHost);
   std::cout << "compressed weight in deserial:";
   for(int i=0; i<10; i++) {
-    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
+    std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(weight_compressed_)[i]);
   }
   std::cout << std::endl;
 
   std::cout << "weight from shared ptr in deserial:";
   for(int i=0; i<10; i++) {
-    std::cout << " " << static_cast<float>(reinterpret_cast<float*>(test_weight)[i]);
+    std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(test_weight)[i]);
   }
   std::cout << std::endl;
 
@@ -555,7 +560,7 @@ bool SpmmPluginDynamic::supportsFormatCombination(
            (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
   const nvinfer1::PluginTensorDesc& prev = inOut[pos - 1];
-
+  
   return in.type == prev.type && in.format == prev.format;
 }
 
@@ -689,6 +694,7 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       char* test_weight = new char[compressed_size_];
       cudaMemcpy(test_weight, weight_compressed_dev_global_.get(), compressed_size_,
              cudaMemcpyDeviceToHost);
+      cudaDeviceSynchronize();
       std::cout << "compressed weight:";
       for(int i=0; i<10; i++) {
         std::cout << " " << static_cast<float>(reinterpret_cast<float*>(weight_compressed_)[i]);
@@ -708,9 +714,35 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
+      char* output_host = new char[512];
+      cudaDeviceSynchronize();
       cusparseStatus_t status = paddle::platform::dynload::cusparseLtMatmul(
           &spmm_context_.handle, &spmm_context_.plan, &alpha, input,
           weight_compressed_dev_p_, &beta, output, output, workSpace, &stream, 1);
+      cudaDeviceSynchronize();
+      cudaMemcpy(output_host, output, 512,
+             cudaMemcpyDeviceToHost);
+      std::cout << "output:";
+      for (int i=0; i<20; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(output_host)[i]);
+      }
+      std::cout << std::endl;
+      
+      char* test_weight = new char[compressed_size_];
+      cudaMemcpy(test_weight, weight_compressed_dev_global_.get(), compressed_size_,
+             cudaMemcpyDeviceToHost);
+      cudaDeviceSynchronize();
+      std::cout << "compressed weight:";
+      for(int i=0; i<10; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(weight_compressed_)[i]);
+      }
+      std::cout << std::endl;
+
+      std::cout << "weight from shared ptr:";
+      for(int i=0; i<10; i++) {
+        std::cout << " " << static_cast<float>(reinterpret_cast<__half*>(test_weight)[i]);
+      }
+      std::cout << std::endl;
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
