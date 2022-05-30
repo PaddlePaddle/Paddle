@@ -19,7 +19,7 @@ from collections import defaultdict
 import paddle
 import paddle.distributed.auto_parallel as auto
 
-from paddle import fluid
+from paddle import fluid, static
 from paddle.io import Dataset
 from paddle.metric import Metric
 from paddle.static import InputSpec
@@ -66,8 +66,8 @@ class Engine:
         self._logger = get_logger(logging.INFO)
 
         self._default_strategy = None
-        self._orig_main_prog = fluid.default_main_program()
-        self._orig_startup_prog = fluid.default_startup_program()
+        self._orig_main_prog = static.default_main_program()
+        self._orig_startup_prog = static.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
@@ -82,76 +82,136 @@ class Engine:
                 loss=None,
                 gradient_scale=True,
                 metrics=None,
-                mode='train',
                 all_ranks=False):
+        if optimizer and not isinstance(optimizer, (
+                paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+            raise TypeError(
+                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                        " or `paddle.fluid.optimizer.Optimizer`."
+                )
         self._optimizer = optimizer
-        # TODO: check loss type
+
+        if loss and not isinstance(loss,
+                                   paddle.nn.Layer) and not callable(loss):
+            raise TypeError(
+                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+            )
         self._loss = loss
+
+        metrics = metrics or []
+        for metric in to_list(metrics):
+            assert isinstance(metric, Metric), \
+                "{} is not sub class of Metric".format(
+                    metric.__class__.__name__)
         self._metrics = to_list(metrics)
-        self._mode = mode
         self._gradient_scale = gradient_scale
+
+        self._planned_mode = None
+        self._modes = ['train', 'eval', 'predict']
         # Build forward program
-        self._build(mode)
-        # Do the planning process
-        planner = Planner(mode, self._dist_contexts[mode])
-        planner.plan()
+        self._build()
+
+        # Do auto parallel process
+        for mode in self._modes:
+            # Do the planning process
+            self._plan(mode)
+            # Do the parallel process
+            self._parallel(mode, all_ranks)
+            # Init comm and startup program
+            self._initialize(mode)
+
+    def _build(self):
+        for mode in self._modes:
+            serial_main_prog = self._serial_main_progs.get(mode, None)
+            if serial_main_prog is not None:
+                return
+
+            losses = []
+            metrics = []
+            serial_main_prog = self._orig_main_prog.clone()
+            serial_startup_prog = self._orig_startup_prog.clone()
+            with static.program_guard(serial_main_prog, serial_startup_prog):
+                inputs_spec = self.inputs_spec
+                labels_spec = self.labels_spec if self.labels_spec else []
+                inputs = [s._create_feed_layer() for s in inputs_spec]
+                labels = [s._create_feed_layer() for s in labels_spec]
+                outputs = to_list(self.model(*inputs))
+                if mode != "predict" and self._loss:
+                    losses = to_list(self._loss(*(outputs + labels)))
+
+                if mode != "predict":
+                    for metric in self._metrics:
+                        metrics.extend(
+                            to_list(metric.compute(*(outputs + labels))))
+
+            default_ctx = get_default_distributed_context()
+            if not default_ctx.has_annotation or self._default_strategy:
+                inputs = [self._set_data_parallel(var) for var in inputs]
+                labels = [self._set_data_parallel(var) for var in labels]
+
+            self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+
+            self._fetch_vars[mode] = {
+                "outputs": flatten(outputs),
+                "loss": losses,
+                "metrics": metrics
+            }
+
+            self._serial_main_progs[mode] = serial_main_prog
+            self._serial_startup_progs[mode] = serial_startup_prog
+            self._dist_contexts[mode] = DistributedContext(
+                self._serial_main_progs[mode], self._serial_startup_progs[mode],
+                self._optimizer, losses, self._feed_vars[mode],
+                self._fetch_vars[mode], self.strategy)
+            self._dist_contexts[mode].gradient_scale = self._gradient_scale
+
+    def _plan(self, mode):
+        serial_main_prog = self._serial_main_progs.get(mode, None)
+        if serial_main_prog is None:
+            return
+        if self._planned_mode is None:
+            self._planned_mode = mode
+        else:
+            self._init_dist_context(mode)
+
+        self.planner = Planner(mode, self._dist_contexts[mode])
+        self.planner.plan()
+
+    def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
-        parallelizer = Parallelizer(mode, planner.completer,
+        parallelizer = Parallelizer(mode, self.planner.completer,
                                     self._dist_contexts[mode])
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)
         else:
             parallelizer.parallel_all()
+
+    def _init_dist_context(self, mode):
+        # init dist_context['mode'] with the first planned dist_context
+        serial_main_prog = self._serial_main_progs.get(mode, None)
+        dist_context = self._dist_contexts.get(mode, None)
+        ref_mode = self._planned_mode
+        ref_serial_main_prog = self._serial_main_progs.get(ref_mode, None)
+        ref_dist_context = self._dist_contexts.get(ref_mode, None)
+        ref_blocks = ref_serial_main_prog.blocks
+        for ib, block in enumerate(serial_main_prog.blocks):
+            for iop, op in enumerate(block.ops):
+                ref_op = ref_blocks[ib].ops[iop]
+                assert op.type == ref_op.type, \
+                    "'{}' mode op '{}' is different with '{}' op '{}'. ".format(mode, op.type, ref_mode, ref_op.type)
+                ref_op_dist_attr = ref_dist_context.get_op_dist_attr_for_program(
+                    ref_op)
+                dist_context.set_op_dist_attr_for_program(op, ref_op_dist_attr)
+
+    def _initialize(self, mode):
         # Get the distributed main programs and startup programs
         self._dist_main_progs[mode] = self._dist_contexts[
             mode].dist_main_programs
         self._dist_startup_progs[mode] = self._dist_contexts[
             mode].dist_startup_programs
-        # Init comm and startup program
-        self._initialize(mode)
 
-    def _build(self, mode):
-        serial_main_prog = self._serial_main_progs.get(mode, None)
-        if serial_main_prog is not None:
-            return
-
-        losses = []
-        metrics = []
-        serial_main_prog = self._orig_main_prog.clone()
-        serial_startup_prog = self._orig_startup_prog.clone()
-        with fluid.program_guard(serial_main_prog, serial_startup_prog):
-            inputs_spec = self.inputs_spec
-            labels_spec = self.labels_spec if self.labels_spec else []
-            inputs = [s._create_feed_layer() for s in inputs_spec]
-            labels = [s._create_feed_layer() for s in labels_spec]
-            outputs = to_list(self.model(*inputs))
-            if mode != "predict" and self._loss:
-                losses = to_list(self._loss(*(outputs + labels)))
-
-        default_ctx = get_default_distributed_context()
-        if not default_ctx.has_annotation or self._default_strategy:
-            inputs = [self._set_data_parallel(var) for var in inputs]
-            labels = [self._set_data_parallel(var) for var in labels]
-
-        self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
-
-        self._fetch_vars[mode] = {
-            "outputs": flatten(outputs),
-            "loss": losses,
-            "metrics": metrics
-        }
-
-        self._serial_main_progs[mode] = serial_main_prog
-        self._serial_startup_progs[mode] = serial_startup_prog
-        self._dist_contexts[mode] = DistributedContext(
-            self._serial_main_progs[mode], self._serial_startup_progs[mode],
-            self._optimizer, losses, self._feed_vars[mode],
-            self._fetch_vars[mode], self.strategy)
-        self._dist_contexts[mode].gradient_scale = self._gradient_scale
-
-    def _initialize(self, mode):
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
@@ -328,7 +388,7 @@ class Engine:
 
         # insert read op at the end of program
         places = paddle.static.cuda_places()
-        with fluid.program_guard(dist_main_prog, dist_startup_prog):
+        with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
