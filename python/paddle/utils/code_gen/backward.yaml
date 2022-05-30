@@ -32,6 +32,7 @@
     param : [x]
   kernel :
     func : acos_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : acosh_grad
   forward : acosh (Tensor x) -> Tensor(out)
@@ -42,6 +43,7 @@
     param : [x]
   kernel :
     func : acosh_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
@@ -115,6 +117,7 @@
     param : [x]
   kernel :
     func : asin_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : asinh_grad
   forward : asinh (Tensor x) -> Tensor(out)
@@ -125,6 +128,7 @@
     param : [x]
   kernel :
     func : asinh_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
@@ -134,6 +138,7 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
+  inplace : (out_grad -> x_grad)
 
 - backward_api : assign_out__grad
   forward : assign_out_ (Tensor x, Tensor output) -> Tensor(out)
@@ -143,6 +148,7 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
+  inplace : (out_grad -> x_grad)
 
 - backward_api : atan2_grad
   forward : atan2 (Tensor x, Tensor y) -> Tensor(out)
@@ -163,6 +169,7 @@
     param : [x]
   kernel :
     func : atan_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : atanh_grad
   forward : atanh (Tensor x) -> Tensor(out)
@@ -173,6 +180,7 @@
     param : [x]
   kernel :
     func : atanh_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : batch_norm_double_grad
   forward : batch_norm_grad (Tensor x, Tensor scale, Tensor bias, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor grad_out, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
@@ -208,6 +216,7 @@
     param : [input]
   kernel :
     func : bce_loss_grad
+  inplace : (out_grad -> input_grad)
 
 - backward_api : brelu_grad
   forward : brelu (Tensor x, float t_min, float t_max) -> Tensor(out)
@@ -218,6 +227,7 @@
     param : [x]
   kernel :
     func : brelu_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : cast_grad
   forward : cast (Tensor x, DataType out_dtype) -> Tensor(out)
@@ -240,6 +250,7 @@
     param: [out_grad]
   kernel :
     func : ceil_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : celu_double_grad
   forward : celu_grad(Tensor x, Tensor grad_out, float alpha) -> Tensor(grad_x)
@@ -261,6 +272,7 @@
   kernel :
     func : celu_grad
   backward : celu_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : cholesky_grad
   forward : cholesky (Tensor x, bool upper) -> Tensor(out)
@@ -302,6 +314,7 @@
   kernel :
     func : clip_grad
   backward : clip_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : concat_double_grad
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
@@ -394,6 +407,7 @@
     param : [x]
   kernel :
     func : cos_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : cosh_grad
   forward : cosh (Tensor x) -> Tensor(out)
@@ -404,6 +418,7 @@
     param : [x]
   kernel :
     func : cosh_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : cross_entropy_with_softmax_grad
   forward : cross_entropy_with_softmax (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis) -> Tensor(softmax), Tensor(loss)
@@ -592,6 +607,7 @@
   kernel :
     func : elu_grad
   backward : elu_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
@@ -623,6 +639,7 @@
     param : [out]
   kernel :
     func : exp_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : expand_as_grad
   forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
@@ -665,6 +682,7 @@
     param : [out]
   kernel :
     func : expm1_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : flatten_grad
   forward : flatten(Tensor x, int start_axis, int stop_axis) -> Tensor(out), Tensor(xshape)
@@ -699,6 +717,7 @@
     param: [out_grad]
   kernel :
     func : floor_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : fmax_grad
   forward : fmax(Tensor x, Tensor y, int axis) -> Tensor(out)
@@ -794,6 +813,7 @@
     param : [x]
   kernel :
     func : hard_shrink_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : hard_sigmoid_grad
   forward : hard_sigmoid (Tensor x, float slope, float offset) -> Tensor(out)
@@ -804,6 +824,7 @@
     param : [out]
   kernel :
     func : hard_sigmoid_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : hard_swish_grad
   forward : hard_swish (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0) -> Tensor(out)
@@ -814,6 +835,7 @@
     param : [x]
   kernel :
     func : hard_swish_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : huber_loss_grad
   forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
@@ -930,6 +952,7 @@
   kernel :
     func : leaky_relu_grad
   backward : leaky_relu_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : lerp_grad
   forward : lerp (Tensor x, Tensor y, Tensor weight) -> Tensor(out)
@@ -960,6 +983,7 @@
     param : [x]
   kernel :
     func : log10_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : log1p_grad
   forward : log1p (Tensor x) -> Tensor(out)
@@ -970,6 +994,7 @@
     param : [x]
   kernel :
     func : log1p_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : log2_grad
   forward : log2 (Tensor x) -> Tensor(out)
@@ -980,6 +1005,7 @@
     param : [x]
   kernel :
     func : log2_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : log_double_grad
   forward : log_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
@@ -1001,6 +1027,7 @@
   kernel :
     func : log_grad
   backward : log_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : log_loss_grad
   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
@@ -1041,6 +1068,7 @@
     param : [x]
   kernel :
     func : logsigmoid_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : logsumexp_grad
   forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
@@ -1222,6 +1250,7 @@
     param : [x]
   kernel :
     func : mish_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : mode_grad
   forward : mode(Tensor x,  int axis,  bool keepdim) -> Tensor(out), Tensor(indices)
@@ -1451,6 +1480,7 @@
     param: [x]
   kernel :
     func : pow_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : prelu_grad
   forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
@@ -1500,6 +1530,7 @@
     param : [out]
   kernel :
     func : reciprocal_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : reduce_prod_grad
   forward : reduce_prod (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all) -> Tensor(out)
@@ -1531,6 +1562,7 @@
   kernel :
     func : relu_grad
   backward: relu_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
@@ -1605,6 +1637,7 @@
     param: [out_grad]
   kernel :
     func : round_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : rsqrt_double_grad
   forward : rsqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
@@ -1626,6 +1659,7 @@
   kernel :
     func : rsqrt_grad
   backward : rsqrt_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : scale_double_grad
   forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
@@ -1701,6 +1735,7 @@
     param : [x]
   kernel :
     func : sigmoid_cross_entropy_with_logits_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)
@@ -1723,6 +1758,7 @@
   kernel :
     func : sigmoid_grad
   backward : sigmoid_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sigmoid_triple_grad
   forward : sigmoid_double_grad (Tensor out, Tensor fwd_grad_out, Tensor grad_grad_x) -> Tensor(grad_out), Tensor(grad_grad_out)
@@ -1744,6 +1780,7 @@
     param : [x]
   kernel :
     func : silu_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sin_grad
   forward : sin (Tensor x) -> Tensor(out)
@@ -1754,6 +1791,7 @@
     param : [x]
   kernel :
     func : sin_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : sinh_grad
   forward : sinh (Tensor x) -> Tensor(out)
@@ -1764,6 +1802,7 @@
     param : [x]
   kernel :
     func : sinh_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : slice_grad
   forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
@@ -1785,6 +1824,7 @@
     param : [x]
   kernel :
     func : soft_shrink_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)
@@ -1824,6 +1864,7 @@
   kernel :
     func : sqrt_grad
   backward : sqrt_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : square_double_grad
   forward : square_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
@@ -1845,6 +1886,7 @@
   kernel :
     func : square_grad
   backward : square_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)
@@ -1946,6 +1988,7 @@
     param : [x]
   kernel :
     func : swish_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
@@ -1966,6 +2009,7 @@
     param : [x]
   kernel :
     func : tan_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : tanh_double_grad
   forward : tanh_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
@@ -1988,6 +2032,7 @@
   kernel :
     func : tanh_grad
   backward : tanh_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : tanh_shrink_grad
   forward : tanh_shrink (Tensor x) -> Tensor(out)
@@ -1998,6 +2043,7 @@
     param : [x]
   kernel :
     func : tanh_shrink_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : tanh_triple_grad
   forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
@@ -2018,6 +2064,7 @@
     param : [x]
   kernel :
     func : thresholded_relu_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : tile_double_grad
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
