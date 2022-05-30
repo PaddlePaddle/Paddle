@@ -54,33 +54,6 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
 }
 
-template <typename T>
-__global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
-                                              int imsize, int groups,
-                                              int group_size, T* mean, T* var) {
-  int gid = blockIdx.y;
-  int cid = blockIdx.x;
-  int bid = blockIdx.z;
-  int H = imsize / W;
-  int number = min(group_size, static_cast<int>(C - gid * group_size));
-  int ccid = gid * group_size + cid;
-  if (ccid >= C) return;
-  T x_mean = 0, x_var = 0;
-  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T val;
-    int hid = imid / W;
-    int wid = imid % W;
-    val = x[(bid * H + hid) * W * C + wid * C + ccid];
-
-    x_mean += val;
-    x_var += val * val;
-  }
-  x_mean /= number * imsize;
-  x_var /= number * imsize;
-  CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
-  CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
-}
-
 template <typename T, typename AccT, int VecSize, int Num>
 __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
                                              int size, const int offset,
@@ -193,153 +166,6 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
   ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
   ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size);
 }
-
-template <typename T, int flags>
-__global__ void GroupNormForward(const T* x, const T* mean, const T* var,
-                                 const T* scale, const T* bias, int N, int C,
-                                 int W, int imsize, int groups, int group_size,
-                                 T epsilon, T* y, T* real_var,
-                                 const DataLayout data_layout) {
-  int gid = blockIdx.y;
-  int cid = blockIdx.x;
-  int bid = blockIdx.z;
-  int H = imsize / W;
-  int ccid = gid * group_size + cid;
-  if (ccid >= C) return;
-  auto ng = bid * groups + gid;
-  T x_mean = mean[ng];
-  T x_var = var[ng];
-  x_var = x_var - x_mean * x_mean;
-  T var_inv = rsqrt(x_var + epsilon);
-  if (cid == 0 && threadIdx.x == 0) {
-    real_var[ng] = x_var;
-  }
-  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T val;
-    int hid, wid;
-    int index = (bid * C + ccid) * imsize + imid;
-    if (data_layout == DataLayout::kNCHW) {
-      val = x[index];
-    } else {
-      hid = imid / W;
-      wid = imid % W;
-      val = x[(bid * H + hid) * W * C + wid * C + ccid];
-    }
-    val = (val - x_mean) * var_inv;
-    if (flags & kHasScale) {
-      val *= scale[ccid];
-    }
-    if (flags & kHasBias) {
-      val += bias[ccid];
-    }
-    if (data_layout == DataLayout::kNCHW) {
-      y[index] = val;
-    } else {
-      y[(bid * H + hid) * W * C + wid * C + ccid] = val;
-    }
-  }
-}
-
-template <typename T>
-class GroupNormKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
-    const float epsilon = ctx.Attr<float>("epsilon");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* x = ctx.Input<Tensor>("X");
-
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* var = ctx.Output<Tensor>("Variance");
-    const auto groups = ctx.Attr<int>("groups");
-
-    const auto x_dims = x->dims();
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
-    const int group_size = C / groups;
-
-    const int W =
-        (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                          : x_dims[x_dims.size() - 2]);
-
-    y->mutable_data<T>(ctx.GetPlace());
-    mean->mutable_data<T>(ctx.GetPlace());
-    var->mutable_data<T>(ctx.GetPlace());
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    Tensor temp_var;
-    temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
-    auto* x_data = x->data<T>();
-    auto* y_data = y->data<T>();
-    auto* mean_data = mean->data<T>();
-    auto* var_data = var->data<T>();
-    auto* temp_var_data = temp_var.data<T>();
-
-    const T* scale_data = nullptr;
-    if (scale) scale_data = scale->data<T>();
-    const T* bias_data = nullptr;
-    if (bias) bias_data = bias->data<T>();
-
-    int imsize = 1;
-    if (data_layout == DataLayout::kNCHW) {
-      for (int i = 2; i < x_dims.size(); ++i) {
-        imsize *= x_dims[i];
-      }
-    } else {
-      for (int i = 1; i < x_dims.size() - 1; ++i) {
-        imsize *= x_dims[i];
-      }
-    }
-
-#ifdef __HIPCC__
-    int block_size = std::max(std::min(256, imsize), 64);
-#else
-    int block_size = std::min(1024, imsize);
-#endif
-
-    dim3 grid(group_size, groups, x_dims[0]);
-    dim3 threads(block_size, 1, 1);
-    if (data_layout == DataLayout::kNCHW) {
-      using AccT = typename details::MPTypeTrait<T>::Type;
-      constexpr int vec_size = sizeof(float4) / sizeof(T);
-      int size = group_size * imsize;
-      const int max_num_threads = 1024;
-      int max_block_size = std::min(size / vec_size, max_num_threads);
-      int block_size_nchw = 1;
-      while (block_size_nchw < max_block_size) {
-        block_size_nchw *= 2;
-      }
-      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-      dim3 grids(x_dims[0] * groups);
-      dim3 blocks(block_size_nchw);
-      if (size < vec_size * block_size_nchw) {
-        ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, mean_data, temp_var_data, size);
-      } else {
-        VectorizedGetMeanAndVarNCHW<
-            T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, mean_data, temp_var_data, size);
-      }
-    } else {
-      set_zero(dev_ctx, mean, static_cast<T>(0));
-      set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-      GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-          x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
-          temp_var_data);
-    }
-    int flags =
-        (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-    UNROLL_ALL_CASES(flags, GroupNormForward, x_data, mean_data, temp_var_data,
-                     scale_data, bias_data, x_dims[0], C, W, imsize, groups,
-                     group_size, epsilon, y_data, var_data, data_layout);
-  }
-};
 
 template <typename T, int flags>
 __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
@@ -685,10 +511,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    group_norm,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GroupNormKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     group_norm_grad,
     ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, float>,

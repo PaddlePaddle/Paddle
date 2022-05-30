@@ -910,6 +910,15 @@
   kernel :
     func : greater_than
 
+- api : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+  kernel :
+    func : group_norm
+  optional : scale, bias
+
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)
   output : Tensor

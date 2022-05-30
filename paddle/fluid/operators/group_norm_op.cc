@@ -17,6 +17,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,91 +32,6 @@ using DataLayout = framework::DataLayout;
 class GroupNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GroupNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "GroupNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Mean"), "Output", "Mean", "GroupNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Variance"), "Output", "Variance",
-                   "GroupNorm");
-
-    auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(
-        x_dim.size(), 2,
-        platform::errors::InvalidArgument(
-            "The Input(X)'s dimension of Op(group_norm) must be "
-            "greater than 1. But received: %u-D Tensor, which shape is [%s].",
-            x_dim.size(), x_dim));
-
-    const std::string data_layout_str =
-        ctx->Attrs().Get<std::string>("data_layout");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
-    const int64_t channel_num =
-        (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
-    auto batch_size = x_dim[0];
-    auto groups = ctx->Attrs().Get<int>("groups");
-    PADDLE_ENFORCE_LE(
-        groups, channel_num,
-        platform::errors::InvalidArgument(
-            "The Attr(groups) of Op(group_norm) must be less than or "
-            "equal to the number of channels. But received: groups "
-            "is [%s], channels is [%s], the Attr(data_layout) "
-            "is [%s]. The error may come from wrong data_layout setting.",
-            groups, channel_num, data_layout_str));
-    PADDLE_ENFORCE_GE(
-        groups, 1,
-        platform::errors::InvalidArgument(
-            "The Attr(groups) of Op(group_norm) must be "
-            "greater than or equal to 1. But received: groups is [%s].",
-            groups));
-    PADDLE_ENFORCE_EQ(
-        channel_num % groups, 0,
-        platform::errors::InvalidArgument(
-            "Expected number of channels in input to be divisible by "
-            "num_groups, but got input channel is %d and num_groups is %d",
-            channel_num, groups));
-
-    if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Scale").size(), 1UL,
-          platform::errors::InvalidArgument(
-              "The Input(Scale) of Op(group_norm) should be 1-D Tensor. "
-              "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
-              ctx->GetInputDim("Scale").size(), ctx->GetInputDim("Scale")));
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Scale")[0], channel_num,
-          platform::errors::InvalidArgument(
-              "The Input(Scale)'s first dimension size of Op(group_norm) must "
-              "be equal to the number of channels. But received: the "
-              "Input(Scale)'s first dimension size is [%s], the channels is "
-              "[%s], the Attr(data_layout) is [%s]. The error may come "
-              "from wrong data_layout setting.",
-              ctx->GetInputDim("Scale")[0], channel_num, data_layout_str));
-    }
-    if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Bias").size(), 1UL,
-          platform::errors::InvalidArgument(
-              "The Input(Bias) of Op(group_norm) should be 1-D Tensor. "
-              "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
-              ctx->GetInputDim("Bias").size(), ctx->GetInputDim("Bias")));
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Bias")[0], channel_num,
-          platform::errors::InvalidArgument(
-              "The Input(Bias)'s first dimension size of "
-              "Op(group_norm) must be equal to the number of channels. "
-              "But received: the Input(Bias)'s first dimension size is [%s], "
-              "the channels is [%s], the Attr(data_layout) is [%s]. The "
-              "error may come from wrong data_layout setting.",
-              ctx->GetInputDim("Bias")[0], channel_num, data_layout_str));
-    }
-
-    ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("Mean", {batch_size, groups});
-    ctx->SetOutputDim("Variance", {batch_size, groups});
-    ctx->ShareLoD("X", "Y");
-  }
 };
 
 class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -252,17 +171,17 @@ class GroupNormOpInferVarType
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(group_norm, GroupNormInferShapeFunctor,
+                            PD_INFER_META(phi::GroupNormInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
                   ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInferer);
+                  ops::GroupNormInplaceInferer, GroupNormInferShapeFunctor);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     group_norm_grad,
     ops::GroupNormGradKernel<paddle::platform::CPUDeviceContext, float>,

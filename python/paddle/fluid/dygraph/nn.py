@@ -3017,6 +3017,13 @@ class GroupNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
+            out, _, _ = _C_ops.final_state_group_norm(input, self.weight,
+                                                      self.bias, self._epsilon,
+                                                      self._groups, "NCHW")
+
+            return dygraph_utils._append_activation_in_dygraph(out, self._act)
+
+        elif _in_legacy_dygraph():
             attrs = ('epsilon', self._epsilon, 'groups', self._groups)
             out, _, _ = _C_ops.group_norm(input, self.weight, self.bias, *attrs)
 
