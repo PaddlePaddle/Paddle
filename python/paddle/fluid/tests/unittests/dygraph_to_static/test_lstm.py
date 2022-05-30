@@ -16,6 +16,8 @@ import numpy as np
 import paddle
 import unittest
 from paddle import nn
+import os
+import tempfile
 
 
 class LSTMLayer(nn.Layer):
@@ -40,6 +42,12 @@ class Net(nn.Layer):
 
 
 class TestLstm(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def run_lstm(self, to_static):
         paddle.jit.ProgramTranslator().enable(to_static)
 
@@ -78,11 +86,12 @@ class TestLstm(unittest.TestCase):
         x = paddle.randn((2, 10, 12))
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
-        paddle.jit.save(net, 'simple_lstm')
+        model_path = os.path.join(self.temp_dir.name, 'simple_lstm')
+        paddle.jit.save(net, model_path)
 
         dygraph_out = net(x)
         # load saved model
-        load_net = paddle.jit.load('simple_lstm')
+        load_net = paddle.jit.load(model_path)
 
         static_out = load_net(x)
         self.assertTrue(
@@ -115,6 +124,12 @@ class LinearNet(nn.Layer):
 
 
 class TestSaveInEvalMode(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_save_in_eval(self):
         paddle.jit.ProgramTranslator().enable(True)
         net = LinearNet()
@@ -131,9 +146,11 @@ class TestSaveInEvalMode(unittest.TestCase):
         # save directly
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])])
-        paddle.jit.save(net, 'linear_net')
+
+        model_path = os.path.join(self.temp_dir.name, 'linear_net')
+        paddle.jit.save(net, model_path)
         # load saved model
-        load_net = paddle.jit.load('linear_net')
+        load_net = paddle.jit.load(model_path)
 
         x = paddle.randn((2, 10))
         eval_out = net(x)
@@ -146,6 +163,12 @@ class TestSaveInEvalMode(unittest.TestCase):
 
 
 class TestEvalAfterSave(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)
@@ -159,8 +182,9 @@ class TestEvalAfterSave(unittest.TestCase):
         x = paddle.randn((2, 10, 12)).astype('float32')
         dy_out = net(x)
         # save model
-        paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
-        load_net = paddle.jit.load('jit.save/lstm')
+        model_path = os.path.join(self.temp_dir.name, 'jit.save/lstm')
+        paddle.jit.save(net, model_path, input_spec=[x])
+        load_net = paddle.jit.load(model_path)
         load_out = load_net(x)
         self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
         # eval

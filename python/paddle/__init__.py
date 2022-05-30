@@ -105,6 +105,7 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
+from .tensor.creation import tril_indices  #noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -330,6 +331,7 @@ from .tensor.stat import std  # noqa: F401
 from .tensor.stat import var  # noqa: F401
 from .tensor.stat import numel  # noqa: F401
 from .tensor.stat import median  # noqa: F401
+from .tensor.stat import nanmedian  # noqa: F401
 from .tensor.stat import quantile  # noqa: F401
 from .tensor.stat import nanquantile  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
@@ -497,6 +499,7 @@ __all__ = [  # noqa
            'load',
            'numel',
            'median',
+           'nanmedian',
            'quantile',
            'nanquantile',
            'no_grad',
@@ -637,4 +640,5 @@ __all__ = [  # noqa
            'take_along_axis',
            'put_along_axis',
            'heaviside',
+           'tril_indices',
 ]

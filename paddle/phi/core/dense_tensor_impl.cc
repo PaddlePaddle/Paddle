@@ -18,8 +18,9 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+
+#include "paddle/fluid/memory/malloc.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_utils.h"
@@ -210,13 +211,6 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 /* ------------------------------ */
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
-                         const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 

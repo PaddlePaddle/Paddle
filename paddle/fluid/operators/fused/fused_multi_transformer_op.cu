@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
