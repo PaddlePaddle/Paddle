@@ -36,7 +36,7 @@ void UnfoldKernel(const Context& ctx,
   paddle::operators::math::
       Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
           im2col;
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
 
   int out_height = phi::funcs::CalcOutputSize(x_dims[2],
                                               kernel_sizes[0],

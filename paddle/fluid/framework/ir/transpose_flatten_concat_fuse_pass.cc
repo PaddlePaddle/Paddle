@@ -93,7 +93,7 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
 
     std::vector<Node *> nodes;
     std::vector<int> trans_axis0;
-    int flatten_axis0;
+    int flatten_axis0 = 0;
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),

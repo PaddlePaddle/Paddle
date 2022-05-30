@@ -320,12 +320,11 @@ static int compute_thread_batch_nccl(
   thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
 #ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
-  if (!gloo_wrapper->IsInitialized()) {
-    VLOG(0) << "GLOO is not inited";
-    gloo_wrapper->Init();
-  }
-
   if (gloo_wrapper->Size() > 1) {
+    if (!gloo_wrapper->IsInitialized()) {
+      VLOG(0) << "GLOO is not inited";
+      gloo_wrapper->Init();
+    }
     // adjust batch num per thread for NCCL
     std::vector<int> thread_avg_batch_num_vec(1, thread_avg_batch_num);
     std::vector<int64_t> total_instance_num_vec(1, total_instance_num);

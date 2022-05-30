@@ -168,8 +168,10 @@ void PrintMemProfiler(
   if (num_gpus > 0) {
     std::cout << "GPU Memory Usage (MB):\n";
     for (int dev_id = 0; dev_id < num_gpus; ++dev_id) {
-      int64_t allocated = memory::StatGetCurrentValue("Allocated", dev_id);
-      int64_t reserved = memory::StatGetCurrentValue("Reserved", dev_id);
+      int64_t allocated =
+          memory::DeviceMemoryStatCurrentValue("Allocated", dev_id);
+      int64_t reserved =
+          memory::DeviceMemoryStatCurrentValue("Reserved", dev_id);
       size_t available = 0, total = 0, actual_available = 0, actual_total = 0;
       RecordedGpuMemGetInfo(&available, &total, &actual_available,
                             &actual_total, dev_id);

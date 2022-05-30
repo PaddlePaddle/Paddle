@@ -585,7 +585,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor
+  output : Tensor, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
