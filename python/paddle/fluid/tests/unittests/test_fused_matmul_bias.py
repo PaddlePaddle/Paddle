@@ -16,7 +16,8 @@ import paddle
 import paddle.fluid.core as core
 import unittest
 import numpy as np
-from paddle.incubate.nn.functional import fused_matmul_bias
+from paddle.incubate.nn.functional import fused_matmul_bias, fused_linear
+from paddle.incubate.nn import FusedLinear
 
 
 def is_fused_matmul_bias_supported():
@@ -124,6 +125,31 @@ class TestFusedMatmulBias(unittest.TestCase):
 
     def test_fp16(self):
         self.rand_test(4, 5, 7, np.float16)
+
+
+class TestFusedLinear(unittest.TestCase):
+    def check_fused_linear(self, transpose):
+        x = paddle.randn([30, 40])
+        linear = FusedLinear(40, 50, transpose_weight=transpose)
+        y1 = linear(x)
+        y2 = fused_linear(x, linear.weight, linear.bias, transpose)
+        self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+
+    def test_non_transpose(self):
+        self.check_fused_linear(False)
+
+    def test_transpose(self):
+        self.check_fused_linear(True)
+
+
+class TestStaticGraph(unittest.TestCase):
+    def test_static_graph(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])
+        linear = FusedLinear(100, 300)
+        y = linear(x)
+        self.assertEqual(list(y.shape), [-1, 300])
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

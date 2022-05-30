@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.nn import Layer
-import paddle.incubate.nn.functional as F
+from paddle.incubate.nn import functional as F
 
 
 class FusedLinear(Layer):
