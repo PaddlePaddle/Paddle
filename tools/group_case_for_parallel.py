@@ -65,7 +65,7 @@ def group_case_for_parallel(rootPath):
         lines = fi.readlines()
         new_case_file_list = []
         for line in lines:
-            case_line_list = line.replace('^', '').split('$|')
+            case_line_list = line.replace('^', '').replace('|', '').split('$')
             new_case_line_list = list(
                 set(all_need_run_cases).intersection(set(case_line_list)))
             if len(new_case_line_list) != 0:

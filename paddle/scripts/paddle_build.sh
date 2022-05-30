@@ -1302,7 +1302,7 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
-    #case_count $1 $2
+    case_count $1 $2
     ut_startTime_s=`date +%s` 
 
     testcases=$1
@@ -1987,8 +1987,15 @@ set -x
     #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
 
+
+    wait;
+    #classify_case_by_cardNum
+    classify_case_by_cardNum    
+    
     #generate ut mem map
-    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir 
+    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
+    python ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
+    
 }
 
 function get_failedUts_precise_map_file {
@@ -2409,15 +2416,16 @@ set +x
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" 1 7
+            card_test "$line" 1 4
         done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
         single_ut_mem_0_endTime_s=`date +%s`
         echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
 
         single_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
             if [ $num -eq 0 ]; then
                 num=1
             fi
@@ -2425,19 +2433,20 @@ set +x
         done < $PADDLE_ROOT/tools/single_card_tests_new
         single_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
 
         multiple_ut_mem_0_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" 2 7
+            card_test "$line" 2 4
         done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
         multiple_ut_mem_0_endTime_s=`date +%s`
         echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" 
-
+        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         multiple_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
             if [ $num -eq 0 ]; then
                 num=1
             fi
@@ -2446,20 +2455,21 @@ set +x
         done < $PADDLE_ROOT/tools/multiple_card_tests_new
         multiple_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" 
-
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
         exclusive_ut_mem_0_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" -1 7
+            card_test "$line" -1 4
         done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
         exclusive_ut_mem_0_endTime_s=`date +%s`
         echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
         exclusive_ut_startTime_s=`date +%s`
         while read line
         do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/3]
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
             if [ $num -eq 0 ]; then
                 num=1
             fi
@@ -2467,15 +2477,16 @@ set +x
         done < $PADDLE_ROOT/tools/exclusive_card_tests_new
         exclusive_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
-
+        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        
         noparallel_ut_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" -1 5
+            card_test "$line" -1 2
         done < $PADDLE_ROOT/tools/no_parallel_case_file
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
-        
+        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt   
         ###retry
         collect_failed_tests
         rm -f $tmp_dir/*
@@ -2554,6 +2565,7 @@ set +x
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
         rerun_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -2688,35 +2700,6 @@ set -ex
 }
 
 function parallel_test() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
-    ut_total_startTime_s=`date +%s`
-    if [ "$WITH_CINN" == "ON" ];then
-        parallel_test_base_cinn
-    elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
-        parallel_test_base_gpu
-    elif [ "$WITH_XPU" == "ON" ];then
-        parallel_test_base_xpu
-    elif [ "$WITH_ASCEND_CL" == "ON" ];then
-        parallel_test_base_npu
-    elif [ "$WITH_MLU" == "ON" ];then
-        parallel_test_base_mlu
-    elif [ "$WITH_IPU" == "ON" ];then
-        parallel_test_base_ipu
-    else
-        parallel_test_base_cpu ${PROC_RUN:-1}
-    fi
-    ut_total_endTime_s=`date +%s`
-    echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
-    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-}
-
-function parallel_test_bak() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
@@ -3290,20 +3273,11 @@ function build_develop() {
 }
 
 function check_coverage_build() {
-    if [ ! "${buildSize}" ];then
-        echo "build size not found"
-        exit 1
-    fi
-
-    if [ ${WITH_COVERAGE} != "ON" ];then
-        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
-        exit 1
-    fi
-
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3453,7 +3427,6 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
@@ -3461,11 +3434,8 @@ function main() {
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
-      gpu_cicheck_coverage_test)
-        check_approvals_of_unittest 1
-        parallel_test_bak
-        check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
+      check_coverage_build)
+        check_coverage_build
         ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
