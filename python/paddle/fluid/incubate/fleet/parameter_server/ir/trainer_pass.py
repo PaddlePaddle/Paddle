@@ -293,12 +293,12 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 if use_ps_gpu:
                     program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
+                        type="pull_gpups_sparse",
                         inputs={"Ids": inputs,
                                 'W': w},
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1] for i in inputs],
                             "is_distributed": True,
                             "is_sparse": True
                         })
@@ -576,7 +576,7 @@ def ps_gpu_pass(program):
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         for op in program.global_block().ops:
-            if op.type != "pull_box_sparse":
+            if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(set()), [])
@@ -599,7 +599,7 @@ def ps_gpu_pass(program):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):

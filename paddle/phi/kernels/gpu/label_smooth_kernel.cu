@@ -53,7 +53,7 @@ __global__ void LabelSmoothRunDistKernel(const int N,
 template <typename T, typename Context>
 void LabelSmoothKernel(const Context& ctx,
                        const DenseTensor& label,
-                       paddle::optional<const DenseTensor&> prior_dist,
+                       const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];

@@ -6619,6 +6619,9 @@ class EagerParamBase(_core_eager_eagertensor):
 
         name = kwargs.get('name', unique_name.generate('_eager_param_base'))
 
+        if isinstance(shape, core.eager.Tensor):
+            shape = shape.numpy()
+
         super(EagerParamBase, self).__init__(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape)

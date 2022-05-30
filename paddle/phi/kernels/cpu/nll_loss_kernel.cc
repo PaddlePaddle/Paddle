@@ -154,7 +154,7 @@ template <typename T, typename Context>
 void NllLossRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& labels,
-                      paddle::optional<const DenseTensor&> weight,
+                      const paddle::optional<DenseTensor>& weight,
                       int64_t ignore_index,
                       const std::string& reduction,
                       DenseTensor* out,

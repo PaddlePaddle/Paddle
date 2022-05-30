@@ -69,7 +69,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    paddle::optional<const DenseTensor&> master_param,
+                    const paddle::optional<DenseTensor>& master_param,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
@@ -106,7 +106,7 @@ void SGDDenseParamSparseGradKernel(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    paddle::optional<const DenseTensor&> master_param,
+    const paddle::optional<DenseTensor>& master_param,
     bool multi_precision,
     DenseTensor* param_out,
     DenseTensor* master_param_out) {
@@ -175,7 +175,7 @@ void SGDSparseParamSparseGradKernel(
     const SelectedRows& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    paddle::optional<const SelectedRows&> master_param,
+    const paddle::optional<SelectedRows>& master_param,
     bool multi_precision,
     SelectedRows* param_out,
     SelectedRows* master_param_out) {
