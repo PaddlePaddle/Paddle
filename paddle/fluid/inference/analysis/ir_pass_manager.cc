@@ -273,6 +273,11 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
+    // delete_fill_constant_op_pass is not apply under trt dynamic shape
+    if (pass->Type() == "delete_fill_constant_op_pass") {
+      bool use_dynamic = pass->Get<bool>("with_dynamic_shape");
+      if (use_dynamic) continue;
+    }
     graph.reset(pass->Apply(graph.release()));
   }
   return graph;

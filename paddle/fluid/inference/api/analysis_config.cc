@@ -633,12 +633,6 @@ void AnalysisConfig::Update() {
           (pass == "conv_bn_fuse_pass")) {
         continue;
       }
-      // delete_fill_constant_op_pass is not used under trt dynamic shape
-      if ((tensorrt_dynamic_shape_enabled() || shape_range_info_collected() ||
-           tuned_tensorrt_dynamic_shape()) &&
-          pass == "delete_fill_constant_op_pass") {
-        continue;
-      }
       pass_builder()->AppendPass(pass);
     }
   }
