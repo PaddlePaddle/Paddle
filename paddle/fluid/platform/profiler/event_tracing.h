@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 

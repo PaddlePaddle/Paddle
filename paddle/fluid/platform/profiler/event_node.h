@@ -63,7 +63,7 @@ class OperatorSupplementEventNode {
   ~OperatorSupplementEventNode() {}
   // getter
   std::string Name() const { return op_supplement_event_.op_type; }
-  std::map < std::string, std::vector<std::vector<int64_t>>& InputShapes() {
+  std::map<std::string, std::vector<std::vector<int64_t>>>& InputShapes() {
     return op_supplement_event_.input_shapes;
   }
   std::map<std::string, std::vector<std::string>>& Dtypes() {

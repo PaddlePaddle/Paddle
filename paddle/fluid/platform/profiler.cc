@@ -29,6 +29,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/os_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
@@ -236,21 +237,22 @@ RecordInstantEvent::RecordInstantEvent(const char *name, TracerEventType type,
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
-    const std::string &type, const AttributeMap &attrs,
-    const InferShapeContext &shape_ctx, const RuntimeContext &ctx) {
+    const std::string &type, const framework::AttributeMap &attrs,
+    const framework::InferShapeContext &shape_ctx,
+    const framework::RuntimeContext &ctx) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
-  std::map<std::string, std::vector<DDim>> input_shapes;
-  std::map<std::string, std::vector<proto::VarType::Type>> dtypes;
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
-    input_shapes[it->first] =
-        shape_ctx.GetInputsDim(it->first) dtypes[it->first] =
-            shape_ctx.GetInputsVarType(it->first);
+    input_shapes[it->first] = shape_ctx.GetInputsDim(it->first);
+    dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
   }
 
   const std::vector<std::string> *callstack = nullptr;
-  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  auto iter = attrs.find(
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
     callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;

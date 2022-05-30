@@ -136,7 +136,7 @@ struct OperatorSupplementEvent {
       const std::map<std::string, std::vector<std::vector<int64_t>>>&
           input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
-      std::string callstack, uint64_t process_id, uint64_t thread_id)
+      const std::string& callstack, uint64_t process_id, uint64_t thread_id)
       : timestamp_ns(timestamp_ns),
         op_type(op_type),
         input_shapes(input_shapes),
