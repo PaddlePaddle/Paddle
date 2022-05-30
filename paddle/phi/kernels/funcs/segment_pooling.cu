@@ -417,7 +417,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  paddle::optional<const DenseTensor&> summed_ids,
+                  const paddle::optional<DenseTensor>& summed_ids,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(

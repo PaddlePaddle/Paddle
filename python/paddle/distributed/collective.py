@@ -403,6 +403,11 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of 
+        # hang caused by tcp
+        tmp = paddle.to_tensor([1], dtype="int32")
+        paddle.distributed.all_reduce(tmp, group=group, use_calc_stream=True)
+        paddle.distributed.wait(tmp)
         return group
 
     if not backend:

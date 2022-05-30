@@ -170,7 +170,7 @@ template <typename T, typename PoolProcess>
 __global__ void KernelPool2DGrad(const int nthreads,
                                  const T* __restrict__ input_data,
                                  const T* __restrict__ output_data,
-                                 const const T* __restrict__ output_grad,
+                                 const T* __restrict__ output_grad,
                                  const int output_width,
                                  const int output_height,
                                  const int input_width,
