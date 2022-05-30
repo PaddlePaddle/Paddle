@@ -433,6 +433,17 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
   }
 }
 
+void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_index,
+                            const MetaTensor& out_grad,
+                            const IntArray& axes,
+                            bool keep_dim,
+                            MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+  x_grad->set_dims(x_dims);
+  x_grad->set_dtype(x.dtype());
+}
+
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
                           const MetaTensor& weight,
