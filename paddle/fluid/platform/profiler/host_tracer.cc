@@ -85,13 +85,13 @@ void ProcessOperatorSupplementEvents(
       OperatorSupplementEvent event;
       event.timestamp_ns = evt.timestamp_ns;
       event.op_type = evt.op_type;
-      std::map < std::string, std::vector<std::vector<int64_t>> input_shapes;
+      std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
       std::map<std::string, std::vector<std::string>> dtypes;
       std::string callstack;
       for (auto it = evt.input_shapes.begin(); it != evt.input_shapes.end();
            it++) {
         input_shapes[it->first].reserve(it->second.size());
-        for (auto idx = 0; idx < it->second.size(); idx++) {
+        for (auto idx = 0lu; idx < it->second.size(); idx++) {
           for (auto dim_idx = 0; dim_idx < it->second.at(idx).size();
                dim_idx++) {
             input_shapes[it->first].at(idx).at(dim_idx) =
@@ -101,9 +101,9 @@ void ProcessOperatorSupplementEvents(
       }
       for (auto it = evt.dtypes.begin(); it != evt.dtypes.end(); it++) {
         dtypes[it->first].reserve(it->second.size());
-        for (auto idx = 0; idx < it->second.size(); idx++) {
-          dtypes[it->first].at[idx] =
-              framework::proto::VarType::TypeName(it->second.at(idx));
+        for (auto idx = 0lu; idx < it->second.size(); idx++) {
+          dtypes[it->first].at(idx) =
+              framework::proto::VarType::Type_Name(it->second.at(idx));
         }
       }
 

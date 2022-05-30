@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -129,9 +130,9 @@ class RecordMemEvent {
 class RecordOpInfoSupplement {
  public:
   explicit RecordOpInfoSupplement(const std::string& type,
-                                  const AttributeMap& attrs,
-                                  const InferShapeContext& shape_ctx,
-                                  const RuntimeContext& ctx);
+                                  const framework::AttributeMap& attrs,
+                                  const framework::InferShapeContext& shape_ctx,
+                                  const framework::RuntimeContext& ctx);
 };
 
 }  // namespace platform

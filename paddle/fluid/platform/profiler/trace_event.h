@@ -133,11 +133,10 @@ struct OperatorSupplementEvent {
   OperatorSupplementEvent() = default;
   OperatorSupplementEvent(
       uint64_t timestamp_ns, const std::string& op_type,
-      const std::map < std::string,
-      const std::vector<std::vector<int64_t>>& input_shapes,
+      const std::map<std::string, std::vector<std::vector<int64_t>>>&
+          input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
-      std::vector<std::string>* callstack, uint64_t process_id,
-      uint64_t thread_id)
+      std::string callstack, uint64_t process_id, uint64_t thread_id)
       : timestamp_ns(timestamp_ns),
         op_type(op_type),
         input_shapes(input_shapes),
@@ -150,7 +149,7 @@ struct OperatorSupplementEvent {
   // op type name
   std::string op_type;
   // input shapes
-  std::map < std::string, std::vector<std::vector<int64_t>> input_shapes;
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
   std::string callstack;
@@ -158,7 +157,7 @@ struct OperatorSupplementEvent {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
-}
+};
 
 struct HostTraceEvent {
   HostTraceEvent() = default;

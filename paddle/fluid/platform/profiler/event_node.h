@@ -76,8 +76,7 @@ class OperatorSupplementEventNode {
  private:
   // data
   OperatorSupplementEvent op_supplement_event_;
-
-}
+};
 
 class DeviceTraceEventNode {
  public:

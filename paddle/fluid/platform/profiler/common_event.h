@@ -95,7 +95,7 @@ struct OperatorSupplementOriginEvent {
           &dtypes,
       const std::vector<std::string> *callstack)
       : timestamp_ns(timestamp_ns),
-        input_shapes(input_shape),
+        input_shapes(input_shapes),
         dtypes(dtypes),
         callstack(callstack) {
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
@@ -109,7 +109,7 @@ struct OperatorSupplementOriginEvent {
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   // call stack
   const std::vector<std::string> *callstack;
-}
+};
 
 }  // namespace platform
 }  // namespace paddle
