@@ -70,6 +70,10 @@ class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "dynamic_shape",
+        "(bool default false) the send/recv will be done with dynamic shape.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Send Operator
 

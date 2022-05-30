@@ -197,10 +197,12 @@ class CacheKey(object):
     def __hash__(self):
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         with_hook = self.kwargs.get("with_hook", False)
-        return hash((id(self.function_spec),
-                     make_hashable(self.input_args_with_spec, error_msg),
-                     make_hashable(self.input_kwargs_with_spec, error_msg),
-                     self._spec_names_id, self.class_instance, with_hook))
+        is_train = self.kwargs.get("is_train", False)
+        return hash(
+            (id(self.function_spec),
+             make_hashable(self.input_args_with_spec, error_msg),
+             make_hashable(self.input_kwargs_with_spec, error_msg),
+             self._spec_names_id, self.class_instance, with_hook, is_train))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -357,7 +359,7 @@ class StaticFunction(object):
 
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
-                *args, **kwargs)
+                *args, **kwargs, is_train=self._is_train_mode())
 
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
@@ -382,6 +384,12 @@ class StaticFunction(object):
                     "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
                     " if you can't handle this {} yourself.".format(type(e)))
                 raise e
+
+    def _is_train_mode(self):
+        if self._class_instance is not None:
+            return self._class_instance.training
+        else:
+            return self._training
 
     def _call_dygraph_function(self, *args, **kwargs):
         """
@@ -415,6 +423,8 @@ class StaticFunction(object):
         """
 
         with_hook = kwargs.get("with_hook", False)
+        is_train = kwargs.get("is_train", True)
+        if "is_train" in kwargs: kwargs.pop("is_train")
         if "with_hook" in kwargs: kwargs.pop("with_hook")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
@@ -430,7 +440,8 @@ class StaticFunction(object):
             input_kwargs_with_spec,
             self._class_instance,
             **self._kwargs,
-            with_hook=with_hook)
+            with_hook=with_hook,
+            is_train=is_train)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -525,7 +536,9 @@ class StaticFunction(object):
             has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
                 concrete_program, _ = self.get_concrete_program(
-                    *desired_input_spec, with_hook=with_hook)
+                    *desired_input_spec,
+                    with_hook=with_hook,
+                    is_train=self._is_train_mode())
                 return concrete_program
             else:
                 raise ValueError(

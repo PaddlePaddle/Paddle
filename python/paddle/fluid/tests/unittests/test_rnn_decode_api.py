@@ -629,7 +629,6 @@ class ModuleApiTest(unittest.TestCase):
         else:
             fluid.disable_dygraph()
         gen = paddle.seed(self._random_seed)
-        gen._is_init_py = False
         paddle.framework.random._manual_program_seed(self._random_seed)
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):

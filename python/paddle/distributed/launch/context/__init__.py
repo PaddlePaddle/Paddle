@@ -17,6 +17,7 @@ from paddle.distributed.launch import plugins
 from .node import Node
 from .status import Status
 from .args_envs import parse_args, fetch_envs, env_args_mapping
+import six
 
 import logging
 
@@ -38,6 +39,12 @@ class Context(object):
 
         if enable_plugin:
             self._enable_plugin()
+
+    def print(self):
+        self.logger.info("-----------  Configuration  ----------------------")
+        for arg, value in sorted(six.iteritems(vars(self.args))):
+            self.logger.info("%s: %s" % (arg, value))
+        self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):
         if self.args.legacy:

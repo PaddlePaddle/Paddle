@@ -337,6 +337,7 @@ _custom_gid = None
 
 
 def _set_custom_gid(gid):
+    global _custom_gid
     _custom_gid = gid
 
 
@@ -363,6 +364,7 @@ def new_group(ranks=None, backend=None):
             paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
 
     """
+    global _custom_gid
     global _group_map
     if in_dygraph_mode():
         global _default_group_name
@@ -401,6 +403,11 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of 
+        # hang caused by tcp
+        tmp = paddle.to_tensor([1], dtype="int32")
+        paddle.distributed.all_reduce(tmp, group=group, use_calc_stream=True)
+        paddle.distributed.wait(tmp)
         return group
 
     if not backend:
