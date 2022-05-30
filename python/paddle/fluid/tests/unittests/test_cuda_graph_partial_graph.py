@@ -38,6 +38,9 @@ class SimpleModel(nn.Layer):
 
 
 class TestSimpleModel(unittest.TestCase):
+    def setUp(self):
+        paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})
+
     def run_base(self, func, use_cuda_graph, memory_pool="default", seed=10):
         paddle.seed(seed)
         is_layer = isinstance(func, paddle.nn.Layer)
