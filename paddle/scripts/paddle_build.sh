@@ -2973,6 +2973,7 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+
 function check_coverage_build() {
     if [ ! "${buildSize}" ];then
         echo "build size not found"
