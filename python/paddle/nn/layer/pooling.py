@@ -627,7 +627,7 @@ class AdaptiveAvgPool1D(Layer):
     of several input planes, based on :attr:`output_size`.
     Input and output are in NCL format, where N is batch
     size, C is the number of channels and L is the length of the feature.
-    The shape of output will be :math:`[N, C, output_size]`.
+    The shape of output will be :math:`[N, C, output\_size]`.
 
     The formulation for average adaptive pool1d is
 
