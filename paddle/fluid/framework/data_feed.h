@@ -58,6 +58,7 @@ class DataFeedDesc;
 class Scope;
 class Variable;
 class NeighborSampleResult;
+class NodeQueryResult;
 }  // namespace framework
 }  // namespace paddle
 
@@ -888,35 +889,17 @@ class GraphDataGenerator {
  public:
   GraphDataGenerator(){};
   virtual ~GraphDataGenerator(){};
-  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc) {
-    auto graph_config = data_feed_desc.graph_config();
-    walk_degree_ = graph_config.walk_degree();
-    walk_len_ = graph_config.walk_len();
-    window_ = graph_config.window();
-    once_sample_startid_len_ = graph_config.once_sample_startid_len();
-    debug_mode_ = graph_config.debug_mode();
-    if (debug_mode_) {
-      batch_size_ = graph_config.batch_size();
-    } else {
-      batch_size_ = once_sample_startid_len_;
-    }
-    repeat_time_ = graph_config.sample_times_one_chunk();
-    buf_size_ =
-        once_sample_startid_len_ * walk_len_ * walk_degree_ * repeat_time_;
-    VLOG(2) << "Confirm GraphConfig, walk_degree : " << walk_degree_
-            << ", walk_len : " << walk_len_ << ", window : " << window_
-            << ", once_sample_startid_len : " << once_sample_startid_len_
-            << ", sample_times_one_chunk : " << repeat_time_
-            << ", batch_size: " << batch_size_;
-  };
+  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
   void AllocResource(const paddle::platform::Place& place,
                      std::vector<LoDTensor*> feed_vec,
                      std::vector<int64_t>* h_device_keys);
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
-  void FillOneStep(int64_t* walk, int len, NeighborSampleResult& sample_res,
-                   int cur_degree, int step, int* len_per_row);
+  void FillOneStep(NodeQueryResult& node_query_result, int64_t* walk, int len,
+                   NeighborSampleResult& sample_res, int cur_degree, int step,
+                   int* len_per_row);
+  int FillInsBuf();
 
  protected:
   int walk_degree_;
@@ -950,6 +933,13 @@ class GraphDataGenerator {
   // record the keys to call graph_neighbor_sample
   std::shared_ptr<phi::Allocation> d_sample_keys_;
   int sample_keys_len_;
+
+  std::set<int> finish_node_type_;
+  std::unordered_map<int, size_t> node_type_start_;
+
+  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::shared_ptr<phi::Allocation> d_pair_num_;
+  int ins_buf_pair_len_;
   // size of a d_walk buf
   size_t buf_size_;
   int repeat_time_;
@@ -958,6 +948,8 @@ class GraphDataGenerator {
   int batch_size_;
   int shuffle_seed_;
   int debug_mode_;
+  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> meta_path_;
 };
 
 class DataFeed {
