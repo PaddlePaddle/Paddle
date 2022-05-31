@@ -178,6 +178,13 @@ void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
                           MetaTensor* out);
+
+void NanmedianInferMeta(const MetaTensor& x,
+                        const IntArray& axes,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaTensor* median_index);
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,

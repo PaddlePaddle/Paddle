@@ -597,9 +597,11 @@ class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
 class TestPaddleShape(unittest.TestCase):
     def test_paddle_shape(self):
         func = paddle.jit.to_static(dyfunc_len_paddle_shape)
-        self.assertEqual('paddle.shape(x)' in func.code, True)
+        func_code = func.code.replace("\n", "").replace(" ", "")
+        self.assertEqual('paddle.shape(x)' in func_code, True)
         func = paddle.jit.to_static(dyfunc_dict_assign_shape)
-        self.assertEqual("__static_convert_var_shape_suffix" in func.code, True)
+        func_code = func.code.replace("\n", "").replace(" ", "")
+        self.assertEqual("__static_convert_var_shape_suffix" in func_code, True)
 
 
 if __name__ == '__main__':

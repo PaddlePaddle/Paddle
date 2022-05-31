@@ -263,6 +263,7 @@ from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import nanmedian  # noqa: F401
 from .stat import quantile  # noqa: F401
 from .stat import nanquantile  # noqa: F401
 
@@ -448,6 +449,7 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'nanmedian',
            'quantile',
            'nanquantile',
            'is_complex',
