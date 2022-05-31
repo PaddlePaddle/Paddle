@@ -109,7 +109,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
@@ -280,7 +280,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
