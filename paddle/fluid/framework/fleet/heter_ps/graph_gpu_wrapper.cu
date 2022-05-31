@@ -234,7 +234,7 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
           ->graph_neighbor_sample_v2(gpu_id, idx, cuda_key, sample_size,
-                                  key.size(), false);
+                                     key.size(), false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),

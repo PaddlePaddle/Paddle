@@ -70,10 +70,9 @@ __global__ void copy_buffer_ac_to_final_place(
 
 template <int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
 __global__ void neighbor_sample_kernel(GpuPsCommGraph graph,
-                                           int64_t* node_index,
-                                           int* actual_size, uint64_t* res,
-                                           int sample_len, int n,
-                                           int default_value) {
+                                       int64_t* node_index, int* actual_size,
+                                       uint64_t* res, int sample_len, int n,
+                                       int default_value) {
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
