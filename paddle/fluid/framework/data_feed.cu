@@ -230,10 +230,12 @@ int GraphDataGenerator::GenerateBatch() {
   return 1;
 }
 
-__global__ void GraphFillSampleKeysKernel(
-    int64_t *neighbors, int64_t *sample_keys, int64_t *prefix_sum,
-    int *sampleidx2row, int *tmp_sampleidx2row, int *actual_sample_size,
-    int cur_degree, int len) {
+__global__ void GraphFillSampleKeysKernel(int64_t *neighbors,
+                                          int64_t *sample_keys, int *prefix_sum,
+                                          int *sampleidx2row,
+                                          int *tmp_sampleidx2row,
+                                          int *actual_sample_size,
+                                          int cur_degree, int len) {
   CUDA_KERNEL_LOOP(idx, len) {
     for (int k = 0; k < actual_sample_size[idx]; k++) {
       size_t offset = prefix_sum[idx] + k;
@@ -244,10 +246,10 @@ __global__ void GraphFillSampleKeysKernel(
 }
 
 __global__ void GraphDoWalkKernel(int64_t *neighbors, int64_t *walk,
-                                  int64_t *d_prefix_sum,
-                                  int *actual_sample_size, int cur_degree,
-                                  int step, int len, int *id_cnt,
-                                  int *sampleidx2row, int col_size) {
+                                  int *d_prefix_sum, int *actual_sample_size,
+                                  int cur_degree, int step, int len,
+                                  int *id_cnt, int *sampleidx2row,
+                                  int col_size) {
   CUDA_KERNEL_LOOP(i, len) {
     for (int k = 0; k < actual_sample_size[i]; k++) {
       // int idx = sampleidx2row[i];
@@ -261,10 +263,12 @@ __global__ void GraphDoWalkKernel(int64_t *neighbors, int64_t *walk,
 }
 
 // Fill keys to the first column of walk
-__global__ void GraphFillFirstStepKernel(
-    int64_t *prefix_sum, int *sampleidx2row, int64_t *walk, int64_t *keys,
-    int len, int walk_degree, int col_size, int *actual_sample_size,
-    int64_t *neighbors, int64_t *sample_keys) {
+__global__ void GraphFillFirstStepKernel(int *prefix_sum, int *sampleidx2row,
+                                         int64_t *walk, int64_t *keys, int len,
+                                         int walk_degree, int col_size,
+                                         int *actual_sample_size,
+                                         int64_t *neighbors,
+                                         int64_t *sample_keys) {
   CUDA_KERNEL_LOOP(idx, len) {
     for (int k = 0; k < actual_sample_size[idx]; k++) {
       size_t row = prefix_sum[idx] + k;
@@ -286,7 +290,7 @@ void GraphDataGenerator::FillOneStep(int64_t *walk, int len,
   size_t temp_storage_bytes = 0;
   int *d_actual_sample_size = sample_res.actual_sample_size;
   int64_t *d_neighbors = sample_res.val;
-  int64_t *d_prefix_sum = reinterpret_cast<int64_t *>(d_prefix_sum_->ptr());
+  int *d_prefix_sum = reinterpret_cast<int *>(d_prefix_sum_->ptr());
   int64_t *d_sample_keys = reinterpret_cast<int64_t *>(d_sample_keys_->ptr());
   int *d_sampleidx2row =
       reinterpret_cast<int *>(d_sampleidx2rows_[cur_sampleidx2row_]->ptr());
@@ -302,9 +306,6 @@ void GraphDataGenerator::FillOneStep(int64_t *walk, int len,
       d_temp_storage->ptr(), temp_storage_bytes, d_actual_sample_size,
       d_prefix_sum + 1, len, stream_));
 
-  int64_t next_start_id_len = 0;
-  cudaMemcpyAsync(&next_start_id_len, d_prefix_sum + len, sizeof(int64_t),
-                  cudaMemcpyDeviceToHost, stream_);
   cudaStreamSynchronize(stream_);
 
   if (step == 1) {
@@ -312,7 +313,6 @@ void GraphDataGenerator::FillOneStep(int64_t *walk, int len,
         d_prefix_sum, d_tmp_sampleidx2row, walk, device_keys_ + cursor_, len,
         walk_degree_, walk_len_, d_actual_sample_size, d_neighbors,
         d_sample_keys);
-    jump_rows_ = next_start_id_len;
 
   } else {
     GraphFillSampleKeysKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0,
@@ -326,14 +326,14 @@ void GraphDataGenerator::FillOneStep(int64_t *walk, int len,
   }
   if (debug_mode_) {
     size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
-    int64_t *h_prefix_sum = new int64_t[len + 1];
+    int *h_prefix_sum = new int[len + 1];
     int *h_actual_size = new int[len];
     int *h_offset2idx = new int[once_max_sample_keynum];
     int64_t *h_sample_keys = new int64_t[once_max_sample_keynum];
     cudaMemcpy(h_offset2idx, d_tmp_sampleidx2row,
                once_max_sample_keynum * sizeof(int), cudaMemcpyDeviceToHost);
 
-    cudaMemcpy(h_prefix_sum, d_prefix_sum, (len + 1) * sizeof(int64_t),
+    cudaMemcpy(h_prefix_sum, d_prefix_sum, (len + 1) * sizeof(int),
                cudaMemcpyDeviceToHost);
     for (int xx = 0; xx < once_max_sample_keynum; xx++) {
       VLOG(2) << "h_offset2idx[" << xx << "]: " << h_offset2idx[xx];
@@ -346,9 +346,8 @@ void GraphDataGenerator::FillOneStep(int64_t *walk, int len,
     delete[] h_offset2idx;
     delete[] h_sample_keys;
   }
-  sample_keys_len_ = next_start_id_len;
-  cur_sampleidx2row_ = 1 - cur_sampleidx2row_;
   cudaStreamSynchronize(stream_);
+  cur_sampleidx2row_ = 1 - cur_sampleidx2row_;
 }
 
 int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
@@ -372,7 +371,7 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
   int64_t *walk = reinterpret_cast<int64_t *>(d_walk->ptr());
   int *len_per_row = reinterpret_cast<int *>(d_len_per_row_->ptr());
   int64_t *d_sample_keys = reinterpret_cast<int64_t *>(d_sample_keys_->ptr());
-  cudaMemsetAsync(walk, 0, buf_size_ * sizeof(sizeof(int64_t)), stream_);
+  cudaMemsetAsync(walk, 0, buf_size_ * sizeof(int64_t), stream_);
   cudaMemsetAsync(len_per_row, 0, once_max_sample_keynum * sizeof(int),
                   stream_);
   int i = 0;
@@ -391,19 +390,15 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
             << " once_max_sample_keynum = " << once_max_sample_keynum;
     int64_t *cur_walk = walk + i;
 
-    if (debug_mode_) {
-      cudaMemcpy(h_walk, walk, buf_size_ * sizeof(int64_t),
-                 cudaMemcpyDeviceToHost);
-      for (int xx = 0; xx < buf_size_; xx++) {
-        VLOG(2) << "h_walk[" << xx << "]: " << h_walk[xx];
-      }
-    }
-    auto sample_res = gpu_graph_ptr->graph_neighbor_sample(
-        gpuid_, device_keys_ + cursor_, walk_degree_, tmp_len);
+    NeighborSampleQuery q;
+    q.initialize(gpuid_, 0, (int64_t)(device_keys_ + cursor_), walk_degree_,
+                 tmp_len);
+    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
     int step = 1;
-    jump_rows_ = 0;
+    jump_rows_ = sample_res.total_sample_size;
     FillOneStep(cur_walk, tmp_len, sample_res, walk_degree_, step, len_per_row);
+    VLOG(2) << "jump_row: " << jump_rows_;
     /////////
     if (debug_mode_) {
       cudaMemcpy(h_walk, walk, buf_size_ * sizeof(int64_t),
@@ -415,13 +410,18 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
     /////////
     step++;
     for (; step < walk_len_; step++) {
-      if (sample_keys_len_ == 0) {
+      if (sample_res.total_sample_size == 0) {
         break;
       }
-      sample_res = gpu_graph_ptr->graph_neighbor_sample(gpuid_, d_sample_keys,
-                                                        1, sample_keys_len_);
+      auto sample_key_mem = sample_res.actual_val_mem;
+      int64_t *sample_keys_ptr =
+          reinterpret_cast<int64_t *>(sample_key_mem->ptr());
+      q.initialize(gpuid_, 0, (int64_t)sample_keys_ptr, 1,
+                   sample_res.total_sample_size);
+      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
-      FillOneStep(cur_walk, sample_keys_len_, sample_res, 1, step, len_per_row);
+      FillOneStep(cur_walk, sample_res.total_sample_size, sample_res, 1, step,
+                  len_per_row);
       if (debug_mode_) {
         cudaMemcpy(h_walk, walk, buf_size_ * sizeof(int64_t),
                    cudaMemcpyDeviceToHost);

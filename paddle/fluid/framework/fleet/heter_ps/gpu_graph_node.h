@@ -288,7 +288,7 @@ struct NodeQueryResult {
     actual_sample_size = 0;
   };
   ~NodeQueryResult() {}
-}; // end of struct NodeQueryResult
+};  // end of struct NodeQueryResult
 
 struct GpuPsGraphFeaNode {
   uint64_t node_id;
@@ -304,15 +304,21 @@ struct GpuPsCommGraphFea {
   uint64_t feature_size, node_size;
   // the size of feature array and graph_node_list array
   GpuPsCommGraphFea()
-      : feature_list(NULL), slot_id_list(NULL), node_list(NULL), feature_size(0), node_size(0) {}
+      : feature_list(NULL),
+        slot_id_list(NULL),
+        node_list(NULL),
+        feature_size(0),
+        node_size(0) {}
   GpuPsCommGraphFea(uint64_t *feature_list_, uint8_t *slot_id_list_,
-          GpuPsGraphFeaNode *node_list_, uint64_t feature_size_, uint64_t node_size_)
+                    GpuPsGraphFeaNode *node_list_, uint64_t feature_size_,
+                    uint64_t node_size_)
       : feature_list(feature_list_),
         slot_id_list(slot_id_list_),
         node_list(node_list_),
         feature_size(feature_size_),
         node_size(node_size_) {}
-  void init_on_cpu(uint64_t feature_size, uint64_t node_size, uint32_t slot_num) {
+  void init_on_cpu(uint64_t feature_size, uint64_t node_size,
+                   uint32_t slot_num) {
     PADDLE_ENFORCE_LE(slot_num, 255);
     this->feature_size = feature_size;
     this->node_size = node_size;
@@ -345,8 +351,8 @@ struct GpuPsCommGraphFea {
       VLOG(1) << str;
     }
   }
-}; // end of struct GpuPsCommGraphFea
+};  // end of struct GpuPsCommGraphFea
 
-} // end of namespace framework
-} // end of namespace paddle
+}  // end of namespace framework
+}  // end of namespace paddle
 #endif
