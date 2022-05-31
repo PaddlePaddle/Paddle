@@ -198,143 +198,142 @@ class DistributedContext:
     def gradient_scale(self, gs):
         self._gradient_scale = gs
 
-    # def _backup_serial_info(self, mode):
-    #     self._backup_serial_main_program_stack.append(
-    #         self._serial_main_program.clone())
-    #     self._backup_serial_startup_program_stack.append(
-    #         self._serial_startup_program.clone())
-    #     self._backup_pass_context_stack.append(
-    #         copy.deepcopy(self._pass_context))
-    #     self._backup_block_state_stack.append(copy.deepcopy(self._block_state))
+    def _backup_serial_info(self, mode):
+        self._backup_serial_main_program_stack.append(
+            self._serial_main_program.clone())
+        self._backup_serial_startup_program_stack.append(
+            self._serial_startup_program.clone())
+        self._backup_pass_context_stack.append(
+            copy.deepcopy(self._pass_context))
+        self._backup_block_state_stack.append(copy.deepcopy(self._block_state))
 
-    # def _backup_dist_info(self, mode):
-    #     self._backup_dist_tensors_for_program_stack.append(
-    #         copy.deepcopy(self._dist_tensors_for_program))
-    #     self._backup_dist_ops_for_program_stack.append(
-    #         copy.deepcopy(self._dist_ops_for_program))
+    def _backup_dist_info(self, mode):
+        self._backup_dist_tensors_for_program_stack.append(
+            copy.deepcopy(self._dist_tensors_for_program))
+        self._backup_dist_ops_for_program_stack.append(
+            copy.deepcopy(self._dist_ops_for_program))
 
-    # def _backup(self, serial=True, serial_mode=None, dist=True, dist_mode=None):
-    #     # Use this function carefully
-    #     if serial:
-    #         self._backup_serial_info(serial_mode)
-    #     if dist:
-    #         self._backup_dist_info(dist_mode)
+    def _backup(self, serial=True, serial_mode=None, dist=True, dist_mode=None):
+        # Use this function carefully
+        if serial:
+            self._backup_serial_info(serial_mode)
+        if dist:
+            self._backup_dist_info(dist_mode)
 
-    # def _restore_serial_info(self, mode="to_backup"):
-    #     if mode == "to_backup":
-    #         self._serial_main_program = self._backup_serial_main_program_stack.pop(
-    #         )
-    #         self._serial_startup_program = self._backup_serial_startup_program_stack.pop(
-    #         )
-    #     elif mode == "to_original":
-    #         assert self._original_serial_main_program is not None
-    #         assert self._original_serial_startup_program is not None
-    #         self._serial_main_program = self._original_serial_main_program.clone(
-    #         )
-    #         self._serial_startup_program = self._original_serial_startup_program.clone(
-    #         )
+    def _restore_serial_info(self, mode="to_backup"):
+        if mode == "to_backup":
+            self._serial_main_program = self._backup_serial_main_program_stack.pop(
+            )
+            self._serial_startup_program = self._backup_serial_startup_program_stack.pop(
+            )
+        elif mode == "to_original":
+            assert self._original_serial_main_program is not None
+            assert self._original_serial_startup_program is not None
+            self._serial_main_program = self._original_serial_main_program.clone(
+            )
+            self._serial_startup_program = self._original_serial_startup_program.clone(
+            )
 
-    #     self._serial_optimizer = self._original_serial_optimizer
+        self._serial_optimizer = self._original_serial_optimizer
 
-    #     if self._original_serial_loss:
-    #         if isinstance(self._original_serial_loss, list):
-    #             assert len(self._original_serial_loss) == 1
-    #             loss = self._original_serial_loss[0]
-    #             block_idx = loss.block.idx
-    #             var_name = loss.name
-    #             var = self._serial_main_program.blocks[
-    #                 block_idx]._var_recursive(var_name)
-    #             self._serial_loss = var
-    #         else:
-    #             block_idx = self._original_serial_loss.block.idx
-    #             var_name = self._original_serial_loss.name
-    #             var = self._serial_main_program.blocks[
-    #                 block_idx]._var_recursive(var_name)
-    #             self._serial_loss = var
+        if self._original_serial_loss:
+            if isinstance(self._original_serial_loss, list):
+                assert len(self._original_serial_loss) == 1
+                loss = self._original_serial_loss[0]
+                block_idx = loss.block.idx
+                var_name = loss.name
+                var = self._serial_main_program.blocks[
+                    block_idx]._var_recursive(var_name)
+                self._serial_loss = var
+            else:
+                block_idx = self._original_serial_loss.block.idx
+                var_name = self._original_serial_loss.name
+                var = self._serial_main_program.blocks[
+                    block_idx]._var_recursive(var_name)
+                self._serial_loss = var
 
-    #     for key, var_list in self._original_serial_feed_vars.items():
-    #         new_var_list = []
-    #         for var in var_list:
-    #             block_idx = var.block.idx
-    #             var_name = var.name
-    #             var = self._serial_main_program.blocks[
-    #                 block_idx]._var_recursive(var_name)
-    #             new_var_list.append(var)
-    #         self._serial_feed_vars[key] = new_var_list
+        for key, var_list in self._original_serial_feed_vars.items():
+            new_var_list = []
+            for var in var_list:
+                block_idx = var.block.idx
+                var_name = var.name
+                var = self._serial_main_program.blocks[
+                    block_idx]._var_recursive(var_name)
+                new_var_list.append(var)
+            self._serial_feed_vars[key] = new_var_list
 
-    #     for key, var_list in self._original_serial_fetch_vars.items():
-    #         new_var_list = []
-    #         for var in var_list:
-    #             block_idx = var.block.idx
-    #             var_name = var.name
-    #             var = self._serial_main_program.blocks[
-    #                 block_idx]._var_recursive(var_name)
-    #             new_var_list.append(var)
-    #         self._serial_fetch_vars[key] = new_var_list
+        for key, var_list in self._original_serial_fetch_vars.items():
+            new_var_list = []
+            for var in var_list:
+                block_idx = var.block.idx
+                var_name = var.name
+                var = self._serial_main_program.blocks[
+                    block_idx]._var_recursive(var_name)
+                new_var_list.append(var)
+            self._serial_fetch_vars[key] = new_var_list
 
-    #     self._pass_context = self._backup_pass_context_stack.pop()
-    #     self._block_state = self._backup_block_state_stack.pop()
+        self._pass_context = self._backup_pass_context_stack.pop()
+        self._block_state = self._backup_block_state_stack.pop()
 
-    # def _restore_dist_info(self, mode="to_backup"):
-    #     if mode == "to_backup":
-    #         self._dist_tensors_for_program = self._backup_dist_tensors_for_program_stack.pop(
-    #         )
-    #         self._dist_ops_for_program = self._backup_dist_ops_for_program_stack.pop(
-    #         )
-    #     elif mode == "to_original":
-    #         assert self._original_dist_tensors_for_program
-    #         assert self._original_dist_ops_for_program
-    #         self._dist_tensors_for_program = copy.deepcopy(
-    #             self._original_dist_tensors_for_program)
-    #         self._dist_ops_for_program = copy.deepcopy(
-    #             self._original_dist_ops_for_program)
-    #     elif mode == "to_default":
-    #         new_tensors_ids = []
-    #         for tensor_id, dist_tensor in self._dist_tensors_for_program.items(
-    #         ):
-    #             if tensor_id in self._tensors_ids:
-    #                 dist_tensor.dist_attr.reset()
-    #             else:
-    #                 new_tensors_ids.append(tensor_id)
-    #         for tensor_id in new_tensors_ids:
-    #             self._dist_tensors_for_program.pop(tensor_id)
-    #         new_ops_ids = []
-    #         for op_id, dist_op in self._dist_ops_for_program.items():
-    #             if op_id in self._ops_ids:
-    #                 dist_op.dist_attr.reset()
-    #             else:
-    #                 new_ops_ids.append(op_id)
-    #         for op_id in new_ops_ids:
-    #             self._dist_ops_for_program.pop(op_id)
-    #     else:
-    #         new_tensors_ids = []
-    #         for tensor_id, dist_tensor in self._dist_tensors_for_program.items(
-    #         ):
-    #             new_tensors_ids.append(tensor_id)
-    #         for tensor_id in new_tensors_ids:
-    #             self._dist_tensors_for_program.pop(tensor_id)
-    #         new_ops_ids = []
-    #         for op_id, dist_op in self._dist_ops_for_program.items():
-    #             new_ops_ids.append(op_id)
-    #         for op_id in new_ops_ids:
-    #             self._dist_ops_for_program.pop(op_id)
+    def _restore_dist_info(self, mode="to_backup"):
+        if mode == "to_backup":
+            self._dist_tensors_for_program = self._backup_dist_tensors_for_program_stack.pop(
+            )
+            self._dist_ops_for_program = self._backup_dist_ops_for_program_stack.pop(
+            )
+        elif mode == "to_original":
+            assert self._original_dist_tensors_for_program
+            assert self._original_dist_ops_for_program
+            self._dist_tensors_for_program = copy.deepcopy(
+                self._original_dist_tensors_for_program)
+            self._dist_ops_for_program = copy.deepcopy(
+                self._original_dist_ops_for_program)
+        elif mode == "to_default":
+            new_tensors_ids = []
+            for tensor_id, dist_tensor in self._dist_tensors_for_program.items(
+            ):
+                if tensor_id in self._tensors_ids:
+                    dist_tensor.dist_attr.reset()
+                else:
+                    new_tensors_ids.append(tensor_id)
+            for tensor_id in new_tensors_ids:
+                self._dist_tensors_for_program.pop(tensor_id)
+            new_ops_ids = []
+            for op_id, dist_op in self._dist_ops_for_program.items():
+                if op_id in self._ops_ids:
+                    dist_op.dist_attr.reset()
+                else:
+                    new_ops_ids.append(op_id)
+            for op_id in new_ops_ids:
+                self._dist_ops_for_program.pop(op_id)
+        else:
+            new_tensors_ids = []
+            for tensor_id, dist_tensor in self._dist_tensors_for_program.items(
+            ):
+                new_tensors_ids.append(tensor_id)
+            for tensor_id in new_tensors_ids:
+                self._dist_tensors_for_program.pop(tensor_id)
+            new_ops_ids = []
+            for op_id, dist_op in self._dist_ops_for_program.items():
+                new_ops_ids.append(op_id)
+            for op_id in new_ops_ids:
+                self._dist_ops_for_program.pop(op_id)
+        self._dist_main_programs = {}
+        self._dist_startup_programs = {}
+        self._dist_op_context = DistributedOperatorContext()
+        self._need_copy_dist_attr_to_graph = True
+        self._process_meshes = []
 
-    #     self._dist_main_programs = {}
-    #     self._dist_startup_programs = {}
-    #     self._dist_op_context = DistributedOperatorContext()
-    #     self._need_copy_dist_attr_to_graph = True
-    #     self._process_meshes = []
-
-    # def _restore(self,
-    #              serial=True,
-    #              serial_mode="to_backup",
-    #              dist=True,
-    #              dist_mode="to_backup"):
-    #     # Use this function carefully
-    #     if serial:
-    #         self._restore_serial_info(serial_mode)
-    #     if dist:
-    #         self._restore_dist_info(dist_mode)
+    def _restore(self,
+                 serial=True,
+                 serial_mode="to_backup",
+                 dist=True,
+                 dist_mode="to_backup"):
+        # Use this function carefully
+        if serial:
+            self._restore_serial_info(serial_mode)
+        if dist:
+            self._restore_dist_info(dist_mode)
 
     def initialize(self):
         if not self._is_initialized:
