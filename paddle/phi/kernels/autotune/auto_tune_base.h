@@ -33,7 +33,7 @@ class KernelCallback {
   explicit KernelCallback(FuncType func_) : func(func_) {}
   virtual ~KernelCallback() {}
 
-  RetureType Call(Args... args) { return func(args...); }
+  RetureType Run(Args... args) { return func(args...); }
 
  private:
   FuncType func;
@@ -60,68 +60,65 @@ class AutoTuneBase {
   }
 
   template <typename... Args>
-  void RunBestKernel(const int64_t idx, Args&&... args) {
-    KernelCall</*HasTimer=*/false>(nullptr, idx, args...);
+  void RunBestKernel(const int idx, Args&&... args) {
+    KernelCall</*HasTimer=*/false>(idx, args...);
   }
 
   template <typename... Args>
   void RunDefaultKernel(Args&&... args) {
-    KernelCall</*HasTimer=*/false>(nullptr, 0, args...);
+    KernelCall</*HasTimer=*/false>(0, args...);
   }
 
   template <typename Context, typename... Args>
-  int64_t PickBestKernel(const Context& ctx, Args&&... args) {
+  int PickBestKernel(const Context& ctx, Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
-    int64_t idx = 0;
-    phi::GpuTimer init_timer;
-    constexpr int total_tests = 2;
+
     float min_time = std::numeric_limits<float>::max();
 
     // Warm up step.
-    KernelCall</*HasTimer=*/true>(&init_timer, 0, args...);
     ctx.Wait();
+    KernelCall</*HasTimer=*/true>(0, args...);
 
-    // Timer test estabulished in default stream.
+    // Time cost test estabulished in default stream.
     for (int64_t i = 0; i < kernels_.size(); ++i) {
-      float total_time = 0;
-      phi::GpuTimer timer;
-      for (int j = 0; j < total_tests; ++j) {
-        auto time = KernelCall</*HasTimer=*/true>(&timer, i, args...);
-        total_time += time;
-      }
-      float avg_time = total_time / total_tests;
-      VLOG(3) << "kernel[" << i << "] time cost is " << avg_time;
+      auto time = KernelCall</*IsTune=*/true>(i, args...);
+      VLOG(3) << "kernel[" << i << "] time cost is " << time / 2;
 
-      if (avg_time < min_time) {
-        min_time = avg_time;
-        idx = i;
+      if (time < min_time) {
+        min_time = time;
+        best_idx_ = i;
       }
     }
-    VLOG(3) << "best kernel idx is " << idx;
-    return idx;
+    VLOG(3) << "best kernel idx is " << best_idx_;
+    return best_idx_;
   }
 
-  bool CheckInit() { return has_init_; }
-  void FinishInit() { has_init_ = true; }
+  bool CheckInit() { return is_init_; }
+  void FinishInit() { is_init_ = true; }
 
  private:
-  bool has_init_{false};
+  bool is_init_{false};
+  int best_idx_{0};
   std::vector<KernelType> kernels_;
 
-  template <bool HasTimer, typename... Args>
-  float KernelCall(phi::GpuTimer* timer, const int64_t idx, Args&&... args) {
+  template <bool IsTune, typename... Args>
+  float KernelCall(const int idx, Args&&... args) {
     float time_cost = 0;
-    if (HasTimer) {
-      timer->Start(0);
-      kernels_[idx].Call(args...);
-      timer->Stop(0);
-      time_cost = timer->ElapsedTime();
+
+    if (IsTune) {
+      phi::GpuTimer timer;
+      for (int i = 0; i < /*repeat=*/2; ++i) {
+        timer.Start(0);
+        kernels_[idx].Run(args...);
+        timer.Stop(0);
+        time_cost += timer.ElapsedTime();
+      }
     } else {
-      kernels_[idx].Call(args...);
+      kernels_[idx].Run(args...);
     }
     return time_cost;
   }

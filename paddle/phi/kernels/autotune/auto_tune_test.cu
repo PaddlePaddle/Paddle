@@ -126,7 +126,7 @@ TEST(AutoTune, sum) {
     dev_ctx->Wait();
     phi::GpuTimer timer;
     timer.Start(0);
-    callbacks[i].Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
+    callbacks[i].Run(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
     timer.Stop(0);
     VLOG(3) << "kernel[" << i << "]: time cost is " << timer.ElapsedTime();
   }
