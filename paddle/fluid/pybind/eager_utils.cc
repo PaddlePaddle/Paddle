@@ -765,7 +765,7 @@ PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
@@ -784,7 +784,7 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
-    return paddle::make_optional<const paddle::experimental::Tensor&>(
+    return paddle::make_optional<paddle::experimental::Tensor>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

@@ -401,7 +401,8 @@ void EighInferMeta(const MetaTensor& x,
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache) {
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
@@ -1243,6 +1244,65 @@ void MultinomialInferMeta(const MetaTensor& x,
 
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(DataType::INT64);
+}
+
+void NanmedianInferMeta(const MetaTensor& x,
+                        const IntArray& axes,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaTensor* median_index) {
+  std::vector<int64_t> axis_list = axes.GetData();
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+  out->set_dtype(x.dtype());
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim({x.numel() * 2}));
+
+  std::vector<int32_t> out_dim;
+  if (axis_list.empty()) {
+    if (keep_dim) {
+      for (int64_t i = 0; i < x_rank; i++) {
+        out_dim.push_back(1);
+      }
+    } else {
+      out_dim.push_back(1);
+    }
+  } else {
+    std::vector<int64_t> cleaned_axis;
+    for (auto& axis : axis_list) {
+      if (axis < 0) axis += x_rank;
+
+      PADDLE_ENFORCE_LT(
+          axis,
+          x_rank,
+          errors::InvalidArgument(
+              "Attr(axis) value should be in range [-R, R-1], R is "
+              "the rank of Input(X). But received axis: %d, R: %d. "
+              "Current Input(X)'s shape is=[%s].",
+              axis,
+              x_rank,
+              x_dim));
+
+      PADDLE_ENFORCE_EQ(
+          std::find(cleaned_axis.begin(), cleaned_axis.end(), axis),
+          cleaned_axis.end(),
+          errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
+                                  static_cast<int>(axis)));
+
+      cleaned_axis.push_back(axis);
+    }
+
+    for (int64_t i = 0; i < x_rank; i++) {
+      if (std::find(cleaned_axis.begin(), cleaned_axis.end(), i) ==
+          cleaned_axis.end()) {
+        out_dim.push_back(x_dim[i]);
+      } else if (keep_dim) {
+        out_dim.push_back(1);
+      }
+    }
+  }
+
+  out->set_dims(make_ddim(out_dim));
 }
 
 void NormInferMeta(const MetaTensor& x,

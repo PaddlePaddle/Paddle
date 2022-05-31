@@ -1060,28 +1060,25 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    SimplifyThenLaunch<phi::GPUContext, T>(rank, dev_ctx, in, out, perm);
-    // auto* tuner =
-    //     phi::autotune::MakeTransposeTuner<T>(
-    //  SimplifyThenLaunch<phi::GPUContext, T>);
-    // if (!tuner->CheckInit()) {
-    //   tuner->AddCallBack(phi::autotune::MakeCallback<T>(
-    //       TransCompute<phi::GPUContext, T>));
-    //   tuner->FinishInit();
-    // }
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
+        SimplifyThenLaunch<phi::GPUContext, T>);
+    if (!tuner->CheckInit()) {
+      tuner->AddCallBack(
+          phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
+      tuner->FinishInit();
+    }
 
-    // auto key = GetTransposeKey<T>(rank, in, perm);
-    // auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    // if (cache.Find(key)) {
-    //   auto index = cache.Get(key);
-    //   tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    // } else {
-    //   // All avaliable kernels have ran while picking the best kernel, so
-    //   // there may be no need for another RunBestKernel.
-    //   auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out,
-    //   perm);
-    //   cache.Set(key, index);
-    // }
+    auto key = GetTransposeKey<T>(rank, in, perm);
+    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    if (cache.Find(key)) {
+      auto index = cache.Get(key);
+      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    } else {
+      // All avaliable kernels have ran while picking the best kernel, so
+      // there may be no need for another RunBestKernel.
+      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
+      cache.Set(key, index);
+    }
   }
 }
 

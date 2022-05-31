@@ -115,12 +115,6 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
-# class TestCase10(TestTransposeOp):
-#     def initTestCase(self):
-#         self.shape = (1, 128, 256, 1)
-#         self.axis = (0,3,2,1)
-
-
 class TestTransposeBF16Op(OpTest):
     def setUp(self):
         self.init_op_type()
