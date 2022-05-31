@@ -17,10 +17,11 @@ import contextlib
 import paddle
 from paddle.fluid import core
 from paddle import _C_ops
-from paddle.autograd import PyLayer
+from paddle.autograd import PyLayer, EagerPyLayer
 from paddle.fluid import framework
 from ...utils.recompute import check_recompute_necessary, detach_variable
 from ..parallel_layers.random import get_rng_state_tracker
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -164,6 +165,138 @@ def _swith_rng_state_tracker(rng_state, tracker):
         get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
 
 
+class _HPEagerRecomputeFunction(EagerPyLayer):
+    """
+    Compared with paddle.distributed.fleet.utils.recompute, there are the following differences:
+    1. In order to support PipeLineParallel, the input of recompute is modified to ensure that the input can be tuple type.
+    2. Offload support for activation
+    3. Support MP segmentation of activation to further reduce cuda memory
+    4. Adapt to the random state of MP
+    """
+
+    @staticmethod
+    def forward(ctx, run_function, all_outputs, *args):
+        check_recompute_necessary(args)
+
+        # store for recomputing 
+        ctx.run_function = run_function
+
+        # store the rng states
+        ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
+        ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+        ).get_states_tracker()
+
+        # save input for backward
+        ctx.inputs = []
+        ctx.tensor_indices = []
+        ctx.tensor_shapes = []
+        tensor_inputs = []
+
+        cur_device = paddle.get_device()
+        assert 'gpu:' in paddle.get_device(
+        ), "Recompute with RNG is not support current device: {}.".format(
+            cur_device)
+
+        # TODO support AMP
+        tracer = framework._dygraph_tracer()
+        ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+        if tracer._amp_level == core.AmpLevel.O2:
+            ctx.amp_level = 'O2'
+        elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
+            ctx.amp_level = 'O1'
+        else:
+            raise ValueError("unsupported amp level: {}".format(
+                tracer._amp_level))
+        ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
+
+        with paddle.no_grad():
+            outputs = run_function(*args)
+
+        for i, arg in enumerate(args):
+            if paddle.is_tensor(arg):
+                state = arg.stop_gradient
+                if _recompute_partition:
+                    ctx.tensor_shapes.append(arg.shape)
+                    partition = _split_activation(arg.detach()).clone()
+                    # TODO(shenliang03) not use calculate stream to D2H to speed
+                    arg = partition.cpu() if _recompute_offload else partition
+                else:
+                    arg = arg.cpu() if _recompute_offload else arg
+                arg.stop_gradient = state
+                tensor_inputs.append(arg)
+                ctx.tensor_indices.append(i)
+                ctx.inputs.append(None)
+            else:
+                ctx.inputs.append(arg)
+
+        ctx.save_for_backward(*tensor_inputs)
+
+        if paddle.is_tensor(outputs):
+            all_outputs += [outputs]
+            return outputs
+        else:
+            all_outputs += outputs
+            return tuple(outputs)
+
+    @staticmethod
+    def backward(ctx, *args):
+        with paddle.fluid.dygraph.guard():
+            # Restore inputs
+            inputs = list(ctx.inputs)
+            tensor_indices = ctx.tensor_indices
+            tensor_shapes = ctx.tensor_shapes
+            tensors = list(ctx.saved_tensor())
+
+            device_id = paddle.distributed.ParallelEnv().device_id
+            for i, idx in enumerate(tensor_indices):
+                if _recompute_partition:
+                    state = tensors[i].stop_gradient
+                    tensors[i] = _merge_activation(tensors[i]).detach(
+                    ).reshape_(tensor_shapes[i])
+                    tensors[i].stop_gradient = state
+                inputs[idx] = tensors[i].cuda(
+                    device_id) if _recompute_offload else tensors[i]
+
+            tracer = framework._dygraph_tracer()
+            tracer._has_grad = True
+
+            # need restore auto_cast state as well as w/b list
+            with _swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                          ctx.fwd_cuda_rng_state_tracker):
+                with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    outputs = ctx.run_function(*detached_inputs)
+
+            if isinstance(outputs, core.eager.Tensor):
+                outputs = (outputs, )
+            assert len(outputs) == len(args)
+
+            forward_outputs_with_grad = []
+            backward_inputs = []
+
+            for i in range(len(outputs)):
+                if isinstance(
+                        outputs[i],
+                        core.eager.Tensor) and not outputs[i].stop_gradient:
+                    forward_outputs_with_grad.append(outputs[i])
+                    backward_inputs.append(args[i])
+
+            if len(forward_outputs_with_grad) == 0:
+                raise RuntimeError(
+                    "none of output has stop_gradient=False, this recompute() is not necessary"
+                )
+
+            # actually backward            
+            paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
+            grads = tuple(inp._grad_ivar() for inp in detached_inputs
+                          if isinstance(inp, core.eager.Tensor))
+            return grads
+
+
 class _HPRecomputeFunction(PyLayer):
     """
     Compared with paddle.distributed.fleet.utils.recompute, there are the following differences:
@@ -290,8 +423,8 @@ class _HPRecomputeFunction(PyLayer):
 
             # actually backward            
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
-            grads = list(inp._grad_ivar() for inp in detached_inputs
-                         if isinstance(inp, core.VarBase))
+            grads = tuple(inp._grad_ivar() for inp in detached_inputs
+                          if isinstance(inp, core.VarBase))
             return grads
 
 
@@ -303,7 +436,10 @@ def _hp_recompute(function, *args):
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
 
     all_outputs = []
-    _HPRecomputeFunction.apply(function, all_outputs, *args)
+    if in_dygraph_mode():
+        _HPEagerRecomputeFunction.apply(function, all_outputs, *args)
+    else:
+        _HPRecomputeFunction.apply(function, all_outputs, *args)
 
     if len(all_outputs) == 1:
         return all_outputs[0]

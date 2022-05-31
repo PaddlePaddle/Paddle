@@ -14,6 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 

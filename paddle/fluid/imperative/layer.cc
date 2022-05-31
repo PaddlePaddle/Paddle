@@ -459,7 +459,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
                           const platform::Place& place) {
-  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
+  auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
                      "Only support operator with kernel in Dygraph mode."));

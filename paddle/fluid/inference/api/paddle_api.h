@@ -36,6 +36,7 @@ namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
+using PaddleDataLayout = paddle_infer::DataLayout;
 
 /// \brief Memory manager for PaddleTensor.
 ///

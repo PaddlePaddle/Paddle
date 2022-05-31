@@ -117,6 +117,9 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_CUDA)
+  pull_dense_worker_->CreatePinVar();
+#endif
   pull_dense_worker_->Start();
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
   for (int i = 0; i < thread_num_; ++i) {

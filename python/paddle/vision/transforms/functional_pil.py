@@ -32,14 +32,25 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-_pil_interp_from_str = {
-    'nearest': Image.NEAREST,
-    'bilinear': Image.BILINEAR,
-    'bicubic': Image.BICUBIC,
-    'box': Image.BOX,
-    'lanczos': Image.LANCZOS,
-    'hamming': Image.HAMMING
-}
+try:
+    # PIL version >= "9.1.0"
+    _pil_interp_from_str = {
+        'nearest': Image.Resampling.NEAREST,
+        'bilinear': Image.Resampling.BILINEAR,
+        'bicubic': Image.Resampling.BICUBIC,
+        'box': Image.Resampling.BOX,
+        'lanczos': Image.Resampling.LANCZOS,
+        'hamming': Image.Resampling.HAMMING
+    }
+except:
+    _pil_interp_from_str = {
+        'nearest': Image.NEAREST,
+        'bilinear': Image.BILINEAR,
+        'bicubic': Image.BICUBIC,
+        'box': Image.BOX,
+        'lanczos': Image.LANCZOS,
+        'hamming': Image.HAMMING
+    }
 
 __all__ = []
 

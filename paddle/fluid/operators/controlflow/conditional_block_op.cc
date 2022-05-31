@@ -143,7 +143,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                /* keep_kid_scopes */ false);
 
       AssignLocalGradientToParentScope(dev_place, cur_scope, scope,
-                                       inside_grads, outside_grads);
+                                       inside_grads, outside_grads, inputs);
       return;
     }
 
@@ -155,20 +155,25 @@ class ConditionalBlockGradOp : public ConditionalOp {
       const platform::Place &place, const framework::Scope &cur_scope,
       const framework::Scope &parent_scope,
       const std::vector<std::string> &inside_grads,
-      const std::vector<std::string> &outside_grads) const {
+      const std::vector<std::string> &outside_grads,
+      const std::vector<std::string> &inputs) const {
+    std::vector<std::string> assign_zero_outside_grads;
+    std::vector<std::string> assign_zero_inputs;
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
       VLOG(4) << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *inside_var =
-          cur_scope.FindLocalVar(inside_grad_name);
-      if (inside_var == nullptr) {
-        continue;
-      }
       framework::Variable *outside_var =
           parent_scope.FindVar(outside_grad_name);
       if (outside_var == nullptr) {
+        continue;
+      }
+      framework::Variable *inside_var =
+          cur_scope.FindLocalVar(inside_grad_name);
+      if (inside_var == nullptr) {
+        assign_zero_outside_grads.emplace_back(outside_grad_name);
+        assign_zero_inputs.emplace_back(inputs[i]);
         continue;
       }
       platform::DeviceContext *dev_ctx =
@@ -176,6 +181,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
+    // Assign zero to the grad_vars that are in outside_grads but not in
+    // inside_grads
+    AssignZeroToParentScope(place, parent_scope, assign_zero_inputs,
+                            assign_zero_outside_grads);
   }
 
   void AssignZeroToParentScope(

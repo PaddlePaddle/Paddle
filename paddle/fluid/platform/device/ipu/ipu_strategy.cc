@@ -67,6 +67,7 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(transfer_cast_op);
   ADD_BOOL_OPTION(use_no_bias_optimizer);
   ADD_BOOL_OPTION(enable_distribution);
+  ADD_BOOL_OPTION(scaled_optimizer_state);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
@@ -411,6 +412,15 @@ IpuStrategy::IpuStrategy() {
 
   RegisterGetter(map_options_getter, options_type, "gcl_options", "map",
                  [&]() { return popart_options.gclOptions; });
+
+  // Default options
+
+  // Can also be set as a custom logger in python, like using tqdm
+  popart_options.compilationProgressLogger = [](int progress, int total) {
+    if (progress % 10 == 0) {
+      VLOG(1) << "compile progress: " << progress << "%";
+    }
+  };
 }
 
 void IpuStrategy::AddBoolOption(const std::string& option, bool value) {
@@ -510,6 +520,11 @@ void IpuStrategy::AddCustomOp(const std::string& paddle_op,
   LOG(INFO) << "IpuStrategy add custom op: " << paddle_op;
   custom_ops.push_back(
       IpuCustomOpIdentifier(paddle_op, popart_op, domain, version));
+}
+
+void IpuStrategy::SetCompilationProgressLogger(
+    const std::function<void(int, int)>& logger) {
+  popart_options.compilationProgressLogger = logger;
 }
 
 std::string IpuStrategy::GetOption(const std::string& option) {

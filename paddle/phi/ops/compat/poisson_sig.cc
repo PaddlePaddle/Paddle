@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature PoissonGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("poisson_grad", {}, {}, {GradVarName("X")});
+  return KernelSignature("poisson_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

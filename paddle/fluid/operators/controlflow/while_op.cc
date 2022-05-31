@@ -517,10 +517,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(kOutputs);
     ctx->HasInputs(framework::GradVarName(kOutputs));
     auto pg_ig_names = ctx->Outputs(kXGRAD);
-    std::vector<framework::InferShapeVarPtr> in_var_ptrs =
-        ctx->GetInputVarPtrs(kX);
-    std::vector<framework::InferShapeVarPtr> out_var_ptrs =
-        ctx->GetOutputVarPtrs(kXGRAD);
+    auto in_var_ptrs = ctx->GetInputVarPtrs(kX);
+    auto out_var_ptrs = ctx->GetOutputVarPtrs(kXGRAD);
     PADDLE_ENFORCE_EQ(in_var_ptrs.size(), out_var_ptrs.size(),
                       platform::errors::InvalidArgument(
                           "The size of Inputs(X) must be the same as "

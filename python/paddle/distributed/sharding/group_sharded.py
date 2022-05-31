@@ -20,10 +20,19 @@ import paddle
 
 from paddle.optimizer import Optimizer
 from paddle.distributed.utils import get_logger
+from paddle.fluid.framework import in_dygraph_mode
+
+# Old version
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import ShardingStage2
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import ShardingStage3
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import ShardingScaler
+
+# New version
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import GroupShardedStage3
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import GroupShardedScaler
 
 logger_ = get_logger(logging.INFO)
 
@@ -110,30 +119,56 @@ def group_sharded_parallel(model,
         logger_.info("*" * 30)
         logger_.info("Sharded level os uses sharded level os_g achieved now.")
         logger_.info("*" * 30)
-        optimizer = ShardingOptimizerStage2(
-            params=model.parameters(),
-            optim=optimizer,
-            group=group,
-            offload=offload)
-        model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            sync_buffers=sync_buffers,
-            buffer_max_size=buffer_max_size)
+        if in_dygraph_mode():
+            optimizer = GroupShardedOptimizerStage2(
+                params=optimizer._parameter_list,
+                optim=optimizer,
+                group=group,
+                offload=offload)
+            model = GroupShardedStage2(
+                model,
+                optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                buffer_max_size=buffer_max_size)
+        else:
+            optimizer = ShardingOptimizerStage2(
+                params=model.parameters(),
+                optim=optimizer,
+                group=group,
+                offload=offload)
+            model = ShardingStage2(
+                model,
+                optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                buffer_max_size=buffer_max_size)
     elif level == 'p_g_os':
-        model = ShardingStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            sync_buffers=sync_buffers,
-            segment_size=segment_size,
-            offload=offload,
-            sync_comm=sync_comm)
+        if in_dygraph_mode():
+            model = GroupShardedStage3(
+                model,
+                optimizer=optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                segment_size=segment_size,
+                offload=offload,
+                sync_comm=sync_comm)
+        else:
+            model = ShardingStage3(
+                model,
+                optimizer=optimizer,
+                group=group,
+                sync_buffers=sync_buffers,
+                segment_size=segment_size,
+                offload=offload,
+                sync_comm=sync_comm)
     else:
         raise ValueError("Please enter the correct level.")
     if params_fp16 and isinstance(scaler, paddle.amp.GradScaler):
-        scaler = ShardingScaler(scaler)
+        if in_dygraph_mode():
+            scaler = GroupShardedScaler(scaler)
+        else:
+            scaler = ShardingScaler(scaler)
     logger_.info("*" * 30)
     logger_.info(
         "If there is a communication hang using group sharded, please check whether the communication operations of each process are unified."
@@ -195,9 +230,9 @@ def save_group_sharded_model(model, output, optimizer=None):
     ), "Saving directory ({}) should be a directory, not a file".format(output)
     os.makedirs(output, exist_ok=True)
     output_model = os.path.join(output, "model.pdmodel")
-    if isinstance(model, ShardingStage2):
+    if isinstance(model, (ShardingStage2, GroupShardedStage2)):
         paddle.save(model._layer.state_dict(), output_model)
-    elif isinstance(model, ShardingStage3):
+    elif isinstance(model, (ShardingStage3, GroupShardedStage3)):
         convert2cpu = True if model._offload else False
         model.get_all_parameters(convert2cpu=convert2cpu)
         paddle.save(model._layer.state_dict(), output_model)

@@ -1506,6 +1506,12 @@ class OpTest(unittest.TestCase):
                     return imperative_actual, imperative_actual_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+                if actual_np.dtype == np.uint16 and expect_np.dtype in [
+                        np.float32, np.float64
+                ]:
+                    self.rtol = 1.e-2
+                else:
+                    self.rtol = 1.e-5
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16:
                         actual_np = convert_uint16_to_float(actual_np)

@@ -16,9 +16,13 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..static import Variable
-from ..framework import VarBase as Tensor
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-# TODO: define logic functions of a tensor  
+# TODO: define logic functions of a tensor
+import paddle.fluid as fluid
+if fluid.framework._in_eager_mode_:
+    Tensor = fluid.framework.core.eager.Tensor
+else:
+    from ..framework import VarBase as Tensor
 from ..fluid.layers import is_empty  # noqa: F401
 from ..fluid.layers import logical_and  # noqa: F401
 from ..fluid.layers import logical_not  # noqa: F401
@@ -59,6 +63,9 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_equal_all(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.equal_all(x, y)
 
@@ -123,7 +130,12 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_allclose(x, y,
+                                           as_tensor(rtol),
+                                           as_tensor(atol), equal_nan)
     if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
@@ -685,7 +697,12 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
+        # C++ backend will cast it into float32 if passing float from python.
+        as_tensor = lambda x: paddle.to_tensor([x], dtype='float64', place='cpu')
+        return _C_ops.final_state_isclose(x, y,
+                                          as_tensor(rtol),
+                                          as_tensor(atol), equal_nan)
     if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',

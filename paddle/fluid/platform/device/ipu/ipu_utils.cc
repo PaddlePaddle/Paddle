@@ -184,27 +184,6 @@ bool GetBoolEnv(std::string str) {
   }
 }
 
-std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
-    const std::string& opt_type) {
-  // format: {popart_tensor_id, paddle_tensor_id}, ...
-  std::vector<std::pair<std::string, std::string>> pre_post_fix;
-
-  if (opt_type == "adam" || opt_type == "lamb") {
-    pre_post_fix.push_back(std::make_pair("", ""));
-    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
-    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
-    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
-  } else if (opt_type == "sgd" || opt_type == "momentum") {
-    // sgd
-    pre_post_fix.push_back(std::make_pair("", ""));
-  } else {
-    pre_post_fix.push_back(std::make_pair("", ""));
-    //
-  }
-
-  return pre_post_fix;
-}
-
 int RequestIpus(const int num_ipus) {
   // num_ipus must be pow(2, n);
   return std::pow(2, ceil(log2(num_ipus)));

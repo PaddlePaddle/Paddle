@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void ThrowTensorConvertError(int);
-
 template <typename T>
 class ScalarBase {
  public:
@@ -105,50 +103,7 @@ class ScalarBase {
   }
 
   // The Tensor must have one dim
-  ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
-    is_from_tensor_ = true;
-    ThrowTensorConvertError(tensor.numel());
-    switch (dtype_) {
-      case DataType::FLOAT32:
-        data_.f32 = tensor.template data<float>()[0];
-        break;
-      case DataType::FLOAT64:
-        data_.f64 = tensor.template data<double>()[0];
-        break;
-      case DataType::FLOAT16:
-        data_.f16 = tensor.template data<float16>()[0];
-        break;
-      case DataType::BFLOAT16:
-        data_.bf16 = tensor.template data<bfloat16>()[0];
-        break;
-      case DataType::INT32:
-        data_.i32 = tensor.template data<int32_t>()[0];
-        break;
-      case DataType::INT64:
-        data_.i64 = tensor.template data<int64_t>()[0];
-        break;
-      case DataType::INT16:
-        data_.i16 = tensor.template data<int16_t>()[0];
-        break;
-      case DataType::INT8:
-        data_.i8 = tensor.template data<int8_t>()[0];
-        break;
-      case DataType::UINT8:
-        data_.ui8 = tensor.template data<uint8_t>()[0];
-        break;
-      case DataType::BOOL:
-        data_.b = tensor.template data<bool>()[0];
-        break;
-      case DataType::COMPLEX64:
-        data_.c64 = tensor.template data<complex64>()[0];
-        break;
-      case DataType::COMPLEX128:
-        data_.c128 = tensor.template data<complex128>()[0];
-        break;
-      default:
-        PD_THROW("Invalid tensor data type `", dtype_, "`.");
-    }
-  }
+  ScalarBase(const T& tensor_in);  // NOLINT
 
   template <typename OtherT>
   ScalarBase(const ScalarBase<OtherT>& other) {
@@ -200,6 +155,49 @@ class ScalarBase {
  private:
   template <typename T1, typename T2>
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
+  void GetDataFromTensor(const T& tensor) {
+    is_from_tensor_ = true;
+    switch (dtype_) {
+      case DataType::FLOAT32:
+        data_.f32 = tensor.template data<float>()[0];
+        break;
+      case DataType::FLOAT64:
+        data_.f64 = tensor.template data<double>()[0];
+        break;
+      case DataType::FLOAT16:
+        data_.f16 = tensor.template data<float16>()[0];
+        break;
+      case DataType::BFLOAT16:
+        data_.bf16 = tensor.template data<bfloat16>()[0];
+        break;
+      case DataType::INT32:
+        data_.i32 = tensor.template data<int32_t>()[0];
+        break;
+      case DataType::INT64:
+        data_.i64 = tensor.template data<int64_t>()[0];
+        break;
+      case DataType::INT16:
+        data_.i16 = tensor.template data<int16_t>()[0];
+        break;
+      case DataType::INT8:
+        data_.i8 = tensor.template data<int8_t>()[0];
+        break;
+      case DataType::UINT8:
+        data_.ui8 = tensor.template data<uint8_t>()[0];
+        break;
+      case DataType::BOOL:
+        data_.b = tensor.template data<bool>()[0];
+        break;
+      case DataType::COMPLEX64:
+        data_.c64 = tensor.template data<complex64>()[0];
+        break;
+      case DataType::COMPLEX128:
+        data_.c128 = tensor.template data<complex128>()[0];
+        break;
+      default:
+        PD_THROW("Invalid tensor data type `", dtype_, "`.");
+    }
+  }
 
  private:
   bool is_from_tensor_{false};

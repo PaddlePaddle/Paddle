@@ -19,9 +19,9 @@ namespace phi {
 KernelSignature CholeskySolveGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("cholesky_solve_grad",
-                         {"X", "Y", "Out", GradVarName("Out")},
+                         {"X", "Y", "Out", "Out@GRAD"},
                          {"upper"},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

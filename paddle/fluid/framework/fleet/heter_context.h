@@ -22,7 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #ifdef PADDLE_WITH_PSLIB
-#include "common_value.h"  // NOLINT
+#include "common/common_value.h"  // NOLINT
 #endif
 
 #ifdef PADDLE_WITH_PSCORE

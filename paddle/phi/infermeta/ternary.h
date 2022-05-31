@@ -65,9 +65,15 @@ void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& weight,
                    MetaTensor* out);
 
+void LinspaceRawInferMeta(const MetaTensor& start,
+                          const MetaTensor& stop,
+                          const MetaTensor& number,
+                          MetaTensor* out);
+
 void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
+                       DataType dtype,
                        MetaTensor* out);
 
 void NllLossRawInferMeta(const MetaTensor& input,

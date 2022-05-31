@@ -15,6 +15,7 @@
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include <glog/logging.h>
 #include "paddle/infrt/dialect/phi/data_type.h"
+#include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/kernels/declarations.h"
 
 namespace infrt {
@@ -92,10 +93,10 @@ std::vector<PhiKernelDesc> GetCandidateKernels(
     phi_kernel_desc.input_types.clear();
     phi_kernel_desc.output_types.clear();
     phi::KernelArgsDef args_def = kernel_key_map.at(kernel_key).args_def();
-    const paddle::SmallVector<phi::TensorArgDef>& input_arg =
-        args_def.input_defs();
-    const paddle::SmallVector<phi::TensorArgDef>& output_arg =
-        args_def.output_defs();
+    const paddle::SmallVector<phi::TensorArgDef, phi::kInputSmallVectorSize>&
+        input_arg = args_def.input_defs();
+    const paddle::SmallVector<phi::TensorArgDef, phi::kOutputSmallVectorSize>&
+        output_arg = args_def.output_defs();
     for (auto tensor_arg : input_arg) {
       phi_kernel_desc.input_types.emplace_back(ConvertPlaceFromPhi(tensor_arg));
     }
