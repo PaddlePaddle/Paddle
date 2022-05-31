@@ -348,8 +348,6 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("upload_batch", py::overload_cast<int, std::vector<std::vector<int64_t>>&>(&GraphGpuWrapper::upload_batch))
       .def("upload_batch", py::overload_cast<int, std::vector<std::vector<int64_t>>&, int>(&GraphGpuWrapper::upload_batch))
       .def("get_all_id", &GraphGpuWrapper::get_all_id)
-      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
-      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",
