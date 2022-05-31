@@ -19,31 +19,31 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-static inline int CanonicalAxis(const int axis, const int rank) {
+inline int CanonicalAxis(const int axis, const int rank) {
   if (axis < 0) {
     return axis + rank;
   }
   return axis;
 }
 
-static inline int SizeToAxis(const int axis, DDim dims) {
-  int size = 1;
+inline int64_t SizeToAxis(const int axis, const DDim& dims) {
+  int64_t size = 1;
   for (int i = 0; i < axis; i++) {
     size *= dims[i];
   }
   return size;
 }
 
-static inline int SizeFromAxis(const int axis, DDim dims) {
-  int size = 1;
+inline int64_t SizeFromAxis(const int axis, const DDim& dims) {
+  int64_t size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
   }
   return size;
 }
 
-static inline int SizeOutAxis(const int axis, DDim dims) {
-  int size = 1;
+inline int64_t SizeOutAxis(const int axis, const DDim& dims) {
+  int64_t size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
   }
