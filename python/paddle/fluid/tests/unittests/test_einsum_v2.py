@@ -484,8 +484,8 @@ class TestBF16(unittest.TestCase):
     """
 
     def test_shape(self):
-        cuda_major = int(paddle.version.cuda().split('.')[0].strip())
-        if paddle.is_compiled_with_cuda() and cuda_major >= 11:
+        cuda_major = paddle.version.cuda().split('.')[0].strip()
+        if paddle.is_compiled_with_cuda() and int(cuda_major) >= 11:
             """ MatmulKernel support bfloat16 only if cuda_major > 11.0.
             """
             A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
