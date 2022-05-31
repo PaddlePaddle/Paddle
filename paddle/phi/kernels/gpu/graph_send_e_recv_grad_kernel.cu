@@ -219,7 +219,18 @@ void CalculateEGrad(const Context& ctx,
                     int64_t slice_size,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr,
-                    const DenseTensor* out = nullptr) {}
+                    const DenseTensor* out = nullptr) {
+  if (pool_type == "SUM") {
+    if (compute_type == "ADD") {
+    } else if (compute_type == "MUL") {
+    }
+  } else if (pool_type == "MEAN") {
+    const int* s_count = dst_count->data<int>();
+    if (compute_type == "ADD") {
+    } else if (compute_type == "MUL") {
+    }
+  }
+}
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendERecvGradOpCUDAKernelLaunchHelper(
@@ -287,7 +298,22 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                        x_grad_data,
                                        dst_count,
                                        out);
-    CalculateEGrad<Context, T, IndexT>();
+    CalculateEGrad<Context, T, IndexT>(ctx,
+                                       out_grad_data,
+                                       x_data,
+                                       e_data,
+                                       out_grad.dims(),
+                                       x_dims,
+                                       e_dims,
+                                       s_index,
+                                       d_index,
+                                       compute_type,
+                                       pool_type,
+                                       index_size,
+                                       slice_size,
+                                       e_grad_data,
+                                       dst_count,
+                                       out);
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     CalculateXEGradForMinMax<Context, T, IndexT>(ctx,
                                                  out_grad_data,
