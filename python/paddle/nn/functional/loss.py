@@ -2227,7 +2227,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
+def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean', name=None):
     r"""
     This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
@@ -2259,6 +2259,8 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
                          ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
                          ``'mean'``: the sum of the output will be divided by the number of elements in the output
                          ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+                         For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
@@ -2324,6 +2326,6 @@ def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean'):
     if reduction == 'none':
         return out
     if reduction == 'mean':
-        return paddle.mean(out)
+        return paddle.mean(out, name=name)
     elif reduction == 'sum':
-        return paddle.sum(out)
+        return paddle.sum(out, name=name)

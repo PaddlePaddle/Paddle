@@ -1334,6 +1334,8 @@ class CosineEmbeddingLoss(Layer):
             ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be applied,
             ``'mean'``: the sum of the output will be divided by the number of
             elements in the output, ``'sum'``: the output will be summed.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
@@ -1370,7 +1372,7 @@ class CosineEmbeddingLoss(Layer):
 
     """
 
-    def __init__(self, margin=0, reduction='mean'):
+    def __init__(self, margin=0, reduction='mean' ,name=None):
         if margin > 1 or margin < -1:
             raise ValueError(
                 "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
@@ -1382,7 +1384,8 @@ class CosineEmbeddingLoss(Layer):
         super(CosineEmbeddingLoss, self).__init__()
         self.margin = margin
         self.reduction = reduction
+        self.name = name
 
     def forward(self, input1, input2, label):
         return F.cosine_embedding_loss(
-            input1, input2, label, margin=self.margin, reduction=self.reduction)
+            input1, input2, label, margin=self.margin, reduction=self.reduction, name=self.name)
