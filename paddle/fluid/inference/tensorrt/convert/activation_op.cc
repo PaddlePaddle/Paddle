@@ -79,28 +79,17 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
-    if (op_type_ == "STanh") {
+    if (op_type_ == "stanh") {
       const float scale_a =
           op_desc.HasAttr("scale_a")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
-              : 1.0f;
+              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale_a"))
+              : 0.67f;
       const float scale_b =
           op_desc.HasAttr("scale_b")
               ? BOOST_GET_CONST(float, op_desc.GetAttr("scale_b"))
-              : 1.0f;
-      layer->setAlpha(scale_a);
-      layer->setBeta(scale_b);
-    }
-    if (op_type_ == "softplus") {
-      const float threshold =
-          op_desc.HasAttr("threshold")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
-              : 1.0f;
-      const float scale = op_desc.HasAttr("scale")
-                              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
-                              : 1.0f;
-      layer->setAlpha(threshold);
-      layer->setBeta(scale);
+              : 1.7159f;
+      layer->setAlpha(scale_b);
+      layer->setBeta(scale_a);
     }
     if (op_type_ == "thresholded_relu") {
       const float threshold =
@@ -129,12 +118,11 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
 #if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
 #endif
-        {"elu", nvinfer1::ActivationType::kELU} {
-            "selu", nvinfer1::ActivationType::kSELU} {
-            "softsign", nvinfer1::ActivationType::kSOFTSIGN} {
-            "softplus", nvinfer1::ActivationType::kSOFTPLUS} {
-            "scaled_tanh", nvinfer1::ActivationType::kSCALED_TANH} {
-            "thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
+        {"elu", nvinfer1::ActivationType::kELU},
+        {"selu", nvinfer1::ActivationType::kSELU},
+        {"softsign", nvinfer1::ActivationType::kSOFTSIGN},
+        {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
+        {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
@@ -171,19 +159,14 @@ class SoftsignOpConverter : public ActivationOpConverter {
   SoftsignOpConverter() { op_type_ = "softsign"; }
 };
 
-class SoftplusOpConverter : public ActivationOpConverter {
+class STanhOpConverter : public ActivationOpConverter {
  public:
-  SoftplusOpConverter() { op_type_ = "softplus"; }
+  STanhOpConverter() { op_type_ = "stanh"; }
 };
 
-class ScaledTanhOpConverter : public ActivationOpConverter {
+class ThreasholdedReluOpConverter : public ActivationOpConverter {
  public:
-  ScaledTanhOpConverter() { op_type_ = "scaled_tanh"; }
-};
-
-class TreasholdedReluOpConverter : public ActivationOpConverter {
- public:
-  ThreasholdedReluOpConverter() { op_type_ = "threasholded_relu"; }
+  ThreasholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
 };
 
 }  // namespace tensorrt
@@ -197,6 +180,5 @@ REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
 REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
 REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
-REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
-REGISTER_TRT_OP_CONVERTER(scaled_tanh, ScaledTanhOpConverter);
-REGISTER_TRT_OP_CONVERTER(threasholded_relu, ThreasholdedReluOpConverter);
+REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThreasholdedReluOpConverter);

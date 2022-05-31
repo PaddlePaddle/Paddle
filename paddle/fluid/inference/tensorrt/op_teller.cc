@@ -68,9 +68,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elu",
       "selu",
       "softsign",
-      "softplus",
-      "scaled_tanh",
-      "threasholded_relu",
+      "stanh",
+      "thresholded_relu",
       "exp",
       "log",
       "softmax",
@@ -140,9 +139,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elu",
       "selu",
       "softsign",
-      "softplus",
-      "scaled_tanh",
-      "threasholded_relu",
+      "stanh",
+      "thresholded_relu",
       "exp",
       "log",
       "softmax",
@@ -220,8 +218,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
         op_type == "sigmoid" || op_type == "exp" || op_type == "log" ||
         op_type == "elu" || op_type == "selu" || op_type == "softsign" ||
-        op_type == "softplus" || op_type == "scaled_tanh" ||
-        op_type == "threasholded_relu") {
+        op_type == "stanh" || op_type == "thresholded_relu") {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
