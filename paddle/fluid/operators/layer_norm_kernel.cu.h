@@ -186,6 +186,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     const ScaleT *__restrict__ gamma_ptr, const ScaleT *__restrict__ beta_ptr,
     U *__restrict__ mean_out_ptr, U *__restrict__ var_out_ptr,
     T *__restrict__ y_ptr) {
+  __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
 
