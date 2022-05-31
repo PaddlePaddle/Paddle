@@ -30,6 +30,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class InternalStorage:
@@ -53,7 +54,11 @@ class InternalStorage:
                 size,
                 dtype=np.float16) if Type.fp16.value == dtype else np.zeros(
                     size, dtype=np.float32)
-            self.buffer = core.VarBase(value=value, place=core.CPUPlace())
+            if in_dygraph_mode():
+                self.buffer = core.eager.Tensor(
+                    value=value, place=core.CPUPlace())
+            else:
+                self.buffer = core.VarBase(value=value, place=core.CPUPlace())
         else:
             self.buffer = paddle.zeros(size, dtype=dtype)
 
@@ -157,8 +162,13 @@ class ParamStorage(InternalStorage):
         dev_id = 0 if paddle.get_device() == "cpu" else int(paddle.get_device()
                                                             .split(":")[1])
         with device_guard(dev_id, "cpu"):
-            tmp_var = core.VarBase(tensor=self.buffer._slice(self._fill,
-                                                             var_end))
+            tmp_var = None
+            if in_dygraph_mode():
+                tmp_var = core.eager.Tensor(value=self.buffer._slice(self._fill,
+                                                                     var_end))
+            else:
+                tmp_var = core.VarBase(tensor=self.buffer._slice(self._fill,
+                                                                 var_end))
             if convert_gpu:
                 param_cpu = param.cpu()
                 param.value().get_tensor()._clear()
@@ -178,7 +188,10 @@ class ParamStorage(InternalStorage):
 
         # Convert the param value
         tmp_tensor = self.buffer._slice(self._fill, var_end)
-        param.value().get_tensor()._share_data_with(tmp_tensor)
+        if in_dygraph_mode():
+            param.value().get_tensor()._share_data_with(tmp_tensor.get_tensor())
+        else:
+            param.value().get_tensor()._share_data_with(tmp_tensor)
         param.value().get_tensor()._set_dims(p_shape)
 
         self._fill = offset
@@ -320,12 +333,23 @@ class GradStorage(InternalStorage):
                                                             .split(":")[1])
         if self._device == "cpu":
             with device_guard(dev_id, self._device):
-                tmp_var = core.VarBase(self.buffer._slice(self._fill, grad_end))
+                tmp_var = None
+                if in_dygraph_mode():
+                    tmp_var = core.eager.Tensor(value=self.buffer._slice(
+                        self._fill, grad_end))
+                else:
+                    tmp_var = core.VarBase(
+                        self.buffer._slice(self._fill, grad_end))
                 param._copy_gradient_from(tmp_var)
                 tmp_var.value().get_tensor()._clear()
 
         elif self._device == "gpu":
-            tmp_var = core.VarBase(self.buffer._slice(self._fill, grad_end))
+            tmp_var = None
+            if in_dygraph_mode():
+                tmp_var = core.eager.Tensor(value=self.buffer._slice(self._fill,
+                                                                     grad_end))
+            else:
+                tmp_var = core.VarBase(self.buffer._slice(self._fill, grad_end))
             param._copy_gradient_from(tmp_var)
             tmp_var.value().get_tensor()._clear()
 
