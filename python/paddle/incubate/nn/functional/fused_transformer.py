@@ -298,7 +298,7 @@ def fused_bias_dropout_residual_layer_norm(x,
             seed = default_main_program().random_seed
         _, _, _, _, final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
             x, residual, bias, ln_scale, ln_bias, 'dropout_rate', dropout_rate,
-            'ln_epsilon', ln_epsilon, 'dropout_is_test', not training,
+            'ln_epsilon', ln_epsilon, 'is_test', not training,
             'dropout_fix_seed', seed is not None, 'dropout_seed', seed
             if seed is not None else 0, 'dropout_implementation', mode)
         return final_out
@@ -327,7 +327,7 @@ def fused_bias_dropout_residual_layer_norm(x,
         attrs = {
             'ln_epsilon': ln_epsilon,
             'dropout_rate': dropout_rate,
-            'dropout_is_test': not training,
+            'is_test': not training,
             'dropout_fix_seed': seed is not None,
             'dropout_seed': seed if seed is not None else 0,
             'dropout_implementation': mode,
@@ -513,10 +513,9 @@ def fused_multi_head_attention(x,
             attn_mask, linear_weight, linear_bias, ln_scale, ln_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', pre_ln_epsilon,
             'dropout_rate', dropout_rate, 'attn_dropout_rate',
-            attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'attn_dropout_is_test',
-            not training, 'dropout_is_test', not training,
-            'attn_dropout_fix_seed', seed is not None, 'dropout_fix_seed',
-            seed is not None, 'attn_dropout_seed', seed
+            attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'is_test',
+            not training, 'attn_dropout_fix_seed', seed is not None,
+            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
             if seed is not None else 0, 'dropout_seed', seed
             if seed is not None else 0, 'attn_dropout_implementation', mode,
             'dropout_implementation', mode, 'ring_id', ring_id)
@@ -562,8 +561,7 @@ def fused_multi_head_attention(x,
             'ln_epsilon': ln_epsilon,
             'dropout_rate': dropout_rate,
             'attn_dropout_rate': attn_dropout_rate,
-            'attn_dropout_is_test': not training,
-            'dropout_is_test': not training,
+            'is_test': not training,
             'attn_dropout_fix_seed': seed is not None,
             'dropout_fix_seed': seed is not None,
             'attn_dropout_seed': seed if seed is not None else 0,
@@ -801,7 +799,7 @@ def fused_multi_transformer(x,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
             cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'dropout_is_test', not training,
+            'dropout_rate', dropout_rate, 'is_test', not training,
             'dropout_implementation', mode, 'act_method', activation, 'ring_id',
             ring_id)
         if cache_kvs is not None:
@@ -848,7 +846,7 @@ def fused_multi_transformer(x,
             'pre_layer_norm': pre_layer_norm,
             'epsilon': epsilon,
             'dropout_rate': dropout_rate,
-            'dropout_is_test': not training,
+            'is_test': not training,
             'dropout_implementation': mode,
             'act_method': activation,
             'ring_id': ring_id
