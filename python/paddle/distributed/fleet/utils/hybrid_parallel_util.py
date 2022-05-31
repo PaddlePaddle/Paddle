@@ -140,17 +140,12 @@ def broadcast_dp_parameters(model, hcg):
 
 
 def fused_allreduce_gradients(parameter_list, hcg):
-    if _in_legacy_dygraph():
-        data_parallel_group = None if hcg is None else hcg.get_data_parallel_group(
-        )
-        logger.debug("dp start fuse allreduce gradients")
-        with framework.no_grad():
-            _apply_collective_grads(parameter_list, data_parallel_group)
-    elif in_dygraph_mode():
-        assert hcg is None, "It's not support to use hcg in EagerDygraph now."
-        data_parallel_group = paddle.distributed.collective._get_default_group()
-        with framework.no_grad():
-            _apply_collective_grads_eager(parameter_list, data_parallel_group)
+    data_parallel_group = None if hcg is None else hcg.get_data_parallel_group()
+    logger.debug("dp start fuse allreduce gradients")
+    apply_func = _apply_collective_grads_eager if in_dygraph_mode(
+    ) else _apply_collective_grads
+    with framework.no_grad():
+        apply_func(parameter_list, data_parallel_group)
 
 
 def sharding_reduce_gradients(parameter_list, hcg):
@@ -162,29 +157,36 @@ def sharding_reduce_gradients(parameter_list, hcg):
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
             if param.trainable and (param._grad_ivar() is not None):
+                if in_dygraph_mode():
+                    param.grad.scale_(1.0 / sharding_nrank)
+                    paddle.distributed.all_reduce(
+                        param.grad,
+                        group=hcg.get_sharding_parallel_group(),
+                        use_calc_stream=True)
 
-                g_var = param._grad_ivar()
+                elif _in_legacy_dygraph():
+                    g_var = param._grad_ivar()
+                    # need use trace_op to allreduce 
+                    # paddle.distributed.all_reduce(
+                    #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="c_allreduce_sum",
+                        inputs={'X': g_var},
+                        outputs={'Out': g_var},
+                        attrs={
+                            'ring_id': hcg.get_sharding_parallel_group().id,
+                            'use_calc_stream': True
+                        })
 
-                # need use trace_op to allreduce 
-                # paddle.distributed.all_reduce(
-                #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
-                paddle.fluid.framework._dygraph_tracer().trace_op(
-                    type="c_allreduce_sum",
-                    inputs={'X': g_var},
-                    outputs={'Out': g_var},
-                    attrs={
-                        'ring_id': hcg.get_sharding_parallel_group().id,
-                        'use_calc_stream': True
-                    })
-
-                # grad / sharding_rank
-                div_factor = paddle.to_tensor(sharding_nrank, dtype=g_var.dtype)
-                paddle.fluid.framework._dygraph_tracer().trace_op(
-                    type="elementwise_div",
-                    inputs={'X': g_var,
-                            'Y': div_factor},
-                    outputs={'Out': g_var},
-                    attrs={'axis': -1})
+                    # grad / sharding_rank
+                    div_factor = paddle.to_tensor(
+                        sharding_nrank, dtype=g_var.dtype)
+                    paddle.fluid.framework._dygraph_tracer().trace_op(
+                        type="elementwise_div",
+                        inputs={'X': g_var,
+                                'Y': div_factor},
+                        outputs={'Out': g_var},
+                        attrs={'axis': -1})
 
 
 def broadcast_sharding_parameters(model, hcg):

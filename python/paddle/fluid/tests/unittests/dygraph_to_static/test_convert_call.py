@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
 from test_program_translator import get_source_code
+import paddle.jit.dy2static as _jst
 
 program_translator = ProgramTranslator()
 
@@ -255,7 +256,7 @@ class TestDynamicToStaticCode(unittest.TestCase):
         return get_source_code(self.answer_func)
 
     def _get_transformed_code(self):
-        transformed_func = paddle.jit.dy2static.convert_call(self.func)
+        transformed_func = _jst.convert_call(self.func)
         return get_source_code(transformed_func)
 
     def test_code(self):
@@ -275,7 +276,7 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
     def set_answer_func(self):
         class StaticCode():
             def func_convert_then_not_to_static(x):
-                y = paddle.jit.dy2static.convert_call(func_not_to_static)(x)
+                y = _jst.convert_call(func_not_to_static)(x)
                 return y
 
         self.answer_func = StaticCode.func_convert_then_not_to_static

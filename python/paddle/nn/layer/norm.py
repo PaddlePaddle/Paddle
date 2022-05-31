@@ -32,7 +32,7 @@ import six
 from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-from ...framework import get_default_dtype, set_default_dtype
+from ...framework import get_default_dtype, set_default_dtype, _non_static_mode
 
 from ..initializer import Constant
 from ...framework import ParamAttr
@@ -404,6 +404,25 @@ class GroupNorm(Layer):
             self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
     def forward(self, input):
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+
+        if _non_static_mode():
+            pre_act, _, _ = _C_ops.group_norm(
+                input,
+                self.weight,
+                self.bias,
+                mean_out,
+                variance_out,
+                'epsilon',
+                self._epsilon,
+                'groups',
+                self._num_groups, )
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=None)
+
         inputs = {'X': input}
         if self.bias is not None:
             inputs['Bias'] = self.bias
@@ -411,10 +430,6 @@ class GroupNorm(Layer):
             inputs['Scale'] = self.weight
 
         # create output
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
         group_norm_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
 

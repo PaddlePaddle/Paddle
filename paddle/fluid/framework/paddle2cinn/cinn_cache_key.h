@@ -58,7 +58,6 @@ class CinnCacheKey {
   bool operator!=(const CinnCacheKey& other) const;
 
   struct Hash {
-    static size_t hash_combine(size_t seed, size_t value);
     size_t operator()(const CinnCacheKey& key) const;
   };
 

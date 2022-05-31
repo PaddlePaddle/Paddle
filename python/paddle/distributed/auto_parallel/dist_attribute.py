@@ -485,10 +485,10 @@ class OperatorDistributedAttribute:
                                                      self.process_mesh)
 
         for arg_name, tensor_dist_attr in self.inputs_dist_attrs.items():
-            str += "\n\t\t{}'s: {},".format(arg_name, tensor_dist_attr)
+            str += "\n\t\t{}'s (input): {},".format(arg_name, tensor_dist_attr)
 
         for arg_name, tensor_dist_attr in self.outputs_dist_attrs.items():
-            str += "\n\t\t{}'s: {},".format(arg_name, tensor_dist_attr)
+            str += "\n\t\t{}'s (output): {},".format(arg_name, tensor_dist_attr)
 
         str += "\n\t\timpl type: {}, ".format(self._impl_type)
         str += "impl idx: {}".format(self._impl_idx)

@@ -22,9 +22,6 @@ import paddle.nn.functional as F
 from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.fluid.framework import _enable_legacy_dygraph
-_enable_legacy_dygraph()
-
 np.random.seed(123)
 
 

@@ -166,6 +166,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in ipu mode.
   bool use_ipu() const { return use_ipu_; }
 
+  /// \brief Check if we are using CustomDevice.
+  /// \return A bool variable implying whether we are in CustomDevice mode.
+  bool use_custom_device() const { return use_custom_device_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
@@ -177,6 +181,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_ipu_{false};
   bool use_mkldnn_{false};
   bool use_gpu_fp16_{false};
+  bool use_custom_device_{false};
   /// \endcond
 };
 
@@ -288,6 +293,22 @@ class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
   explicit NpuPassStrategy(const NpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_npu_ = true;
+  }
+};
+
+/// \class CustomDevicePassStrategy
+/// \brief The CustomDevice passes controller, it is used in AnalysisPredictor
+/// with CustomDevice
+/// mode.
+class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
+ public:
+  CustomDevicePassStrategy() : PassStrategy({}) { use_custom_device_ = true; }
+
+  /// \brief Construct by copying another CustomDevicePassStrategy object.
+  /// \param[in] other The CustomDevicePassStrategy object we want to copy.
+  explicit CustomDevicePassStrategy(const CustomDevicePassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_custom_device_ = true;
   }
 };
 

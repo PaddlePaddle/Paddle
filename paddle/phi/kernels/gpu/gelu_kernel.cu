@@ -71,11 +71,13 @@ void GeluKernel(const Context& dev_ctx,
       }
     }
 #endif
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
+    using Functor = GeluWithApproximateFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   } else {
-    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, GeluWithoutApproximateFunctor<T>());
+    using Functor = GeluWithoutApproximateFunctor<T>;
+    phi::funcs::ElementwiseKernel<T, Functor, 1>(
+        dev_ctx, ins, &outs, Functor());
   }
 }
 

@@ -148,8 +148,6 @@ inline void ClearMKLDNNCache(const platform::Place& place,
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
     dev_ctx->ResetBlobMap(ptr);
-    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-        paddle::framework::DataLayout::kNCHW);
   }
 }
 

@@ -35,6 +35,7 @@ env_args_mapping = {
     'PADDLE_TRAINERS_ENDPOINTS': 'trainers',
     'PADDLE_GLOO_PORT': 'gloo_port',
     'PADDLE_WITH_GLOO': 'with_gloo',
+    'PADDLE_DEVICE_NUM': 'device_num'
 }
 
 
@@ -85,7 +86,7 @@ def parse_args():
     base_group.add_argument(
         "--run_mode",
         type=str,
-        default="collective",
+        default=None,
         help="run mode of the job, collective/ps/ps-heter")
 
     base_group.add_argument(
@@ -99,6 +100,12 @@ def parse_args():
         type=str,
         default=None,
         help="accelerate devices. as --gpus,npus,xps")
+
+    base_group.add_argument(
+        "--device_num",
+        type=int,
+        default=None,
+        help="the number of accelerate devices.")
 
     base_group.add_argument("--host", type=str, default=None, help="host ip")
 
@@ -125,7 +132,7 @@ def parse_args():
     ps_group.add_argument(
         "--gloo_port", type=int, default=6767, help="gloo http port")
     ps_group.add_argument(
-        "--with_gloo", type=str, default="0", help="use gloo or not")
+        "--with_gloo", type=str, default="1", help="use gloo or not")
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
