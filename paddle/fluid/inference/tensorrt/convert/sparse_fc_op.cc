@@ -261,7 +261,7 @@ class SparseFcOpConverter : public OpConverter {
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
       bias_num = b_t->numel();
-    
+
       half* half_bias_data = nullptr;
       if (with_fp16) {
         half_bias_data = new half[bias_num];
@@ -273,8 +273,9 @@ class SparseFcOpConverter : public OpConverter {
         b_data = static_cast<void*>(bias_data);
       }
     }
-    TensorRTEngine::Weight bias{with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-                                b_data, static_cast<size_t>(bias_num)};
+    TensorRTEngine::Weight bias{
+        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+        b_data, static_cast<size_t>(bias_num)};
 
     // Running the TRT Static Shape mode: x_num_col_dims-1
     if (!engine_->with_dynamic_shape()) {
