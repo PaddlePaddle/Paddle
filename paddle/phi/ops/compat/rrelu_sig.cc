@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/einsum_kernel.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(einsum_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::EinsumGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+KernelSignature RReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "rrelu", {"X"}, {"lower", "upper", "is_test"}, {"Out", "Noise"});
+}
+
+KernelSignature RReluGradGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "rrelu_grad", {"X", "Noise", "Out@GRAD"}, {}, {"X@GRAD"});
+}
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(rrelu, phi::RReluOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(rrelu_grad, phi::RReluGradGradOpArgumentMapping);

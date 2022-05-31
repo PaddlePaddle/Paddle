@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/einsum_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-PD_REGISTER_KERNEL(einsum_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::EinsumGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+namespace phi {
+
+template <typename T, typename Context>
+void RReluGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& noise,
+                     const DenseTensor& out_grad,
+                     DenseTensor* x_grad);
+}  // namespace phi

@@ -131,6 +131,8 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
     LIST(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
