@@ -31,7 +31,7 @@ void AssignKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignRawKernel(const Context& dev_ctx,
-                     paddle::optional<const DenseTensor&> x,
+                     const paddle::optional<DenseTensor>& x,
                      DenseTensor* out) {
   if (x) {
     if (!x->IsInitialized()) {

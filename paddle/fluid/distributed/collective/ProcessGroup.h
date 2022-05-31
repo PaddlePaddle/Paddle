@@ -113,6 +113,19 @@ class ProcessGroup {
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
+                                                           int, int,
+                                                           int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors, int, int, int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>&,    // NOLINT
       std::vector<phi::DenseTensor>&) {  // NOLINT

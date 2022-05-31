@@ -113,23 +113,23 @@ void AddmmInferMeta(const MetaTensor& input,
                                  "if you put exe.run(startup_program) "
                                  "after optimizer.minimize function."));
   // dim check
-  PADDLE_ENFORCE_EQ(
-      ndim_input,
-      2,
-      errors::InvalidArgument("The input tensor input's dimension must be 2. "
-                              "But received input's dimension = [%s].",
-                              ndim_input));
+  PADDLE_ENFORCE_EQ(ndim_input == 2 || ndim_input == 1,
+                    true,
+                    errors::InvalidArgument(
+                        "The input tensor input's dimension must be 2 or 1. "
+                        "But received input's dimension = [%d].",
+                        ndim_input));
   PADDLE_ENFORCE_EQ(
       ndim_x,
       2,
       errors::InvalidArgument("The input tensor x's dimension must be 2. "
-                              "But received x's dimension = [%s].",
+                              "But received x's dimension = [%d].",
                               ndim_x));
   PADDLE_ENFORCE_EQ(
       ndim_y,
       2,
       errors::InvalidArgument("The input tensor y's dimension must be 2. "
-                              "But received y's dimension = [%s].",
+                              "But received y's dimension = [%d].",
                               ndim_y));
 
   std::vector<int64_t> output_dims;
@@ -192,8 +192,8 @@ void ArangeInferMeta(const MetaTensor& start,
 }
 
 void InstanceNormInferMeta(const MetaTensor& x,
-                           paddle::optional<const MetaTensor&> scale,
-                           paddle::optional<const MetaTensor&> bias,
+                           const MetaTensor& scale,
+                           const MetaTensor& bias,
                            float epsilon,
                            MetaTensor* y,
                            MetaTensor* saved_mean,
@@ -242,9 +242,8 @@ void InstanceNormInferMeta(const MetaTensor& x,
   auto N = x_dims[0];
   auto C = x_dims[1];
   auto NxC = N * C;
-  const auto scale_ptr = scale.get_ptr();
-  if (scale_ptr) {
-    auto scale_dim = scale_ptr->dims();
+  if (scale) {
+    auto scale_dim = scale.dims();
     PADDLE_ENFORCE_EQ(
         scale_dim.size(),
         1UL,
@@ -265,9 +264,8 @@ void InstanceNormInferMeta(const MetaTensor& x,
                             scale_dim[0]));
     }
   }
-  const auto bias_ptr = bias.get_ptr();
-  if (bias_ptr) {
-    auto bias_dim = bias_ptr->dims();
+  if (bias) {
+    auto bias_dim = bias.dims();
     PADDLE_ENFORCE_EQ(
         bias_dim.size(),
         1UL,
@@ -365,8 +363,8 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
 }
 
 void LayerNormInferMeta(const MetaTensor& x,
-                        paddle::optional<const MetaTensor&> scale,
-                        paddle::optional<const MetaTensor&> bias,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
                         bool is_test,
@@ -388,19 +386,19 @@ void LayerNormInferMeta(const MetaTensor& x,
   auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
-  if (scale.get_ptr() != nullptr) {
-    PADDLE_ENFORCE_EQ(scale->dims().size(),
+  if (scale) {
+    PADDLE_ENFORCE_EQ(scale.dims().size(),
                       1,
                       phi::errors::InvalidArgument(
                           "The dimensions of Input(Scale) must be 1, but "
                           "received dimensions of"
                           "Input(Scale) is [%d]",
-                          scale->dims().size()));
+                          scale.dims().size()));
   }
 
-  if (config.is_runtime && scale.get_ptr() != nullptr) {
+  if (config.is_runtime && scale) {
     PADDLE_ENFORCE_EQ(
-        scale->dims()[0],
+        scale.dims()[0],
         right,
         phi::errors::InvalidArgument(
             "The first dimension value of Input(Scale) must equal to be the"
@@ -408,21 +406,21 @@ void LayerNormInferMeta(const MetaTensor& x,
             "But received the first dimension value of Input(Scale) is"
             "[%d], the second dimension value of the flattened 2D matrix of"
             " Input(Scale) is [%d].",
-            scale->dims()[0],
+            scale.dims()[0],
             right));
   }
-  if (bias.get_ptr() != nullptr) {
-    PADDLE_ENFORCE_EQ(bias->dims().size(),
+  if (bias) {
+    PADDLE_ENFORCE_EQ(bias.dims().size(),
                       1,
                       phi::errors::InvalidArgument(
                           "The dimensions of Input(Bias) must be 1, but "
                           "received dimensions of"
                           "Input(Bias) is [%d]",
-                          bias->dims().size()));
+                          bias.dims().size()));
   }
-  if (config.is_runtime && bias.get_ptr() != nullptr) {
+  if (config.is_runtime && bias) {
     PADDLE_ENFORCE_EQ(
-        bias->dims()[0],
+        bias.dims()[0],
         right,
         phi::errors::InvalidArgument(
             "The first dimension value of Input(Bias) must equal to be the"
@@ -430,7 +428,7 @@ void LayerNormInferMeta(const MetaTensor& x,
             "But received the first dimension value of Input(Bias) is"
             "[%d], the second dimension value of the flattened 2D matrix of"
             " Input(Bias) is [%d].",
-            bias->dims()[0],
+            bias.dims()[0],
             right));
   }
 
@@ -445,19 +443,19 @@ void LayerNormInferMeta(const MetaTensor& x,
 }
 
 void LayerNormGradInferMeta(const MetaTensor& x,
-                            paddle::optional<const MetaTensor&> y,
-                            paddle::optional<const MetaTensor&> z,
+                            const MetaTensor& y,
+                            const MetaTensor& z,
                             MetaTensor* dx,
                             MetaTensor* dy,
                             MetaTensor* dz) {
   if (dx) {
     dx->share_meta(x);
   }
-  if (dy && (y.get_ptr() != nullptr)) {
-    dy->share_meta(*y.get_ptr());
+  if (dy && y) {
+    dy->share_meta(y);
   }
-  if (dz && (z.get_ptr() != nullptr)) {
-    dz->share_meta(*z.get_ptr());
+  if (dz && z) {
+    dz->share_meta(z);
   }
 }
 
@@ -517,7 +515,7 @@ void LinspaceInferMeta(const MetaTensor& start,
 
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
-                         paddle::optional<const MetaTensor&> weight,
+                         const MetaTensor& weight,
                          int64_t ignore_index,
                          const std::string& reduction,
                          MetaTensor* out,
@@ -542,8 +540,8 @@ void NllLossRawInferMeta(const MetaTensor& input,
             " batch_size is [%s].",
             x_dims[0],
             label_dims[0]));
-    if (weight.get_ptr() != nullptr) {
-      auto w_dims = weight->dims();
+    if (weight) {
+      auto w_dims = weight.dims();
       PADDLE_ENFORCE_EQ(
           w_dims.size(),
           1,
@@ -607,7 +605,7 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
 
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
-                       paddle::optional<const MetaTensor&> boxes_num,
+                       const MetaTensor& boxes_num,
                        int pooled_height,
                        int pooled_width,
                        float spatial_scale,
@@ -619,7 +617,7 @@ void RoiAlignInferMeta(const MetaTensor& x,
   auto boxes_dims = boxes.dims();
 
   if (boxes_num) {
-    auto boxes_num_dims = boxes_num->dims();
+    auto boxes_num_dims = boxes_num.dims();
     PADDLE_ENFORCE_EQ(
         boxes_num_dims.size(),
         1,
@@ -684,7 +682,7 @@ void RoiAlignInferMeta(const MetaTensor& x,
 
 void RoiPoolInferMeta(const MetaTensor& x,
                       const MetaTensor& boxes,
-                      paddle::optional<const MetaTensor&> boxes_num,
+                      const MetaTensor& boxes_num,
                       int pooled_height,
                       int pooled_width,
                       float spatial_scale,
@@ -694,7 +692,7 @@ void RoiPoolInferMeta(const MetaTensor& x,
   auto boxes_dims = boxes.dims();
 
   if (boxes_num) {
-    auto boxes_num_dims = boxes_num->dims();
+    auto boxes_num_dims = boxes_num.dims();
     PADDLE_ENFORCE_EQ(
         boxes_num_dims.size(),
         1,
