@@ -115,14 +115,15 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   void clear_feature_info(int index);
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list,
                             int idx);
-  void build_graph_fea_from_cpu(std::vector<GpuPsCommGraphFea> &cpu_node_list, int idx);
+  void build_graph_fea_from_cpu(std::vector<GpuPsCommGraphFea> &cpu_node_list,
+                                int idx);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, uint64_t *key,
                                              int sample_size, int len);
   NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
-                                                int64_t *key, int sample_size,
+                                                uint64_t *key, int sample_size,
                                                 int len, bool cpu_query_switch);
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
@@ -130,7 +131,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,
                                                  int *h_right,
-                                                 int64_t *src_sample_res,
+                                                 uint64_t *src_sample_res,
                                                  int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
   int gpu_num;
