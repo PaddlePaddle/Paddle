@@ -707,7 +707,7 @@ struct ElementwiseWriteDataCallerBc {
   __device__ __forceinline__ void operator()(
       phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
-      int block_offset,
+      int64_t block_offset,
       int num,
       int read_lens) {
     OutT dst[NumOuts][VecSize];
@@ -730,7 +730,7 @@ template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
-                                             int block_offset,
+                                             int64_t block_offset,
                                              int num,
                                              int read_lens) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
