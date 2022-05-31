@@ -560,6 +560,8 @@ class GraphTable : public Table {
                                   char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, std::vector<int64_t> ids);
+  virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
+      int ntype_id, std::vector<int64_t>& node_ids, int slot_num);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx, std::vector<int64_t> &ids);
   int32_t make_complementary_graph(int idx, int64_t byte_size);
@@ -581,6 +583,7 @@ class GraphTable : public Table {
 #endif
   virtual int32_t add_comm_edge(int idx, int64_t src_id, int64_t dst_id);
   virtual int32_t build_sampler(int idx, std::string sample_type = "random");
+  void set_feature_separator(const std::string& ch);
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 24;
@@ -612,6 +615,7 @@ class GraphTable : public Table {
 // std::shared_ptr<::ThreadPool> graph_sample_pool;
 // std::shared_ptr<GraphSampler> graph_sampler;
 // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
+  std::string feature_separator_ = std::string(" ");
 #endif
 };
 

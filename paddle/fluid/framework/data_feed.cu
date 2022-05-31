@@ -391,7 +391,7 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
     int64_t *cur_walk = walk + i;
 
     NeighborSampleQuery q;
-    q.initialize(gpuid_, (uint64_t)(device_keys_ + cursor_), walk_degree_,
+    q.initialize(gpuid_, 0, (int64_t)(device_keys_ + cursor_), walk_degree_,
                  tmp_len);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
@@ -416,7 +416,7 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
       auto sample_key_mem = sample_res.actual_val_mem;
       int64_t *sample_keys_ptr =
           reinterpret_cast<int64_t *>(sample_key_mem->ptr());
-      q.initialize(gpuid_, (uint64_t)sample_keys_ptr, 1,
+      q.initialize(gpuid_, 0, (int64_t)sample_keys_ptr, 1,
                    sample_res.total_sample_size);
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
