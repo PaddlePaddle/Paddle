@@ -47,6 +47,7 @@ TEST(SigmoidOpConverter, main) { test_activation("sigmoid"); }
 TEST(TanhOpConverter, main) { test_activation("tanh"); }
 
 TEST(Relu6OpConverter, main) { test_activation("relu6"); }
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
