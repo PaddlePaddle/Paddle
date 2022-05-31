@@ -72,6 +72,7 @@ constexpr int kTileSize = 32;
 // To avoid bank conflict.
 constexpr int kShareCol = kTileSize + 1;
 
+// Simplify the input dims and permute dims if possible.
 template <typename T>
 class DimsSimplifier {
  public:
@@ -223,6 +224,7 @@ class DimsSimplifier {
     return vec_size;
   }
 
+  // To find if highest common divisor and make it as vec_size.
   int GetDimVesSize(const int vec_size, const size_t target_dim) {
     int dim_vec_size = 1;
     for (auto size = vec_size; size > 0; size /= 2) {

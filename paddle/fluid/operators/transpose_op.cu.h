@@ -799,6 +799,7 @@ __global__ void VectorizedPermuteKernel(PermuteParams<Rank, IndexT> params,
   }
 }
 
+// A general kernel for normal case, only support vectorized write.
 template <typename T, typename IndexT, int VecSize, int Rank>
 __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
                                      const T* __restrict__ src, T* dst,
@@ -811,6 +812,7 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   IndexT src_index[VecSize][Rank];
   IndexT dst_index[VecSize][Rank];
 
+  // Vectorized load data.
   IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
   for (IndexT idx = tid; idx < main_cnt; idx += blockDim.x * gridDim.x) {
     VecT vec_data;
@@ -830,6 +832,7 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
     vec_dst[idx] = vec_data;
   }
 
+  // Singlarized load data.
   if (tid < tail_cnt) {
     IndexT idx = tid + offset;
     params.dst_index_helper.OffsetToIndex(idx, dst_index[0]);
