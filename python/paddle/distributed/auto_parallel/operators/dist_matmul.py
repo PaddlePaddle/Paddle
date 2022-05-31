@@ -95,7 +95,8 @@ def _update_dims_mapping_for_matmul(dist_op):
             broadcast_x_dims_mapping, broadcast_y_dims_mapping,
             broadcast_out_dims_mapping
         ])
-        assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dims_mapping is None:
+            return False
 
         for i in range(x_dims_mapping_len - 2):
             new_idx = i + (out_dims_mapping_len - x_dims_mapping_len)

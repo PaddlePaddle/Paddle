@@ -153,23 +153,24 @@ class FP16State(object):
 
             # ernie inference trick
             if op.type == "assign" and "array_" in op.input_arg_names[0]:
-                self._op_fp16_dict[op.desc.id()] = False
+                self._op_fp16_dict[op.desc.original_id()] = False
                 return
             if _need_keep_fp32(op, self.amp_list.unsupported_list,
                                self.use_fp16_guard):
-                self._op_fp16_dict[op.desc.id()] = False
+                self._op_fp16_dict[op.desc.original_id()] = False
             else:
-                self._op_fp16_dict[op.desc.id()] = True
+                self._op_fp16_dict[op.desc.original_id()] = True
             for var_name in op.output_arg_names:
                 # assert var_name not in self.forward_non_leaf_tensors, "{}".format(var_name)
                 self.forward_non_leaf_tensors[var_name] = op.desc.id()
 
         elif is_backward_op(op) == int(OpRole.Backward):
 
-            if op.desc.id() in self.grad_op_to_op_map:
-                fwd_op_id = self.grad_op_to_op_map[op.desc.id()]
+            if op.desc.original_id() in self.grad_op_to_op_map:
+                fwd_op_id = self.grad_op_to_op_map[op.desc.original_id()]
                 assert fwd_op_id in self._op_fp16_dict, "{}".format(str(op))
-                self._op_fp16_dict[op.desc.id()] = self._op_fp16_dict[fwd_op_id]
+                self._op_fp16_dict[op.desc.original_id()] = self._op_fp16_dict[
+                    fwd_op_id]
 
         if int(op.attr('op_role')) == 257:
             self.is_train = True
@@ -192,10 +193,10 @@ class FP16State(object):
     def resolute_tensor_dtype(self, block):
 
         for op in block.ops:
-            op_id = op.desc.id()
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                if self._is_fp16_op(op_id) == True or op.type == "cast":
+                if self._is_fp16_op(op.desc.original_id()) == True \
+                    or op.type == "cast":
                     for in_name in op.input_names:
                         if _keep_fp32_input(op, in_name):
                             continue
@@ -209,7 +210,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif self._is_fp16_op(op_id) == False:
+                elif self._is_fp16_op(op.desc.original_id()) == False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -217,7 +218,7 @@ class FP16State(object):
                         if out_var.dtype == core.VarDesc.VarType.FP16:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op_id) == True:
+                if self._is_fp16_op(op.desc.original_id()) == True:
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue
@@ -225,7 +226,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif self._is_fp16_op(op_id) == False:
+                elif self._is_fp16_op(op.desc.original_id()) == False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -238,28 +239,27 @@ class FP16State(object):
         idx = 0
         while idx < len(block.ops):
             op = block.ops[idx]
-            op_id = op.desc.id()
             num_cast_ops = 0
 
             if op.type in __amp_skip_ops__:
                 idx += 1
                 continue
             elif is_forward_op(op):
-                if self._is_fp16_op(op_id) == False:
+                if self._is_fp16_op(op.desc.original_id()) == False:
                     num_cast_ops = self._insert_forward_cast_ops(
                         op, idx, block, core.VarDesc.VarType.FP16,
                         core.VarDesc.VarType.FP32, self.dist_context)
-                elif self._is_fp16_op(op_id) == True:
+                elif self._is_fp16_op(op.desc.original_id()) == True:
                     num_cast_ops = self._insert_forward_cast_ops(
                         op, idx, block, core.VarDesc.VarType.FP32,
                         core.VarDesc.VarType.FP16, self.dist_context)
             elif is_backward_op(op):
-                if op_id in dist_op_context.grad_op_id_to_op_id:
-                    if self._is_fp16_op(op_id) == False:
+                if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
+                    if self._is_fp16_op(op.desc.original_id()) == False:
                         num_cast_ops = self._insert_backward_cast_ops(
                             op, idx, block, core.VarDesc.VarType.FP16,
                             core.VarDesc.VarType.FP32, self.dist_context)
-                    elif self._is_fp16_op(op_id) == True:
+                    elif self._is_fp16_op(op.desc.original_id()) == True:
                         num_cast_ops = self._insert_backward_cast_ops(
                             op, idx, block, core.VarDesc.VarType.FP32,
                             core.VarDesc.VarType.FP16, self.dist_context)
@@ -282,7 +282,6 @@ class FP16State(object):
                                  dist_context):
 
         num_cast_ops = 0
-        op_id = op.desc.id()
 
         for in_name in op.input_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
@@ -300,13 +299,13 @@ class FP16State(object):
                     cast_name = in_var.name + '.cast_' + _dtype_to_str(
                         dst_dtype)
                     cast_var = block.vars.get(cast_name)
-                    self.forward_input_cast_ops[op_id] += [(
+                    self.forward_input_cast_ops[op.desc.original_id()] += [(
                         cast_name, in_var.name, dst_dtype, src_dtype, in_name)]
 
                     in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                         in_var.name)
                     assert in_var_dist_attr is not None
-                    # truely insert cast op
+                    # truly insert cast op
                     if cast_var is None or cast_var.dtype != dst_dtype:
                         # NOTE we make the cast op and var's dist attr as the op that consume the
                         # cast var instead of the op which generates the var
@@ -349,8 +348,9 @@ class FP16State(object):
 
         num_cast_ops = 0
         op_id = op.desc.id()
+        original_id = op.desc.original_id()
         dist_op_context = dist_context.dist_op_context
-        forward_op_id = dist_op_context.grad_op_id_to_op_id[op_id]
+        forward_op_id = dist_op_context.grad_op_id_to_op_id[original_id]
 
         grad_op_attr = dist_context.get_op_dist_attr_for_program(op)
         assert grad_op_attr is not None

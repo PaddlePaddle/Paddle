@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <glog/logging.h>
 #include <algorithm>
 #include <memory>
@@ -33,7 +34,6 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -1428,16 +1428,19 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(Out, "Input", "Out", "SigmoidTripleGrad"));
     auto dout = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "DOut", "SigmoidTripleGrad"));
-    auto d_ddOut = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
     auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
         d_dOut_New, "Input", "D_DOut_New", "SigmoidTripleGrad"));
 
     if (d_Out_New) {
       auto d_OutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
           d_Out_New, "Output", "D_OutNew", "SigmoidTripleGrad"));
-      d_OutNew.device(*d) = (ddx - static_cast<T>(2) * out * ddx) * d_ddOut -
-                            static_cast<T>(2) * dout * ddx * d_dOutNew;
+      d_OutNew.device(*d) = -static_cast<T>(2) * dout * ddx * d_dOutNew;
+      if (d_DDOut) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
+        d_OutNew.device(*d) =
+            (ddx - static_cast<T>(2) * out * ddx) * d_ddOut + d_OutNew;
+      }
     }
     if (d_d_Out) {
       auto d_dOut = EigenVector<T>::Flatten(
@@ -1449,8 +1452,12 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
       auto d_ddx = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "SigmoidTripleGrad"));
       d_ddx.device(*d) =
-          (static_cast<T>(1) - out) * out * d_ddOut +
           (static_cast<T>(1) - static_cast<T>(2) * out) * dout * d_dOutNew;
+      if (d_DDOut) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
+        d_ddx.device(*d) = d_ddx + (static_cast<T>(1) - out) * out * d_ddOut;
+      }
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -1823,6 +1830,196 @@ struct ZeroGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kNoDeps;
   }
+};
+
+template <typename T>
+struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* dX,
+                  const DenseTensor* ddX,
+                  DenseTensor* dOut,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SqrtGradGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "SqrtGradGrad"));
+    // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
+    // calculate dy first, so ddy can inplace ddx
+    if (dOut) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SqrtGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SqrtGradGrad"));
+      dout.device(*d) = dx * ddx * static_cast<T>(-1) / out;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SqrtGradGrad"));
+      ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* dX,
+                  const DenseTensor* ddX,
+                  DenseTensor* dOut,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "RsqrtGradGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "RsqrtGradGrad"));
+
+    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * dx * ddx
+    if (dOut) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "RsqrtGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "RsqrtGradGrad"));
+      dout.device(*d) = (static_cast<T>(3.0) / out) * dx * ddx;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "RsqrtGradGrad"));
+      ddout.device(*d) = ddx * static_cast<T>(-0.5) * out * out * out;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CELUFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        (x < static_cast<T>(0))
+            .select(static_cast<T>(alpha) *
+                        ((x / static_cast<T>(alpha)).exp() - static_cast<T>(1)),
+                    x);
+  }
+};
+
+template <typename T>
+struct CELUGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp_a_pos = static_cast<T>(alpha > 0);
+    auto temp_a_neg = static_cast<T>(alpha <= 0);
+    auto temp_x_pos = (x > static_cast<T>(0)).template cast<T>();
+    auto temp_x_neg = (x <= static_cast<T>(0)).template cast<T>();
+
+    // dx = dout, if alpha > 0 and x > 0
+    // dx = dout * (x/alpha).exp(), if alpha > 0 and x <= 0
+    // dx = dout , if alpha < 0 and x > 0
+    // dx = dout * (x/alpha).exp(), if alpha < 0 and x <=0
+    dx.device(d) =
+        dout * temp_a_pos * temp_x_pos +
+        dout * (x / static_cast<T>(alpha)).exp() * temp_a_pos * temp_x_neg +
+        dout * temp_a_neg * temp_x_pos +
+        dout * (x / static_cast<T>(alpha)).exp() * temp_a_neg * temp_x_neg;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CELUGradGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* dOut,
+                  const DenseTensor* ddX,
+                  DenseTensor* dX,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "CELUGradGrad"));
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "CELUGradGrad"));
+
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "CELUGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "CELUGradGrad"));
+      dx.device(*d) = ddx * dout / static_cast<T>(alpha) *
+                      (x / static_cast<T>(alpha)).exp() *
+                      (x <= static_cast<T>(0)).template cast<T>();
+    }
+
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "CELUGradGrad"));
+      ddout.device(*d) = ddx *
+                         ((x > static_cast<T>(0)).template cast<T>() +
+                          (x / static_cast<T>(alpha)).exp() *
+                              (x <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* dOut,
+                  const DenseTensor* ddX,
+                  DenseTensor* dX,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SquareGradGrad"));
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "SquareGradGrad"));
+    // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
+    // calculate dx first, so ddy can inplace ddx
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SquareGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SquareGradGrad"));
+      dx.device(*d) = ddx * static_cast<T>(2) * dout;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SquareGradGrad"));
+      ddout.device(*d) = ddx * static_cast<T>(2) * x;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
@@ -3082,6 +3279,59 @@ struct CudaZeroGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kNoDeps;
   }
+};
+
+template <typename T>
+struct CudaCELUFunctor : public BaseActivationFunctor<T> {
+  using CT = typename phi::dtype::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+  CT one = static_cast<CT>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // celu(x) = max(0, x) + min(0, alpha * (exp(x/alpha) - 1))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    CT x = static_cast<CT>(arg_x);
+    CT temp = static_cast<CT>(alpha) * (exp(x / static_cast<CT>(alpha)) - one);
+    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
+    return static_cast<T>(res);
+  }
+};
+
+template <typename T>
+struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  MPType one = static_cast<MPType>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // dx = dout, if alpha > 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha > 0 and x <= 0
+  // dx = dout , if alpha < 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha < 0 and x <=0
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType a = static_cast<MPType>(alpha);
+    MPType temp_a_pos = static_cast<MPType>(alpha > 0.0f);
+    MPType temp_a_neg = static_cast<MPType>(alpha <= 0.0f);
+    MPType temp_x_pos = static_cast<MPType>(x > zero);
+    MPType temp_x_neg = static_cast<MPType>(x <= zero);
+    return static_cast<T>(
+        dout *
+        (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * exp(x / a) +
+         temp_a_neg * temp_x_pos + exp(x / a) * temp_a_neg * temp_x_neg));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 #endif

@@ -19,6 +19,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -172,6 +173,8 @@ void build_variable_scope(const framework::BlockDesc& block,
       auto* ptr = inner_scope->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
+      // NOTE(zhiqiu): if var exists in scope and the type is right,
+      // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
       VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
@@ -390,8 +393,19 @@ void build_op_func_list(const platform::Place& place,
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
       Scope scope;
+      Scope* runtime_scope = &scope;
+      // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
+      // But some OPs do have such behavior (e.g., cinn_launch OP). Here special
+      // treatment for them.
+      if (op_with_kernel->Type() == "cinn_launch") {
+        VLOG(6) << "OP(" << op_with_kernel->Type() << ") use scope in kernel, "
+                                                      "so pass a real scope to "
+                                                      "ExecutionContext";
+        runtime_scope = local_scope;
+      }
+
       auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
-          ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+          ExecutionContext(*op, *runtime_scope, *dev_ctx, runtime_context));
       op_with_kernel->ResetKernelType(new OpKernelType(expected_kernel_key));
 
       // change device by the device_guard()
@@ -439,8 +453,8 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
 
-      auto exec_ctx =
-          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
+      auto exec_ctx = ExecutionContext(*op_with_kernel, *runtime_scope,
+                                       *dev_ctx, runtime_context);
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -652,7 +666,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  // step2: remove unneccessary downstream ops
+  // step2: remove unnecessary downstream ops
   // for example, a->b->c
   // a: b, c
   // b: c
@@ -727,7 +741,7 @@ std::map<int, std::list<int>> get_downstream_map(
   VLOG(6) << "downstream count: " << downstream_map_count();
   VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
 
-  return std::move(downstream);
+  return downstream;
 }
 
 std::map<int, std::list<int>> build_op_downstream_map(
@@ -981,7 +995,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
               std::ostream_iterator<int>(oss, " "));
     VLOG(10) << oss.str();
   }
-  return std::move(get_downstream_map(op2dependences, op_happens_before));
+  return get_downstream_map(op2dependences, op_happens_before);
 }
 
 }  // namespace interpreter

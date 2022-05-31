@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
@@ -108,7 +109,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
@@ -279,7 +280,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
 
     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
+    bool is_test_1 = ctx.Attr<bool>("is_test");
     auto &dropout_implementation_1 =
         ctx.Attr<std::string>("attn_dropout_implementation");
     bool is_upscale_in_train_1 =
@@ -543,10 +544,9 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     ins.emplace_back(d_x);
     outs.emplace_back(d_x);
     int elewise_add_axis = -1;
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
         ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
-        AddFunctor<T>());
+        phi::funcs::AddFunctor<T>());
   }
 };
 

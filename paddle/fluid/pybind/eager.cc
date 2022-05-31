@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
 namespace paddle {
@@ -84,7 +83,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     } else {
       // TODO(dev): we need enhance check for ddims.
       dense_tensor = std::make_shared<phi::DenseTensor>(
-          phi::make_intrusive<paddle::experimental::SharedStorage>(place),
+          std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                ddims));
     }
@@ -111,11 +110,10 @@ void EmptyStringTensorInitializer(TensorObject* self, const std::string& name,
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
   auto actual_place = platform::CPUPlace();
   // Allocate memory
-  const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(actual_place);
-  const auto alloc = string_allocator.get();
+  paddle::experimental::DefaultAllocator string_allocator(actual_place);
   std::shared_ptr<phi::StringTensor> string_tensor =
-      std::make_shared<phi::StringTensor>(alloc, phi::StringTensorMeta{ddims});
+      std::make_shared<phi::StringTensor>(&string_allocator,
+                                          phi::StringTensorMeta{ddims});
   if (phi::product(ddims) > 0) {
     string_tensor->mutable_data(actual_place);
   }
@@ -146,10 +144,13 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
                                                     zero_copy);
   } else if (platform::is_npu_place(place)) {
     SetTensorFromPyArray<platform::NPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(impl_ptr, array, place,
+                                                zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/CustomPlace"));
   }
 }
 
@@ -181,8 +182,7 @@ void InitTensorWithTensor(TensorObject* self,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(impl);
+    self->tensor.set_impl(src.impl());
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(src.copy_to(place, true).impl());

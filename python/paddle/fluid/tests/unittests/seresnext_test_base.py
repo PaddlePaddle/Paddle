@@ -25,7 +25,7 @@ class TestResnetBase(TestParallelExecutorBase):
                                           check_func,
                                           use_device,
                                           delta2=1e-5,
-                                          compare_seperately=True):
+                                          compare_separately=True):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
@@ -45,7 +45,7 @@ class TestResnetBase(TestParallelExecutorBase):
             batch_size=seresnext_net.batch_size(use_device),
             use_device=use_device)
 
-        if compare_seperately:
+        if compare_separately:
             for loss in zip(func_1_first_loss, func_2_first_loss):
                 self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
             for loss in zip(func_1_last_loss, func_2_last_loss):

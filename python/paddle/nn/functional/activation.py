@@ -63,8 +63,10 @@ def celu(x, alpha=1.0, name=None):
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
 
-    if in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.celu(x, 'alpha', alpha)
+    if in_dygraph_mode():
+        return _C_ops.final_state_celu(x, alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'celu')
     helper = LayerHelper("celu", **locals())
@@ -112,7 +114,10 @@ def elu(x, alpha=1.0, name=None):
             #  [ 1.          15.6      ]]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_elu(x, alpha)
+
+    if _in_legacy_dygraph():
         return _C_ops.elu(x, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
@@ -542,6 +547,122 @@ def prelu(x, weight, data_format="NCHW", name=None):
         outputs={"Out": out},
         attrs={"mode": mode,
                "data_format": data_format})
+    return out
+
+
+def rrelu(x, lower=1. / 8., upper=1. / 3., training=True, name=None):
+    r"""
+    rrelu activation.
+
+    Applies the randomized leaky rectified liner unit function to improve generalization performance,
+    as described in the paper:
+    `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`_
+
+    During training, randomly samples the negative slope for activation values as described below:
+
+    .. math::
+
+        rrelu(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    a * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`a` is randomly sampled from uniform distribution in range (:math:`lower`, :math:`upper`),
+
+    In the test phase, the negative slope will take the average value of :math:`lower` and :math:`upper`:
+
+    .. math::
+
+        rrelu(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    (lower + upper) * 0.5 * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`lower` and :math:`upper` are the bounds of uniform distribution.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float16, float32, float64.
+        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
+        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        training (bool, optional): Current mode is in training or others.  Default is True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+            :name: rrelu-example
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                            [ 3.0, -4.0,  5.0, -6.0],
+                                            [-7.0, -8.0,  8.0,  9.0]],
+                                            [[ 1.0, -2.0, -3.0,  4.0],
+                                            [-5.0,  6.0,  7.0, -8.0],
+                                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+
+            out = F.rrelu(input_tensor, 0.1, 0.3)
+            #[[[[-0.20000899  3.         -0.8810822   5.        ]
+            #   [ 3.         -0.55175185  5.         -1.0776101 ]
+            #   [-1.0680687  -1.9896201   8.          9.        ]]
+            #  [[ 1.         -0.5238267  -0.65515125  4.        ]
+            #   [-1.3766339   6.          7.         -2.3465784 ]
+            #   [ 6.          7.          8.          9.        ]]]]
+    """
+
+    if not in_dynamic_mode():
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
+                                 'rrelu')
+
+    if not isinstance(lower, float) or not isinstance(upper, float):
+        raise TypeError(
+            "The lower and upper values must be float type. Received: lower {}, upper {}.".
+            format(lower, upper))
+
+    if lower < 0 or lower > 1:
+        raise ValueError(
+            "The lower value must be no less than zero or greater than one. Received: {}.".
+            format(lower))
+
+    if upper < lower:
+        raise ValueError(
+            "The upper value must be greater than lower value. Received: lower {}, upper {}.".
+            format(lower, upper))
+
+    if upper > 1:
+        raise ValueError(
+            "The upper value must be no greater than one. Received: {}.".format(
+                upper))
+
+    is_test = not training
+
+    if _in_legacy_dygraph():
+        out, noise = _C_ops.rrelu(x, 'lower', lower, 'upper', upper, 'is_test',
+                                  is_test)
+        return out
+
+    helper = LayerHelper('rrelu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    noise = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = {'lower': lower, 'upper': upper, 'is_test': is_test}
+    helper.append_op(
+        type='rrelu',
+        inputs={"X": x},
+        outputs={"Out": out,
+                 "Noise": noise},
+        attrs=attrs)
     return out
 
 

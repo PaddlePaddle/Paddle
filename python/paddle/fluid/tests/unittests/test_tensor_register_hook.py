@@ -462,11 +462,9 @@ class TestTensorRegisterHook(unittest.TestCase):
         x.register_hook(double_print_hook)
 
         y = x * x
-        fluid.set_flags({'FLAGS_retain_grad_for_all_tensor': False})
         # Since y = x * x, dx = 2 * x
         dx = paddle.grad(
             outputs=[y], inputs=[x], create_graph=True, retain_graph=True)[0]
-        fluid.set_flags({'FLAGS_retain_grad_for_all_tensor': True})
 
         z = y + dx
         self.assertTrue(x.grad is None)

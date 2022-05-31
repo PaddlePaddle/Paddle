@@ -66,7 +66,6 @@ class TestDistReshape(unittest.TestCase):
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops
-            print_program_with_dist_attr(dist_main_prog, dist_context)
             for idx, op in enumerate(ops):
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_type == "reshape2"

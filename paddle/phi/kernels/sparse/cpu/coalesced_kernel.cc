@@ -44,7 +44,7 @@ void CoalescedCPUKernel(const CPUContext& dev_ctx,
 
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
 
   std::map<IntT, std::vector<int64_t>> indices_to_index;
   for (uint64_t i = 0; i < x_indexs.size(); i++) {

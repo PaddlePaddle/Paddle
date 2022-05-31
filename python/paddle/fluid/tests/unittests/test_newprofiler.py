@@ -20,6 +20,7 @@ import tempfile
 
 import paddle
 import paddle.profiler as profiler
+import paddle.profiler.utils as utils
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.io import Dataset, DataLoader
@@ -40,11 +41,17 @@ class TestProfiler(unittest.TestCase):
         with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU], ) as prof:
             y = x / 2.0
         prof = None
+        self.assertEqual(utils._is_profiler_used, False)
+        with profiler.RecordEvent(name='test'):
+            y = x / 2.0
+
         with profiler.Profiler(
                 targets=[profiler.ProfilerTarget.CPU],
                 scheduler=(1, 2)) as prof:
+            self.assertEqual(utils._is_profiler_used, True)
             with profiler.RecordEvent(name='test'):
                 y = x / 2.0
+
         prof = None
         with profiler.Profiler(
                 targets=[profiler.ProfilerTarget.CPU],
@@ -127,6 +134,42 @@ class TestProfiler(unittest.TestCase):
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
+        prof = None
+        dataset = RandomDataset(10 * 4)
+        simple_net = SimpleNet()
+        opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                   parameters=simple_net.parameters())
+        loader = DataLoader(
+            dataset, batch_size=4, shuffle=True, drop_last=True, num_workers=2)
+        prof = profiler.Profiler(on_trace_ready=lambda prof: None)
+        prof.start()
+        for i, (image, label) in enumerate(loader()):
+            out = simple_net(image)
+            loss = F.cross_entropy(out, label)
+            avg_loss = paddle.mean(loss)
+            avg_loss.backward()
+            opt.minimize(avg_loss)
+            simple_net.clear_gradients()
+            prof.step()
+        prof.stop()
+        prof.summary()
+        prof = None
+        dataset = RandomDataset(10 * 4)
+        simple_net = SimpleNet()
+        loader = DataLoader(dataset, batch_size=4, shuffle=True, drop_last=True)
+        opt = paddle.optimizer.Adam(
+            learning_rate=1e-3, parameters=simple_net.parameters())
+        prof = profiler.Profiler(on_trace_ready=lambda prof: None)
+        prof.start()
+        for i, (image, label) in enumerate(loader()):
+            out = simple_net(image)
+            loss = F.cross_entropy(out, label)
+            avg_loss = paddle.mean(loss)
+            avg_loss.backward()
+            opt.step()
+            simple_net.clear_gradients()
+            prof.step()
+        prof.stop()
 
 
 class TestNvprof(unittest.TestCase):

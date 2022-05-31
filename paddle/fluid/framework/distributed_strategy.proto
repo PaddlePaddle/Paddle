@@ -258,6 +258,7 @@ message CtrAccessorParameter {
       [ default = 0.8 ]; // threshold to shrink a feasign
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+  optional bool show_scale = 10 [ default = true ];
 }
 
 message TableAccessorSaveParameter {

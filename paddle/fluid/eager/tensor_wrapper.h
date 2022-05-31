@@ -34,7 +34,6 @@ class TensorWrapper {
  public:
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool full_reserved = false,
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
@@ -46,18 +45,12 @@ class TensorWrapper {
     }
 
     /**
-     * Normally, we should fully reserved all non-output or non-leaf fwd tensor
-     * here. And for fwd output tensor, we should not reserve its autogradmeta,
-     * to avoid recursive depends on GradNodeBase
+     * Normally, we should only save data and part of autograd_meta of fwd
+     * tensor, and should not reserve its original grad_node,
+     * to avoid recursive and additional depends on GradNodeBase
      * **/
-    full_reserved_ = full_reserved;
+    auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     no_need_buffer_ = no_need_buffer;
-    if (full_reserved_) {
-      VLOG(6) << "Fully reserved tensor: " << tensor.name();
-      intermidiate_tensor_ = tensor;
-      return;
-    }
-
     // shallow copy tensor_impl here
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
@@ -75,9 +68,11 @@ class TensorWrapper {
       intermidiate_tensor_.set_impl(tensor.impl());
     }
 
-    intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+    if (VLOG_IS_ON(7)) {
+      // TODO(jiabin): This may has server performance issue
+      intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+    }
 
-    auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     if (tensor_autograd_meta) {
       auto autograd_meta =
           std::make_shared<AutogradMeta>(*tensor_autograd_meta);
@@ -97,31 +92,37 @@ class TensorWrapper {
 
     check_inplace_version();
 
-    // if it's full_reserved just return the full copy of tensor
-    if (full_reserved_) {
-      return intermidiate_tensor_;
-    } else {
-      paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
 
-      std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
-      if (new_grad_node) {
-        VLOG(3) << "Recovered TensorWrapper with GradNode "
-                << new_grad_node->name() << " addr: " << new_grad_node.get();
-      } else {
-        VLOG(3) << "Recovered TensorWrapper with Empth GradNode";
-      }
-      auto* intermediate_autograd_meta =
-          EagerUtils::unsafe_autograd_meta(intermidiate_tensor_);
+    std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
+    if (new_grad_node) {
+      VLOG(3) << "Recovered TensorWrapper with GradNode "
+              << new_grad_node->name() << " addr: " << new_grad_node.get();
+    } else {
+      VLOG(3) << "Recovered TensorWrapper with Empty GradNode";
+    }
+    auto* intermediate_autograd_meta =
+        EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+
+    if (intermediate_autograd_meta) {
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
       if (new_grad_node) {
         p_ab_autograd_meta->SetGradNode(new_grad_node);
       }
       recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
-      return recovered_tensor;
     }
+
+    return recovered_tensor;
   }
 
+  paddle::experimental::Tensor get_intermidiate_tensor() {
+    return intermidiate_tensor_;
+  }
+
+  void clear() { intermidiate_tensor_.reset(); }
+
+ private:
   void check_inplace_version() {
     if (no_need_buffer_) {
       VLOG(6) << "There's no need to check inplace_version because "
@@ -156,10 +157,7 @@ class TensorWrapper {
     }
   }
 
-  void clear() { intermidiate_tensor_.reset(); }
-
  private:
-  bool full_reserved_ = false;
   bool no_need_buffer_ = false;
   paddle::experimental::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;

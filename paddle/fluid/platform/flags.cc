@@ -1,4 +1,5 @@
 // Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,6 +89,21 @@ PADDLE_DEFINE_EXPORTED_bool(
     "(RNNs).");
 
 /**
+ * CUDA related related FLAG
+ * Name: FLAGS_gemm_use_half_precision_compute_type
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example:
+ * Note: whether to use fp16 compute type when the input and output is fp16,
+ * faster but it may loss precision.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    gemm_use_half_precision_compute_type, true,
+    "Whether to use fp16 compute type when the input and output is fp16, "
+    "faster but it may loss precision in most case. If true, the compute "
+    "type will be set to fp32. Default is true.");
+
+/**
  * CUDA related FLAG
  * Name: FLAGS_selected_gpus
  * Since Version: 1.3.0
@@ -105,6 +121,29 @@ PADDLE_DEFINE_EXPORTED_string(
     "reason of doing this is that we want to use P2P communication"
     "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
     "share-memory only.");
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+/**
+ * CUDA related FLAG
+ * Name: FLAGS_cublaslt_exhaustive_search_times
+ * Since Version: 2.3.0
+ * Value Range: int64_t, default=0
+ * Example:
+ * Note: Represents times of exhaustive search to evaluate performance of
+ *       cuBlasLt matmul algorithm (with/without epilogue). Set this flag
+ *       with value > 0 to enable exhaustive search. Default is 0, means
+ *       getting algorithms via heuristic search. There are two search methods
+ *       in cuBlasLt, heuristic search and exhaustive search. Exhaustive search
+ *       attempts all cuBlasLt algorithms to select the fastest, which is very
+ *       time-consuming, and the selected algorithm will be cached for a given
+ *       layer specification Once you change the layer specifications
+ *       (such as M, N and K), it will re-search again.
+ */
+PADDLE_DEFINE_EXPORTED_int64(
+    cublaslt_exhaustive_search_times, 0,
+    "The times of exhaustive search for cuBlasLt matmul with/without "
+    " epilogue algorithms, default is 0, means disabling exhaustive search.");
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -809,3 +848,16 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Example:
  */
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+
+/**
+ * Preformance related FLAG
+ * Name: einsum_opt
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, EinsumOp will be optimimzed by innercache reuse, which
+ * uses more gpu memory.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    einsum_opt, false,
+    "EinsumOp backward will be speedup at the expense of more gpu memory.");
