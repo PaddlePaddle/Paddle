@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 template <typename T>
-using CUDAReduceMaxGradKernel = ops::ReduceCudaGradKernel<T, kps::MaxFunctor>;
+using CUDAReduceMaxGradKernel =
+    ops::ReduceCudaGradKernel<T, kps::IdentityFunctor>;
 REGISTER_OP_CUDA_KERNEL(reduce_amax_grad, CUDAReduceMaxGradKernel<int>,
                         CUDAReduceMaxGradKernel<int64_t>,
                         CUDAReduceMaxGradKernel<float>,
