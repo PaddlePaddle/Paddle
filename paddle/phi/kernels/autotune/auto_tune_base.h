@@ -77,19 +77,20 @@ class AutoTuneBase {
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     int64_t idx = 0;
-    phi::GpuTimer timer;
+    phi::GpuTimer init_timer;
     constexpr int total_tests = 2;
     float min_time = std::numeric_limits<float>::max();
 
     // Warm up step.
+    KernelCall</*HasTimer=*/true>(&init_timer, 0, args...);
     ctx.Wait();
-    auto time = KernelCall</*HasTimer=*/true>(&timer, 0, args...);
 
     // Timer test estabulished in default stream.
     for (int64_t i = 0; i < kernels_.size(); ++i) {
       float total_time = 0;
+      phi::GpuTimer timer;
       for (int j = 0; j < total_tests; ++j) {
-        time = KernelCall</*HasTimer=*/true>(&timer, i, args...);
+        auto time = KernelCall</*HasTimer=*/true>(&timer, i, args...);
         total_time += time;
       }
       float avg_time = total_time / total_tests;

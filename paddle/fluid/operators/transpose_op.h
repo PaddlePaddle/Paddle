@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -59,42 +60,53 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
   }
 }
 
-template <typename T, size_t kMaxMovementSize>
-class DimsAndPermSimplifier {
+enum PermuteType {
+  kCopy = 1,
+  kTranspose = 2,
+  kVecPermute = 3,
+  kNormalPermute = 4
+};
+
+constexpr int kBlockRows = 16;
+constexpr int kTileSize = 32;
+// To avoid bank conflict.
+constexpr int kShareCol = kTileSize + 1;
+
+template <typename T>
+class DimsSimplifier {
  public:
-  explicit DimsAndPermSimplifier(const int rank, const int elem_size,
-                                 const std::vector<int32_t>& perm,
-                                 std::vector<size_t>* in_dims, const T* src,
-                                 T* dst) {
-    perm_.resize(rank);
-    dims_.resize(rank);
-    size_t simplified_movement_size =
-        GetMovementSize(elem_size, rank, *in_dims, perm, src, dst);
-    (*in_dims)[rank - 1] /= (simplified_movement_size / elem_size);
-
-    Simplifyperm(rank, *in_dims, perm);
-
-    movement_size_ = GetMovementSize(simplified_movement_size, rank_, dims_,
-                                     perm_, src, dst);
-    dims_[rank_ - 1] /= (movement_size_ / simplified_movement_size);
+  explicit DimsSimplifier(const int sm_count, const int rank,
+                          const std::vector<int32_t>& perm,
+                          const std::vector<size_t>& dims, const T* src, T* dst)
+      : perm_(rank), dims_(rank) {
+    SimplifyPermAndDims(rank, dims, perm);
+    count_ = std::accumulate(dims.begin(), dims.end(), size_t{1},
+                             std::multiplies<size_t>());
+    if (rank_ > 1) {
+      vec_size_ = GetPermVecSize(sm_count, src, dst);
+      perm_.resize(rank_);
+      dims_.resize(rank_);
+    }
   }
 
-  size_t GetRank() const { return rank_; }
-  size_t GetMovementSize() const { return movement_size_; }
-  bool IsSequential() const { return sequential_flag_; }
+  size_t GetCount() const { return count_; }
+  int GetVecSize() const { return vec_size_; }
+  PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
   std::vector<size_t> GetDims() const { return dims_; }
 
  private:
   size_t rank_{1};
-  size_t movement_size_;
-  bool sequential_flag_{false};
+  size_t count_{0};
+  int vec_size_{1};
   std::vector<int> perm_;
   std::vector<size_t> dims_;
+  PermuteType type_{kCopy};
 
-  void Simplifyperm(const size_t rank, const std::vector<size_t>& in_dims,
-                    const std::vector<int32_t>& perm) {
+  void SimplifyPermAndDims(const size_t rank,
+                           const std::vector<size_t>& in_dims,
+                           const std::vector<int32_t>& perm) {
     size_t combined_dims[phi::DDim::kMaxRank];
     int valid_map[phi::DDim::kMaxRank];
 
@@ -141,7 +153,7 @@ class DimsAndPermSimplifier {
       perm_[0] = 0;
       return;
     } else if (valid_dim_idx == 1) {
-      sequential_flag_ = true;
+      type_ = PermuteType::kCopy;
     }
 
     // Acquire simplified perm with help of combined dims
@@ -157,26 +169,69 @@ class DimsAndPermSimplifier {
     rank_ = valid_dim_idx;
   }
 
-  size_t GetMovementSize(const size_t elem_size, const size_t rank,
-                         const std::vector<size_t>& in_dims,
-                         const std::vector<int>& perm, const T* src, T* dst) {
-    static_assert(kMaxMovementSize > 0 &&
-                      (kMaxMovementSize & (kMaxMovementSize - 1)) == 0,
-                  "The kMaxMovementSize shall be power of 2.");
+  int GetPermVecSize(const int sm_count, const T* src, T* dst) {
+    // For gerneal_permute kernel, there is good chance for
+    // vectorized write.
+    int vec_size = phi::GetVectorizedSize<T>(dst);
+    type_ = PermuteType::kNormalPermute;
 
-    if (perm[rank - 1] == rank - 1) {
-      const size_t last_dim_size = in_dims[rank - 1] * elem_size;
-      auto src_ptr = reinterpret_cast<std::uintptr_t>(src);
-      auto dst_ptr = reinterpret_cast<std::uintptr_t>(dst);
+    // While the last dim is fixed, there is good chance for
+    // both vectorized read and write.
+    if (perm_[rank_ - 1] == rank_ - 1) {
+      int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+      tmp_size = GetDimVesSize(tmp_size, dims_[rank_ - 1]);
+      if (tmp_size > 1) {
+        type_ = kVecPermute;
+        vec_size = tmp_size;
 
-      for (size_t size = kMaxMovementSize; size > elem_size; size /= 2) {
-        if (last_dim_size % size == 0 && src_ptr % size == 0 &&
-            dst_ptr % size == 0) {
-          return size;
-        }
+        // For stride calculation of src_data index.
+        dims_[rank_ - 1] /= vec_size;
       }
     }
-    return elem_size;
+
+    // Once only transpose at the last 2 dims, there is good
+    // chance for vectorized read.
+    if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
+        (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
+      type_ = PermuteType::kTranspose;
+
+      // Compared with vectorized load or read, set config to let more
+      // sm work simultaneously affect more according to performance.
+      constexpr int threads = kTileSize * kTileSize;
+      int blocks = count_ / threads;
+      if (blocks < sm_count) {
+        vec_size = 1;
+      } else {
+        int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+        // With bytes limitation of shared_memory, the VecSize shall be
+        // restricted for the type whose byte-size is less than 8 (double).
+        int type_vec =
+            sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, dims_[rank_ - 1]);
+        for (int i = type_vec; i > 0; i /= 2) {
+          if (blocks / i >= sm_count) {
+            break;
+          }
+          // When blocks is smaller than sm_count, a test shown that decrease
+          // vec_size to make blocks close to sm_count would gain performance.
+          vec_size = i;
+        }
+      }
+
+      dims_[rank_ - 1] /= vec_size;
+      count_ /= vec_size;
+    }
+    return vec_size;
+  }
+
+  int GetDimVesSize(const int vec_size, const size_t target_dim) {
+    int dim_vec_size = 1;
+    for (auto size = vec_size; size > 0; size /= 2) {
+      if (target_dim % size == 0) {
+        dim_vec_size = size;
+        break;
+      }
+    }
+    return dim_vec_size;
   }
 };
 

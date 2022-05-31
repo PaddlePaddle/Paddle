@@ -657,14 +657,11 @@ struct TransposeSimple {
   }
 };
 
-constexpr int32_t kTileSize = 32;
-constexpr int32_t kBlockRows = 16;
-
 template <int N, typename T>
-class IndexHelper {
+class IdxHelper {
  public:
-  IndexHelper() {}
-  explicit IndexHelper(const T* dims) {
+  IdxHelper() {}
+  explicit IdxHelper(const T* dims) {
     for (int i = N - 1; i >= 0; --i) {
       stride_[i] = i < (N - 1) ? dims[i + 1] * stride_[i + 1] : 1;
     }
@@ -688,10 +685,10 @@ class IndexHelper {
 };
 
 template <int N>
-class IndexHelper<N, uint32_t> {
+class IdxHelper<N, uint32_t> {
  public:
-  IndexHelper() {}
-  explicit IndexHelper(const uint32_t* dims) {
+  IdxHelper() {}
+  explicit IdxHelper(const uint32_t* dims) {
     for (int i = N - 1; i >= 0; --i) {
       uint32_t value = i < (N - 1) ? dims[i + 1] * stride_[i + 1] : 1;
       divmoder_[i] = paddle::platform::FastDivMod(value);
@@ -719,22 +716,22 @@ class IndexHelper<N, uint32_t> {
 };
 
 template <typename T, int N>
-class NdIdxAndOffset {
+class IdxAndOffsetHelper {
  public:
-  NdIdxAndOffset() {}
-  ~NdIdxAndOffset() = default;
+  IdxAndOffsetHelper() {}
+  ~IdxAndOffsetHelper() = default;
 
-  explicit NdIdxAndOffset(const T* dims) {
-    index_helper = IndexHelper<N, T>(dims);
+  explicit IdxAndOffsetHelper(const T* dims) {
+    index_helper = IdxHelper<N, T>(dims);
   }
 
   template <typename U>
-  explicit NdIdxAndOffset(const U* dims) {
+  explicit IdxAndOffsetHelper(const U* dims) {
     T temp_dims[N];
     for (int i = 0; i < N; ++i) {
       temp_dims[i] = static_cast<T>(dims[i]);
     }
-    index_helper = IndexHelper<N, T>(temp_dims);
+    index_helper = IdxHelper<N, T>(temp_dims);
   }
 
   __device__ inline T IndexToOffset(const T* index) const {
@@ -752,71 +749,171 @@ class NdIdxAndOffset {
   }
 
  private:
-  IndexHelper<N, T> index_helper;
+  IdxHelper<N, T> index_helper;
 };
 
 template <size_t Rank, typename IndexT>
 struct PermuteParams {
-  NdIdxAndOffset<IndexT, Rank> src_index_helper;
-  NdIdxAndOffset<IndexT, Rank> dst_index_helper;
+ public:
+  IdxAndOffsetHelper<IndexT, Rank> src_index_helper;
+  IdxAndOffsetHelper<IndexT, Rank> dst_index_helper;
   int32_t __restrict__ perm[Rank]{};
-  IndexT count{};
 
-  explicit PermuteParams(const std::vector<size_t>& in_dims,
-                         const std::vector<int>& perm_, IndexT count_)
-      : count(count_) {
+  explicit PermuteParams(const std::vector<size_t>& dims,
+                         const std::vector<int>& perm_) {
     size_t dst_dims[Rank];
     for (size_t i = 0; i < Rank; ++i) {
-      dst_dims[i] = in_dims[perm_[i]];
-    }
-    dst_index_helper = NdIdxAndOffset<IndexT, Rank>(dst_dims);
-    src_index_helper = NdIdxAndOffset<IndexT, Rank>(in_dims.data());
-
-    for (size_t i = 0; i < Rank; ++i) {
       perm[i] = perm_[i];
+      dst_dims[i] = dims[perm_[i]];
     }
+    dst_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dst_dims);
+    src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dims.data());
   }
 };
 
-template <typename T, typename IndexT, size_t Rank, size_t MovementSize>
-__global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
-                                     const T* __restrict__ src_data,
-                                     T* dst_data) {
+// A special kernel for target case, both vectorized read and write supported.
+template <typename T, typename IndexT, int VecSize, int Rank>
+__global__ void VectorizedPermuteKernel(PermuteParams<Rank, IndexT> params,
+                                        const size_t count,
+                                        const T* __restrict__ src_data,
+                                        T* dst_data) {
+  using VecT = phi::AlignedVector<T, VecSize>;
   IndexT src_index[Rank];
   IndexT dst_index[Rank];
-  int perm[Rank];
+
+  const VecT* __restrict__ src =
+      reinterpret_cast<const VecT* __restrict__>(src_data);
+  VecT* dst = reinterpret_cast<VecT*>(dst_data);
+
   IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-  using Type = typename std::aligned_storage<MovementSize, MovementSize>::type;
-  const Type* src = reinterpret_cast<const Type* __restrict__>(src_data);
-  Type* dst = reinterpret_cast<Type*>(dst_data);
-
-  for (IndexT i = tid; i < params.count; i += blockDim.x * gridDim.x) {
+  for (IndexT i = tid; i < count; i += blockDim.x * gridDim.x) {
     params.dst_index_helper.OffsetToIndex(i, dst_index);
 
 #pragma unroll
     for (int j = 0; j < Rank; ++j) {
       src_index[params.perm[j]] = dst_index[j];
     }
+
     IndexT src_offset = params.src_index_helper.IndexToOffset(src_index);
     dst[i] = src[src_offset];
   }
 }
 
-// Only operate for transposing the last 2 dimensions. Refer from
+template <typename T, typename IndexT, int VecSize, int Rank>
+__global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
+                                     const T* __restrict__ src, T* dst,
+                                     const size_t main_cnt,
+                                     const size_t tail_cnt,
+                                     const size_t offset) {
+  using VecT = phi::AlignedVector<T, VecSize>;
+  VecT* vec_dst = reinterpret_cast<VecT*>(dst);
+
+  IndexT src_index[VecSize][Rank];
+  IndexT dst_index[VecSize][Rank];
+
+  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
+  for (IndexT idx = tid; idx < main_cnt; idx += blockDim.x * gridDim.x) {
+    VecT vec_data;
+    IndexT vec_idx = idx * VecSize;
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      params.dst_index_helper.OffsetToIndex(vec_idx + i, dst_index[i]);
+
+#pragma unroll
+      for (int j = 0; j < Rank; ++j) {
+        src_index[i][params.perm[j]] = dst_index[i][j];
+      }
+      IndexT src_offset = params.src_index_helper.IndexToOffset(src_index[i]);
+      vec_data[i] = src[src_offset];
+    }
+    vec_dst[idx] = vec_data;
+  }
+
+  if (tid < tail_cnt) {
+    IndexT idx = tid + offset;
+    params.dst_index_helper.OffsetToIndex(idx, dst_index[0]);
+
+#pragma unroll
+    for (int j = 0; j < Rank; ++j) {
+      src_index[0][params.perm[j]] = dst_index[0][j];
+    }
+    IndexT src_offset = params.src_index_helper.IndexToOffset(src_index[0]);
+    dst[idx] = src[src_offset];
+  }
+}
+
+// A Gerneral permute method that drectly find the dst data
+// coordinate in the source data.
+template <typename T, typename IndexT, int VecSize, int Rank>
+inline void LaunchPermuteKernel(const phi::GPUContext& ctx, const IndexT count,
+                                const PermuteType perm_type,
+                                const std::vector<size_t>& dims,
+                                const std::vector<int>& perm, const T* src,
+                                T* dst) {
+  size_t main_count = count / VecSize;
+  auto params = PermuteParams<Rank, IndexT>(dims, perm);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_count);
+
+  if (perm_type == PermuteType::kNormalPermute) {
+    size_t tail_count = count - main_count * VecSize;
+    size_t offset = count - tail_count;
+    GeneralPermuteKernel<
+        T, IndexT, VecSize,
+        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+        params, src, dst, main_count, tail_count, offset);
+  } else {
+    VectorizedPermuteKernel<
+        T, IndexT, VecSize,
+        Rank><<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
+        params, main_count, src, dst);
+  }
+}
+
+template <typename T, typename IndexT, int VecSize>
+inline void LaunchPermuteRankDispatch(const phi::GPUContext& ctx,
+                                      const IndexT count,
+                                      const PermuteType perm_type,
+                                      const std::vector<size_t>& dims,
+                                      const std::vector<int>& perm,
+                                      const T* src, T* dst) {
+#define CALL_DISPATCH_RANK(rank)                                               \
+  case rank: {                                                                 \
+    LaunchPermuteKernel<T, IndexT, VecSize, rank>(ctx, count, perm_type, dims, \
+                                                  perm, src, dst);             \
+    break;                                                                     \
+  }
+
+  switch (dims.size()) {
+    CALL_DISPATCH_RANK(1);
+    CALL_DISPATCH_RANK(2);
+    CALL_DISPATCH_RANK(3);
+    CALL_DISPATCH_RANK(4);
+    CALL_DISPATCH_RANK(5);
+    CALL_DISPATCH_RANK(6);
+    CALL_DISPATCH_RANK(7);
+    CALL_DISPATCH_RANK(8);
+    CALL_DISPATCH_RANK(9);
+  }
+#undef CALL_DISPATCH_RANK
+}
+
+// Aim at transposing the last 2 dimensions. Refer from
 // https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
-template <typename T, size_t MovementSize, typename IndexT>
+template <typename T, typename IndexT, int VecSize>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
                                      T* dst_data, IndexT rows, IndexT cols) {
-  using Type = typename std::aligned_storage<MovementSize, MovementSize>::type;
-  __shared__ Type tile[kTileSize][kTileSize + 1];  // To avoid bank conflict.
-  const Type* __restrict__ src =
-      reinterpret_cast<const Type* __restrict__>(src_data);
-  Type* dst = reinterpret_cast<Type*>(dst_data);
+  using VecT = phi::AlignedVector<T, VecSize>;
 
-  IndexT offset = blockIdx.z * rows * cols;
+  __shared__ VecT tile[kTileSize][kShareCol];
+  T* single_tile = reinterpret_cast<T*>(tile);
+
   IndexT col_in_matrix = blockIdx.x * kTileSize + threadIdx.x;
+  IndexT offset = blockIdx.z * rows * cols;
 
+  // Vectorized load data from src into shared memory. [rows, cols]
+  const VecT* __restrict__ src =
+      reinterpret_cast<const VecT* __restrict__>(src_data);
 #pragma unroll
   for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
     IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
@@ -827,162 +924,118 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
     }
   }
 
-  const IndexT dst_rows = cols;
-  const IndexT dst_cols = rows;
+  // Singlarized load data from shared memory into dst.
+  // and dst_cols = rows, dst_rows = cols, [cols * Vecsize, rows]
   col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
+  offset = offset * VecSize + col_in_matrix;
+  IndexT tile_x_idx = threadIdx.x * (kShareCol * VecSize);
 
   __syncthreads();
 
 #pragma unroll
   for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
     IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
-
-    if (col_in_matrix < dst_cols && row_in_matrix < dst_rows) {
-      dst[offset + row_in_matrix * dst_cols + col_in_matrix] =
-          tile[threadIdx.x][tile_y];
+    IndexT dst_idx = offset + row_in_matrix * VecSize * rows;
+    IndexT tile_idx = tile_x_idx + tile_y * VecSize;
+#pragma unroll
+    if (col_in_matrix < /*dst_cols=*/rows &&
+        row_in_matrix < /*dst_rows=*/cols) {
+      for (auto i = 0; i < VecSize; ++i) {
+        dst_data[dst_idx + i * rows] = single_tile[tile_idx + i];
+      }
     }
   }
 }
 
-template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
-inline void LaunchBatchTransposeKernel(
-    const phi::GPUContext& ctx, const PermuteParams<Rank, IndexT>& params,
-    const std::vector<size_t>& in_dims, const T* src, T* dst) {
-  IndexT num_batches = (Rank == 2) ? 1 : in_dims[0];
-  IndexT rows = (Rank == 2) ? in_dims[0] : in_dims[1];
-  IndexT cols = (Rank == 2) ? in_dims[1] : in_dims[2];
-
+// With the byte limitation of shared_memory, the VecSize shall be restricted
+// for the type whose byte-size is less than 8.
+template <typename T, typename IndexT, int Size,
+          int VecSize = (sizeof(T) > 8 ? 1 : Size)>
+inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
+                                  const std::vector<size_t>& dims, const T* src,
+                                  T* dst) {
+  auto rank = dims.size();
+  IndexT num_batches = (rank == 2) ? 1 : dims[0];
+  IndexT rows = dims[rank - 2];
+  IndexT cols = dims[rank - 1];
   IndexT num_tile_rows = (rows + kTileSize - 1) / kTileSize;
   IndexT num_tile_cols = (cols + kTileSize - 1) / kTileSize;
 
   dim3 blocks(num_tile_cols, num_tile_rows, num_batches);
   dim3 threads(kTileSize, kBlockRows, 1);
 
-  BatchTransposeKernel<T, MovementSize,
-                       IndexT><<<blocks, threads, 0, ctx.stream()>>>(
+  BatchTransposeKernel<T, IndexT,
+                       VecSize><<<blocks, threads, 0, ctx.stream()>>>(
       src, dst, rows, cols);
 }
 
-template <size_t Rank>
-inline bool LaunchCheck(const std::vector<int>& perm) {
-  if (Rank == 2 && perm[1] == 0 && perm[0] == 1) {
-    // For target 2D case: (0, 1) -> (1, 0)
-    return true;
-  } else if (Rank == 3 && perm[2] == 1 && perm[1] == 2) {
-    // For target 3D case: (0, 1, 2) -> (0, 2, 1)
-    return true;
-  }
-  return false;
-}
-
-template <typename T, size_t Rank, size_t MovementSize, typename IndexT>
-inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
-                                  const std::vector<size_t>& in_dims,
-                                  const std::vector<int>& perm, const T* src,
-                                  T* dst, IndexT count) {
-  auto params = PermuteParams<Rank, IndexT>(in_dims, perm, count);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, count);
-
-  // BatchTransposeKernel only works for condition that Rank == 2 or
-  // Rank == 3, however direct phi::Copy has been estabulished to deal
-  // with Rank == 1, yet Rank < 4 can be set as branch judgement.
-  if ((Rank < 4) && LaunchCheck<Rank>(perm)) {
-    LaunchBatchTransposeKernel<T, Rank, MovementSize, IndexT>(
-        ctx, params, in_dims, src, dst);
-  } else {
-    GeneralPermuteKernel<T, IndexT, Rank, MovementSize><<<
-        config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
-        params, src, dst);
-  }
-}
-
-template <typename T, size_t Rank, size_t MovementSize>
-inline void DispatchIndexType(const phi::GPUContext& ctx,
-                              const std::vector<size_t>& in_dims,
-                              const std::vector<int>& perm, const T* src,
-                              T* dst) {
-  size_t count = std::accumulate(in_dims.begin(), in_dims.begin() + Rank,
-                                 size_t{1}, std::multiplies<size_t>());
-
-  if (count < std::numeric_limits<uint32_t>::max()) {
-    LaunchTransposeKernel<T, Rank, MovementSize, uint32_t>(
-        ctx, in_dims, perm, src, dst, static_cast<uint32_t>(count));
-  } else {
-    int64_t cnt = static_cast<int64_t>(count);
-    LaunchTransposeKernel<T, Rank, MovementSize, int64_t>(
-        ctx, in_dims, perm, src, dst, static_cast<int64_t>(count));
-  }
-}
-
-template <typename T, size_t Rank>
-inline void DispatchMovementSize(const phi::GPUContext& ctx,
-                                 size_t movement_size,
-                                 const const std::vector<size_t>& in_dims,
-                                 const std::vector<int>& perm, const T* src,
-                                 T* dst) {
-#define CALL_DISPATCH_INDEX_TYPE_FUNC(size)                         \
-  case size: {                                                      \
-    DispatchIndexType<T, Rank, size>(ctx, in_dims, perm, src, dst); \
-    break;                                                          \
+template <typename T, typename IndexT>
+inline void LaunchWithDispatchVecSize(const phi::GPUContext& ctx,
+                                      const int vec_size,
+                                      const PermuteType perm_type,
+                                      const std::vector<size_t>& dims,
+                                      const std::vector<int>& perm,
+                                      const T* src, T* dst, IndexT count) {
+#define CALL_DISPATCH_VEC_SIZE(vec_size)                                    \
+  case vec_size: {                                                          \
+    if (perm_type == PermuteType::kTranspose) {                             \
+      LaunchTransposeKernel<T, IndexT, vec_size>(ctx, dims, src, dst);      \
+    } else {                                                                \
+      LaunchPermuteRankDispatch<T, IndexT, vec_size>(ctx, count, perm_type, \
+                                                     dims, perm, src, dst); \
+    }                                                                       \
+    break;                                                                  \
   }
 
-  switch (movement_size) {
-    CALL_DISPATCH_INDEX_TYPE_FUNC(1);
-    CALL_DISPATCH_INDEX_TYPE_FUNC(2);
-    CALL_DISPATCH_INDEX_TYPE_FUNC(4);
-    CALL_DISPATCH_INDEX_TYPE_FUNC(8);
-    CALL_DISPATCH_INDEX_TYPE_FUNC(16);
+  switch (vec_size) {
+    CALL_DISPATCH_VEC_SIZE(1);
+    CALL_DISPATCH_VEC_SIZE(2);
+    CALL_DISPATCH_VEC_SIZE(4);
+    default: {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported vectorized size: %d !", vec_size));
+      break;
+    }
   }
-#undef CALL_DISPATCH_INDEX_TYPE_FUNC
+#undef CALL_DISPATCH_VEC_SIZE
 }
 
 template <typename T>
-inline void LaunchWithSimplifiedDispatch(const phi::GPUContext& ctx,
-                                         const size_t rank,
-                                         const size_t movement_size,
-                                         const std::vector<size_t>& in_dims,
-                                         const std::vector<int>& perm,
-                                         const T* src, T* dst) {
-#define CALL_DISPATCH_MOVEMENT_SIZE_FUNC(rank)                            \
-  case rank: {                                                            \
-    DispatchMovementSize<T, rank>(ctx, movement_size, in_dims, perm, src, \
-                                  dst);                                   \
-    break;                                                                \
+inline void LaunchWithDispatchIndex(const phi::GPUContext& ctx,
+                                    const size_t count, const int vec_size,
+                                    const PermuteType perm_type,
+                                    const std::vector<size_t>& dims,
+                                    const std::vector<int>& perm, const T* src,
+                                    T* dst) {
+  if (count < std::numeric_limits<uint32_t>::max()) {
+    LaunchWithDispatchVecSize<T, uint32_t>(ctx, vec_size, perm_type, dims, perm,
+                                           src, dst,
+                                           static_cast<uint32_t>(count));
+  } else {
+    int64_t cnt = static_cast<int64_t>(count);
+    LaunchWithDispatchVecSize<T, int64_t>(ctx, vec_size, perm_type, dims, perm,
+                                          src, dst,
+                                          static_cast<int64_t>(count));
   }
-
-  switch (rank) {
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(1);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(2);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(3);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(4);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(5);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(6);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(7);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(8);
-    CALL_DISPATCH_MOVEMENT_SIZE_FUNC(9);
-  }
-#undef CALL_DISPATCH_MOVEMENT_SIZE_FUNC
 }
 
 template <typename DeviceContext, typename T>
 inline void SimplifyThenLaunch(const int rank, const DeviceContext& ctx,
                                const Tensor& in, Tensor* out,
                                const std::vector<int32_t>& perm) {
+  int sm_count = ctx.GetSMCount();
   auto src_dims = phi::vectorize<size_t>(in.dims());
+  auto simplifier = DimsSimplifier<T>(sm_count, rank, perm, src_dims,
+                                      in.data<T>(), out->data<T>());
 
-  // kMaxMovementSize is for vectorized load, for fp32, the vec_size
-  // is (kMaxMovementSize)/sizeof(fp32) = 4, for fp16 is 8.
-  auto simplifier = DimsAndPermSimplifier<T, /*kMaxMovementSize=*/16>(
-      rank, sizeof(T), perm, &src_dims, in.data<T>(), out->data<T>());
-
-  if (simplifier.IsSequential()) {
+  if (simplifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
-    phi::Copy(ctx, in, ctx.GetPlace(), true, out);
+    phi::Copy(ctx, in, ctx.GetPlace(), false, out);
   } else {
-    LaunchWithSimplifiedDispatch<T>(ctx, simplifier.GetRank(),
-                                    simplifier.GetMovementSize(),
-                                    simplifier.GetDims(), simplifier.GetPerm(),
-                                    in.data<T>(), out->data<T>());
+    LaunchWithDispatchIndex<T>(
+        ctx, simplifier.GetCount(), simplifier.GetVecSize(),
+        simplifier.GetPermType(), simplifier.GetDims(), simplifier.GetPerm(),
+        in.data<T>(), out->data<T>());
   }
 }
 
@@ -1007,25 +1060,28 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    if (!tuner->CheckInit()) {
-      tuner->AddCallBack(phi::autotune::MakeCallback<T>(
-          SimplifyThenLaunch<phi::GPUContext, T>));
-      tuner->FinishInit();
-    }
+    SimplifyThenLaunch<phi::GPUContext, T>(rank, dev_ctx, in, out, perm);
+    // auto* tuner =
+    //     phi::autotune::MakeTransposeTuner<T>(
+    //  SimplifyThenLaunch<phi::GPUContext, T>);
+    // if (!tuner->CheckInit()) {
+    //   tuner->AddCallBack(phi::autotune::MakeCallback<T>(
+    //       TransCompute<phi::GPUContext, T>));
+    //   tuner->FinishInit();
+    // }
 
-    auto key = GetTransposeKey<T>(rank, in, perm);
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    if (cache.Find(key)) {
-      auto index = cache.Get(key);
-      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    } else {
-      // All avaliable kernels have ran while picking the best kernel, so
-      // there may be no need for another RunBestKernel.
-      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
-      cache.Set(key, index);
-    }
+    // auto key = GetTransposeKey<T>(rank, in, perm);
+    // auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    // if (cache.Find(key)) {
+    //   auto index = cache.Get(key);
+    //   tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    // } else {
+    //   // All avaliable kernels have ran while picking the best kernel, so
+    //   // there may be no need for another RunBestKernel.
+    //   auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out,
+    //   perm);
+    //   cache.Set(key, index);
+    // }
   }
 }
 
