@@ -715,6 +715,7 @@ class IdxHelper<N, uint32_t> {
   paddle::platform::FastDivMod divmoder_[N];
 };
 
+// Transform index between memory offset and shape coodinate.
 template <typename T, int N>
 class IdxAndOffsetHelper {
  public:
@@ -757,7 +758,7 @@ struct PermuteParams {
  public:
   IdxAndOffsetHelper<IndexT, Rank> src_index_helper;
   IdxAndOffsetHelper<IndexT, Rank> dst_index_helper;
-  int32_t __restrict__ perm[Rank]{};
+  int perm[Rank]{};
 
   explicit PermuteParams(const std::vector<size_t>& dims,
                          const std::vector<int>& perm_) {
@@ -793,7 +794,6 @@ __global__ void VectorizedPermuteKernel(PermuteParams<Rank, IndexT> params,
     for (int j = 0; j < Rank; ++j) {
       src_index[params.perm[j]] = dst_index[j];
     }
-
     IndexT src_offset = params.src_index_helper.IndexToOffset(src_index);
     dst[i] = src[src_offset];
   }
@@ -917,7 +917,7 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
   // Vectorized load data from src into shared memory. [rows, cols]
   const VecT* __restrict__ src =
       reinterpret_cast<const VecT* __restrict__>(src_data);
-#pragma unroll
+
   for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
     IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
 
@@ -935,14 +935,13 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
 
   __syncthreads();
 
-#pragma unroll
   for (IndexT tile_y = threadIdx.y; tile_y < kTileSize; tile_y += kBlockRows) {
     IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
     IndexT dst_idx = offset + row_in_matrix * VecSize * rows;
     IndexT tile_idx = tile_x_idx + tile_y * VecSize;
-#pragma unroll
     if (col_in_matrix < /*dst_cols=*/rows &&
         row_in_matrix < /*dst_rows=*/cols) {
+#pragma unroll
       for (auto i = 0; i < VecSize; ++i) {
         dst_data[dst_idx + i * rows] = single_tile[tile_idx + i];
       }
@@ -1063,25 +1062,27 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
 
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
-        SimplifyThenLaunch<phi::GPUContext, T>);
-    if (!tuner->CheckInit()) {
-      tuner->AddCallBack(
-          phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
-      tuner->FinishInit();
-    }
+    SimplifyThenLaunch<phi::GPUContext, T>(rank, dev_ctx, in, out, perm);
+    // auto* tuner = phi::autotune::MakeTransposeTuner<T>(
+    //     SimplifyThenLaunch<phi::GPUContext, T>);
+    // if (!tuner->CheckInit()) {
+    //   tuner->AddCallBack(
+    //       phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
+    //   tuner->FinishInit();
+    // }
 
-    auto key = GetTransposeKey<T>(rank, in, perm);
-    auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
-    if (cache.Find(key)) {
-      auto index = cache.Get(key);
-      tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
-    } else {
-      // All avaliable kernels have ran while picking the best kernel, so
-      // there may be no need for another RunBestKernel.
-      auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out, perm);
-      cache.Set(key, index);
-    }
+    // auto key = GetTransposeKey<T>(rank, in, perm);
+    // auto& cache = phi::autotune::AutoTuneCache::Instance().GetTranspose();
+    // if (cache.Find(key)) {
+    //   auto index = cache.Get(key);
+    //   tuner->RunBestKernel(index, rank, dev_ctx, in, out, perm);
+    // } else {
+    //   // All avaliable kernels have ran while picking the best kernel, so
+    //   // there may be no need for another RunBestKernel.
+    //   auto index = tuner->PickBestKernel(dev_ctx, rank, dev_ctx, in, out,
+    //   perm);
+    //   cache.Set(key, index);
+    // }
   }
 }
 
