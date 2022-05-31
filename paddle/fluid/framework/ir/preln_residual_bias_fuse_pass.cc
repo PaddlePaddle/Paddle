@@ -58,37 +58,30 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
   // Create nodes for elementwise add op.
   x->assert_is_op_input("elementwise_add");
   y->assert_is_op_input("elementwise_add", "X");
-
-
-
   auto *elementwise0 =
       pattern->NewNode(elementwise0_repr())->assert_is_op("elementwise_add");
-
   auto *elementwise_bias_var = pattern->NewNode(elementwise_bias_repr())
-                                  ->assert_is_op_input("elementwise_add", "Y");
-
-
+                                   ->assert_is_op_input("elementwise_add", "Y");
   auto *elementwise0_out_var = pattern->NewNode(elementwise0_out_repr())
-                                  ->assert_is_op_output("elementwise_add")
-                                  ->assert_is_op_input("elementwise_add")
-                                  ->assert_more([](Node *x) {
-                                    if (x->outputs.size() == 1) {
-                                      return true;
-                                    } else {
-                                      return false;
-                                    }
-                                  });
-
-
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->assert_is_op_input("elementwise_add")
+                                   ->assert_more([](Node *x) {
+                                     if (x->outputs.size() == 1) {
+                                       return true;
+                                     } else {
+                                       return false;
+                                     }
+                                   });
   auto *elementwise1 =
       pattern->NewNode(elementwise1_repr())->assert_is_op("elementwise_add");
   auto *elementwise1_out_var = pattern->NewNode(elementwise1_out_repr())
-                                  ->assert_is_op_output("elementwise_add")
-                                  ->assert_is_op_input("layer_norm", "X");
+                                   ->assert_is_op_output("elementwise_add")
+                                   ->assert_is_op_input("layer_norm", "X");
   // Add links for elementwise_add op.
-  elementwise0->LinksFrom({y, elementwise_bias_var}).LinksTo({elementwise0_out_var});
-  elementwise1->LinksFrom({x, elementwise0_out_var}).LinksTo({elementwise1_out_var});
-
+  elementwise0->LinksFrom({y, elementwise_bias_var})
+      .LinksTo({elementwise0_out_var});
+  elementwise1->LinksFrom({x, elementwise0_out_var})
+      .LinksTo({elementwise1_out_var});
   // Create nodes for layer_norm op.
   auto *layer_norm =
       pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
@@ -111,7 +104,6 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
       pattern->NewNode(layer_norm_variance_repr())
           ->AsOutput()
           ->assert_is_op_output("layer_norm", "Variance");
-
   // Add links for layer_norm op.
   layer_norm
       ->LinksFrom(
@@ -141,7 +133,7 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
                 ->assert_is_op_input("elementwise_add", "X")
                 ->assert_var_not_persistable();
   patterns::PrelnResidualBias fused_pattern(gpd.mutable_pattern(),
-                                             "preln_residual_bias_fuse");
+                                            "preln_residual_bias_fuse");
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -150,18 +142,19 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
-
     if (!IsCompat(subgraph, graph)) {
       LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
       return;
     }
-
     VLOG(4) << "handle PrelnResidualBias fuse";
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_bias, elementwise_bias, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_bias, elementwise_bias,
+                              fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise0, elementwise0, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise0_out, elementwise0_out, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise0_out, elementwise0_out,
+                              fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise1, elementwise1, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise1_out, elementwise1_out, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise1_out, elementwise1_out,
+                              fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
@@ -170,31 +163,24 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               fused_pattern);
-
     std::unordered_set<const Node *> del_node_set;
-
     // Create an PrelnResidualBias op node
     OpDesc new_desc;
     new_desc.SetType("preln_residual_bias");
-
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
     new_desc.SetInput("EleBias", {elementwise_bias->Name()});
-
     // outputs
     new_desc.SetOutput("Out_0", {layer_norm_out->Name()});
     new_desc.SetOutput("Out_1", {elementwise1_out->Name()});
-
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
-
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
-
     del_node_set.insert(elementwise0);
     del_node_set.insert(elementwise1);
     del_node_set.insert(elementwise0_out);
@@ -202,7 +188,6 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
     del_node_set.insert(layer_norm_mean);
     del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
-
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
     IR_NODE_LINK_TO(subgraph.at(y), fused_node);
     IR_NODE_LINK_TO(elementwise_bias, fused_node);
@@ -210,7 +195,6 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
     IR_NODE_LINK_TO(fused_node, elementwise1_out);
-
     found_subgraph_count++;
   };
 

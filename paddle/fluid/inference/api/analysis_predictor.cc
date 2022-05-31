@@ -193,7 +193,7 @@ bool AnalysisPredictor::Init(
   }
 
   // no matter with or without MKLDNN
-  //  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (!PrepareScope(parent_scope)) {
     return false;

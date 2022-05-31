@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,20 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+namespace patterns {
+struct DeleteCIdentityOpPattern : public PatternBase {
+  DeleteCIdentityOpPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "delete_c_identity_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(any_op_out);
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+}  // namespace patterns
 
 class Graph;
 

@@ -1704,18 +1704,6 @@ struct DeleteDropoutOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
-struct DeleteCIdentityOpPattern : public PatternBase {
-  DeleteCIdentityOpPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "delete_c_identity_op_pattern") {}
-
-  void operator()();
-
-  PATTERN_DECL_NODE(any_op_out);
-  PATTERN_DECL_NODE(c_identity_op);
-  PATTERN_DECL_NODE(c_identity_op_out);
-  PATTERN_DECL_NODE(any_op2);
-};
-
 struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}

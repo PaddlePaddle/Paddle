@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,10 +30,14 @@ namespace plugin {
 template <typename T>
 class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale, const T* ele_bias,
-                                      int bias_size, int scale_size, int ele_bias_size,
-                                      const float eps, bool with_fp16)
-      : bias_size_(bias_size), scale_size_(scale_size), ele_bias_size_(ele_bias_size), eps_(eps) {
+  explicit PrelnResidualBiasPluginDynamic(const float* bias, const float* scale,
+                                          const T* ele_bias, int bias_size,
+                                          int scale_size, int ele_bias_size,
+                                          const float eps, bool with_fp16)
+      : bias_size_(bias_size),
+        scale_size_(scale_size),
+        ele_bias_size_(ele_bias_size),
+        eps_(eps) {
     with_fp16_ = with_fp16;
     bias_.resize(bias_size);
     scale_.resize(scale_size);
@@ -43,7 +47,8 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
     std::copy(ele_bias, ele_bias + ele_bias_size, ele_bias_.data());
   }
 
-  PrelnResidualBiasPluginDynamic(void const* serial_data, size_t serial_length) {
+  PrelnResidualBiasPluginDynamic(void const* serial_data,
+                                 size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &bias_);
     DeserializeValue(&serial_data, &serial_length, &scale_);
     DeserializeValue(&serial_data, &serial_length, &ele_bias_);
@@ -56,7 +61,8 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     auto ptr = new PrelnResidualBiasPluginDynamic(
-        bias_.data(), scale_.data(), ele_bias_.data(), bias_size_, scale_size_, ele_bias_size_, eps_, with_fp16_);
+        bias_.data(), scale_.data(), ele_bias_.data(), bias_size_, scale_size_,
+        ele_bias_size_, eps_, with_fp16_);
     ptr->bias_gpu_ = bias_gpu_;
     ptr->scale_gpu_ = scale_gpu_;
     ptr->ele_bias_gpu_ = ele_bias_gpu_;
@@ -70,9 +76,11 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   int initialize() TRT_NOEXCEPT override;
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) + SerializedSize(ele_bias_) +
-                      SerializedSize(bias_size_) + SerializedSize(scale_size_) + SerializedSize(ele_bias_size_) +
-                      SerializedSize(eps_) + SerializedSize(with_fp16_);
+    size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) +
+                      SerializedSize(ele_bias_) + SerializedSize(bias_size_) +
+                      SerializedSize(scale_size_) +
+                      SerializedSize(ele_bias_size_) + SerializedSize(eps_) +
+                      SerializedSize(with_fp16_);
     return ser_size;
   }
   void serialize(void* buffer) const TRT_NOEXCEPT override {

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,23 +11,40 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <string>
-
 #include "paddle/fluid/framework/ir/delete_c_identity_op_pass.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
+#include <string>
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace patterns {
+
+void DeleteCIdentityOpPattern::operator()() {
+  auto any_op_out = pattern->NewNode(any_op_out_repr())
+                        ->assert_is_op_input("c_identity", "X")
+                        ->AsInput();
+  auto c_identity_op =
+      pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+
+  auto c_identity_op_out = pattern->NewNode(c_identity_op_out_repr())
+                               ->assert_is_op_output("c_identity", "Out")
+                               ->AsIntermediate();
+
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  c_identity_op->LinksFrom({any_op_out});
+  c_identity_op_out->LinksFrom({c_identity_op});
+  any_op2->LinksFrom({c_identity_op_out});
+}
+
+}  // namespace patterns
+
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
-#define GET_NODES                  \
-  GET_IR_NODE(any_op_out);         \
-  GET_IR_NODE(c_identity_op);         \
-  GET_IR_NODE(c_identity_op_out);     \
+#define GET_NODES                 \
+  GET_IR_NODE(any_op_out);        \
+  GET_IR_NODE(c_identity_op);     \
+  GET_IR_NODE(c_identity_op_out); \
   GET_IR_NODE(any_op2);
 
 void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
@@ -36,7 +53,8 @@ void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
 
   GraphPatternDetector gpd;
 
-  patterns::DeleteCIdentityOpPattern pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::DeleteCIdentityOpPattern pattern(gpd.mutable_pattern(),
+                                             pattern_name);
   pattern();
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -78,8 +96,7 @@ void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     any_op2_desc->Flush();
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph,
-                         {c_identity_op, c_identity_op_out});
+    GraphSafeRemoveNodes(graph, {c_identity_op, c_identity_op_out});
   };
 
   gpd(graph, handler);

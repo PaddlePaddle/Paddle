@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,21 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 
-#define RedType paddle::inference::tensorrt::plugin::kRedSum
-
-namespace nvinfer1 {
-class ILayer;
-}  // namespace nvinfer1
-namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -39,6 +24,27 @@ class CAllReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
+    paddle::inference::tensorrt::plugin::RedType red_type;
+    std::string name = "c_allreduce_sum";
+    switch (op.type()) {
+      case "c_allreduce_sum":
+        red_type = paddle::inference::tensorrt::plugin::kRedSum : break;
+
+      case "c_allreduce_max":
+        red_type = paddle::inference::tensorrt::plugin::kRedMax
+            : name = "c_allreduce_max";
+        break;
+
+      case "c_allreduce_min":
+        red_type = paddle::inference::tensorrt::plugin::kRedMin : break;
+
+      case "c_allreduce_prod":
+        red_type = paddle::inference::tensorrt::plugin::kRedProd : break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", RedType));
+    }
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -69,12 +75,12 @@ class CAllReduceOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
       if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
-          with_fp16 = true;
+        with_fp16 = true;
       }
 
       plugin::CAllReducePluginDynamic* plugin =
-          new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream, RedType,
-                                              with_fp16);
+          new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream,
+                                              red_type, with_fp16);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
@@ -85,33 +91,12 @@ class CAllReduceOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::CAllReducePlugin* plugin = new plugin::CAllReducePlugin(
-          ring_id, use_calc_stream, RedType, with_fp16);
+          ring_id, use_calc_stream, red_type, with_fp16);
       layer = engine_->AddPlugin(&input, input_num, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    std::string name = "c_allreduce_sum";
-    switch (RedType) {
-      case paddle::inference::tensorrt::plugin::kRedSum:
-        name = "c_allreduce_sum";
-        break;
 
-      case paddle::inference::tensorrt::plugin::kRedMax:
-        name = "c_allreduce_max";
-        break;
-
-      case paddle::inference::tensorrt::plugin::kRedMin:
-        name = "c_allreduce_min";
-        break;
-
-      case paddle::inference::tensorrt::plugin::kRedProd:
-        name = "c_allreduce_prod";
-        break;
-
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", RedType));
-    }
     RreplenishLayerAndOutput(layer, name, {output_name}, test_mode);
   }
 };
@@ -121,3 +106,6 @@ class CAllReduceOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(c_allreduce_sum, CAllReduceOpConverter);
+REGISTER_TRT_OP_CONVERTER(c_allreduce_max, CAllReduceOpConverter);
+REGISTER_TRT_OP_CONVERTER(c_allreduce_min, CAllReduceOpConverter);
+REGISTER_TRT_OP_CONVERTER(c_allreduce_prod, CAllReduceOpConverter);

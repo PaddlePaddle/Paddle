@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 
 namespace paddle {
 namespace inference {
@@ -32,7 +32,7 @@ using half = phi::dtype::float16;
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
-template<typename T>
+template <typename T>
 int PrelnResidualBiasPluginDynamic<T>::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
   cudaMemcpy(bias_gpu_, bias_.data(), bias_size_ * sizeof(float),
@@ -45,11 +45,10 @@ int PrelnResidualBiasPluginDynamic<T>::initialize() TRT_NOEXCEPT {
   cudaMemcpy(ele_bias_gpu_, ele_bias_.data(), ele_bias_size_ * sizeof(T),
              cudaMemcpyHostToDevice);
 
-
   return 0;
 }
 
-template<typename T>
+template <typename T>
 void PrelnResidualBiasPluginDynamic<T>::terminate() TRT_NOEXCEPT {
   if (bias_gpu_) {
     cudaFree(bias_gpu_);
@@ -65,14 +64,14 @@ void PrelnResidualBiasPluginDynamic<T>::terminate() TRT_NOEXCEPT {
   }
 }
 
-template<typename T>
+template <typename T>
 nvinfer1::DimsExprs PrelnResidualBiasPluginDynamic<T>::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
-template<typename T>
+template <typename T>
 bool PrelnResidualBiasPluginDynamic<T>::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
@@ -111,22 +110,14 @@ bool PrelnResidualBiasPluginDynamic<T>::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
-template<typename T>
+template <typename T>
 nvinfer1::DataType PrelnResidualBiasPluginDynamic<T>::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-//  PADDLE_ENFORCE_EQ(index, 0,
-//                    platform::errors::InvalidArgument(
-//                        "The PrelnResidualBias Plugin only has one input, so the "
-//                        "index value should be 0, but get %d.",
-//                        index));
-//  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kHALF),
-//                    true, platform::errors::InvalidArgument(
-//                              "The input type should be half or float"));
   return input_types[0];
 }
 
-template<typename T>
+template <typename T>
 int PrelnResidualBiasPluginDynamic<T>::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
@@ -134,15 +125,15 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
   auto input_dims = input_desc[0].dims;
   size_t num = ProductDim(input_dims);
   int hidden = input_dims.d[2];
-  const size_t  rows = static_cast<size_t>(input_dims.d[0] * input_dims.d[1]); // batch * seq_length
+  const size_t rows = static_cast<size_t>(
+      input_dims.d[0] * input_dims.d[1]);  // batch * seq_length
   const size_t cols = static_cast<size_t>(input_dims.d[2]);
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. PrelnResidualBias-->fp32";
 
-    PADDLE_THROW(platform::errors::Fatal(
-        "unsupported float format!!!"));
+    PADDLE_THROW(platform::errors::Fatal("unsupported float format!!!"));
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -152,32 +143,26 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
 
     uint64_t seed = 0;
     const float dropout_prob = 0.;
-    const bool is_upscale_in_train=false;
+    const bool is_upscale_in_train = false;
     const bool is_test = true;
-    const uint64_t increment=0;
+    const uint64_t increment = 0;
     const float epsilon = eps_;
     const half *src = input2;
     const half *residual = input1;
     const half *bias = ele_bias_gpu_;
     const float *scale = scale_gpu_;
     const float *layernorm_bias = bias_gpu_;
-    uint8_t *mask_data=nullptr;
-    half *dst = static_cast<half *>(outputs[1]);;
+    uint8_t *mask_data = nullptr;
+    half *dst = static_cast<half *>(outputs[1]);
     half *layernorm_dst = static_cast<half *>(outputs[0]);
     float *mean = nullptr;
     float *var = nullptr;
-
-//    const int VecSize = paddle::operators::MAX_CACHE_BYTES / sizeof(T);
     const int VecSize = 8;
-    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half, uint8_t, VecSize, float, false>()(
-          rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
-          increment, epsilon, src, residual, bias, scale, layernorm_bias,
-          mask_data, dst, layernorm_dst, mean, var, stream);
-//    cudaDeviceSynchronize();
-    VLOG(6) << "finish FusedLayernormResidualDropoutBiasFunctor";
-//    operators::math::PrelnResidualBiasFunctor<half> skip_layer_norm_func;
-//    skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
-//                         output, static_cast<half>(eps_), stream);
+    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<
+        half, uint8_t, VecSize, float, false>()(
+        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test, increment,
+        epsilon, src, residual, bias, scale, layernorm_bias, mask_data, dst,
+        layernorm_dst, mean, var, stream);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) tensorRT plugin should be "
@@ -187,13 +172,14 @@ int PrelnResidualBiasPluginDynamic<T>::enqueue(
         "max_input_shape, opt_input_shape, true"));
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "The PrelnResidualBias TRT Plugin's input type should be float or half."));
+    PADDLE_THROW(
+        platform::errors::Fatal("The PrelnResidualBias TRT Plugin's input type "
+                                "should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
 
-template class PrelnResidualBiasPluginDynamic<half>; 
+template class PrelnResidualBiasPluginDynamic<half>;
 #endif
 
 }  // namespace plugin

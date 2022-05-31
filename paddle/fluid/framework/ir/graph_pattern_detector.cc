@@ -2796,25 +2796,6 @@ void patterns::DeleteDropoutOpPattern::operator()() {
   any_op2->LinksFrom({dropout_op_out});
 }
 
-void patterns::DeleteCIdentityOpPattern::operator()() {
-  auto any_op_out = pattern->NewNode(any_op_out_repr())
-                        ->assert_is_op_input("c_identity", "X")
-                        ->AsInput();
-
-  auto c_identity_op =
-      pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
-
-  auto c_identity_op_out = pattern->NewNode(c_identity_op_out_repr())
-                               ->assert_is_op_output("c_identity", "Out")
-                               ->AsIntermediate();
-
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
-
-  c_identity_op->LinksFrom({any_op_out});
-  c_identity_op_out->LinksFrom({c_identity_op});
-  any_op2->LinksFrom({c_identity_op_out});
-}
-
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
                                              const std::string &quant_type) {
   auto *input_scale_node = pattern->NewNode(GetNodeName("input_scale_node"))

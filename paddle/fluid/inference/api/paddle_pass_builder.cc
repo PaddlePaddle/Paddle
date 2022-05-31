@@ -91,15 +91,15 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_quant_dequant_filter_op_pass",   //
       "delete_weight_dequant_linear_op_pass",  //
       "delete_quant_dequant_linear_op_pass",   //
-      //      "add_support_int8_pass",                 //
+      "add_support_int8_pass",                 //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "embedding_eltwise_layernorm_fuse_pass",        //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
       "trt_map_matmul_v2_to_mul_pass",                //
+      "delete_c_identity_op_pass",                    //
       "multihead_matmul_fuse_pass_v2",                //
       "multihead_matmul_fuse_pass_v3",                //
-      "delete_c_identity_op_pass",                    //
       "preln_residual_bias_fuse_pass",                //
       "skip_layernorm_fuse_pass",                     //
       "preln_skip_layernorm_fuse_pass",               //

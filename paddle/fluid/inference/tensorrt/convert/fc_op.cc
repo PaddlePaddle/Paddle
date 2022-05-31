@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -126,12 +123,6 @@ class FcOpConverter : public OpConverter {
       }
       engine_->SetTensorDynamicRange(X, in_scale);
     }
-
-    // debuggggggggggggggg
-
-    engine_->SetTensorDynamicRange(X, 1.0);
-    // debuggggggggggg end
-
     weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
@@ -152,18 +143,18 @@ class FcOpConverter : public OpConverter {
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
-      enable_int8 = true; // debugggggg
       if (enable_int8 || support_int8) {
         // add conv layer
-        //        PADDLE_ENFORCE_EQ(
-        //            op_desc.HasAttr("out_threshold"), true,
-        //            platform::errors::InvalidArgument(
-        //                "must have out threshold in fc layers in int8 mode"));
-
-        // debuggggggggg
-        //float out_scale =
-        //    BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-        float out_scale = 1.0;
+        float out_scale = 0;
+        if (enable_int8) {
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in fc layers in int8 mode"));
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        } else {
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+        }
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 =
             TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
@@ -323,15 +314,8 @@ class FcOpConverter : public OpConverter {
       if (enable_int8 || support_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
-      engine_->SetTensorDynamicRange(reshape_itensor, 1.0); // debuggggggggg
       regist_fc(reshape_itensor, n_output, weight, bias);
     }
-
-//    LOG(INFO) << "========W=======" << weight_h << " " << weight_w
-//              << " , x_nbD " << x_dim.nbDims;
-//    for (int k = 0; k < x_dim.nbDims; ++k) {
-//      LOG(INFO) << x_dim.d[k];
-//    }
   }
 };
 
