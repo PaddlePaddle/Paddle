@@ -233,6 +233,23 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
       mu_local += __shfl_xor_sync(uint32_t(-1), mu_local, it);
     }
+    if (WARPS_N > 1) {
+      if (lane == 0) {
+        smem[warp_m * WARPS_N + warp_n] = mu_local;
+      }
+      __syncthreads();
+      if (tidx == 0) {
+        mu_local = 0.f;
+#pragma unroll
+        for (int it = 0; it < WARPS_N; ++it) {
+          mu_local += smem[warp_m * WARPS_N + it];
+        }
+        smem[warp_m] = mu_local;
+      }
+      __syncthreads();
+      mu_local = smem[warp_m];
+    }
+
     mu_local *= rn;
     if (lane == 0) {
       mean_out_ptr[row] = mu_local;
@@ -252,6 +269,24 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     for (int it = 1; it < THREADS_PER_WARP; it *= 2) {
       var_local += __shfl_xor_sync(uint32_t(-1), var_local, it);
     }
+
+    if (WARPS_N > 1) {
+      if (lane == 0) {
+        smem[warp_m * WARPS_N + warp_n] = var_local;
+      }
+      __syncthreads();
+      if (tidx == 0) {
+        var_local = 0.f;
+#pragma unroll
+        for (int it = 0; it < WARPS_N; ++it) {
+          var_local += smem[warp_m * WARPS_N + it];
+        }
+        smem[warp_m] = var_local;
+      }
+      __syncthreads();
+      var_local = smem[warp_m];
+    }
+
     // Note: to assure if it is right for double
     U rsigma = rsqrtf(var_local * rn + epsilon);
     if (lane == 0) {
