@@ -323,7 +323,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
+      tmp_dev_ins_data = paddle::memory::Alloc(
+          context.GetPlace(), in_num * sizeof(T*), context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -369,7 +370,9 @@ struct ConcatFunctor<phi::GPUContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          paddle::memory::Alloc(context, inputs_col_num * sizeof(int64_t));
+          paddle::memory::Alloc(context.GetPlace(),
+                                inputs_col_num * sizeof(int64_t),
+                                context.stream());
 
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
@@ -484,7 +487,8 @@ class SplitFunctor<phi::GPUContext, T> {
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       // TODO(chentianyu03): try to find a method to remove the Alloc function
-      tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
+      tmp_dev_outs_data = paddle::memory::Alloc(
+          context.GetPlace(), o_num * sizeof(T*), context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -532,7 +536,9 @@ class SplitFunctor<phi::GPUContext, T> {
       auto tmp_dev_ins_col_data =
           // TODO(chentianyu03): try to find a method to remove the Alloc
           // function
-          paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
+          paddle::memory::Alloc(context.GetPlace(),
+                                outputs_cols_num * sizeof(int64_t),
+                                context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
