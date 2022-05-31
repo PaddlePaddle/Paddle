@@ -22,6 +22,36 @@ import sys
 
 
 class IPULaunch(object):
+    """
+    Launch the distributed computing with IPUs.
+
+    Args:
+        hosts (string): The ips of hosts. 
+            For example: --hosts=192.168.0.3,192.168.0.5 launch the distributed program within 2 hosts.
+        ipus_per_replica (int): The number of IPUs requested by each replica. 
+            For example: --ipus_per_replica=8 will allocate 8 IPUs to each replica.
+        nproc_per_host (int): The number of processes per host. 
+            For example: --nproc_per_host=2 will launch 2 processes per host.
+        ipu_partition (string): To select the partition or create a new partition.
+        vipu_server (string): Set the vipu server ip to enable vipu. 
+            Vipu server ip is able to be checked by the command \`vipu-admin --server-version\` out of the docker container.
+        training_script (string): The full path to the single IPU training program/script to be launched in parallel, 
+            followed by all the arguments for the training script.
+        training_script_args (string): The args for the training script.
+
+    Returns:
+        The IPULaunch instance.
+
+    Examples:
+        .. code-block:: bash
+	
+            # required: ipu
+            
+            # With the following command, the job will begin to launch 2 processes with a single host.
+            # Each process will acquire 2 replicas and 1 IPU per replica.
+            python -m paddle.distributed.launch --device_num 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
+    """
+
     def __init__(self, hosts, ipus_per_replica, nproc_per_host, ipu_partition,
                  vipu_server, training_script, training_script_args):
         if not fluid.core.is_compiled_with_ipu():

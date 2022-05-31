@@ -26,6 +26,7 @@ def log(ctx):
 
 
 def rewrite_ipu_script(ctx):
+    # replace the script to launch the distributed computing with IPUs
     import paddle.fluid as fluid
     if fluid.core.is_compiled_with_ipu():
         import os

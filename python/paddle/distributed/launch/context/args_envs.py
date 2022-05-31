@@ -105,7 +105,7 @@ def parse_args():
         "--device_num",
         type=int,
         default=None,
-        help="the number of accelerate devices.")
+        help="the number of accelerate devices. Default None")
 
     base_group.add_argument("--host", type=str, default=None, help="host ip")
 
