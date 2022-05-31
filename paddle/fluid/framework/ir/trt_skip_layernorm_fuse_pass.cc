@@ -191,26 +191,30 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   };
 
   gpd(graph, handler);
-  bool use_varseqlen = Get<bool>("use_varseqlen");
-  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
-  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+  if (found_subgraph_count > 0) {
+    bool use_varseqlen = Get<bool>("use_varseqlen");
+    std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+    std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-  if (use_varseqlen && pos_id != "" && mask_id != "") {
-    if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
-        graph->Has(framework::ir::kMultiheadMatmulPass)) {
-      VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
+    if (use_varseqlen && pos_id != "" && mask_id != "") {
+      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+          graph->Has(framework::ir::kMultiheadMatmulPass)) {
+        VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Use transformer'varseqlen need "
+            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+      }
+    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+      VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Use transformer'varseqlen need "
-          "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+      PADDLE_THROW(
+          platform::errors::Fatal("Use transformer'varseqlen need config: "
+                                  "use_varseqlen, set pos_id, set "
+                                  "mask_id. Or not use varseqlen, do not set "
+                                  "pos_id, set mask_id. Please "
+                                  "reconfig"));
     }
-  } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
-    VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
-  } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Use transformer'varseqlen need config: use_varseqlen, set pos_id, set "
-        "mask_id. Or not use varseqlen, do not set pos_id, set mask_id. Please "
-        "reconfig"));
   }
   AddStatis(found_subgraph_count);
 }
