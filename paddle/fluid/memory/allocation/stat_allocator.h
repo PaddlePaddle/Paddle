@@ -47,8 +47,7 @@ class StatAllocator : public Allocator {
 
     const platform::Place& place = allocation->place();
     if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place) ||
-        platform::is_npu_pinned_place(place)) {
+        platform::is_cuda_pinned_place(place)) {
       HOST_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
                               allocation->size());
     } else {
