@@ -1087,12 +1087,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = true;
       }
 
-      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
-      // auto_growth
-      if (config.tensorrt_engine_enabled()) {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
-      }
-
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
