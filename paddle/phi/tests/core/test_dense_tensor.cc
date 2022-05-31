@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
 

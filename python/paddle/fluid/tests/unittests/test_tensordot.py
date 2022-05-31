@@ -90,65 +90,6 @@ class TestTensordotAPI(unittest.TestCase):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
 
     def set_test_axes(self):
-        self.all_axes = []
-        axial_index = range(4)
-        all_permutations = list(it.permutations(axial_index, 0)) + list(
-            it.permutations(axial_index, 1)) + list(
-                it.permutations(axial_index, 2)) + list(
-                    it.permutations(axial_index, 3)) + list(
-                        it.permutations(axial_index, 4))
-        self.all_axes.extend(list(i) for i in all_permutations)
-
-        for axes_x in all_permutations:
-            for axes_y in all_permutations:
-                if len(axes_x) < len(axes_y):
-                    supplementary_axes_x = axes_x + axes_y[len(axes_x):]
-                    if any(
-                            supplementary_axes_x.count(i) > 1
-                            for i in supplementary_axes_x):
-                        continue
-                elif len(axes_y) < len(axes_x):
-                    supplementary_axes_y = axes_y + axes_x[len(axes_y):]
-                    if any(
-                            supplementary_axes_y.count(i) > 1
-                            for i in supplementary_axes_y):
-                        continue
-                self.all_axes.append([list(axes_x), list(axes_y)])
-
-        self.all_axes.extend(range(5))
-
-    def test_dygraph(self):
-        paddle.disable_static()
-        for axes in self.all_axes:
-            for place in self.places:
-                x = paddle.to_tensor(self.x, place=place)
-                y = paddle.to_tensor(self.y, place=place)
-                paddle_res = paddle.tensordot(x, y, axes)
-                np_res = tensordot_np(self.x, self.y, axes)
-                np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
-
-    def test_static(self):
-        paddle.enable_static()
-        for axes in self.all_axes:
-            for place in self.places:
-                with paddle.static.program_guard(paddle.static.Program(),
-                                                 paddle.static.Program()):
-                    x = paddle.static.data(
-                        name='x', shape=self.x_shape, dtype=self.dtype)
-                    y = paddle.static.data(
-                        name='y', shape=self.y_shape, dtype=self.dtype)
-                    z = paddle.tensordot(x, y, axes)
-                    exe = paddle.static.Executor(place)
-                    paddle_res = exe.run(feed={'x': self.x,
-                                               'y': self.y},
-                                         fetch_list=[z])
-                    np_res = tensordot_np(self.x, self.y, axes)
-                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
-
-
-class TestTensordotAPIFloat64(TestTensordotAPI):
-    # Only test a small part of axes case for Float64 type
-    def set_test_axes(self):
         self.all_axes = [
             [[3, 2], [3]], [[2, 1, 0], [2, 1]], [[1, 2, 0], [1, 3, 2]], [3, 0],
             [[], [0, 3, 1]], [[2, 1, 0, 3], [2, 0, 1, 3]],
@@ -194,35 +135,65 @@ class TestTensordotAPIFloat64(TestTensordotAPI):
             [[2, 0, 1], [0, 1, 3]], [[2, 1], [0, 1, 3]]
         ]
 
+    def test_dygraph(self):
+        paddle.disable_static()
+        for axes in self.all_axes:
+            for place in self.places:
+                x = paddle.to_tensor(self.x, place=place)
+                y = paddle.to_tensor(self.y, place=place)
+                paddle_res = paddle.tensordot(x, y, axes)
+                np_res = tensordot_np(self.x, self.y, axes)
+                np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
+
+    def test_static(self):
+        paddle.enable_static()
+        for axes in self.all_axes:
+            for place in self.places:
+                with paddle.static.program_guard(paddle.static.Program(),
+                                                 paddle.static.Program()):
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype=self.dtype)
+                    y = paddle.static.data(
+                        name='y', shape=self.y_shape, dtype=self.dtype)
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
+                    paddle_res = exe.run(feed={'x': self.x,
+                                               'y': self.y},
+                                         fetch_list=[z])
+                    np_res = tensordot_np(self.x, self.y, axes)
+                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
+
+
+class TestTensordotAPIFloat64(TestTensordotAPI):
     def set_dtype(self):
         self.dtype = np.float64
 
 
-class TestTensordotAPIBroadcastCase1(TestTensordotAPIFloat64):
+class TestTensordotAPIBroadcastCase1(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [1, 1, 1, 5]
         self.y_shape = [1, 5, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase2(TestTensordotAPIFloat64):
+class TestTensordotAPIBroadcastCase2(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [1, 5, 5, 5]
         self.y_shape = [1, 1, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase3(TestTensordotAPIFloat64):
+class TestTensordotAPIBroadcastCase3(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [5, 5, 1, 5]
 
 
-class TestTensordotAPIBroadcastCase4(TestTensordotAPIFloat64):
+class TestTensordotAPIBroadcastCase4(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 1]
         self.y_shape = [1, 1, 1, 1]
 
 
-class TestTensordotAPIBroadcastCase5(TestTensordotAPIFloat64):
+class TestTensordotAPIBroadcastCase5(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [1, 1, 5, 5]
         self.y_shape = [5, 5, 1, 5]

@@ -43,10 +43,7 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
-                'const paddle::optional<Tensor&>':
-                'const paddle::optional<MetaTensor&>',
-                'paddle::optional<const Tensor&>':
-                'paddle::optional<const MetaTensor&>'
+                'const paddle::optional<Tensor>&': 'const MetaTensor&'
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
@@ -117,9 +114,13 @@ namespace phi {
 
 def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
                                             source_file_path):
+    apis = []
+    for each_api_yaml in api_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                apis.extend(api_list)
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -159,6 +160,7 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to api yaml file',
+        nargs='+',
         default='python/paddle/utils/code_gen/api.yaml')
     parser.add_argument(
         '--wrapped_infermeta_header_path',

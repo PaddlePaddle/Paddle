@@ -1013,12 +1013,13 @@ class TheOnePSRuntime(RuntimeBase):
             if self.context['ps_mode'] == DistributedMode.GEO:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
-
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+        if not self.context['use_ps_gpu']:
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context['ps_mode'] == DistributedMode.GEO:
