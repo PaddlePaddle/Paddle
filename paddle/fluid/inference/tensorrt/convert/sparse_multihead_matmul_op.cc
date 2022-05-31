@@ -340,10 +340,21 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
             with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
             static_cast<void*>(w_data), static_cast<size_t>(weight_t->numel())};
         weight.dims.assign({n, m});
+        
+        half* half_bias_data = nullptr;
+        void* b_data = nullptr;
+        if (with_fp16) {
+          half_bias_data = new half[bias_t->numel()];
+          for (int i = 0; i < bias_t->numel(); i++) {
+            half_bias_data[i] = static_cast<half>(bias_data[i]);
+          }
+          b_data = static_cast<void*>(half_bias_data);
+        } else {
+          b_data = static_cast<void*>(bias_data);
+        }
 
-        TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
-                                    static_cast<void*>(bias_data),
-                                    static_cast<size_t>(bias_t->numel())};
+        TensorRTEngine::Weight bias{with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+                                    b_data, static_cast<size_t>(bias_t->numel())};
 
         // add shuffle before fc
         nvinfer1::Dims reshape_before_fc_dim;

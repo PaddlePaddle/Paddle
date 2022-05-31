@@ -255,15 +255,26 @@ class SparseFcOpConverter : public OpConverter {
 
     float* bias_data = nullptr;
     int bias_num = 0;
+    void* b_data = nullptr;
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
       bias_num = b_t->numel();
+    
+      half* half_bias_data = nullptr;
+      if (with_fp16) {
+        half_bias_data = new half[bias_num];
+        for (int i = 0; i < bias_num; i++) {
+          half_bias_data[i] = static_cast<half>(bias_data[i]);
+        }
+        b_data = static_cast<void*>(half_bias_data);
+      } else {
+        b_data = static_cast<void*>(bias_data);
+      }
     }
-    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(bias_data),
-                                static_cast<size_t>(bias_num)};
+    TensorRTEngine::Weight bias{with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+                                b_data, static_cast<size_t>(bias_num)};
 
     // Running the TRT Static Shape mode: x_num_col_dims-1
     if (!engine_->with_dynamic_shape()) {
