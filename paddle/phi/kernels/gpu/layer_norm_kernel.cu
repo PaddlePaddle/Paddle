@@ -84,7 +84,7 @@ void LayerNormKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           scale->dtype(),
           bias->dtype(),
-          phi::errors::InvalidArgument("Thie Scale and Bias of layer_norm op "
+          phi::errors::InvalidArgument("This Scale and Bias of layer_norm op "
                                        "should have the same data type."));
     }
   } else {
@@ -131,59 +131,75 @@ void LayerNormKernel(const Context &dev_ctx,
     }                                                                      \
   } while (0)
 
+#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
+  case (feature_size): {                                                     \
+    constexpr int WARPS_N = feature_size < 1024 ? 1 : (feature_size / 1024); \
+    constexpr int WARPS_M = 4 / WARPS_N;                                     \
+    const int THREADS_PER_WARP = 32;                                         \
+    const int BYTES_PER_LDG = 16;                                            \
+    const int VecSize = BYTES_PER_LDG / sizeof(T);                           \
+    const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;        \
+    const int ROWS_PER_CTA = WARPS_M;                                        \
+    const int grid = static_cast<int>(                                       \
+        std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
+    paddle::operators::fast_ln_fwd_kernel<                                   \
+        T,                                                                   \
+        U,                                                                   \
+        ScaleT,                                                              \
+        VecSize,                                                             \
+        WARPS_M,                                                             \
+        WARPS_N,                                                             \
+        BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(                \
+        batch_size,                                                          \
+        feature_size,                                                        \
+        epsilon,                                                             \
+        x_data,                                                              \
+        static_cast<const ScaleT *>(void_scale_data),                        \
+        static_cast<const ScaleT *>(void_bias_data),                         \
+        mean_data,                                                           \
+        var_data,                                                            \
+        y_data);                                                             \
+  } break
+
+#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 256);  \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 512);  \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1536); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1792); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 2048); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 4096)
+
 #ifdef PADDLE_WITH_CUDA
-  bool can_call_1024_kernel = false;
-  if (feature_size == 1024 && scale != nullptr && bias != nullptr) {
-    can_call_1024_kernel = true;
+  bool can_call_fast_kernel = false;
+  if ((feature_size >= 256 && feature_size <= 2048 && feature_size % 256 == 0 ||
+       feature_size == 4096) &&
+      scale != nullptr && bias != nullptr) {
+    can_call_fast_kernel = true;
   }
-  if (can_call_1024_kernel) {
-    const int WARPS_M = 4;
-    const int WARPS_N = 1;
-    const int THREADS_PER_WARP = 32;
-    const int BYTES_PER_LDG = 16;
-    const int VecSize = BYTES_PER_LDG / sizeof(T);
-
-    const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;
-    const int ROWS_PER_CTA = WARPS_M;
-
-    const int grid = static_cast<int>(
-        std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));
+  if (can_call_fast_kernel) {
     if (is_scale_bias_same_dtype_with_x) {
-      paddle::operators::ln_fwd_1024_kernel<
-          T,
-          U,
-          T,
-          VecSize,
-          WARPS_M,
-          WARPS_N,
-          BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-          batch_size,
-          feature_size,
-          epsilon,
-          x_data,
-          static_cast<const T *>(void_scale_data),
-          static_cast<const T *>(void_bias_data),
-          mean_data,
-          var_data,
-          y_data);
+      switch (feature_size) {
+        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Only when feature_size is from 256 to 4096 and is diviaible by "
+              "256 is supported "
+              "now"));
+          break;
+      }
     } else {
-      paddle::operators::ln_fwd_1024_kernel<
-          T,
-          U,
-          U,
-          VecSize,
-          WARPS_M,
-          WARPS_N,
-          BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(
-          batch_size,
-          feature_size,
-          epsilon,
-          x_data,
-          static_cast<const U *>(void_scale_data),
-          static_cast<const U *>(void_bias_data),
-          mean_data,
-          var_data,
-          y_data);
+      switch (feature_size) {
+        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Only when feature_size is from 256 to 4096 and is diviaible by "
+              "is supported "
+              "now"));
+          break;
+      }
     }
   } else {
 #endif
@@ -197,6 +213,7 @@ void LayerNormKernel(const Context &dev_ctx,
 #endif
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
+#undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
 }
 
 }  // namespace phi

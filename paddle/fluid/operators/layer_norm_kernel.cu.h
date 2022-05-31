@@ -36,8 +36,6 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-#define LN_NUM_COLS 1024
-
 inline static int GetDesiredBlockDim(int64_t block_dim) {
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;
@@ -183,7 +181,7 @@ template <typename T, typename U, typename ScaleT = U, int VecSize = 8,
           int ROWS_PER_CTA = WARPS_M,
           int ELTS_PER_ROW_PER_CTA = THREADS_PER_ROW *VecSize,
           int LDGS = ELTS_PER_ROW / ELTS_PER_ROW_PER_CTA>
-__global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
+__global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     int rows, int cols, const float epsilon, const T *__restrict__ x_ptr,
     const ScaleT *__restrict__ gamma_ptr, const ScaleT *__restrict__ beta_ptr,
     U *__restrict__ mean_out_ptr, U *__restrict__ var_out_ptr,
@@ -210,12 +208,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     col += THREADS_PER_ROW;
   }
 
-  constexpr U rn = 1.f / U(LN_NUM_COLS);
+  constexpr U rn = 1.f / U(ELTS_PER_ROW);
   for (int row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
     Vec x[LDGS];
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize, &x[it]);
+      phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
       col += THREADS_PER_ROW;
     }
     U xf[LDGS * VecSize];
@@ -277,7 +275,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Store<T, VecSize>(x[it], y_ptr + row * LN_NUM_COLS + col * VecSize);
+      phi::Store<T, VecSize>(x[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
       col += THREADS_PER_ROW;
     }
   }
@@ -416,10 +414,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   const int r = bidx * ROWS_PER_CTA + warp_m;
   const int c = warp_n * THREADS_PER_WARP + lane;
 
-  static_assert(LN_NUM_COLS == THREADS_PER_ROW * LDGS * VecSize, "");
+  static_assert(ELTS_PER_ROW == THREADS_PER_ROW * LDGS * VecSize, "");
 
   // smem for column reduction
-  __shared__ U smem_[ROWS_PER_CTA * LN_NUM_COLS];
+  __shared__ U smem_[ROWS_PER_CTA * ELTS_PER_ROW];
 
   U dgamma_sum[LDGS * VecSize];
   U dbeta_sum[LDGS * VecSize];
@@ -434,7 +432,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   U *sum_loss2_shared = &smem_sum_loss2[warp_m * WARPS_N];
 
   // step-1: compute dx and local results of dscale and dbias
-  constexpr float rn = 1.f / static_cast<float>(LN_NUM_COLS);
+  constexpr float rn = 1.f / static_cast<float>(ELTS_PER_ROW);
   Vec_scale gamma[LDGS];
   int col = c;
 #pragma unroll
@@ -452,12 +450,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     int col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      phi::Load<T, VecSize>(dout_ptr + row * LN_NUM_COLS + col * VecSize,
+      phi::Load<T, VecSize>(dout_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &dout[it]);
-      phi::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize, &x[it]);
+      phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
       if (isFusedDropoutResidualLn) {
         phi::Load<MaskType, VecSize>(
-            mask_ptr + row * LN_NUM_COLS + col * VecSize, &mask_vec[it]);
+            mask_ptr + row * ELTS_PER_ROW + col * VecSize, &mask_vec[it]);
       }
 
       col += THREADS_PER_ROW;
@@ -551,10 +549,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      phi::Store<T, VecSize>(x[it], dx_ptr + row * LN_NUM_COLS + col * VecSize);
+      phi::Store<T, VecSize>(x[it],
+                             dx_ptr + row * ELTS_PER_ROW + col * VecSize);
       if (isFusedDropoutResidualLn) {
         phi::Store<T, VecSize>(
-            dout[it], d_dropout_src_ptr + row * LN_NUM_COLS + col * VecSize);
+            dout[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
       }
       col += THREADS_PER_ROW;
     }
@@ -562,12 +561,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
 
   // step-2: column reduction of dscale and dbias for each thread block.
   // each block's sum: [4 * 1024] -> [1 * 1024]
-  enum { NUM_RES = LN_NUM_COLS / THREADS_PER_CTA };  // 1024/128 = 8
-  static_assert(NUM_RES * THREADS_PER_CTA == LN_NUM_COLS, "");
+  enum { NUM_RES = ELTS_PER_ROW / THREADS_PER_CTA };  // 1024/128 = 8
+  static_assert(NUM_RES * THREADS_PER_CTA == ELTS_PER_ROW, "");
 
   U *smem_write;
 
-  smem_write = &smem_[warp_m * LN_NUM_COLS + tid_r * VecSize];  // [4 * 1024]
+  smem_write = &smem_[warp_m * ELTS_PER_ROW + tid_r * VecSize];  // [4 * 1024]
 #pragma unroll
   for (int it = 0; it < LDGS; it++) {
 #pragma unroll
@@ -583,12 +582,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   for (int it = 0; it < ROWS_PER_CTA; it++) {
     for (int jt = 0; jt < NUM_RES; jt++) {
       cta_dbeta_sum[jt] +=
-          smem_[it * LN_NUM_COLS + tidx + jt * THREADS_PER_CTA];
+          smem_[it * ELTS_PER_ROW + tidx + jt * THREADS_PER_CTA];
     }
   }
   __syncthreads();
 
-  smem_write = &smem_[warp_m * LN_NUM_COLS + tid_r * VecSize];
+  smem_write = &smem_[warp_m * ELTS_PER_ROW + tid_r * VecSize];
 #pragma unroll
   for (int it = 0; it < LDGS; it++) {
 #pragma unroll
@@ -603,19 +602,19 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   for (int it = 0; it < ROWS_PER_CTA; it++) {
     for (int jt = 0; jt < NUM_RES; jt++) {
       cta_dgamma_sum[jt] +=
-          smem_[it * LN_NUM_COLS + tidx + jt * THREADS_PER_CTA];
+          smem_[it * ELTS_PER_ROW + tidx + jt * THREADS_PER_CTA];
     }
   }
 
   // the shape of results：(#blocks, 1024)
   U *dgamma_part =
-      static_cast<U *>(dgamma_temp_ptr) + bidx * LN_NUM_COLS + tidx;
+      static_cast<U *>(dgamma_temp_ptr) + bidx * ELTS_PER_ROW + tidx;
   for (int jt = 0; jt < NUM_RES; jt++) {
     *dgamma_part = cta_dgamma_sum[jt];
     dgamma_part += THREADS_PER_CTA;
   }
 
-  U *dbeta_part = static_cast<U *>(dbeta_temp_ptr) + bidx * LN_NUM_COLS + tidx;
+  U *dbeta_part = static_cast<U *>(dbeta_temp_ptr) + bidx * ELTS_PER_ROW + tidx;
   for (int jt = 0; jt < NUM_RES; jt++) {
     *dbeta_part = cta_dbeta_sum[jt];
     dbeta_part += THREADS_PER_CTA;
@@ -640,7 +639,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
     const int rows, U *__restrict__ dg_part_, U *__restrict__ db_part_,
     ScaleT *__restrict__ dg_, ScaleT *__restrict__ db_) {
   using Vec = phi::AlignedVector<U, VecSize>;
-  static_assert(VEC_COLS == LN_NUM_COLS / VecSize, "");
+  static_assert(VEC_COLS == ELTS_PER_ROW / VecSize, "");
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -656,8 +655,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
   __shared__ U smem_space[(WARPS_M - 1) * THREADS_PER_ROW * VecSize];
 
   for (int col = c; col < VEC_COLS; col += gridDim.x * THREADS_PER_ROW) {
-    const U *dg_part_ptr = (dg_part_) + r * LN_NUM_COLS + col * VecSize;
-    const U *db_part_ptr = (db_part_) + r * LN_NUM_COLS + col * VecSize;
+    const U *dg_part_ptr = (dg_part_) + r * ELTS_PER_ROW + col * VecSize;
+    const U *db_part_ptr = (db_part_) + r * ELTS_PER_ROW + col * VecSize;
 
     U dg_sum[VecSize];
     U db_sum[VecSize];
@@ -669,8 +668,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
       Vec db;
       phi::Load<U, VecSize>(dg_part_ptr, &dg);
       phi::Load<U, VecSize>(db_part_ptr, &db);
-      dg_part_ptr += ROWS_PER_CTA * LN_NUM_COLS;
-      db_part_ptr += ROWS_PER_CTA * LN_NUM_COLS;
+      dg_part_ptr += ROWS_PER_CTA * ELTS_PER_ROW;
+      db_part_ptr += ROWS_PER_CTA * ELTS_PER_ROW;
 
 #pragma unroll
       for (int jt = 0; jt < VecSize; jt++) {
