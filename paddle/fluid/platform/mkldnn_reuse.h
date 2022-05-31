@@ -616,29 +616,17 @@ class BinaryMKLDNNHandler
  public:
   BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
                       const dnnl::engine engine, platform::Place cpu_place,
-                      const Tensor* x, const Tensor* y, Tensor* z,
-                      float scale_x, float scale_y, float scale_z,
+                      const Tensor* x, const Tensor* y, Tensor* out,
+                      float scale_x, float scale_y, float scale_out,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for X tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, x->layout()));
-
-    PADDLE_ENFORCE_EQ(
-        y->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument(
-            "Wrong layout set for Y tensor. Expected: %d (kMKLDNN), Actual: %d",
-            DataLayout::kMKLDNN, y->layout()));
-
     const auto src_x_tz = phi::vectorize(x->dims());
     const auto src_y_tz = phi::vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                       : phi::vectorize(z->dims());
+    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                         : phi::vectorize(out->dims());
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -667,7 +655,7 @@ class BinaryMKLDNNHandler
                                      MKLDNNMemoryFormat::any);
 
     auto attributes =
-        CreateAttributes(algo, scale_x, scale_y, scale_z, post_ops);
+        CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             dst_md);
@@ -681,7 +669,7 @@ class BinaryMKLDNNHandler
 
  private:
   static inline dnnl::primitive_attr CreateAttributes(
-      dnnl::algorithm op, float scale_x, float scale_y, float scale_z,
+      dnnl::algorithm op, float scale_x, float scale_y, float scale_out,
       dnnl::post_ops post_ops = dnnl::post_ops{}) {
     // Scales set in attributes for inputs contibute to the output equation
     // in the following way (assuming no broadcasting takes place):
@@ -699,9 +687,9 @@ class BinaryMKLDNNHandler
     // For mul operation on the other hand
     // output = (scale_out / scale_x) * x * (1.0 / scale_y) * y
     //                <scale_0>                 <scale_1>
-    float scale_0 = scale_z / scale_x;
+    float scale_0 = scale_out / scale_x;
     float scale_1 =
-        op == dnnl::algorithm::binary_add ? scale_z / scale_y : 1.0 / scale_y;
+        op == dnnl::algorithm::binary_add ? scale_out / scale_y : 1.0 / scale_y;
     dnnl::primitive_attr attributes;
     attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
                           {scale_0});
@@ -718,21 +706,15 @@ class BroadcastDataMKLDNNHandler
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
                              const dnnl::engine engine,
-                             platform::Place cpu_place, const Tensor* out,
-                             const Tensor* x, float scale_x, float scale_y,
-                             const dnnl::memory::desc& x_mem_desc)
+                             platform::Place cpu_place, const Tensor* x,
+                             Tensor* out, float scale_x, float scale_y,
+                             const std::vector<int64_t>& extended_x_dims)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-
     const auto src0_tz = phi::vectorize(out->dims());
-
     const auto src0_md =
         dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
                            platform::GetPlainMKLDNNFormat(src0_tz.size()));
-
-    const auto src1_md = x_mem_desc;
+    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -743,9 +725,9 @@ class BroadcastDataMKLDNNHandler
   }
 
   template <typename T_out = T>
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output) {
-    T_out* ptr = output->mutable_data<T_out>(
-        this->place_, this->fwd_pd_->dst_desc().get_size());
+  std::shared_ptr<dnnl::memory> AcquireZeroedDstMemory(framework::Tensor* out) {
+    T_out* ptr = out->mutable_data<T_out>(this->place_,
+                                          this->fwd_pd_->dst_desc().get_size());
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -758,22 +740,18 @@ class ReductionMKLDNNHandler
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
                          const float eps, const dnnl::engine engine,
                          platform::Place cpu_place, const Tensor* x,
-                         const Tensor* y, std::vector<int64_t> y_tz,
-                         const dnnl::primitive_attr& attr = NULL)
+                         const Tensor* out, std::vector<int64_t> out_tz,
+                         const dnnl::primitive_attr& attrs = NULL)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
                                                               cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    const auto out_md = memory::desc(out_tz, platform::MKLDNNGetDataType<T>(),
+                                     dnnl::memory::format_tag::any);
 
-    const auto y_md = memory::desc(y_tz, platform::MKLDNNGetDataType<T>(),
-                                   dnnl::memory::format_tag::any);
-
-    if (attr)
-      this->AcquireForwardPrimitiveDescriptor(attr, algo, x->mem_desc(), y_md,
-                                              p, eps);
+    if (attrs)
+      this->AcquireForwardPrimitiveDescriptor(attrs, algo, x->mem_desc(),
+                                              out_md, p, eps);
     else
-      this->AcquireForwardPrimitiveDescriptor(algo, x->mem_desc(), y_md, p,
+      this->AcquireForwardPrimitiveDescriptor(algo, x->mem_desc(), out_md, p,
                                               eps);
   }
 };
@@ -1055,6 +1033,14 @@ class ReorderMKLDNNHandler {
       std::shared_ptr<dnnl::memory> dst_memory_p,
       std::shared_ptr<dnnl::memory> src_memory_p) {
     return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+  std::shared_ptr<dnnl::reorder> AcquireReorder(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p,
+      const dnnl::primitive_attr& attrs) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p),
+                                           attrs);
   }
 
  private:

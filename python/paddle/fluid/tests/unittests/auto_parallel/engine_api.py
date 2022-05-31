@@ -127,8 +127,7 @@ def train():
     engine.prepare(optimizer, loss)
     engine.fit(dataset,
                batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               sample_generator=True)
+               steps_per_epoch=batch_num * batch_size)
 
     eval_dataset = MyDataset(batch_size)
     engine.prepare(optimizer, loss, mode='eval')

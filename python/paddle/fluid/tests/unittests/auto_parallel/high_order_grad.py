@@ -117,6 +117,7 @@ def loss_func(eq_loss, bc_u, bc_value):
 
 
 def main():
+    paddle.enable_static()
     # dataset
     train_dataset = LaplaceDataset(10)
     # optimizer
@@ -140,7 +141,7 @@ def main():
         labels_spec=labels_spec,
         strategy=dist_strategy)
     engine.prepare(optimizer=optimizer, loss=loss_func)
-    res = engine.fit(train_dataset, sample_generator=False)
+    res = engine.fit(train_dataset, batch_size=None)
 
     dist_context = engine.dist_context
     block = engine.main_program.global_block()

@@ -344,6 +344,7 @@ function abort(){
 }
 
 function check_style() {
+    set +x
     trap 'abort' 0
     set -e
 
@@ -368,7 +369,7 @@ function check_style() {
         if ! pre-commit run --files $file_name ; then
             commit_files=off
         fi
-    done 
+    done
 
     export PATH=${OLD_PATH}
     
@@ -378,6 +379,7 @@ function check_style() {
         exit 4
     fi
     trap : 0
+    set -x 
 }
 
 #=================================================
@@ -2984,20 +2986,11 @@ function build_develop() {
 }
 
 function check_coverage_build() {
-    if [ ! "${buildSize}" ];then
-        echo "build size not found"
-        exit 1
-    fi
-
-    if [ ${WITH_COVERAGE} != "ON" ];then
-        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
-        exit 1
-    fi
-
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3063,6 +3056,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
+        set +x
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
@@ -3074,6 +3068,7 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -3145,13 +3140,15 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      check_coverage_build)
+        check_coverage_build
         ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 

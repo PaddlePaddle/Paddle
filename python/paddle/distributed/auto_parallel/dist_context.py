@@ -115,6 +115,9 @@ class DistributedContext:
 
         self._is_initialized = False
 
+        # flag whether scale gradient with dp size
+        self._gradient_scale = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -187,15 +190,27 @@ class DistributedContext:
         return len(self._dist_tensors_for_program) or len(
             self._dist_ops_for_program)
 
+    @property
+    def gradient_scale(self):
+        return self._gradient_scale
+
+    @gradient_scale.setter
+    def gradient_scale(self, gs):
+        self._gradient_scale = gs
+
     def initialize(self):
         if not self._is_initialized:
             self._serial_main_program = self._original_serial_main_program.clone(
             )
             self._serial_startup_program = self._original_serial_startup_program.clone(
             )
-            self._serial_main_program = self._original_serial_main_program
-            self._serial_startup_program = self._original_serial_startup_program
-            self._serial_loss = self._original_serial_loss
+            # self._serial_main_program = self._original_serial_main_program
+            # self._serial_startup_program = self._original_serial_startup_program
+            if self._original_serial_loss:
+                self._serial_loss = self._serial_main_program.global_block(
+                ).vars[self._original_serial_loss[0].name]
+            else:
+                self._serial_loss = self._original_serial_loss
             self._serial_optimizer = self._original_serial_optimizer
             self._init_dist_attr_for_program()
             self._tensors_ids = list(self._dist_tensors_for_program.keys())

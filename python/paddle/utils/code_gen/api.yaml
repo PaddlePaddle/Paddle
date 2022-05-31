@@ -189,6 +189,18 @@
     func : assign
   backward : assign_grad
 
+- api : assign_out_
+  args : (Tensor x, Tensor output)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : assign
+    param : [x]
+  inplace : (output -> out)
+  backward : assign_out__grad
+
 # atan
 - api : atan
   args : (Tensor x)
@@ -318,6 +330,16 @@
   kernel :
     func : ceil
   backward : ceil_grad
+
+- api : celu
+  args : (Tensor x, float alpha)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : celu
+  backward : celu_grad
 
 # cholesky
 - api : cholesky
@@ -563,7 +585,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor
+  output : Tensor, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
@@ -590,6 +612,12 @@
   kernel :
     func : elu
   backward : elu_grad
+
+- api : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor
+  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  backward : embedding_grad
 
 - api : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -812,7 +840,7 @@
     skip_transform : x
 
 - api : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
+  args : (Tensor x, Tensor index, Scalar(int) axis=0)
   output : Tensor(out)
   infer_meta :
     func : GatherInferMeta
@@ -1534,7 +1562,7 @@
     func : PadInferMeta
   kernel :
     func : pad
-  # backward : pad_grad
+  backward : pad_grad
 
 - api : pad3d
   args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
@@ -2021,7 +2049,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=paddle::experimental::DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
@@ -2139,6 +2167,18 @@
   kernel :
     func : triangular_solve
   backward : triangular_solve_grad
+
+- api : tril_indices
+  args : (int rows, int cols, int offset, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+    backend : place
 
 - api : tril_triu
   args : (Tensor x,  int diagonal,  bool lower)

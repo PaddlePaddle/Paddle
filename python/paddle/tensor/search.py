@@ -41,7 +41,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
-            as axis+R. Default is 0.
+            as axis+R. Default is -1.
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
@@ -66,9 +66,10 @@ def argsort(x, axis=-1, descending=False, name=None):
                                    [4,7,7,9],
                                    [1,7,0,6]]], 
                                 dtype='float32')
-            out1 = paddle.argsort(x=x, axis=-1)
-            out2 = paddle.argsort(x=x, axis=0)
-            out3 = paddle.argsort(x=x, axis=1)
+            out1 = paddle.argsort(x, axis=-1)
+            out2 = paddle.argsort(x, axis=0)
+            out3 = paddle.argsort(x, axis=1)
+            
             print(out1)
             #[[[0 3 1 2]
             #  [0 1 2 3]
@@ -76,6 +77,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             # [[1 3 2 0]
             #  [0 1 2 3]
             #  [2 0 3 1]]]
+            
             print(out2)
             #[[[0 1 1 1]
             #  [0 0 0 0]
@@ -83,6 +85,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             # [[1 0 0 0]
             #  [1 1 1 1]
             #  [0 0 0 1]]]
+            
             print(out3)
             #[[[1 1 1 2]
             #  [0 0 2 0]
@@ -771,7 +774,7 @@ def index_sample(x, index):
 
 def masked_select(x, mask, name=None):
     """
-    This OP Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
+    Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
 
     Args:
