@@ -19,7 +19,7 @@ import errno
 import warnings
 import six
 import logging
-import dill as pickle
+import pickle
 import contextlib
 from functools import reduce
 import sys
