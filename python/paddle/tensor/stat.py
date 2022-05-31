@@ -241,6 +241,103 @@ def numel(x, name=None):
     return out
 
 
+def nanmedian(x, axis=None, keepdim=True, name=None):
+    r"""
+    Compute the median along the specified axis, while ignoring NaNs.
+
+    If the valid count of elements is a even number,
+    the average value of both elements in the middle is calculated as the median.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
+        axis (None|int|list|tuple, optional):
+            The axis along which to perform median calculations ``axis`` should be int or list of int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of median along ``axis`` of ``x``. The output dtype is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+            :name: nanmedian-example
+
+            import paddle
+            x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
+
+            y1 = x.nanmedian()
+            # y1 is [[2.]]
+
+            y2 = x.nanmedian(0)
+            # y2 is [[0.,  1.5, 2.5]]
+
+            y3 = x.nanmedian(0, keepdim=False)
+            # y3 is [0.,  1.5, 2.5]
+
+            y4 = x.nanmedian((0, 1))
+            # y4 is [[2.]]
+    """
+    if not isinstance(x, Variable):
+        raise TypeError("In median, the input x should be a Tensor.")
+
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
+
+    dims = len(x.shape)
+    if axis is None:
+        axis = []
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+    elif isinstance(axis, int):
+        axis = [axis]
+
+    if not isinstance(axis, list):
+        raise ValueError(
+            "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+        )
+
+    for i in range(len(axis)):
+        if not isinstance(axis[i], int) or not (axis[i] < dims and
+                                                axis[i] >= -dims):
+            raise ValueError(
+                "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+            )
+        if axis[i] < 0:
+            axis[i] += dims
+
+    if len(axis) != len(set(axis)):
+        raise ValueError("Axis has duplicated elements.")
+
+    if _in_legacy_dygraph():
+        median_index, out = _C_ops.nanmedian(x, 'axis', axis, 'keepdim',
+                                             keepdim)
+        return out
+
+    check_variable_and_dtype(
+        x, 'X', ['int32', 'int64', 'float16', 'float32', 'float64'],
+        'nanmedian')
+
+    helper = LayerHelper('nanmedian', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    medians = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='nanmedian',
+        inputs={'X': x},
+        outputs={'Out': out,
+                 'MedianIndex': medians},
+        attrs=attrs)
+    return out
+
+
 def median(x, axis=None, keepdim=False, name=None):
     """
     Compute the median along the specified axis.

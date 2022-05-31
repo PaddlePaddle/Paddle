@@ -602,7 +602,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor
+  output : Tensor, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
@@ -629,6 +629,12 @@
   kernel :
     func : elu
   backward : elu_grad
+
+- api : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor
+  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  backward : embedding_grad
 
 - api : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
