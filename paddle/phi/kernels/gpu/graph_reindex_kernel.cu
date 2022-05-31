@@ -347,6 +347,7 @@ void GraphReindexKernel(const Context& dev_ctx,
     thrust::device_vector<int> dst_ptr(bs);
     thrust::exclusive_scan(
         count_data + i * bs, count_data + (i + 1) * bs, dst_ptr.begin());
+
     GetDstEdgeCUDAKernel<T,
                          BLOCK_WARPS,
                          TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
@@ -355,7 +356,11 @@ void GraphReindexKernel(const Context& dev_ctx,
         count_data + i * bs,
         thrust::raw_pointer_cast(dst_ptr.data()),
         reindex_dst_data + begin);
-    begin += thrust::reduce(count_data + i * bs, count_data + (i + 1) * bs);
+
+    int count_i =
+        thrust::reduce(thrust::device_pointer_cast(count_data) + i * bs,
+                       thrust::device_pointer_cast(count_data) + (i + 1) * bs);
+    begin += count_i;
   }
 
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});
