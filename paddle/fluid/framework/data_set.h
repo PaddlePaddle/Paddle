@@ -159,7 +159,7 @@ class Dataset {
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
   virtual void SetGraphDeviceKeys(
-      const std::vector<int64_t>& h_device_keys) = 0;
+      const std::vector<uint64_t>& h_device_keys) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -240,7 +240,7 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
-  virtual void SetGraphDeviceKeys(const std::vector<int64_t>& h_device_keys);
+  virtual void SetGraphDeviceKeys(const std::vector<uint64_t>& h_device_keys);
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -326,7 +326,7 @@ class DatasetImpl : public Dataset {
   std::vector<T> input_records_;  // only for paddleboxdatafeed
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 1;
-  std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
+  std::vector<std::vector<uint64_t>> gpu_graph_device_keys_;
   std::vector<int64_t> gpu_graph_total_keys_;
 };
 

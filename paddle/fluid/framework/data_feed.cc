@@ -40,7 +40,7 @@ DLManager& global_dlmanager_pool() {
 
 void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
                                        std::vector<LoDTensor*> feed_vec,
-                                       std::vector<int64_t>* h_device_keys) {
+                                       std::vector<uint64_t>* h_device_keys) {
   place_ = place;
   gpuid_ = place_.GetDeviceId();
   VLOG(3) << "gpuid " << gpuid_;
@@ -51,23 +51,24 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
   h_device_keys_ = h_device_keys;
   device_key_size_ = h_device_keys_->size();
   d_device_keys_ =
-      memory::AllocShared(place_, device_key_size_ * sizeof(int64_t));
+      memory::AllocShared(place_, device_key_size_ * sizeof(uint64_t));
   CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
-                             device_key_size_ * sizeof(int64_t),
+                             device_key_size_ * sizeof(uint64_t),
                              cudaMemcpyHostToDevice, stream_));
   size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
   d_prefix_sum_ = memory::AllocShared(
-      place_, (once_max_sample_keynum + 1) * sizeof(int64_t));
-  int64_t* d_prefix_sum_ptr = reinterpret_cast<int64_t*>(d_prefix_sum_->ptr());
+      place_, (once_max_sample_keynum + 1) * sizeof(uint64_t));
+  uint64_t* d_prefix_sum_ptr =
+      reinterpret_cast<uint64_t*>(d_prefix_sum_->ptr());
   cudaMemsetAsync(d_prefix_sum_ptr, 0,
-                  (once_max_sample_keynum + 1) * sizeof(int64_t), stream_);
+                  (once_max_sample_keynum + 1) * sizeof(uint64_t), stream_);
   cursor_ = 0;
   jump_rows_ = 0;
-  device_keys_ = reinterpret_cast<int64_t*>(d_device_keys_->ptr());
-  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(int64_t));
-  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(int64_t), stream_);
+  device_keys_ = reinterpret_cast<uint64_t*>(d_device_keys_->ptr());
+  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(uint64_t));
+  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
   d_sample_keys_ =
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int64_t));
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(uint64_t));
 
   d_sampleidx2rows_.push_back(
       memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));

@@ -24,13 +24,14 @@ int CommonGraphSampler::load_from_ssd(std::string path) {
     std::cout << values.size();
     if (values.size() < 2) continue;
     auto neighbors = paddle::string::split_string<std::string>(values[1], ";");
-    std::vector<int64_t> neighbor_data;
+    std::vector<uint64_t> neighbor_data;
     for (auto x : neighbors) {
       neighbor_data.push_back(std::stoll(x));
     }
     auto src_id = std::stoll(values[0]);
-    _db->put(0, (char *)&src_id, sizeof(uint64_t), (char *)neighbor_data.data(),
-             sizeof(int64_t) * neighbor_data.size());
+    _db->put(0, (char *)&src_id, sizeof(uuint64_t),
+             (char *)neighbor_data.data(),
+             sizeof(uint64_t) * neighbor_data.size());
     int gpu_shard = src_id % gpu_num;
     if (gpu_edges_count[gpu_shard] + neighbor_data.size() <=
         gpu_edges_each_limit) {
@@ -49,7 +50,7 @@ int CommonGraphSampler::load_from_ssd(std::string path) {
     }
     std::vector<paddle::framework::GpuPsCommGraph> graph_list;
     for (int i = 0; i < gpu_num; i++) {
-      std::vector<int64_t> ids(gpu_set[i].begin(), gpu_set[i].end());
+      std::vector<uint64_t> ids(gpu_set[i].begin(), gpu_set[i].end());
       graph_list.push_back(table->make_gpu_ps_graph(ids));
     }
     gpu_table->build_graph_from_cpu(graph_list);
@@ -69,9 +70,9 @@ void CommonGraphSampler::init(GpuPsGraphTable *g,
   gpu_edges_each_limit = gpu_edges_limit / gpu_num;
   if (gpu_edges_each_limit > INT_MAX) gpu_edges_each_limit = INT_MAX;
   table = g->cpu_graph_table.get();
-  gpu_edges_count = std::vector<int64_t>(gpu_num, 0);
+  gpu_edges_count = std::vector<uint64_t>(gpu_num, 0);
   cpu_edges_count = 0;
-  gpu_set = std::vector<std::unordered_set<int64_t>>(gpu_num);
+  gpu_set = std::vector<std::unordered_set<uint64_t>>(gpu_num);
 }
 
 int AllInGpuGraphSampler::run_graph_sampling() { return 0; }
@@ -85,7 +86,7 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
   sample_res.resize(gpu_num);
   std::vector<std::vector<std::vector<paddle::framework::GpuPsGraphNode>>>
       sample_nodes_ex(graph_table->task_pool_size_);
-  std::vector<std::vector<std::vector<int64_t>>> sample_neighbors_ex(
+  std::vector<std::vector<std::vector<uint64_t>>> sample_neighbors_ex(
       graph_table->task_pool_size_);
   for (int i = 0; i < graph_table->task_pool_size_; i++) {
     sample_nodes_ex[i].resize(gpu_num);
