@@ -101,7 +101,6 @@ def graph_reindex(x,
         # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
-
     """
     if flag_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
