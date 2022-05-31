@@ -200,7 +200,9 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         raise ValueError("padding_idx must be within [-{}, {})".format(
             weight.shape[0], weight.shape[0]))
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_embedding(x, weight, padding_idx, sparse)
+    elif _in_legacy_dygraph():
         return _C_ops.lookup_table_v2(
             weight, x, 'is_sparse', sparse, 'is_distributed', False,
             'remote_prefetch', False, 'padding_idx', padding_idx)

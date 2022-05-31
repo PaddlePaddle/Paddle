@@ -98,6 +98,11 @@ Tensor conv2d_impl(const Tensor& input,
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
+Tensor embedding_impl(const Tensor& x,
+                      const Tensor& weight,
+                      int64_t padding_idx,
+                      bool sparse);
+
 std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
@@ -144,6 +149,13 @@ void conv2d_grad_impl(const Tensor& input,
                       Tensor* filter_grad);
 
 void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);
+
+void embedding_grad_impl(const Tensor& x,
+                         const Tensor& weight,
+                         const Tensor& out_grad,
+                         int64_t padding_idx,
+                         bool sparse,
+                         Tensor* weight_grad);
 
 void real_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
