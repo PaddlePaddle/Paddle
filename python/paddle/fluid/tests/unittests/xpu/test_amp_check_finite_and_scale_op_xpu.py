@@ -22,6 +22,7 @@ from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types,
 
 paddle.enable_static()
 
+
 class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'check_finite_and_unscale'
@@ -36,17 +37,16 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
                 'FoundInfinite': np.array([0]),
-                'Out': [('out0', x/scale)],
+                'Out': [('out0', x / scale)],
             }
 
         def init_dtype(self):
-            self.dtype=self.in_type
+            self.dtype = self.in_type
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
-
 
     class TestCheckFiniteAndUnscaleOpWithNan(XPUOpTest):
         def setUp(self):

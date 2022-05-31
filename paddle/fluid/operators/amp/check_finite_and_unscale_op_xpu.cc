@@ -15,9 +15,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/float16.h"
+
 namespace paddle {
 namespace operators {
+
 template <typename T>
 class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
   using MPDType = typename details::MPTypeTrait<T>::Type;
@@ -54,22 +57,17 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(dev_ctx.GetPlace());
-      framework::Tensor inf_nan_count = ctx.AllocateTmpTensor<int, platform::XPUDeviceContext>(found_inf->dims(), dev_ctx);
+      framework::Tensor inf_nan_count =
+          ctx.AllocateTmpTensor<int, platform::XPUDeviceContext>(
+              found_inf->dims(), dev_ctx);
 
       if (nums_inf_nans == 0) {
-
-        int r = xpu::count_nan_or_inf(dev_ctx.x_context(),
-                                      reinterpret_cast<const XPUTyp*>(x->data<T>()),
-                                      inf_nan_count.data<int>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(count_nan_or_inf) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
-        if (dev_ctx.x_context()->xpu_stream) {
-          dev_ctx.Wait();
-        }
-        memory::Copy(platform::CPUPlace(), &nums_inf_nans,
-                     dev_ctx.GetPlace(), inf_nan_count.data<int>(), sizeof(int));
+        int r = xpu::count_nan_or_inf(
+            dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(x->data<T>()),
+            inf_nan_count.data<int>(), x->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "count_nan_or_inf");
+        memory::Copy(platform::CPUPlace(), &nums_inf_nans, dev_ctx.GetPlace(),
+                     inf_nan_count.data<int>(), sizeof(int));
       }
 
       if (nums_inf_nans > 0) {
@@ -89,40 +87,25 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         int r = xpu::cast_v2(dev_ctx.x_context(),
                              reinterpret_cast<const float16*>(x->data<T>()),
                              float_x.data<MPDType>(), x->numel());
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(cast_v2) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
 
         r = xpu::scale(dev_ctx.x_context(), float_x.data<MPDType>(),
                        float_out.data<MPDType>(), x->numel(), false,
                        inverse_scale, 0.0);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(scale) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::cast_v2(dev_ctx.x_context(), float_out.data<MPDType>(),
                          reinterpret_cast<float16*>(out->data<T>()),
                          out->numel());
 
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(cast_v2) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
       } else {
         int r = xpu::scale(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
                            reinterpret_cast<XPUTyp*>(out->data<T>()),
                            x->numel(), false, inverse_scale, 0.0);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                              "XPU API(scale) return wrong "
-                                              "value[%d %s]",
-                                              r, XPUAPIErrorMsg[r]));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       }
-    }
-    if (dev_ctx.x_context()->xpu_stream) {
-      dev_ctx.Wait();
     }
     memory::Copy(dev_ctx.GetPlace(), found_inf_data, platform::CPUPlace(),
                  &cpu_found_inf_data, sizeof(bool));
