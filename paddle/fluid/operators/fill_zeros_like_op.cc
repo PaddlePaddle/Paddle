@@ -53,7 +53,8 @@ class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The variable will be filled up with zeros.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     ExtraMake();
     AddComment(R"DOC(
 FillZerosLike Operator.
