@@ -2973,6 +2973,7 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+
 function check_coverage_build() {
     if [ ! "${buildSize}" ];then
         echo "build size not found"
@@ -3134,7 +3135,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
+        #check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
@@ -3179,7 +3180,7 @@ function main() {
       gpu_inference)
         test_fluid_lib
         test_go_inference_api
-        check_approvals_of_unittest 3
+        #check_approvals_of_unittest 3
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
