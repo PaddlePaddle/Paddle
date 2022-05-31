@@ -35,6 +35,12 @@ def graph_reindex(x,
     is to reindex the ids information of the input nodes, and return the 
     corresponding graph edges after reindex.
 
+    **Notes**: 
+        The number in x should be unique, otherwise it would cause potential errors.
+    Besides, we also support multi-edge-types neighbors reindexing. If we have different
+    edge_type neighbors for x, we should concatenate all the neighbors and count of x. 
+    We will reindex all the nodes from 0. 
+
     Take input nodes x = [0, 1, 2] as an example. 
     If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2], 
     then we know that the neighbors of 0 is [8, 9], the neighbors of 1
@@ -81,6 +87,20 @@ def graph_reindex(x,
         # reindex_src: [3, 4, 0, 5, 6, 7, 6]
         # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
+
+        neighbors_new = [0, 2, 3, 5, 1]
+        count_new = [1, 3, 1]
+        neighbors_new = paddle.to_tensor(neighbors_new, dtype="int64")
+        count_new = paddle.to_tensor(count_new, dtype="int32")
+        
+        neighbors = paddle.concat([neighbors, neighbors_new])
+        count = paddle.concat([count, count_new])
+        reindex_src, reindex_dst, out_nodes = \
+             paddle.incubate.graph_reindex(x, neighbors, count)
+        # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
+        # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
+        # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+
 
     """
     if flag_buffer_hashtable:
