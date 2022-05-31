@@ -111,7 +111,9 @@ class TestGraphReindex(unittest.TestCase):
         reindex_dst = np.array(reindex_dst, dtype="int64")
 
         reindex_src_, reindex_dst_, out_nodes_ = \
-            paddle.incubate.graph_reindex(paddle.to_tensor(x), paddle.to_tensor(neighbors), paddle.to_tensor(counts))
+            paddle.incubate.graph_reindex(paddle.to_tensor(x),
+                                          paddle.to_tensor(neighbors),
+                                          paddle.to_tensor(counts))
         self.assertTrue(np.allclose(reindex_src, reindex_src_))
         self.assertTrue(np.allclose(reindex_dst, reindex_dst_))
         self.assertTrue(np.allclose(out_nodes, out_nodes_))
