@@ -152,7 +152,9 @@ int TrtEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     /*const Scope* scope*/) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
-
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
   std::vector<std::vector<std::pair<Node*, Node*>>> start_pattern_in_nodes;
   std::vector<Node*> start_pattern_out_node;
   std::vector<std::unordered_set<Node*>> start_pattern_remove_nodes;
