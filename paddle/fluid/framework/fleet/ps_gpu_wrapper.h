@@ -445,7 +445,7 @@ class PSGPUWrapper {
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
-  int gpu_graph_mode_;
+  int gpu_graph_mode_ = 1;
 #ifdef PADDLE_WITH_CUDA
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;

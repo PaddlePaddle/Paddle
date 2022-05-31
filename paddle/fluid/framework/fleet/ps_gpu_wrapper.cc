@@ -113,9 +113,6 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   int device_num = heter_devices_.size();
   gpu_task->init(thread_keys_shard_num_, device_num, multi_mf_dim_);
 
-  auto& local_keys = gpu_task->feature_keys_;
-  auto& local_ptr = gpu_task->value_ptr_;
-
   std::vector<std::thread> threads;
   // data should be in input channel
  
@@ -134,6 +131,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   std::string data_set_name = std::string(typeid(*dataset_).name());
   
+  VLOG(0) <<"gpu_graph_mode_:" << gpu_graph_mode_;
   if (!gpu_graph_mode_) {
     if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
       VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
@@ -229,10 +227,28 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         this->thread_keys_[i][shard_id].insert(cur_key);
       }
     };
+    auto gen_graph_dynamic_mf_func = [this](const std::vector<int64_t>& total_data,
+                                        int begin_index, int end_index, int i) {
+      for (auto iter = total_data.begin() + begin_index;
+            iter != total_data.begin() + end_index; iter++) {
+        uint64_t cur_key = *iter;
+        int shard_id = cur_key % thread_keys_shard_num_;
+        // int dim_id = slot_index_vec_[slot_idx];
+        this->thread_dim_keys_[i][shard_id][0].insert(cur_key);
+      }
+    };
     for (int i = 0; i < thread_keys_thread_num_; i++) {
-      threads.push_back(
-          std::thread(gen_graph_data_func, std::ref(vec_data), begin,
-                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+      if (!multi_mf_dim_) {
+        VLOG(0) << "psgpu graph wrapper genfunc";
+        threads.push_back(
+            std::thread(gen_graph_data_func, std::ref(vec_data), begin,
+                        begin + len_per_thread + (i < remain ? 1 : 0), i));
+      } else {
+        VLOG(0) << "psgpu graph wrapper genfunc with dynamic mf";
+        threads.push_back(
+            std::thread(gen_graph_dynamic_mf_func, std::ref(vec_data), begin,
+                        begin + len_per_thread + (i < remain ? 1 : 0), i));
+      }
       begin += len_per_thread + (i < remain ? 1 : 0);
     }
     for (std::thread& t : threads) {
@@ -879,7 +895,7 @@ void PSGPUWrapper::EndPass() {
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
     size_t len = device_keys.size();
     int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim;
+    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim << " key_len :" << len;
     size_t feature_value_size =
         TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
 
@@ -889,11 +905,11 @@ void PSGPUWrapper::EndPass() {
 
     CHECK(len == hbm_pool->capacity());
     uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
-    for (size_t i = 0; i < len; ++i) {
-      if (device_keys[i] == unuse_key) {
+    for (size_t index = 0; index < len; ++index) {
+      if (device_keys[index] == unuse_key) {
         continue;
       }
-      size_t offset = i * feature_value_size;
+      size_t offset = index * feature_value_size;
       FeatureValue* gpu_val = (FeatureValue*)(test_build_values + offset);
 #ifdef PADDLE_WITH_PSLIB
       auto* downpour_value =
@@ -959,7 +975,7 @@ void PSGPUWrapper::EndPass() {
   if (keysize_max != 0) {
     HeterPs_->end_pass();
   }
-
+  VLOG(0) << "HeterPs_->end_pass end";
   for (size_t i = 0; i < hbm_pools_.size(); i++) {
     delete hbm_pools_[i];
   }
@@ -967,7 +983,7 @@ void PSGPUWrapper::EndPass() {
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
-  VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
