@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;
   }
-  // module->dump();
+  module->dump();
   ::infrt::host_context::TestMlir(module.get(), &registry);
   return 0;
 }

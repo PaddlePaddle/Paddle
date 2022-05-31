@@ -107,6 +107,10 @@ void IRPassManager::CreatePasses(Argument *argument,
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
+      if (argument->quantize_enabled_op_types().count("conv2d") ||
+          argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
+        pass->Set("data_layout", new std::string("NHWC"));
+      }
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
     } else if (pass_name == "cpu_bfloat16_placement_pass") {
@@ -268,6 +272,11 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
+    }
+    // delete_fill_constant_op_pass is not apply under trt dynamic shape
+    if (pass->Type() == "delete_fill_constant_op_pass") {
+      bool use_dynamic = pass->Get<bool>("with_dynamic_shape");
+      if (use_dynamic) continue;
     }
     graph.reset(pass->Apply(graph.release()));
   }

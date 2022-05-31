@@ -23,7 +23,7 @@
 #include <set>
 #include <vector>
 
-#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
@@ -43,21 +43,18 @@ void ReduceGrad(const GPUContext& dev_ctx,
       }));
 }
 
-template <typename T,
-          typename Context,
-          template <typename, typename> class TransformOp>
+template <typename T, typename OutT, typename Context, typename Functor>
 void ReduceGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all,
-                      DenseTensor* x_grad) {
+                      DenseTensor* x_grad,
+                      Functor functor) {
   auto* in_x = &x;
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
-
-  auto pt_out_dtype = x.dtype();
 
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
@@ -79,14 +76,10 @@ void ReduceGradKernel(const Context& dev_ctx,
 
   auto pt_d_out = new_d_out;
   auto pt_d_x = *d_x;
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-
-  phi::ReduceGrad<T, TransformOp<T, MPType>>(
-      dev_ctx,
-      &pt_d_out,
-      &pt_d_x,
-      pt_out_dtype,
-      TransformOp<T, MPType>(reduce_num));
+  std::vector<const DenseTensor*> inputs = {&pt_d_out};
+  std::vector<DenseTensor*> outputs = {&pt_d_x};
+  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, OutT>(
+      dev_ctx, inputs, &outputs, 0, functor);
 }
 
 }  // namespace phi

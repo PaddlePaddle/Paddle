@@ -601,6 +601,14 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
+      .def("enable_ipu", &AnalysisConfig::EnableIpu,
+           py::arg("ipu_device_num") = 1, py::arg("ipu_micro_batch_size") = 1,
+           py::arg("ipu_enable_pipelining") = false,
+           py::arg("ipu_batches_per_step") = 1)
+      .def("set_ipu_config", &AnalysisConfig::SetIpuConfig,
+           py::arg("ipu_enable_fp16") = false, py::arg("ipu_replica_num") = 1,
+           py::arg("ipu_available_memory_proportion") = 1.0,
+           py::arg("ipu_enable_half_partial") = false)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
@@ -695,6 +703,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_cache_capacity", &AnalysisConfig::SetMkldnnCacheCapacity,
            py::arg("capacity") = 0)
       .def("set_bfloat16_op", &AnalysisConfig::SetBfloat16Op)
+      .def("enable_mkldnn_int8", &AnalysisConfig::EnableMkldnnInt8,
+           py::arg("mkldnn_int8_enabled_op_types") =
+               std::unordered_set<std::string>({}))
+      .def("mkldnn_int8_enabled", &AnalysisConfig::mkldnn_int8_enabled)
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
@@ -761,10 +773,7 @@ void BindMkldnnQuantizerConfig(py::module *m) {
              return;
            })
       .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
-      .def(
-          "set_enabled_op_types",
-          (void (MkldnnQuantizerConfig::*)(std::unordered_set<std::string> &)) &
-              MkldnnQuantizerConfig::SetEnabledOpTypes);
+      .def("set_enabled_op_types", &MkldnnQuantizerConfig::SetEnabledOpTypes);
 }
 #endif
 

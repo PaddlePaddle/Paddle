@@ -28,9 +28,9 @@ KernelSignature PsroiPoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "psroi_pool_grad",
-      {"X", "ROIs", "RoisNum", GradVarName("Out")},
+      {"X", "ROIs", "RoisNum", "Out@GRAD"},
       {"pooled_height", "pooled_width", "output_channels", "spatial_scale"},
-      {GradVarName("X")});
+      {"X@GRAD"});
 }
 
 }  // namespace phi

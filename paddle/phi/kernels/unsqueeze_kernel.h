@@ -24,6 +24,6 @@ template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     DenseTensor* xshape,
-                     DenseTensor* out);
+                     DenseTensor* out,
+                     DenseTensor* xshape);
 }  // namespace phi

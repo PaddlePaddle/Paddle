@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller
+from .controller import Controller, ControleMode
 
 import json
 import os
@@ -23,8 +23,10 @@ import time
 class CollectiveController(Controller):
     @classmethod
     def enable(cls, ctx):
+        # collective is the default mode
         if ctx:
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False
@@ -77,7 +79,8 @@ class CollectiveController(Controller):
         self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
-            self.ctx.args.devices)
+            self.ctx.args.devices, self.ctx.args.device_num)
+
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -85,6 +88,7 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
+                "PADDLE_NNODES": "{}".format(self.job.replicas),
                 ## compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
@@ -92,7 +96,8 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-            if self.pod.replicas == 1:
+
+            if self.pod.replicas == 1 or self.ctx.node.device.dtype == "ipu":
                 e.update({selected_dev_key: ",".join(selected_dev_list)})
             else:
                 e.update({selected_dev_key: selected_dev_list[i]})
@@ -106,6 +111,7 @@ class CollectiveElasticController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False

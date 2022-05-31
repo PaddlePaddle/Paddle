@@ -81,9 +81,10 @@ class ProcessGroupHeter : public ProcessGroup {
   };
 
   ProcessGroupHeter(const std::shared_ptr<Store>& store, int rank, int size,
-                    int gid, int local_rank, int local_size, int gloo_rank,
-                    int gloo_size, bool with_switch,
-                    std::string switch_endpoints);
+                    const platform::Place& place, int gid, int local_rank,
+                    int local_size, int gloo_rank, int gloo_size,
+                    bool with_switch, std::string switch_endpoints,
+                    int src_rank, int dst_rank);
 
   const std::string GetBackendName() const override {
     return std::string(HETER_BACKEND_NAME);
@@ -96,6 +97,12 @@ class ProcessGroupHeter : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
       const BroadcastOptions& = BroadcastOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& in_tensors, int peer) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& out_tensors, int peer) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupHeter::HeterTask> CreateTask(
@@ -112,6 +119,10 @@ class ProcessGroupHeter : public ProcessGroup {
   int gloo_size_;
   bool with_switch_;
   std::string switch_endpoint_;
+  int src_rank_;
+  int dst_rank_;
+  static int send_count;
+  static int recv_count;
 };
 
 }  //  namespace distributed

@@ -46,13 +46,13 @@ class AMPState(object):
             if int(op.attr('op_role')) == int(OpRole.Forward):
                 self._mark_black_white_ops(amp_lists)
             elif int(op.attr('op_role')) == int(OpRole.Backward):
-                if op.desc.id() in dist_op_context.grad_op_id_to_op_id:
-                    fwd_op_id = dist_op_context.grad_op_id_to_op_id[op.desc.id(
-                    )]
+                if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
+                    fwd_op_id = dist_op_context.grad_op_id_to_op_id[
+                        op.desc.original_id()]
                     if self._is_fp16_op(fwd_op_id) == True:
-                        self._op_fp16_dict[op.desc.id()] = True
+                        self._op_fp16_dict[op.desc.original_id()] = True
                     elif self._is_fp16_op(fwd_op_id) == False:
-                        self._op_fp16_dict[op.desc.id()] = False
+                        self._op_fp16_dict[op.desc.original_id()] = False
             elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
 
@@ -70,12 +70,12 @@ class AMPState(object):
                 continue
             if amp_lists.black_varnames is not None and _is_in_black_varnames(
                     op, amp_lists):
-                self._op_fp16_dict[op.desc.id()] = False
+                self._op_fp16_dict[op.desc.original_id()] = False
                 continue
             if op.type in amp_lists.black_list:
-                self._op_fp16_dict[op.desc.id()] = False
+                self._op_fp16_dict[op.desc.original_id()] = False
             elif op.type in amp_lists.white_list:
-                self._op_fp16_dict[op.desc.id()] = True
+                self._op_fp16_dict[op.desc.original_id()] = True
             elif op.type in amp_lists.gray_list:
                 is_black_op = False
                 is_white_op = False
@@ -95,22 +95,22 @@ class AMPState(object):
                             else:
                                 prev_op = in_var.op
                             # if it's one of inputs
-                            if self._is_fp16_op(prev_op.desc.id()) == False or \
+                            if self._is_fp16_op(prev_op.desc.original_id()) == False or \
                                     prev_op.type in amp_lists.black_list:
                                 is_black_op = True
-                            elif self._is_fp16_op(prev_op.desc.id()) == True or \
+                            elif self._is_fp16_op(prev_op.desc.original_id()) == True or \
                                     prev_op.type in amp_lists.white_list:
                                 is_white_op = True
                 if is_black_op:
-                    self._op_fp16_dict[op.desc.id()] = False
+                    self._op_fp16_dict[op.desc.original_id()] = False
                 elif is_white_op:
-                    self._op_fp16_dict[op.desc.id()] = True
+                    self._op_fp16_dict[op.desc.original_id()] = True
                 else:
                     pass
             else:
                 # For numerical safe, we apply fp32 computation on ops that
                 # are not determined which list they should stay.
-                self._op_fp16_dict[op.desc.id()] = False
+                self._op_fp16_dict[op.desc.original_id()] = False
 
     def cast_forward_program(self, dist_context):
         ops = self._block.ops
@@ -120,11 +120,11 @@ class AMPState(object):
             num_cast_ops = 0
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 break
-            if self._is_fp16_op(op.desc.id()) == False:
+            if self._is_fp16_op(op.desc.original_id()) == False:
                 num_cast_ops = self._insert_cast_op_forward(
                     op, idx, core.VarDesc.VarType.FP16,
                     core.VarDesc.VarType.FP32, dist_context)
-            elif self._is_fp16_op(op.desc.id()) == True:
+            elif self._is_fp16_op(op.desc.original_id()) == True:
                 num_cast_ops = self._insert_cast_op_forward(
                     op, idx, core.VarDesc.VarType.FP32,
                     core.VarDesc.VarType.FP16, dist_context)
@@ -198,7 +198,7 @@ class AMPState(object):
                 else:
                     if op.has_attr('in_dtype'):
                         op._set_attr('in_dtype', dst_dtype)
-        self._var_name_dict[op.desc.id()] = var_name_dict
+        self._var_name_dict[op.desc.original_id()] = var_name_dict
 
         if src_dtype == core.VarDesc.VarType.FP32 and dst_dtype == core.VarDesc.VarType.FP16:
             for out_name in op.output_names:
@@ -225,13 +225,14 @@ class AMPState(object):
         while idx < len(ops):
             num_cast_ops = 0
             grad_op = ops[idx]
+            grad_op_orig_id = grad_op.desc.original_id()
             dist_op_context = dist_context.dist_op_context
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
-                if self._is_fp16_op(grad_op.desc.id()) == False:  # fp32
+            if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
+                if self._is_fp16_op(grad_op_orig_id) == False:  # fp32
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP16,
                         core.VarDesc.VarType.FP32, dist_context)
-                elif self._is_fp16_op(grad_op.desc.id()) == True:  # fp16
+                elif self._is_fp16_op(grad_op_orig_id) == True:  # fp16
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP32,
                         core.VarDesc.VarType.FP16, dist_context)
@@ -272,8 +273,9 @@ class AMPState(object):
             return False
 
         num_cast_ops = 0
+        original_id = grad_op.desc.original_id()
         dist_op_context = dist_context.dist_op_context
-        fwd_op_id = dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()]
+        fwd_op_id = dist_op_context.grad_op_id_to_op_id[original_id]
 
         for in_name in grad_op.input_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
@@ -487,6 +489,7 @@ class AMPPass(PassBase):
         self.set_attr("incr_ratio", 2.0)
         self.set_attr("decr_ratio", 0.8)
         self.set_attr("use_dynamic_loss_scaling", False)
+        self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
         self._loss_scaling = None
         self._num_good_steps = None

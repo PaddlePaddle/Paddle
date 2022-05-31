@@ -1,7 +1,16 @@
 set(BRPC_SRCS ps_client.cc server.cc)
 set_source_files_properties(${BRPC_SRCS})
 
-set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog device_context)
+
+if(WITH_HETERPS)
+
+    set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog device_context rocksdb)
+
+else()
+
+    set(BRPC_DEPS brpc ssl crypto protobuf gflags glog zlib leveldb snappy gflags glog device_context)
+
+endif()
 
 brpc_library(sendrecv_rpc SRCS
         ${BRPC_SRCS}

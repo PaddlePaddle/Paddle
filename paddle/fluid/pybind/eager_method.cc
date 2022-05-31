@@ -9,9 +9,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <Python.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "pybind11/numpy.h"
@@ -41,6 +48,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -69,7 +77,9 @@ class PyTensorHook : public egr::TensorHook {
 
     PyObject* res = nullptr;
     try {
-      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+      PyObject* p_tmp_var = ToPyObject(var);
+      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+      Py_DECREF(p_tmp_var);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
@@ -86,7 +96,9 @@ class PyTensorHook : public egr::TensorHook {
     if (res == Py_None) {
       return var;
     }
-    return reinterpret_cast<TensorObject*>(res)->tensor;
+    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+    Py_DECREF(res);
+    return res_tensor;
   }
 
  private:
@@ -194,6 +206,17 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
       nullptr);
 
   if (!self->tensor.impl()->initialized()) {
+    if (tensor_dims.size() == 0) {
+      py_dims[0] = 0;
+      py_strides[0] = 0;
+      PyObject* array = api.PyArray_NewFromDescr_(
+          api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,
+          py_dims, py_strides, nullptr,
+          pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+              pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+          nullptr);
+      return array;
+    }
     return array;
   }
 
@@ -249,11 +272,75 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Tensor.numpy() only support cpu tensor."));
-    Py_INCREF(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
 
   return array;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_TRY
+  auto& api = pybind11::detail::npy_api::get();
+  if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
+    VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
+               "numpy array.";
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    py_dims[0] = 0;
+    py_strides[0] = 0;
+
+    PyObject* array = api.PyArray_NewFromDescr_(
+        api.PyArray_Type_,
+        api.PyArray_DescrFromType_(pybind11::detail::npy_api::NPY_UNICODE_), 1,
+        py_dims, py_strides, nullptr,
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+        nullptr);
+    return array;
+  }
+
+  if (self->tensor.is_cpu()) {
+    VLOG(6) << "Getting StringTensor's numpy value";
+    auto string_tensor =
+        std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+    const auto* st_ptr = string_tensor->data();
+    auto numel = self->tensor.numel();
+    auto tensor_dims = self->tensor.shape();
+    // Get the max unicode length of StringTensor to create numpy unicode string
+    // array.
+    auto* longest_pstring = std::max_element(
+        st_ptr, st_ptr + numel, [](const auto& a, const auto& b) {
+          auto a_unicode_len =
+              phi::strings::GetUnicodeStrLen(a.data(), a.size());
+          auto b_unicode_len =
+              phi::strings::GetUnicodeStrLen(b.data(), b.size());
+          return a_unicode_len < b_unicode_len;
+        });
+    size_t max_unicode_length = phi::strings::GetUnicodeStrLen(
+        longest_pstring->data(), longest_pstring->size());
+    max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
+    VLOG(6) << "The max unicode length is " << max_unicode_length;
+    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+    auto py_array_data = sp.get();
+    memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
+    for (int64_t i = 0; i < numel; ++i) {
+      auto curr_unicode_len =
+          phi::strings::GetUnicodeStrLen(st_ptr[i].data(), st_ptr[i].size());
+      phi::strings::GetUnicodeStr(st_ptr[i].data(),
+                                  py_array_data + i * max_unicode_length,
+                                  curr_unicode_len);
+    }
+    py::array array(py::dtype("U" + std::to_string(max_unicode_length)),
+                    tensor_dims, {}, py_array_data);
+    return array.release().ptr();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "StringTensor.numpy() only support cpu tensor."));
+    RETURN_PY_NONE
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -279,12 +366,33 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static void IncreaseTensorReferenceCountUntilCopyComplete(
+    const paddle::experimental::Tensor& tensor, const platform::Place& place) {
+  auto place_ = platform::is_gpu_place(place) ? place : tensor.place();
+
+  auto tracer = egr::Controller::Instance().GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(dev): This is an empty callback, the only way is to "reference"
+  // inner memory Holder, so it will not be destructed until the kernels
+  // launched at current stream of given place is finished, such as
+  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  auto callback = [tensor, place_]() {
+    VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
+            << place_;
+  };
+  gc->DirectClearCallback(callback);
+}
+
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor = self->tensor.copy_to(place, blocking);
+  if (!blocking) {
+    IncreaseTensorReferenceCountUntilCopyComplete(self->tensor, place);
+  }
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -321,8 +429,8 @@ static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
 
   VLOG(6) << "Finished Reconstructing Tensor from" << src_tensor.name()
           << " to " << self->tensor.name();
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -342,18 +450,18 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, src_tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
     if (src_tensor.initialized()) {
-      self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
+      self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
   }
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -369,8 +477,8 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -386,7 +494,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   }
 
   paddle::experimental::Tensor* grad;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
@@ -410,6 +519,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
       if (grad->initialized()) {
         if (set_to_zero) {
           grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+          if (is_leaf) {
+            std::static_pointer_cast<egr::GradNodeAccumulation>(
+                egr::EagerUtils::grad_node(self->tensor))
+                ->SetFakeEmpty(true);
+          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
@@ -421,8 +535,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     }
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -451,8 +565,8 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
     }
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -475,8 +589,8 @@ static PyObject* tensor__share_buffer_to(TensorObject* self, PyObject* args,
       static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
   dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -516,8 +630,8 @@ static PyObject* tensor__share_underline_tensor_to(TensorObject* self,
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
   src_ptr->set_impl(self->tensor.impl());
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -572,8 +686,9 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    Py_IncRef(Py_None);
-    return Py_None;
+    // The original `get_tensor` method of Variable will create a empty tensor
+    phi::DenseTensor empty_tensor;
+    return ToPyObject(&empty_tensor);
   }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor =
@@ -581,8 +696,7 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
   } else {
-    Py_IncRef(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -592,16 +706,14 @@ static PyObject* tensor_method_get_underline_selected_rows(TensorObject* self,
                                                            PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    Py_IncRef(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   if (self->tensor.is_selected_rows()) {
     auto* selected_rows =
         static_cast<phi::SelectedRows*>(self->tensor.impl().get());
     return ToPyObject(selected_rows);
   } else {
-    Py_IncRef(Py_None);
-    return Py_None;
+    RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -617,7 +729,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   PADDLE_ENFORCE_EQ(
-      self->tensor.is_initialized(), true,
+      self->tensor.initialized(), true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
@@ -647,15 +759,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
+    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
+                                         infer_flags.end());
+    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
+                                           decrease_axis.end());
+
     if (op_type == "slice") {
-      out = slice_dygraph_function(self->tensor, paddle::experimental::Tensor(),
-                                   paddle::experimental::Tensor(), {}, {},
-                                   std::move(attrs));
+      out = slice_final_state_dygraph_function(
+          self->tensor, slice_axes_tmp, slice_starts, slice_ends,
+          infer_flags_tmp, decrease_axis_tmp);
     } else if (op_type == "strided_slice") {
-      out = strided_slice_dygraph_function(
-          self->tensor, paddle::experimental::Tensor(),
-          paddle::experimental::Tensor(), paddle::experimental::Tensor(), {},
-          {}, {}, attrs);
+      out = strided_slice_final_state_dygraph_function(
+          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Slice is only support slice and strided_slice, but we got %s which "
@@ -710,8 +826,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
                                         idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_dygraph_function(self->tensor, select_index,
-                                        std::move(attrs));
+    out = index_select_final_state_dygraph_function(self->tensor, select_index,
+                                                    0);
   }
 
   return ToPyObject(out);
@@ -934,7 +1050,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value, value_tensor_tmp.inner_place(), false);
+            value, value_tensor_tmp.place(), false);
       }
 
       value_tensor = value_tensor_tmp;
@@ -1018,12 +1134,12 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                            platform::Place(platform::CPUPlace()), false);
 #endif
     } else {
-      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.inner_place(),
+      SetTensorFromPyArray(self_tensor, self_numpy, self->tensor.place(),
                            false);
     }
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1114,8 +1230,8 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
   accumulation_grad_node->RegisterReduceHook(
       std::make_shared<PyTensorVoidHook>(hook_func));
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1130,7 +1246,8 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
     grad_tensor->set_impl(std::make_shared<phi::SelectedRows>());
   }
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1138,7 +1255,8 @@ static PyObject* tensor__clear(TensorObject* self, PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
   self->tensor.reset();
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1146,7 +1264,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-  if (self->tensor.is_initialized()) {
+  if (self->tensor.initialized()) {
     PADDLE_ENFORCE_EQ(self->tensor.dtype(), src.dtype(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
@@ -1166,10 +1284,51 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
                           "Tensor %s has not been initialized", src.name()));
     p_grad->set_impl(src.impl());
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* tensor_method_set_vocab(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Vocab>() = vocab;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_set_string_list(TensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  using Strings = std::vector<std::string>;
+  auto strings = CastPyArg2Strings(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Strings>() = strings;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_map_tensor(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      egr::IsVariableCompatTensor(self->tensor), true,
+      paddle::platform::errors::Fatal(
+          "this method is only effective for VariableCompatTensor"));
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto* var_tensor =
+      static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
+  return ToPyObject(var_tensor->Get<Vocab>());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1308,7 +1467,7 @@ static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* kwargs) {
   EAGER_TRY
   self->tensor.bump_inplace_version();
-  return Py_None;
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1358,8 +1517,8 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
       grad->initialized()) {
     grad->reset_inplace_version(set_to_zero);
   }
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1367,7 +1526,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
 #ifndef _WIN32
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Sharing memory only support CPU Tensor currently"));
   // 1. get LoDTensor
@@ -1391,8 +1550,8 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Sharing memory in Windows OS is not supported currently"));
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
 #endif
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1410,6 +1569,44 @@ static PyObject* tensor__offset(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__grad_name(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+  return ToPyObject(grad->name());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__grad_value(TensorObject* self, PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE_EQ(grad != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Detected NULL grad. Please check if you have manually "
+                        "cleared the grad inside autograd_meta"));
+
+  if (!grad->defined()) {
+    RETURN_PY_NONE
+  }
+  if (grad->is_dense_tensor()) {
+    auto* grad_tensor =
+        static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
+    return ToPyObject(grad_tensor);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "this method is only supported for DenseTensor"));
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1419,7 +1616,7 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "DenseTensor currently."));
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.inner_place()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()), true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
@@ -1428,11 +1625,23 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
       static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
   tensor_uva(self_tensor, device_id);
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  RETURN_PY_NONE
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 #endif
+static PyObject* tensor_method__is_string_tensor_hold_allocation(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  auto string_tensor =
+      std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+  if (string_tensor) {
+    return ToPyObject(string_tensor->initialized());
+  } else {
+    return ToPyObject(false);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1500,6 +1709,15 @@ PyMethodDef variable_methods[] = {
     {"_copy_gradient_from",
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    /** the methods to adapt old dygraph, will be removed in the future **/
+    {"set_string_list",
+     (PyCFunction)(void (*)(void))tensor_method_set_string_list,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"set_vocab", (PyCFunction)(void (*)(void))tensor_method_set_vocab,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_map_tensor",
+     (PyCFunction)(void (*)(void))tensor_method_get_map_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"indices", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1539,10 +1757,29 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_offset", (PyCFunction)(void (*)(void))tensor__offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_name", (PyCFunction)(void (*)(void))tensor__grad_name,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_grad_value", (PyCFunction)(void (*)(void))tensor__grad_value,
+     METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #endif
+    {NULL, NULL, 0, NULL}};
+
+// variable_methods for core.eager.StringTensor
+PyMethodDef string_tensor_variable_methods[] = {
+    {"numpy",
+     (PyCFunction)(void (*)(void))tensor_method_numpy_for_string_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_initialized",
+     (PyCFunction)(void (*)(void))tensor_method__is_initialized,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_string_tensor_hold_allocation",
+     (PyCFunction)(
+         void (*)(void))tensor_method__is_string_tensor_hold_allocation,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

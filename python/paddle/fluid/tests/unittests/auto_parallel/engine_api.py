@@ -128,8 +128,14 @@ def train():
     engine.fit(dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size)
-    engine.save('./mlp')
-    engine.load('./mlp')
+
+    eval_dataset = MyDataset(batch_size)
+    engine.prepare(optimizer, loss, mode='eval')
+    engine.evaluate(eval_dataset, batch_size)
+
+    test_dataset = MyDataset(batch_size)
+    engine.prepare(mode='predict')
+    engine.predict(test_dataset, batch_size)
     engine.save('./mlp_inf', training=False, mode='predict')
 
 

@@ -259,6 +259,11 @@ class FleetWrapper {
   // for init worker
   void InitGFlag(const std::string& gflags);
 
+  double GetCacheThreshold(int table_id);
+  void CacheShuffle(int table_id, const std::string& path, const int mode,
+                    const double cache_threshold);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
   static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 

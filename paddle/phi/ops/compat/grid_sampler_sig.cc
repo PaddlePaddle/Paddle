@@ -27,9 +27,9 @@ KernelSignature GridSamplerOpArgumentMapping(
 KernelSignature GridSamplerGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("grid_sample_grad",
-                         {"X", "Grid", GradVarName("Output")},
+                         {"X", "Grid", "Output@GRAD"},
                          {"mode", "padding_mode", "align_corners"},
-                         {GradVarName("X"), GradVarName("Grid")});
+                         {"X@GRAD", "Grid@GRAD"});
 }
 
 }  // namespace phi

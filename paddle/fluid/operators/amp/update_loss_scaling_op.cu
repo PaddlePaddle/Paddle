@@ -21,9 +21,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename FoundNanInfFlagT>
 __global__ void GpuUpdateLossScaling(
-    const bool* found_inf_data, const T* pre_loss_scaling_data,
+    const FoundNanInfFlagT found_inf_data, const T* pre_loss_scaling_data,
     const int* good_in_data, const int* bad_in_data,
     const int incr_every_n_steps, const int decr_every_n_nan_or_inf,
     const float incr_ratio, const float decr_ratio,
@@ -70,8 +70,9 @@ __global__ void FusedFillIf(T** outs, const size_t xs_size,
   }
 }
 
-template <typename T>
-class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
+template <typename T, bool IsFoundInfOnCPU>
+class UpdateLossScalingFunctor<platform::CUDADeviceContext, T,
+                               IsFoundInfOnCPU> {
  public:
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const bool* found_inf_data, const T* pre_loss_scaling_data,
@@ -80,10 +81,17 @@ class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
                   const float decr_ratio, T* updated_loss_scaling_data,
                   int* good_out_data, int* bad_out_data) const {
-    GpuUpdateLossScaling<T><<<1, 1, 0, dev_ctx.stream()>>>(
-        found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
-        updated_loss_scaling_data, good_out_data, bad_out_data);
+    if (IsFoundInfOnCPU) {
+      GpuUpdateLossScaling<T><<<1, 1, 0, dev_ctx.stream()>>>(
+          *found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
+          incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+          updated_loss_scaling_data, good_out_data, bad_out_data);
+    } else {
+      GpuUpdateLossScaling<T><<<1, 1, 0, dev_ctx.stream()>>>(
+          found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
+          incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+          updated_loss_scaling_data, good_out_data, bad_out_data);
+    }
   }
 };
 

@@ -488,7 +488,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     // Convert weight to fp32 range
     auto* weight_tensor =
         scope->Var(quantized_op_weight_node->Name())->GetMutable<LoDTensor>();
-    auto w_dims = weight_tensor->dims();
+    const auto& w_dims = weight_tensor->dims();
     float* quantized_weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     // If quantized op is fc, weight scale size = 1;

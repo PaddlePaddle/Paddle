@@ -51,7 +51,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data();
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  dst->set_mem_desc(src.mem_desc());
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
@@ -61,6 +61,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
 #endif
+  dst->set_layout(src.layout());
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;

@@ -53,6 +53,7 @@ DEFINE_bool(with_accuracy_layer, true,
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_bf16, false, "Enable BF16 type prediction");
 DEFINE_bool(enable_int8, false, "Enable INT8 type prediction");
+DEFINE_bool(enable_quant_int8, false, "Enable QUANT INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
 // setting iterations to 0 means processing the whole dataset
 DEFINE_int32(iterations, 0, "number of batches to process");

@@ -77,7 +77,7 @@ class ProcessGroupNCCL : public ProcessGroup {
   };
 
   ProcessGroupNCCL(const std::shared_ptr<Store>& store, int rank, int size,
-                   int gid);
+                   const platform::Place& place, int gid);
 
   const std::string GetBackendName() const override {
     return std::string(NCCL_BACKEND_NAME);
@@ -101,6 +101,14 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
+                                                   int dst_rank, int offset,
+                                                   int length) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
+                                                   int src_rank, int offset,
+                                                   int length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,

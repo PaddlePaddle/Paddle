@@ -26,14 +26,11 @@ import paddle.fluid.framework as framework
 from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
     TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeBasicFloat,
-    TestMatMulOpTransposeReshapeOtherDimFloat,
-    TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException,
-    TestMatMulOpTransposeReshapeTransposeRankNotSupportedException,
-    TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException,
-    TestReshapeTransposeMatMulOp, TestReshapeTransposeMatMulOp4DXFloat,
-    TestReshapeTransposeMatMulOp4DYFloat, TestReshapeTransposeMatMulOp4DXYFloat,
-    TestReshapeTransposeMatMulOp2DXFloat, TestReshapeTransposeMatMulOp2DYFloat,
-    TestReshapeTransposeMatMulOp3DXFloat, TestReshapeTransposeMatMulOp3DYFloat)
+    TestMatMulOpTransposeReshapeOtherDimFloat, TestReshapeTransposeMatMulOp,
+    TestReshapeTransposeMatMulOp4DXFloat, TestReshapeTransposeMatMulOp4DYFloat,
+    TestReshapeTransposeMatMulOp4DXYFloat, TestReshapeTransposeMatMulOp2DXFloat,
+    TestReshapeTransposeMatMulOp2DYFloat, TestReshapeTransposeMatMulOp3DXFloat,
+    TestReshapeTransposeMatMulOp3DYFloat)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -67,6 +64,8 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
+        self._cpu_only = True
+        self.use_mkldnn = True
 
     def set_inputs(self, x, y):
         self.inputs = {'X': x, 'Y': y}
@@ -451,24 +450,6 @@ class TestMatMulV2OpTransposeReshapeBasicFloat(
 
 class TestMatMulV2OpTransposeReshapeOtherDimFloat(
         TestMatMulOpTransposeReshapeOtherDimFloat):
-    def set_op_type(self):
-        self.op_type = "matmul_v2"
-
-
-class TestMatMulV2OpTransposeReshapeTransposeAxisNotSupportedException(
-        TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException):
-    def set_op_type(self):
-        self.op_type = "matmul_v2"
-
-
-class TestMatMulV2OpTransposeReshapeRankOfReshapeNotSupportedException(
-        TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException):
-    def set_op_type(self):
-        self.op_type = "matmul_v2"
-
-
-class TestMatMulV2OpTransposeReshapeTransposeRankNotSupportedException(
-        TestMatMulOpTransposeReshapeTransposeRankNotSupportedException):
     def set_op_type(self):
         self.op_type = "matmul_v2"
 

@@ -353,7 +353,6 @@ class NormalInitializer(Initializer):
             out_var = _C_ops.final_state_gaussian_random(
                 var.shape, self._mean, self._std_dev, self._seed, out_dtype,
                 place)
-            out_var._share_underline_tensor_to(var)
 
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
                 var_tmp = _C_ops.final_state_cast(out_var, var.dtype)

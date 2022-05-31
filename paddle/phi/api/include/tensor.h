@@ -166,7 +166,7 @@ class PADDLE_API Tensor final {
    *
    * @return phi::DDim
    */
-  phi::DDim dims() const;
+  const phi::DDim& dims() const;
 
   /**
    * @brief Return the shape (dimensions) of Tensor.
@@ -245,24 +245,22 @@ class PADDLE_API Tensor final {
    */
   bool is_sparse_csr_tensor() const;
 
+  /**
+   * @brief Determine whether tensor is StringTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_string_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
    * @brief Return the place (device) of Tensor.
-   * This is a deprecated method and may be removed in the future!
    *
    * @return Place
    */
-  Place place() const;
-
-  /**
-   * @brief Return the place (device) of Tensor.
-   *
-   * This is a deprecated method and may be removed in the future!!!
-   *
-   * @return Place
-   */
-  Place inner_place() const;
+  const Place& place() const;
 
   /**
    * @brief Determine whether the tensor device is CPU
@@ -423,7 +421,7 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  Tensor copy_to(Place place, bool blocking) const;
+  Tensor copy_to(const Place& place, bool blocking) const;
 
   /**
    * @brief Transfer the source Tensor to current Tensor.

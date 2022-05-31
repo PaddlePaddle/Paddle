@@ -415,6 +415,23 @@ class AllocatorFacadePrivate {
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
+
+    // NOTE(Ruibiao): The default stream will be set when the CUDADeviceContext
+    // created. Normally, the DeviceContextPool is a global singleton and one
+    // Place only correspond to one DeviceContext. However, to support
+    // multi-stream scheduling, standalone executor creates two extra
+    // DeviceContextPools for H2D and D2H stream in StreamAnalyzer, which make
+    // one Place correspond to multiple DeviceContext and unexpectedly reset the
+    // default stream in runtime. To avoid this behavior, we do not allow
+    // changing default stream after initially setting.
+    if (allocator->GetDefaultStream() != nullptr) {
+      VLOG(5) << "The default stream for StreamSafeCUDAAllocator("
+              << allocator.get() << ") in " << place << " has been set to "
+              << allocator->GetDefaultStream()
+              << " before, not allow to change now.";
+      return;
+    }
+
     allocator->SetDefaultStream(stream);
     VLOG(8) << "Set default stream to " << stream
             << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
@@ -819,6 +836,16 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
+        platform::CustomPlace p(dev_type, dev_id);
+        system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      }
+    }
+#endif
   }
 
   void InitZeroSizeAllocators() {
@@ -904,10 +931,7 @@ class AllocatorFacadePrivate {
 
   void WrapStatAllocator() {
     for (auto& pair : allocators_) {
-      // Now memory stats is only supported for GPU
-      if (platform::is_gpu_place(pair.first)) {
-        pair.second = std::make_shared<StatAllocator>(pair.second);
-      }
+      pair.second = std::make_shared<StatAllocator>(pair.second);
     }
   }
 

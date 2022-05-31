@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
+import tempfile
 import paddle
 import unittest
 import numpy as np
@@ -72,11 +73,16 @@ class TestTyping(unittest.TestCase):
         self.x = paddle.randn([4, 16])
         self.spec = [paddle.static.InputSpec(shape=[None, 16], dtype='float32')]
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def build_net(self):
         return LinearNetWithTuple(self.in_num, self.out_num)
 
     def save_and_load(self, suffix=''):
-        path = './layer_typing_' + suffix
+        path = os.path.join(self.temp_dir.name, 'layer_typing_' + suffix)
         paddle.jit.save(self.net, path, input_spec=self.spec)
         return paddle.jit.load(path)
 

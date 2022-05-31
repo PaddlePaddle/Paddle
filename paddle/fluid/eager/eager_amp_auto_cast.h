@@ -20,7 +20,7 @@ namespace egr {
 
 static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
                             const paddle::experimental::DataType& dst_dtype) {
-  auto place = tensor.inner_place();
+  auto place = tensor.place();
   auto data_type = tensor.dtype();
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
@@ -60,7 +60,8 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
 
 inline paddle::experimental::Tensor EagerAmpAutoCast(
     const std::string& input_name, const paddle::experimental::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const paddle::experimental::DataType& dst_dtype,
+    const std::string& op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
@@ -85,6 +86,17 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     return cast_final_state_dygraph_function(input, dst_dtype);
   }
   return input;
+}
+
+inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
+    const std::string& input_name,
+    const paddle::optional<paddle::experimental::Tensor>& input,
+    const paddle::experimental::DataType& dst_dtype,
+    const std::string& op_name) {
+  if (input) {
+    return EagerAmpAutoCast(input_name, *input, dst_dtype, op_name);
+  }
+  return paddle::none;
 }
 
 }  // namespace egr

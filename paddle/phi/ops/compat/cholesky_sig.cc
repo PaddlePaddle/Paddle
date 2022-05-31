@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature CholeskyGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky_grad",
-                         {"Out", GradVarName("Out")},
-                         {"upper"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "cholesky_grad", {"Out", "Out@GRAD"}, {"upper"}, {"X@GRAD"});
 }
 
 }  // namespace phi

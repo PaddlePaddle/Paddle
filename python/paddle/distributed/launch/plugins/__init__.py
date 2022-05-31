@@ -17,11 +17,26 @@ import six
 __all__ = []
 
 
+# print configuration after args are well filled in controller init
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
     for arg, value in sorted(six.iteritems(vars(ctx.args))):
         ctx.logger.info("%s: %s" % (arg, value))
     ctx.logger.info("--------------------------------------------------")
+
+
+def rewrite_ipu_script(ctx):
+    import paddle.fluid as fluid
+    if fluid.core.is_compiled_with_ipu():
+        import os
+        if ctx.args.training_script != "ipu":
+            raise RuntimeError(
+                "Only support to run the script \'ipu\' for IPU distributed computing."
+            )
+        ctx.args.training_script = os.path.abspath(
+            os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "utils/ipu_launch.py"))
 
 
 def process_args(ctx):
@@ -59,4 +74,6 @@ def rewrite_host_ip(ctx):
         ctx.node.ip = ctx.args.host
 
 
-enabled_plugins = [collective_compatible, rewrite_host_ip, process_args, log]
+enabled_plugins = [
+    collective_compatible, rewrite_host_ip, process_args, rewrite_ipu_script
+]

@@ -35,7 +35,8 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
-std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
+std::vector<DDim> GetMetaTensorsDim(
+    const std::vector<const MetaTensor*>& tensors);
 
 void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
@@ -75,8 +76,8 @@ void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& moment2,
                    const MetaTensor& beta1_pow,
                    const MetaTensor& beta2_pow,
-                   paddle::optional<const MetaTensor&> master_param,
-                   paddle::optional<const MetaTensor&> skip_update,
+                   const MetaTensor& master_param,
+                   const MetaTensor& skip_update,
                    const Scalar& beta1,
                    const Scalar& beta2,
                    const Scalar& epsilon,
@@ -98,8 +99,8 @@ void AdamwInferMeta(const MetaTensor& param,
                     const MetaTensor& moment2,
                     const MetaTensor& beta1_pow,
                     const MetaTensor& beta2_pow,
-                    paddle::optional<const MetaTensor&> master_param,
-                    paddle::optional<const MetaTensor&> skip_update,
+                    const MetaTensor& master_param,
+                    const MetaTensor& skip_update,
                     const Scalar& beta1,
                     const Scalar& beta2,
                     const Scalar& epsilon,
@@ -117,7 +118,7 @@ void AdamwInferMeta(const MetaTensor& param,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs);
 
-void AddNInferMeta(const std::vector<MetaTensor*>& x,
+void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
@@ -169,14 +170,14 @@ void BatchNormInferInferMeta(const MetaTensor& x,
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
-                                    paddle::optional<const MetaTensor&> bias,
+                                    const MetaTensor& bias,
                                     MetaTensor* out,
                                     MetaConfig config = MetaConfig());
 
-void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
-void ConcatInferMeta(const std::vector<MetaTensor*>& x,
+void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
@@ -184,7 +185,7 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
-                             paddle::optional<const MetaTensor&> mask,
+                             const MetaTensor& mask,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
                              const std::vector<int>& dilations,
@@ -197,9 +198,9 @@ void DeformableConvInferMeta(const MetaTensor& x,
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
-                                  paddle::optional<const MetaTensor&> path,
-                                  paddle::optional<const MetaTensor&> code,
-                                  paddle::optional<const MetaTensor&> bias,
+                                  const MetaTensor& path,
+                                  const MetaTensor& code,
+                                  const MetaTensor& bias,
                                   int num_classes,
                                   bool remote_prefetch,
                                   int trainer_id,
@@ -213,9 +214,9 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 
 void InterpolateInferMeta(
     const MetaTensor& x,
-    paddle::optional<const MetaTensor&> out_size,
-    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
-    paddle::optional<const MetaTensor&> scale_tensor,
+    const MetaTensor& out_size,
+    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
+    const MetaTensor& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -227,14 +228,20 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out);
+
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,
                        const MetaTensor& learning_rate,
-                       paddle::optional<const MetaTensor&> master_param,
+                       const MetaTensor& master_param,
                        float mu,
                        bool use_nesterov,
                        const std::string& regularization_method,
@@ -245,15 +252,16 @@ void MomentumInferMeta(const MetaTensor& param,
                        MetaTensor* velocity_out,
                        MetaTensor* master_param_out);
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
+                       MetaTensor* out);
 
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
-                        paddle::optional<const MetaTensor&> rois_num,
+                        const MetaTensor& rois_num,
                         int pooled_height,
                         int pooled_width,
                         int output_channels,
@@ -265,7 +273,7 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
-                      paddle::optional<const MetaTensor&> mean_grad,
+                      const MetaTensor& mean_grad,
                       float epsilon,
                       float decay,
                       float momentum,
@@ -276,9 +284,9 @@ void RmspropInferMeta(const MetaTensor& param,
                       MetaTensor* mean_grad_out);
 
 void RnnInferMeta(const MetaTensor& x,
-                  const std::vector<MetaTensor*>& pre_state,
-                  const std::vector<MetaTensor*>& weight_list,
-                  paddle::optional<const MetaTensor&> sequence_length,
+                  const std::vector<const MetaTensor*>& pre_state,
+                  const std::vector<const MetaTensor*>& weight_list,
+                  const MetaTensor& sequence_length,
                   float dropout_prob,
                   bool is_bidirec,
                   int input_size,
@@ -295,22 +303,22 @@ void RnnInferMeta(const MetaTensor& x,
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
-                  paddle::optional<const MetaTensor&> master_param,
+                  const MetaTensor& master_param,
                   bool multi_precision,
                   MetaTensor* param_out,
                   MetaTensor* master_param_out);
 
-void StackInferMeta(const std::vector<MetaTensor*>& x,
+void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out);
 
-void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
-                      const paddle::optional<const MetaTensor&> logits_length,
-                      const paddle::optional<const MetaTensor&> labels_length,
+                      const MetaTensor& logits_length,
+                      const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
                       MetaTensor* warpctc_grad,
@@ -324,30 +332,29 @@ void WhereInferMeta(const MetaTensor& condition,
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,
-                           paddle::optional<const MetaTensor&> hashtable_value,
-                           paddle::optional<const MetaTensor&> hashtable_index,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
                            bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
 
-void GraphSampleNeighborsInferMeta(
-    const MetaTensor& row,
-    const MetaTensor& col_ptr,
-    const MetaTensor& x,
-    paddle::optional<const MetaTensor&> eids,
-    paddle::optional<const MetaTensor&> perm_buffer,
-    int sample_size,
-    bool return_eids,
-    bool flag_perm_buffer,
-    MetaTensor* out,
-    MetaTensor* out_count,
-    MetaTensor* out_eids);
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids);
 
 void Yolov3LossInferMeta(const MetaTensor& x,
                          const MetaTensor& gt_box,
                          const MetaTensor& gt_label,
-                         const paddle::optional<const MetaTensor&> gt_score,
+                         const MetaTensor& gt_score,
                          const std::vector<int>& anchors,
                          const std::vector<int>& anchor_mask,
                          int class_num,

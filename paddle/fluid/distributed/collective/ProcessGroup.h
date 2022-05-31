@@ -69,7 +69,8 @@ class ProcessGroup {
     bool is_completed_ = false;
   };
 
-  explicit ProcessGroup(int rank, int size, int gid);
+  explicit ProcessGroup(int rank, int size, const platform::Place& place,
+                        int gid);
   virtual ~ProcessGroup() {}
 
   int GetRank() const { return rank_; }
@@ -112,6 +113,19 @@ class ProcessGroup {
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
+                                                           int, int,
+                                                           int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors, int, int, int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>&,    // NOLINT
       std::vector<phi::DenseTensor>&) {  // NOLINT
@@ -145,6 +159,7 @@ class ProcessGroup {
  protected:
   const int rank_;
   const int size_;
+  const platform::Place place_;
   const int gid_;
 };
 

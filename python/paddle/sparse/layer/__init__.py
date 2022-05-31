@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activation import ReLU
+from .unary import ReLU
+from .norm import BatchNorm
+from .conv import Conv3D
+from .conv import SubmConv3D
+from .pooling import MaxPool3D
 
 __all__ = []

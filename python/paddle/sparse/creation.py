@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops
 from ..framework import core, dygraph_only
 from ..framework import _current_expected_place, _get_paddle_place
 from ..tensor import to_tensor
 from ..tensor import max
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+
+import numpy as np
 
 __all__ = [
     'sparse_coo_tensor',
@@ -32,11 +35,14 @@ def _handle_dtype(data, dtype):
     return data
 
 
-def _infer_dense_shape(indices):
+def _infer_dense_shape(indices, values):
     assert len(indices.shape) == 2
     lens = max(indices, axis=1)
     lens = lens + 1
-    return list(lens.numpy())
+    lens = lens.numpy()
+    if len(values.shape) > 1:
+        lens = np.append(lens, values.shape[1:])
+    return list(lens)
 
 
 def _get_place(place):
@@ -49,6 +55,13 @@ def _get_place(place):
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
     return place
+
+
+def _check_indices_dtype(dtype):
+    if dtype not in [paddle.int8, paddle.int16, paddle.int32, paddle.int64]:
+        raise TypeError(
+            "the dtype of indices must be 'int8' or 'int16' or 'int32' or 'int64'"
+        )
 
 
 @dygraph_only
@@ -98,7 +111,7 @@ def sparse_coo_tensor(indices,
         with _test_eager_guard():
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
-            dense_shape = [2, 3]
+            dense_shape = [3, 3]
             coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
             # print(coo)
             # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
@@ -117,6 +130,18 @@ def sparse_coo_tensor(indices,
     if len(indices.shape) != 2:
         raise ValueError("'indices' must be 2-D.")
 
+    nnz = indices.shape[1]
+    sparse_dim = indices.shape[0]
+
+    _check_indices_dtype(indices.dtype)
+
+    if nnz != values.shape[0]:
+        raise ValueError(
+            "the indices and values must have same number of non-zero, but get {} and {}".
+            format(nnz, values.shape[0]))
+
+    dense_dim = len(values.shape) - 1
+
     if not indices.place._equals(place):
         indices = indices._copy_to(place, False)
 
@@ -125,8 +150,18 @@ def sparse_coo_tensor(indices,
     values = _handle_dtype(values, dtype)
     values.stop_gradient = stop_gradient
 
+    min_shape = _infer_dense_shape(indices, values)
+
     if shape is None:
-        shape = _infer_dense_shape(indices)
+        shape = min_shape
+    else:
+        if shape < min_shape:
+            raise ValueError("the minimun shape required is {}, but get {}".
+                             format(min_shape, shape))
+        if len(shape) != sparse_dim + dense_dim:
+            raise ValueError(
+                "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}".
+                format(sparse_dim, dense_dim, len(shape)))
 
     return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
                                                               shape)
@@ -144,6 +179,7 @@ def sparse_csr_tensor(crows,
     r"""
     Constructs a sparse ``paddle.Tensor`` in CSR(Compressed Sparse Row) format according to the 
     ``crows``, ``cols`` and ``values``.
+    Currently, the crows and cols of each batch must be incrementd.
 
     Args:
         crows(list|tuple|ndarray|Tensor): 1-D array, each element in the rows represents the 
@@ -202,10 +238,14 @@ def sparse_csr_tensor(crows,
         cols = to_tensor(cols, dtype=None, place=place, stop_gradient=True)
     if not isinstance(values, core.eager.Tensor):
         values = to_tensor(values, dtype, place, stop_gradient)
-    if len(crows.shape) != 1 or len(cols.shape) != 1 or len(values.shape) != 1:
+
+    _check_indices_dtype(crows.dtype)
+    _check_indices_dtype(cols.dtype)
+
+    if len(shape) != 2 and len(shape) != 3:
         raise ValueError(
-            "SparseCsrTensor only support 2-D or 3-D matrix. The 'crows', 'cols' and 'values' must be 1-D."
-        )
+            "SparseCsrTensor only support 2-D or 3-D matrix. but get shape {}".
+            format(shape))
 
     if not crows.place._equals(place):
         crows = crows._copy_to(place, False)
@@ -217,5 +257,30 @@ def sparse_csr_tensor(crows,
         values = values._copy_to(place, False)
     values = _handle_dtype(values, dtype)
     values.stop_gradient = stop_gradient
+
+    if len(crows.shape) != 1 or len(cols.shape) != 1 or len(values.shape) != 1:
+        raise ValueError("The 'crows', 'cols' and 'values' must be 1-D.")
+
+    if (len(cols) != len(values)):
+        raise ValueError("the length of cols must be same as length of values")
+
+    if len(shape) == 2:
+        if crows.shape[0] != shape[0] + 1:
+            raise ValueError(
+                "The length({}) of crows must be equal to the rows({})+1 of matrix.".
+                format(crows.shape[0], shape[0]))
+        if crows[0] != 0:
+            raise ValueError("the 0th value of crows must be 0")
+
+        if crows[-1] != values.shape[0]:
+            raise ValueError(
+                "the last value of crows must be equal the number of non-zero")
+    else:
+        if crows.shape[0] % (shape[0] + 1) != 0:
+            raise ValueError(
+                "The length({}) of crows must be divisible the rows({})+1 of matrix.".
+                format(crows.shape[0], shape[0]))
+    # TODO(zkh2016): check whether the value in crows and cols is legal 
+
     return core.eager.sparse_csr_tensor(crows, cols, values, shape,
                                         stop_gradient)

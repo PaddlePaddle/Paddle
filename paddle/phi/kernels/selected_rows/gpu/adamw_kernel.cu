@@ -112,8 +112,8 @@ void AdamwDenseParamSparseGradKernel(
     const DenseTensor& moment2,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    paddle::optional<const DenseTensor&> master_param,
-    paddle::optional<const DenseTensor&> skip_update,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -156,8 +156,8 @@ void AdamwDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
+    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     return;
   }
 

@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/operators/norm_utils.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
@@ -179,7 +179,7 @@ void BatchNormKernel(const Context &ctx,
 
   ctx.template Alloc<T>(y);
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
@@ -498,9 +498,11 @@ void BatchNormKernel(const Context &ctx,
                   /*sizeInBytes=*/&reserve_space_size));
 
       reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
-      reserve_space_ptr = ctx.template Alloc<T>(reserve_space);
+      reserve_space_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
       workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
-      workspace_ptr = ctx.template Alloc<T>(&workspace_tensor);
+      workspace_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
               handle,

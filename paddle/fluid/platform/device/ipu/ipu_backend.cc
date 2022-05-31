@@ -13,12 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
 namespace paddle {
 namespace platform {
@@ -40,7 +38,7 @@ IpuBackend::~IpuBackend() {
   executor_.reset();
 }
 
-void IpuBackend::Compile(Graph* graph,
+void IpuBackend::Compile(framework::ir::Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
@@ -63,8 +61,8 @@ void IpuBackend::Compile(Graph* graph,
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
-void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     const std::vector<Tensor*>& outputs,
+void IpuBackend::Run(const std::vector<const framework::Tensor*>& inputs,
+                     const std::vector<framework::Tensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
   timer_->Start();
   executor_->Run(inputs, outputs, ctx);
@@ -76,13 +74,9 @@ void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 
-void IpuBackend::Reset() {
-  executor_->Detach();
-  compiler_.reset();
-  executor_.reset();
-}
+void IpuBackend::Reset() { executor_->Reset(); }
 
-void IpuBackend::SetScope(const Scope& scope) {
+void IpuBackend::SetScope(const framework::Scope& scope) {
   scope_ = &scope;
   executor_->SetScope(&scope);
 }
