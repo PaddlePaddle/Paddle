@@ -277,25 +277,32 @@ struct ConcatFunctor<phi::GPUContext, T> {
     int64_t out_row = in_row, out_col = 0;
 
     int inputs_col_num = in_num + 1;
-    // There are some differences between hip runtime and NV runtime.
-    // In NV, when the pageable memory data less than 64K is transferred from
-    // hosttodevice, it will be automatically asynchronous.
-    // However, only pinned memory in hip can copy asynchronously
-    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-    // 3.2.6.1. Concurrent Execution between Host and Device
-    // Memory copies from host to device of a memory block of 64 KB or less
+    paddle::memory::AllocationPtr data_alloc, col_alloc;
 
+// There are some differences between hip runtime and NV runtime.
+// In NV, when the pageable memory data less than 64K is transferred from
+// hosttodevice, it will be automatically asynchronous.
+// However, only pinned memory in hip can copy asynchronously
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
+// 3.2.6.1. Concurrent Execution between Host and Device
+// Memory copies from host to device of a memory block of 64 KB or less
+#ifdef PADDLE_WITH_HIP
     // TODO(chentianyu03): try to find a method to remove the Alloc function
-    paddle::memory::AllocationPtr inputs_data_alloc, inputs_col_alloc;
-    inputs_data_alloc = paddle::memory::Alloc(
-        paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
-    const T** inputs_data =
-        reinterpret_cast<const T**>(inputs_data_alloc->ptr());
-
-    inputs_col_alloc =
-        paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                              (inputs_col_num) * sizeof(int64_t));
-    int64_t* inputs_col = reinterpret_cast<int64_t*>(inputs_col_alloc->ptr());
+    data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                       in_num * sizeof(T*));
+    // TODO(chentianyu03): try to find a method to remove the Alloc function
+    col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                      inputs_col_num * sizeof(int));
+#else
+    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
+    // allocator.
+    data_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
+                                       in_num * sizeof(T*));
+    col_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
+                                      (inputs_col_num) * sizeof(int64_t));
+#endif
+    const T** inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
+    int64_t* inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 
     inputs_col[0] = 0;
     bool has_same_shape = true;
@@ -314,11 +321,10 @@ struct ConcatFunctor<phi::GPUContext, T> {
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
-    phi::Allocation* ins_data{nullptr};
-    phi::Allocation* col_data{nullptr};
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
+      tmp_dev_ins_data = paddle::memory::Alloc(
+          context.GetPlace(), in_num * sizeof(T*), context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -328,8 +334,6 @@ struct ConcatFunctor<phi::GPUContext, T> {
                            in_num * sizeof(T*),
                            context.stream());
       dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
-      // NOTE: extend the life cycle.
-      ins_data = tmp_dev_ins_data.release();
     }
 
     if (has_same_shape) {
@@ -366,7 +370,9 @@ struct ConcatFunctor<phi::GPUContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          paddle::memory::Alloc(context, inputs_col_num * sizeof(int64_t));
+          paddle::memory::Alloc(context.GetPlace(),
+                                inputs_col_num * sizeof(int64_t),
+                                context.stream());
 
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
@@ -378,8 +384,6 @@ struct ConcatFunctor<phi::GPUContext, T> {
                            context.stream());
       int64_t* dev_ins_col_data =
           static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
-      // NOTE: extend the life cycle.
-      col_data = tmp_dev_ins_col_data.release();
 
       ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           dev_ins_data,
@@ -393,17 +397,16 @@ struct ConcatFunctor<phi::GPUContext, T> {
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
     // next time)
-    auto* inputs_data_alloc_released = inputs_data_alloc.release();
-    auto* inputs_cols_alloc_released = inputs_col_alloc.release();
-    context.AddStreamCallback(
-        [inputs_data_alloc_released, inputs_cols_alloc_released] {
-          VLOG(4) << "Delete cuda pinned at " << inputs_data_alloc_released;
-          VLOG(4) << "Delete cuda pinned at " << inputs_cols_alloc_released;
-          paddle::memory::allocation::Allocator::AllocationDeleter(
-              inputs_data_alloc_released);
-          paddle::memory::allocation::Allocator::AllocationDeleter(
-              inputs_cols_alloc_released);
-        });
+    auto* data_alloc_released = data_alloc.release();
+    auto* col_alloc_released = col_alloc.release();
+    context.AddStreamCallback([data_alloc_released, col_alloc_released] {
+      VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
+      VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
+      paddle::memory::allocation::Allocator::AllocationDeleter(
+          data_alloc_released);
+      paddle::memory::allocation::Allocator::AllocationDeleter(
+          col_alloc_released);
+    });
   }
 };
 
@@ -434,26 +437,32 @@ class SplitFunctor<phi::GPUContext, T> {
     bool has_same_shape = true;
 
     int outputs_cols_num = o_num + 1;
+    paddle::memory::AllocationPtr data_alloc, cols_alloc;
 
-    // There are some differences between hip runtime and NV runtime.
-    // In NV, when the pageable memory data less than 64K is transferred from
-    // hosttodevice, it will be automatically asynchronous.
-    // However, only pinned memory in hip can copy asynchronously
-    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-    // 3.2.6.1. Concurrent Execution between Host and Device
-    // Memory copies from host to device of a memory block of 64 KB or less
-
+// There are some differences between hip runtime and NV runtime.
+// In NV, when the pageable memory data less than 64K is transferred from
+// hosttodevice, it will be automatically asynchronous.
+// However, only pinned memory in hip can copy asynchronously
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
+// 3.2.6.1. Concurrent Execution between Host and Device
+// Memory copies from host to device of a memory block of 64 KB or less
+#ifdef PADDLE_WITH_HIP
     // TODO(chentianyu03): try to find a method to remove the Alloc function
-    paddle::memory::AllocationPtr outputs_data_alloc, outputs_cols_alloc;
-    outputs_data_alloc = paddle::memory::Alloc(
-        paddle::platform::CUDAPinnedPlace(), o_num * sizeof(T*));
-    T** outputs_data = reinterpret_cast<T**>(outputs_data_alloc->ptr());
-
-    outputs_cols_alloc =
-        paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                              (outputs_cols_num) * sizeof(int64_t));
-    int64_t* outputs_cols =
-        reinterpret_cast<int64_t*>(outputs_cols_alloc->ptr());
+    data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                       o_num * sizeof(T*));
+    // TODO(chentianyu03): try to find a method to remove the Alloc function
+    cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                       (outputs_cols_num) * sizeof(int64_t));
+#else
+    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
+    // allocator.
+    data_alloc =
+        paddle::memory::Alloc(paddle::platform::CPUPlace(), o_num * sizeof(T*));
+    cols_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
+                                       (outputs_cols_num) * sizeof(int64_t));
+#endif
+    T** outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
+    int64_t* outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
@@ -475,11 +484,11 @@ class SplitFunctor<phi::GPUContext, T> {
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
     paddle::memory::allocation::AllocationPtr tmp_dev_outs_data;
-    phi::Allocation *outs_data{nullptr}, *col_data{nullptr};
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       // TODO(chentianyu03): try to find a method to remove the Alloc function
-      tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
+      tmp_dev_outs_data = paddle::memory::Alloc(
+          context.GetPlace(), o_num * sizeof(T*), context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -489,8 +498,6 @@ class SplitFunctor<phi::GPUContext, T> {
                            o_num * sizeof(T*),
                            context.stream());
       dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
-      // NOTE: extend the life cycle.
-      outs_data = tmp_dev_outs_data.release();
     }
 
     if (has_same_shape) {
@@ -529,7 +536,9 @@ class SplitFunctor<phi::GPUContext, T> {
       auto tmp_dev_ins_col_data =
           // TODO(chentianyu03): try to find a method to remove the Alloc
           // function
-          paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
+          paddle::memory::Alloc(context.GetPlace(),
+                                outputs_cols_num * sizeof(int64_t),
+                                context.stream());
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -540,8 +549,6 @@ class SplitFunctor<phi::GPUContext, T> {
                            context.stream());
       int64_t* dev_outs_col_data =
           reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
-      // NOTE: extend the life cycle.
-      col_data = tmp_dev_ins_col_data.release();
 
       SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
@@ -552,15 +559,17 @@ class SplitFunctor<phi::GPUContext, T> {
           dev_out_gpu_data);
     }
 
-    auto* outputs_data_alloc_released = outputs_data_alloc.release();
-    auto* outputs_cols_alloc_released = outputs_cols_alloc.release();
-    context.AddStreamCallback(
-        [outputs_data_alloc_released, outputs_cols_alloc_released] {
-          paddle::memory::allocation::Allocator::AllocationDeleter(
-              outputs_data_alloc_released);
-          paddle::memory::allocation::Allocator::AllocationDeleter(
-              outputs_cols_alloc_released);
-        });
+    // Prevent the pinned memory value from being covered and release the memory
+    // after the launch kernel of the stream is executed (reapply pinned memory
+    // next time)
+    auto* data_alloc_released = data_alloc.release();
+    auto* cols_alloc_released = cols_alloc.release();
+    context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
+      paddle::memory::allocation::Allocator::AllocationDeleter(
+          data_alloc_released);
+      paddle::memory::allocation::Allocator::AllocationDeleter(
+          cols_alloc_released);
+    });
   }
 };
 
