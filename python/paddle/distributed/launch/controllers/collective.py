@@ -79,7 +79,8 @@ class CollectiveController(Controller):
         self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
-            self.ctx.args.devices)
+            self.ctx.args.devices, self.ctx.args.device_num)
+
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -95,7 +96,8 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-            if self.pod.replicas == 1:
+
+            if self.pod.replicas == 1 or self.ctx.node.device.dtype == "ipu":
                 e.update({selected_dev_key: ",".join(selected_dev_list)})
             else:
                 e.update({selected_dev_key: selected_dev_list[i]})
