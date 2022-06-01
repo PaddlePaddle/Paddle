@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.layers import utils
+from paddle.fluid.layers import utils
 from paddle import _C_ops, in_dynamic_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 
@@ -70,7 +70,7 @@ def max_pool3d(x,
                 kernel_sizes = [3, 3, 3]
                 paddings = [0, 0, 0]
                 strides = [1, 1, 1]
-                out = paddle.sparse.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
+                out = paddle.incubate.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
                 #[1, 2, 2, 2, 3]
     """
 

@@ -1360,7 +1360,7 @@ class Completer:
                 dist_op.dist_attr.process_mesh = world_ranks
 
                 # Find the most compatible implemenetations from the distributed operator
-                op_dist_impls = find_best_compatible_distributed_operator_impl(
+                op_dist_impls = find_compatible_distributed_operator_impls(
                     dist_op, fwd=True)
                 if op_dist_impls is not None:
                     backup_op_dist_attr = copy.deepcopy(dist_op.dist_attr)

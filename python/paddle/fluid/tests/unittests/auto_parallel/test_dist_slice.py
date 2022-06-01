@@ -50,11 +50,11 @@ def make_program_serial():
                 "dims_mapping": [-1, -1, -1]
             })
         tmp_0 = x[0]
-        # tmp_1 = x[:, 0, :]
-        # tmp_2 = x[:, :, 1]
-        # tmp_3 = x[2, 2, :]
-        # tmp_4 = x[:2, :2, :2]
-        # tmp_5 = x[0, 0, 0]
+        tmp_1 = x[:, 0, :]
+        tmp_2 = x[:, :, 1]
+        tmp_3 = x[2, 2, :]
+        tmp_4 = x[:2, :2, :2]
+        tmp_5 = x[0, 0, 0]
     return main_program, start_program
 
 
@@ -95,6 +95,7 @@ class TestDistSlice(unittest.TestCase):
         ops = dist_main_prog.global_block().ops
         for op in ops:
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            # We amend this impl_type after completion
             assert op_dist_attr.impl_type == "default"
             for out in op.output_arg_names:
                 var_dims_mapping = op_dist_attr.get_output_dims_mapping(out)
