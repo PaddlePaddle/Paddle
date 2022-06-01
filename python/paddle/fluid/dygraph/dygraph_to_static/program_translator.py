@@ -61,7 +61,7 @@ class FunctionCache(object):
 
     def __init__(self):
         # Caches the converted static functions. {dygraph_func: static_func}
-        self._converted_static_func_caches = dict()
+        self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
         self._code_to_ast_caches = dict()
         self._dygraph_to_static = DygraphToStaticAst()
