@@ -126,46 +126,47 @@ class Engine:
             self._initialize(mode)
 
     def _build(self, mode):
-        serial_main_prog = self._serial_main_progs.get(mode, None)
-        if serial_main_prog is not None:
-            return
+        for mode in self._modes:
+            serial_main_prog = self._serial_main_progs.get(mode, None)
+            if serial_main_prog is not None:
+                return
 
-        losses = []
-        metrics = []
-        serial_main_prog = self._orig_main_prog.clone()
-        serial_startup_prog = self._orig_startup_prog.clone()
-        with fluid.program_guard(serial_main_prog, serial_startup_prog):
-            inputs_spec = self.inputs_spec
-            labels_spec = self.labels_spec if self.labels_spec else []
-            inputs = [s._create_feed_layer() for s in inputs_spec]
-            labels = [s._create_feed_layer() for s in labels_spec]
-            outputs = to_list(self.model(*inputs))
-            if mode != "predict" and self._loss:
-                losses = to_list(self._loss(*(outputs + labels)))
+            losses = []
+            metrics = []
+            serial_main_prog = self._orig_main_prog.clone()
+            serial_startup_prog = self._orig_startup_prog.clone()
+            with fluid.program_guard(serial_main_prog, serial_startup_prog):
+                inputs_spec = self.inputs_spec
+                labels_spec = self.labels_spec if self.labels_spec else []
+                inputs = [s._create_feed_layer() for s in inputs_spec]
+                labels = [s._create_feed_layer() for s in labels_spec]
+                outputs = to_list(self.model(*inputs))
+                if mode != "predict" and self._loss:
+                    losses = to_list(self._loss(*(outputs + labels)))
 
-        default_ctx = get_default_distributed_context()
-        if not default_ctx.has_annotation or self._default_strategy:
-            inputs = [self._set_data_parallel(var) for var in inputs]
-            labels = [self._set_data_parallel(var) for var in labels]
+            default_ctx = get_default_distributed_context()
+            if not default_ctx.has_annotation or self._default_strategy:
+                inputs = [self._set_data_parallel(var) for var in inputs]
+                labels = [self._set_data_parallel(var) for var in labels]
 
-        # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
-        feed_vars = {"inputs": inputs, "labels": labels}
+            # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+            feed_vars = {"inputs": inputs, "labels": labels}
 
-        # self._fetch_vars[mode] = {
-        #     "outputs": flatten(outputs),
-        #     "loss": losses,
-        #     "metrics": metrics
-        # }
-        fetch_vars = {
-            "outputs": flatten(outputs),
-            "loss": losses,
-            "metrics": metrics
-        }
+            # self._fetch_vars[mode] = {
+            #     "outputs": flatten(outputs),
+            #     "loss": losses,
+            #     "metrics": metrics
+            # }
+            fetch_vars = {
+                "outputs": flatten(outputs),
+                "loss": losses,
+                "metrics": metrics
+            }
 
-        self._dist_contexts[mode] = DistributedContext(
-            serial_main_prog, serial_startup_prog, self._optimizer, losses,
-            feed_vars, fetch_vars, self.cluster, self.strategy)
-        self._dist_contexts[mode].gradient_scale = self._gradient_scale
+            self._dist_contexts[mode] = DistributedContext(
+                serial_main_prog, serial_startup_prog, self._optimizer, losses,
+                feed_vars, fetch_vars, self.cluster, self.strategy)
+            self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
         serial_main_prog = self._serial_main_progs.get(mode, None)
