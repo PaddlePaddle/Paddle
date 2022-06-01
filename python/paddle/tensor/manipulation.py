@@ -3321,7 +3321,13 @@ def reshape_(x, shape, name=None):
             return out
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
-            out, _ = _C_ops.reshape2_(x, shape)
+            # NOTE(pangyoki): Cannot support the case where the shape Tensor
+            # is negative. In the infer_shape stage, the input's dim will
+            # be changed to a negative number.
+            # Thus, convert Shape Tensor to list firstly and then call 
+            # reshape inplace op.
+            shape_list = shape.numpy().tolist()
+            out, _ = _C_ops.reshape2_(x, None, 'shape', shape_list)
             return out
 
 
