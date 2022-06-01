@@ -2047,6 +2047,8 @@ TETRAD_PARALLEL_JOB = [
     'test_lambda',
     'test_prod_op',
     'test_fused_attention_op_api',
+    'test_fused_bias_dropout_residual_layer_norm_op',
+    'test_fused_bias_dropout_residual_layer_norm_op_api',
     'test_complex_grad_accumulated',
     'test_deg2rad',
     'test_lgamma_op',
