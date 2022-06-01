@@ -31,7 +31,8 @@ ops_to_fill_zero_for_empty_grads = set([
     "leaky_relu_double_grad", "sqrt_double_grad", "rsqrt_double_grad",
     "square_double_grad", "celu_double_grad", "pad_double_grad",
     "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
-    "conv3d_double_grad", "depthwise_conv2d_grad_grad"
+    "instance_norm_double_grad", "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad"
 ])
 
 # For API dispatch used at python-level

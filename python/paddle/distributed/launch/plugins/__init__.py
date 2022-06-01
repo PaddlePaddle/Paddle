@@ -25,20 +25,6 @@ def log(ctx):
     ctx.logger.info("--------------------------------------------------")
 
 
-def rewrite_ipu_script(ctx):
-    import paddle.fluid as fluid
-    if fluid.core.is_compiled_with_ipu():
-        import os
-        if ctx.args.training_script != "ipu":
-            raise RuntimeError(
-                "Only support to run the script \'ipu\' for IPU distributed computing."
-            )
-        ctx.args.training_script = os.path.abspath(
-            os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                "utils/ipu_launch.py"))
-
-
 def process_args(ctx):
     # reset device by args
     #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
@@ -74,6 +60,4 @@ def rewrite_host_ip(ctx):
         ctx.node.ip = ctx.args.host
 
 
-enabled_plugins = [
-    collective_compatible, rewrite_host_ip, process_args, rewrite_ipu_script
-]
+enabled_plugins = [collective_compatible, rewrite_host_ip, process_args]
