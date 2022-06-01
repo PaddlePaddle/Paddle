@@ -204,9 +204,13 @@ class DistributedContext:
             )
             self._serial_startup_program = self._original_serial_startup_program.clone(
             )
-            self._serial_main_program = self._original_serial_main_program
-            self._serial_startup_program = self._original_serial_startup_program
-            self._serial_loss = self._original_serial_loss
+            # self._serial_main_program = self._original_serial_main_program
+            # self._serial_startup_program = self._original_serial_startup_program
+            if self._original_serial_loss:
+                self._serial_loss = self._serial_main_program.global_block(
+                ).vars[self._original_serial_loss[0].name]
+            else:
+                self._serial_loss = self._original_serial_loss
             self._serial_optimizer = self._original_serial_optimizer
             self._init_dist_attr_for_program()
             self._tensors_ids = list(self._dist_tensors_for_program.keys())

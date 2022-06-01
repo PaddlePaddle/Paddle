@@ -22,12 +22,27 @@ template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y_grad,
-                            paddle::optional<const DenseTensor&> scale,
+                            const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             float epsilon,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad);
+
+template <typename T, typename Context>
+void InstanceNormDoubleGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const paddle::optional<DenseTensor>& scale,
+                                  const DenseTensor& saved_mean,
+                                  const DenseTensor& saved_variance,
+                                  const DenseTensor& dy,
+                                  const paddle::optional<DenseTensor>& ddx,
+                                  const paddle::optional<DenseTensor>& ddscale,
+                                  const paddle::optional<DenseTensor>& ddbias,
+                                  float epsilon,
+                                  DenseTensor* dx,
+                                  DenseTensor* dscale,
+                                  DenseTensor* ddy);
 
 }  // namespace phi

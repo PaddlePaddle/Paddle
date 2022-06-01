@@ -31,8 +31,26 @@ KernelSignature InstanceNormGradOpArgumentMapping(
                          {"epsilon"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
+KernelSignature InstanceNormDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("instance_norm_double_grad",
+                         {"X",
+                          "Scale",
+                          "SavedMean",
+                          "SavedVariance",
+                          "DY",
+                          "DDX",
+                          "DDScale",
+                          "DDBias"},
+                         {"epsilon"},
+                         {"DX", "DScale", "DDY"});
+}
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(instance_norm_grad_grad,
+                             instance_norm_double_grad);
 PD_REGISTER_ARG_MAPPING_FN(instance_norm, phi::InstanceNormOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(instance_norm_grad,
                            phi::InstanceNormGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(instance_norm_grad_grad,
+                           phi::InstanceNormDoubleGradOpArgumentMapping);

@@ -102,6 +102,14 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
+                                                   int dst_rank, int offset,
+                                                   int length) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
+                                                   int src_rank, int offset,
+                                                   int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
