@@ -729,7 +729,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                        "got edges size is: %d, grad_output size is: %d",
                        metas.size(), grad_output_tensors.size()));
 
-    egr::GradNodeAccumulation* accumulation_node = nullptr;
+    std::deque<egr::GradNodeBase*> accumulation_node_queue;
 
     for (size_t i = 0; i < metas.size(); i++) {
       for (size_t j = 0; j < metas[i].size(); j++) {
@@ -801,28 +801,28 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           bool is_potential_stop_node =
               GeneralGrad::Instance().GetPotentialStopNodes()->count(next_node);
           if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
-            auto tmp_node = dynamic_cast<egr::GradNodeAccumulation*>(next_node);
-            if (tmp_node) {
-              accumulation_node = tmp_node;
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              accumulation_node_queue.push_front(std::move(next_node));
             } else {
-              queue.emplace(std::move(next_node));
+              accumulation_node_queue.push_back(std::move(next_node));
             }
           }
         } else {
           if (node_in_degree_map[next_node] == 0) {
-            auto tmp_node = dynamic_cast<egr::GradNodeAccumulation*>(next_node);
-            if (tmp_node) {
-              accumulation_node = tmp_node;
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              accumulation_node_queue.push_front(std::move(next_node));
             } else {
-              queue.emplace(std::move(next_node));
+              accumulation_node_queue.push_back(std::move(next_node));
             }
           }
         }
       }
     }
 
-    if (accumulation_node) {
-      queue.emplace(std::move(accumulation_node));
+    while (!accumulation_node_queue.empty()) {
+      GradNodeBase* accumulation_node = accumulation_node_queue.front();
+      accumulation_node_queue.pop_front();
+      queue.push(std::move(accumulation_node));
     }
   }
 
