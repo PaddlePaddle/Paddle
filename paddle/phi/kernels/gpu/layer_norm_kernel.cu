@@ -162,8 +162,6 @@ void LayerNormKernel(const Context &dev_ctx,
   } break
 
 #define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 256);  \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 512);  \
   PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
   PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
   PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
@@ -174,11 +172,13 @@ void LayerNormKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
   bool can_call_fast_kernel = false;
-  if ((feature_size >= 256 && feature_size <= 2048 && feature_size % 256 == 0 ||
+  if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
        feature_size == 4096) &&
       scale != nullptr && bias != nullptr) {
-    can_call_fast_kernel = true;
+    // can_call_fast_kernel = true;
+    can_call_fast_kernel = false;
   }
+
   if (can_call_fast_kernel) {
     if (is_scale_bias_same_dtype_with_x) {
       switch (feature_size) {
