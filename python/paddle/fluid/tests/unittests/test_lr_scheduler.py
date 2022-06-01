@@ -755,7 +755,7 @@ class TestLRScheduler(unittest.TestCase):
             "anneal_strategy": 'linear',
             "phase_pct": 0.2,
             "three_phase": True,
-        }),(cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
             "base_learning_rate": 0.5,
             "max_learning_rate": 1.0,
             "step_size_up": 15,
