@@ -39,7 +39,7 @@ bool UseBroadCast(const phi::DDim& l_dims, const phi::DDim& r_dims) {
 
 BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims, const phi::DDim& r_dims) {
   BroadCastInfo binfo;
-  binfo.use_bcast = UseBroadCast(l_dims, r_dims);
+  binfo.use_bcast = UseBroadCast(l_dims, r_dims, op);
   binfo.l_len = 1;
   binfo.r_len = 1;
   for (int i = 1; i < l_dims.size(); i++) {

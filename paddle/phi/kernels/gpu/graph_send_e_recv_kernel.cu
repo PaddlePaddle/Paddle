@@ -71,7 +71,7 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
   if (index_size == 0) return;
 
-  const auto& bcast_info = CalcBCastInfo(x.dims(), e.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), e.dims(), compute_type);
   const T* x_data = x.data<T>();
   const T* e_data = e.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
