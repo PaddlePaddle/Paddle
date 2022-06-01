@@ -23,7 +23,7 @@ namespace jit {
 class ExectorFunction : public BaseFunction {
  public:
   ExectorFunction(const framework::ProgramDesc &prog,
-                  std::vector<IValue> &params)
+                  const std::vector<IValue> &params)
       : BaseFunction(prog, params) {}
 
   ~ExectorFunction() {}
@@ -34,6 +34,7 @@ class ExectorFunction : public BaseFunction {
     ShareIntoScope(args);
     // run program
     inner_exe_.Run(prog_, &scope_, /*blockID=*/0, false, true, skip_vars_);
+    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs
     std::vector<IValue> res;
     FetchOutput(&res);

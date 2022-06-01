@@ -43,7 +43,8 @@ class Layer {
     // params_ = params;
     for (size_t i = 0; i < func_names.size(); ++i) {
       funcs_.insert(std::make_pair(
-          func_names[i], std::make_shared<PEFunction>(progs_[i], params_)));
+          func_names[i],
+          std::make_shared<ExectorFunction>(progs_[i], params_)));
     }
   }
 

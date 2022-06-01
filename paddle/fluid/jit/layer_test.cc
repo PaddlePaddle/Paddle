@@ -46,13 +46,6 @@ namespace paddle {
 namespace jit {
 using Tensor = paddle::experimental::Tensor;
 
-// TEST(Layer, Basic){
-//     auto cu = std::make_shared<CompilationUnit>();
-//     std::vector<std::string> names;
-//     auto type = ClassType::Create(names, cu);
-//     Layer layer(type);
-// }
-
 std::vector<IValue> PrepareInputs() {
   auto temp = std::make_shared<phi::DenseTensor>();
   temp->Resize(phi::make_ddim({2, 4}));
@@ -74,6 +67,7 @@ void Print(const IValue &ival) {
   auto t = ival.AsTensor();
   auto dt = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
   auto *data = dt->data<float>();
+  VLOG(3) << "------------------------";
   for (int i = 0; i < dt->numel(); ++i) {
     VLOG(3) << "print data: " << data[i];
   }
