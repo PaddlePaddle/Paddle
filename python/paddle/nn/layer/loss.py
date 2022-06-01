@@ -1314,7 +1314,7 @@ class CosineEmbeddingLoss(Layer):
     The CosineEmbeddingLoss layer measures the cosine_embedding loss between input predictions ``input1``, ``input2``
     and target labels ``label`` with values 1 or 0. This is used for measuring whether two inputs are similar or
     dissimilar and is typically used for learning nonlinear embeddings or semi-supervised learning.
-    The cosine_embedding loss can be described as:
+    The cosine embedding loss can be described as:
 
     If label = 1, then the loss value can be calculated as follow:
 
