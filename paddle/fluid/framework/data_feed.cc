@@ -56,12 +56,11 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
                              device_key_size_ * sizeof(uint64_t),
                              cudaMemcpyHostToDevice, stream_));
   size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
-  d_prefix_sum_ = memory::AllocShared(
-      place_, (once_max_sample_keynum + 1) * sizeof(uint64_t));
-  uint64_t* d_prefix_sum_ptr =
-      reinterpret_cast<uint64_t*>(d_prefix_sum_->ptr());
+  d_prefix_sum_ =
+      memory::AllocShared(place_, (once_max_sample_keynum + 1) * sizeof(int));
+  int* d_prefix_sum_ptr = reinterpret_cast<int*>(d_prefix_sum_->ptr());
   cudaMemsetAsync(d_prefix_sum_ptr, 0,
-                  (once_max_sample_keynum + 1) * sizeof(uint64_t), stream_);
+                  (once_max_sample_keynum + 1) * sizeof(int), stream_);
   cursor_ = 0;
   jump_rows_ = 0;
   device_keys_ = reinterpret_cast<uint64_t*>(d_device_keys_->ptr());

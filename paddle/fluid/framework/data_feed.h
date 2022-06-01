@@ -819,6 +819,7 @@ struct BufState {
 
     len = 0;
     cursor = 0;
+    row_num = 0;
     for (size_t i = 0; i < graph_window->size(); i++) {
       VLOG(2) << "graph_window[" << i << "] = " << (*graph_window)[i];
     }
