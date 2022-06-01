@@ -2231,8 +2231,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def soft_margin_loss(input, label,reduction='mean',
-                         name=None):
+def soft_margin_loss(input, label, reduction='mean', name=None):
     """
     This APIs measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
@@ -2274,8 +2273,8 @@ def soft_margin_loss(input, label,reduction='mean',
             output = paddle.nn.functional.soft_margin_loss(input, label)
 
             shape = (5, 5)
-            input = np.random.uniform(0, 2, shape).astype('float32')
-            label = np.random.randint(0, 2, shape).astype('float32')
+            input = paddle.uniform(shape, 0, 2, dtype='float32')
+            label = paddle.randint(shape, 0, 2, dtype='float32')
             label[label==0]=-1
             output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
     """
@@ -2285,7 +2284,8 @@ def soft_margin_loss(input, label,reduction='mean',
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
     if _non_static_mode():
-        label = _C_ops.cast(label, 'in_dtype', label.dtype, 'out_dtype', input.dtype)
+        label = _C_ops.cast(label, 'in_dtype', label.dtype, 'out_dtype',
+                            input.dtype)
         out = _C_ops.soft_margin_loss(input, label)
         if reduction == 'sum':
             return _C_ops.reduce_sum(out, "reduce_all", True)
@@ -2297,7 +2297,8 @@ def soft_margin_loss(input, label,reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'soft_margin_loss')
     fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['int32', 'int64', 'float32', 'float64'], 'soft_margin_loss')
+        label, 'label', ['int32', 'int64', 'float32', 'float64'],
+        'soft_margin_loss')
 
     label = fluid.layers.cast(label, input.dtype)
 

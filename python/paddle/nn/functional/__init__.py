@@ -229,5 +229,6 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'fold',
+            'rrelu',
            'soft_margin_loss',
 ]

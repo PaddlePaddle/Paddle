@@ -1307,6 +1307,7 @@ class HingeEmbeddingLoss(Layer):
             margin=self.margin,
             name=self.name)
 
+
 class SoftMarginLoss(Layer):
     r"""
     Creates a criterion that measures a two-class
@@ -1337,6 +1338,9 @@ class SoftMarginLoss(Layer):
         ``input``. The target labels which values should be numbers -1 or 1.
         Available dtype is int32, int64, float32, float64.
 
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is [1].
+
     Returns:
 
         A callable object of SoftMarginLoss
@@ -1351,16 +1355,14 @@ class SoftMarginLoss(Layer):
             output = soft_margin_loss(input, label)
 
             shape = (5, 5)
-            input = np.random.uniform(0, 2, shape).astype('float32')
-            label = np.random.randint(0, 2, shape).astype('float32')
+            input = paddle.uniform(shape, 0, 2, dtype='float32')
+            label = paddle.randint(shape, 0, 2, dtype='float32')
             label[label==0]=-1
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label,reduction='none')
     """
 
-    def __init__(self,
-                 reduction='mean',
-                 name=None):
+    def __init__(self, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
@@ -1371,9 +1373,6 @@ class SoftMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.soft_margin_loss(
-            input,
-            label,
-            self.reduction,
-            self.name)
+        out = paddle.nn.functional.soft_margin_loss(input, label,
+                                                    self.reduction, self.name)
         return out
