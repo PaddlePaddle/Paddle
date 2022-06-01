@@ -233,8 +233,8 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
   VLOG(0) << "key_size: " << key.size();
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
-          ->graph_neighbor_sample(gpu_id, idx, cuda_key, sample_size,
-                                  key.size());
+          ->graph_neighbor_sample_v2(gpu_id, idx, cuda_key, sample_size,
+                                     key.size(), false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),
@@ -264,13 +264,6 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
   return res;
 }
 
-void GraphGpuWrapper::init_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->init_sample_status();
-}
-
-void GraphGpuWrapper::free_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->free_sample_status();
-}
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int idx, int start,
                                                  int query_size) {
   return ((GpuPsGraphTable *)graph_table)
