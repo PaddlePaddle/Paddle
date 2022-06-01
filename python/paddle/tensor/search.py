@@ -34,7 +34,7 @@ __all__ = []
 
 def argsort(x, axis=-1, descending=False, name=None):
     """
-    This OP sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
+    Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
         x(Tensor): An input N-D Tensor with type float32, float64, int16,
@@ -45,9 +45,8 @@ def argsort(x, axis=-1, descending=False, name=None):
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: sorted indices(with the same shape as ``x``
@@ -202,7 +201,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     """
-    This OP computes the indices of the min elements of the input tensor's
+    Computes the indices of the min elements of the input tensor's
     element along the provided axis.
 
     Args:
@@ -429,25 +428,25 @@ def nonzero(x, as_tuple=False):
 def sort(x, axis=-1, descending=False, name=None):
     """
 
-    This OP sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
+    Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
         x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
-            as axis+R. Default is 0.
+            as axis+R. Default is -1.
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
 
         .. code-block:: python
+           :name: code-example1
 
             import paddle
 
@@ -507,7 +506,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 def mode(x, axis=-1, keepdim=False, name=None):
     """
-    This OP is used to find values and indices of the modes at the optional axis.
+    Used to find values and indices of the modes at the optional axis.
 
     Args:
         x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
@@ -822,7 +821,7 @@ def masked_select(x, mask, name=None):
 
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
-    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    Find values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
@@ -924,7 +923,7 @@ def searchsorted(sorted_sequence,
                  right=False,
                  name=None):
     """
-    This OP is used to find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
+    Find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
 
     Args:
         sorted_sequence(Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension. 
@@ -995,7 +994,7 @@ def searchsorted(sorted_sequence,
 
 def kthvalue(x, k, axis=None, keepdim=False, name=None):
     """
-    This OP is used to find values and indices of the k-th smallest at the axis.
+    Find values and indices of the k-th smallest at the axis.
 
     Args:
         x(Tensor): A N-D Tensor with type float32, float64, int32, int64.

@@ -54,7 +54,7 @@ def _real_to_complex_dtype(dtype):
 
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
-    This OP return fixed number of evenly spaced values within a given interval.
+    Return fixed number of evenly spaced values within a given interval.
 
     Args:
         start(int|float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
@@ -592,7 +592,7 @@ def zeros(shape, dtype=None, name=None):
 
 def zeros_like(x, dtype=None, name=None):
     """
-    This OP returns a Tensor filled with the value 0, with the same shape and
+    Returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Args:
@@ -602,9 +602,8 @@ def zeros_like(x, dtype=None, name=None):
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
             Default is None.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor filled with the value 0, with the same shape and
@@ -698,7 +697,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 def full(shape, fill_value, dtype=None, name=None):
     """
 
-    This Op return a Tensor with the ``fill_value`` which size is same as ``shape``.
+    Return a Tensor with the ``fill_value`` which size is same as ``shape``.
     
     Args:
         shape(list|tuple|Tensor): Shape of the Tensor to be created.
@@ -710,14 +709,15 @@ def full(shape, fill_value, dtype=None, name=None):
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created Tensor is `float32`
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information,
+            please refer to :ref:`api_guide_Name`.
     
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Examples:
         .. code-block:: python
+           :name: code-example1
 
           import paddle
 
