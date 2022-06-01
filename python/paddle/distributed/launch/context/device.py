@@ -21,7 +21,6 @@ class DeviceType:
     XPU = 'xpu'
     NPU = 'npu'
     MLU = 'mlu'
-    IPU = 'ipu'
 
 
 class Device(object):
@@ -69,18 +68,12 @@ class Device(object):
             return 'FLAGS_selected_xpus'
         if self._dtype == DeviceType.MLU:
             return 'FLAGS_selected_mlus'
-        if self._dtype == DeviceType.IPU:
-            return 'FLAGS_selected_ipus'
         return 'FLAGS_selected_devices'
 
-    def get_selected_devices(self, devices='', device_num=None):
+    def get_selected_devices(self, devices=''):
         '''
         return the device label/id relative to the visible devices
         '''
-        if self._dtype == DeviceType.IPU:
-            if not device_num:
-                raise RuntimeError("The \'device_num\' is required by IPUs.")
-            return [str(device_num)]
         if not devices:
             return [str(x) for x in range(0, len(self._labels))]
         else:
@@ -136,9 +129,6 @@ class Device(object):
             dev._dtype = DeviceType.MLU
             num = fluid.core.get_mlu_device_count()
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_ipu():
-            dev._dtype = DeviceType.IPU
-            num = fluid.core.get_ipu_device_count()
 
         if num == 0:
             dev._dtype = DeviceType.CPU
