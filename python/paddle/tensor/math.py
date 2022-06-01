@@ -1616,20 +1616,24 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     input_shape = input.shape
     x_shape = x.shape
     y_shape = y.shape
-    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
-        raise ValueError("The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".format(input_shape, x_shape, y_shape))
-    if input_shape[0] != x_shape[0]:
-        if input_shape[0] != 1:
-            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
-        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
-            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
-    if input_shape[1] != y_shape[1]:
-        if input_shape[1] != 1:
-            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
-        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
-            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+    if not len(x_shape) == len(y_shape) == 2:
+        raise ValueError("The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(x_shape, y_shape))
     if x_shape[1] != y_shape[0]:
         raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+    if len(input_shape) == 2:
+        if input_shape[0] != x_shape[0]:
+            if input_shape[0] != 1:
+                raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+            if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[1] != y_shape[1]:
+            if input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    elif len(input_shape) == 1:
+        if input_shape[0] not in (y_shape[1], 1):
+            raise ValueError("The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(input_shape, x_shape[0], y_shape[1]))
+    else:
+        raise ValueError("The dimention of input should be 2 or 1 but receive input's shape: {}".format(input_shape))
 
 
 

@@ -30,7 +30,9 @@ ops_to_fill_zero_for_empty_grads = set([
     "divide_double_grad", "log_double_grad", "elu_double_grad",
     "leaky_relu_double_grad", "sqrt_double_grad", "rsqrt_double_grad",
     "square_double_grad", "celu_double_grad", "pad_double_grad",
-    "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad"
+    "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
+    "instance_norm_double_grad", "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad"
 ])
 
 # For API dispatch used at python-level
@@ -447,7 +449,7 @@ class GeneratorBase:
 
     def InferNameSpace(self):
         api_yaml_path = self.api_yaml_path
-        if "sparse" in api_yaml_path:
+        if re.search(r"sparse[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "sparse::"
-        elif "strings" in api_yaml_path:
+        elif re.search(r"strings[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "strings::"

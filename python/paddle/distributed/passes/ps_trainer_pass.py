@@ -375,12 +375,12 @@ class DistributedOpsPass(PassBase):
                 if attrs['use_ps_gpu']:
                     _program.global_block()._insert_op(
                         index=distributed_idx,
-                        type="pull_box_sparse",
+                        type="pull_gpups_sparse",
                         inputs={"Ids": inputs,
                                 'W': w},
                         outputs={"Out": outputs},
                         attrs={
-                            "size": w.shape[1],
+                            "size": [w.shape[1] for i in inputs],
                             "is_distributed": True,
                             "is_sparse": True
                         })
@@ -614,15 +614,24 @@ class PsGpuPass(PassBase):
         return True
 
     def _add_push_box_sparse_op(self, program):
+        insert_index = -1
+        for idx, op in list(enumerate(program.global_block().ops)):
+            if op.type == "lookup_table_grad":
+                insert_index = idx
         for op in program.global_block().ops:
-            if op.type != "pull_box_sparse":
+            if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(set()), [])
             for op_desc in grad_op_desc:
-                new_op_desc = program.global_block().desc.append_op()
+                new_op_desc = program.global_block().desc._insert_op(
+                    insert_index + 1)
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
+                new_op = paddle.fluid.framework.Operator(program.global_block(),
+                                                         new_op_desc)
+                program.global_block().ops.insert(insert_index + 1, new_op)
+                program.global_block()._sync_with_cpp()
 
     def _remove_optimizer_var(self, program):
         embedding_w = {}
@@ -670,7 +679,7 @@ class PsGpuPass(PassBase):
                     lookup_table_grad_var[name] = 1
 
         for idx, op in list(enumerate(program.global_block().ops)):
-            if op.type == "pull_box_sparse":
+            if op.type == "pull_box_sparse" or op.type == "pull_gpups_sparse":
                 continue
             for key_name in op.input_names:
                 for var in op.input(key_name):

@@ -219,6 +219,10 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
+  platform::SetDeviceId(thread_id_);
+#endif
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto &op : ops_) {
       bool need_skip = false;
@@ -244,9 +248,12 @@ void HogwildWorker::TrainFiles() {
     ++batch_cnt;
     PrintFetchVars();
     thread_scope_->DropKids();
+#ifdef PADDLE_WITH_HETERPS
+    dev_ctx_->Wait();
+#endif
   }
   timeline.Pause();
-  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
 
   if (need_dump_field_ || need_dump_param_) {

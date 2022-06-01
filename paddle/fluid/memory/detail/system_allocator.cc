@@ -15,6 +15,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
+#include "paddle/fluid/memory/stats.h"
+
 #ifdef _WIN32
 #include <malloc.h>
 #ifndef NOMINMAX
@@ -92,6 +94,8 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
     }
   }
 
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+
   return p;
 }
 
@@ -108,6 +112,8 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #else
   free(p);
 #endif
+
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
 }
 
 bool CPUAllocator::UseGpu() const { return false; }
@@ -205,6 +211,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (result == gpuSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
+    HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
     return p;
   } else {
     LOG(WARNING) << "cudaHostAlloc failed.";
@@ -249,6 +256,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
             err));
   }
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
