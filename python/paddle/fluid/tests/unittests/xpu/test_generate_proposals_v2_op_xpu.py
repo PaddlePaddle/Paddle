@@ -205,9 +205,7 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     variances = copy.deepcopy(variances)
     bbox_deltas = copy.deepcopy(bbox_deltas)
     scores = copy.deepcopy(scores)
-    # print("bbox_deltas_trans_before.shape = ", bbox_deltas.shape)
     bbox_deltas = bbox_deltas.transpose((1, 2, 0)).reshape(-1, 4)
-    # print("test_bbox_deltas_swap_cpu = ", bbox_deltas)
     all_anchors = all_anchors.reshape(-1, 4)
     variances = variances.reshape(-1, 4)
     # Same story for the scores:
@@ -216,7 +214,6 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     #   - reshape to (H * W * A, 1) where rows are ordered by (H, W, A)
     #     to match the order of anchors and bbox_deltas
     scores = scores.transpose((1, 2, 0)).reshape(-1, 1)
-    # print("test_scores_cpu = ", scores)
 
     # sort all (proposal, score) pairs by score from highest to lowest
     # take top pre_nms_topN (e.g. 6000)
@@ -229,24 +226,16 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
-    # print("test_index_sort_cpu = ", order) 
     scores = scores[order, :]
-    # print("test_scores_select_cpu = ", scores)
     bbox_deltas = bbox_deltas[order, :]
-    # print("test_bbox_deltas_select_cpu = \n", bbox_deltas, "\n shape = ", bbox_deltas.shape)
     all_anchors = all_anchors[order, :]
-    # print("test_anchors_select_cpu = \n", all_anchors, "\n shape = ", all_anchors.shape)
     variances = variances[order, :]
-    # print("test_var_select_cpu = \n", variances, "\n shape = ", all_anchors.shape)
     proposals = box_coder(all_anchors, bbox_deltas, variances, pixel_offset)
     # clip proposals to image (may result in proposals with zero area
     # that will be removed in the next step)
     proposals = clip_tiled_boxes(proposals, im_shape, pixel_offset)
-    # np.set_printoptions(threshold=np.inf)
-    # print("proposals_cpu = \n", proposals, "\n shape = ", proposals.shape)
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_shape, pixel_offset)
-    # print("keep_cpu = \n", keep, "\n shape = ", keep.shape)
     if len(keep) == 0:
         proposals = np.zeros((1, 4)).astype('float32')
         scores = np.zeros((1, 1)).astype('float32')
@@ -297,7 +286,6 @@ def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
 
 def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
                                variances, stride, offset):
-    # num_anchors = 15
     num_anchors = len(aspect_ratios) * len(anchor_sizes)
     layer_h = input_feat.shape[2]
     layer_w = input_feat.shape[3]
@@ -339,16 +327,6 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
         self.op_name = 'generate_proposals_v2'
         self.use_dynamic_create_class = False
 
-    # def dynamic_create_class(self):
-    #     base_class = self.TestArgsortOp
-    #     classes = []
-    #     # for descending in [True, False]:
-    #     #     for axis in [0, 1, 2, -1, -2]:
-    #     #         class_name = 'XPUTestArgsortOp_axis_' + str(axis)
-    #     #         attr_dict = {'init_axis': axis, 'descending': descending}
-    #     #         classes.append([class_name, attr_dict])
-    #     return base_class, classes
-
     class TestGenerateProposalsV2Op(XPUOpTest):
         def set_data(self):
             self.init_input_shape()
@@ -378,9 +356,8 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            # self.check_output()
-            # self.check_output_with_place(self.place, atol=1e-4, check_dygraph=False)
-            self.check_output_with_place(self.place, atol=1e-4)
+            if paddle.is_compiled_with_xpu():
+                self.check_output_with_place(self.place)
 
         def setUp(self):
             self.set_xpu()
@@ -409,10 +386,6 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.pixel_offset = True
 
         def init_test_input(self):
-            # batch_size = 1
-            # input_channels = 20
-            # layer_h = 16
-            # layer_w = 16
             batch_size = self.input_feat_shape[0]
             input_channels = self.input_feat_shape[1]
             layer_h = self.input_feat_shape[2]
@@ -426,7 +399,6 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 variances=[1.0, 1.0, 1.0, 1.0],
                 stride=[16.0, 16.0],
                 offset=0.5)
-            # self.im_shape = np.array([[64, 64]]).astype(self.dtype)
             num_anchors = self.anchors.shape[2]
             self.scores = np.random.random(
                 (batch_size, num_anchors, layer_h, layer_w)).astype(self.dtype)
@@ -440,7 +412,6 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 self.variances, self.pre_nms_topN, self.post_nms_topN,
                 self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
 
-    # """
     class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
         def set_data(self):
             self.init_input_shape()
@@ -494,8 +465,6 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
     class TestGenerateProposalsV2OpMaskRcnn1XPU(TestGenerateProposalsV2Op):
         def init_input_shape(self):
             self.input_feat_shape = (1, 20, 48, 64)
-            # self.input_feat_shape = (1, 20, 16, 16)
-            # self.im_shape = np.array([[64, 64]]).astype(self.dtype)
             self.im_shape = np.array([[768, 1024]]).astype(self.dtype)
 
         def init_test_params(self):
@@ -517,12 +486,10 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 input_feat=input_feat,
                 anchor_sizes=[32, 64, 128, 256, 512],
                 aspect_ratios=[0.5, 1.0, 2.0],
-                # variances=np.random.random(4).astype(self.dtype),
                 variances=[1.0, 1.0, 1.0, 1.0],
                 stride=[16.0, 16.0],
                 offset=0.5)
             num_anchors = self.anchors.shape[2]
-            print("num_anchors = ", num_anchors)
             self.scores = np.random.random(
                 (batch_size, num_anchors, layer_h, layer_w)).astype(self.dtype)
             self.bbox_deltas = np.random.random(
@@ -533,16 +500,10 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
 
         def set_data(self):
             np.random.seed(1)
-            # random.seed(0)
             self.init_input_shape()
             self.init_test_params()
             self.init_test_input()
             self.init_test_output()
-            # print("scores.shape = ", self.scores.shape)
-            # print("bbox_deltas.shape = ", self.bbox_deltas.shape)   
-            # print("im_shape = ", self.im_shape)
-            # print("anchors.shape = ", self.anchors.shape)
-            # print("variances.shape = ", self.variances.shape)
 
             self.inputs = {
                 'Scores': self.scores,
@@ -569,17 +530,8 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                     self.rois_num, dtype=np.int32))
             }
 
-        def test_check_output(self):
-            # self.check_output()
-            np.set_printoptions(threshold=1e6)
-            # self.check_output_with_place(self.place, atol=1e-4, check_dygraph=False)
-            self.check_output_with_place(self.place, atol=1e-4)
-
-    # """
-
 
 support_types = get_xpu_op_support_types('generate_proposals_v2')
-print("support_types: ", support_types)
 for stype in support_types:
     create_test_class(
         globals(),

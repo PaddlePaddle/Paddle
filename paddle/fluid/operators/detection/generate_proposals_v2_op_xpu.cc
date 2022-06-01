@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
-// #include "paddle/fluid/operators/detection/bbox_util.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -68,19 +67,6 @@ static void SortDescending(const platform::XPUDeviceContext &dev_ctx,
   int *idx_out =
       index_out->mutable_data<int>({index_t.numel()}, dev_ctx.GetPlace());
   memory::Copy(place, idx_out, cpu_place, index, sizeof(T) * index_t.numel());
-
-  // T *value_out_data = value_out->mutable_data<T>({index_t.numel()},
-  // dev_ctx.GetPlace());
-  // std::vector<int> value_shape = {int(value.numel()), 1};
-  // int r = xpu::gather<T>(dev_ctx.x_context(), value_data, idx_out,
-  // value_out_data, {int(value.numel()), 1}, index_t.numel(), 0);
-  // PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-  //                                          "XPU API(gather) return "
-  //                                          "wrong value[%d %s]",
-  //                                          r, XPUAPIErrorMsg[r]));
-  // if (dev_ctx.x_context()->xpu_stream) {
-  //   dev_ctx.Wait();
-  // }
 }
 
 template <typename T>
@@ -92,11 +78,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
     float eta, bool pixel_offset) {
   // 1. pre nms
-  // std::cout << "########## pre nms ##########" << std::endl;
   Tensor index_sort;
   SortDescending<T>(dev_ctx, scores, &index_sort, pre_nms_top_n);
-  // std::cout << "test_bbox_deltas_xpu = " << bbox_deltas << std::endl;
-  // std::cout << "test_index_sort_xpu = " << index_sort << std::endl;
 
   Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
   scores_sel.mutable_data<T>({index_sort.numel(), 1}, dev_ctx.GetPlace());
@@ -104,7 +87,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   anchor_sel.mutable_data<T>({index_sort.numel(), 4}, dev_ctx.GetPlace());
   var_sel.mutable_data<T>({index_sort.numel(), 4}, dev_ctx.GetPlace());
 
-  // std::vector<int> input_shape = {int(scores.numel()), 1};
   int r = xpu::gather<T>(dev_ctx.x_context(), scores.data<T>(),
                          index_sort.data<int>(), scores_sel.data<T>(),
                          {static_cast<int>(scores.numel()), 1},
@@ -113,7 +95,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                     platform::errors::External("XPU API(gather) return "
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
-  // std::cout << "test_scores_select_xpu = " << scores_sel << std::endl;
 
   r = xpu::gather<T>(dev_ctx.x_context(), bbox_deltas.data<T>(),
                      index_sort.data<int>(), bbox_sel.data<T>(),
@@ -123,7 +104,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                     platform::errors::External("XPU API(gather) return "
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
-  // std::cout << "test_bbox_deltas_select_xpu = " << bbox_sel << std::endl;
 
   r = xpu::gather<T>(dev_ctx.x_context(), anchors.data<T>(),
                      index_sort.data<int>(), anchor_sel.data<T>(),
@@ -133,7 +113,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                     platform::errors::External("XPU API(gather) return "
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
-  // std::cout << "test_anchor_select_xpu = " << anchor_sel << std::endl;
 
   r = xpu::gather<T>(dev_ctx.x_context(), variances.data<T>(),
                      index_sort.data<int>(), var_sel.data<T>(),
@@ -143,7 +122,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                     platform::errors::External("XPU API(gather) return "
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
-  // std::cout << "test_var_select_xpu = " << var_sel << std::endl;
 
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
@@ -152,7 +130,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   index_sort.Resize({pre_nms_num, 1});
 
   // 2. box decode and clipping
-  // std::cout << "########## box decode and clipping ##########" << std::endl;
   Tensor proposals;
   proposals.mutable_data<T>({pre_nms_num, 4}, dev_ctx.GetPlace());
 
@@ -164,10 +141,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                     platform::errors::External("XPU API(box_decoder) return "
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
-  // std::cout << "proposals_xpu = " << proposals << std::endl;
 
   // 3. filter
-  // std::cout << "########## filter ##########" << std::endl;
   Tensor keep_index, keep_num_t;
   keep_index.mutable_data<int>({pre_nms_num}, dev_ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, dev_ctx.GetPlace());
@@ -180,14 +155,11 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
                                         "XPU API(remove_small_boxes) return "
                                         "wrong value[%d %s]",
                                         r, XPUAPIErrorMsg[r]));
-  // std::cout << "keep_num_t = " << keep_num_t << std::endl;
   int keep_num;
   const auto xpu_place = dev_ctx.GetPlace();
   memory::Copy(platform::CPUPlace(), &keep_num, xpu_place,
                keep_num_t.data<int>(), sizeof(int));
-  // std::cout << "keep_num_copy = " << keep_num << " ###" << std::endl;
   keep_index.Resize({keep_num});
-  // std::cout << "keep_index = " << keep_index << std::endl;
 
   Tensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
@@ -197,21 +169,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     scores_filter.mutable_data<T>({1, 1}, dev_ctx.GetPlace());
     set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
     set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
-    // r = xpu::constant(dev_ctx.x_context(), proposals_filter.data<T>(), 4,
-    // static_cast<T>(0));
-    // PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-    //                                        "XPU API(constant) return "
-    //                                        "wrong value[%d %s]",
-    //                                        r, XPUAPIErrorMsg[r]));
-    // r= xpu::constant(dev_ctx.x_context(), scores_filter.data<T>(), 1,
-    // static_cast<T>(0));
-    // PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-    //                                        "XPU API(constant) return "
-    //                                        "wrong value[%d %s]",
-    //                                        r, XPUAPIErrorMsg[r]));
-    // if (dev_ctx.x_context()->xpu_stream) {
-    //   dev_ctx.Wait();
-    // }
     return std::make_pair(proposals_filter, scores_filter);
   }
   proposals_filter.mutable_data<T>({keep_num, 4}, dev_ctx.GetPlace());
@@ -240,13 +197,12 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   }
 
   // 4. nms
-  // std::cout << "########## nms ##########" << std::endl;
   int nms_keep_num = 0;
   r = xpu::nms<T>(dev_ctx.x_context(), proposals_filter.data<T>(), nullptr,
                   keep_index.data<int>(), 1, 1, keep_num, -1, nms_thresh, -1, 0,
                   &nms_keep_num, pixel_offset);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External("XPU API(nms) return "
+                    platform::errors::External("XPU API(nms) return the"
                                                "wrong value[%d %s]",
                                                r, XPUAPIErrorMsg[r]));
   if (post_nms_top_n > 0 && post_nms_top_n < nms_keep_num) {
@@ -275,8 +231,6 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   if (dev_ctx.x_context()->xpu_stream) {
     dev_ctx.Wait();
   }
-
-  // std::cout << "########## ProposalForOneImage end ##########" << std::endl;
   return std::make_pair(proposals_nms, scores_nms);
 }
 }  // namespace
@@ -309,7 +263,6 @@ class XPUGenerateProposalsV2Kernel : public framework::OpKernel<T> {
                           eta));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    // xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
     auto scores_dim = scores->dims();
     // the shape of bbox score
@@ -323,12 +276,6 @@ class XPUGenerateProposalsV2Kernel : public framework::OpKernel<T> {
     int h_bbox = bbox_dim[2];
     int w_bbox = bbox_dim[3];
 
-    /*
-    auto *bbox_deltas_swap_data =
-        RAII_GUARD.alloc_l3_or_gm<T>(bbox_deltas->numel());
-    auto *scores_swap_data =
-        RAII_GUARD.alloc_l3_or_gm<T>(scores->numel());
-    */
     Tensor bbox_deltas_swap, scores_swap;
     bbox_deltas_swap.mutable_data<T>({num, h_bbox, w_bbox, c_bbox},
                                      dev_ctx.GetPlace());
@@ -351,7 +298,6 @@ class XPUGenerateProposalsV2Kernel : public framework::OpKernel<T> {
                                                  "wrong value[%d %s]",
                                                  r, XPUAPIErrorMsg[r]));
 
-    // anchors.numel() / 4 is the number of anchors
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
 
