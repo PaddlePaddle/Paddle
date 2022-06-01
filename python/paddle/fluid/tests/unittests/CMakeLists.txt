@@ -131,6 +131,8 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
     LIST(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
@@ -327,6 +329,7 @@ if ((NOT WITH_NCCL) AND (NOT WITH_RCCL))
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290

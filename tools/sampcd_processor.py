@@ -342,7 +342,7 @@ Please use '.. code-block:: python' to format the sample code.""")
             logger.error(
                 "Error: No sample code found! Please check if the API comment contais string 'Examples:' correctly"
             )
-            exit(1)
+            return []
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):

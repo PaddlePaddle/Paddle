@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
-
+#include "paddle/fluid/memory/stats.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -24,6 +24,7 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(allocation->ptr()));
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -allocation->size());
   delete allocation;
 }
 phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
@@ -33,6 +34,7 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }
 }  // namespace allocation

@@ -61,14 +61,14 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     tmp_dim_x[dim_x.size() - 1] =
         dim_Linear1Weight[dim_Linear1Weight.size() - 1];
     context->SetOutputDim("Out", dim_x);
-    if (context->Attrs().Get<bool>("dropout1_is_test") == false) {
+    if (context->Attrs().Get<bool>("is_test") == false) {
       context->SetOutputDim("Dropout1Mask", tmp_dim_x);
     }
     context->SetOutputDim("Dropout1Out", tmp_dim_x);
     context->SetOutputDim("Linear1Out", tmp_dim_x);
     context->SetOutputDim("Dropout2Out", dim_x);
 
-    if (context->Attrs().Get<bool>("dropout2_is_test") == false) {
+    if (context->Attrs().Get<bool>("is_test") == false) {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     framework::DDim mean_dim =
@@ -185,9 +185,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout2_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<bool>("dropout1_is_test", "the is_test of first dropout")
-        .SetDefault(false);
-    AddAttr<bool>("dropout2_is_test", "the is_test of second dropout")
+    AddAttr<bool>("is_test", "the is_test attribute of dropout")
         .SetDefault(false);
     AddAttr<bool>("dropout1_fix_seed", "the is_test of first dropout")
         .SetDefault(false);
@@ -218,10 +216,7 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("dropout1_is_test"), false,
-                      platform::errors::InvalidArgument(
-                          "GradOp is only callable when is_test is false"));
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("dropout2_is_test"), false,
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
     bool pre_layer_norm = ctx->Attrs().Get<bool>("pre_layer_norm");
