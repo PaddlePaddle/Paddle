@@ -17,6 +17,7 @@ import unittest
 from typing import Union, Callable
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 from paddle import _C_ops
 
@@ -42,6 +43,7 @@ class TestSparseUnary(unittest.TestCase):
             return np.allclose(dense_numpy[mask],
                                sparse_tensor.to_dense().numpy()[mask])
 
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             dense_x = paddle.to_tensor(
                 x, dtype="float32", stop_gradient=not test_gradient)
@@ -59,6 +61,7 @@ class TestSparseUnary(unittest.TestCase):
                 dense_out.backward(dense_out)
                 sparse_out.backward(sparse_out)
                 assert tensor_allclose(dense_x.grad, sparse_x.grad)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_sparse_relu(self):
         x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]

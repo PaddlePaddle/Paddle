@@ -195,9 +195,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune3(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune3()
         self.func_auto_prune3()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune4(self):
         with fluid.dygraph.guard():
@@ -212,9 +214,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune4()
         self.func_auto_prune4()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune5(self):
         with fluid.dygraph.guard():
@@ -229,9 +233,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune5(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_auto_prune5()
         self.func_auto_prune5()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_auto_prune6(self):
         with fluid.dygraph.guard():

@@ -63,6 +63,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with fluid.dygraph.guard():
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
             with _test_eager_guard():
                 fluid.default_startup_program().random_seed = seed
                 fluid.default_main_program().random_seed = seed
@@ -80,6 +81,7 @@ class TestRecurrentFeed(unittest.TestCase):
                     eager_dyout = out.gradient()
                     original_in1.stop_gradient = True
                     rt.clear_gradients()
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
