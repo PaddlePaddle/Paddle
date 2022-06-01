@@ -281,6 +281,17 @@ void RollInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    MetaTensor* out,
+                    MetaTensor* noise);
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad);
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
