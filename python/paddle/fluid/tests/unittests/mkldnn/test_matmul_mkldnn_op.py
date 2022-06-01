@@ -483,6 +483,7 @@ class TestMatMulOpTransposeReshapeBasicFloat(
         self.y = np.random.random([self.bs, 12, 128,
                                    64]).astype(self.data_type_)
 
+
 class TestMatMulOpTransposeReshapeBasicInt(
         TestMatMulOpTransposeReshapeBasicFloat):
     def init_data_type(self):
