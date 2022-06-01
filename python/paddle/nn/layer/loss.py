@@ -1361,7 +1361,7 @@ class TripletMarginWithDistanceLoss(Layer):
         negative (Tensor):Negative tensor, the data type is float32 or float64.
 	The shape of label is the same as the shape of input.
 	
-	output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
         A callable object of TripletMarginWithDistanceLoss
@@ -1386,7 +1386,13 @@ class TripletMarginWithDistanceLoss(Layer):
             # Tensor([0.19165580])
 
     """
-    def __init__(self, distance_function=None, margin=1.0, swap=False, reduction: str = 'mean', name=None):
+
+    def __init__(self,
+                 distance_function=None,
+                 margin=1.0,
+                 swap=False,
+                 reduction: str='mean',
+                 name=None):
         super(TripletMarginWithDistanceLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -1400,10 +1406,11 @@ class TripletMarginWithDistanceLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_with_distance_loss(input,
-                                                   positive,
-                                                   negative,
-                                                   margin=self.margin,
-                                                   swap=self.swap,
-                                                   reduction=self.reduction,
-                                                   name=self.name)
+        return F.triplet_margin_with_distance_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name)

@@ -2232,13 +2232,13 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 
 
 def triplet_margin_with_distance_loss(input,
-				      positive,
-				      negative,
-				      distance_function = None,
-				      margin=1.0, 
-                        	      swap=False, 
-				      reduction='mean',
-                        	      name=None):
+                                      positive,
+                                      negative,
+                                      distance_function=None,
+                                      margin=1.0,
+                                      swap=False,
+                                      reduction='mean',
+                                      name=None):
     r"""
     Measures the triplet loss given an input
     tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
@@ -2275,7 +2275,7 @@ def triplet_margin_with_distance_loss(input,
 
         distance_function (callable, optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
 	
-	margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
+	    margin (float, optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
             between the positive and negative distances required for the loss to be 0.
 	
         swap (bool, optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
@@ -2313,10 +2313,9 @@ def triplet_margin_with_distance_loss(input,
 
     """
     if reduction not in ['sum', 'mean', 'none']:
-        raise ValueError(
-            "'reduction' in 'triplet_margin_with_distance_loss' "
-            "should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction))
+        raise ValueError("'reduction' in 'triplet_margin_with_distance_loss' "
+                         "should be 'sum', 'mean' or 'none', "
+                         "but received {}.".format(reduction))
     if margin < 0:
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
@@ -2329,11 +2328,10 @@ def triplet_margin_with_distance_loss(input,
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_with_distance_loss')
 
-    if not(input.shape==positive.shape==negative.shape):
-        raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape")
+    if not (input.shape == positive.shape == negative.shape):
+        raise ValueError("input's shape must equal to "
+                         "positive's shape and  "
+                         "negative's shape")
 
     distance_function = distance_function if distance_function is not None \
         else paddle.nn.PairwiseDistance(2)
@@ -2350,7 +2348,7 @@ def triplet_margin_with_distance_loss(input,
             "The positive distance or negative distance should be greater than 0, "
             "The distance functions should be checked.")
 
-    loss = paddle.clip(positive_dist-negative_dist+margin, min=0.0)
+    loss = paddle.clip(positive_dist - negative_dist + margin, min=0.0)
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
