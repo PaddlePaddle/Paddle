@@ -125,7 +125,7 @@ class Engine:
             # Init comm and startup program
             self._initialize(mode)
 
-    def _build(self, mode):
+    def _build(self):
         for mode in self._modes:
             serial_main_prog = self._serial_main_progs.get(mode, None)
             if serial_main_prog is not None:
@@ -135,7 +135,7 @@ class Engine:
             metrics = []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
-            with fluid.program_guard(serial_main_prog, serial_startup_prog):
+            with static.program_guard(serial_main_prog, serial_startup_prog):
                 inputs_spec = self.inputs_spec
                 labels_spec = self.labels_spec if self.labels_spec else []
                 inputs = [s._create_feed_layer() for s in inputs_spec]
