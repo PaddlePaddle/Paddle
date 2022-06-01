@@ -14,6 +14,7 @@
 
 import os
 import json
+import sys
 
 
 def get_ut_mem(rootPath):
@@ -24,7 +25,7 @@ def get_ut_mem(rootPath):
                 continue
             ut = f.replace('^', '').replace('$.log', '')
             case_dic[ut] = {}
-            filename = '%s%s' % (parent, f)
+            filename = '%s/%s' % (parent, f)
             fi = open(filename)
             lines = fi.readlines()
             mem_reserved1 = -1
@@ -56,7 +57,7 @@ def get_ut_mem(rootPath):
             if caseTime != -1:
                 case_dic[ut]['time'] = caseTime
 
-    ut_mem_map_file = "/pre_test/ut_mem_map.json" % rootPath
+    ut_mem_map_file = "/pre_test/ut_mem_map.json"
     with open(ut_mem_map_file, "w") as f:
         json.dump(case_dic, f)
 
