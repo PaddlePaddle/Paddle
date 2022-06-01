@@ -261,9 +261,7 @@ def init_parallel_env():
         _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
 
-        tmp = paddle.to_tensor([1], dtype="int32")
-        paddle.distributed.all_reduce(tmp, group=group, use_calc_stream=True)
-        paddle.distributed.wait(tmp)
+        paddle.distributed.barrier(group=group)
         return group
 
     node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
