@@ -234,7 +234,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInferer, {"X", "Y"});
 DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInferer,
                            {framework::GradVarName("Y"),
                             framework::GradVarName("X")});
