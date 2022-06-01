@@ -187,7 +187,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for arg_name in op_desc.input_arg_names():
             serial_tensor = dist_op.get_serial_input(arg_name)
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-            if serial_tensor.is_parameter:
+            if serial_tensor is not None and serial_tensor.is_parameter:
                 for mapping in dims_mapping:
                     if mapping != -1:
                         return False
@@ -217,7 +217,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for arg_name in op_desc.output_arg_names():
             serial_tensor = dist_op.get_serial_output(arg_name)
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
-            if serial_tensor.is_parameter:
+            if serial_tensor is not None and serial_tensor.is_parameter:
                 for mapping in dims_mapping:
                     if mapping != -1:
                         return False

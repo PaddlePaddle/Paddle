@@ -1116,6 +1116,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
+struct OperatorWithKernel::CacheImpl {
+  explicit CacheImpl(phi::KernelContext* kernel_ctx,
+                     RuntimeInferShapeContext* infer_shape_ctx)
+      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+
+  phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
+  RuntimeInferShapeContext* getRuntimeInferShapeContext() {
+    return infer_shape_ctx_.get();
+  }
+
+ private:
+  std::unique_ptr<phi::KernelContext> kernel_ctx_;
+  std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+};
+
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
                                 const framework::Tensor& tensor) {
@@ -1908,7 +1923,8 @@ Scope* OperatorWithKernel::PrepareData(
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
             (paddle::platform::MKLDNNDeviceContext::tls()
-                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
+            (tensor_in->dims().size() >= 3)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
@@ -2322,6 +2338,8 @@ Scope* OperatorWithKernel::PreparePhiData(
       Tensor out;
       framework::TensorCopySync(*tensor_in, expected_place, &out);
       SetTensorToVariable(*var, out, trans_var);
+
+      need_prepare_phi_data_ = true;
     }
   }
 
@@ -2369,15 +2387,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+             std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+             std::type_index(typeid(paddle::optional<phi::SelectedRows>)) ||
          input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<
-                        const std::vector<const phi::DenseTensor*>>)))) {
+             std::type_index(typeid(
+                 paddle::optional<std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),

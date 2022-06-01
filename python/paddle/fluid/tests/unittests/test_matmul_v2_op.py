@@ -495,6 +495,58 @@ class TestMatMulV2API(unittest.TestCase):
                     y = paddle.to_tensor(input_y)
                     result = paddle.matmul(x, y)
 
+    def test_compute_type_fp32(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                with fluid.dygraph.guard(place):
+                    paddle.set_flags({
+                        'FLAGS_gemm_use_half_precision_compute_type': False
+                    })
+                    input_x = np.random.random([2, 8, 16]).astype("float16")
+                    input_y = np.random.random([2, 16, 8]).astype("float16")
+                    for i in range(0, 16, 2):
+                        input_x[:, :, i] += 60000
+                        input_x[:, :, i + 1] -= 60000
+                    input_y[:, :, :] = 1.5
+
+                    x = paddle.to_tensor(input_x)
+                    y = paddle.to_tensor(input_y)
+                    result = paddle.matmul(x, y)
+                    result_np = np.matmul(input_x, input_y)
+                    self.assertTrue(paddle.isfinite(result)[0, 0, 0])
+                    self.assertTrue(np.isfinite(result_np)[0, 0, 0])
+                    self.assertTrue(np.array_equal(result_np, result.numpy()))
+                    paddle.set_flags({
+                        'FLAGS_gemm_use_half_precision_compute_type': True
+                    })
+
+    def test_compute_type_fp16_nan(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                with fluid.dygraph.guard(place):
+                    paddle.set_flags({
+                        'FLAGS_gemm_use_half_precision_compute_type': True
+                    })
+                    input_x = np.random.random([2, 8, 16]).astype("float16")
+                    input_y = np.random.random([2, 16, 8]).astype("float16")
+                    for i in range(0, 16, 2):
+                        input_x[:, :, i] += 60000
+                        input_x[:, :, i + 1] -= 60000
+                    input_y[:, :, :] = 1.5
+
+                    x = paddle.to_tensor(input_x)
+                    y = paddle.to_tensor(input_y)
+                    result = paddle.matmul(x, y)
+                    result_np = np.matmul(input_x, input_y)
+                    self.assertFalse(
+                        paddle.isfinite(result)[0, 0, 0])  # contains nan/inf
+                    self.assertTrue(np.isfinite(result_np)[0, 0, 0])
+                    paddle.set_flags({
+                        'FLAGS_gemm_use_half_precision_compute_type': False
+                    })
+
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
             self.test_dygraph()

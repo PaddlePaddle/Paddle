@@ -102,6 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather_nd",
       "yolo_box",
       "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -169,6 +170,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather_nd",
       "yolo_box",
       "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -642,6 +644,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) return false;
       bool has_attrs = desc.HasAttr("class_num") && desc.HasAttr("anchors");
       if (!has_attrs) return false;
+    }
+
+    if (op_type == "arg_max") {
+      if (with_dynamic_shape) return false;
+      int axis = desc.HasAttr("axis")
+                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     : -1;
+      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      if (axis == 0 || flatten || dtype != 2) return false;
     }
 
     if (op_type == "affine_channel") {

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
