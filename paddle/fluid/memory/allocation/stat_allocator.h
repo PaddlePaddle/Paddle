@@ -45,11 +45,13 @@ class StatAllocator : public Allocator {
     phi::Allocator::AllocationPtr allocation =
         underlying_allocator_->Allocate(size);
 
-    if (platform::is_cpu_place(allocation->place())) {
-      HOST_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
+    const platform::Place& place = allocation->place();
+    if (platform::is_cpu_place(place) ||
+        platform::is_cuda_pinned_place(place)) {
+      HOST_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
                               allocation->size());
     } else {
-      DEVICE_MEMORY_STAT_UPDATE(Allocated, allocation->place().GetDeviceId(),
+      DEVICE_MEMORY_STAT_UPDATE(Allocated, place.GetDeviceId(),
                                 allocation->size());
     }
     return allocation.release();
