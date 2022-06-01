@@ -14,11 +14,10 @@
 
 import paddle
 from paddle import _C_ops
-from ..framework import core, dygraph_only
-from ..framework import _current_expected_place, _get_paddle_place
-from ..tensor import to_tensor
-from ..tensor import max
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.framework import core, dygraph_only
+from paddle.fluid.framework import _current_expected_place, _get_paddle_place
+from paddle.tensor import to_tensor, max
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 
 import numpy as np
 
@@ -112,7 +111,7 @@ def sparse_coo_tensor(indices,
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
             dense_shape = [3, 3]
-            coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+            coo = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape)
             # print(coo)
             # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #       indices=[[0, 1, 2],
@@ -222,7 +221,7 @@ def sparse_csr_tensor(crows,
             cols = [1, 3, 2, 0, 1]
             values = [1, 2, 3, 4, 5]
             dense_shape = [3, 4]
-            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             # print(csr)
             # Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(gpu:0), stop_gradient=True,
             #       crows=[0, 2, 3, 5],
