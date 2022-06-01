@@ -36,6 +36,7 @@ from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
 from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
+from paddle.fluid.framework import in_dygraph_mode
 
 
 def _local_scatter(inp, pos):
@@ -63,17 +64,26 @@ def _local_gather(inp, pos, out_batch_size, maybe_overlap=True):
 
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
-    """
-    The main difference with paddle.distributed.all_gather: 
-    no need to pass in tensor_list, the returned tensor is spliced
-    """
     if group is not None and not group.is_member():
         return
-    ring_id = 0 if group is None else group.id
-    nranks = paddle.distributed.collective._get_global_group(
-    ).nranks if group is None else group.nranks
-    return paddle._C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id, 'nranks', nranks)
+
+    if in_dygraph_mode():
+        group = paddle.distributed.collective._get_default_group(
+        ) if group is None else group
+        tensor_shape = list(tensor.shape)
+        tensor_shape[0] *= group.nranks
+        out = paddle.empty(tensor_shape, tensor.dtype)
+
+        task = group.process_group.all_gather(tensor, out)
+        task.wait()
+        return out
+    else:
+        ring_id = 0 if group is None else group.id
+        nranks = paddle.distributed.collective._get_global_group(
+        ).nranks if group is None else group.nranks
+        return paddle._C_ops.c_allgather(tensor, 'use_calc_stream',
+                                         use_calc_stream, 'ring_id', ring_id,
+                                         'nranks', nranks)
 
 
 class MoEScatter(PyLayer):
