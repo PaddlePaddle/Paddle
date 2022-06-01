@@ -267,8 +267,8 @@ __global__ void GraphFillFirstStepKernel(int *prefix_sum, int *sampleidx2row,
                                          uint64_t *walk, uint64_t *keys,
                                          int len, int walk_degree, int col_size,
                                          int *actual_sample_size,
-                                         int64_t *neighbors,
-                                         int64_t *sample_keys) {
+                                         uint64_t *neighbors,
+                                         uint64_t *sample_keys) {
   CUDA_KERNEL_LOOP(idx, len) {
     for (int k = 0; k < actual_sample_size[idx]; k++) {
       size_t row = prefix_sum[idx] + k;
