@@ -526,3 +526,35 @@ class TestGetitemBeforeInplace(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+count_all = 0
+count_fwd = 0
+count_grad = 0
+count_double_grad = 0
+count_triple_grad = 0
+with open('log.inplace_info', 'r') as f:
+    for line in f:
+        if 'yoki: op:' in line:
+            count_all += 1
+            op_info = line.split('yoki: op:')[1].strip()
+            op_type, inplace_map = op_info.split('  (')
+            op_type = op_type.strip()
+            inplace_map = inplace_map.split(')')[0].strip()
+            if '_triple_grad' in op_type:
+                count_triple_grad += 1
+                print(op_type, inplace_map)
+            elif '_grad_grad' in op_type:
+                count_double_grad += 1
+                print(op_type, inplace_map)
+            elif '_grad' in op_type:
+                count_grad += 1
+                print(op_type, inplace_map)
+            else:
+                count_fwd += 1
+                print(op_type, inplace_map)
+
+print('count_all: ', count_all)
+print('count_fwd: ', count_fwd)
+print('count_grad: ', count_grad)
+print('count_double_grad: ', count_double_grad)
+print('count_triple_grad: ', count_triple_grad)

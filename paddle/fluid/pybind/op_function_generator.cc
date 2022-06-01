@@ -407,6 +407,15 @@ GenerateOpFunctions() {
 
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
+    auto& infer_inplace = op_info.infer_inplace_;
+    std::map<std::string, std::string> inplace_map;
+    if (infer_inplace) {
+      auto in_to_outs = infer_inplace(true);
+      for (auto& inplace_pair : in_to_outs) {
+        inplace_map[inplace_pair.second] = inplace_pair.first;
+        std::cout << "yoki: op: " << pair.first << "  (" << inplace_pair.first << " -> " << inplace_pair.second << ")\n";
+      }
+    }
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {
       continue;
@@ -427,15 +436,16 @@ GenerateOpFunctions() {
     // been defined in static mode should be used in dygraph mode.
     // Find which ops need to use Inplace strategy in static mode, and get the
     // mapping relationship between Inplace output and input.
-    auto& infer_inplace =
-        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
-    std::map<std::string, std::string> inplace_map;
-    if (infer_inplace) {
-      auto in_to_outs = infer_inplace(true);
-      for (auto& inplace_pair : in_to_outs) {
-        inplace_map[inplace_pair.second] = inplace_pair.first;
-      }
-    }
+    // auto& infer_inplace =
+    //     paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    // std::map<std::string, std::string> inplace_map;
+    // if (infer_inplace) {
+    //   auto in_to_outs = infer_inplace(true);
+    //   for (auto& inplace_pair : in_to_outs) {
+    //     inplace_map[inplace_pair.second] = inplace_pair.first;
+    //     std::cout << "yoki: op: " << op_type << "  (" << inplace_pair.first << " -> " << inplace_pair.second << ")\n";
+    //   }
+    // }
 
     std::string func_name = "imperative_" + op_type;
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
