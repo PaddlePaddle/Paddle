@@ -350,7 +350,7 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   if (!use_mkldnn_bfloat16_) {
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
-    //passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
 
     passes_.push_back("cpu_bfloat16_placement_pass");
     passes_.push_back("cpu_bfloat16_pass");
