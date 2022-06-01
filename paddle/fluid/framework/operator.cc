@@ -1259,11 +1259,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
-  } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
-             !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
-      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-    (*pt_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -1528,22 +1523,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
+      phi::KernelContext pt_kernel_context;
+      // Do data transform before building KernelContext
+      // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
-      if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
-          !need_prepare_data_) {
-        impl_ =
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
-        BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
-
-        (*pt_kernel_)(impl_->getKernelContext());
-      } else {
-        phi::KernelContext pt_kernel_context;
-        // Do data transform before building KernelContext
-        // TODO(zhiqiu): support TransferInplaceVarsBack
-        BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
-        (*pt_kernel_)(&pt_kernel_context);
-      }
+      BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
+      (*pt_kernel_)(&pt_kernel_context);
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
