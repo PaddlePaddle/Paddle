@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
@@ -105,30 +106,56 @@ void LayerNormKernel(const Context &dev_ctx,
 
   auto stream = dev_ctx.stream();
 
+// #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
+//   do {                                                                     \
+//     switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
+//       FIXED_BLOCK_DIM_CASE(paddle::operators::LayerNormForward<            \
+//                            T,                                              \
+//                            U,                                              \
+//                            kBlockDim,                                      \
+//                            IsScaleBiasSameDTypeWithX><<<batch_size,        \
+//                                                         kBlockDim,         \
+//                                                         0,                 \
+//                                                         stream>>>(         \
+//           x_data,                                                          \
+//           static_cast<const ScaleBiasT *>(void_scale_data),                \
+//           static_cast<const ScaleBiasT *>(void_bias_data),                 \
+//           y_data,                                                          \
+//           mean_data,                                                       \
+//           var_data,                                                        \
+//           epsilon,                                                         \
+//           feature_size));                                                  \
+//       default:                                                             \
+//         PADDLE_THROW(phi::errors::InvalidArgument(                         \
+//             "Product from begin_norm_axis to end must be larger than 1")); \
+//         break;                                                             \
+//     }                                                                      \
+//   } while (0)
+
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
   do {                                                                     \
-    switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
-      FIXED_BLOCK_DIM_CASE(paddle::operators::LayerNormForward<            \
-                           T,                                              \
-                           U,                                              \
-                           kBlockDim,                                      \
-                           IsScaleBiasSameDTypeWithX><<<batch_size,        \
-                                                        kBlockDim,         \
-                                                        0,                 \
-                                                        stream>>>(         \
-          x_data,                                                          \
-          static_cast<const ScaleBiasT *>(void_scale_data),                \
-          static_cast<const ScaleBiasT *>(void_bias_data),                 \
-          y_data,                                                          \
-          mean_data,                                                       \
-          var_data,                                                        \
-          epsilon,                                                         \
-          feature_size));                                                  \
-      default:                                                             \
-        PADDLE_THROW(phi::errors::InvalidArgument(                         \
-            "Product from begin_norm_axis to end must be larger than 1")); \
-        break;                                                             \
-    }                                                                      \
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(                \
+        dev_ctx, batch_size * feature_size);                               \
+    int rows_per_block = config.GetBlockSize() / GPU_WARP_SIZE;            \
+    int grid_size =                                                        \
+        (config.GetGridSize() + rows_per_block - 1) / rows_per_block;      \
+    paddle::operators::LayernormWelfordKernel<                             \
+        T,                                                                 \
+        U,                                                                 \
+        IsScaleBiasSameDTypeWithX><<<grid_size,                            \
+                                     config.thread_per_block,              \
+                                     0,                                    \
+                                     stream>>>(                            \
+        x_data,                                                            \
+        y_data,                                                            \
+        static_cast<const ScaleBiasT *>(void_scale_data),                  \
+        static_cast<const ScaleBiasT *>(void_bias_data),                   \
+        mean_data,                                                         \
+        var_data,                                                          \
+        rows_per_block,                                                    \
+        batch_size,                                                        \
+        feature_size,                                                      \
+        epsilon);                                                          \
   } while (0)
 
 #ifdef PADDLE_WITH_CUDA
