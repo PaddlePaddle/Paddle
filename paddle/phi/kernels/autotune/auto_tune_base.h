@@ -61,12 +61,12 @@ class AutoTuneBase {
 
   template <typename... Args>
   void RunBestKernel(const int idx, Args&&... args) {
-    KernelCall</*HasTimer=*/false>(idx, args...);
+    kernels_[idx].Run(args...);
   }
 
   template <typename... Args>
   void RunDefaultKernel(Args&&... args) {
-    KernelCall</*HasTimer=*/false>(0, args...);
+    kernels_[0].Run(args...);
   }
 
   template <typename Context, typename... Args>
@@ -76,25 +76,22 @@ class AutoTuneBase {
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
-
+    int loops = 2;
+    int best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
-
-    // Warm up step.
-    ctx.Wait();
-    KernelCall</*HasTimer=*/true>(0, args...);
 
     // Time cost test estabulished in default stream.
     for (int64_t i = 0; i < kernels_.size(); ++i) {
-      auto time = KernelCall</*IsTune=*/true>(i, args...);
-      VLOG(3) << "kernel[" << i << "] time cost is " << time / 2;
+      auto time = KernelCompare<Context>(i, ctx, loops, args...);
+      VLOG(3) << "kernel[" << i << "] time cost is " << time / repeats;
 
       if (time < min_time) {
         min_time = time;
-        best_idx_ = i;
+        best_idx = i;
       }
     }
-    VLOG(3) << "best kernel idx is " << best_idx_;
-    return best_idx_;
+    VLOG(3) << "best kernel idx is " << best_idx;
+    return best_idx;
   }
 
   bool CheckInit() { return is_init_; }
@@ -102,23 +99,30 @@ class AutoTuneBase {
 
  private:
   bool is_init_{false};
-  int best_idx_{0};
   std::vector<KernelType> kernels_;
 
-  template <bool IsTune, typename... Args>
-  float KernelCall(const int idx, Args&&... args) {
+  template <typename Context, typename... Args>
+  float KernelCompare(const int idx,
+                      const Context& ctx,
+                      int loops,
+                      Args&&... args) {
+    // Treat 1st run as warm up. Judge the result with
+    // the sum of 2nd and 3rd run.
+    int repeats = loops + 1;
+    phi::GpuTimer timer;
     float time_cost = 0;
+    const auto& stream = ctx.stream();
 
-    if (IsTune) {
-      phi::GpuTimer timer;
-      for (int i = 0; i < /*repeat=*/2; ++i) {
-        timer.Start(0);
-        kernels_[idx].Run(args...);
-        timer.Stop(0);
-        time_cost += timer.ElapsedTime();
-      }
-    } else {
+    ctx.Wait();
+    for (int i = 0; i < repeats; ++i) {
+      timer.Start(stream);
       kernels_[idx].Run(args...);
+      timer.Stop(stream);
+      auto time = timer.ElapsedTime();
+      if (i > 1) {
+        time_cost += time;
+      }
+      VLOG(3) << "kernel[" << idx << "][" << i << "th time cost is " << time;
     }
     return time_cost;
   }
