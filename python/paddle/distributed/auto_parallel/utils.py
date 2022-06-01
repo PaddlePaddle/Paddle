@@ -1096,6 +1096,11 @@ def is_backward_op(op):
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
 
 
+def is_optimize_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
+
+
 def is_loss_op(op):
     return OP_ROLE_KEY in op.attr_names and \
         int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
