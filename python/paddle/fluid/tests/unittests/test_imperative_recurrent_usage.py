@@ -81,7 +81,7 @@ class TestRecurrentFeed(unittest.TestCase):
                     eager_dyout = out.gradient()
                     original_in1.stop_gradient = True
                     rt.clear_gradients()
-            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
