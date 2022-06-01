@@ -31,10 +31,11 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-from .cluster import Cluster
+# from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -44,8 +45,6 @@ from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
 from .process_group import get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
-
-paddle.enable_static()
 
 
 class Engine:
@@ -59,7 +58,11 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
+        # if self.cluster is None:
+        #     self.cluster = get_default_cluster()
         self.strategy = strategy
+        if self.strategy is None:
+            self.strategy = fleet.DistributedStrategy()
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -71,17 +74,18 @@ class Engine:
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
+        self._dist_contexts = {}
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
         self._dist_main_progs = defaultdict(dict)  # dist main programs
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
-        self._dist_contexts = {}
         self._feed_vars = {}
         self._fetch_vars = {}
 
     def prepare(self,
                 optimizer=None,
                 loss=None,
+                gradient_scale=True,
                 metrics=None,
                 mode='train',
                 all_ranks=False):
@@ -90,6 +94,7 @@ class Engine:
         self._loss = loss
         self._metrics = to_list(metrics)
         self._mode = mode
+        self._gradient_scale = gradient_scale
         # Build forward program
         self._build(mode)
         # Do the planning process
@@ -104,11 +109,17 @@ class Engine:
             parallelizer.parallel(self._cur_rank)
         else:
             parallelizer.parallel_all()
-        # Get the distributed main programs and startup programs
+        # Get the current content from the distributed context 
+        self._serial_main_progs[mode] = self._dist_contexts[
+            mode].serial_main_program
+        self._serial_startup_progs[mode] = self._dist_contexts[
+            mode].serial_startup_program
         self._dist_main_progs[mode] = self._dist_contexts[
             mode].dist_main_programs
         self._dist_startup_progs[mode] = self._dist_contexts[
             mode].dist_startup_programs
+        self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
+        self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
         # Init comm and startup program
         self._initialize(mode)
 
@@ -135,20 +146,24 @@ class Engine:
             inputs = [self._set_data_parallel(var) for var in inputs]
             labels = [self._set_data_parallel(var) for var in labels]
 
-        self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+        # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+        feed_vars = {"inputs": inputs, "labels": labels}
 
-        self._fetch_vars[mode] = {
+        # self._fetch_vars[mode] = {
+        #     "outputs": flatten(outputs),
+        #     "loss": losses,
+        #     "metrics": metrics
+        # }
+        fetch_vars = {
             "outputs": flatten(outputs),
             "loss": losses,
             "metrics": metrics
         }
 
-        self._serial_main_progs[mode] = serial_main_prog
-        self._serial_startup_progs[mode] = serial_startup_prog
         self._dist_contexts[mode] = DistributedContext(
-            self._serial_main_progs[mode], self._serial_startup_progs[mode],
-            self._optimizer, losses, self._feed_vars[mode],
-            self._fetch_vars[mode], self.strategy)
+            serial_main_prog, serial_startup_prog, self._optimizer, losses,
+            feed_vars, fetch_vars, self.cluster, self.strategy)
+        self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _initialize(self, mode):
         if self._nranks > 1:
@@ -183,14 +198,14 @@ class Engine:
             epochs=1,
             steps_per_epoch=None,
             use_program_cache=False,
-            return_numpy=True,
-            sample_generator=True):
+            return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
         self.mode = 'train'
-        assert self.mode in self._dist_main_progs, "train model is not ready, please call `engine.prepare(mode='train')` first."
-        train_dataloader = self._create_dataloader(
-            train_data, batch_size, epochs, steps_per_epoch, sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "train model is not ready, please call `engine.prepare(mode='train')` first."
+        train_dataloader = self._create_dataloader(train_data, batch_size,
+                                                   epochs, steps_per_epoch)
 
         outputs = []
         for epoch in range(epochs):
@@ -209,12 +224,11 @@ class Engine:
                  eval_data,
                  batch_size=1,
                  use_program_cache=False,
-                 return_numpy=True,
-                 sample_generator=True):
+                 return_numpy=True):
         self.mode = 'eval'
-        assert self.mode in self._dist_main_progs, "eval model is not ready, please call `engine.prepare(mode='eval')` first."
-        eval_dataloader = self._create_dataloader(
-            eval_data, batch_size, sample_generator=sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "eval model is not ready, please call `engine.prepare(mode='eval')` first."
+        eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
         outputs = []
         for step, data in enumerate(eval_dataloader):
@@ -228,12 +242,11 @@ class Engine:
                 test_data,
                 batch_size=1,
                 use_program_cache=False,
-                return_numpy=True,
-                sample_generator=True):
+                return_numpy=True):
         self.mode = 'predict'
-        assert self.mode in self._dist_main_progs, "predict model is not ready, please call `engine.prepare(mode='predict')` first."
-        test_dataloader = self._create_dataloader(
-            test_data, batch_size, sample_generator=sample_generator)
+        assert self.mode in self._dist_main_progs, \
+            "predict model is not ready, please call `engine.prepare(mode='predict')` first."
+        test_dataloader = self._create_dataloader(test_data, batch_size)
 
         outputs = []
         for step, data in enumerate(test_dataloader):
@@ -304,21 +317,30 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           steps_per_epoch=None,
-                           sample_generator=True):
-        feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
-            self.mode]["labels"]
+                           steps_per_epoch=None):
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
-        serial_main_prog = self._serial_main_progs[self.mode]
-        serial_main_block = serial_main_prog.global_block()
+
+        # get feed_list from dist_program
+        inputs_var = self._feed_vars[self.mode]["inputs"]
+        labels_var = self._feed_vars[self.mode]["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+        dp_world_size, dp_rank = self._get_data_parallel_info(feed_list[0],
+                                                              dist_context)
+
+        # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
         if dist_main_block.ops[0].type == 'create_py_reader':
             op_size -= 3
             for _ in range(3):
                 dist_main_block._remove_op(0, sync=False)
+
+        # insert read op at the end of program
         places = paddle.static.cuda_places()
         with fluid.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = NonIterableGeneratorLoader(
@@ -328,7 +350,10 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                sample_generator=sample_generator)
+                data_parallel_world_size=dp_world_size,
+                data_parallel_rank=dp_rank)
+
+        # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
@@ -337,17 +362,6 @@ class Engine:
             new_op = Operator(
                 dist_main_block, new_op_desc, type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
-            for in_name in new_op.input_arg_names:
-                if "lod_tensor_blocking_queue" in in_name:
-                    continue
-                if in_name not in dist_main_block.vars:
-                    in_var = serial_main_block._var_recursive(in_name)
-                    dist_main_block._clone_variable(in_var, in_var.persistable)
-            for out_name in new_op.output_arg_names:
-                if out_name not in dist_main_block.vars:
-                    out_var = serial_main_block._var_recursive(out_name)
-                    dist_main_block._clone_variable(out_var,
-                                                    out_var.persistable)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
@@ -386,6 +400,29 @@ class Engine:
                 })
 
         return var
+
+    def _get_data_parallel_info(self, var, dist_context):
+        # get data parallel world size and current data parallel rank
+        from .utils import _get_comm_group, _get_corresponding_rank
+
+        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+        process_mesh = tensor_dist_attr.process_mesh
+        dims_mapping = tensor_dist_attr.dims_mapping
+
+        if self._cur_rank not in process_mesh.processes:
+            rank_id = _get_corresponding_rank(dist_context, process_mesh,
+                                              self._cur_rank)
+        else:
+            rank_id = self._cur_rank
+
+        batch_size_axis = dims_mapping[0]
+        if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+            group_ranks = _get_comm_group(process_mesh.processes,
+                                          process_mesh.topology,
+                                          batch_size_axis, rank_id)
+            return len(group_ranks), group_ranks.index(rank_id)
+
+        return None, None
 
     def save(self, path, training=True, mode=None):
         if not mode:

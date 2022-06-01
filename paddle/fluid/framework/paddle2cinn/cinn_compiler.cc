@@ -110,7 +110,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
-    const std::string& compilation_key,
+    int64_t compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
@@ -126,12 +126,8 @@ const CinnCompiledObject& CinnCompiler::GetCompiledObject(
   return *res->second;
 }
 
-std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
-  std::string graph_key;
-  ProgramDesc program;
-  GraphToProgram(*graph, &program);
-  program.Proto()->SerializeToString(&graph_key);
-
+int64_t CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
+  int64_t graph_key = std::hash<Graph*>()((&(*graph)));
   PADDLE_ENFORCE_EQ(
       graphs_.count(graph_key), 0,
       platform::errors::PreconditionNotMet(
@@ -143,16 +139,17 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   return graph_key;
 }
 
-const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
+const Graph& CinnCompiler::FindGraph(int64_t graph_key) const {
+  auto it = graphs_.find(graph_key);
   PADDLE_ENFORCE_NE(
-      graphs_.count(graph_key), 0,
+      it, graphs_.end(),
       platform::errors::PreconditionNotMet(
-          "Can not find the target graph, of which the key is:\n%s",
-          ReadableKey(graph_key).c_str()));
-  return *graphs_.at(graph_key);
+          "Can not find the target graph, of which the key is: %lld",
+          graph_key));
+  return *it->second;
 }
 
-std::string CinnCompiler::VizGraph(const std::string& graph_key) const {
+std::string CinnCompiler::VizGraph(int64_t graph_key) const {
   const Graph& graph = FindGraph(graph_key);
   return VizGraph(graph);
 }
@@ -200,11 +197,24 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
   return dot.Build();
 }
 
-std::string CinnCompiler::ReadableKey(
-    const std::string& compilation_key) const {
-  proto::ProgramDesc desc;
-  desc.ParseFromString(compilation_key);
-  return desc.DebugString();
+std::string CinnCompiler::SerializeKey(int64_t compilation_key) const {
+  const auto& graph = FindGraph(compilation_key);
+
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+
+  std::string serial_graph;
+  program.Proto()->SerializeToString(&serial_graph);
+  return serial_graph;
+}
+
+std::string CinnCompiler::ReadableKey(int64_t compilation_key) const {
+  const auto& graph = FindGraph(compilation_key);
+
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+
+  return program.Proto()->DebugString();
 }
 
 void CinnCompiler::Clear() {

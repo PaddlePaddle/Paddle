@@ -26,7 +26,7 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const int offset, uint64_t* seed_data,
                                     uint64_t* increment) {
   int device_id = dev_ctx.GetPlace().GetDeviceId();
-  auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+  auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
 
   if (seed) {
     framework::Tensor seed_cpu_tensor;
@@ -34,13 +34,12 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                       &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
     *increment = offset;
-  } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
+  } else if (!is_fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);
     *seed_data = seed_offset.first;
     *increment = seed_offset.second;
   } else {
-    std::random_device rnd;
-    *seed_data = is_fix_seed ? seed_val : rnd();
+    *seed_data = seed_val;
     *increment = offset;
   }
 }

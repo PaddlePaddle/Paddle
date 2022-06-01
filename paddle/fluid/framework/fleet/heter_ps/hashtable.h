@@ -118,8 +118,8 @@ class HashTable {
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
-              StreamType stream);
+  void insert(const KeyType* d_keys, size_t len, char* pool,
+              size_t feature_value_size, size_t start_index, StreamType stream);
 
   template <typename StreamType>
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,

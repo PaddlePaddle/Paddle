@@ -292,9 +292,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Input<Tensor>("ReserveSpace");
     auto* variance = ctx.Input<Tensor>("ReserveSpace");
 
-    paddle::optional<const Tensor&> space_opt = paddle::none;
-    paddle::optional<const Tensor&> mean_opt = paddle::none;
-    paddle::optional<const Tensor&> variance_opt = paddle::none;
+    paddle::optional<Tensor> space_opt;
+    paddle::optional<Tensor> mean_opt;
+    paddle::optional<Tensor> variance_opt;
 
     if (reserve_space != nullptr) {
       space_opt = *reserve_space;

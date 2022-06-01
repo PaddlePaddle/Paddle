@@ -18,6 +18,7 @@ typedef SSIZE_T ssize_t;
 #include <Python.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "pybind11/numpy.h"
@@ -76,7 +77,9 @@ class PyTensorHook : public egr::TensorHook {
 
     PyObject* res = nullptr;
     try {
-      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+      PyObject* p_tmp_var = ToPyObject(var);
+      res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
+      Py_DECREF(p_tmp_var);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
@@ -93,7 +96,9 @@ class PyTensorHook : public egr::TensorHook {
     if (res == Py_None) {
       return var;
     }
-    return reinterpret_cast<TensorObject*>(res)->tensor;
+    auto res_tensor = reinterpret_cast<TensorObject*>(res)->tensor;
+    Py_DECREF(res);
+    return res_tensor;
   }
 
  private:
@@ -489,7 +494,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   }
 
   paddle::experimental::Tensor* grad;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
@@ -513,6 +519,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
       if (grad->initialized()) {
         if (set_to_zero) {
           grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+          if (is_leaf) {
+            std::static_pointer_cast<egr::GradNodeAccumulation>(
+                egr::EagerUtils::grad_node(self->tensor))
+                ->SetFakeEmpty(true);
+          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
@@ -675,7 +686,9 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* kwargs) {
   EAGER_TRY
   if (!self->tensor.defined()) {
-    RETURN_PY_NONE
+    // The original `get_tensor` method of Variable will create a empty tensor
+    phi::DenseTensor empty_tensor;
+    return ToPyObject(&empty_tensor);
   }
   if (self->tensor.is_dense_tensor()) {
     auto* tensor =
@@ -1275,6 +1288,47 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+static PyObject* tensor_method_set_vocab(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto vocab = CastPyArg2Vocab(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Vocab>() = vocab;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_set_string_list(TensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  using Strings = std::vector<std::string>;
+  auto strings = CastPyArg2Strings(PyTuple_GET_ITEM(args, 0), 0);
+  auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
+  *var_tensor->GetMutable<Strings>() = strings;
+  self->tensor.set_impl(var_tensor);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_map_tensor(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      egr::IsVariableCompatTensor(self->tensor), true,
+      paddle::platform::errors::Fatal(
+          "this method is only effective for VariableCompatTensor"));
+  using Vocab = std::unordered_map<std::wstring, int>;
+  auto* var_tensor =
+      static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get());
+  return ToPyObject(var_tensor->Get<Vocab>());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1654,6 +1708,15 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_copy_gradient_from",
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    /** the methods to adapt old dygraph, will be removed in the future **/
+    {"set_string_list",
+     (PyCFunction)(void (*)(void))tensor_method_set_string_list,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"set_vocab", (PyCFunction)(void (*)(void))tensor_method_set_vocab,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"get_map_tensor",
+     (PyCFunction)(void (*)(void))tensor_method_get_map_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"indices", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,

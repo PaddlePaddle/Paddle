@@ -737,7 +737,7 @@ def _pull_gpups_sparse(input,
         for i in range(len(inputs))
     ]
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=[size[0]], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_gpups_sparse',
         inputs={'Ids': inputs,
@@ -6533,7 +6533,7 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)[1]
+        return _C_ops.final_state_squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -6598,7 +6598,7 @@ def unsqueeze(input, axes, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)[1]
+        return _C_ops.final_state_unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -7394,30 +7394,8 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
             predictions = F.softmax(x)
             loss = F.dice_loss(input=predictions, label=label)
     """
-    assert input.dtype in (paddle.float32, paddle.float64)
-    assert label.dtype in (paddle.int32, paddle.int64)
-    assert len(input.shape) >= 2, \
-        "The rank of input should be greater than or equal to 2."
-    assert len(input.shape) == len(label.shape), (
-        "The rank of input and label should be equal, "
-        "but received input: %d, label: %d." %
-        (len(input.shape), len(label.shape)))
-    assert label.shape[-1] == 1, ("The last dimension of label should be 1, "
-                                  "but received %d." % label.shape[-1])
-    assert input.shape[:-1] == label.shape[:-1], (
-        "All dimensions should be equal except the last one.")
-    assert input.numel() > 0 and label.numel() > 0, \
-        "Any dimension of input and label cannot be equal to 0."
-
-    label = squeeze(label, [-1])
-    label = paddle.nn.functional.one_hot(label, input.shape[-1])
-    reduce_dim = list(range(1, len(input.shape)))
-    inse = reduce_sum(input * label, dim=reduce_dim)
-    dice_denominator = reduce_sum(
-        input, dim=reduce_dim) + reduce_sum(
-            label, dim=reduce_dim)
-    dice_score = 1 - inse * 2 / (dice_denominator + epsilon)
-    return reduce_mean(dice_score)
+    return paddle.nn.functional.dice_loss(
+        input, label, epsilon=epsilon, name=name)
 
 
 def image_resize(input,
@@ -7793,10 +7771,18 @@ def image_resize(input,
     }
 
     if out_shape is not None:
-        if isinstance(out_shape, Variable):
+        if isinstance(out_shape, Variable) and not _non_static_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
+            if _non_static_mode():
+                if isinstance(out_shape, Variable):
+                    out_shape = list(out_shape.numpy())
+                else:
+                    out_shape = list(out_shape)
+                for i, dim in enumerate(out_shape):
+                    if isinstance(dim, Variable):
+                        out_shape[i] = dim.numpy()[0]
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError(
                     "out_shape should be a list or tuple or Variable.")
@@ -7863,7 +7849,9 @@ def image_resize(input,
                     attrs['out_w'] = out_shape[2]
 
     else:
-        if isinstance(scale, Variable):
+        if _non_static_mode() and isinstance(scale, Variable):
+            scale = scale.numpy()
+        elif isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
         elif isinstance(scale, float) or isinstance(scale, int):
@@ -7883,6 +7871,26 @@ def image_resize(input,
         inputs["OutSize"] = actual_shape
     elif actual_shape is not None:
         raise TypeError("actual_shape should either be Variable or None.")
+
+    if _non_static_mode():
+        attr_list = []
+        for k, v in attrs.items():
+            attr_list.append(k)
+            attr_list.append(v)
+        dy_attr = tuple(attr_list)
+
+        if resample_type == "linear":
+            out = _C_ops.linear_interp(input, actual_shape, *dy_attr)
+        elif resample_type == "bilinear":
+            out = _C_ops.bilinear_interp(input, actual_shape, *dy_attr)
+        elif resample_type == "trilinear":
+            out = _C_ops.trilinear_interp(input, actual_shape, *dy_attr)
+        elif resample_type == "nearest":
+            out = _C_ops.nearest_interp(input, actual_shape, *dy_attr)
+        elif resample_type == "bicubic":
+            out = _C_ops.bicubic_interp(input, actual_shape, *dy_attr)
+        return out
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='{}_interp'.format(resample_type),
@@ -13573,22 +13581,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_log_loss(input, label, epsilon)
-
-    helper = LayerHelper('log_loss', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
-    check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
-
-    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
-
-    helper.append_op(
-        type='log_loss',
-        inputs={'Predicted': [input],
-                'Labels': [label]},
-        outputs={'Loss': [loss]},
-        attrs={'epsilon': epsilon})
-    return loss
+    return paddle.nn.functional.log_loss(input, label, epsilon, name)
 
 
 def add_position_encoding(input, alpha, beta, name=None):
@@ -13744,7 +13737,7 @@ def get_tensor_from_selected_rows(x, name=None):
            x.height = 20
            x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
 
-        Ouput is LoDTensor:
+        Output is LoDTensor:
            out.shape = [5, 2]
            out.data = [[1, 1],
                        [2, 2],
@@ -13892,33 +13885,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             input = paddle.randn([6, 4, 2, 2])
             out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
-    if data_format not in ["NCHW", "NHWC"]:
-        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
-                         "Received Attr(data_format): {}.".format(data_format))
-    if _non_static_mode():
-        return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                     shift_ratio, 'data_format', data_format)
-
-    helper = LayerHelper("temporal_shift", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
-    check_type(seg_num, 'seg_num', int, 'temporal_shift')
-    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if not isinstance(seg_num, int):
-        raise TypeError("seg_num must be int type.")
-
-    helper.append_op(
-        type="temporal_shift",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={
-            "seg_num": seg_num,
-            "shift_ratio": shift_ratio,
-            "data_format": data_format
-        })
-    return out
+    return paddle.nn.functional.temporal_shift(x, seg_num, shift_ratio, name,
+                                               data_format)
 
 
 class PyFuncRegistry(object):
@@ -15046,63 +15014,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
-    helper = LayerHelper("unfold", **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
-
-    assert len(x.shape) == 4, \
-            "input should be the format of [N, C, H, W]"
-
-    if isinstance(kernel_sizes, int):
-        kernel_sizes = [kernel_sizes, kernel_sizes]
-    else:
-        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list of two integers"
-
-    if isinstance(strides, int):
-        strides = [strides, strides]
-    else:
-        assert isinstance(strides, list) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
-
-    if isinstance(dilations, int):
-        dilations = [dilations, dilations]
-    else:
-        assert isinstance(dilations, list) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list of two integers"
-
-    if isinstance(paddings, int):
-        paddings = [paddings] * 4
-    elif isinstance(paddings, list):
-        if len(paddings) == 2:
-            paddings = paddings * 2
-        elif len(paddings) == 4:
-            pass
-        else:
-            raise ValueError(
-                "paddings should either be an integer or a list of 2 or 4 integers"
-            )
-    else:
-        raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list"
-            "of 2 or 4 integers")
-
-    if in_dygraph_mode():
-        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
-                                         dilations)
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="unfold",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs={
-            "kernel_sizes": kernel_sizes,
-            "strides": strides,
-            "paddings": paddings,
-            "dilations": dilations
-        })
-    return out
+    return paddle.nn.functional.unfold(x, kernel_sizes, strides, paddings,
+                                       dilations, name)
 
 
 def deformable_roi_pooling(input,
@@ -15554,26 +15467,7 @@ def gather_tree(ids, parents):
             # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
 
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_gather_tree(ids, parents)
-    else:
-        if _in_legacy_dygraph():
-            return _C_ops.gather_tree(ids, parents)
-        else:
-            helper = LayerHelper('gather_tree', **locals())
-            check_variable_and_dtype(ids, 'ids', ['int32', 'int64'],
-                                     'gather_tree')
-            check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
-                                     'gather_tree')
-            out = helper.create_variable_for_type_inference(dtype=ids.dtype)
-
-            helper.append_op(
-                type="gather_tree",
-                inputs={"Ids": ids,
-                        "Parents": parents},
-                outputs={"Out": out})
-
-            return out
+    return paddle.nn.functional.gather_tree(ids, parents)
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")

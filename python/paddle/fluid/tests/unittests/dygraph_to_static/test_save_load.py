@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+import os
+import tempfile
 
 import numpy as np
 import paddle.fluid as fluid
@@ -30,6 +32,14 @@ place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 
 
 class TestDyToStaticSaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "test_dy2stat_save_load")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_save_load_same_result(self):
         program_translator = ProgramTranslator()
         x_data = np.random.randn(30, 10, 32).astype('float32')
@@ -50,7 +60,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
                 adam.minimize(static_loss)
                 net.clear_gradients()
             # Save parameters
-            fluid.save_dygraph(net.state_dict(), "./test_dy2stat_save_load")
+
+            fluid.save_dygraph(net.state_dict(), self.model_path)
             # minimize() will update parameter, call net() to get output and avg_loss.
             # Switch into eval mode.
             net.eval()
@@ -61,7 +72,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_net = Linear(32, 64)
 
             # Load parameters
-            model_dict, _ = fluid.load_dygraph("./test_dy2stat_save_load")
+            model_dict, _ = fluid.load_dygraph(self.model_path)
             dygraph_net.set_dict(model_dict)
             # Switch into eval mode.
             dygraph_net.eval()

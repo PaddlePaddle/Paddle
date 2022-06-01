@@ -35,7 +35,7 @@ class Parallelizer:
         self._mode = mode
         self._completer = completer
         self._dist_context = dist_context
-        self._dist_context.initialize()
+        assert self._dist_context._is_initialized
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
 
@@ -43,7 +43,9 @@ class Parallelizer:
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
         for rank in all_ranks:
+            # self._dist_context._backup(serial=True, dist=True)
             self.parallel(rank)
+            # self._dist_context._restore(serial=True, dist=True)
 
     def parallel(self, rank):
         serial_main_program = self._dist_context.serial_main_program
@@ -51,13 +53,14 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
-            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
+            serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
                 serial_main_program, serial_startup_program, serial_loss)
             # Apply pre optimization passes
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
                                          serial_optimizer, params_grads)
+
             # Do logical partition
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
@@ -67,8 +70,6 @@ class Parallelizer:
                                      serial_optimizer, dist_params_grads)
             # Do reshard process
             set_grad_var_shape(dist_main_prog, self._dist_context)
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
@@ -84,12 +85,9 @@ class Parallelizer:
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
-            make_data_unshard(dist_main_prog, dist_startup_prog,
-                              self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
-
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)

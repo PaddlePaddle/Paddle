@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,29 @@
 # limitations under the License
 
 from collections import OrderedDict
+from functools import reduce
+
 import paddle
 
+from ..cluster import LinkType
+from ..process_group import get_process_group
+
 COMM_OP_TYPE = [
-    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum"
+    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum",
+    "c_identity"
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
 _g_op_cost_factory = {}
+
+
+def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
+    desc = {}
+    desc["op"] = op_type
+    desc["group_ranks"] = group_ranks
+    desc["inputs"] = {"X": [(dtype, shape)]}
+    if attrs is not None:
+        desc["attrs"] = attrs
+    return desc
 
 
 def _parse_op_to_desc(op, dist_context=None):
@@ -137,6 +153,7 @@ class CommContext:
             return
         self.beta = {}
         self.hops = {}
+        assert cluster is not None
         self.cluster = cluster
         # if cluster has no info about those vars, it will be set by default
         self.base_ring = None
@@ -322,8 +339,6 @@ class Cost:
 
 class OpCost:
     def __init__(self, op=None, op_desc=None):
-        assert (op is not None and op_desc is None) or (op is None and
-                                                        op_desc is not None)
         self._op = op
         self._op_desc = op_desc
         self._cost = None

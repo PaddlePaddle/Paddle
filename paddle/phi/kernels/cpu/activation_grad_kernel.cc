@@ -167,6 +167,7 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish, SwishGradFunctor, beta);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                MishGradFunctor,
                                                threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu, CELUGradFunctor, alpha);
 
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
                                                BReluGradFunctor,
@@ -281,6 +282,10 @@ PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(tanh_double_grad,
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(leaky_relu_double_grad,
                                           LeakyReluDoubleGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(elu_double_grad, EluDoubleGradKernel)
+PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(sqrt_double_grad,
+                                          SqrtDoubleGradKernel)
+PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(rsqrt_double_grad,
+                                          RsqrtDoubleGradKernel)
 
 PD_REGISTER_KERNEL(tanh_triple_grad,
                    CPU,
@@ -317,6 +322,15 @@ PD_REGISTER_KERNEL(square_grad,
                    double,
                    int,
                    int64_t) {}
+PD_REGISTER_KERNEL(square_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SquareDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_triple_grad, SigmoidTripleGradKernel)
@@ -332,6 +346,9 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
+PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(celu_double_grad,
+                                          CeluDoubleGradKernel)
 
 PD_REGISTER_KERNEL(pow_grad,
                    CPU,
