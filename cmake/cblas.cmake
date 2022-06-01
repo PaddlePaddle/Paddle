@@ -52,6 +52,7 @@ if(NOT DEFINED CBLAS_PROVIDER)
   set(OPENBLAS_INCLUDE_SEARCH_PATHS
           ${OPENBLAS_ROOT}/include
           /usr/include
+          /usr/include/lapacke
           /usr/include/openblas
           /usr/local/opt/openblas/include)
   set(OPENBLAS_LIB_SEARCH_PATHS
@@ -65,15 +66,17 @@ if(NOT DEFINED CBLAS_PROVIDER)
     PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS} NO_DEFAULT_PATH)
   find_path(OPENBLAS_LAPACKE_INC_DIR NAMES lapacke.h
     PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
+  find_path(OPENBLAS_CONFIG_INC_DIR NAMES openblas_config.h
+    PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
   find_library(OPENBLAS_LIB NAMES openblas
     PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
-  if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-    file(READ "${OPENBLAS_INC_DIR}/openblas_config.h" config_file)
+  if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_CONFIG_INC_DIR AND OPENBLAS_LIB)
+    file(READ "${OPENBLAS_CONFIG_INC_DIR}/openblas_config.h" config_file)
     string(REGEX MATCH "OpenBLAS ([0-9]+\.[0-9]+\.[0-9]+)" tmp ${config_file})
     string(REGEX MATCH "([0-9]+\.[0-9]+\.[0-9]+)" ver ${tmp})
     
-    if (${ver} VERSION_GREATER_EQUAL "0.3.7")
+    if (${ver} VERSION_GREATER_EQUAL "0.3.5")
       set(CBLAS_PROVIDER OPENBLAS)
       set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
       set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
@@ -138,4 +141,3 @@ if(${CBLAS_PROVIDER} STREQUAL REFERENCE_CBLAS)
 elseif(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()
-

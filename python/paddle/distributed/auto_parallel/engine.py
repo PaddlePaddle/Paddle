@@ -31,10 +31,11 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-from .cluster import Cluster
+# from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -57,7 +58,11 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
+        # if self.cluster is None:
+        #     self.cluster = get_default_cluster()
         self.strategy = strategy
+        if self.strategy is None:
+            self.strategy = fleet.DistributedStrategy()
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -69,11 +74,11 @@ class Engine:
         self._orig_main_prog = fluid.default_main_program()
         self._orig_startup_prog = fluid.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
+        self._dist_contexts = {}
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
         self._dist_main_progs = defaultdict(dict)  # dist main programs
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
-        self._dist_contexts = {}
         self._feed_vars = {}
         self._fetch_vars = {}
 
@@ -104,11 +109,17 @@ class Engine:
             parallelizer.parallel(self._cur_rank)
         else:
             parallelizer.parallel_all()
-        # Get the distributed main programs and startup programs
+        # Get the current content from the distributed context 
+        self._serial_main_progs[mode] = self._dist_contexts[
+            mode].serial_main_program
+        self._serial_startup_progs[mode] = self._dist_contexts[
+            mode].serial_startup_program
         self._dist_main_progs[mode] = self._dist_contexts[
             mode].dist_main_programs
         self._dist_startup_progs[mode] = self._dist_contexts[
             mode].dist_startup_programs
+        self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
+        self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
         # Init comm and startup program
         self._initialize(mode)
 
@@ -135,20 +146,23 @@ class Engine:
             inputs = [self._set_data_parallel(var) for var in inputs]
             labels = [self._set_data_parallel(var) for var in labels]
 
-        self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+        # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
+        feed_vars = {"inputs": inputs, "labels": labels}
 
-        self._fetch_vars[mode] = {
+        # self._fetch_vars[mode] = {
+        #     "outputs": flatten(outputs),
+        #     "loss": losses,
+        #     "metrics": metrics
+        # }
+        fetch_vars = {
             "outputs": flatten(outputs),
             "loss": losses,
             "metrics": metrics
         }
 
-        self._serial_main_progs[mode] = serial_main_prog
-        self._serial_startup_progs[mode] = serial_startup_prog
         self._dist_contexts[mode] = DistributedContext(
-            self._serial_main_progs[mode], self._serial_startup_progs[mode],
-            self._optimizer, losses, self._feed_vars[mode],
-            self._fetch_vars[mode], self.strategy)
+            serial_main_prog, serial_startup_prog, self._optimizer, losses,
+            feed_vars, fetch_vars, self.cluster, self.strategy)
         self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _initialize(self, mode):

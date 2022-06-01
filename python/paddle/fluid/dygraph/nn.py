@@ -3016,9 +3016,15 @@ class GroupNorm(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        if in_dygraph_mode():
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+
+        if _non_static_mode():
             attrs = ('epsilon', self._epsilon, 'groups', self._groups)
-            out, _, _ = _C_ops.group_norm(input, self.weight, self.bias, *attrs)
+            out, _, _ = _C_ops.group_norm(input, self.weight, self.bias,
+                                          mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
         else:
@@ -3029,10 +3035,6 @@ class GroupNorm(layers.Layer):
                 inputs['Scale'] = self.weight
 
             # create output
-            mean_out = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype, stop_gradient=True)
-            variance_out = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype, stop_gradient=True)
             group_norm_out = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
 

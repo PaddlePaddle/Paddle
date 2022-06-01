@@ -124,7 +124,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
-      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
+      mid->set_mem_desc(workspace_memory->get_desc());
       lrn_p->execute(astream, {{DNNL_ARG_SRC, *src_memory},
                                {DNNL_ARG_DST, *dst_memory},
                                {DNNL_ARG_WORKSPACE, *workspace_memory}});
@@ -134,8 +134,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -177,8 +176,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                {DNNL_ARG_WORKSPACE, *workspace}});
     astream.wait();
 
-    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    in_x_grad->set_mem_desc(diff_src_memory->get_desc());
   }
 };
 }  // namespace operators
