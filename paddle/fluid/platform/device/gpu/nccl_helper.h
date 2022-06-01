@@ -31,6 +31,8 @@
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -52,6 +54,10 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclFloat16;
   } else if (type == framework::proto::VarType::INT8) {
     return ncclInt8;
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+  } else if (type == framework::proto::VarType::BF16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
@@ -69,6 +75,10 @@ inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
     return ncclInt64;
   } else if (type == experimental::DataType::FLOAT16) {
     return ncclFloat16;
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+  } else if (type == experimental::DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
