@@ -2235,7 +2235,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
 def triplet_margin_loss(input,
                         positive,
                         negative,
-			margin=1.0,
+                        margin=1.0,
                         p=2,
                         epsilon=1e-6,
                         swap=False,
@@ -2270,16 +2270,16 @@ def triplet_margin_loss(input,
         negative (Tensor): Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
 	    
-	margin (float, Optional): Default: :math:`1`. 
+	    margin (float, Optional): Default: :math:`1`.
         
         p (int, Optional): The norm degree for pairwise distance. Default: :math:`2`.
 
         epsilon (float, Optional): Add small value to avoid division by zero,
             default value is 1e-6.
 	
-	swap (bool,Optional): The distance swap change the negative distance to the distance between
+	    swap (bool,Optional): The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
-	    Default: ``False``.
+	        Default: ``False``.
 
         
         reduction (str, Optional):Indicate how to average the loss by batch_size.
@@ -2318,7 +2318,7 @@ def triplet_margin_loss(input,
         raise ValueError(
             "'reduction' in 'triplet_margin_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
-    if margin<0:
+    if margin < 0:
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
@@ -2330,11 +2330,10 @@ def triplet_margin_loss(input,
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_loss')
 
-    if not(input.shape==positive.shape==negative.shape):
-        raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape")
+    if not (input.shape == positive.shape == negative.shape):
+        raise ValueError("input's shape must equal to "
+                         "positive's shape and  "
+                         "negative's shape")
 
     distance_function = paddle.nn.PairwiseDistance(p, epsilon=epsilon)
     positive_dist = distance_function(input, positive)
@@ -2344,7 +2343,7 @@ def triplet_margin_loss(input,
         swap_dist = distance_function(positive, negative)
         negative_dist = paddle.minimum(negative_dist, swap_dist)
 
-    loss = paddle.clip(positive_dist-negative_dist+margin, min=0.0)
+    loss = paddle.clip(positive_dist - negative_dist + margin, min=0.0)
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)

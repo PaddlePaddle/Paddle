@@ -1352,13 +1352,13 @@ class TripletMarginLoss(Layer):
 
     Call Parameters:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. 
+	    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input. 
+	    The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input. 
+	    The shape of label is the same as the shape of input.
 
     Returns:
         Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
@@ -1383,7 +1383,14 @@ class TripletMarginLoss(Layer):
             # Tensor([0.19165580])
 
     """
-    def __init__(self, margin=1.0, p=2., epsilon= 1e-6, swap=False, reduction='mean', name=None):
+
+    def __init__(self,
+                 margin=1.0,
+                 p=2.,
+                 epsilon=1e-6,
+                 swap=False,
+                 reduction='mean',
+                 name=None):
         super(TripletMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
@@ -1397,12 +1404,13 @@ class TripletMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_loss(input,
-                                     positive,
-                                     negative,
-                                     margin=self.margin,
-                                     p=self.p,
-                                     epsilon=self.epsilon,
-                                     swap=self.swap,
-                                     reduction=self.reduction,
-                                     name=self.name)
+        return F.triplet_margin_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            p=self.p,
+            epsilon=self.epsilon,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name)
