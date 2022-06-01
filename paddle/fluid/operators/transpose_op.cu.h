@@ -764,8 +764,8 @@ struct PermuteParams {
                          const std::vector<int>& perm_) {
     size_t dst_dims[Rank];
     for (size_t i = 0; i < Rank; ++i) {
-      perm[i] = perm_[i];
       dst_dims[i] = dims[perm_[i]];
+      perm[i] = perm_[i];
     }
     dst_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dst_dims);
     src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dims.data());
@@ -812,6 +812,13 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
   IndexT src_index[VecSize][Rank];
   IndexT dst_index[VecSize][Rank];
 
+  // Avoid read perm data both in 2 load process.
+  __shared__ int perm[Rank];
+  if (threadIdx.x < Rank) {
+    perm[threadIdx.x] = params.perm[threadIdx.x];
+  }
+  __syncthreads();
+
   // Vectorized load data.
   IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
   for (IndexT idx = tid; idx < main_cnt; idx += blockDim.x * gridDim.x) {
@@ -824,7 +831,7 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
 
 #pragma unroll
       for (int j = 0; j < Rank; ++j) {
-        src_index[i][params.perm[j]] = dst_index[i][j];
+        src_index[i][perm[j]] = dst_index[i][j];
       }
       IndexT src_offset = params.src_index_helper.IndexToOffset(src_index[i]);
       vec_data[i] = src[src_offset];
@@ -832,14 +839,14 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
     vec_dst[idx] = vec_data;
   }
 
-  // Singlarized load data.
+  // Singularized load data.
   if (tid < tail_cnt) {
     IndexT idx = tid + offset;
     params.dst_index_helper.OffsetToIndex(idx, dst_index[0]);
 
 #pragma unroll
     for (int j = 0; j < Rank; ++j) {
-      src_index[0][params.perm[j]] = dst_index[0][j];
+      src_index[0][perm[j]] = dst_index[0][j];
     }
     IndexT src_offset = params.src_index_helper.IndexToOffset(src_index[0]);
     dst[idx] = src[src_offset];
@@ -927,7 +934,7 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
     }
   }
 
-  // Singlarized load data from shared memory into dst.
+  // Singularized load data from shared memory into dst.
   // and dst_cols = rows, dst_rows = cols, [cols * Vecsize, rows]
   col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
   offset = offset * VecSize + col_in_matrix;
