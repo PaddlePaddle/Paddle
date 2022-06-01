@@ -123,8 +123,8 @@ function(copy_part_of_thrid_party TARGET DST)
         set(dst_dir "${DST}/third_party/install/paddle2onnx")
         if(WIN32)
             copy(${TARGET}
-                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_SHARED_LIB} ${PADDLE2ONNX_LIB}
-                DSTS ${dst_dir}/include ${dst_dir}/lib ${dst_dir}/lib)
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include  ${dst_dir}/lib)
         else()
             copy(${TARGET}
                 SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
