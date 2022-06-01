@@ -255,8 +255,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
-                  ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInferer);
+                  ops::GroupNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
