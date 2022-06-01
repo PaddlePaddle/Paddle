@@ -67,15 +67,15 @@ class TestSparseUnary(unittest.TestCase):
             x,
             lambda x: x.to_sparse_coo(sparse_dim),
             paddle.nn.ReLU(),
-            paddle.sparse.ReLU(),
+            paddle.incubate.sparse.nn.ReLU(),
             True, )
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_csr(),
             paddle.nn.ReLU(),
-            paddle.sparse.ReLU(),
+            paddle.incubate.sparse.nn.ReLU(),
             False, )
-        self.assert_raises_on_dense_tensor(paddle.sparse.ReLU())
+        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.nn.ReLU())
 
     def test_sparse_sqrt(self):
         x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
@@ -84,15 +84,15 @@ class TestSparseUnary(unittest.TestCase):
             x,
             lambda x: x.to_sparse_coo(sparse_dim),
             paddle.sqrt,
-            paddle.sparse.sqrt,
+            paddle.incubate.sparse.sqrt,
             True, )
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_csr(),
             paddle.sqrt,
-            paddle.sparse.sqrt,
+            paddle.incubate.sparse.sqrt,
             False, )
-        self.assert_raises_on_dense_tensor(paddle.sparse.sqrt)
+        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.sqrt)
 
     def test_sparse_sin(self):
         x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
@@ -101,15 +101,15 @@ class TestSparseUnary(unittest.TestCase):
             x,
             lambda x: x.to_sparse_coo(sparse_dim),
             paddle.sin,
-            paddle.sparse.sin,
+            paddle.incubate.sparse.sin,
             True, )
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_csr(),
             paddle.sin,
-            paddle.sparse.sin,
+            paddle.incubate.sparse.sin,
             False, )
-        self.assert_raises_on_dense_tensor(paddle.sparse.sin)
+        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.sin)
 
     def test_sparse_tanh(self):
         x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, -4, 2, 0]]
@@ -118,15 +118,15 @@ class TestSparseUnary(unittest.TestCase):
             x,
             lambda x: x.to_sparse_coo(sparse_dim),
             paddle.tanh,
-            paddle.sparse.tanh,
+            paddle.incubate.sparse.tanh,
             True, )
         self.compare_with_dense(
             x,
             lambda x: x.to_sparse_csr(),
             paddle.tanh,
-            paddle.sparse.tanh,
+            paddle.incubate.sparse.tanh,
             False, )
-        self.assert_raises_on_dense_tensor(paddle.sparse.tanh)
+        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.tanh)
 
 
 if __name__ == "__main__":

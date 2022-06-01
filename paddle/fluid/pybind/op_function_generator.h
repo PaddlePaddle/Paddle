@@ -125,6 +125,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
     {"inplace_abn",
      {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
+    {"linear_interp", {"X", "OutSize"}},
+    {"bilinear_interp", {"X", "OutSize"}},
+    {"trilinear_interp", {"X", "OutSize"}},
+    {"nearest_interp", {"X", "OutSize"}},
+    {"bicubic_interp", {"X", "OutSize"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -270,6 +275,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"split", {"Out"}},
     {"concat", {"Out"}},
     {"fused_multi_transformer", {"CacheKVOut"}},
+    {"group_norm", {"Mean", "Variance"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

@@ -82,8 +82,6 @@ class AutoTuneBase {
     // Time cost test estabulished in default stream.
     for (int i = 0; i < kernels_.size(); ++i) {
       auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
-      VLOG(3) << "kernel[" << i << "] tune time is " << time;
-
       if (time < min_time) {
         min_time = time;
         best_idx = i;

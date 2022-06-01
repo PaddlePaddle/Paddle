@@ -348,14 +348,6 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false)
       .AsExtra();
-  AddAttr<bool>("fuse_brelu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<float>("fuse_brelu_threshold",
-                 "(float, default false 6.0) Only used in mkldnn kernel")
-      .SetDefault(6.0f)
-      .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
       .SetDefault("")

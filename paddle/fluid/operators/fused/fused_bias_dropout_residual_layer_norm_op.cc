@@ -44,7 +44,7 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
       left *= x_dim[i];
     }
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
-    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
     ctx->SetOutputDim("LnMean", {left});
@@ -91,7 +91,7 @@ class FusedBiasDropoutResidualLnOpMaker
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("dropout_is_test",
+    AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
@@ -140,10 +140,9 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->Attrs().Get<bool>("dropout_is_test"), false,
-        platform::errors::InvalidArgument(
-            "GradOp is only callable when dropout_is_test is false"));
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
+                      platform::errors::InvalidArgument(
+                          "GradOp is only callable when is_test is false"));
     OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
                    "FusedBiasDropoutResidualLnGrad");
     OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",

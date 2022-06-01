@@ -211,6 +211,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (result == gpuSuccess) {
     *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
+    HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
     return p;
   } else {
     LOG(WARNING) << "cudaHostAlloc failed.";
@@ -255,6 +256,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
             err));
   }
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }

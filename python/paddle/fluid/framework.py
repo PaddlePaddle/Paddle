@@ -3600,6 +3600,10 @@ class Block(object):
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
             type = kwargs.get("type", None)
+            warnings.warn(
+                "Op `%s` is executed through `append_op` under the dynamic mode, "
+                "the corresponding API implementation needs to be upgraded to "
+                "using `_C_ops` method." % type, DeprecationWarning)
             op = Operator(
                 block=self,
                 desc=None,
