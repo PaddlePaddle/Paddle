@@ -424,6 +424,41 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         ProgramTranslator().enable(False)
 
 
+class IfElseNet(paddle.nn.Layer):
+    def __init__(self):
+        super(IfElseNet, self).__init__()
+        self.param = self.create_parameter(
+            shape=[3, 2], dtype='float32', is_bias=False)
+
+    @paddle.jit.to_static
+    def forward(self, a, b, c):
+        a = paddle.matmul(a, self.param)
+        a = paddle.reshape(a, (2, 4))
+        cond = paddle.to_tensor([10])
+        if cond == 10:
+            a_argmax = a.argmax(axis=-1)
+            b = b + self.param
+        else:
+            print(c)
+        return b
+
+
+class TestDy2StIfElseBackward(unittest.TestCase):
+    def test_run_backward(self):
+        a = paddle.randn((4, 3), dtype='float32')
+        a.stop_gradient = False
+        b = paddle.to_tensor([10]).astype('float32')
+        b.stop_gradient = False
+        c = paddle.to_tensor([2])
+        c.stop_gradient = False
+
+        net = IfElseNet()
+        net.train()
+        out = net(a, b, c)
+        out.backward()
+        self.assertTrue(np.allclose((b + net.param).numpy(), out.numpy()))
+
+
 if __name__ == '__main__':
     with paddle.fluid.framework._test_eager_guard():
         unittest.main()

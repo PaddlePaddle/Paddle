@@ -27,7 +27,7 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import make_data_unshard
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
-from paddle.distributed.auto_parallel.operators import find_best_compatible_distributed_operator_impl
+from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()

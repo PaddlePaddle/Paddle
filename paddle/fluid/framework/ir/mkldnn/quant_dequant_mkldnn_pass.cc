@@ -489,14 +489,6 @@ void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
         std::string activation;
         if (op_desc->GetAttrIfExists<bool>("fuse_relu")) {
           activation = "relu";
-        } else if (op_desc->GetAttrIfExists<bool>("fuse_brelu")) {
-          activation = "relu6";
-          float alpha = 6.0;
-          if (op_desc->HasAttr("fuse_brelu_threshold")) {
-            alpha = BOOST_GET_CONST(float,
-                                    op_desc->GetAttr("fuse_brelu_threshold"));
-          }
-          op_node->Op()->SetAttr("fuse_alpha", alpha);
         }
         op_node->Op()->SetAttr("fuse_activation", activation);
       }
