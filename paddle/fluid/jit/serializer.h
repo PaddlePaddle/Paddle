@@ -103,8 +103,8 @@ class Deserializer {
     while ((ptr = readdir(dir)) != nullptr) {
       std::string file_name = ptr->d_name;
       if (EndsWith(file_name, PDMODEL_SUFFIX)) {
-        std::string prefix =
-            file_name.substr(0, file_name.length() - PDMODEL_SUFFIX.length());
+        std::string prefix = file_name.substr(
+            0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
         std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
         VLOG(3) << "func_name: " << func_name;
         VLOG(3) << "prefix: " << prefix;
