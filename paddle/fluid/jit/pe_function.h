@@ -27,7 +27,8 @@ namespace jit {
 
 class PEFunction : public BaseFunction {
  public:
-  PEFunction(const framework::ProgramDesc &prog, std::vector<IValue> &params)
+  PEFunction(const framework::ProgramDesc &prog,
+             const std::vector<IValue> &params)
       : BaseFunction(prog, params) {}
 
   ~PEFunction() {}
@@ -45,8 +46,17 @@ class PEFunction : public BaseFunction {
       VLOG(3) << "global_block.AllOps(): " << op->Type();
     }
     ShareIntoScope(args);
-    std::vector<std::string> input_var_names = prog_.GetFeedTargetNames();
-    std::vector<std::string> output_var_names = prog_.GetFetchTargetNames();
+    // std::vector<std::string> input_var_names = prog_.GetFeedTargetNames();
+    // std::vector<std::string> output_var_names = prog_.GetFetchTargetNames();
+    std::vector<std::string> input_var_names;
+    for (auto &name : schema_.input_args) {
+      input_var_names.emplace_back(name.Name());
+    }
+    std::vector<std::string> output_var_names;
+    for (auto &name : schema_.output_args) {
+      output_var_names.emplace_back(name.Name());
+    }
+
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
       VLOG(3) << "GetExecutorInfoFromCache: " << start_op_index << "; "
@@ -73,6 +83,9 @@ class PEFunction : public BaseFunction {
             prog_, end_op_index, output_var_names, &skip_eager_delete_vars);
       }
       VLOG(3) << "parallel_executor->RunWithoutFetch(skip_eager_delete_vars)";
+      for (auto name : skip_eager_delete_vars) {
+        VLOG(3) << "skip_eager_delete_vars: " << name;
+      }
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);

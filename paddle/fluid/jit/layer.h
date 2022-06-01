@@ -42,15 +42,12 @@ class Layer {
     // Layer manage the life time of all parameter.
     // params_ = params;
     for (size_t i = 0; i < func_names.size(); ++i) {
-      // funcs_.emplace_back(std::make_shared<ExectorFunction>(progs[i],
-      // params_));
-      // funcs_.emplace_back(std::make_shared<PEFunction>(progs[i], params_));
       funcs_.insert(std::make_pair(
           func_names[i], std::make_shared<PEFunction>(progs_[i], params_)));
     }
   }
 
-  // TODO: make it as const function
+  // TODO(dev): make it as const function
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name) {
     VLOG(3) << "funcs_ size: " << funcs_.size();
     return funcs_[name];
@@ -63,7 +60,7 @@ class Layer {
 
  private:
   // internal::Object obj_;
-  // TODO: we should class them.
+  // TODO(dev): we should class them.
   std::vector<framework::ProgramDesc> progs_;
   // std::vector<std::string> param_names_;
   std::vector<IValue> params_;

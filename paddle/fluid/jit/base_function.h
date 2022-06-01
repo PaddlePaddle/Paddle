@@ -29,7 +29,7 @@ namespace jit {
 
 class Argument {
  public:
-  Argument(const std::string &name, bool is_out = false)
+  explicit Argument(const std::string &name, bool is_out = false)
       : name_(name), is_output_(is_out) {}
 
   const std::string &Name() const { return name_; }
@@ -48,10 +48,11 @@ class FunctionSchema {
   std::vector<Argument> output_args;
 };
 
-// TODO: make it as abstract class
+// TODO(dev): make it as abstract class
 class BaseFunction {
  public:
-  BaseFunction(const framework::ProgramDesc &prog, std::vector<IValue> &params)
+  BaseFunction(const framework::ProgramDesc &prog,
+               const std::vector<IValue> &params)
       : prog_(prog), params_(params) {
     // Construct executor.
     Init();
@@ -106,31 +107,23 @@ class BaseFunction {
   void RemoveFeedFetch() {
     for (size_t i = 0; i < prog_.Size(); ++i) {
       auto *block = prog_.MutableBlock(i);
-      // TODO: refine code
-      size_t idx = 0;
-      for (auto *op : block->AllOps()) {
-        if (op->Type() == "feed") {
-          VLOG(3) << "remove op: " << idx;
-          block->RemoveOp(idx, idx + 1);
+      const auto &all_ops = block->AllOps();
+      size_t op_size = all_ops.size();
+      VLOG(3) << "op_size: " << op_size;
+      for (int i = op_size - 1; i >= 0; i--) {
+        auto op = all_ops[i];
+        VLOG(3) << "i: " << i << " " << op->Type();
+        if (op->Type() == "feed" || op->Type() == "fetch") {
+          VLOG(3) << "remove op type: " << op->Type() << ", index: " << i;
+          block->RemoveOp(i, i + 1);
         }
-        idx++;
-      }
-
-      idx = 0;
-      for (auto *op : block->AllOps()) {
-        VLOG(3) << "op->Type(): " << op->Type();
-        if (op->Type() == "fetch") {
-          VLOG(3) << "remove op: " << idx;
-          block->RemoveOp(idx, idx + 1);
-        }
-        idx++;
       }
     }
   }
 
  protected:
   framework::ProgramDesc prog_;
-  // TODO: need a better way to share params
+  // TODO(dev): need a better way to share params
   const std::vector<IValue> &params_;
   std::vector<std::string> skip_vars_;
   FunctionSchema schema_;

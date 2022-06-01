@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/jit/serializer.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <unordered_map>
 #include "gtest/gtest.h"
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/serializer.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
@@ -64,7 +64,7 @@ std::vector<IValue> PrepareInputs() {
   cpu_ctx.Alloc<float>(temp.get());
   phi::funcs::set_constant(cpu_ctx, temp.get(), 2.);
   Tensor t(temp);
-  // TODO: associate the input name
+  // TODO(dev): associate the input name
   t.set_name("x");
   IValue iv_t(t);
   return {iv_t};
@@ -72,23 +72,21 @@ std::vector<IValue> PrepareInputs() {
 
 void Print(const IValue &ival) {
   auto t = ival.AsTensor();
-  std::cout << t.defined() << " " << t.is_initialized() << std::endl;
   auto dt = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
   auto *data = dt->data<float>();
-  std::cout << "print data: " << std::endl;
   for (int i = 0; i < dt->numel(); ++i) {
-    std::cout << data[i] << " " << std::endl;
+    VLOG(3) << "print data: " << data[i];
   }
 }
 
 TEST(layer, Construct) {
-  std::string path = "/workspace/Paddle/paddle/fluid/jit/Testing/";
+  std::string path = "./";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
-  // auto outputs = layer.forward(inputs);
-  // for (auto &out : outputs) {
-  //   Print(out);
-  // }
+  auto outs = layer.forward(inputs);
+  for (auto &out : outs) {
+    Print(out);
+  }
   auto func = layer.GetFunction("infer");
   auto outputs = (*func)(inputs);
   for (auto &out : outputs) {

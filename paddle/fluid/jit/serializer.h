@@ -26,8 +26,8 @@
 namespace paddle {
 namespace jit {
 using DenseTensor = phi::DenseTensor;
-std::string PDMODEL_SUFFIX = ".pdmodel";
-std::string PDPARAMS_SUFFIX = ".pdiparams";
+static const char PDMODEL_SUFFIX[] = ".pdmodel";
+static const char PDPARAMS_SUFFIX[] = ".pdiparams";
 
 // Export Layer into local disk
 class Serializer {
@@ -51,31 +51,27 @@ class Deserializer {
     std::vector<framework::ProgramDesc> progs;
     std::vector<IValue> params;
     for (auto& it : file_name_prefixs) {
-      if (it.first == "infer") {
-        func_names.emplace_back(it.first);
-        auto prog = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
-        progs.emplace_back(prog);
+      func_names.emplace_back(it.first);
+      auto prog = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
+      progs.emplace_back(prog);
 
-        std::vector<std::string> persistable_var_name;
-        auto all_var_desc = prog.Block(0).AllVars();
-        for (auto* desc_ptr : all_var_desc) {
-          if (IsPersistable(desc_ptr)) {
-            persistable_var_name.emplace_back(desc_ptr->Name());
-          }
+      std::vector<std::string> persistable_var_name;
+      auto all_var_desc = prog.Block(0).AllVars();
+      for (auto* desc_ptr : all_var_desc) {
+        if (IsPersistable(desc_ptr)) {
+          persistable_var_name.emplace_back(desc_ptr->Name());
         }
-        // Sorting is required to correspond to the order of parameters in the
-        // .pdparam file
-        std::sort(persistable_var_name.begin(), persistable_var_name.end());
-        auto tmp_params = ReadTensorData(dir_path + it.second + PDPARAMS_SUFFIX,
-                                         persistable_var_name);
-
-        // Now param is saved separately, gather all params
-        params.insert(params.end(), tmp_params.begin(), tmp_params.end());
       }
+      // Sorting is required to correspond to the order of
+      // parameters in the .pdparam file
+      std::sort(persistable_var_name.begin(), persistable_var_name.end());
+      auto tmp_params = ReadTensorData(dir_path + it.second + PDPARAMS_SUFFIX,
+                                       persistable_var_name);
+
+      // Now param is saved separately, gather all params
+      params.insert(params.end(), tmp_params.begin(), tmp_params.end());
     }
-    // auto program = LoadProgram(file_dir + ".pdmodel");
-    // auto ivalues = ReadTensorData(file_dir + ".pdiparams");
-    // TODO: we also need name of Params
+    // TODO(dev): we also need name of Params
     return Layer(func_names, progs, params);
   }
 
@@ -91,7 +87,7 @@ class Deserializer {
     return desc_ptr->Persistable();
   }
 
-  bool EndsWith(std::string const& str, std::string const& suffix) {
+  bool EndsWith(const std::string& str, const std::string& suffix) {
     if (str.length() < suffix.length()) {
       return false;
     }
@@ -110,8 +106,8 @@ class Deserializer {
         std::string prefix =
             file_name.substr(0, file_name.length() - PDMODEL_SUFFIX.length());
         std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
-        VLOG(3) << "prefix: " << prefix;
         VLOG(3) << "func_name: " << func_name;
+        VLOG(3) << "prefix: " << prefix;
         file_name_prefixs.emplace_back(std::make_pair(func_name, prefix));
       }
     }
@@ -124,7 +120,7 @@ class Deserializer {
       const std::vector<std::string>& var_name) const {
     VLOG(3) << "ReadTensorData " << file_name;
     std::ifstream fin(file_name, std::ios::binary);
-    // TODO: how to pass var_name;
+    // TODO(dev): how to pass var_name;
     // std::vector<std::string> var_name = {"linear_0.b_0", "linear_0.w_0",
     //                                       "linear_1.b_0", "linear_1.w_0"};
     std::vector<IValue> res;
@@ -137,7 +133,7 @@ class Deserializer {
       res.emplace_back(t);
     }
     return res;
-  };
+  }
 
   void LoadTensorFromBuffer(std::istream& buffer, DenseTensor* tensor) const {
     {
@@ -151,7 +147,7 @@ class Deserializer {
       uint64_t lod_level;
       buffer.read(reinterpret_cast<char*>(&lod_level), sizeof(lod_level));
       auto& lod = *tensor->mutable_lod();
-      // TODO:support lod;
+      // TODO(dev): support lod;
       lod.resize(lod_level);
       VLOG(3) << "lod_level: " << lod_level;
     }
