@@ -144,6 +144,11 @@ class Engine:
                 if mode != "predict" and self._loss:
                     losses = to_list(self._loss(*(outputs + labels)))
 
+                if mode != "predict":
+                    for metric in self._metrics:
+                        metrics.extend(
+                            to_list(metric.compute(*(outputs + labels))))
+
             default_ctx = get_default_distributed_context()
             if not default_ctx.has_annotation or self._default_strategy:
                 inputs = [self._set_data_parallel(var) for var in inputs]
@@ -169,9 +174,6 @@ class Engine:
             self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
-        serial_main_prog = self._serial_main_progs.get(mode, None)
-        if serial_main_prog is None:
-            return
         if self._planned_mode is None:
             self._planned_mode = mode
         else:
@@ -192,14 +194,15 @@ class Engine:
             parallelizer.parallel_all()
 
     def _init_dist_context(self, mode):
-        # init dist_context['mode'] with the first planned dist_context
-        serial_main_prog = self._serial_main_progs.get(mode, None)
-        dist_context = self._dist_contexts.get(mode, None)
+        # Init dist_context['mode'] with the first planned dist_context 
+        # to guarantee that train/eval/predict mode have same parallel strategy
+        dist_context = self._dist_contexts[mode]
+        origin_main_prog = dist_context._original_serial_main_program
         ref_mode = self._planned_mode
-        ref_serial_main_prog = self._serial_main_progs.get(ref_mode, None)
-        ref_dist_context = self._dist_contexts.get(ref_mode, None)
-        ref_blocks = ref_serial_main_prog.blocks
-        for ib, block in enumerate(serial_main_prog.blocks):
+        ref_dist_context = self._dist_contexts[ref_mode]
+        ref_origin_main_prog = ref_dist_context._original_serial_main_program
+        ref_blocks = ref_origin_main_prog.blocks
+        for ib, block in enumerate(origin_main_prog.blocks):
             for iop, op in enumerate(block.ops):
                 ref_op = ref_blocks[ib].ops[iop]
                 assert op.type == ref_op.type, \
@@ -377,7 +380,9 @@ class Engine:
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # get feed_list from dist_program
+        # NOTE: Get feed_list from dist_program, then insert dataloader op 
+        # with sharded var shape. Because predict_program does not contain
+        # labels var, so we will filter dataset's value with length of feed_list.
         inputs_var = self._feed_vars[self.mode]["inputs"]
         labels_var = self._feed_vars[self.mode]["labels"]
         feed_list = []
