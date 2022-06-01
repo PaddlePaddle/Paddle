@@ -413,14 +413,14 @@ void MultiSlotDataset::PrepareTrain() {
 template <typename T>
 void DatasetImpl<T>::SetGraphDeviceKeys(
     const std::vector<int64_t>& h_device_keys) {
-  for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
-    gpu_graph_device_keys_[i].clear();
-  }
-  size_t device_num = gpu_graph_device_keys_.size();
-  for (size_t i = 0; i < h_device_keys.size(); i++) {
-    int shard = h_device_keys[i] % device_num;
-    gpu_graph_device_keys_[shard].push_back(h_device_keys[i]);
-  }
+//  for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
+//    gpu_graph_device_keys_[i].clear();
+//  }
+//  size_t device_num = gpu_graph_device_keys_.size();
+//  for (size_t i = 0; i < h_device_keys.size(); i++) {
+//    int shard = h_device_keys[i] % device_num;
+//    gpu_graph_device_keys_[shard].push_back(h_device_keys[i]);
+//  }
 }
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
@@ -432,19 +432,29 @@ void DatasetImpl<T>::LoadIntoMemory() {
   std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
     VLOG(0) << "in gpu_graph_mode";
+    graph_all_type_total_keys_.clear();
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    gpu_graph_device_keys_ = gpu_graph_ptr->get_all_id(0, 0, thread_num_);
-
-    for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
-      VLOG(0) << "gpu_graph_device_keys_[" << i
-              << "] = " << gpu_graph_device_keys_[i].size();
-      for (size_t j = 0; j < gpu_graph_device_keys_[i].size(); j++) {
-        gpu_graph_total_keys_.push_back(gpu_graph_device_keys_[i][j]);
-      }
-    }
-    for (size_t i = 0; i < readers_.size(); i++) {
-      readers_[i]->SetDeviceKeys(&gpu_graph_device_keys_[i]);
-      readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+    auto node_to_id = gpu_graph_ptr->feature_to_id;
+    graph_all_type_total_keys_.resize(node_to_id.size());
+    int cnt = 0;
+    for (auto& iter : node_to_id) {
+        int node_idx = iter.second;
+        auto gpu_graph_device_keys = gpu_graph_ptr->get_all_id(0, node_idx, thread_num_);
+        auto& type_total_key = graph_all_type_total_keys_[cnt];
+        type_total_key.resize(thread_num_);
+        for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+          VLOG(0) << "type: " << node_idx << ", gpu_graph_device_keys[" << i
+                  << "] = " << gpu_graph_device_keys[i].size();
+          for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+            gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+            type_total_key[i].push_back(gpu_graph_device_keys[i][j]);
+          }
+        }
+        for (size_t i = 0; i < readers_.size(); i++) {
+          readers_[i]->SetDeviceKeys(&type_total_key[i], node_idx);
+          readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+        }
+        cnt++;
     }
 
   } else {
