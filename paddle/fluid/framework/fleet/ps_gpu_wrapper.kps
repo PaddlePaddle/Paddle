@@ -89,6 +89,7 @@ __global__ void PullCopy(float* dest, const FeatureValue* src,
           }
         }
       }
+      mfence();
       LM2GM(local_dest_vals, local_dest[i] + k * hidden,
             real_read_len * hidden * sizeof(float));
     }
@@ -176,6 +177,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float* src, long long* len,
               local_slot_grads[j * hidden + 3 + m] * -1. * bs;
         }
       }
+      mfence();
       LM2GM(local_dest_grads, dest + dest_len + k,
             real_read_len * sizeof(FeaturePushValue));
     }

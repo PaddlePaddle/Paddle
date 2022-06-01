@@ -65,6 +65,7 @@ __global__ void fill_idx_kernel(T* idx, long long len) {
       int real_idx = i + k;
       local_idx[k] = real_idx;
     }
+    mfence();
     LM2GM(local_idx, idx + i, read_len * sizeof(T));
   }
 }
@@ -109,6 +110,7 @@ __global__ void calc_shard_offset_kernel(T* idx, T* left, T* right,
       local_right[local_idx[read_len - 1]] = len - 1;
     }
   }
+  mfence();
   // to be optimized: call LM2GM too frequently
   // all_reduce between threads to get global left & global right && LM2GM
   for (int i = 0; i < total_xpu; i++) {
@@ -139,6 +141,7 @@ __global__ void calc_shard_index_kernel(KeyType* d_keys, long long len,
     for (int k = 0; k < read_len; k++) {
       local_shard_index[k] = local_keys[k] % total_xpu;
     }
+    mfence();
     LM2GM(local_shard_index, shard_index + i, read_len * sizeof(T));
   }
 }
