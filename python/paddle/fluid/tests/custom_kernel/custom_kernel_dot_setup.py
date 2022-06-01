@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import site
 from paddle.fluid import core
 from distutils.sysconfig import get_python_lib
 from distutils.core import setup, Extension
@@ -42,10 +43,11 @@ if core.is_compiled_with_npu():
     paddle_extra_compile_args += ['-D_GLIBCXX_USE_CXX11_ABI=0']
 
 # include path
-site_packages_path = get_python_lib()
-paddle_custom_kernel_include = [
-    os.path.join(site_packages_path, 'paddle', 'include'),
-]
+site_packages_path = site.getsitepackages()
+paddle_custom_kernel_include = list(
+    map(lambda path: os.path.join(path, 'paddle', 'include'),
+        site_packages_path))
+
 # include path third_party
 compile_third_party_path = os.path.join(os.environ['PADDLE_ROOT'],
                                         'build/third_party')
@@ -56,9 +58,8 @@ paddle_custom_kernel_include += [
 ]
 
 # libs path
-paddle_custom_kernel_library_dir = [
-    os.path.join(site_packages_path, 'paddle', 'fluid'),
-]
+paddle_custom_kernel_library_dir = list(
+    map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path))
 
 # libs
 libs = [':core_avx.so']

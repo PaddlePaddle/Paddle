@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/operators/norm_utils.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
@@ -179,7 +179,7 @@ void BatchNormKernel(const Context &ctx,
 
   ctx.template Alloc<T>(y);
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 

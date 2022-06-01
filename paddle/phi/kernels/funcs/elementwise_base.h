@@ -577,14 +577,16 @@ template <typename InT,
 struct ElementwisePrimitiveCaller {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result);
+                                    OutT *result,
+                                    int read_lens);
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result) {
+                                    OutT *result,
+                                    int read_lens) {
     kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(
         result, args, func);
   }
@@ -594,7 +596,8 @@ template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 0, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result) {
+                                    OutT *result,
+                                    int read_lens) {
     kps::ElementwiseConstant<InT, OutT, VecSize, 1, 1, Functor>(result, func);
   }
 };
@@ -603,7 +606,8 @@ template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result) {
+                                    OutT *result,
+                                    int read_lens) {
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], func);
   }
@@ -613,9 +617,10 @@ template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result) {
+                                    OutT *result,
+                                    int read_lens) {
     kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, args[0], args[1], func);
+        result, args[0], args[1], func, read_lens);
   }
 };
 
@@ -623,7 +628,8 @@ template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
   __device__ inline void operator()(Functor func,
                                     InT (*args)[VecSize],
-                                    OutT *result) {
+                                    OutT *result,
+                                    int read_lens) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], args[1], args[2], func);
   }
@@ -693,6 +699,42 @@ struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
                                              int num) {
     kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
         outs[0] + block_offset, src, num);
+  }
+};
+
+template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
+struct ElementwiseWriteDataCallerBc {
+  __device__ __forceinline__ void operator()(
+      phi::Array<_ptr_ OutT *, NumOuts> outs,
+      ConditionalT<OutT, NumOuts> src[VecSize],
+      int block_offset,
+      int num,
+      int read_lens) {
+    OutT dst[NumOuts][VecSize];
+#pragma unroll
+    for (int i = 0; i < read_lens; ++i) {
+#pragma unroll
+      for (int j = 0; j < NumOuts; ++j) {
+        dst[j][i] = (src[i])[j];
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < NumOuts; ++i) {
+      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+          outs[i] + block_offset, dst[i], num, read_lens);
+    }
+  }
+};
+
+template <typename OutT, int VecSize, bool IsBoundary>
+struct ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, 1> {
+  __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
+                                             OutT src[VecSize],
+                                             int block_offset,
+                                             int num,
+                                             int read_lens) {
+    kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+        outs[0] + block_offset, src, num, read_lens);
   }
 };
 
@@ -807,7 +849,7 @@ void ElementwiseKernel(const KPDevice &ctx,
                     kArity,
                     phi::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
-                        "arity of functor. But recieved: the number of inputs "
+                        "arity of functor. But received: the number of inputs "
                         "is %d, the arity of functor is %d.",
                         ins.size(),
                         kArity));

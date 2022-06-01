@@ -22,7 +22,6 @@ from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import set_comm_op_dist_attr_for_program
 from .dist_default import DistributedDefaultImpl0
-from ..reshard import Resharder
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import compute_compatible_dim_mapping, set_dist_op_desc_original_id, _get_comm_group
@@ -324,6 +323,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         process_mesh_shape = op_dist_attr.process_mesh.topology
         process_mesh_group = op_dist_attr.process_mesh.processes
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
+        from ..reshard import Resharder
+
         partition_idx = Resharder.compute_partition_index(
             rank_id, new_X_grad.shape, dims_mapping, process_mesh_shape,
             process_mesh_group)

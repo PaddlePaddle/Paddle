@@ -895,7 +895,10 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
     Examples:
         .. code-block:: python
+
+            # required: gpu
             import cv2
+            import numpy as np
             import paddle
 
             fake_img = (np.random.random(

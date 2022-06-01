@@ -14,7 +14,9 @@
 
 from __future__ import print_function
 from ..layer_helper import LayerHelper, unique_name
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode, _in_legacy_dygraph
+import paddle
+from paddle import _C_ops
 
 
 def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
@@ -107,6 +109,21 @@ def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
 
 def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
     op_type = 'c_allgather'
+
+    if in_dygraph_mode():
+        group = paddle.distributed.collective._get_default_group()
+        tensor_shape = list(x.shape)
+        tensor_shape[0] *= nranks
+        out = paddle.empty(tensor_shape, x.dtype)
+        task = group.process_group.all_gather(x, out)
+        task.wait()
+        return out
+
+    if _in_legacy_dygraph():
+        attrs = ('nranks', nranks, 'ring_id', ring_id, 'use_calc_stream',
+                 use_calc_stream)
+        return _C_ops.c_allgather(x, *attrs)
+
     helper = LayerHelper(op_type, **locals())
     out_shape = list(x.shape[:])
     if out_shape[0] > 0:
