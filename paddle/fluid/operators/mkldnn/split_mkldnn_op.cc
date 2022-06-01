@@ -101,7 +101,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
         x_vec_dims, framework::TransToProtoVarType(x->dtype()), x_type,
         onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->format(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
 
     for (size_t i = 0; i < outs_number; ++i) {
       auto out_vec_dims = phi::vectorize(outs[i]->dims());
@@ -117,8 +117,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
       offset[axis] += num > 0 ? x->dims()[axis] / num : sections[i];
 
-      outs[i]->set_layout(framework::DataLayout::kMKLDNN);
-      outs[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+      outs[i]->set_mem_desc(reorder_dst_memory_p->get_desc());
     }
     astream.wait();
   }

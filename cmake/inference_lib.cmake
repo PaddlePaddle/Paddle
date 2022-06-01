@@ -249,13 +249,22 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
 copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
-        copy(inference_lib_dist
+copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
@@ -407,7 +416,7 @@ function(version version_file)
     endif()
     if(WITH_ROCM)
         file(APPEND ${version_file}
-                "HIP version: ${HIP_VERSION}\n"
+                "HIP version: v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}\n"
                 "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     if(WITH_ASCEND_CL)

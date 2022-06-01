@@ -16,6 +16,10 @@ import collections
 
 import paddle
 from paddle.distribution import categorical, distribution
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 
 class Multinomial(distribution.Distribution):
@@ -138,7 +142,7 @@ class Multinomial(distribution.Distribution):
         Args:
             sample_shape (tuple, optional): [description]. Defaults to ().
         """
-        if not isinstance(shape, collections.Iterable):
+        if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
         samples = self._categorical.sample([self.total_count, ] + list(shape))

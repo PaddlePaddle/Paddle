@@ -49,7 +49,8 @@ std::vector<int> GetXPUSelectedDevices();
 void MemcpySyncH2D(void *dst,
                    const void *src,
                    size_t count,
-                   const phi::XPUPlace &dst_place);
+                   const phi::XPUPlace &dst_place,
+                   const phi::XPUContext &dev_ctx);
 void MemcpySyncD2H(void *dst,
                    const void *src,
                    size_t count,

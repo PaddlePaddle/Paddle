@@ -73,7 +73,7 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 }
 
 AutogradMeta* EagerUtils::nullable_autograd_meta(
-    paddle::optional<const paddle::experimental::Tensor&> target) {
+    const paddle::optional<paddle::experimental::Tensor>& target) {
   if (target.get_ptr() != nullptr) {
     return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
   }
@@ -157,7 +157,7 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
     if (autograd_meta->GradNode()) {
       VLOG(7) << "Should not set grad node twice, original node is:"
               << autograd_meta->GradNode()->name()
-              << "current is: " << grad_node->name();
+              << " current is: " << grad_node->name();
     }
     autograd_meta->SetGradNode(grad_node);
   }
@@ -267,6 +267,33 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
 
     VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
             << ") and Input Var(" << input_var->name()
+            << "), share allocation and inplace version.";
+  }
+}
+
+void EagerUtils::HandleViewBetweenInputAndOutput(
+    const paddle::experimental::Tensor& input_tensor,
+    paddle::experimental::Tensor* view_output_tensor) {
+  PADDLE_ENFORCE_EQ(
+      input_tensor.initialized(), true,
+      paddle::platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized!", input_tensor.name()));
+
+  if (input_tensor.is_dense_tensor()) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl());
+    if (view_output_tensor->impl() == nullptr) {
+      view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto view_output_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
+    view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_dense_tensor->ShareInplaceVersionCounterWith(
+        *input_dense_tensor);
+
+    VLOG(3) << "Perform View between Output Tensor("
+            << view_output_tensor->name() << ") and Input Tensor("
+            << input_tensor.name()
             << "), share allocation and inplace version.";
   }
 }
@@ -441,8 +468,10 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
 }
 
 void EagerUtils::FillZeroForEmptyGradInputs(
-    std::vector<std::vector<paddle::experimental::Tensor>>* in_grads,
-    const std::vector<std::vector<GradSlotMeta>>& grad_in_metas) {
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>* in_grads,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
     for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
       paddle::experimental::Tensor& grad = (*in_grads)[i][j];
@@ -452,15 +481,47 @@ void EagerUtils::FillZeroForEmptyGradInputs(
             grad_in_meta.HasTensorMeta(),
             paddle::platform::errors::Fatal(
                 "Unable to fill empty grad inputs due to empty GradSlotMeta"));
-
         const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-        phi::Place place = grad_in_meta.GetPlace();
-
         auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype, place);
+            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype,
+            grad_in_meta.GetPlace());
         grad.set_impl(tensor_with_zero.impl());
       }
     }
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInput(
+    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+  if (!in_grad->initialized()) {
+    PADDLE_ENFORCE(
+        grad_in_meta.HasTensorMeta(),
+        paddle::platform::errors::Fatal(
+            "Unable to fill empty grad inputs due to empty GradSlotMeta"));
+    const auto& tensor_meta = grad_in_meta.GetTensorMeta();
+    auto tensor_with_zero =
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
+                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+    in_grad->set_impl(tensor_with_zero.impl());
+  }
+}
+
+void EagerUtils::FillZeroForEmptyOptionalGradInput(
+    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+  if (!in_grad->initialized() && grad_in_meta.HasTensorMeta()) {
+    const auto& tensor_meta = grad_in_meta.GetTensorMeta();
+    auto tensor_with_zero =
+        paddle::experimental::full(phi::vectorize(tensor_meta.dims), 0.0,
+                                   tensor_meta.dtype, grad_in_meta.GetPlace());
+    in_grad->set_impl(tensor_with_zero.impl());
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInput(
+    std::vector<paddle::experimental::Tensor>* in_grads,
+    const std::vector<GradSlotMeta>& grad_in_metas) {
+  for (size_t i = 0; i < in_grads->size(); i++) {
+    FillZeroForEmptyGradInput(&in_grads->at(i), grad_in_metas[i]);
   }
 }
 

@@ -16,6 +16,8 @@ __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
 from ...fluid.layers.utils import convert_to_list
+from ...fluid.layers.nn import elementwise_add
+from .. import sparse_coo_tensor
 from paddle.nn.functional.conv import _update_padding_nd
 
 
@@ -30,7 +32,6 @@ def _conv3d(x,
             data_format="NDHWC",
             name=None):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
-    assert bias == None, "Currently, sparse_conv3d does not support bias"
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 3
@@ -61,8 +62,18 @@ def _conv3d(x,
     dilation = convert_to_list(dilation, dims, 'dilation')
     op_type = "conv3d"
 
-    return _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
-                                            stride, groups, subm)
+    pre_bias = _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
+                                                stride, groups, subm)
+    if bias is not None:
+        values = pre_bias.values()
+        add_bias = elementwise_add(values, bias, axis=1)
+        return sparse_coo_tensor(
+            pre_bias.indices(),
+            add_bias,
+            shape=pre_bias.shape,
+            stop_gradient=pre_bias.stop_gradient)
+    else:
+        return pre_bias
 
 
 def conv3d(x,

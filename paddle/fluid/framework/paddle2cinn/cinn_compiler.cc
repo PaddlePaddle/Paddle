@@ -21,16 +21,14 @@
 #include <string>
 #include <unordered_map>
 
+#include "cinn/auto_schedule/auto_tuner.h"
+#include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
-#include "cinn/frontend/decomposer/use_decomposer.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
+#include "cinn/frontend/optimize.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/pass/use_pass.h"
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -48,6 +46,7 @@
 #include "paddle/phi/core/utils/rw_lock.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_cinn_auto_tune);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -55,23 +54,22 @@ namespace paddle2cinn {
 using ir::Graph;
 using ir::Node;
 using inference::analysis::Dot;
+using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
-using ::cinn::common::Float;
-using ::cinn::hlir::framework::GraphCompiler;
+using ::cinn::frontend::Optimize;
 using ::cinn::hlir::framework::BuildScope;
-using ::cinn::frontend::ProgramPass;
-using ::cinn::hlir::framework::ApplyPass;
+using ::cinn::hlir::framework::GraphCompiler;
 
 CinnCompiler* CinnCompiler::GetInstance() {
-  static CinnCompiler instance;
-  return &instance;
+  static CinnCompiler* instance = new CinnCompiler();
+  return instance;
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
     const Graph& graph,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target, void* stream) {
-  VLOG(1) << "-- The graph to be compiled is:\n" << VizGraph(graph);
+  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(graph, input_tensors,
                                            target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
@@ -112,7 +110,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
 }
 
 const CinnCompiledObject& CinnCompiler::Compile(
-    const std::string& compilation_key,
+    int64_t compilation_key,
     const std::map<std::string, const LoDTensor*>& input_tensors,
     const Target& target, void* stream) {
   const auto& graph = FindGraph(compilation_key);
@@ -128,12 +126,8 @@ const CinnCompiledObject& CinnCompiler::GetCompiledObject(
   return *res->second;
 }
 
-std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
-  std::string graph_key;
-  ProgramDesc program;
-  GraphToProgram(*graph, &program);
-  program.Proto()->SerializeToString(&graph_key);
-
+int64_t CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
+  int64_t graph_key = std::hash<Graph*>()((&(*graph)));
   PADDLE_ENFORCE_EQ(
       graphs_.count(graph_key), 0,
       platform::errors::PreconditionNotMet(
@@ -145,16 +139,17 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   return graph_key;
 }
 
-const Graph& CinnCompiler::FindGraph(const std::string& graph_key) const {
+const Graph& CinnCompiler::FindGraph(int64_t graph_key) const {
+  auto it = graphs_.find(graph_key);
   PADDLE_ENFORCE_NE(
-      graphs_.count(graph_key), 0,
+      it, graphs_.end(),
       platform::errors::PreconditionNotMet(
-          "Can not find the target graph, of which the key is:\n%s",
-          ReadableKey(graph_key).c_str()));
-  return *graphs_.at(graph_key);
+          "Can not find the target graph, of which the key is: %lld",
+          graph_key));
+  return *it->second;
 }
 
-std::string CinnCompiler::VizGraph(const std::string& graph_key) const {
+std::string CinnCompiler::VizGraph(int64_t graph_key) const {
   const Graph& graph = FindGraph(graph_key);
   return VizGraph(graph);
 }
@@ -202,11 +197,24 @@ std::string CinnCompiler::VizGraph(const Graph& graph) const {
   return dot.Build();
 }
 
-std::string CinnCompiler::ReadableKey(
-    const std::string& compilation_key) const {
-  proto::ProgramDesc desc;
-  desc.ParseFromString(compilation_key);
-  return desc.DebugString();
+std::string CinnCompiler::SerializeKey(int64_t compilation_key) const {
+  const auto& graph = FindGraph(compilation_key);
+
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+
+  std::string serial_graph;
+  program.Proto()->SerializeToString(&serial_graph);
+  return serial_graph;
+}
+
+std::string CinnCompiler::ReadableKey(int64_t compilation_key) const {
+  const auto& graph = FindGraph(compilation_key);
+
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+
+  return program.Proto()->DebugString();
 }
 
 void CinnCompiler::Clear() {
@@ -254,22 +262,15 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   CinnGraphSymbolization symbol{compiled_num, graph, target, input_tensors};
   auto frontend_program = symbol();
   auto fetch_ids = symbol.GetFetchIds();
-  ProgramPass::Apply(&frontend_program, fetch_ids, target, {"Decomposer"});
-  ::cinn::frontend::ApplyPass(&frontend_program, fetch_ids, "RemoveIdentity");
-  ::cinn::frontend::ApplyPass(&frontend_program, fetch_ids, "TransposeFolding");
-  ProgramPass::Apply(&frontend_program, fetch_ids, target, {"GemmRewriter"});
-
-  auto cinn_graph = std::make_shared<::cinn::hlir::framework::Graph>(
-      frontend_program, target);
-  VLOG(1) << "-- The " << compiled_num << "-th compilation ("
-          << target.arch_str() << "), and its related graph:\n"
-          << cinn_graph->Visualize();
-  ApplyPass(cinn_graph.get(), "OpFusion");
-  auto scope = BuildScope(target, cinn_graph);
-
   VLOG(4) << "All fetch var ids in CINN: "
           << string::join_strings(fetch_ids, ',');
 
+  auto cinn_graph = Optimize(&frontend_program, fetch_ids, target);
+  VLOG(4) << "-- The " << compiled_num << "-th compilation ("
+          << target.arch_str() << "), and its related graph:\n"
+          << cinn_graph->Visualize();
+
+  auto scope = BuildScope(target, cinn_graph);
   auto graph_compiler =
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
@@ -277,10 +278,20 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   if (!FLAGS_enable_pe_launch_cinn) {
     options.with_buffer_handle_instruction_inserted = true;
   }
+  std::unique_ptr<AutoTuner> auto_tuner;
+  if (FLAGS_enable_cinn_auto_tune) {
+    VLOG(4) << "Compile with auto-tune";
+    auto_tuner = std::make_unique<AutoTuner>(target, cinn_graph.get());
+    auto_tuner->Initialize(AutoTuner::Config(), graph_compiler.get());
+    ::cinn::auto_schedule::TuningOptions tuning_options;
+    tuning_options.num_measure_trials = 0;
+    auto tuning_result = auto_tuner->Tune(tuning_options);
+    options.Apply(tuning_result);
+  }
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
-  *compiled_obj = {std::move(graph_compiler),
+  *compiled_obj = {std::move(graph_compiler), std::move(auto_tuner),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

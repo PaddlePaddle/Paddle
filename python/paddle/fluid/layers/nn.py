@@ -196,6 +196,17 @@ __all__ = [
     'unbind',
 ]
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
+    'elementwise_add': 'final_state_add',
+    'elementwise_sub': 'final_state_subtract',
+    'elementwise_mul': 'final_state_multiply',
+    'elementwise_div': 'final_state_divide',
+}
+
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -204,8 +215,21 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    def is_inplace(op_name):
+        return op_name[-1] == "_"
+
+    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    else:
+        if in_dygraph_mode():
+            op = getattr(_C_ops, OP_NAMEMAPPING[op_name]
+                         if not is_inplace(op_name) else op_name)
+            out = op(x, y)
+
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, op_name)
+            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -713,7 +737,7 @@ def _pull_gpups_sparse(input,
         for i in range(len(inputs))
     ]
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=[size[0]], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_gpups_sparse',
         inputs={'Ids': inputs,
@@ -5093,9 +5117,12 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        out = [_varbase_creator() for n in range(num)]
-        _C_ops.split(input, out, *attrs)
-        return out
+        if in_dygraph_mode():
+            return _C_ops.final_state_split(input, [num], dim)
+        elif _in_legacy_dygraph():
+            out = [_varbase_creator() for n in range(num)]
+            _C_ops.split(input, out, *attrs)
+            return out
 
     check_variable_and_dtype(
         input, 'input',
@@ -6506,7 +6533,7 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_squeeze(input, axes)[1]
+        return _C_ops.final_state_squeeze(input, axes)
     if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
@@ -6571,7 +6598,7 @@ def unsqueeze(input, axes, name=None):
         if _in_legacy_dygraph():
             out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
             return out
-        return _C_ops.final_state_unsqueeze(input, axes)[1]
+        return _C_ops.final_state_unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -6754,7 +6781,10 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    from collections import Iterable
+    try:
+        from collections.abc import Iterable
+    except:
+        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
@@ -7284,7 +7314,12 @@ def roi_align(input,
                                                sampling_ratio=-1,
                                                rois_num=rois_num)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(
+            input, rois, rois_num, pooled_height, pooled_width, spatial_scale,
+            sampling_ratio, False)
+    if _in_legacy_dygraph():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             input, rois, rois_num, "pooled_height", pooled_height,
@@ -11818,8 +11853,7 @@ def _elementwise_op(helper):
 
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    Scale operator.
-
+    
     Putting scale and bias to the input Tensor as following:
 
     ``bias_after_scale`` is True:
@@ -11844,6 +11878,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         Tensor: Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
+    
         .. code-block:: python
             
             # scale as a float32 number
@@ -13709,7 +13744,7 @@ def get_tensor_from_selected_rows(x, name=None):
            x.height = 20
            x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
 
-        Ouput is LoDTensor:
+        Output is LoDTensor:
            out.shape = [5, 2]
            out.data = [[1, 1],
                        [2, 2],

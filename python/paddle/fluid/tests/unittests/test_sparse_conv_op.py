@@ -31,19 +31,21 @@ class TestSparseConv(unittest.TestCase):
             paddings = [0, 0, 0]
             strides = [1, 1, 1]
             dilations = [1, 1, 1]
+            bias = [1]
 
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [1, 2, 3, 4]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
-            correct_out_values = [[4], [10]]
+            correct_out_values = [[5], [11]]
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
             out = paddle.sparse.functional.conv3d(
                 sparse_input,
                 dense_kernel,
-                bias=None,
+                bias=paddle.to_tensor(
+                    bias, dtype='float32'),
                 stride=strides,
                 padding=paddings,
                 dilation=dilations,

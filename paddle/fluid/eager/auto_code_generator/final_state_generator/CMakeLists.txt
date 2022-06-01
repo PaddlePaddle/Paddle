@@ -1,5 +1,5 @@
-set(api_yaml_path "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml")
-set(backward_yaml_path "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml")
+set(api_yaml_path "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/new_api.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml")
+set(backward_yaml_path "${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/new_backward.yaml,${PADDLE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml")
 set(tmp_forwards_cc_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.cc")
 set(tmp_forwards_h_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.h")
 set(tmp_nodes_cc_path "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/tmp_nodes.cc")
@@ -16,9 +16,9 @@ add_custom_target(eager_final_state_codegen
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/eager_gen.py" 
             "--api_yaml_path=${api_yaml_path}"
             "--backward_yaml_path=${backward_yaml_path}"
-            "--forwards_cc_path=${tmp_forwards_cc_path}" 
+            "--forwards_cc_path=${tmp_forwards_cc_path}"
             "--forwards_h_path=${tmp_forwards_h_path}"
-            "--nodes_cc_path=${tmp_nodes_cc_path}" 
+            "--nodes_cc_path=${tmp_nodes_cc_path}"
             "--nodes_h_path=${tmp_nodes_h_path}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_cc_path} ${forwards_cc_path}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_h_path} ${forwards_h_path}

@@ -55,8 +55,6 @@ DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 DEFINE_int32(pserver_sparse_table_shard_num, 1000,
              "sparse table shard for save & load");
 
-DEFINE_int32(heter_world_size, 100, "group size");  // 可配置
-
 namespace paddle {
 namespace framework {
 class Scope;
@@ -263,7 +261,7 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 }
 
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
-  uint32_t feasign_size = 0;
+  int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
     LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
                                                   "err:"
@@ -427,6 +425,82 @@ std::future<int32_t> BrpcPsClient::Save(uint32_t table_id,
   VLOG(1) << "BrpcPsClient::save one table path " << epoch << " table_id "
           << table_id;
   return SendSaveCmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
+}
+
+std::future<int32_t> BrpcPsClient::CacheShuffle(
+    uint32_t table_id, const std::string &path, const std::string &mode,
+    const std::string &cache_threshold) {
+  VLOG(1) << "BrpcPsClient send cmd for cache shuffle";
+  return SendSaveCmd(table_id, PS_CACHE_SHUFFLE, {path, mode, cache_threshold});
+}
+
+std::future<int32_t> BrpcPsClient::CacheShuffleMultiTable(
+    std::vector<int> tables, const std::string &path, const std::string &mode,
+    const std::string &cache_threshold) {
+  VLOG(1) << "BrpcPsClient send cmd for cache shuffle multi table one path";
+  std::vector<std::string> param;
+  param.push_back(path);
+  param.push_back(mode);
+  param.push_back(cache_threshold);
+  for (size_t i = 0; i < tables.size(); i++) {
+    param.push_back(std::to_string(tables[i]));
+  }
+  return SendSaveCmd(0, PS_CACHE_SHUFFLE, param);
+}
+
+std::future<int32_t> BrpcPsClient::SaveCache(uint32_t table_id,
+                                             const std::string &path,
+                                             const std::string &mode) {
+  return SendSaveCmd(table_id, PS_SAVE_ONE_CACHE_TABLE, {path, mode});
+}
+
+std::future<int32_t> BrpcPsClient::GetCacheThreshold(uint32_t table_id,
+                                                     double &cache_threshold) {
+  int cmd_id = PS_GET_CACHE_THRESHOLD;
+  size_t request_call_num = _server_channels.size();
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num,
+      [request_call_num, cmd_id, &cache_threshold](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;
+        std::vector<double> cache_thresholds(request_call_num, 0);
+        for (size_t i = 0; i < request_call_num; ++i) {
+          if (closure->check_response(i, cmd_id) != 0) {
+            ret = -1;
+            break;
+          }
+          std::string cur_res = closure->get_response(i, cmd_id);
+          cache_thresholds[i] = std::stod(cur_res);
+        }
+        double sum_threshold = 0.0;
+        int count = 0;
+        for (auto t : cache_thresholds) {
+          if (t >= 0) {
+            sum_threshold += t;
+            ++count;
+          }
+        }
+        if (count == 0) {
+          cache_threshold = 0;
+        } else {
+          cache_threshold = sum_threshold / count;
+        }
+        VLOG(1) << "client get cache threshold: " << cache_threshold;
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(cmd_id);
+    closure->request(i)->set_table_id(table_id);
+    closure->request(i)->set_client_id(_client_id);
+    PsService_Stub rpc_stub(GetCmdChannel(i));
+    closure->cntl(i)->set_timeout_ms(10800000);
+    rpc_stub.service(closure->cntl(i), closure->request(i),
+                     closure->response(i), closure);
+  }
+  return fut;
 }
 
 std::future<int32_t> BrpcPsClient::Clear() {

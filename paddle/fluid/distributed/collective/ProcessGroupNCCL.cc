@@ -353,21 +353,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
     const BarrierOptions& opts) {
-  std::vector<phi::GPUPlace> places;
-
-  if (!opts.place_ids.empty()) {
-    for (auto place_id : opts.place_ids) {
-      places.emplace_back(place_id);
-    }
-  } else if (!used_place_ids_.empty()) {
-    for (auto place_id : used_place_ids_) {
-      places.emplace_back(place_id);
-    }
-  } else {
-    auto numGPUs = GetSize();
-    int place_id = static_cast<int>(rank_ % numGPUs);
-    places.emplace_back(place_id);
-  }
+  // Only support single card single process
+  std::vector<phi::GPUPlace> places = {place_};
 
   std::vector<phi::DenseTensor> barrierTensors;
   barrierTensors.reserve(places.size());
@@ -375,7 +362,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   platform::CUDADeviceGuard gpuGuard;
   for (auto& place : places) {
     gpuGuard.SetDeviceIndex(place.GetDeviceId());
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::GPUPlace());
+    auto dt = full({1}, 0, phi::DataType::FLOAT32, place);
     barrierTensors.push_back(
         *std::dynamic_pointer_cast<phi::DenseTensor>(dt.impl()));
   }
@@ -430,6 +417,53 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
 
   auto task = PointToPoint(tensors,
+                           [&](phi::DenseTensor& output, ncclComm_t comm,
+                               const gpuStream_t& stream, int src_rank) {
+                             return platform::dynload::ncclRecv(
+                                 output.data(), output.numel(),
+                                 platform::ToNCCLDataType(output.dtype()),
+                                 src_rank, comm, stream);
+                           },
+                           src_rank, CommType::RECV);
+  return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
+    phi::DenseTensor& tensors, int dst_rank, int offset, int length) {
+  // CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+
+  phi::DenseTensor flatten_tensor;
+  flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
+
+  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
+
+  std::vector<phi::DenseTensor> shared_tensors;
+  shared_tensors.push_back(shared_input);
+
+  auto task = PointToPoint(shared_tensors,
+                           [&](phi::DenseTensor& input, ncclComm_t comm,
+                               const gpuStream_t& stream, int dst_rank) {
+                             return platform::dynload::ncclSend(
+                                 input.data(), input.numel(),
+                                 platform::ToNCCLDataType(input.dtype()),
+                                 dst_rank, comm, stream);
+                           },
+                           dst_rank, CommType::SEND);
+  return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
+    phi::DenseTensor& tensors, int src_rank, int offset, int length) {
+  // phi::DenseTensor shared_input = tensors.Slice(offset, offset+length);
+
+  phi::DenseTensor flatten_tensor;
+  flatten_tensor.ShareDataWith(tensors).Resize({tensors.numel()});
+  phi::DenseTensor shared_input = flatten_tensor.Slice(offset, offset + length);
+
+  std::vector<phi::DenseTensor> shared_tensors;
+  shared_tensors.push_back(shared_input);
+
+  auto task = PointToPoint(shared_tensors,
                            [&](phi::DenseTensor& output, ncclComm_t comm,
                                const gpuStream_t& stream, int src_rank) {
                              return platform::dynload::ncclRecv(

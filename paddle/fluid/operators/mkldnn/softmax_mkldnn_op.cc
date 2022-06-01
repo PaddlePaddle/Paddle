@@ -47,12 +47,8 @@ class SoftmaxMKLDNNHandler
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    auto softmax_tz = phi::vectorize(input->dims());
-    auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
-                           input->format());
-
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
-                                            axis);
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
+                                            input->mem_desc(), axis);
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -73,17 +69,11 @@ class SoftmaxMKLDNNHandler
     auto dims = out_grad->dims();  // input and output share the same shape
     const int axis =
         phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-    auto softmax_tz = phi::vectorize<int64_t>(dims);
-
-    auto data_softmax_md = MKLDNNMemDesc(
-        softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
-    auto diff_softmax_md = MKLDNNMemDesc(
-        softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            data_softmax_md, axis);
-    this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
-                                             axis);
+                                            out->mem_desc(), axis);
+    this->AcquireBackwardPrimitiveDescriptor(out_grad->mem_desc(),
+                                             out->mem_desc(), axis);
   }
 };
 
@@ -128,9 +118,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
       });
     }
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    // Softmax output format is the same as input one
-    output->set_format(input->format());
+    output->set_mem_desc(softmax_dst_memory_p->get_desc());
   }
 };
 
@@ -162,8 +150,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                                      {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
     astream.wait();
 
-    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
+    in_x_grad->set_mem_desc(diff_src_memory_p->get_desc());
   }
 };
 }  // namespace operators

@@ -30,6 +30,7 @@ from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops
 
 _grad_scalar = None
@@ -100,8 +101,11 @@ def monkey_patch_varbase():
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
+        param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
+            for key in param_keys:
+                attr_kwargs[key] = getattr(self, key)
         else:
             attr_names = []
             for name in dir(self):
@@ -247,9 +251,10 @@ def monkey_patch_varbase():
 
         """
         if framework._non_static_mode():
-            record_event = profiler.RecordEvent(
-                "Gradient Backward", profiler.TracerEventType.Backward)
-            record_event.begin()
+            if in_profiler_mode():
+                record_event = profiler.RecordEvent(
+                    "Gradient Backward", profiler.TracerEventType.Backward)
+                record_event.begin()
             if grad_tensor is not None:
                 if framework._in_eager_mode_:
                     assert isinstance(
@@ -271,7 +276,8 @@ def monkey_patch_varbase():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
+            if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu(
+            ) or paddle.is_compiled_with_mlu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 if framework._in_eager_mode_:
@@ -288,7 +294,8 @@ def monkey_patch_varbase():
                     core.dygraph_run_backward([self], [grad_tensor],
                                               retain_graph,
                                               framework._dygraph_tracer())
-            record_event.end()
+            if in_profiler_mode():
+                record_event.end()
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -900,10 +907,8 @@ def monkey_patch_varbase():
                     #[1, 2, 3, 4, 5]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_values(self)
-        elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_csr_values(self)
+        if self.is_sparse_coo() or self.is_sparse_csr():
+            return _C_ops.final_state_sparse_values(self)
         else:
             raise ValueError(
                 "only SparseCooTensor and SparseCsrTensor have method values")
