@@ -411,7 +411,7 @@ function build_base() {
     if [ "$WITH_ARM" == "ON" ];then
         make TARGET=ARMV8 -j ${parallel_number};build_error=$?
     else
-        make install -j ${parallel_number};build_error=$?
+        make -j ${parallel_number};build_error=$?
     fi
 
     # ci will collect ccache hit rate
@@ -510,7 +510,7 @@ EOF
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    make install -j 8;build_error=$?
+    make -j 8;build_error=$?
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -2606,7 +2606,7 @@ EOF
         xz-utils tk-dev libffi-dev liblzma-dev
     RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
         tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
-        ./configure -prefix=/usr/local && make install -j8 && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+        ./configure -prefix=/usr/local && make -j8 && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
         wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
         tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
