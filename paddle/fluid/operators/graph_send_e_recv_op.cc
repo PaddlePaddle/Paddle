@@ -33,7 +33,7 @@ class GraphSendERecvOP : public framework::OperatorWithKernel {
   }
 };
 
-class GraphSendERecvGradOP : public framework::OperatorWithKernel {
+class GraphSendERecvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -68,7 +68,7 @@ class GraphSendERecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddAttr<std::string>("compute_type",
                          "(string, default 'ADD')"
-                         "Define differenct computation types between X and E".)
+                         "Define differenct computation types between X and E.")
         .SetDefault("ADD")
         .InEnum({"ADD", "MUL"});
     AddAttr<std::string>("pool_type",

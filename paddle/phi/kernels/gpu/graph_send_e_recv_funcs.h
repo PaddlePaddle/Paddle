@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/graph_send_e_recv_kernel.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 #include <thrust/device_vector.h>
@@ -29,9 +28,9 @@ namespace phi {
 
 #define CUDA_MAX_NUM_THREADS 1024
 
-void CopyBCastOff(const BroadCastInfo& bcast_info,
-                  thrust::device_vector<int64_t>& l_bcastoff,
-                  thrust::device_vector<int64_t>& r_bcastoff) {
+inline void CopyBCastOff(const BroadCastInfo& bcast_info,
+                         thrust::device_vector<int64_t>& l_bcastoff,
+                         thrust::device_vector<int64_t>& r_bcastoff) {
   l_bcastoff.resize(bcast_info.out_len);
   r_bcastoff.resize(bcast_info.out_len);
   cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
