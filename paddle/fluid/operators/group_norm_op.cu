@@ -526,8 +526,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
@@ -559,7 +558,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     T* ds_data = ds.data<T>();
     T* db_data = db.data<T>();
 
-    auto* y_data = y->data<T>();
     auto* x_data = x->data<T>();
     T* d_x_data = nullptr;
     if (d_x) d_x_data = d_x->data<T>();
@@ -667,12 +665,12 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
       int flags = (scale_data != nullptr) * kHasScale +
                   (bias_data != nullptr) * kHasBias;
-      UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, y_data,
+      UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, x_data,
                        scale_data, bias_data, dy_data, x_dims[0], C, W, imsize,
                        groups, group_size, epsilon, temp_mean_data,
                        temp_var_data, d_scale_data, d_bias_data);
       if (d_x_data != nullptr) {
-        UNROLL_ALL_CASES(flags, GroupNormBackward, y_data, dy_data, scale_data,
+        UNROLL_ALL_CASES(flags, GroupNormBackward, x_data, dy_data, scale_data,
                          bias_data, var_data, temp_mean_data, temp_var_data,
                          x_dims[0], C, W, imsize, groups, group_size, epsilon,
                          d_x_data);

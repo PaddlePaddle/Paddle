@@ -167,7 +167,6 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
                    "GroupNormGrad");
@@ -218,7 +217,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("group_norm_grad");
-    op->SetInput("X", this->Input("X"));
     op->SetInput("Scale", this->Input("Scale"));
     op->SetInput("Bias", this->Input("Bias"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
