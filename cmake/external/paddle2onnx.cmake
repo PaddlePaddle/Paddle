@@ -45,9 +45,9 @@ endif(WIN32)
 
 
 if (WIN32)
-  SET(PADDLE2ONNX_URL           "")
+  SET(PADDLE2ONNX_URL           "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v0.9.7/paddle2onnx-win-x64-0.9.7.zip")
 elseif (APPLE)
-  SET(PADDLE2ONNX_URL           "")
+  SET(PADDLE2ONNX_URL           "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v0.9.7/paddle2onnx-osx-x86_64-0.9.7.tgz")
 else ()
   SET(PADDLE2ONNX_URL           "https://github.com/PaddlePaddle/Paddle2ONNX/releases/download/v0.9.7/paddle2onnx-linux-x64-0.9.7.tgz")
 endif()
