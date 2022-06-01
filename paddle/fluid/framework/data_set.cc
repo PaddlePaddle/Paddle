@@ -429,7 +429,7 @@ void MultiSlotDataset::PrepareTrain() {
 
 template <typename T>
 void DatasetImpl<T>::SetGraphDeviceKeys(
-    const std::vector<int64_t>& h_device_keys) {
+    const std::vector<uint64_t>& h_device_keys) {
   for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
     gpu_graph_device_keys_[i].clear();
   }

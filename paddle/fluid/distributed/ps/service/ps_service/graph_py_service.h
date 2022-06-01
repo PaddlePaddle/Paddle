@@ -81,14 +81,14 @@ class GraphPyService {
 
     graph_proto->set_table_name("cpu_graph_table");
     graph_proto->set_use_cache(false);
-    for (int i = 0; i < id_to_edge.size(); i++)
+    for (int i = 0; i < (int)id_to_edge.size(); i++)
       graph_proto->add_edge_types(id_to_edge[i]);
-    for (int i = 0; i < id_to_feature.size(); i++) {
+    for (int i = 0; i < (int)id_to_feature.size(); i++) {
       graph_proto->add_node_types(id_to_feature[i]);
       auto feat_node = id_to_feature[i];
       ::paddle::distributed::GraphFeature* g_f =
           graph_proto->add_graph_feature();
-      for (int x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
+      for (int x = 0; x < (int)table_feat_conf_feat_name[i].size(); x++) {
         g_f->add_name(table_feat_conf_feat_name[i][x]);
         g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
         g_f->add_shape(table_feat_conf_feat_shape[i][x]);

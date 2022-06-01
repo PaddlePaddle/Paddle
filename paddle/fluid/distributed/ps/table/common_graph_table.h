@@ -56,33 +56,33 @@ class GraphShard {
   ~GraphShard();
   std::vector<Node *> &get_bucket() { return bucket; }
   std::vector<Node *> get_batch(int start, int end, int step);
-  std::vector<int64_t> get_ids_by_range(int start, int end) {
-    std::vector<int64_t> res;
+  std::vector<uint64_t> get_ids_by_range(int start, int end) {
+    std::vector<uint64_t> res;
     for (int i = start; i < end && i < (int)bucket.size(); i++) {
       res.push_back(bucket[i]->get_id());
     }
     return res;
   }
-  std::vector<int64_t> get_all_id() {
-    std::vector<int64_t> res;
+  std::vector<uint64_t> get_all_id() {
+    std::vector<uint64_t> res;
     for (int i = 0; i < (int)bucket.size(); i++) {
       res.push_back(bucket[i]->get_id());
     }
     return res;
   }
-  GraphNode *add_graph_node(int64_t id);
+  GraphNode *add_graph_node(uint64_t id);
   GraphNode *add_graph_node(Node *node);
-  FeatureNode *add_feature_node(int64_t id);
-  Node *find_node(int64_t id);
-  void delete_node(int64_t id);
+  FeatureNode *add_feature_node(uint64_t id);
+  Node *find_node(uint64_t id);
+  void delete_node(uint64_t id);
   void clear();
-  void add_neighbor(int64_t id, int64_t dst_id, float weight);
-  std::unordered_map<int64_t, int> &get_node_location() {
+  void add_neighbor(uint64_t id, uint64_t dst_id, float weight);
+  std::unordered_map<uint64_t, int> &get_node_location() {
     return node_location;
   }
 
  private:
-  std::unordered_map<int64_t, int> node_location;
+  std::unordered_map<uint64_t, int> node_location;
   std::vector<Node *> bucket;
 };
 
@@ -90,10 +90,10 @@ enum LRUResponse { ok = 0, blocked = 1, err = 2 };
 
 struct SampleKey {
   int idx;
-  int64_t node_key;
+  uint64_t node_key;
   size_t sample_size;
   bool is_weighted;
-  SampleKey(int _idx, int64_t _node_key, size_t _sample_size,
+  SampleKey(int _idx, uint64_t _node_key, size_t _sample_size,
             bool _is_weighted) {
     idx = _idx;
     node_key = _node_key;
@@ -455,7 +455,7 @@ class GraphTable : public Table {
                                   int step);
 
   virtual int32_t random_sample_neighbors(
-      int idx, int64_t *node_ids, int sample_size,
+      int idx, uint64_t *node_ids, int sample_size,
       std::vector<std::shared_ptr<char>> &buffers,
       std::vector<int> &actual_sizes, bool need_weight);
 
@@ -465,7 +465,7 @@ class GraphTable : public Table {
 
   virtual int32_t get_nodes_ids_by_ranges(
       int type_id, int idx, std::vector<std::pair<int, int>> ranges,
-      std::vector<int64_t> &res);
+      std::vector<uint64_t> &res);
   virtual int32_t Initialize() { return 0; }
   virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
@@ -475,17 +475,17 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path, bool reverse,
                      const std::string &edge_type);
 
-  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
-                                               int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
+                                                int slice_num);
   int32_t load_nodes(const std::string &path, std::string node_type);
 
-  int32_t add_graph_node(int idx, std::vector<int64_t> &id_list,
+  int32_t add_graph_node(int idx, std::vector<uint64_t> &id_list,
                          std::vector<bool> &is_weight_list);
 
-  int32_t remove_graph_node(int idx, std::vector<int64_t> &id_list);
+  int32_t remove_graph_node(int idx, std::vector<uint64_t> &id_list);
 
-  int32_t get_server_index_by_id(int64_t id);
-  Node *find_node(int type_id, int idx, int64_t id);
+  int32_t get_server_index_by_id(uint64_t id);
+  Node *find_node(int type_id, int idx, uint64_t id);
 
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
@@ -510,17 +510,17 @@ class GraphTable : public Table {
     this->server_num = server_num;
     return 0;
   }
-  virtual uint32_t get_thread_pool_index_by_shard_index(int64_t shard_index);
-  virtual uint32_t get_thread_pool_index(int64_t node_id);
+  virtual uint32_t get_thread_pool_index_by_shard_index(uint64_t shard_index);
+  virtual uint32_t get_thread_pool_index(uint64_t node_id);
   virtual std::pair<int32_t, std::string> parse_feature(int idx,
                                                         std::string feat_str);
 
-  virtual int32_t get_node_feat(int idx, const std::vector<int64_t> &node_ids,
+  virtual int32_t get_node_feat(int idx, const std::vector<uint64_t> &node_ids,
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
 
   virtual int32_t set_node_feat(
-      int idx, const std::vector<int64_t> &node_ids,
+      int idx, const std::vector<uint64_t> &node_ids,
       const std::vector<std::string> &feature_names,
       const std::vector<std::vector<std::string>> &res);
 
@@ -554,22 +554,22 @@ class GraphTable : public Table {
   virtual void make_partitions(int idx, int64_t gb_size, int device_len);
   virtual void export_partition_files(int idx, std::string file_path);
   virtual char *random_sample_neighbor_from_ssd(
-      int idx, int64_t id, int sample_size,
+      int idx, uint64_t id, int sample_size,
       const std::shared_ptr<std::mt19937_64> rng, int &actual_size);
-  virtual int32_t add_node_to_ssd(int type_id, int idx, int64_t src_id,
+  virtual int32_t add_node_to_ssd(int type_id, int idx, uint64_t src_id,
                                   char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
-      int idx, std::vector<int64_t> ids);
+      int idx, std::vector<uint64_t> ids);
   virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
-      int ntype_id, std::vector<int64_t>& node_ids, int slot_num);
+      int ntype_id, std::vector<uint64_t> &node_ids, int slot_num);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
-  int64_t load_graph_to_memory_from_ssd(int idx, std::vector<int64_t> &ids);
+  int64_t load_graph_to_memory_from_ssd(int idx, std::vector<uint64_t> &ids);
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
-  std::vector<int64_t> get_partition(int idx, int index) {
+  std::vector<uint64_t> get_partition(int idx, int index) {
     if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
-      return std::vector<int64_t>();
+      return std::vector<uint64_t>();
     return partitions[idx][index];
   }
   int32_t load_edges_to_ssd(const std::string &path, bool reverse_edge,
@@ -578,18 +578,18 @@ class GraphTable : public Table {
   void set_search_level(int search_level) { this->search_level = search_level; }
   int search_level;
   int64_t total_memory_cost;
-  std::vector<std::vector<std::vector<int64_t>>> partitions;
+  std::vector<std::vector<std::vector<uint64_t>>> partitions;
   int next_partition;
 #endif
-  virtual int32_t add_comm_edge(int idx, int64_t src_id, int64_t dst_id);
+  virtual int32_t add_comm_edge(int idx, uint64_t src_id, uint64_t dst_id);
   virtual int32_t build_sampler(int idx, std::string sample_type = "random");
-  void set_feature_separator(const std::string& ch);
+  void set_feature_separator(const std::string &ch);
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 24;
   const int random_sample_nodes_ranges = 3;
 
-  std::vector<std::vector<std::unordered_map<int64_t, double>>> node_weight;
+  std::vector<std::vector<std::unordered_map<uint64_t, double>>> node_weight;
   std::vector<std::vector<std::string>> feat_name;
   std::vector<std::vector<std::string>> feat_dtype;
   std::vector<std::vector<int32_t>> feat_shape;
@@ -602,8 +602,8 @@ class GraphTable : public Table {
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
   std::shared_ptr<ScaledLRU<SampleKey, SampleResult>> scaled_lru;
-  std::unordered_set<int64_t> extra_nodes;
-  std::unordered_map<int64_t, size_t> extra_nodes_to_thread_index;
+  std::unordered_set<uint64_t> extra_nodes;
+  std::unordered_map<uint64_t, size_t> extra_nodes_to_thread_index;
   bool use_cache, use_duplicate_nodes;
   int cache_size_limit;
   int cache_ttl;
@@ -612,9 +612,9 @@ class GraphTable : public Table {
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
   paddle::distributed::RocksDBHandler *_db;
-// std::shared_ptr<::ThreadPool> graph_sample_pool;
-// std::shared_ptr<GraphSampler> graph_sampler;
-// REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
+  // std::shared_ptr<::ThreadPool> graph_sample_pool;
+  // std::shared_ptr<GraphSampler> graph_sampler;
+  // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
   std::string feature_separator_ = std::string(" ");
 #endif
 };
@@ -634,7 +634,7 @@ class CompleteGraphSampler : public GraphSampler {
  protected:
   GraphTable *graph_table;
   std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<int64_t>> sample_neighbors;
+  std::vector<std::vector<uint64_t>> sample_neighbors;
   // std::vector<GpuPsCommGraph> sample_res;
   // std::shared_ptr<std::mt19937_64> random;
   int gpu_num;
@@ -653,11 +653,11 @@ class BasicBfsGraphSampler : public GraphSampler {
   GraphTable *graph_table;
   // std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<int64_t>> sample_neighbors;
+  std::vector<std::vector<uint64_t>> sample_neighbors;
   size_t gpu_num;
   int init_search_size, node_num_for_each_shard, edge_num_for_each_node;
   int rounds, interval;
-  std::vector<std::unordered_map<int64_t, std::vector<int64_t>>>
+  std::vector<std::unordered_map<uint64_t, std::vector<uint64_t>>>
       sample_neighbors_map;
 };
 #endif

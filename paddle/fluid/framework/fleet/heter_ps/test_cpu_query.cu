@@ -25,9 +25,6 @@
 
 using namespace paddle::framework;
 namespace platform = paddle::platform;
-// paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph
-// paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
-//     std::vector<int64_t> ids)
 
 std::string edges[] = {
     std::string("0\t1"), std::string("0\t9"), std::string("1\t2"),
@@ -115,7 +112,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
   g.cpu_graph_table_->Load(node_file_name, "nitem");
   std::remove(node_file_name);
   std::vector<paddle::framework::GpuPsCommGraph> vec;
-  std::vector<int64_t> node_ids;
+  std::vector<uint64_t> node_ids;
   node_ids.push_back(37);
   node_ids.push_back(96);
   std::vector<std::vector<std::string>> node_feat(2,
@@ -129,7 +126,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
   VLOG(0) << "get_node_feat: " << node_feat[1][1];
   int n = 10;
-  std::vector<int64_t> ids0, ids1;
+  std::vector<uint64_t> ids0, ids1;
   for (int i = 0; i < n; i++) {
     g.cpu_graph_table_->add_comm_edge(0, i, (i + 1) % n);
     g.cpu_graph_table_->add_comm_edge(0, i, (i - 1 + n) % n);
@@ -145,7 +142,7 @@ TEST(TEST_FLEET, test_cpu_cache) {
   // g.build_graph_from_cpu(vec);
   g.build_graph_on_single_gpu(vec[0], 0, 0);
   g.build_graph_on_single_gpu(vec[1], 1, 0);
-  int64_t cpu_key[3] = {0, 1, 2};
+  uint64_t cpu_key[3] = {0, 1, 2};
   void *key;
   int device_len = 2;
   for (int i = 0; i < 2; i++) {
@@ -212,13 +209,13 @@ TEST(TEST_FLEET, test_cpu_cache) {
         auto c = g.graph_neighbor_sample_v3(query, true);
         c.display();
         platform::CUDADeviceGuard guard(i);
-        int64_t *key;
+        uint64_t *key;
         VLOG(0) << "sample key 1 globally";
         g.cpu_graph_table_->set_search_level(2);
-        cudaMalloc((void **)&key, sizeof(int64_t));
-        int64_t t_key = 1;
-        cudaMemcpy(key, &t_key, sizeof(int64_t), cudaMemcpyHostToDevice);
-        q1.initialize(i, 0, (int64_t)key, 2, 1);
+        cudaMalloc((void **)&key, sizeof(uint64_t));
+        uint64_t t_key = 1;
+        cudaMemcpy(key, &t_key, sizeof(uint64_t), cudaMemcpyHostToDevice);
+        q1.initialize(i, 0, (uint64_t)key, 2, 1);
         auto d = g.graph_neighbor_sample_v3(q1, true);
         d.display();
         cudaFree(key);
