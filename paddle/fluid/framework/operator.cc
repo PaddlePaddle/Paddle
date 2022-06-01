@@ -1116,6 +1116,21 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
+struct OperatorWithKernel::CacheImpl {
+  explicit CacheImpl(phi::KernelContext* kernel_ctx,
+                     RuntimeInferShapeContext* infer_shape_ctx)
+      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+
+  phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
+  RuntimeInferShapeContext* getRuntimeInferShapeContext() {
+    return infer_shape_ctx_.get();
+  }
+
+ private:
+  std::unique_ptr<phi::KernelContext> kernel_ctx_;
+  std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+};
+
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
                                 const framework::Tensor& tensor) {
@@ -2323,6 +2338,8 @@ Scope* OperatorWithKernel::PreparePhiData(
       Tensor out;
       framework::TensorCopySync(*tensor_in, expected_place, &out);
       SetTensorToVariable(*var, out, trans_var);
+
+      need_prepare_phi_data_ = true;
     }
   }
 

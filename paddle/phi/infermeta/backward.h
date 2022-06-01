@@ -191,6 +191,13 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
                             const MetaTensor& out_grad,
                             std::vector<MetaTensor*> ins_grad);
 
+void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_index,
+                            const MetaTensor& out_grad,
+                            const IntArray& axes,
+                            bool keep_dim,
+                            MetaTensor* x_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
                           const MetaTensor& weight,
