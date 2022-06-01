@@ -76,14 +76,13 @@ class AutoTuneBase {
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
-    int loops = 2;
     int best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
     // Time cost test estabulished in default stream.
-    for (int64_t i = 0; i < kernels_.size(); ++i) {
-      auto time = KernelCompare<Context>(i, ctx, loops, args...);
-      VLOG(3) << "kernel[" << i << "] time cost is " << time / loops;
+    for (int i = 0; i < kernels_.size(); ++i) {
+      auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
+      VLOG(3) << "kernel[" << i << "] tune time is " << time;
 
       if (time < min_time) {
         min_time = time;
@@ -94,24 +93,22 @@ class AutoTuneBase {
     return best_idx;
   }
 
-  bool CheckInit() { return is_init_; }
-  void FinishInit() { is_init_ = true; }
+  bool IsInit() { return is_init_; }
+  void Finalize() { is_init_ = true; }
 
  private:
   bool is_init_{false};
   std::vector<KernelType> kernels_;
 
   template <typename Context, typename... Args>
-  float KernelCompare(const int idx,
-                      const Context& ctx,
-                      int loops,
-                      Args&&... args) {
-    // Treat 1st run as warm up. Judge the result with
-    // the sum of 2nd and 3rd run.
-    int repeats = loops + 1;
+  float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
+
+    // Treat 1st run as warm up. Judge the result with
+    // the sum of 2nd and 3rd run.
+    constexpr int repeats = 3;
 
     ctx.Wait();
     for (int i = 0; i < repeats; ++i) {
@@ -119,7 +116,7 @@ class AutoTuneBase {
       kernels_[idx].Run(args...);
       timer.Stop(stream);
       auto time = timer.ElapsedTime();
-      if (i > 1) {
+      if (i > 0) {
         time_cost += time;
       }
       VLOG(3) << "kernel[" << idx << "][" << i << "th time cost is " << time;
@@ -136,7 +133,7 @@ static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>> MakeAutoTuner(
 }
 
 template <typename T, typename KernelType>
-class TransposeTuneHelper : public AutoTuneBase<T, KernelType> {
+class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
  public:
   static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
     static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
@@ -151,13 +148,13 @@ class TransposeTuneHelper : public AutoTuneBase<T, KernelType> {
 };
 
 template <typename T, typename KernelType>
-std::once_flag TransposeTuneHelper<T, KernelType>::init_flag_;
+std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
 
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
     MakeTransposeTuner(RetureType (*func)(Args...)) {
   auto obj = MakeCallback<T>(func);
-  return TransposeTuneHelper<T, decltype(obj)>::Instance(obj);
+  return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
 }
 
 }  // namespace autotune

@@ -1071,10 +1071,10 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int rank,
   if (!ret) {
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(
         SimplifyThenLaunch<phi::GPUContext, T>);
-    if (!tuner->CheckInit()) {
+    if (!tuner->IsInit()) {
       tuner->AddCallBack(
           phi::autotune::MakeCallback<T>(TransCompute<phi::GPUContext, T>));
-      tuner->FinishInit();
+      tuner->Finalize();
     }
 
     auto key = GetTransposeKey<T>(rank, in, perm);
