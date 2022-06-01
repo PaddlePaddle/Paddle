@@ -78,10 +78,10 @@ class XPUCacheArray {
   void print() {}
   KeyType* get_keys() {return keys;}
   ValType* get_vals() {return vals;}
+  void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
+  void set_xpu_num(uint32_t xpu_num) { xpu_num_ = xpu_num; }
   uint32_t get_xpu_id() {return xpu_id_;}
   uint32_t get_xpu_num() {return xpu_num_;}
-  // ValType* find(const KeyType& key) { return NULL; }
-  // bool insert(const KeyType& key, const ValType& val) { return true; }
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
@@ -91,8 +91,8 @@ class XPUCacheArray {
   long long size_;
   KeyType* keys;
   ValType* vals;
-  uint32_t xpu_id_;
-  uint32_t xpu_num_;
+  uint32_t xpu_id_ = 0;
+  uint32_t xpu_num_ = 1;
 };
 #endif
 
@@ -121,6 +121,8 @@ class HashTable {
 
   void show();
 
+  void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
+  void set_xpu_num(uint32_t xpu_num) { container_->set_xpu_num(xpu_num); }
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
 
