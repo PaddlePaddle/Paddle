@@ -328,5 +328,32 @@ class TestArgMaxAPI_2(unittest.TestCase):
             run(place)
 
 
+class TestArgMaxAPI_3(unittest.TestCase):
+    def initTestCase(self):
+        self.dims = (1, 9)
+        self.dtype = 'float32'
+
+    def setUp(self):
+        self.initTestCase()
+        self.__class__.use_npu = True
+        self.place = [paddle.NPUPlace(0)]
+
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            numpy_input = (np.random.random(self.dims)).astype(self.dtype)
+            tensor_input = paddle.to_tensor(numpy_input)
+            numpy_output = np.argmax(numpy_input).reshape([1])
+            paddle_output = paddle.argmax(tensor_input)
+            self.assertEqual(
+                np.allclose(numpy_output, paddle_output.numpy()), True)
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
 if __name__ == '__main__':
     unittest.main()

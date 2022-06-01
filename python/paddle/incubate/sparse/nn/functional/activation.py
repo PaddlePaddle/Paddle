@@ -12,50 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import functional as F
-from paddle.nn import Layer
-
 __all__ = []
 
+from paddle import _C_ops, in_dynamic_mode
 
-class ReLU(Layer):
+
+def relu(x, name=None):
     """
-    Sparse ReLU Activation.
+    sparse relu activation, requiring x to be a sparse coo or sparse csr tensor.
 
     .. math::
 
-        ReLU(x) = max(x, 0)
+        out = max(x, 0)
 
     Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - input: Sparse Tensor with any shape.
-        - output: Sparse Tensor with the same shape as input.
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
 
             import paddle
             from paddle.fluid.framework import _test_eager_guard
+
             with _test_eager_guard():
-                x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
-                dense_x = paddle.to_tensor(x, dtype='float32')
-                sparse_dim = 2
-                sparse_x = dense_x.to_sparse_coo(sparse_dim)
-                relu = paddle.sparse.ReLU()
-                out = relu(sparse_x)
-                #out.values: [0., 2., 0., 4., 5.]
+                dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+                sparse_x = dense_x.to_sparse_coo(1)
+                out = paddle.incubate.sparse.nn.functional.relu(sparse_x) 
     """
 
-    def __init__(self, name=None):
-        super(ReLU, self).__init__()
-        self._name = name
+    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
 
-    def forward(self, x):
-        return F.relu(x, self._name)
-
-    def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
-        return name_str
+    if x.is_sparse_coo() or x.is_sparse_csr():
+        return _C_ops.final_state_sparse_relu(x)
+    else:
+        raise ValueError(
+            "Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor"
+        )

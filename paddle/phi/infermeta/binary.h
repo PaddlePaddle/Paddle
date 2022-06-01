@@ -154,6 +154,12 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void EmbeddingInferMeta(const MetaTensor& x,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        bool sparse,
+                        MetaTensor* out);
+
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
