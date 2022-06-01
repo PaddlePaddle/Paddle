@@ -13,27 +13,24 @@
 # limitations under the License.
 
 import unittest
+import os
+import json
+
 import paddle
 import numpy as np
 import paddle.nn as nn
 import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
 
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
-from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
+import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
 batch_size = 4
-epoch_num = 10
 hidden_size = 1024
 sequence_len = 512
 _g_process_mesh = [[0, 1], [2, 3]]
@@ -101,32 +98,6 @@ class MLPLayer(nn.Layer):
         return out
 
 
-def loop_cond(i, loop_len, input_array):
-    return i < loop_len
-
-
-def loop_body(i, loop_len, input_array):
-    pre_input = paddle.tensor.array_read(array=input_array, i=i)
-    mlp_while0 = MLPLayer(
-        hidden_size=hidden_size,
-        intermediate_size=4 * hidden_size,
-        dropout_ratio=0.1,
-        initializer_range=0.02)
-
-    mlp_while1 = MLPLayer(
-        hidden_size=hidden_size,
-        intermediate_size=4 * hidden_size,
-        dropout_ratio=0.1,
-        initializer_range=0.02)
-
-    output = mlp_while0(pre_input)
-    cur_pred = mlp_while1(output)
-    # 更新循环条件
-    i = paddle.increment(x=i, value=1)
-    paddle.tensor.array_write(cur_pred, array=input_array, i=i)
-    return i, loop_len, input_array
-
-
 def get_program():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
@@ -135,12 +106,6 @@ def get_program():
     train_program = static.Program()
     start_program = static.Program()
     with static.program_guard(train_program, start_program):
-
-        # 循环计数器
-        i = paddle.full(shape=[1], fill_value=0, dtype='int64')
-        # 循环次数
-        loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
-
         # input
         input = static.data(
             name="input",
@@ -159,13 +124,13 @@ def get_program():
             input,
             dist_attr={
                 "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, -1, -1]
+                "dims_mapping": [0, -1, -1]
             })
         auto.shard_tensor(
             label,
             dist_attr={
                 "process_mesh": _g_process_mesh[0],
-                "dims_mapping": [-1, -1, -1]
+                "dims_mapping": [0, -1, -1]
             })
 
         mlp_start = MLPLayer(
@@ -175,34 +140,64 @@ def get_program():
             initializer_range=0.02)
         pred = mlp_start(input)
 
-        input_array = paddle.tensor.array_write(pred, i)
-        i, loop_len, input_array = static.nn.while_loop(
-            cond=loop_cond,
-            body=loop_body,
-            loop_vars=[i, loop_len, input_array])
-        end_pred = paddle.tensor.array_read(array=input_array, i=i)
+        mlp_mid = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        pred = mlp_mid(pred)
 
         mlp_end = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             dropout_ratio=0.1,
             initializer_range=0.02)
-        pred = mlp_end(end_pred)
+        pred = mlp_end(pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
         loss = paddle.mean(error_cost)
 
-    return train_program, start_program, dataloader, i, loss
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None)
+
+        feed_vars = {"inputs": [input], "labels": [label]}
+        fetch_vars = {"loss": [loss]}
+
+    return train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars
 
 
-class TestMLP(unittest.TestCase):
-    def test_completer(self):
-        train_program, start_program, dataloader, i, loss = get_program()
-        dist_context = DistributedContext()
-        completer = Completer(dist_context)
-        complete_train_program = completer.complete_forward_annotation(
-            train_program)
-        # print_program_with_dist_attr(complete_train_program, dist_context)
+class TestDistributedContext(unittest.TestCase):
+    def test_backup_restore(self):
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program(
+        )
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars)
+        dist_context.initialize()
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(
+            serial=True,
+            serial_mode="to_backup",
+            dist=True,
+            dist_mode="to_backup")
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(
+            serial=True,
+            serial_mode="to_original",
+            dist=True,
+            dist_mode="to_original")
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(serial=True, dist=True, dist_mode="to_default")
+
+        dist_context._backup(serial=True, dist=True)
+        dist_context._restore(serial=True, dist=True, dist_mode="to_nothing")
 
 
 if __name__ == "__main__":
