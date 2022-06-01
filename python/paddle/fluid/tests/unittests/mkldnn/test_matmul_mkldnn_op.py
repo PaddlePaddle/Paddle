@@ -438,8 +438,6 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
         self.y = np.random.random([self.bs, 128, 64]).astype(self.data_type_)
 
     def init_params_and_out(self):
-        self.transpose_out = []
-        self.reshape_out = []
         self.out = np.matmul(self.x, self.y)
 
     def set_op_type(self):
@@ -455,13 +453,6 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
 
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
-
-        if len(self.reshape_out) > 0:
-            self.attrs['fused_reshape_Out'] = self.reshape_out
-        if len(self.transpose_out) > 0:
-            self.attrs['fused_transpose_Out'] = self.transpose_out
-
-        self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -491,13 +482,6 @@ class TestMatMulOpTransposeReshapeBasicFloat(
                                    128]).astype(self.data_type_)
         self.y = np.random.random([self.bs, 12, 128,
                                    64]).astype(self.data_type_)
-
-    def init_params_and_out(self):
-        self.transpose_out = [0, 2, 1, 3]
-        self.reshape_out = [0, 0, self.x.shape[1] * self.y.shape[-1]]
-        self.out = np.matmul(self.x, self.y).transpose([0, 2, 1, 3]).reshape(
-            [self.bs, -1, self.x.shape[1] * self.y.shape[-1]])
-
 
 class TestMatMulOpTransposeReshapeBasicInt(
         TestMatMulOpTransposeReshapeBasicFloat):

@@ -327,10 +327,7 @@ class MatMulMKLDNNHandler
   }
 
   bool IsOutputFused(const ExecutionContext& ctx) const {
-    auto& fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-    auto& fused_transpose_Out =
-        ctx.Attr<std::vector<int>>("fused_transpose_Out");
-    return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
+    return (ctx.HasAttr("fused_reshape_Out") && ctx.HasAttr("fused_transpose_Out"));
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -500,6 +497,13 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
   float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
   const auto& dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+
+  if (ctx.HasAttr("fused_reshape_Out") && ctx.HasAttr("fused_transpose_Out")) {
+    auto shape = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
+    auto out_dims = out->dims().transpose(axis).reshape(shape);
+    out->Resize(out_dims);
+  }
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     MatMulMKLDNNHandler<XT, YT, float>(dev_ctx.GetEngine(), ctx, alpha)
