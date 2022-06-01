@@ -618,7 +618,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// may be more high-performance. Libnvinfer_plugin.so greater than
   /// V7.2.1 is needed.
   ///
-  void EnableTensorRtOSS();
+  void EnableVarseqlen();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.

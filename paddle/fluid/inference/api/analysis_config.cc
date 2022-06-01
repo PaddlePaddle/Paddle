@@ -548,7 +548,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_varseqlen_ = true; }
+void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {

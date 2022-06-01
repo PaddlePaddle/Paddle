@@ -324,7 +324,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc);
 
     std::vector<int64_t> fc_input_shape = fc_input->Var()->GetShape();
-    if (fc_input_shape.size() != multihead_matmul_input_shape.size()) {
+    if ((fc_input_shape.size() != multihead_matmul_input_shape.size()) ||
+        (fc_input_shape.size() != 3)) {
       check_flag = false;
       VLOG(3) << "Transformer model remove_padding shape check failed, return "
                  "remove_padding pass.";
@@ -374,7 +375,9 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<int64_t> activation_input_shape =
         activation_input->Var()->GetShape();
-    if (activation_input_shape.size() != multihead_matmul_input_shape.size()) {
+    if ((activation_input_shape.size() !=
+         multihead_matmul_input_shape.size()) ||
+        (activation_input_shape.size() != 3)) {
       check_flag = false;
       VLOG(3) << "Transformer model remove_padding shape check failed, return "
                  "remove_padding pass.";

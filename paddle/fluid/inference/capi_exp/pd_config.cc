@@ -303,9 +303,9 @@ void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config, size_t ops_num,
   config->Exp_DisableTensorRtOPs(ops_list);
 }
 
-void PD_ConfigEnableTensorRtOSS(__pd_keep PD_Config* pd_config) {
+void PD_ConfigEnableVarseqlen(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableTensorRtOSS();
+  config->EnableVarseqlen();
 }
 PD_Bool PD_ConfigTensorRtOssEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;

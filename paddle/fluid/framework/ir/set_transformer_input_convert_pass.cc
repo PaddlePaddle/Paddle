@@ -149,9 +149,6 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
   gpd1(graph, handler1);
 
   found_subgraph_count++;
-  if (found_subgraph_count > 0) {
-    // graph->Set(kSetTransformerInputConvertPass, new bool(true));
-  }
   AddStatis(found_subgraph_count);
 }
 

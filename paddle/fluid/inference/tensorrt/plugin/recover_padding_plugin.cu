@@ -103,16 +103,6 @@ int RecoverPaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   const int32_t* input1 =
       static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor
   float* output = static_cast<float*>(outputs[0]);
-
-  float input_0[64 * 768];
-  cudaMemcpyAsync(input_0, inputs[0], 64 * 768 * sizeof(float),
-                  cudaMemcpyDeviceToHost);
-  float sum = 0;
-  for (int i = 0; i < 64 * 768; i++) {
-    // std::cout<< "inputs[0][i]:  "<<static_cast<float>(input_0[i])<<std::endl;
-    sum += input_0[i];
-  }
-  std::cout << "inputs[0]_sumn:  " << static_cast<float>(sum) << std::endl;
   const int32_t num_threads = 256;
   const dim3 num_blocks(
       input1_desc.dims.d[0] - 1, input2_desc.dims.d[1],
@@ -121,16 +111,6 @@ int RecoverPaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                              //  input.dims.d[1]/256
   RecoverPaddingKernel<<<num_blocks, num_threads, 0, stream>>>(input0, input1,
                                                                output);
-
-  float out_0[64 * 768];
-  float sum_out = 0;
-  cudaMemcpyAsync(out_0, output, 64 * 768 * sizeof(float),
-                  cudaMemcpyDeviceToHost);
-  for (int i = 0; i < 64 * 768; i++) {
-    // std::cout<< "inputs[0][i]:  "<<static_cast<float>(out_0[i])<<std::endl;
-    sum_out += out_0[i];
-  }
-  std::cout << "out[0]_sum:  " << sum_out << std::endl;
   return cudaGetLastError() != cudaSuccess;
 }
 

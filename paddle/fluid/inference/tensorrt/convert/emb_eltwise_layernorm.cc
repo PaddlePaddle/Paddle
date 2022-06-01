@@ -126,7 +126,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           output_fp16, 1,
           platform::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
-              "ernie(bert) model with config.EnableTensorRtOSS(). "
+              "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
       const std::vector<nvinfer1::PluginField> fields{
           {"bert_embeddings_layernorm_beta", bias,
