@@ -17,44 +17,6 @@ __all__ = []
 from paddle import _C_ops, in_dynamic_mode
 
 
-def relu(x, name=None):
-    """
-    sparse relu activation, requiring x to be a sparse coo or sparse csr tensor.
-
-    .. math::
-
-        out = max(x, 0)
-
-    Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Sparse Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.fluid.framework import _test_eager_guard
-
-            with _test_eager_guard():
-                dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
-                sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.functional.relu(sparse_x) 
-    """
-
-    assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-
-    if x.is_sparse_coo() or x.is_sparse_csr():
-        return _C_ops.final_state_sparse_relu(x)
-    else:
-        raise ValueError(
-            "Currently, sparse.relu only support the input of SparseCooTensor or SparseCsrTensor"
-        )
-
-
 def tanh(x, name=None):
     """
     sparse tanh activation, requiring x to be a sparse coo or sparse csr tensor.
@@ -80,7 +42,7 @@ def tanh(x, name=None):
             with _test_eager_guard():
                 dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
                 sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.tanh(sparse_x)
+                out = paddle.incubate.sparse.tanh(sparse_x)
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
@@ -118,7 +80,7 @@ def sqrt(x, name=None):
             with _test_eager_guard():
                 dense_x = paddle.to_tensor([4, 0, 1], dtype='float32')
                 sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.sqrt(sparse_x)
+                out = paddle.incubate.sparse.sqrt(sparse_x)
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
@@ -156,7 +118,7 @@ def sin(x, name=None):
             with _test_eager_guard():
                 dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
                 sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.sparse.sin(sparse_x)
+                out = paddle.incubate.sparse.sin(sparse_x)
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"

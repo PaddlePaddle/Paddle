@@ -324,10 +324,13 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
                                                 mesh.processes.index(rank))
             break
 
-    assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
-        rank)
-    return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
-                                                        coordinate)]
+    # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
+    #     rank)
+    if coordinate is not None:
+        return target_mesh.processes[_coordinate2linear_idx(mesh.topology,
+                                                            coordinate)]
+    else:
+        return target_mesh.processes[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):
@@ -1094,6 +1097,11 @@ def is_forward_op(op):
 def is_backward_op(op):
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
+
+
+def is_optimize_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
 
 def is_loss_op(op):

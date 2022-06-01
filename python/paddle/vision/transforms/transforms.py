@@ -1042,14 +1042,32 @@ class RandomCrop(BaseTransform):
         size (sequence|int): Desired output size of the crop. If size is an
             int instead of sequence like (h, w), a square crop (size, size) is
             made.
-        padding (int|sequence|optional): Optional padding on each border
+        padding (int|sequence, optional): Optional padding on each border
             of the image. If a sequence of length 4 is provided, it is used to pad left, 
-            top, right, bottom borders respectively. Default: 0.
-        pad_if_needed (boolean|optional): It will pad the image if smaller than the
+            top, right, bottom borders respectively. Default: None, without padding.
+        pad_if_needed (boolean, optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
+        fill (float|tuple, optional): Pixel fill value for constant fill. If a tuple of
+            length 3, it is used to fill R, G, B channels respectively.
+            This value is only used when the padding_mode is constant. Default: 0.
+        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
+
+            - constant: pads with a constant value, this value is specified with fill
+
+            - edge: pads with the last value on the edge of the image
+
+            - reflect: pads with reflection of image (without repeating the last value on the edge)
+
+                   padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+                   will result in [3, 2, 1, 2, 3, 4, 3, 2]
+
+            - symmetric: pads with reflection of image (repeating the last value on the edge)
+
+                     padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
+                     will result in [2, 1, 1, 2, 3, 4, 4, 3]
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
-    Shape:
+    Shape
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
         - output(PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
 
@@ -1059,17 +1077,17 @@ class RandomCrop(BaseTransform):
     Examples:
     
         .. code-block:: python
+          :name: code-example1
 
-            import numpy as np
-            from PIL import Image
+            import paddle
             from paddle.vision.transforms import RandomCrop
-
             transform = RandomCrop(224)
 
-            fake_img = Image.fromarray((np.random.rand(324, 300, 3) * 255.).astype(np.uint8))
+            fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
+            print(fake_img.shape) # [3, 324, 300]
 
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            crop_img = transform(fake_img)
+            print(crop_img.shape) # [3, 224, 224]
     """
 
     def __init__(self,
