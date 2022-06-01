@@ -36,7 +36,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
       in_mat_dims[1], w_dims0,
       platform::errors::InvalidArgument(
           "The input's second dimension and weight's first dimension is "
-          "expected to be the same. But recieved input's second dimension is "
+          "expected to be the same. But received input's second dimension is "
           "%d, input's shape is %s; weight's first dimension is %d, weight's "
           "shape is %s.",
           in_mat_dims[1], in_mat_dims, w_dims0,

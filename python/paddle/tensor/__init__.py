@@ -40,6 +40,7 @@ from .creation import complex  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
+from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
@@ -228,6 +229,7 @@ from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
 from .math import inner  # noqa: F401
 from .math import outer  # noqa: F401
+from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 
 from .random import multinomial  # noqa: F401
@@ -261,6 +263,7 @@ from .stat import std  # noqa: F401
 from .stat import var  # noqa: F401
 from .stat import numel  # noqa: F401
 from .stat import median  # noqa: F401
+from .stat import nanmedian  # noqa: F401
 from .stat import quantile  # noqa: F401
 from .stat import nanquantile  # noqa: F401
 
@@ -278,6 +281,7 @@ tensor_method_func  = [ #noqa
            'matmul',
            'dot',
            'cov',
+           'corrcoef',
            'norm',
            'cond',
            'transpose',
@@ -445,6 +449,7 @@ tensor_method_func  = [ #noqa
            'var',
            'numel',
            'median',
+           'nanmedian',
            'quantile',
            'nanquantile',
            'is_complex',
@@ -493,6 +498,7 @@ tensor_method_func  = [ #noqa
            'put_along_axis',
            'put_along_axis_',
            'exponential_',
+           'heaviside',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

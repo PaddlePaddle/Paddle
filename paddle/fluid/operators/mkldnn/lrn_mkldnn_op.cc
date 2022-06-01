@@ -44,15 +44,11 @@ class LRNMKLDNNHandler
     const float k = ctx.Attr<float>("k");
     bool is_test = ctx.Attr<bool>("is_test");
 
-    auto dims = phi::vectorize(input->dims());
-
-    auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                     input->format());
-
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
                 : dnnl::prop_kind::forward_training,
-        dnnl::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+        dnnl::algorithm::lrn_across_channels, input->mem_desc(), n, alpha, beta,
+        k);
   }
 
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -72,20 +68,13 @@ class LRNMKLDNNHandler
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
 
-    auto dims = phi::vectorize<int64_t>(in_x->dims());
-
-    auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                     in_x->format());
-    auto diff_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
-                                      out_grad->format());
-
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training, dnnl::algorithm::lrn_across_channels,
-        src_md, n, alpha, beta, k);
+        in_x->mem_desc(), n, alpha, beta, k);
 
     this->AcquireBackwardPrimitiveDescriptor(
-        dnnl::algorithm::lrn_across_channels, src_md, diff_md, n, alpha, beta,
-        k);
+        dnnl::algorithm::lrn_across_channels, in_x->mem_desc(),
+        out_grad->mem_desc(), n, alpha, beta, k);
   }
 
   std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(Tensor* workspace) {
@@ -135,7 +124,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
-      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
+      mid->set_mem_desc(workspace_memory->get_desc());
       lrn_p->execute(astream, {{DNNL_ARG_SRC, *src_memory},
                                {DNNL_ARG_DST, *dst_memory},
                                {DNNL_ARG_WORKSPACE, *workspace_memory}});
@@ -145,8 +134,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -188,8 +176,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                {DNNL_ARG_WORKSPACE, *workspace}});
     astream.wait();
 
-    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    in_x_grad->set_mem_desc(diff_src_memory->get_desc());
   }
 };
 }  // namespace operators

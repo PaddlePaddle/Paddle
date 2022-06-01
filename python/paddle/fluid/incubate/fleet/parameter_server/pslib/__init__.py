@@ -103,9 +103,9 @@ class PSLib(Fleet):
             # prepare for client to client communication
             if self._role_maker.is_worker():
                 info = self._fleet_ptr.get_clients_info()
-                print("IIIIFO: {}".format(info))
+                print("Client Info: {}".format(info))
                 all_info = self._role_maker._worker_gather(info[0])
-                print("ALL info: {}".format(all_info))
+                print("All Client Info: {}".format(all_info))
                 self._fleet_ptr.gather_clients(all_info)
                 self._fleet_ptr.set_client2client_config(
                     self._client2client_request_timeout_ms,
@@ -1139,10 +1139,11 @@ class DownpourOptimizer(DistributedOptimizer):
             from paddle.fluid.transpiler.collective import MultiThread
             # check start program
             if program_mode not in [
-                    "all_reduce", "fuse_all_reduce", "all_gather"
+                    "all_reduce", "fuse_all_reduce", "all_gather",
+                    "all_reduce_xpu"
             ]:
                 raise ValueError("You should set program_mode in [ all_reduce, \
-                                fuse_all_reduce, all_gather ]")
+                                fuse_all_reduce, all_gather, all_reduce_xpu ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]

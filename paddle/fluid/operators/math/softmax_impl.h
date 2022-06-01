@@ -231,7 +231,7 @@ class SoftmaxFunctor<DeviceContext, T, is_test, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
-    auto in_dims = X->dims();
+    const auto& in_dims = X->dims();
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
 

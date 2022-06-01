@@ -1013,12 +1013,13 @@ class TheOnePSRuntime(RuntimeBase):
             if self.context['ps_mode'] == DistributedMode.GEO:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
-
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+        if not self.context['use_ps_gpu']:
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context['ps_mode'] == DistributedMode.GEO:
@@ -1314,6 +1315,30 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _save_cache_model(self, dirname, **kwargs):
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        self._worker.client_flush()
+        fleet.util.barrier()
+        cache_threshold = 0.0
+
+        if self.role_maker._is_first_worker():
+            cache_threshold = self._worker.get_cache_threshold(table_id)
+        #check cache threshold right or not
+        fleet.util.barrier()
+
+        if self.role_maker._is_first_worker():
+            self._worker.cache_shuffle(table_id, dirname, mode, cache_threshold)
+
+        fleet.util.barrier()
+
+        feasign_num = -1
+        if self.role_maker._is_first_worker():
+            feasign_num = self._worker.save_cache(table_id, dirname, mode)
+
+        fleet.util.barrier()
+        return feasign_num
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(self.origin_main_programs,

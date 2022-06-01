@@ -51,8 +51,9 @@ class TestProfilerStatistic(unittest.TestCase):
         profilerstep_node = HostPythonNode('ProfileStep#1',
                                            profiler.TracerEventType.ProfileStep,
                                            0, 400, 1000, 1001)
-        dataloader_node = HostPythonNode(
-            'Dataloader', profiler.TracerEventType.Forward, 5, 15, 1000, 1001)
+        dataloader_node = HostPythonNode('Dataloader',
+                                         profiler.TracerEventType.Dataloader, 5,
+                                         15, 1000, 1001)
         mobilenet_node = HostPythonNode(
             'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
         yolonet_node = HostPythonNode(
@@ -155,7 +156,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.TracerEventType.ProfileStep), 400)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.Forward), 100)
+                profiler.TracerEventType.Forward), 90)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Backward), 80)
@@ -185,12 +186,12 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.TracerEventType.Communication), 5)
         self.assertEqual(len(event_summary.items), 2)
         self.assertEqual(len(event_summary.userdefined_items), 1)
-        self.assertEqual(len(event_summary.model_perspective_items), 4)
+        self.assertEqual(len(event_summary.model_perspective_items), 5)
         self.assertEqual(len(event_summary.memory_manipulation_items), 1)
         self.assertEqual(event_summary.items['conv2d'].cpu_time, 15)
         self.assertEqual(event_summary.items['conv2d'].general_gpu_time, 25)
         self.assertEqual(
-            event_summary.model_perspective_items['Forward'].cpu_time, 100)
+            event_summary.model_perspective_items['Forward'].cpu_time, 90)
         self.assertEqual(
             event_summary.model_perspective_items['Forward'].general_gpu_time,
             135)
@@ -217,8 +218,9 @@ class TestProfilerStatistic(unittest.TestCase):
                                            profiler.TracerEventType.ProfileStep,
                                            0, 400, 1000, 1001)
 
-        dataloader_node = HostPythonNode(
-            'Dataloader', profiler.TracerEventType.Forward, 5, 15, 1000, 1001)
+        dataloader_node = HostPythonNode('Dataloader',
+                                         profiler.TracerEventType.Dataloader, 5,
+                                         15, 1000, 1001)
 
         mobilenet_node = HostPythonNode(
             'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
@@ -372,7 +374,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.TracerEventType.ProfileStep), 400)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.Forward), 100)
+                profiler.TracerEventType.Forward), 90)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Backward), 80)
@@ -417,12 +419,12 @@ class TestProfilerStatistic(unittest.TestCase):
                 distributed_summary.overlap_range), 85)
         self.assertEqual(len(event_summary.items), 4)
         self.assertEqual(len(event_summary.userdefined_items), 1)
-        self.assertEqual(len(event_summary.model_perspective_items), 4)
+        self.assertEqual(len(event_summary.model_perspective_items), 5)
         self.assertEqual(len(event_summary.memory_manipulation_items), 1)
         self.assertEqual(event_summary.items['conv2d'].cpu_time, 15)
         self.assertEqual(event_summary.items['conv2d'].general_gpu_time, 25)
         self.assertEqual(
-            event_summary.model_perspective_items['Forward'].cpu_time, 100)
+            event_summary.model_perspective_items['Forward'].cpu_time, 90)
         self.assertEqual(
             event_summary.model_perspective_items['Forward'].general_gpu_time,
             315)
@@ -440,6 +442,86 @@ class TestProfilerStatistic(unittest.TestCase):
                 op_detail=True,
                 thread_sep=False,
                 time_unit='ms'))
+
+    def test_statistic_case3(self):
+        # for coverage, test all time is 0
+        root_node = HostPythonNode('Root Node',
+                                   profiler.TracerEventType.UserDefined, 0,
+                                   float('inf'), 1000, 1001)
+        profilerstep_node = HostPythonNode('ProfileStep#1',
+                                           profiler.TracerEventType.ProfileStep,
+                                           0, 400, 1000, 1001)
+        dataloader_node = HostPythonNode('Dataloader',
+                                         profiler.TracerEventType.Dataloader, 5,
+                                         15, 1000, 1001)
+        mobilenet_node = HostPythonNode(
+            'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
+
+        backward_node = HostPythonNode('Gradient Backward',
+                                       profiler.TracerEventType.Backward, 120,
+                                       200, 1000, 1001)
+        optimization_node = HostPythonNode(
+            'Optimization', profiler.TracerEventType.Optimization, 220, 300,
+            1000, 1001)
+        userdefined_node = HostPythonNode('Communication Time',
+                                          profiler.TracerEventType.UserDefined,
+                                          60, 70, 1000, 1001)
+
+        conv2d_node = HostPythonNode(
+            'conv2d', profiler.TracerEventType.Operator, 25, 25, 1000, 1001)
+
+        conv2d_infer_shape = HostPythonNode(
+            'conv2d::infer_shape', profiler.TracerEventType.OperatorInner, 25,
+            25, 1000, 1001)
+        conv2d_compute = HostPythonNode('conv2d::compute',
+                                        profiler.TracerEventType.OperatorInner,
+                                        25, 25, 1000, 1001)
+        conv2d_launchkernel = HostPythonNode(
+            'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 25, 25,
+            1000, 1001)
+
+        conv2d_kernel = DevicePythonNode(
+            'conv2d_kernel', profiler.TracerEventType.Kernel, 35, 35, 0, 0, 0)
+        another_kernel = DevicePythonNode(
+            'void phi::funcs::VectorizedBroadcastKernel<float, float, phi::funcs::AddFunctor<float>, phi::funcs::AddFunctor<float>>()',
+            profiler.TracerEventType.Kernel, 35, 35, 0, 0, 0)
+        root_node.children_node.append(profilerstep_node)
+        profilerstep_node.children_node.extend([
+            dataloader_node, mobilenet_node, userdefined_node, backward_node,
+            optimization_node
+        ])
+        mobilenet_node.children_node.append(conv2d_node)
+        conv2d_node.children_node.extend([conv2d_infer_shape, conv2d_compute])
+        conv2d_compute.runtime_node.append(conv2d_launchkernel)
+        conv2d_launchkernel.device_node.append(conv2d_kernel)
+        conv2d_launchkernel.device_node.append(another_kernel)
+        thread_tree = {'thread1001': root_node}
+        extra_info = {
+            'Process Cpu Utilization': '1.02',
+            'System Cpu Utilization': '0.68'
+        }
+        statistic_data = profiler.profiler_statistic.StatisticData(thread_tree,
+                                                                   extra_info)
+        time_range_summary = statistic_data.time_range_summary
+        event_summary = statistic_data.event_summary
+
+        self.assertEqual(event_summary.items['conv2d'].cpu_time, 0)
+        self.assertEqual(event_summary.items['conv2d'].general_gpu_time, 0)
+        self.assertEqual(event_summary.userdefined_items['Communication Time']
+                         .general_gpu_time, 0)
+        for sort_key in [
+                profiler.SortedKeys.CPUTotal, profiler.SortedKeys.CPUMax,
+                profiler.SortedKeys.CPUMin, profiler.SortedKeys.CPUAvg,
+                profiler.SortedKeys.GPUTotal, profiler.SortedKeys.GPUMax,
+                profiler.SortedKeys.GPUMin, profiler.SortedKeys.GPUAvg
+        ]:
+            print(
+                profiler.profiler_statistic._build_table(
+                    statistic_data,
+                    sorted_by=sort_key,
+                    op_detail=True,
+                    thread_sep=False,
+                    time_unit='ms'))
 
 
 if __name__ == '__main__':

@@ -29,8 +29,11 @@ from .tensor import segment_max
 from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
 import paddle.incubate.autograd
+import paddle.incubate.autotune
+import paddle.incubate.sparse
 
 from . import nn  #noqa: F401
+from . import asp  #noqa: F401
 
 __all__ = [
     'LookAhead',

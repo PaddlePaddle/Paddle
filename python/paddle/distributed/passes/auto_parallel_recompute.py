@@ -315,7 +315,7 @@ class RecomputePass(PassBase):
             # When traversing all grad_ops in reverse, need to set a flag to indicate 
             # whether the ckpt and its segment_descs can be used.
             ckpt_op = op_path[segment[1] - 1]
-            ckpt_ops_dict[ckpt_op.desc.id()] = [True, segment_descs]
+            ckpt_ops_dict[ckpt_op.desc.original_id()] = [True, segment_descs]
 
         # step 4: insert recomputed fwd ops
         ops = main_block.ops
@@ -339,9 +339,9 @@ class RecomputePass(PassBase):
                 _rename_arg_([grad_op.desc], key, var_name_dict[key])
 
             # insert recomputed ops
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
-                fwd_op_id = dist_op_context.grad_op_id_to_op_id[grad_op.desc.id(
-                )]
+            original_id = grad_op.desc.original_id()
+            if original_id in dist_op_context.grad_op_id_to_op_id:
+                fwd_op_id = dist_op_context.grad_op_id_to_op_id[original_id]
                 if fwd_op_id in ckpt_ops_dict and ckpt_ops_dict[fwd_op_id][0]:
                     idx = grad_op.idx
                     while idx - 1 >= 0 and ops[idx - 1].type == "sum":
@@ -350,11 +350,12 @@ class RecomputePass(PassBase):
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
                         rc_desc = main_block.desc._insert_op(idx)
                         rc_desc.copy_from(op_desc)
+                        rc_desc.set_original_id(rc_desc.id())
                         rc_op = Operator(main_block, rc_desc)
                         main_block.ops.insert(idx, rc_op)
                         # set recomputed ops' dist attr
                         fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program_with_id(
-                            rc_desc.original_id())
+                            op_desc.original_id())
                         assert fwd_op_dist_attr is not None
                         self.set_op_dist_attr(rc_op, fwd_op_dist_attr,
                                               var_name_dict)

@@ -48,6 +48,7 @@ class TestStaticGraphSupportMultipleInt(unittest.TestCase):
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
         self.inputs = {'W': table, 'Ids': ids}
@@ -57,10 +58,10 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_eager=True)
 
 
 class TestLookupTableOpInt16(OpTest):

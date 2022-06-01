@@ -27,13 +27,13 @@ namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Place place, bool blocking);
+Tensor copy_to(const Tensor &x, const Place &place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Place place, bool blocking) const {
+Tensor Tensor::copy_to(const Place &place, bool blocking) const {
   return experimental::copy_to(*this, place, blocking);
 }
 

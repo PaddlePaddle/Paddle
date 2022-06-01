@@ -59,6 +59,16 @@ API_FILES=("CMakeLists.txt"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
+           "python/paddle/fluid/dygraph/layers.py"
+           "paddle/fluid/eager/grad_node_info.h"
+           "paddle/fluid/eager/grad_node_info.cc"
+           "paddle/fluid/eager/grad_tensor_holder.h"
+           "paddle/fluid/eager/grad_tensor_holder.cc"
+           "paddle/fluid/eager/tensor_wrapper.h"
+           "paddle/fluid/eager/autograd_meta.cc"
+           "paddle/fluid/eager/autograd_meta.h"
+           "paddle/fluid/eager/backward.cc"
+           "paddle/fluid/eager/backward.h"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -178,6 +188,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 12538138 6836917 7913861
+      elif [ "${API_FILE}" == "python/paddle/fluid/dygraph/layers.py" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/tensor_wrapper.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.h"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.h"]; then
+          echo_line="You must have one RD (JiabinYang,chenwhql,phlrain) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
+          check_approval JiabinYang chenwhql phlrain
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
@@ -347,6 +360,23 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+CMAKE_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -E "\.cmake|CMakeLists\.txt"  || true`
+if [ "${CMAKE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for CMAKE_FILE in ${CMAKE_FILE_CHANGED};
+    do
+        CHECK_OBJECT_FLAGS=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKE_FILE} |grep "+" |grep -E "\-Wno\-error" || true`
+        if [ "${CHECK_OBJECT_FLAGS}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${CMAKE_FILE}${CHECK_OBJECT_FLAGS}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (zhiqiu (Recommend), luotao1 or phlrain) approval to use these methods. "
+        check_approval 1 6888866 47554610 2002279
+    fi
+fi
+
 NEW_OP_TEST_ADDED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_OUTPUT=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep "self\.check_output(a*t*o*l*=*[0-9]"|grep "+" || true`
@@ -375,6 +405,22 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, qili93, QingshuChen) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
         check_approval 1 26615455 6836917 43953930 16605440
+    fi
+fi
+
+if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    ERROR_LINES=""
+    for TEST_FILE in ${UNITTEST_FILE_CHANGED};
+    do
+        ENABLE_LEGACY_DYGRAPH_CI=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep "_enable_legacy_dygraph" || true`
+        if [ "${ENABLE_LEGACY_DYGRAPH_CI}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${ENABLE_LEGACY_DYGRAPH_CI}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="_enable_legacy_dygraph forces the mode to old dynamic graph. You must have one RD (pangyoki (Recommend), Aurelius84 or JiabinYang) approval for the usage (either add or delete) of _enable_legacy_dygraph. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Enable-Eager-Mode-in-Paddle-CI. The corresponding lines are as follows:\n${ERROR_LINES}\n"
+        check_approval 1 26408901 9301846 22361972
     fi
 fi
 

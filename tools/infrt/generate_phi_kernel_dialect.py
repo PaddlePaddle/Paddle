@@ -20,12 +20,12 @@ from get_compat_kernel_signature import get_compat_kernels_info
 
 #TODO @DannyIsFunny: more attr types need to be supported.
 attr_type_converter = {
-    "i": 'SI32Attr',
-    "b": 'BoolAttr',
-    "l": 'SI64Attr',
-    "f": 'F32Attr',
-    "NSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE": 'StrAttr',
-    "St6vectorIiSaIiEE": 'I32ArrayAttr'
+    "int": 'SI32Attr',
+    "bool": 'BoolAttr',
+    "int64_t": 'SI64Attr',
+    "float": 'F32Attr',
+    "string": 'StrAttr',
+    "vector<int>": 'I32ArrayAttr'
 }
 
 target_type_converter = {"CPU": "CPU", "GPU": "GPU", "Undefined": "UNK"}

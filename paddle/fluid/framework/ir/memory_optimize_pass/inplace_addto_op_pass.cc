@@ -178,9 +178,11 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     auto *out_generated_op = dynamic_cast<details::ComputationOpHandle *>(
         out_var_ptr->GeneratedOp());
 
-    // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
+    // FIXME(zengjinle): the "custom_fused_dense_grad" is only used for
+    // MLPerf temporarily. Replace it with the formal op type in the future.
     if (right_generated_op->Name() != "conv2d_grad" &&
-        right_generated_op->Name() != "resnet_unit_grad") {
+        right_generated_op->Name() != "resnet_unit_grad" &&
+        right_generated_op->Name() != "custom_fused_dense_grad") {
       continue;
     }
 

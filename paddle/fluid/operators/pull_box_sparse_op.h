@@ -15,8 +15,12 @@
 #pragma once
 #include <memory>
 #include <vector>
+#ifdef PADDLE_WITH_BOX_PS
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
+#endif
+#ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -100,7 +104,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 
 using LoDTensor = framework::LoDTensor;
 template <typename T>
-class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PullBoxSparseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PullBoxSparseFunctor<T>(ctx);
@@ -108,27 +112,12 @@ class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class PushBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PushBoxSparseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PushBoxSparseFunctor<T>(ctx);
   }
 };
 
-template <typename T>
-class PullBoxSparseXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PullBoxSparseFunctor<T>(ctx);
-  }
-};
-
-template <typename T>
-class PushBoxSparseXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PushBoxSparseFunctor<T>(ctx);
-  }
-};
 }  // namespace operators
 }  // namespace paddle

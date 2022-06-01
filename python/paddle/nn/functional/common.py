@@ -21,7 +21,6 @@ from ...tensor.creation import zeros
 from paddle.static import Variable
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid.layers import unfold  # noqa: F401
 from ...tensor.manipulation import squeeze
 from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
@@ -31,8 +30,6 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 
 from ...fluid import dygraph_utils
-from ...fluid import layers
-from ...fluid.data_feeder import check_variable_and_dtype
 
 from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
@@ -42,6 +39,135 @@ from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.static import default_main_program
 
 __all__ = []
+
+
+def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
+    r"""
+
+    This op returns a col buffer of sliding local blocks of input x, also known
+    as im2col for batched 2D image tensors. For each block under the convolution filter,
+    all element will be rearranged as a column. While the convolution filter sliding over
+    the input feature map, a series of such columns will be formed.
+
+    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    can be calculated as following.
+
+    .. math::
+
+        dkernel[0] &= dilations[0] \times (kernel\_sizes[0] - 1) + 1
+
+        dkernel[1] &= dilations[1] \times (kernel\_sizes[1] - 1) + 1
+
+        hout &= \frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
+
+        wout &= \frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
+
+        Cout &= C \times kernel\_sizes[0] \times kernel\_sizes[1]
+
+        Lout &= hout \times wout
+
+
+    Parameters:
+        x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
+                                  data type can be float32 or float64
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        The tensor corresponding to the sliding local blocks.
+        The output shape is [N, Cout, Lout] as decriabled above.
+        Cout is the  total number of values within each block,
+        and Lout is the total number of such blocks.
+        The data type of output is the same as the input :math:`x`
+
+    Return Type:
+        Tensor
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.randn((100,3,224,224))
+            y = F.unfold(x, [3, 3], 1, 1, 1)
+    """
+
+    helper = LayerHelper("unfold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+
+    assert len(x.shape) == 4, \
+            "input should be the format of [N, C, H, W]"
+
+    if isinstance(kernel_sizes, int):
+        kernel_sizes = [kernel_sizes, kernel_sizes]
+    else:
+        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
+            "kernel_sizes should either be an integer or a list of two integers"
+
+    if isinstance(strides, int):
+        strides = [strides, strides]
+    else:
+        assert isinstance(strides, list) and (len(strides) == 2), \
+            "strides should either be an integer or a list of two integers"
+
+    if isinstance(dilations, int):
+        dilations = [dilations, dilations]
+    else:
+        assert isinstance(dilations, list) and (len(dilations) == 2), \
+            "dilations should either be an integer or a list of two integers"
+
+    if isinstance(paddings, int):
+        paddings = [paddings] * 4
+    elif isinstance(paddings, list):
+        if len(paddings) == 2:
+            paddings = paddings * 2
+        elif len(paddings) == 4:
+            pass
+        else:
+            raise ValueError(
+                "paddings should either be an integer or a list of 2 or 4 integers"
+            )
+    else:
+        raise ValueError(
+            "Unexpected type of paddings, it should be either an integer or a list"
+            "of 2 or 4 integers")
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="unfold",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs={
+            "kernel_sizes": kernel_sizes,
+            "strides": strides,
+            "paddings": paddings,
+            "dilations": dilations
+        })
+    return out
 
 
 def interpolate(x,
@@ -1295,7 +1421,23 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     if mode == "constant" and isinstance(pad, (
             list, tuple)) and len(pad) == x_dim * 2:
-        return layers.pad(x, pad, pad_value=value)
+        paddings = pad
+        pad_value = value
+        check_variable_and_dtype(x, 'x', [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+            'complex128'
+        ], "pad")
+
+        helper = LayerHelper('pad', **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pad',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'paddings': paddings,
+                   'pad_value': float(pad_value)})
+        return out
 
     assert x_dim in [
         3, 4, 5
@@ -1534,12 +1676,8 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _C_ops.final_state_matmul(x, weight, False, False)
-
-        if bias is None:
-            return pre_bias
-
-        return _C_ops.final_state_add(pre_bias, bias)
+        #TODO(jiabin): using addmm for fast forward route 
+        return _C_ops.final_state_linear(x, weight, bias)
     else:
         if _in_legacy_dygraph():
             pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
@@ -1637,14 +1775,14 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+
     if in_dygraph_mode():
         return _C_ops.final_state_label_smooth(label, prior_dist,
                                                float(epsilon))
 
-    if epsilon > 1. or epsilon < 0.:
-        raise ValueError("The value of epsilon must be between 0 and 1.")
-
-    if paddle.in_dynamic_mode():
+    elif paddle.in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],

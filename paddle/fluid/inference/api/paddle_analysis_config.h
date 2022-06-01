@@ -332,6 +332,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on CustomDevice.
+  ///
+  /// \param device_type device_type the custom device to use.
+  ///
+  /// \param device_id device_id the custom device to use (default is 0).
+  ///
+  void EnableCustomDevice(const std::string& device_type, int device_id);
+  ///
   /// \brief Turn on ONNXRuntime.
   ///
   void EnableONNXRuntime();
@@ -366,6 +374,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
+  /// \brief A boolean state telling whether the CustomDevice is turned on.
+  ///
+  /// \return bool Whether the CustomDevice is turned on.
+  ///
+  bool use_custom_device() const { return use_custom_device_; }
   ///
   /// \brief A boolean state telling whether the ONNXRuntime is turned on.
   ///
@@ -397,11 +410,22 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
-  /// \brief Get the the number of IPU device .
+  /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
   ///
   int ipu_device_num() const { return ipu_device_num_; }
+  ///
+  /// \brief Get the custom device id.
+  ///
+  /// \return int The custom device id.
+  ///
+  int custom_device_id() const { return custom_device_id_; }
+  /// \brief Get the custom device type.
+  ///
+  /// \return string The custom device type.
+  ///
+  std::string custom_device_type() const { return custom_device_type_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -888,13 +912,22 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_gpu_fp16_{false};
   std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion", "conv2d", "roll", "strided_slice"};
+      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
+      "unfold", "generate_proposals_v2", "nearest_interp_v2",
+      "bilinear_interp_v2"
+      "yolo_box",
+      "multiclass_nms3", "matrix_nms"};
 
   bool use_cudnn_{false};
 
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // CustomDevice related
+  bool use_custom_device_{false};
+  int custom_device_id_{0};
+  std::string custom_device_type_;
 
   // ONNXRuntime related
   bool use_onnxruntime_{false};

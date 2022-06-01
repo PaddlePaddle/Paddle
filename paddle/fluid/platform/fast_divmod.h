@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32
+#if defined(__xpu__)
+#define __forceinline__ __inline__
+#endif
 
 namespace paddle {
 namespace platform {

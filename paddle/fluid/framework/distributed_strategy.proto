@@ -120,6 +120,7 @@ message BuildStrategy {
   optional bool fix_op_run_order = 13 [ default = false ];
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
+  optional bool fuse_gemm_epilogue = 16 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -258,6 +259,7 @@ message CtrAccessorParameter {
       [ default = 0.8 ]; // threshold to shrink a feasign
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+  optional bool show_scale = 10 [ default = true ];
 }
 
 message TableAccessorSaveParameter {

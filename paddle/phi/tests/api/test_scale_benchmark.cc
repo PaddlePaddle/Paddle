@@ -30,7 +30,7 @@ namespace tests {
 
 TEST(API, scale) {
   auto x = experimental::full(
-      {3, 4}, 1.0, experimental::DataType::FLOAT32, experimental::CPUPlace());
+      {3, 4}, 1.0, experimental::DataType::FLOAT32, CPUPlace());
 
   const size_t cycles = 300;
   phi::tests::Timer timer;

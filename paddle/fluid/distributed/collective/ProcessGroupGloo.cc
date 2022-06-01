@@ -165,8 +165,9 @@ ProcessGroupGloo::GlooTask::GlooTask(
 
 ProcessGroupGloo::ProcessGroupGloo(
     const std::shared_ptr<distributed::Store>& store, int rank, int world_size,
-    int gid, const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, gid),
+    const platform::Place& place, int gid,
+    const std::shared_ptr<GlooOptions> options)
+    : ProcessGroup(rank, world_size, place, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);

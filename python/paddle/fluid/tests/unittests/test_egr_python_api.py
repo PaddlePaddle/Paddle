@@ -114,7 +114,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         egr_tensor = core.eager.Tensor()
         self.assertEqual(egr_tensor.persistable, False)
         self.assertTrue("generated" in egr_tensor.name)
-        self.assertEqual(egr_tensor.shape, [])
+        self.assertEqual(egr_tensor.shape, [0])
         self.assertEqual(egr_tensor.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(egr_tensor.stop_gradient, True)
 
@@ -278,6 +278,16 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 ValueError,
                 "The type of trainable MUST be bool, but the type is /*"):
             eager_param.trainable = "False"
+
+        eager_param_2 = EagerParamBase(
+            shape=paddle.shape(paddle.to_tensor([1, 2, 3, 4])), dtype="float32")
+        self.assertTrue(eager_param_2.trainable)
+        eager_param_2.trainable = False
+        self.assertFalse(eager_param_2.trainable)
+        with self.assertRaisesRegexp(
+                ValueError,
+                "The type of trainable MUST be bool, but the type is /*"):
+            eager_param_2.trainable = "False"
 
     def test_constructor(self):
         print("Test_constructor")

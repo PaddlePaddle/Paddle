@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"

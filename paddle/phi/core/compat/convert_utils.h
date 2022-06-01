@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "dnnl.hpp"
+#endif
+
 namespace phi {
 
 const std::string& TransToPhiKernelName(const std::string& fluid_op_name);
@@ -27,5 +31,10 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 
 Backend TransToPhiBackend(const phi::Place& place);
 phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
+
+#ifdef PADDLE_WITH_MKLDNN
+dnnl::memory::data_type TransToMKLDNNDataType(
+    const paddle::experimental::DataType& dtype);
+#endif
 
 }  // namespace phi

@@ -748,7 +748,7 @@ def find_heter_ops(program, default_device="cpu"):
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the uneccessary variable
+    union the forward op and corresponding gradient op to elimincate the unnecessary variable
     transmit
     """
     """

@@ -22,17 +22,17 @@ import os
 ### Global Variables ###
 ########################
 ops_to_fill_zero_for_empty_grads = set([
-    "split_grad",
-    "rnn_grad",
-    "matmul_double_grad",
-    "matmul_triple_grad",
-    "sigmoid_double_grad",
-    "sigmoid_triple_grad",
-    "add_double_grad",
-    "add_triple_grad",
-    "multiply_double_grad",
-    "multiply_triple_grad",
-    "conv2d_grad_grad",
+    "split_grad", "rnn_grad", "matmul_double_grad", "matmul_triple_grad",
+    "sigmoid_double_grad", "sigmoid_triple_grad", "add_double_grad",
+    "add_triple_grad", "multiply_grad", "multiply_double_grad",
+    "multiply_triple_grad", "conv2d_grad_grad", "batch_norm_double_grad",
+    "tanh_double_grad", "tanh_triple_grad", "subtract_double_grad",
+    "divide_double_grad", "log_double_grad", "elu_double_grad",
+    "leaky_relu_double_grad", "sqrt_double_grad", "rsqrt_double_grad",
+    "square_double_grad", "celu_double_grad", "pad_double_grad",
+    "pad3d_double_grad", "squeeze_double_grad", "unsqueeze_double_grad",
+    "instance_norm_double_grad", "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad"
 ])
 
 # For API dispatch used at python-level
@@ -45,7 +45,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
-    'Place' : 'paddle::experimental::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
@@ -68,22 +68,24 @@ def AssertMessage(lhs_str, rhs_str):
 
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
+    # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
-    return contents
+    return contents if contents is not None else []
 
 
 def ReadBwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
-    for content in contents:
-        assert 'backward_api' in content.keys(), AssertMessage('backward_api',
-                                                               content.keys())
-        if 'backward_api' in content.keys():
-            api_name = content['backward_api']
+    if contents is not None:
+        for content in contents:
+            assert 'backward_api' in content.keys(), AssertMessage(
+                'backward_api', content.keys())
+            if 'backward_api' in content.keys():
+                api_name = content['backward_api']
 
-        ret[api_name] = content
+            ret[api_name] = content
     f.close()
     return ret
 
@@ -175,7 +177,10 @@ def RecoverBaseNameOfInplaceFunction(function_name):
 
 
 def GetInplacedFunctionName(function_name):
-    return function_name + "_"
+    inplace_func_name = function_name
+    if inplace_func_name[-1] != '_':
+        inplace_func_name += '_'
+    return inplace_func_name
 
 
 def GetForwardFunctionName(string):
@@ -183,7 +188,7 @@ def GetForwardFunctionName(string):
 
 
 def GetIndent(num):
-    tab = "   "
+    tab = "  "
     return "".join([tab for i in range(num)])
 
 
@@ -212,6 +217,8 @@ def ParseYamlArgs(string):
 
         assert arg_type in yaml_types_mapping.keys(
         ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        if arg_type in ["DataType", "DataLayout"] and default_value is not None:
+            default_value = f"paddle::experimental::{default_value}"
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)
@@ -307,6 +314,23 @@ def ParseYamlBackward(args_str, returns_str):
     return inputs_list, attrs_list, returns_list
 
 
+def ParseYamlInplaceInfo(string):
+    # inplace_map_str: "(x -> out0), (y -> out2)"
+    inplace_map = {}
+    for pair in string.split(","):
+        pair = pair.strip()
+        if pair.startswith("("):
+            pair = pair[1:]
+
+        if pair.endswith(")"):
+            pair = pair[:-1]
+
+        key = pair.split("->")[0].strip()
+        val = pair.split("->")[1].strip()
+        inplace_map[key] = val
+    return inplace_map
+
+
 ########################
 ###  Generator Base  ###
 ########################
@@ -334,25 +358,14 @@ class FunctionGeneratorBase:
         self.optional_inputs = []  #[name, ...]
         self.no_need_buffers = []  #[name, ...]
         self.intermediate_outputs = []  #[name, ...]    
-        self.inplace_map = {}  #{name : name, ...}
+        self.forward_inplace_map = {}  #{name : name, ...}
 
-    def ParseInplaceInfo(self):
+    def ParseForwardInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
         if 'inplace' not in forward_api_contents.keys(): return
 
-        # inplace_map_str: "(x -> out0), (y -> out2)"
         inplace_map_str = forward_api_contents['inplace']
-        for pair in inplace_map_str.split(","):
-            pair = pair.strip()
-            if pair.startswith("("):
-                pair = pair[1:]
-
-            if pair.endswith(")"):
-                pair = pair[:-1]
-
-            key = pair.split("->")[0].strip()
-            val = pair.split("->")[1].strip()
-            self.inplace_map[key] = val
+        self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
@@ -421,13 +434,9 @@ class FunctionGeneratorBase:
 
             self.forward_outputs_position_map[
                 return_name] = [return_type, return_pos]
-        print("Generated Forward Input Position Map: ",
-              self.forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              self.forward_outputs_position_map)
 
 
-class YamlGeneratorBase:
+class GeneratorBase:
     def __init__(self, api_yaml_path):
         self.namespace = ""
         self.api_yaml_path = api_yaml_path
@@ -440,7 +449,7 @@ class YamlGeneratorBase:
 
     def InferNameSpace(self):
         api_yaml_path = self.api_yaml_path
-        if "sparse" in api_yaml_path:
+        if re.search(r"sparse[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "sparse::"
-        elif "strings" in api_yaml_path:
+        elif re.search(r"strings[a-zA-Z0-9_]*\.yaml", api_yaml_path):
             self.namespace = "strings::"

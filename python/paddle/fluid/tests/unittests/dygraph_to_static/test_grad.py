@@ -17,6 +17,8 @@ from __future__ import print_function
 import numpy as np
 import paddle
 import unittest
+import os
+import tempfile
 
 
 class GradLayer(paddle.nn.Layer):
@@ -88,8 +90,15 @@ class TestGradLinear(TestGrad):
         self.func = GradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
-        self.infer_model_path = "double_grad_infer_model"
-        self.train_model_path = "double_grad_train_model"
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'double_grad_train_model')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_save_infer_program(self):
         input_spec = [
@@ -113,7 +122,7 @@ class TestGradLinear(TestGrad):
             avg_loss = paddle.mean(paddle.abs(out - 1))
             avg_loss.backward()
             optimizer.minimize(avg_loss)
-            print(self.x.grad.mean())
+
             self.func.clear_gradients()
 
         paddle.jit.save(self.func, self.train_model_path)
@@ -129,8 +138,15 @@ class TestNoGradLinear(TestGradLinear):
         self.func = NoGradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
-        self.infer_model_path = "no_grad_infer_model"
-        self.train_model_path = "no_grad_train_model"
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.infer_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_infer_model')
+        self.train_model_path = os.path.join(self.temp_dir.name,
+                                             'no_grad_train_model')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
 
 if __name__ == '__main__':

@@ -17,6 +17,11 @@
 namespace phi {
 
 KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  const auto& shape = paddle::any_cast<std::vector<int>>(ctx.Attr("shape"));
+  // Infer output shape by Attr("shape") in CompileTime if it is specified.
+  if (!ctx.IsRuntime() && !shape.empty()) {
+    return KernelSignature("expand", {"X"}, {"shape"}, {"Out"});
+  }
   if (ctx.HasInput("Shape")) {
     return KernelSignature("expand", {"X"}, {"Shape"}, {"Out"});
   } else if (ctx.InputSize("expand_shapes_tensor") > 0) {
@@ -27,6 +32,12 @@ KernelSignature ExpandOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature ExpandGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  const auto& shape = paddle::any_cast<std::vector<int>>(ctx.Attr("shape"));
+  // Infer output shape by Attr("shape") in CompileTime if it is specified.
+  if (!ctx.IsRuntime() && !shape.empty()) {
+    return KernelSignature(
+        "expand_grad", {"X", "Out@GRAD"}, {"shape"}, {"X@GRAD"});
+  }
   if (ctx.HasInput("Shape")) {
     return KernelSignature(
         "expand_grad", {"X", "Out@GRAD"}, {"Shape"}, {"X@GRAD"});
