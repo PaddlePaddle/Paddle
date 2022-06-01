@@ -126,6 +126,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_residual_bias",
       "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "preln_skip_layernorm",
   };
@@ -198,6 +201,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "preln_residual_bias",
       "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
       "roll",
       "multiclass_nms3",
   };

@@ -94,16 +94,7 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
     VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp16";
     sendbuff = const_cast<void*>(inputs[0]);
   }
-
   ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
-  cudaStream_t custream = nullptr;
-  if (use_calc_stream_) {
-    custream = stream;
-  } else {
-    custream = comm->stream();
-  }
-
   ncclRedOp_t nccl_red_type = ncclSum;
   switch (red_type_) {
     case kRedSum:
@@ -126,13 +117,15 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
-  VLOG(3) << "ncclAllReduce, numel: " << numel;
+  if (for_test_) {
+    VLOG(4) << "skip communication for unittest.";
+    return 0;
+  }
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
+  cudaStream_t custream = use_calc_stream_ ? stream : custream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-
-  bool ret = (cudaGetLastError() != cudaSuccess);
-  VLOG(3) << "ncclAllReduce: " << ret;
-  return ret;
+  return (cudaGetLastError() != cudaSuccess);
 }
 
 // Dynamic Plugin below.
@@ -207,14 +200,6 @@ int CAllReducePluginDynamic::enqueue(
   void* sendbuff = const_cast<void*>(inputs[0]);
   void* recvbuff = outputs[0];
   ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
-  cudaStream_t custream = nullptr;
-  if (use_calc_stream_) {
-    custream = stream;
-  } else {
-    custream = comm->stream();
-  }
-
   ncclRedOp_t nccl_red_type = ncclSum;
   switch (red_type_) {
     case kRedSum:
@@ -237,10 +222,16 @@ int CAllReducePluginDynamic::enqueue(
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
+
+  if (for_test_) {
+    VLOG(4) << "skip communication for unittest.";
+    return 0;
+  }
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
+  cudaStream_t custream = use_calc_stream_ ? stream : comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-  bool ret = (cudaGetLastError() != cudaSuccess);
-  return ret;
+  return (cudaGetLastError() != cudaSuccess);
 }
 
 }  // namespace plugin

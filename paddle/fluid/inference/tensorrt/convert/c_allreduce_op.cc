@@ -15,36 +15,26 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 
+PADDLE_DEFINE_EXPORTED_bool(test_allreduce_plugin, false,
+                            "test for allreduce plugin");
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+using ReduceType = paddle::inference::tensorrt::plugin::ReduceType;
+std::map<std::string, ReduceType> op_to_reduce_type = {
+    {"c_allreduce_sum", paddle::inference::tensorrt::plugin::kRedSum},
+    {"c_allreduce_max", paddle::inference::tensorrt::plugin::kRedMax},
+    {"c_allreduce_min", paddle::inference::tensorrt::plugin::kRedMin},
+    {"c_allreduce_prod", paddle::inference::tensorrt::plugin::kRedProd}};
 
 class CAllReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
-    paddle::inference::tensorrt::plugin::RedType red_type;
+    ReduceType red_type = op_to_reduce_type[op.type()];
     std::string name = "c_allreduce_sum";
-    switch (op.type()) {
-      case "c_allreduce_sum":
-        red_type = paddle::inference::tensorrt::plugin::kRedSum : break;
-
-      case "c_allreduce_max":
-        red_type = paddle::inference::tensorrt::plugin::kRedMax
-            : name = "c_allreduce_max";
-        break;
-
-      case "c_allreduce_min":
-        red_type = paddle::inference::tensorrt::plugin::kRedMin : break;
-
-      case "c_allreduce_prod":
-        red_type = paddle::inference::tensorrt::plugin::kRedProd : break;
-
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", RedType));
-    }
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -68,6 +58,8 @@ class CAllReduceOpConverter : public OpConverter {
     bool use_calc_stream =
         BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
+    bool for_test = FLAGS_test_allreduce_plugin;
+
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
@@ -80,7 +72,7 @@ class CAllReduceOpConverter : public OpConverter {
 
       plugin::CAllReducePluginDynamic* plugin =
           new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream,
-                                              red_type, with_fp16);
+                                              red_type, with_fp16, for_test);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
@@ -91,7 +83,7 @@ class CAllReduceOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::CAllReducePlugin* plugin = new plugin::CAllReducePlugin(
-          ring_id, use_calc_stream, red_type, with_fp16);
+          ring_id, use_calc_stream, red_type, with_fp16, for_test);
       layer = engine_->AddPlugin(&input, input_num, plugin);
     }
 

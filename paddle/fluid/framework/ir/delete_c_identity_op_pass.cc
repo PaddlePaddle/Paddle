@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/ir/delete_c_identity_op_pass.h"
 #include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -102,9 +103,23 @@ void DeleteCIdentityOpPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 }
 
+DeleteCIdentityOpPass::DeleteCIdentityOpPass() {
+  AddOpCompat(OpCompat("c_identity"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(delete_c_identity_op_pass,
               paddle::framework::ir::DeleteCIdentityOpPass);
+REGISTER_PASS_CAPABILITY(delete_c_identity_op_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "c_identity", 1));

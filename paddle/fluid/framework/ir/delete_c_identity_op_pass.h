@@ -40,6 +40,7 @@ class Graph;
 
 class DeleteCIdentityOpPass : public FusePassBase {
  public:
+  DeleteCIdentityOpPass();
   virtual ~DeleteCIdentityOpPass() {}
 
  protected:
