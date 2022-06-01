@@ -38,12 +38,6 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 #define LN_NUM_COLS 1024
 
-#ifdef PADDLE_WITH_HIP
-#define GPU_WARP_SIZE 64
-#else
-#define GPU_WARP_SIZE 32
-#endif
-
 inline static int GetDesiredBlockDim(int64_t block_dim) {
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;
@@ -362,111 +356,6 @@ __global__ void LayerNormForward(
            i += BlockDim, j += BlockDim) {
         y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar);
       }
-    }
-  }
-}
-
-inline __device__ void WelfordFunction(float val, float *mean, float *m2,
-                                       float *count) {
-  *count += 1;
-  float delta1 = val - *mean;
-  *mean += delta1 / (*count);
-  float delta2 = val - *mean;
-  *m2 += delta1 * delta2;
-}
-
-inline __device__ void WelfordFunction(float b_mean, float b_m2, float b_count,
-                                       float *mean, float *m2, float *count) {
-  if (b_count == 0) {
-    return;
-  }
-  float new_count = *count + b_count;
-  float nb_n = b_count / new_count;
-  float delta = b_mean - *mean;
-  *mean += delta * nb_n;
-  *m2 += b_m2 + delta * delta * (*count) * nb_n;
-  *count = new_count;
-}
-
-__inline__ __device__ void WelfordWarpReduce(float thread_mean, float thread_m2,
-                                             float thread_count, float *mean,
-                                             float *m2, float *count) {
-  *mean = thread_mean;
-  *m2 = thread_m2;
-  *count = thread_count;
-  for (int mask = 1; mask < 32; mask *= 2) {
-    float b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
-    float b_m2 = __shfl_down_sync(0xffffffff, *m2, mask);
-    float b_count = __shfl_down_sync(0xffffffff, *count, mask);
-    WelfordFunction(b_mean, b_m2, b_count, mean, m2, count);
-  }
-  *mean = __shfl_sync(0xffffffff, *mean, 0, 32);
-  *m2 = __shfl_sync(0xffffffff, *m2, 0, 32);
-  *count = __shfl_sync(0xffffffff, *count, 0, 32);
-}
-
-template <typename T, typename U, bool SameWithType = false>
-__global__ void LayernormWelfordKernel(
-    const T *__restrict__ input, T *output,
-    const LayerNormScaleBiasT<T, U, SameWithType> *gamma,
-    const LayerNormScaleBiasT<T, U, SameWithType> *beta, U *mean, U *invvar,
-    int rows_per_block, int rows, int cols, const float epsilon) {
-  int threadidx_x = threadIdx.x / GPU_WARP_SIZE;
-  int threadidx_y = threadIdx.x % GPU_WARP_SIZE;
-  int row_offset = blockIdx.x * rows_per_block + threadidx_x;
-  int cols_per_thread = (cols + (GPU_WARP_SIZE - 1)) / GPU_WARP_SIZE;
-  int cols_this_thread = cols_per_thread;
-  int last_y = (cols / cols_per_thread);
-
-  if (threadidx_y == last_y) {
-    cols_this_thread = cols - cols_per_thread * last_y;
-  } else if (threadidx_y > last_y) {
-    cols_this_thread = 0;
-  }
-  int lane_id = threadidx_y;
-
-  if (row_offset < rows) {
-    float buf[GPU_WARP_SIZE];
-    float thread_mean = 0.f;
-    float thread_m2 = 0.f;
-    float thread_count = 0.f;
-    float warp_mean;
-    float warp_m2;
-    float warp_count;
-    const T *row_input = input + row_offset * cols;
-    T *row_output = output + row_offset * cols;
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; i++) {
-      buf[i] = static_cast<float>(row_input[lane_id * cols_per_thread + i]);
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; i++) {
-      WelfordFunction(buf[i], &thread_mean, &thread_m2, &thread_count);
-    }
-    WelfordWarpReduce(thread_mean, thread_m2, thread_count, &warp_mean,
-                      &warp_m2, &warp_count);
-
-    float row_mean = warp_mean;
-    float row_variance = max(warp_m2 / warp_count, 0.f);
-    float row_inv_var = rsqrt(row_variance + epsilon);
-
-    if (lane_id == 0) {
-      mean[row_offset] = static_cast<U>(row_mean);
-      invvar[row_offset] = static_cast<U>(row_inv_var);
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      buf[i] = (buf[i] - row_mean) * row_inv_var;
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      row_output[lane_id * cols_per_thread + i] = static_cast<T>(
-          buf[i] * static_cast<U>(gamma[lane_id * cols_per_thread + i]) +
-          static_cast<U>(beta[lane_id * cols_per_thread + i]));
     }
   }
 }

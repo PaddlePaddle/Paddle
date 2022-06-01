@@ -83,7 +83,7 @@ class AutoTuneBase {
     // Time cost test estabulished in default stream.
     for (int64_t i = 0; i < kernels_.size(); ++i) {
       auto time = KernelCompare<Context>(i, ctx, loops, args...);
-      VLOG(3) << "kernel[" << i << "] time cost is " << time / repeats;
+      VLOG(3) << "kernel[" << i << "] time cost is " << time / loops;
 
       if (time < min_time) {
         min_time = time;
