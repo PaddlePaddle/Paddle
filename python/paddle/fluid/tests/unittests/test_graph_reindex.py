@@ -87,6 +87,7 @@ class TestGraphReindex(unittest.TestCase):
         self.assertTrue(np.allclose(self.out_nodes, out_nodes))
 
     def test_heter_reindex_result_v2(self):
+        paddle.disable_static()
         x = np.arange(5).astype("int64")
         neighbors1 = np.random.randint(100, size=20).astype("int64")
         count1 = np.array([2, 8, 4, 3, 3], dtype="int32")
