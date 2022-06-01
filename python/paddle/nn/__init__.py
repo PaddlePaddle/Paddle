@@ -51,6 +51,7 @@ from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
+from .layer.activation import RReLU  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
 from .layer.common import ZeroPad2D  # noqa: F401
@@ -314,5 +315,6 @@ __all__ = [     #noqa
            'MaxUnPool3D',
            'HingeEmbeddingLoss',
            'Identity',
+           'RReLU',
            'MultiLabelSoftMarginLoss',
 ]

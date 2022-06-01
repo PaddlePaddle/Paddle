@@ -197,20 +197,24 @@ void EinsumGradKernel(const Context& dev_ctx,
     // release the cache tensor dTC to save memory right now. they are useless
     // now.
     cache.clear();
-    *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
-                                                       labeltype,
-                                                       labelshape,
-                                                       broadcast_dims,
-                                                       ellipsis_dims[0],
-                                                       ops[0],
-                                                       dA);
-    *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
-                                                       labeltype,
-                                                       labelshape,
-                                                       broadcast_dims,
-                                                       ellipsis_dims[1],
-                                                       ops[1],
-                                                       dB);
+    if (x_grad[0]) {
+      *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
+                                                         labeltype,
+                                                         labelshape,
+                                                         broadcast_dims,
+                                                         ellipsis_dims[0],
+                                                         ops[0],
+                                                         dA);
+    }
+    if (x_grad[1]) {
+      *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
+                                                         labeltype,
+                                                         labelshape,
+                                                         broadcast_dims,
+                                                         ellipsis_dims[1],
+                                                         ops[1],
+                                                         dB);
+    }
   }
 }
 }  // namespace phi

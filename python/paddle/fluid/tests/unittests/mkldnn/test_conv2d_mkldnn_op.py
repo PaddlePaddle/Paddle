@@ -61,7 +61,6 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.fuse_activation = ""
         self.fuse_alpha = 0
         self.fuse_beta = 0
-        self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
 
@@ -99,7 +98,6 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.attrs['fuse_activation'] = self.fuse_activation
         self.attrs['fuse_alpha'] = self.fuse_alpha
         self.attrs['fuse_beta'] = self.fuse_beta
-        self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output

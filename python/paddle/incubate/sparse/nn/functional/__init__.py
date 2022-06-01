@@ -12,21 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .creation import sparse_coo_tensor
-from .creation import sparse_csr_tensor
-from .layer import ReLU
-from .layer import BatchNorm
-
-from .layer import Conv3D
-from .layer import SubmConv3D
-
-from .layer import MaxPool3D
-
-from .functional import sqrt
-from .functional import sin
-from .functional import tanh
+from .conv import conv3d  # noqa: F401
+from .conv import subm_conv3d  # noqa: F401
+from .pooling import max_pool3d  # noqa: F401
+from .activation import relu  # noqa: F401
 
 __all__ = [
-    'sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU', 'Conv3D', 'SubmConv3D',
-    'BatchNorm', 'MaxPool3D', 'sqrt', 'sin', 'tanh'
+    'conv3d',
+    'subm_conv3d',
+    'max_pool3d',
+    'relu',
 ]

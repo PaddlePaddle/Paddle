@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .unary import ReLU
-from .norm import BatchNorm
-from .conv import Conv3D
-from .conv import SubmConv3D
-from .pooling import MaxPool3D
+from . import functional
 
-__all__ = []
+from .layer.activation import ReLU
+from .layer.norm import BatchNorm
+from .layer.conv import Conv3D
+from .layer.conv import SubmConv3D
+from .layer.pooling import MaxPool3D
+
+__all__ = [
+    'ReLU',
+    'BatchNorm',
+    'Conv3D',
+    'SubmConv3D',
+    'MaxPool3D',
+]

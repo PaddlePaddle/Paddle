@@ -15,9 +15,9 @@
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
-from ...fluid.layers.utils import convert_to_list
-from ...fluid.layers.nn import elementwise_add
-from .. import sparse_coo_tensor
+from paddle.fluid.layers.utils import convert_to_list
+from paddle.fluid.layers.nn import elementwise_add
+from ...creation import sparse_coo_tensor
 from paddle.nn.functional.conv import _update_padding_nd
 
 
@@ -180,9 +180,9 @@ def conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.sparse.functional.conv3d(sparse_x, weight)
+              y = paddle.incubate.sparse.nn.functional.conv3d(sparse_x, weight)
               print(y.shape)
               # (1, 1, 1, 2, 1)
     """
@@ -295,9 +295,9 @@ def subm_conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
+              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.sparse.functional.subm_conv3d(sparse_x, weight)
+              y = paddle.incubate.sparse.nn.functional.subm_conv3d(sparse_x, weight)
               print(y.shape)
               #(1, 1, 3, 4, 1)
     """

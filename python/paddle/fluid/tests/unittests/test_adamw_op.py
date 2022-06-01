@@ -271,6 +271,115 @@ class TestAdamWOpGroup(TestAdamWOp):
             adam.clear_gradients()
 
 
+class TestAdamWOpMultiPrecison(unittest.TestCase):
+    def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+
+        input = paddle.randn((5, 5))
+
+        model = paddle.nn.Linear(5, 5)
+
+        optimizer = paddle.optimizer.AdamW(
+            parameters=[{
+                'params': model.parameters(),
+                'weight_decay': 0.001,
+                'beta1': 0.1,
+                'beta2': 0.99
+            }],
+            multi_precision=use_amp)
+
+        for idx in range(2):
+            if place == 'gpu' and use_amp == True:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'gpu' and use_amp == True:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+
+    def _get_places(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._test_adamw_op_dygraph_place_amp(place, use_amp)
+
+
+class TestAdamWOpError(unittest.TestCase):
+    def test_api_errors(self):
+        def test_weight_decay_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+                weight_decay=1)
+
+        def test_parameters_dtype1():
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=paddle.randn((5, 5)),
+                weight_decay=0.1)
+
+        def test_parameters_dtype2():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters={'params': linear.parameters()},
+                weight_decay=0.1)
+
+        def test_parameters_dtype3():
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01, parameters=None, weight_decay=0.1)
+
+        def test_parameters_dtype4():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters={'params': set(linear.parameters())},
+                weight_decay=0.1)
+
+        def test_learning_rate_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=1,
+                parameters=linear.parameters(),
+                weight_decay=0.1)
+
+        def test_grad_clip_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+                weight_decay=0.1,
+                grad_clip=0.1)
+
+        self.assertRaises(TypeError, test_weight_decay_dtype)
+        self.assertRaises(TypeError, test_parameters_dtype1)
+        self.assertRaises(TypeError, test_parameters_dtype2)
+        self.assertRaises(AttributeError, test_parameters_dtype3)
+        self.assertRaises(TypeError, test_parameters_dtype4)
+        self.assertRaises(TypeError, test_learning_rate_dtype)
+        self.assertRaises(TypeError, test_grad_clip_dtype)
+
+
 class TestAdamWOpGroupWithLR(TestAdamWOp):
     def test_adamw_op_dygraph(self):
         paddle.disable_static()

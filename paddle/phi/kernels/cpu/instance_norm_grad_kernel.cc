@@ -42,10 +42,10 @@ using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& d_y,
                             const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
+                            const DenseTensor& d_y,
                             float epsilon,
                             DenseTensor* d_x,
                             DenseTensor* d_scale,
