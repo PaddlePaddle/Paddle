@@ -2381,24 +2381,24 @@ void GraphSendERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  std::vector<int> x_dims1 = phi::vectorize(x_dims);
-  std::vector<int> e_dims1 = phi::vectorize(e_dims);
+  auto x_dims1 = phi::vectorize<int>(x_dims);
+  auto e_dims1 = phi::vectorize<int>(e_dims);
   std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
   std::vector<int> e_dims2(e_dims1.begin() + 1, e_dims1.end());
 
   int max_dim = std::max(x_dims2.size(), e_dims2.size());
-  int axis = std::abs(x_dims2.size() - e_dims2.size());
+  int axis = std::abs((int)(x_dims2.size() - e_dims2.size()));
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> e_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
-  GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
-                         phi::make_ddim(e_dims2),
-                         x_dims_array.data(),
-                         e_dims_array.data(),
-                         out_dims_array.data(),
-                         max_dim,
-                         axis);
+  phi::funcs::GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
+                                     phi::make_ddim(e_dims2),
+                                     x_dims_array.data(),
+                                     e_dims_array.data(),
+                                     out_dims_array.data(),
+                                     max_dim,
+                                     axis);
   if (out_size <= 0) {
     out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
   } else {

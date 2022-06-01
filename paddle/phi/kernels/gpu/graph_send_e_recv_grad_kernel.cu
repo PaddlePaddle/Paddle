@@ -15,11 +15,12 @@
 #include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/graph_send_e_recv_funcs.h"
+#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace phi {
 
@@ -41,7 +42,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
                               T* e_grad,
                               const DenseTensor* out = nullptr) {
   const T* out_data = out->data<T>();
-  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
@@ -121,7 +122,7 @@ void CalculateXGrad(const Context& ctx,
   int64_t n = slice_size * index_size;
   int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
-  int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dim;
+  int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
       GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
@@ -132,7 +133,7 @@ void CalculateXGrad(const Context& ctx,
                                   IndexT>><<<grid, block, 0, ctx.stream()>>>(
           out_grad, d_index, s_index, x_grad, index_size, slice_size, functor);
     } else if (compute_type == "MUL") {
-      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
@@ -144,12 +145,13 @@ void CalculateXGrad(const Context& ctx,
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
-      MultiplyFunctor<T> mul_functor;
+      funcs::MultiplyFunctor<T> mul_functor;
+      GraphSendERecvSumCUDAFunctor<T> sum_functor;
       GraphSendERecvCUDAKernel<
           T,
           IndexT,
           GraphSendERecvSumCUDAFunctor<T>,
-          MultiplyFunctor<T>><<<grid_, block_, 0, ctx.stream()>>>(
+          funcs::MultiplyFunctor<T>><<<grid_, block_, 0, ctx.stream()>>>(
           out_grad,
           e_data,
           d_index,
@@ -171,7 +173,7 @@ void CalculateXGrad(const Context& ctx,
       ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
           out_grad, d_index, s_index, x_grad, index_size, slice_size, s_count);
     } else if (compute_type == "MUL") {
-      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
@@ -219,7 +221,7 @@ void CalculateEGrad(const Context& ctx,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
-  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
@@ -230,7 +232,7 @@ void CalculateEGrad(const Context& ctx,
   const int nbx = (out_len + ntx - 1) / ntx;
   const int nby = (index_size + nty - 1) / nty;
   const dim3 grid(nbx, nby);
-  const dim3 block_(ntx, nty);
+  const dim3 block(ntx, nty);
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
       ManipulateSumGradCUDAKernelForAddE<
@@ -375,7 +377,6 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                        compute_type,
                                        pool_type,
                                        index_size,
-                                       slice_size,
                                        e_grad_data,
                                        dst_count,
                                        out);

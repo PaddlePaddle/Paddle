@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/phi/kernels/graph_send_e_recv_kernel.h"
+#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -46,7 +47,7 @@ void CopyBCastOff(const BroadCastInfo& bcast_info,
 inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
   PADDLE_ENFORCE_GE(dim,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Required dim >= 0, but received dim = %d", dim));
   if (dim == 0) return 1;
   int res = max_num_threads;
@@ -72,7 +73,7 @@ struct GraphSendERecvMaxCUDAFunctor {
 
 template <typename T>
 struct GraphSendERecvMinCUDAFunctor {
-  DEVICE inline void operator()(T* output, val) {
+  DEVICE inline void operator()(T* output, T val) {
     paddle::platform::CudaAtomicMin(output, val);
   }
 };
@@ -254,6 +255,7 @@ __global__ void ManipulateMeanGradCUDAKernelForAddE(const T* out_grad_data,
 }
 
 // e_grad: backward mean for mul.
+template <typename T, typename IndexT>
 __global__ void ManipulateMeanGradCUDAKernelForMulE(const T* x_data,
                                                     const T* out_grad_data,
                                                     const IndexT* src_indices,
