@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/replace_dense_with_sparse_pass.h"
+#include "paddle/fluid/framework/ir/replace_dense_fc_with_sparse_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ReplaceDenseWithSparsePass::ReplaceDenseWithSparsePass() {
+ReplaceDenseFCWithSparsePass::ReplaceDenseFCWithSparsePass() {
   AddOpCompat(OpCompat("fc"))
       .AddInput("Input")
       .IsTensor()
@@ -36,16 +36,16 @@ ReplaceDenseWithSparsePass::ReplaceDenseWithSparsePass() {
       .End();
 }
 
-void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
+void ReplaceDenseFCWithSparsePass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
-  std::string name_scope = "replace_dense_with_sparse_pass";
+  std::string name_scope = "replace_dense_fc_with_sparse_pass";
   FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
 
   patterns::DenseFC dense_fc_pattern(gpd.mutable_pattern(),
-                                     "dense_replace_pass");
+                                     "dense_fc_replace_pass");
   dense_fc_pattern();
   int found_dense_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -115,5 +115,5 @@ void ReplaceDenseWithSparsePass::ApplyImpl(Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(replace_dense_with_sparse_pass,
-              paddle::framework::ir::ReplaceDenseWithSparsePass);
+REGISTER_PASS(replace_dense_fc_with_sparse_pass,
+              paddle::framework::ir::ReplaceDenseFCWithSparsePass);

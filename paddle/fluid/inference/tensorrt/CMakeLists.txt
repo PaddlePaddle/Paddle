@@ -6,6 +6,6 @@ nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPE
 endif()
 nv_library(tensorrt_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost)
 nv_test(test_tensorrt SRCS test_tensorrt.cc DEPS dynload_cuda device_context dynamic_loader)
-nv_test(test_tensorrt_engine SRCS test_engine.cc test_dynamic_engine DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+nv_test(test_tensorrt_engine SRCS test_engine.cc test_dynamic_engine.cc DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
 add_subdirectory(plugin)
 add_subdirectory(convert)

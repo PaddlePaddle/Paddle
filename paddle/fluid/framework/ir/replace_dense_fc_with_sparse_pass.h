@@ -30,14 +30,14 @@ namespace ir {
  */
 class Graph;
 
-class ReplaceDenseWithSparsePass : public FusePassBase {
+class ReplaceDenseFCWithSparsePass : public FusePassBase {
  public:
-  ReplaceDenseWithSparsePass();
+  ReplaceDenseFCWithSparsePass();
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  const std::string name_scope_{"replace_dense_with_sparse_pass"};
+  const std::string name_scope_{"replace_dense_fc_with_sparse_pass"};
 };
 
 }  // namespace ir
