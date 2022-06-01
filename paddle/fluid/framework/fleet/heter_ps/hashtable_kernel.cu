@@ -50,7 +50,8 @@ __global__ void insert_kernel(Table* table,
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
-                              size_t len, char* pool, int start_index) {
+                              size_t len, char* pool, size_t feature_value_size,
+                              int start_index) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
 
@@ -58,7 +59,8 @@ __global__ void insert_kernel(Table* table,
 
   if (i < len) {
     kv.first = keys[i];
-    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
+    uint64_t offset = uint64_t(start_index + i) * feature_value_size;
+    kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -81,14 +83,29 @@ __global__ void search_kernel(Table* table,
 template <typename Table>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
-                                    char* const vals, size_t len,
+                                    char* vals, size_t len,
                                     size_t pull_feature_value_size) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  // return;
   if (i < len) {
     auto it = table->find(keys[i]);
 
     if (it != table->end()) {
-      *(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
+      uint64_t offset = i * pull_feature_value_size;
+      FeatureValue* cur = (FeatureValue*)(vals + offset);
+      FeatureValue& input = *(FeatureValue*)(it->second);
+      cur->slot = input.slot;
+      cur->show = input.show;
+      cur->clk = input.clk;
+      cur->mf_dim = input.mf_dim;
+      cur->lr = input.lr;
+      cur->mf_size = input.mf_size;
+      cur->cpu_ptr = input.cpu_ptr;
+      cur->delta_score = input.delta_score;
+      cur->lr_g2sum = input.lr_g2sum;
+      for (int j = 0; j < cur->mf_dim + 1; ++j) {
+        cur->mf[j] = input.mf[j];
+      }
     }
   }
 }
@@ -121,7 +138,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
-      printf("yxf::push miss key: %d", keys[i]);
+      printf("warning: push miss key: %d", keys[i]);
     }
   }
 }
@@ -201,7 +218,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         char* pool, size_t start_index,
+                                         char* pool, size_t feature_value_size,
+                                         size_t start_index,
                                          StreamType stream) {
   if (len == 0) {
     return;
@@ -210,8 +228,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
-                                                       pool, start_index);
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, len, pool, feature_value_size, start_index);
 }
 
 template <typename KeyType, typename ValType>
@@ -319,10 +337,12 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
 }
 
 template class HashTable<unsigned long, paddle::framework::FeatureValue>;
+template class HashTable<unsigned long, paddle::framework::FeatureValue*>;
 template class HashTable<long, int>;
 template class HashTable<unsigned long, int>;
 template class HashTable<unsigned long, unsigned long>;
 template class HashTable<unsigned long, long>;
+template class HashTable<unsigned long, long*>;
 template class HashTable<long, long>;
 template class HashTable<long, unsigned long>;
 template class HashTable<long, unsigned int>;
@@ -331,6 +351,10 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
     cudaStream_t>(const unsigned long* d_keys,
                   paddle::framework::FeatureValue* d_vals, size_t len,
                   cudaStream_t stream);
+
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue*>::get<cudaStream_t>(
+    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t stream);
 
 template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys,
                                                       int* d_vals, size_t len,
@@ -357,6 +381,11 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::insert<
                   const paddle::framework::FeatureValue* d_vals, size_t len,
                   cudaStream_t stream);
 
+template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
+    insert<cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
+                         size_t feature_value_size, size_t start_index,
+                         cudaStream_t stream);
+
 template void HashTable<long, int>::insert<cudaStream_t>(const long* d_keys,
                                                          const int* d_vals,
                                                          size_t len,
@@ -382,11 +411,6 @@ template void HashTable<long, unsigned int>::insert<cudaStream_t>(
     const long* d_keys, const unsigned int* d_vals, size_t len,
     cudaStream_t stream);
 
-// template void HashTable<unsigned long,
-// paddle::framework::FeatureValue>::insert<
-//    cudaStream_t>(const unsigned long* d_keys, size_t len, char* pool,
-//                  size_t start_index, cudaStream_t stream);
-
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::
     dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
 
@@ -399,6 +423,16 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
                   size_t len, Optimizer<paddle::framework::FeatureValue,
                                         paddle::framework::FeaturePushValue>
                                   sgd,
+                  cudaStream_t stream);
+
+template void
+HashTable<unsigned long, paddle::framework::FeatureValue*>::update<
+    Optimizer<paddle::framework::FeatureValue,
+              paddle::framework::FeaturePushValue>,
+    cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+                  Optimizer<paddle::framework::FeatureValue,
+                            paddle::framework::FeaturePushValue>
+                      sgd,
                   cudaStream_t stream);
 
 // template void HashTable<unsigned long,

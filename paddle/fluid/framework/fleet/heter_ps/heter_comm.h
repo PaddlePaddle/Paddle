@@ -15,10 +15,13 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
+#include "cub/cub.cuh"
+#include "cub/util_allocator.cuh"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/timer.h"
 #include "thrust/pair.h"
 #elif defined(PADDLE_WITH_XPU_KP)
 // #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
@@ -38,6 +41,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
+
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
  public:
@@ -50,9 +56,13 @@ class HeterComm {
                             int* left, int* right, int gpu_num);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
                   int& uniq_len);  // NOLINT
+  void dynamic_merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads,
+                          size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
   void build_ps(int num, KeyType* h_keys, ValType* h_vals, size_t len,
                 size_t chunk_size, int stream_num, int offset = -1);
+  void build_ps(int num, KeyType* h_keys, char* pool, size_t len,
+                size_t feature_value_size, size_t chunk_size, int stream_num);
   void dump();
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
@@ -96,6 +106,11 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
+
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    multi_mf_dim_ = multi_mf_dim;
+    max_mf_dim_ = max_mf_dim;
+  }
 #endif
 
   bool need_transfer(int send_id, int receive_id) {
@@ -114,8 +129,8 @@ class HeterComm {
     char* key_storage;
     char* val_storage;
     int sync;
-    int key_bytes_len;
-    int val_bytes_len;
+    size_t key_bytes_len;
+    size_t val_bytes_len;
     int dev_num;
   };
 
@@ -206,12 +221,18 @@ class HeterComm {
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
                     KeyType* src_key, GradType* src_val);
+  void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
+                    KeyType* src_key, char* src_val, size_t val_size);
   void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
                    ValType* src_val);
+  void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
+                   char* src_val, size_t val_size);
 
  protected:
   using Table = HashTable<KeyType, ValType>;
+  using PtrTable = HashTable<KeyType, ValType*>;
   std::vector<Table*> tables_;
+  std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
@@ -221,6 +242,7 @@ class HeterComm {
  private:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
+  DynamicGradMerger merger_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;
@@ -228,6 +250,8 @@ class HeterComm {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
+  int multi_mf_dim_{8};
+  int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
 };
