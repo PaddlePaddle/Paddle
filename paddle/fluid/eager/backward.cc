@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -728,6 +729,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                        "got edges size is: %d, grad_output size is: %d",
                        metas.size(), grad_output_tensors.size()));
 
+    egr::GradNodeAccumulation* accumulation_node = nullptr;
+
     for (size_t i = 0; i < metas.size(); i++) {
       for (size_t j = 0; j < metas[i].size(); j++) {
         const Edge& edge = metas[i][j].GetEdge();
@@ -798,14 +801,28 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           bool is_potential_stop_node =
               GeneralGrad::Instance().GetPotentialStopNodes()->count(next_node);
           if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
-            queue.emplace(std::move(next_node));
+            auto tmp_node = dynamic_cast<egr::GradNodeAccumulation*>(next_node);
+            if (tmp_node) {
+              accumulation_node = tmp_node;
+            } else {
+              queue.emplace(std::move(next_node));
+            }
           }
         } else {
           if (node_in_degree_map[next_node] == 0) {
-            queue.emplace(std::move(next_node));
+            auto tmp_node = dynamic_cast<egr::GradNodeAccumulation*>(next_node);
+            if (tmp_node) {
+              accumulation_node = tmp_node;
+            } else {
+              queue.emplace(std::move(next_node));
+            }
           }
         }
       }
+    }
+
+    if (accumulation_node) {
+      queue.emplace(std::move(accumulation_node));
     }
   }
 
