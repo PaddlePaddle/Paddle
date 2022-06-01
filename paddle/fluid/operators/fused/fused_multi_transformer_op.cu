@@ -613,6 +613,10 @@ __global__ void masked_multihead_attention_kernel(
       qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
     }
     if (tid == 0) {
+      // NOTE(wangxi): mask must be 0.0
+      // T mask = params.attn_mask[
+      //    bi * (params.timestep + 1) + params.timestep];
+      // qk += static_cast<float>(mask);
       qk *= params.inv_sqrt_dh;
       qk_max = qk;
       qk_smem[params.timestep] = qk;
