@@ -24,16 +24,8 @@
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
-  if (buffer_[slot_id][rank].is_dense_tensor()) {
-    auto* t =
-        static_cast<phi::DenseTensor*>(buffer_[slot_id][rank].impl().get());
-    auto* dev_ctx =
-        paddle::platform::DeviceContextPool::Instance().Get(t->place());
-    phi::funcs::set_constant(*dev_ctx, t, 0.0);
-  } else {
-    buffer_[slot_id][rank] =
-        paddle::experimental::zeros_like(buffer_[slot_id][rank]);
-  }
+  buffer_[slot_id][rank] =
+      paddle::experimental::zeros_like(buffer_[slot_id][rank]);
 }
 
 void GradTensorHolder::CopyValueFromTensor(
