@@ -18,13 +18,23 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
-  buffer_[slot_id][rank] =
-      paddle::experimental::zeros_like(buffer_[slot_id][rank]);
+  if (buffer_[slot_id][rank].is_dense_tensor()) {
+    auto* t = std::dynamic_pointer_cast<phi::DenseTensor>(
+                  buffer_[slot_id][rank].impl())
+                  .get();
+    auto* dev_ctx =
+        paddle::platform::DeviceContextPool::Instance().Get(t->place());
+    phi::funcs::set_constant(*dev_ctx, t, 0.0);
+  } else {
+    buffer_[slot_id][rank] =
+        paddle::experimental::zeros_like(buffer_[slot_id][rank]);
+  }
 }
 
 void GradTensorHolder::CopyValueFromTensor(
