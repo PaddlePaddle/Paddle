@@ -133,7 +133,7 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
-    -Werror
+    # -Werror
     -Wall
     -Wextra
     -Wnon-virtual-dtor
