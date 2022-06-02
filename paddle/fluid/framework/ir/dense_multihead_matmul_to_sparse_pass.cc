@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/replace_dense_multihead_matmul_with_sparse_pass.h"
+#include "paddle/fluid/framework/ir/dense_multihead_matmul_to_sparse_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -20,8 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-ReplaceDenseMultiheadMatmulWithSparsePass::
-    ReplaceDenseMultiheadMatmulWithSparsePass() {
+DenseMultiheadMatmulToSparsePass::DenseMultiheadMatmulToSparsePass() {
   AddOpCompat(OpCompat("multihead_matmul"))
       .AddInput("Input")
       .IsTensor()
@@ -40,11 +39,11 @@ ReplaceDenseMultiheadMatmulWithSparsePass::
       .End();
 }
 
-void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
+void DenseMultiheadMatmulToSparsePass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
-  std::string name_scope = "replace_dense_multihead_matmul_with_sparse_pass";
+  std::string name_scope = "dense_multihead_matmul_to_sparse_pass";
   FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
 
@@ -131,5 +130,5 @@ void ReplaceDenseMultiheadMatmulWithSparsePass::ApplyImpl(Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(replace_dense_multihead_matmul_with_sparse_pass,
-              paddle::framework::ir::ReplaceDenseMultiheadMatmulWithSparsePass);
+REGISTER_PASS(dense_multihead_matmul_to_sparse_pass,
+              paddle::framework::ir::DenseMultiheadMatmulToSparsePass);
