@@ -429,7 +429,7 @@ void MultiSlotDataset::PrepareTrain() {
 
 template <typename T>
 void DatasetImpl<T>::SetGraphDeviceKeys(
-    const std::vector<int64_t>& h_device_keys) {
+    const std::vector<uint64_t>& h_device_keys) {
   //  for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
   //    gpu_graph_device_keys_[i].clear();
   //  }
@@ -452,6 +452,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
     graph_all_type_total_keys_.clear();
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
     auto node_to_id = gpu_graph_ptr->feature_to_id;
+    auto edge_to_id = gpu_graph_ptr->edge_to_id;
     graph_all_type_total_keys_.resize(node_to_id.size());
     int cnt = 0;
     for (auto& iter : node_to_id) {
@@ -473,6 +474,19 @@ void DatasetImpl<T>::LoadIntoMemory() {
         readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
       }
       cnt++;
+    }
+    // FIX: trick for iterate edge table
+    for (auto& iter : edge_to_id) {
+      int edge_idx = iter.second;
+      auto gpu_graph_device_keys =
+          gpu_graph_ptr->get_all_id(0, edge_idx, thread_num_);
+      for (size_t i = 0; i < gpu_graph_device_keys.size(); i++) {
+        VLOG(1) << "edge type: " << edge_idx << ", gpu_graph_device_keys[" << i
+                << "] = " << gpu_graph_device_keys[i].size();
+        for (size_t j = 0; j < gpu_graph_device_keys[i].size(); j++) {
+          gpu_graph_total_keys_.push_back(gpu_graph_device_keys[i][j]);
+        }
+      }
     }
 
   } else {

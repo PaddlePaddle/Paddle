@@ -359,7 +359,7 @@ __global__ void GraphFillFirstStepKernel(int *prefix_sum, int *sampleidx2row,
 }
 
 // Fill sample_res to the stepth column of walk
-void GraphDataGenerator::FillOneStep(int64_t *d_start_ids, int64_t *walk,
+void GraphDataGenerator::FillOneStep(uint64_t *d_start_ids, uint64_t *walk,
                                      int len, NeighborSampleResult &sample_res,
                                      int cur_degree, int step,
                                      int *len_per_row) {
@@ -469,8 +469,8 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
     size_t device_key_size = h_device_keys_[type_index]->size();
     VLOG(2) << "type: " << node_type << " size: " << device_key_size
             << " start: " << start;
-    int64_t *d_type_keys =
-        reinterpret_cast<int64_t *>(d_device_keys_[type_index]->ptr());
+    uint64_t *d_type_keys =
+        reinterpret_cast<uint64_t *>(d_device_keys_[type_index]->ptr());
     int tmp_len = start + once_sample_startid_len_ > device_key_size
                       ? device_key_size - start
                       : once_sample_startid_len_;
@@ -492,7 +492,7 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
     uint64_t *cur_walk = walk + i;
 
     NeighborSampleQuery q;
-    q.initialize(gpuid_, path[0], (int64_t)(d_type_keys + start), walk_degree_,
+    q.initialize(gpuid_, path[0], (uint64_t)(d_type_keys + start), walk_degree_,
                  tmp_len);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
@@ -518,11 +518,11 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
         break;
       }
       auto sample_key_mem = sample_res.actual_val_mem;
-      int64_t *sample_keys_ptr =
-          reinterpret_cast<int64_t *>(sample_key_mem->ptr());
+      uint64_t *sample_keys_ptr =
+          reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
       int edge_type_id = path[(step - 1) % path_len];
       VLOG(2) << "sample edge type: " << edge_type_id << " step: " << step;
-      q.initialize(gpuid_, edge_type_id, (int64_t)sample_keys_ptr, 1,
+      q.initialize(gpuid_, edge_type_id, (uint64_t)sample_keys_ptr, 1,
                    sample_res.total_sample_size);
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false);
 
@@ -588,11 +588,11 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
       VLOG(3) << "h_device_keys_[" << i << "][" << j
               << "] = " << (*(h_device_keys_[i]))[j];
     }
-    auto buf = memory::AllocShared(place_,
-                                   h_device_keys_[i]->size() * sizeof(int64_t));
+    auto buf = memory::AllocShared(
+        place_, h_device_keys_[i]->size() * sizeof(uint64_t));
     d_device_keys_.push_back(buf);
     CUDA_CHECK(cudaMemcpyAsync(buf->ptr(), h_device_keys_[i]->data(),
-                               h_device_keys_[i]->size() * sizeof(int64_t),
+                               h_device_keys_[i]->size() * sizeof(uint64_t),
                                cudaMemcpyHostToDevice, stream_));
   }
   // h_device_keys_ = h_device_keys;
@@ -610,10 +610,10 @@ void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
                   (once_max_sample_keynum + 1) * sizeof(int), stream_);
   cursor_ = 0;
   jump_rows_ = 0;
-  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(int64_t));
-  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(int64_t), stream_);
+  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(uint64_t));
+  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
   d_sample_keys_ =
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int64_t));
+      memory::AllocShared(place_, once_max_sample_keynum * sizeof(uint64_t));
 
   d_sampleidx2rows_.push_back(
       memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));
