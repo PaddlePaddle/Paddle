@@ -122,6 +122,10 @@ int32_t MemorySparseTable::Load(const std::string& path,
 
   size_t file_start_idx = _shard_idx * _avg_local_shard_num;
 
+  if (file_start_idx >= file_list.size()) {
+    return 0;
+  }
+
   size_t feature_value_size =
       _value_accesor->GetAccessorInfo().size / sizeof(float);
 
@@ -512,7 +516,6 @@ int64_t MemorySparseTable::CacheShuffle(
   int shuffle_node_num = _config.sparse_table_cache_file_num();
   LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
   // TODO(zhaocaibei123): check shuffle_node_num <= server_node_num
-  shuffle_node_num = 2;  // TODO(zhaocaibei123): just for test, remove it later
   size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 

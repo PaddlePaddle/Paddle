@@ -338,35 +338,32 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       _value_accesor->Converter(save_param).deconverter;
 
   bool is_write_failed = false;
-  std::vector<std::vector<std::string>> result_buffer_param(
-      param_dim_, std::vector<std::string>());
-  std::vector<std::string> result_buffer_fixed_len;
-  result_buffer_fixed_len.reserve(fixed_len_params_dim_);
+  //  std::vector<std::vector<std::string>> result_buffer_param(
+  //      param_dim_, std::vector<std::string>());
+  std::vector<std::string> result_buffer_param;
+  result_buffer_param.reserve(param_dim_);
+  //  std::vector<std::string> result_buffer_fixed_len;
+  //  result_buffer_fixed_len.reserve(fixed_len_params_dim_);
 
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
     for (int x = 0; x < param_dim_; ++x) {
-      result_buffer_param[x].emplace_back(
-          std::to_string(values_[param_idx_][x]));
+      result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));
     }
 
   } else {
     std::ostringstream os;
-    for (int x = 0; x < size; ++x) {
-      auto& varname = common.params()[x];
-      auto& dim = common.dims()[x];
-      VLOG(3) << "MemoryDenseTable::save dim " << x << " size: " << dim;
-      for (int y = 0; y < dim; ++y) {
-        os.clear();
-        os.str("");
-        os << values_[x][y];
-        if (dim == param_dim_) {
-          result_buffer_param[y].emplace_back(std::move(os.str()));
-        } else {
-          result_buffer_fixed_len.emplace_back(std::move(os.str()));
-        }
+    for (int y = 0; y < param_dim_; ++y) {
+      os.clear();
+      os.str("");
+      os << values_[param_col_ids_[0]][y] << " 0";
+      for (int x = 2; x < param_col_ids_.size(); ++x) {
+        os << " ";
+        os << values_[param_col_ids_[x]][y];
       }
+      std::string res = os.str();
+      result_buffer_param.emplace_back(std::move(os.str()));
     }
   }
 
@@ -380,11 +377,12 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
     for (auto& t : result_buffer_param) {
-      if (_config.common().name() == "adam_d2sum") {
-        t.insert(t.begin() + 1, "0");  // avg_w
-      }
+      //      if (_config.common().name() == "adam_d2sum") {
+      //        t.insert(t.begin() + 1, "0");  // avg_w
+      //      }
       if (0 !=
-          write_channel->write_line(paddle::string::join_strings(t, ' '))) {
+          // write_channel->write_line(paddle::string::join_strings(t, ' '))) {
+          write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;
         LOG(ERROR) << "DownpourDenseTable save failed, retry it! "

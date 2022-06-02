@@ -474,17 +474,17 @@ class HDFSClient(FS):
         output = None
         retry_sleep_second = 3
         for x in range(retry_times + 1):
-            #            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
-            #            ret = int(ret)
+            ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+            ret = int(ret)
 
-            proc = subprocess.Popen(
-                whole_commands,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                encoding='utf8')
-            (output, errors) = proc.communicate()
-            ret_code, ret_out, ret_err = proc.returncode, output, errors
+            #            proc = subprocess.Popen(
+            #                whole_commands,
+            #                stdout=subprocess.PIPE,
+            #                stderr=subprocess.PIPE,
+            #                shell=True,
+            #                encoding='utf8')
+            #            (output, errors) = proc.communicate()
+            #            ret_code, ret_out, ret_err = proc.returncode, output, errors
 
             if ret == 0:
                 break
@@ -492,8 +492,8 @@ class HDFSClient(FS):
         if ret == 134:
             raise FSShellCmdAborted(cmd)
 
-#        return ret, output.splitlines()
-        return ret_code, ret_out.splitlines(), ret_err.splitlines()
+#       return ret, output.splitlines()
+#return ret_code, ret_out.splitlines(), ret_err.splitlines()
 
     @_handle_errors()
     def list_dirs(self, fs_path):
@@ -561,7 +561,7 @@ class HDFSClient(FS):
 
     def _ls_dir(self, fs_path):
         cmd = "ls {}".format(fs_path)
-        ret, lines, err = self._run_cmd(cmd)
+        ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
             raise ExecuteError(cmd)
@@ -622,10 +622,12 @@ class HDFSClient(FS):
 
     def _is_dir(self, fs_path):
         cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines, err = self._run_cmd(cmd, retry_times=1)
+        ret, lines = self._run_cmd(cmd, retry_times=1)
         if ret:
             # other error
-            if self._test_match(err):
+            if self._test_match(lines):
+                print('raise exception: ')
+                print('\n'.join(lines))
                 raise ExecuteError(cmd)
 
             return False
@@ -690,7 +692,7 @@ class HDFSClient(FS):
                 ret = client.is_exist("hdfs:/test_hdfs_client")
         """
         cmd = "test -e {} ".format(fs_path)
-        ret, out, err = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret != 0:
             return False
 
@@ -801,7 +803,7 @@ class HDFSClient(FS):
         cmd = "put {} {}".format(local_path, fs_path)
         ret = 0
         try:
-            ret, _, _ = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -870,7 +872,7 @@ class HDFSClient(FS):
         cmd = "get {} {}".format(fs_path, local_path)
         ret = 0
         try:
-            ret, _, _ = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -907,9 +909,9 @@ class HDFSClient(FS):
         out_hdfs = False
 
         cmd = "mkdir {} ".format(fs_path)
-        ret, out, err = self._run_cmd(cmd, redirect_stderr=True)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
-            for l in err:
+            for l in out:
                 if "No such file or directory" in l:
                     out_hdfs = True
                     break
@@ -918,7 +920,7 @@ class HDFSClient(FS):
 
         if out_hdfs and not self.is_exist(fs_path):
             cmd = "mkdir -p {}".format(fs_path)
-            ret, _, _ = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
 
@@ -965,7 +967,7 @@ class HDFSClient(FS):
         cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
         ret = 0
         try:
-            ret, _, _ = self._run_cmd(cmd, retry_times=1)
+            ret, _ = self._run_cmd(cmd, retry_times=1)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -976,13 +978,13 @@ class HDFSClient(FS):
 
     def _rmr(self, fs_path):
         cmd = "rmr {}".format(fs_path)
-        ret, _, _ = self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
     def _rm(self, fs_path):
         cmd = "rm {}".format(fs_path)
-        ret, _, _ = self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
@@ -1052,7 +1054,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _touchz(self, fs_path):
         cmd = "touchz {}".format(fs_path)
-        ret, _, _ = self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
@@ -1093,7 +1095,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def _try_cat(self, fs_path):
         cmd = "cat {}".format(fs_path)
-        ret, output, err = self._run_cmd(cmd, retry_times=1)
+        ret, output = self._run_cmd(cmd, retry_times=1)
         if ret != 0:
             raise ExecuteError(cmd)
         return output
@@ -1141,7 +1143,7 @@ class HDFSClient(FS):
         for path in path_list:
             str_concat += path + " "
         cmd = "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
-        ret, lines, err = self._run_cmd(cmd)
+        ret, lines = self._run_cmd(cmd)
         if (len(lines) == 0):
             logger.warning("list_files empty, path[%s]" % path_list)
             return []

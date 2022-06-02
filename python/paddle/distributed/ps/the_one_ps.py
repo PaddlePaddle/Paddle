@@ -1162,11 +1162,16 @@ class TheOnePSRuntime(RuntimeBase):
         save_var_names = dense_var_names if var_names is None else var_names
         print("save_var_names:", save_var_names)
 
-        import paddle
-        for var in save_var_names:
-            tensor = scope.find_var(var).get_tensor()
-            paddle.save(
-                tensor, os.path.join(dirname, var), use_binary_format=True)
+        vars = [program.global_block().var(i) for i in save_var_names]
+        with fluid.scope_guard(scope):
+            fluid.io.save_vars(
+                executor, "./", program, vars=vars, filename=dirname)
+
+#        import paddle
+#        for var in save_var_names:
+#            tensor = scope.find_var(var).get_tensor()
+#            paddle.save(
+#                tensor, os.path.join(dirname, var), use_binary_format=True)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
@@ -1304,7 +1309,7 @@ class TheOnePSRuntime(RuntimeBase):
                 use_binary_format=True)
 
     def _save_cache_model(self, dirname, **kwargs):
-        mode = kwargs.get("mode", 0)
+        mode = kwargs.get("mode", 1)
         table_id = kwargs.get("table_id", 0)
         self._worker.client_flush()
         fleet.util.barrier()
