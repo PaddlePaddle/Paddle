@@ -331,26 +331,37 @@ void GraphReindexKernel(const Context& dev_ctx,
   }
 
   // Get reindex dst edge.
+  // Add support for multi-type edges reindex.
+  int num_ac_count = count.dims()[0];
+  int num_edge_types = num_ac_count / bs;
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());
-  thrust::device_vector<int> dst_ptr(bs);
-  thrust::exclusive_scan(count_data, count_data + bs, dst_ptr.begin());
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-
   reindex_dst->Resize({num_edges});
   T* reindex_dst_data = dev_ctx.template Alloc<T>(reindex_dst);
+  int begin = 0;
+  for (int i = 0; i < num_edge_types; i++) {
+    thrust::device_vector<int> dst_ptr(bs);
+    thrust::exclusive_scan(
+        count_data + i * bs, count_data + (i + 1) * bs, dst_ptr.begin());
 
-  GetDstEdgeCUDAKernel<T,
-                       BLOCK_WARPS,
-                       TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      bs,
-      thrust::raw_pointer_cast(unique_dst_reindex.data()),
-      count_data,
-      thrust::raw_pointer_cast(dst_ptr.data()),
-      reindex_dst_data);
+    GetDstEdgeCUDAKernel<T,
+                         BLOCK_WARPS,
+                         TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
+        bs,
+        thrust::raw_pointer_cast(unique_dst_reindex.data()),
+        count_data + i * bs,
+        thrust::raw_pointer_cast(dst_ptr.data()),
+        reindex_dst_data + begin);
+
+    int count_i =
+        thrust::reduce(thrust::device_pointer_cast(count_data) + i * bs,
+                       thrust::device_pointer_cast(count_data) + (i + 1) * bs);
+    begin += count_i;
+  }
 
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});
   T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes);

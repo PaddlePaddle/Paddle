@@ -97,18 +97,9 @@ class CCommInitOp : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
-
-#if defined(PADDLE_WITH_XPU_BKCL) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSLIB)
-    // XPUPS rank_id only equals 0, so replace rank_id with device_id
-    CommContext::Instance().CreateComm(comm_id, nranks, device_id, device_id,
-                                       rid);
-#else
     int rank_id = Attr<int>("rank");
     CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
                                        rid);
-#endif
-
 #endif
   }
 };

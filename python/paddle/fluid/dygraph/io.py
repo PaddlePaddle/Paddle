@@ -874,7 +874,7 @@ def _run_dygraph(instance, input, program_holder):
         _valid_vars(input_vars),
         _valid_vars(persistable_vars),
         _valid_vars(output_vars), tmp_scope_vec,
-        _valid_vars(double_grad_vars), *attrs)
+        _valid_vars(double_grad_vars), None, *attrs)
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just

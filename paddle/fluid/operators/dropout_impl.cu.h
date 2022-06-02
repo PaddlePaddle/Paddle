@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -312,9 +313,11 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
-    VectorizedRandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
-        size, seed_data, dropout_prob, x_data, mask_data, y_data,
-        upscale_in_train, increment, main_offset);
+    PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(
+        !is_fix_seed, (VectorizedRandomGenerator<T, uint8_t>), grid_size,
+        block_size, 0, stream, offset, KERNEL_PARAMS.As<uint64_t>(1),
+        KERNEL_PARAMS.As<uint64_t>(7), size, seed_data, dropout_prob, x_data,
+        mask_data, y_data, upscale_in_train, increment, main_offset);
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?

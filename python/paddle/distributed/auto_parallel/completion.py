@@ -1307,7 +1307,7 @@ class Completer:
         if serial_main_program is None:
             serial_main_program = self._dist_context.serial_main_program
         else:
-            self._dist_context.serial_main_program = serial_main_program
+            self._dist_context._serial_main_program = serial_main_program
 
         import time
 
