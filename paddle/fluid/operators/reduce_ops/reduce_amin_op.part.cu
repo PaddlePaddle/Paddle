@@ -16,7 +16,7 @@
 
 template <typename T>
 using CUDAReduceMinGradKernel =
-    ops::ReduceCudaGradKernel<T, kps::IdentityFunctor>;
+    ops::ReduceCudaAMaxAMinGradKernel<T, kps::IdentityFunctor>;
 REGISTER_OP_CUDA_KERNEL(reduce_amin_grad, CUDAReduceMinGradKernel<int>,
                         CUDAReduceMinGradKernel<int64_t>,
                         CUDAReduceMinGradKernel<float>,
