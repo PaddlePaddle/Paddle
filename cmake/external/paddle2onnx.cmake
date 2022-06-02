@@ -40,11 +40,11 @@ if(WIN32)
 elseif(APPLE)
     SET(PADDLE2ONNX_SOURCE_LIB "${PADDLE2ONNX_SOURCE_DIR}/lib/libpaddle2onnx.dylib" CACHE FILEPATH "Paddle2ONNX source library." FORCE)
     SET(PADDLE2ONNX_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.dylib" CACHE FILEPATH "PADDLE2ONNX library." FORCE)
-    SET(PADDLE2ONNX_COMPILE_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/paddle2onnx.dylib" CACHE FILEPATH "paddle2onnx compile library." FORCE)
+    SET(PADDLE2ONNX_COMPILE_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.dylib" CACHE FILEPATH "paddle2onnx compile library." FORCE)
 else()
     SET(PADDLE2ONNX_SOURCE_LIB "${PADDLE2ONNX_SOURCE_DIR}/lib/libpaddle2onnx.so" CACHE FILEPATH "Paddle2ONNX source library." FORCE)
     SET(PADDLE2ONNX_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.so" CACHE FILEPATH "PADDLE2ONNX library." FORCE)
-    SET(PADDLE2ONNX_COMPILE_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/paddle2onnx.so" CACHE FILEPATH "paddle2onnx compile library." FORCE)
+    SET(PADDLE2ONNX_COMPILE_LIB "${PADDLE2ONNX_INSTALL_DIR}/lib/libpaddle2onnx.so" CACHE FILEPATH "paddle2onnx compile library." FORCE)
 endif(WIN32)
 
 
