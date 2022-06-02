@@ -26,8 +26,9 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
     device_id_mapping.push_back(device_id);
   }
 }
-std::vector<std::vector<int64_t>> GraphGpuWrapper::get_all_id(int type, int idx,
-                                                              int slice_num) {
+std::vector<std::vector<uint64_t>> GraphGpuWrapper::get_all_id(int type,
+                                                               int idx,
+                                                               int slice_num) {
   return ((GpuPsGraphTable *)graph_table)
       ->cpu_graph_table_->get_all_id(type, idx, slice_num);
 }
@@ -67,7 +68,7 @@ void GraphGpuWrapper::set_search_level(int level) {
   ((GpuPsGraphTable *)graph_table)->cpu_graph_table_->set_search_level(level);
 }
 
-std::vector<int64_t> GraphGpuWrapper::get_partition(int idx, int num) {
+std::vector<uint64_t> GraphGpuWrapper::get_partition(int idx, int num) {
   return ((GpuPsGraphTable *)graph_table)
       ->cpu_graph_table_->get_partition(idx, num);
 }
@@ -165,7 +166,7 @@ void GraphGpuWrapper::init_service() {
 }
 
 void GraphGpuWrapper::upload_batch(int idx,
-                                   std::vector<std::vector<int64_t>> &ids) {
+                                   std::vector<std::vector<uint64_t>> &ids) {
   GpuPsGraphTable *g = (GpuPsGraphTable *)graph_table;
   for (int i = 0; i < ids.size(); i++) {
     GpuPsCommGraph sub_graph =
@@ -179,7 +180,7 @@ void GraphGpuWrapper::upload_batch(int idx,
 
 // feature table
 void GraphGpuWrapper::upload_batch(int ntype_id,
-                                   std::vector<std::vector<int64_t>> &node_ids,
+                                   std::vector<std::vector<uint64_t>> &node_ids,
                                    int slot_num) {
   GpuPsGraphTable *g = (GpuPsGraphTable *)graph_table;
   for (int i = 0; i < node_ids.size(); i++) {
@@ -200,35 +201,6 @@ void GraphGpuWrapper::upload_batch(int ntype_id,
   // g->build_graph_from_cpu(vec);
 }
 
-// void GraphGpuWrapper::test() {
-//   int64_t cpu_key[3] = {0, 1, 2};
-//   void *key;
-//   platform::CUDADeviceGuard guard(0);
-//   cudaMalloc((void **)&key, 3 * sizeof(int64_t));
-//   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-//   auto neighbor_sample_res =
-//       ((GpuPsGraphTable *)graph_table)
-//           ->graph_neighbor_sample(0, (int64_t *)key, 2, 3);
-//   int64_t *res = new int64_t[7];
-//   cudaMemcpy(res, neighbor_sample_res.val, 3 * 2 * sizeof(int64_t),
-//              cudaMemcpyDeviceToHost);
-//   int *actual_sample_size = new int[3];
-//   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
-//              3 * sizeof(int),
-//              cudaMemcpyDeviceToHost);  // 3, 1, 3
-
-//   //{0,9} or {9,0} is expected for key 0
-//   //{0,2} or {2,0} is expected for key 1
-//   //{1,3} or {3,1} is expected for key 2
-//   for (int i = 0; i < 3; i++) {
-//     VLOG(0) << "actual sample size for " << i << " is "
-//             << actual_sample_size[i];
-//     for (int j = 0; j < actual_sample_size[i]; j++) {
-//       VLOG(0) << "sampled an neighbor for node" << i << " : " << res[i * 2 +
-//       j];
-//     }
-//   }
-// }
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
     NeighborSampleQuery q, bool cpu_switch) {
   return ((GpuPsGraphTable *)graph_table)
@@ -236,7 +208,7 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
 }
 
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
-    int gpu_id, int64_t *device_keys, int walk_degree, int len) {
+    int gpu_id, uint64_t *device_keys, int walk_degree, int len) {
   platform::CUDADeviceGuard guard(gpu_id);
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
@@ -246,23 +218,23 @@ NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
 }
 
 // this function is contributed by Liwb5
-std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
-    int gpu_id, int idx, std::vector<int64_t> &key, int sample_size) {
-  std::vector<int64_t> res;
+std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
+    int gpu_id, int idx, std::vector<uint64_t> &key, int sample_size) {
+  std::vector<uint64_t> res;
   if (key.size() == 0) {
     return res;
   }
-  int64_t *cuda_key;
+  uint64_t *cuda_key;
   platform::CUDADeviceGuard guard(gpu_id);
 
-  cudaMalloc(&cuda_key, key.size() * sizeof(int64_t));
-  cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(int64_t),
+  cudaMalloc(&cuda_key, key.size() * sizeof(uint64_t));
+  cudaMemcpy(cuda_key, key.data(), key.size() * sizeof(uint64_t),
              cudaMemcpyHostToDevice);
   VLOG(0) << "key_size: " << key.size();
   auto neighbor_sample_res =
       ((GpuPsGraphTable *)graph_table)
-          ->graph_neighbor_sample(gpu_id, idx, cuda_key, sample_size,
-                                  key.size());
+          ->graph_neighbor_sample_v2(gpu_id, idx, cuda_key, sample_size,
+                                     key.size(), false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size, neighbor_sample_res.actual_sample_size,
              key.size() * sizeof(int),
@@ -272,11 +244,11 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
     cumsum += actual_sample_size[i];
   }
 
-  std::vector<int64_t> cpu_key;
+  std::vector<uint64_t> cpu_key;
   cpu_key.resize(key.size() * sample_size);
 
   cudaMemcpy(cpu_key.data(), neighbor_sample_res.val,
-             key.size() * sample_size * sizeof(int64_t),
+             key.size() * sample_size * sizeof(uint64_t),
              cudaMemcpyDeviceToHost);
   for (int i = 0; i < key.size(); i++) {
     for (int j = 0; j < actual_sample_size[i]; j++) {
@@ -292,13 +264,6 @@ std::vector<int64_t> GraphGpuWrapper::graph_neighbor_sample(
   return res;
 }
 
-void GraphGpuWrapper::init_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->init_sample_status();
-}
-
-void GraphGpuWrapper::free_sample_status() {
-  ((GpuPsGraphTable *)graph_table)->free_sample_status();
-}
 NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id, int idx, int start,
                                                  int query_size) {
   return ((GpuPsGraphTable *)graph_table)

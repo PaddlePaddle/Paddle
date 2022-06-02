@@ -35,8 +35,9 @@ class GraphGpuWrapper {
   void init_service();
   void set_up_types(std::vector<std::string>& edge_type,
                     std::vector<std::string>& node_type);
-  void upload_batch(int etype_id, std::vector<std::vector<int64_t>>& ids);
-  void upload_batch(int ntype_id, std::vector<std::vector<int64_t>>& ids, int slot_num);
+  void upload_batch(int etype_id, std::vector<std::vector<uint64_t>>& ids);
+  void upload_batch(int ntype_id, std::vector<std::vector<uint64_t>>& ids,
+                    int slot_num);
   void add_table_feat_conf(std::string table_name, std::string feat_name,
                            std::string feat_dtype, int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
@@ -45,26 +46,24 @@ class GraphGpuWrapper {
   int32_t get_partition_num(int idx);
   void load_node_weight(int type_id, int idx, std::string path);
   void export_partition_files(int idx, std::string file_path);
-  std::vector<int64_t> get_partition(int idx, int num);
+  std::vector<uint64_t> get_partition(int idx, int num);
   void make_partitions(int idx, int64_t byte_size, int device_len);
   void make_complementary_graph(int idx, int64_t byte_size);
   void set_search_level(int level);
   void init_search_level(int level);
-  std::vector<std::vector<int64_t>> get_all_id(int type, int idx,
-                                               int slice_num);
+  std::vector<std::vector<uint64_t>> get_all_id(int type, int idx,
+                                                int slice_num);
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t* device_keys,
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, uint64_t* device_keys,
                                              int walk_degree, int len);
-  std::vector<int64_t> graph_neighbor_sample(int gpu_id, int idx,
-                                             std::vector<int64_t>& key,
-                                             int sample_size);
+  std::vector<uint64_t> graph_neighbor_sample(int gpu_id, int idx,
+                                              std::vector<uint64_t>& key,
+                                              int sample_size);
   void set_feature_separator(std::string ch);
 
-  void init_sample_status();
-  void free_sample_status();
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;

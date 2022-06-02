@@ -46,7 +46,6 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
     }
     tables_ = std::vector<Table *>(
         gpu_num * (graph_table_num + feature_table_num), NULL);
-    sample_status = std::vector<int *>(gpu_num * graph_table_num, NULL);
     for (int i = 0; i < gpu_num; i++) {
       global_device_map[resource_->dev_id(i)] = i;
       for (int j = 0; j < graph_table_num; j++) {
@@ -116,26 +115,23 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   void clear_feature_info(int index);
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list,
                             int idx);
-  void build_graph_fea_from_cpu(std::vector<GpuPsCommGraphFea> &cpu_node_list, int idx);
+  void build_graph_fea_from_cpu(std::vector<GpuPsCommGraphFea> &cpu_node_list,
+                                int idx);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int64_t *key,
-                                             int sample_size, int len);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, int idx, int64_t *key,
+  NeighborSampleResult graph_neighbor_sample(int gpu_id, uint64_t *key,
                                              int sample_size, int len);
   NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
-                                                int64_t *key, int sample_size,
+                                                uint64_t *key, int sample_size,
                                                 int len, bool cpu_query_switch);
-  void init_sample_status();
-  void free_sample_status();
   NodeQueryResult query_node_list(int gpu_id, int idx, int start,
                                   int query_size);
   void display_sample_res(void *key, void *val, int len, int sample_len);
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
                                                  int sample_size, int *h_left,
                                                  int *h_right,
-                                                 int64_t *src_sample_res,
+                                                 uint64_t *src_sample_res,
                                                  int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
   int gpu_num;
@@ -143,7 +139,6 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   std::vector<GpuPsCommGraph> gpu_graph_list_;
   std::vector<GpuPsCommGraphFea> gpu_graph_fea_list_;
   int global_device_map[32];
-  std::vector<int *> sample_status;
   const int parallel_sample_size = 1;
   const int dim_y = 256;
   std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table_;

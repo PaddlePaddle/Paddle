@@ -911,8 +911,8 @@ class GraphDataGenerator {
   int once_sample_startid_len_;
   int gpuid_;
   // start ids
-  //int64_t* device_keys_;
-  //size_t device_key_size_;
+  // int64_t* device_keys_;
+  // size_t device_key_size_;
   std::vector<std::vector<int64_t>*> h_device_keys_;
   std::unordered_map<int, int> type_to_index_;
   // point to device_keys_
