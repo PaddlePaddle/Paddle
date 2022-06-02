@@ -193,9 +193,25 @@ class Engine:
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
 
+        # dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        # dist_main_prog._pipeline_opt = {}
+        # dist_main_prog._pipeline_opt['fleet_opt'] = {
+        #     'dist_strategy': {
+        #         'dp_degree': 1,
+        #         'pp_degree': 2,
+        #         'mp_degree': 1
+        #     },
+        #     'num_micro_batches': 4,
+        #     'section_program': dist_main_prog,
+        #     'scheduler': '1F1B'
+        # }
+        # self._dist_main_progs[self.mode][self._cur_rank] = dist_main_prog
+
         outputs = []
         for epoch in range(epochs):
+            print("epoch:", epoch)
             for step, data in enumerate(train_dataloader):
+                print("step:", step)
                 logs, loss = self._train_step(data, use_program_cache,
                                               return_numpy)
                 outputs.append(loss)

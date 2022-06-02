@@ -77,10 +77,15 @@ class SendOpDesc:
         dst (int): The destination process to receive.
     """
 
-    def __init__(self, partition_index, dst):
+    def __init__(self, partition_index, src, dst):
+        self._src = src
         self._dst = dst
         self._partition_index = partition_index
         self._desc = "send"
+
+    @property
+    def src(self):
+        return self._src
 
     @property
     def partition_index(self):
@@ -107,10 +112,15 @@ class RecvOpDesc:
         src (int): The source process to send.
     """
 
-    def __init__(self, partition_index, src):
+    def __init__(self, partition_index, src, dst):
         self._src = src
+        self._dst = dst
         self._partition_index = partition_index
         self._desc = "recv"
+
+    @property
+    def dst(self):
+        return self._dst
 
     @property
     def partition_index(self):
@@ -192,32 +202,47 @@ class Inserter:
     """Insert op required in the reshard process."""
 
     @staticmethod
-    def insert_send_op(block, idx, tensor, dst, op_role):
+    def insert_send_op(block, idx, tensor, src, dst, op_role):
         """Insert send op into block at the given index."""
-        op_type = 'send_v2'
+        process_group = new_process_group([src, dst])  # [0, 1]
         block._insert_op(
             idx,
-            type=op_type,
+            type="c_sync_calc_stream",
+            inputs={'X': [tensor]},
+            outputs={'Out': [tensor]},
+            attrs={'op_role': op_role})
+        block._insert_op(
+            idx + 1,
+            type="send_v2",
             inputs={'X': [tensor]},
             attrs={
-                'ring_id': 0,
-                'peer': dst,
-                'use_calc_stream': True,
+                'ring_id': process_group.id,
+                'peer': process_group.ranks.index(dst),
+                'use_calc_stream': False,
                 'op_role': op_role
             })
-
-    @staticmethod
-    def insert_recv_op(block, idx, tensor, src, op_role):
-        """Insert recv op into block at the given index."""
-        op_type = 'recv_v2'
         block._insert_op(
-            idx,
-            type=op_type,
+            idx + 2,
+            type='c_sync_comm_stream',
             inputs={'X': [tensor]},
             outputs={'Out': [tensor]},
             attrs={
-                'ring_id': 0,
-                'peer': src,
+                'op_role': op_role,
+                'ring_id': process_group.id,
+            })
+
+    @staticmethod
+    def insert_recv_op(block, idx, tensor, src, dst, op_role):
+        """Insert recv op into block at the given index."""
+        process_group = new_process_group([src, dst])  # [1, 0]
+        block._insert_op(
+            idx,
+            type="recv_v2",
+            inputs={'X': [tensor]},
+            outputs={'Out': [tensor]},
+            attrs={
+                'ring_id': process_group.id,
+                'peer': process_group.ranks.index(src),
                 'out_shape': tensor.shape,
                 'dtype': tensor.dtype,
                 'use_calc_stream': True,
@@ -513,7 +538,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if block.vars[var].is_data or "learning_rate" in var:
                     continue
                 block._remove_var(var)
 
@@ -550,6 +575,8 @@ class Remover:
         need_vars = set()
         for var_name in startup_output_vars:
             if var_name in main_input_vars:
+                need_vars.add(var_name)
+            if "learning_rate" in var_name:
                 need_vars.add(var_name)
 
         startup_ops = startup_block.ops
@@ -1133,9 +1160,11 @@ class Resharder:
 
                         # append send and recv op desc
                         send_op_desc = SendOpDesc(source_partition_index,
+                                                  to_send_process,
                                                   target_process)
                         recv_op_desc = RecvOpDesc(source_partition_index,
-                                                  to_send_process)
+                                                  to_send_process,
+                                                  target_process)
                         op_desc_seq[to_send_process].append(send_op_desc)
                         op_desc_seq[target_process].append(recv_op_desc)
                         has_sent.append(source_partition_index)
@@ -1254,9 +1283,9 @@ class Resharder:
                     self.has_sent[var_name] = []
                 if op_desc.dst not in self.has_sent[var_name]:
                     Inserter.insert_send_op(block, idx, source_tensor,
-                                            op_desc.dst,
+                                            op_desc.src, op_desc.dst,
                                             reshard_op.attr('op_role'))
-                    idx += 1
+                    idx += 3
                     self.has_sent[var_name].append(op_desc.dst)
 
             elif isinstance(op_desc, RecvOpDesc):
@@ -1273,7 +1302,7 @@ class Resharder:
                         dtype=source_tensor.dtype,
                         type=source_tensor.type)
                     Inserter.insert_recv_op(block, idx, recv_tensor,
-                                            op_desc.src,
+                                            op_desc.src, op_desc.dst,
                                             reshard_op.attr('op_role'))
                     tensor_list.append(recv_tensor)
                     idx += 1
@@ -1296,7 +1325,10 @@ class Resharder:
                     partition_tensor_list) == 1 or not partition_tensor_list
                 to_slice_tensor = partition_tensor_list[0][0] if len(
                     partition_tensor_list) == 1 else source_tensor
-                new_name = unique_name.generate(var_name + "@RESHARD")
+                if "learning_rate" in var_name:
+                    new_name = var_name
+                else:
+                    new_name = unique_name.generate(var_name + "@RESHARD")
                 target_tensor = Inserter.insert_slice_op(
                     block,
                     idx,
@@ -1431,6 +1463,8 @@ class Resharder:
                         # skip lod_tensor_blocking_queue_0
                         if var_name == "lod_tensor_blocking_queue_0":
                             continue
+                        if "learning_rate" in var_name:
+                            continue
                         var = get_var_with_recursion(
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
@@ -1477,11 +1511,11 @@ class Resharder:
                                     index]
                                 if self.rank_id == item:
                                     Inserter.insert_send_op(block, idx + 1, var,
-                                                            recv_rank,
+                                                            recv_rank, item,
                                                             op.attr('op_role'))
                                 if self.rank_id == recv_rank:
                                     Inserter.insert_recv_op(block, idx + 1, var,
-                                                            item,
+                                                            recv_rank, item,
                                                             op.attr('op_role'))
                             cur_op_count = len(block.ops)
                             idx_offset = idx_offset + cur_op_count - pre_op_count
