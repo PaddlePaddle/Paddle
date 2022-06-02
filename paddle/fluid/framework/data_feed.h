@@ -895,11 +895,11 @@ class GraphDataGenerator {
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
-  void FillOneStep(int64_t* start_ids, int64_t* walk, int len,
+  void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
                    NeighborSampleResult& sample_res, int cur_degree, int step,
                    int* len_per_row);
   int FillInsBuf();
-  void SetDeviceKeys(std::vector<int64_t>* device_keys, int type) {
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     type_to_index_[type] = h_device_keys_.size();
     h_device_keys_.push_back(device_keys);
   }
@@ -913,7 +913,7 @@ class GraphDataGenerator {
   // start ids
   // int64_t* device_keys_;
   // size_t device_key_size_;
-  std::vector<std::vector<int64_t>*> h_device_keys_;
+  std::vector<std::vector<uint64_t>*> h_device_keys_;
   std::unordered_map<int, int> type_to_index_;
   // point to device_keys_
   size_t cursor_;
@@ -1018,7 +1018,7 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
-  virtual void SetDeviceKeys(std::vector<int64_t>* device_keys, int type) {
+  virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
   }
   virtual void SetGpuGraphMode(int gpu_graph_mode) {

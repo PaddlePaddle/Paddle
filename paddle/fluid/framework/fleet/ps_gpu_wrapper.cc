@@ -115,7 +115,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   std::vector<std::thread> threads;
   // data should be in input channel
- 
+
   thread_dim_keys_.resize(thread_keys_thread_num_);
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_dim_keys_[i].resize(thread_keys_shard_num_);
@@ -130,21 +130,23 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   size_t begin = 0;
 
   std::string data_set_name = std::string(typeid(*dataset_).name());
-  
-  VLOG(0) <<"gpu_graph_mode_:" << gpu_graph_mode_;
+
+  VLOG(0) << "gpu_graph_mode_:" << gpu_graph_mode_;
   if (!gpu_graph_mode_) {
     if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
       VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
       SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
       auto input_channel = dataset->GetInputChannel();
-      VLOG(0) << "psgpu wrapperinputslotchannle size: " << input_channel->Size();
+      VLOG(0) << "psgpu wrapperinputslotchannle size: "
+              << input_channel->Size();
       const std::deque<SlotRecord>& vec_data = input_channel->GetData();
       total_len = vec_data.size();
       len_per_thread = total_len / thread_keys_thread_num_;
       remain = total_len % thread_keys_thread_num_;
       VLOG(0) << "total len: " << total_len;
-      auto gen_dynamic_mf_func = [this](const std::deque<SlotRecord>& total_data,
-                                        int begin_index, int end_index, int i) {
+      auto gen_dynamic_mf_func = [this](
+          const std::deque<SlotRecord>& total_data, int begin_index,
+          int end_index, int i) {
         for (auto iter = total_data.begin() + begin_index;
              iter != total_data.begin() + end_index; iter++) {
           const auto& ins = *iter;
@@ -157,7 +159,8 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
               int shard_id = feasign_v[j] % thread_keys_shard_num_;
               int dim_id = slot_index_vec_[slot_idx];
               if (feasign_v[j] != 0) {
-                this->thread_dim_keys_[i][shard_id][dim_id].insert(feasign_v[j]);
+                this->thread_dim_keys_[i][shard_id][dim_id].insert(
+                    feasign_v[j]);
               }
             }
           }
@@ -165,8 +168,8 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       };
       for (int i = 0; i < thread_keys_thread_num_; i++) {
         threads.push_back(
-          std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
-                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+            std::thread(gen_dynamic_mf_func, std::ref(vec_data), begin,
+                        begin + len_per_thread + (i < remain ? 1 : 0), i));
 
         begin += len_per_thread + (i < remain ? 1 : 0);
       }
@@ -174,7 +177,8 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         t.join();
       }
       timeline.Pause();
-      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec()
+              << " seconds.";
     } else {
       CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
       VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
@@ -208,18 +212,19 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         t.join();
       }
       timeline.Pause();
-      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+      VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec()
+              << " seconds.";
     }
   } else {
     VLOG(0) << "PreBuild in GpuGraph mode";
     SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
-    const std::vector<int64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
+    const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     total_len = vec_data.size();
     len_per_thread = total_len / thread_keys_thread_num_;
     VLOG(0) << "GpuGraphTotalKeys: " << total_len;
     remain = total_len % thread_keys_thread_num_;
-    auto gen_graph_data_func = [this](const std::vector<int64_t>& total_data,
-                           int begin_index, int end_index, int i) {
+    auto gen_graph_data_func = [this](const std::vector<uint64_t>& total_data,
+                                      int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         uint64_t cur_key = *iter;
@@ -227,10 +232,11 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
         this->thread_keys_[i][shard_id].insert(cur_key);
       }
     };
-    auto gen_graph_dynamic_mf_func = [this](const std::vector<int64_t>& total_data,
-                                        int begin_index, int end_index, int i) {
+    auto gen_graph_dynamic_mf_func = [this](
+        const std::vector<uint64_t>& total_data, int begin_index, int end_index,
+        int i) {
       for (auto iter = total_data.begin() + begin_index;
-            iter != total_data.begin() + end_index; iter++) {
+           iter != total_data.begin() + end_index; iter++) {
         uint64_t cur_key = *iter;
         int shard_id = cur_key % thread_keys_shard_num_;
         // int dim_id = slot_index_vec_[slot_idx];
@@ -895,7 +901,8 @@ void PSGPUWrapper::EndPass() {
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
     size_t len = device_keys.size();
     int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim << " key_len :" << len;
+    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
+            << " key_len :" << len;
     size_t feature_value_size =
         TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
 

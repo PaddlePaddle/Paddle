@@ -269,7 +269,9 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
-  std::vector<int64_t>& GetGpuGraphTotalKeys() { return gpu_graph_total_keys_; }
+  std::vector<uint64_t>& GetGpuGraphTotalKeys() {
+    return gpu_graph_total_keys_;
+  }
   Channel<T>& GetInputChannelRef() { return input_channel_; }
 
  protected:
@@ -331,8 +333,8 @@ class DatasetImpl : public Dataset {
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 1;
   // std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
-  std::vector<std::vector<std::vector<int64_t>>> graph_all_type_total_keys_;
-  std::vector<int64_t> gpu_graph_total_keys_;
+  std::vector<std::vector<std::vector<uint64_t>>> graph_all_type_total_keys_;
+  std::vector<uint64_t> gpu_graph_total_keys_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
