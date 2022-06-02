@@ -380,6 +380,7 @@ def adjust_brightness(img, brightness_factor):
 
     Examples:
         .. code-block:: python
+           :name: code-example1
 
             import numpy as np
             from PIL import Image
@@ -388,9 +389,13 @@ def adjust_brightness(img, brightness_factor):
             fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
             fake_img = Image.fromarray(fake_img)
+            print(fake_img.size) # (300, 256)
+            print(fake_img.load()[1,1]) # (95, 127, 202)
+            converted_img = F.adjust_brightness(fake_img, 0.5)
+            print(converted_img.size) # (300, 256)
+            print(converted_img.load()[1,1]) # (47, 63, 101)
 
-            converted_img = F.adjust_brightness(fake_img, 0.4)
-            print(converted_img.size)
+
     """
     if not (_is_pil_image(img) or _is_numpy_image(img) or
             _is_tensor_image(img)):

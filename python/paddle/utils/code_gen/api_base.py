@@ -48,8 +48,7 @@ class BaseAPI(object):
                 'func']) == 1 or not self.kernel['func'][1].endswith(
                     '_sr') else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
-            self.inplace_map, self.view_map = self.parse_inplace_and_view(
-                api_item_yaml)
+            self.inplace_map, self.view_map = {}, {}
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
@@ -141,7 +140,7 @@ class BaseAPI(object):
             'int[]': 'const std::vector<int>&'
         }
         optional_types_trans = {
-            'Tensor': 'paddle::optional<const Tensor&>',
+            'Tensor': 'const paddle::optional<Tensor>&',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
             'int': 'paddle::optional<int>',
             'int32_t': 'paddle::optional<int32_t>',
@@ -302,31 +301,6 @@ class BaseAPI(object):
                     'data_transform']['support_trans_dtype']
 
         return data_transform
-
-    def parse_inplace_and_view(self, api_item_yaml):
-        inplace_map, view_map = {}, {}
-        for mode in ['inplace', 'view']:
-            if mode in api_item_yaml:
-                if mode == 'inplace':
-                    inplace_map = {}
-                else:
-                    view_map = {}
-                in_out_mapping_list = api_item_yaml[mode].split(',')
-                for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
-                    in_val = result.group('in')
-                    out_val = result.group('out')
-                    assert in_val in self.inputs['names'], \
-                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert out_val in self.outputs['names'], \
-                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
-
-                    if mode == 'inplace':
-                        inplace_map[out_val] = in_val
-                    else:
-                        view_map[out_val] = in_val
-
-        return inplace_map, view_map
 
     # Override by child class
     def get_return_type(self, inplace_flag=False):
@@ -512,18 +486,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
                     param_code = param_code + param + "_metas, "
                 elif param in self.optional_vars:
-                    meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param} = paddle::none;
-{code_indent}  phi::DenseTensor {param}_dt;
-{code_indent}  phi::MetaTensor {PREFIX_TENSOR_NAME}meta_tmp_{param}({param}_dt);
-{code_indent}  if ({PREFIX_TENSOR_NAME}{param}_ptr) {{
-{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dtype( {PREFIX_TENSOR_NAME}{param}_ptr->dtype() );
-{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_dims( {PREFIX_TENSOR_NAME}{param}_ptr->dims() );
-{code_indent}    {PREFIX_TENSOR_NAME}meta_tmp_{param}.set_layout( {PREFIX_TENSOR_NAME}{param}_ptr->layout() );
-{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} =  {PREFIX_TENSOR_NAME}meta_tmp_{param};
-{code_indent}  }}\n"""
-
-                    param_code = param_code + f"{PREFIX_TENSOR_NAME}meta_ref_{param}, "
+                    param_code = param_code + "MakeMetaTensor(" + PREFIX_TENSOR_NAME + param + "), "
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
@@ -568,8 +531,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             'const std::vector<const phi::DenseTensor*>&',
             'const paddle::optional<Tensor&>':
             'paddle::optional<const phi::DenseTensor&>',
-            'paddle::optional<const Tensor&>':
-            'paddle::optional<const phi::DenseTensor&>',
+            'const paddle::optional<Tensor>&':
+            'const paddle::optional<phi::DenseTensor>&',
             'const paddle::optional<std::vector<Tensor>>&':
             'paddle::optional<const std::vector<phi::DenseTensor>&>'
         }
@@ -597,11 +560,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     trans_flag = "{false, true}"
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
-{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
-{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
-{code_indent}  }}"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
 
                 else:
                     if self.inputs['input_info'][input_name] == "const Tensor&":
@@ -677,7 +636,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_trans_map = {
             'const Tensor&': 'const phi::SelectedRows&',
             'const paddle::optional<Tensor>&':
-            'paddle::optional<const phi::SelectedRows&>'
+            'const paddle::optional<phi::SelectedRows>&'
         }
         out_trans_map = {'Tensor': 'phi::SelectedRows*'}
         input_names = self.inputs['names']

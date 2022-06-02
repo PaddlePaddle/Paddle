@@ -59,7 +59,7 @@ class StackMKLDNNHandler
     // wrong output format deduction and suboptimal performance as a result
     if (stack_axis != ndims) {
       for (size_t i = 0; i < inputs.size(); ++i) {
-        srcs_md.emplace_back(memory::desc(input_dims, dt, inputs[i]->format()));
+        srcs_md.push_back(inputs[i]->mem_desc());
       }
 
       input_dims[stack_axis] *= inputs.size();
@@ -69,8 +69,7 @@ class StackMKLDNNHandler
       extended_input_dims[stack_axis] = 1;
 
       for (size_t i = 0; i < inputs.size(); ++i) {
-        srcs_md.emplace_back(memory::desc(input_dims, dt, inputs[i]->format())
-                                 .reshape(extended_input_dims));
+        srcs_md.push_back(inputs[i]->mem_desc().reshape(extended_input_dims));
       }
 
       // concat primitive choses suboptimal format tag because it cannot
@@ -130,9 +129,8 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     concat_p->execute(astream, args);
     astream.wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(
-        dst_mem->get_desc().reshape(phi::vectorize(output->dims()))));
+    output->set_mem_desc(
+        dst_mem->get_desc().reshape(phi::vectorize(output->dims())));
   }
 };
 }  // namespace operators

@@ -315,7 +315,7 @@ class RecomputePass(PassBase):
             # When traversing all grad_ops in reverse, need to set a flag to indicate 
             # whether the ckpt and its segment_descs can be used.
             ckpt_op = op_path[segment[1] - 1]
-            ckpt_ops_dict[ckpt_op.desc.id()] = [True, segment_descs]
+            ckpt_ops_dict[ckpt_op.desc.original_id()] = [True, segment_descs]
 
         # step 4: insert recomputed fwd ops
         ops = main_block.ops
@@ -339,9 +339,9 @@ class RecomputePass(PassBase):
                 _rename_arg_([grad_op.desc], key, var_name_dict[key])
 
             # insert recomputed ops
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
-                fwd_op_id = dist_op_context.grad_op_id_to_op_id[grad_op.desc.id(
-                )]
+            original_id = grad_op.desc.original_id()
+            if original_id in dist_op_context.grad_op_id_to_op_id:
+                fwd_op_id = dist_op_context.grad_op_id_to_op_id[original_id]
                 if fwd_op_id in ckpt_ops_dict and ckpt_ops_dict[fwd_op_id][0]:
                     idx = grad_op.idx
                     while idx - 1 >= 0 and ops[idx - 1].type == "sum":

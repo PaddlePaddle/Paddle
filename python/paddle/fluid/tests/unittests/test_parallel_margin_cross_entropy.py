@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle.fluid as fluid
 
@@ -23,7 +24,10 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleGpus):
     def test_parallel_margin_cross_entropy(self):
         self.run_mnist_2gpu('parallel_margin_cross_entropy.py')
+        self.run_mnist_2gpu(
+            'parallel_margin_cross_entropy.py', eager_mode=False)
 
 
 if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

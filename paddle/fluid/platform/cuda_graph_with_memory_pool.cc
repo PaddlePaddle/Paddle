@@ -16,23 +16,33 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(platform::CUDAPlace place,
-                           cudaStreamCaptureMode mode) {
+                           cudaStreamCaptureMode mode, int64_t pool_id) {
   auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
-  auto id = CUDAGraph::CapturingID();
+
+  auto old_value = FLAGS_use_stream_safe_cuda_allocator;
+  if (old_value) {
+    FLAGS_use_stream_safe_cuda_allocator = false;
+  }
+  pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
-      id);
-  AddResetCallbackIfCapturingCUDAGraph([id] {
+      pool_id);
+  if (old_value) {
+    FLAGS_use_stream_safe_cuda_allocator = true;
+  }
+  AddResetCallbackIfCapturingCUDAGraph([pool_id] {
     memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
-        id);
+        pool_id);
   });
 }
 

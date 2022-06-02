@@ -263,6 +263,18 @@ def skip_check_grad_ci(reason=None):
     return wrapper
 
 
+def skip_check_inplace_ci(reason=None):
+    if not isinstance(reason, str):
+        raise AssertionError(
+            "The reason for skipping check_inplace is required.")
+
+    def wrapper(cls):
+        cls.no_need_check_inplace = True
+        return cls
+
+    return wrapper
+
+
 def copy_bits_from_float_to_uint16(f):
     return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
 
@@ -1288,6 +1300,9 @@ class OpTest(unittest.TestCase):
         Returns:
             None
         """
+        if getattr(self, "no_need_check_inplace", False):
+            return
+
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
 

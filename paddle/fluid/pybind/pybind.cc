@@ -604,6 +604,8 @@ PYBIND11_MODULE(core_noavx, m) {
                         place, static_cast<cudaStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def_static("gen_new_memory_pool_id",
+                  &platform::CUDAGraph::UniqueMemoryPoolID)
       .def("replay", &platform::CUDAGraph::Replay)
       .def("reset", &platform::CUDAGraph::Reset)
       .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
@@ -3005,8 +3007,9 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return stats_map;
   });
-  m.def("memory_stat_get_current", memory::StatGetCurrentValue);
-  m.def("memory_stat_get_peak", memory::StatGetPeakValue);
+  m.def("device_memory_stat_current_value",
+        memory::DeviceMemoryStatCurrentValue);
+  m.def("device_memory_stat_peak_value", memory::DeviceMemoryStatPeakValue);
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {

@@ -495,7 +495,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   }
 
   paddle::experimental::Tensor* grad;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
                    paddle::platform::errors::Fatal(
@@ -523,6 +524,11 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          if (is_leaf) {
+            std::static_pointer_cast<egr::GradNodeAccumulation>(
+                egr::EagerUtils::grad_node(self->tensor))
+                ->SetFakeEmpty(true);
+          }
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
