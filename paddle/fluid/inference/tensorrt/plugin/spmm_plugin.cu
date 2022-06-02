@@ -269,8 +269,10 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   2. (Int8) Calculate scale and scale the weight (on host)
   3. Copy weight to device
   4. Compress the weight (on device)
-  5. Copy the compressed weight to host
-  6. Convert bias precision and copy (on host)
+  5. Reset the shared_ptr "weight_compressed_dev_global_" to the compressed
+  weight
+  6. Copy the compressed weight to host
+  7. Convert bias precision and copy (on host)
   */
   precision_size_ = getElementSize(precision);
   element_size_ =
@@ -367,10 +369,9 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
       activation_(activation) {
   /*
   1. Copy the compressed weight (on host)
-  2. Copy the compressed weight to device
-  3. Copy the bias (on host)
-  4. (Configured) Copy the bias to device
-  5. (Configured) Init cuSPARSELt descriptors
+  2. Copy the bias (on host)
+  3. (Configured) Copy the bias to device
+  4. (Configured) Init cuSPARSELt descriptors
   */
   precision_size_ = getElementSize(precision);
   element_size_ =
