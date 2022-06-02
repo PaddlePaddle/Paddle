@@ -17,6 +17,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <queue>
+
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {

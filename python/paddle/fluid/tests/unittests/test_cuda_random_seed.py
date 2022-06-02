@@ -40,12 +40,18 @@ class TestGeneratorSeed(unittest.TestCase):
         gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
 
-        x = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
-        x_again = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
-        x_third = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x = fluid.layers.uniform_random([2, 10],
+                                        dtype="float32",
+                                        min=0.0,
+                                        max=1.0)
+        x_again = fluid.layers.uniform_random([2, 10],
+                                              dtype="float32",
+                                              min=0.0,
+                                              max=1.0)
+        x_third = fluid.layers.uniform_random([2, 10],
+                                              dtype="float32",
+                                              min=0.0,
+                                              max=1.0)
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
@@ -53,12 +59,18 @@ class TestGeneratorSeed(unittest.TestCase):
 
         paddle.set_cuda_rng_state(st)
 
-        x1 = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
-        x1_again = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
-        x1_third = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x1 = fluid.layers.uniform_random([2, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+        x1_again = fluid.layers.uniform_random([2, 10],
+                                               dtype="float32",
+                                               min=0.0,
+                                               max=1.0)
+        x1_third = fluid.layers.uniform_random([2, 10],
+                                               dtype="float32",
+                                               min=0.0,
+                                               max=1.0)
         x1 = x1 + x1_again + x1_third
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
@@ -125,13 +137,13 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0))
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
             result_2 = fluid.layers.fc(
                 input=x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0))
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)

@@ -24,6 +24,7 @@ import paddle
 
 
 class TestDirectory(unittest.TestCase):
+
     def get_import_command(self, module):
         paths = module.split('.')
         if len(paths) == 1:
@@ -86,10 +87,9 @@ class TestDirectory(unittest.TestCase):
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, import_file)
-        ps_proc = subprocess.Popen(
-            ps_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
         self.assertFalse("Error" in str(stderr),
@@ -169,10 +169,9 @@ if count != {len_old_directory}:
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, import_file)
-        ps_proc = subprocess.Popen(
-            ps_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
         self.assertFalse("Error" in str(stdout), bytes.decode(stdout))

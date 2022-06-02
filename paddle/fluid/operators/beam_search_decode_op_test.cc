@@ -103,11 +103,9 @@ TEST(BeamSearchDecodeOp, Backtrace) {
                                 std::vector<int>{1, 1, 3, 5}, &ids, &scores);
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 2, 4},
-      std::vector<size_t>{0, 0, 0, 2,
-                          2},  // the branchs of the first source sentence
-                               // are pruned since finished
-      std::vector<int>{5, 1},
-      &ids, &scores);
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
+      std::vector<int>{5, 1}, &ids, &scores);
 
   ASSERT_EQ(ids.size(), 5UL);
   ASSERT_EQ(scores.size(), 5UL);

@@ -57,14 +57,14 @@ Node *gelu_handler(Graph *graph, Node *node) {
                              {{"value", std::vector<float>{1.4142135623730951}},
                               {"dims", std::vector<int64_t>{1}},
                               {"dtype", GetOutputVarDType(node)}});
-    auto zero_point_five =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0.5}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", GetOutputVarDType(node)}});
-    auto one =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{1}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", GetOutputVarDType(node)}});
+    auto zero_point_five = CreateConst(graph, node, {}, {},
+                                       {{"value", std::vector<float>{0.5}},
+                                        {"dims", std::vector<int64_t>{1}},
+                                        {"dtype", GetOutputVarDType(node)}});
+    auto one = CreateConst(graph, node, {}, {},
+                           {{"value", std::vector<float>{1}},
+                            {"dims", std::vector<int64_t>{1}},
+                            {"dtype", GetOutputVarDType(node)}});
     auto div =
         CreateBaseOp(graph, node, "popart_div",
                      {GetInputVarNode("X", node), sqrt2->outputs[0]}, {}, {});

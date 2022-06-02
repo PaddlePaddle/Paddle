@@ -36,6 +36,7 @@ def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
 
 
 class TestLogsumexp(OpTest):
+
     def setUp(self):
         self.op_type = 'logsumexp'
         self.python_api = logsumexp_wrapper
@@ -85,16 +86,19 @@ class TestLogsumexp(OpTest):
 
 
 class TestLogsumexp_shape(TestLogsumexp):
+
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(TestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(TestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
@@ -105,11 +109,13 @@ class TestLogsumexp_axis_all(TestLogsumexp):
 
 
 class TestLogsumexp_keepdim(TestLogsumexp):
+
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(TestLogsumexp):
+
     def set_attrs(self):
         self.reduce_all = True
 
@@ -120,6 +126,7 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
@@ -128,6 +135,7 @@ class TestLogsumexpError(unittest.TestCase):
 
 
 class TestLogsumexpAPI(unittest.TestCase):
+
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)

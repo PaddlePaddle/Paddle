@@ -30,7 +30,7 @@ namespace operators {
  * The DropoutParam will be used in the fused_dropout_act_bias,
  * fused_residual_dropout_bias(pre_layer_norm=ture) or
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
-*/
+ */
 struct DropoutParam {
   uint64_t seed;
   float dropout_prob;
@@ -232,8 +232,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     using U = LayerNormParamType<T>;
     switch (GetDesiredBlockDim(this->cols_)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<
-              T, U, kBlockDim><<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
+          LayerNormForward<T, U, kBlockDim>
+          <<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
               src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
     }
   }

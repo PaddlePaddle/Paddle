@@ -21,6 +21,7 @@ import threading
 import numpy
 
 import paddle
+
 paddle.enable_static()
 
 import paddle.fluid as fluid
@@ -29,6 +30,7 @@ import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
+
     def net(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')

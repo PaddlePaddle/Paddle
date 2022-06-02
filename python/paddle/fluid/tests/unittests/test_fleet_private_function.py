@@ -20,7 +20,9 @@ import threading
 
 
 class TestFleetPrivateFunction(unittest.TestCase):
+
     def test_wait_port(self):
+
         def init_server(port):
             import time
             time.sleep(5)

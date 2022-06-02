@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+
 #include <memory>
 #include <sstream>
 #include <string>
 
-#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
 
 static const int max_port = 65535;
@@ -245,8 +246,9 @@ int32_t BrpcPsClient::Initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }
@@ -263,8 +265,9 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id << " failed, "
-                                                  "err:"
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
                << _cntls[request_idx]->ErrorText();
     return -1;
   }

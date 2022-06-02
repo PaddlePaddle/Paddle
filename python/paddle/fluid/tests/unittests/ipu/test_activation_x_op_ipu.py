@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestRelu(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_test_op()
@@ -46,8 +47,9 @@ class TestRelu(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
         out = self.op(x, **self.op_attrs)
         self.fetch_list = [out.name]
 
@@ -63,24 +65,28 @@ class TestRelu(IPUOpTest):
 
 
 class TestTanh(TestRelu):
+
     def set_test_op(self):
         self.op = F.tanh
         self.op_attrs = {}
 
 
 class TestLog(TestRelu):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.log
         self.op_attrs = {}
 
 
 class TestSigmoid(TestRelu):
+
     def set_test_op(self):
         self.op = F.sigmoid
         self.op_attrs = {}
 
 
 class TestSqrt(TestRelu):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.sqrt
         self.op_attrs = {}

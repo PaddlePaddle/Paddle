@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,6 +66,7 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
     not is_fused_matmul_bias_supported(),
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestFusedMatmulBias(unittest.TestCase):
+
     def setUp(self):
         paddle.set_device('gpu')
 
@@ -131,6 +132,7 @@ class TestFusedMatmulBias(unittest.TestCase):
     not is_fused_matmul_bias_supported(),
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestFusedLinear(unittest.TestCase):
+
     def check_fused_linear(self, transpose):
         x = paddle.randn([30, 40])
         linear = FusedLinear(40, 50, transpose_weight=transpose)
@@ -149,6 +151,7 @@ class TestFusedLinear(unittest.TestCase):
     not is_fused_matmul_bias_supported(),
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestStaticGraph(unittest.TestCase):
+
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

@@ -204,16 +204,15 @@ class AvgPool2D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.avg_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            exclusive=self.exclusive,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
+        return F.avg_pool2d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            ceil_mode=self.ceil_mode,
+                            exclusive=self.exclusive,
+                            divisor_override=self.divisor,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -302,16 +301,15 @@ class AvgPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.avg_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            exclusive=self.exclusive,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
+        return F.avg_pool3d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            ceil_mode=self.ceil_mode,
+                            exclusive=self.exclusive,
+                            divisor_override=self.divisor,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -507,15 +505,14 @@ class MaxPool2D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_mask=self.return_mask,
-            ceil_mode=self.ceil_mode,
-            data_format=self.data_format,
-            name=self.name)
+        return F.max_pool2d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            return_mask=self.return_mask,
+                            ceil_mode=self.ceil_mode,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -605,15 +602,14 @@ class MaxPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_mask=self.return_mask,
-            ceil_mode=self.ceil_mode,
-            data_format=self.data_format,
-            name=self.name)
+        return F.max_pool3d(x,
+                            kernel_size=self.ksize,
+                            stride=self.stride,
+                            padding=self.padding,
+                            return_mask=self.return_mask,
+                            ceil_mode=self.ceil_mode,
+                            data_format=self.data_format,
+                            name=self.name)
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
@@ -769,11 +765,10 @@ class AdaptiveAvgPool2D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_avg_pool2d(
-            x,
-            output_size=self._output_size,
-            data_format=self._data_format,
-            name=self._name)
+        return F.adaptive_avg_pool2d(x,
+                                     output_size=self._output_size,
+                                     data_format=self._data_format,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self._output_size)
@@ -862,11 +857,10 @@ class AdaptiveAvgPool3D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_avg_pool3d(
-            x,
-            output_size=self._output_size,
-            data_format=self._data_format,
-            name=self._name)
+        return F.adaptive_avg_pool3d(x,
+                                     output_size=self._output_size,
+                                     data_format=self._data_format,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self._output_size)
@@ -1026,11 +1020,10 @@ class AdaptiveMaxPool2D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_max_pool2d(
-            x,
-            output_size=self._output_size,
-            return_mask=self._return_mask,
-            name=self._name)
+        return F.adaptive_max_pool2d(x,
+                                     output_size=self._output_size,
+                                     return_mask=self._return_mask,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}, return_mask={}'.format(self._output_size,
@@ -1119,11 +1112,10 @@ class AdaptiveMaxPool3D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.adaptive_max_pool3d(
-            x,
-            output_size=self._output_size,
-            return_mask=self._return_mask,
-            name=self._name)
+        return F.adaptive_max_pool3d(x,
+                                     output_size=self._output_size,
+                                     return_mask=self._return_mask,
+                                     name=self._name)
 
     def extra_repr(self):
         return 'output_size={}, return_mask={}'.format(self._output_size,
@@ -1198,15 +1190,14 @@ class MaxUnPool1D(Layer):
         self.name = name
 
     def forward(self, x, indices):
-        return F.max_unpool1d(
-            x,
-            indices,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            data_format=self.data_format,
-            output_size=self.output_size,
-            name=self.name)
+        return F.max_unpool1d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self.output_size)
@@ -1283,15 +1274,14 @@ class MaxUnPool2D(Layer):
         self.name = name
 
     def forward(self, x, indices):
-        return F.max_unpool2d(
-            x,
-            indices,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            data_format=self.data_format,
-            output_size=self.output_size,
-            name=self.name)
+        return F.max_unpool2d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self.output_size)
@@ -1372,15 +1362,14 @@ class MaxUnPool3D(Layer):
         self.name = name
 
     def forward(self, x, indices):
-        return F.max_unpool3d(
-            x,
-            indices,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            data_format=self.data_format,
-            output_size=self.output_size,
-            name=self.name)
+        return F.max_unpool3d(x,
+                              indices,
+                              kernel_size=self.ksize,
+                              stride=self.stride,
+                              padding=self.padding,
+                              data_format=self.data_format,
+                              output_size=self.output_size,
+                              name=self.name)
 
     def extra_repr(self):
         return 'output_size={}'.format(self.output_size)

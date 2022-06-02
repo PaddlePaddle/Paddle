@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
 namespace paddle {
@@ -128,8 +129,9 @@ bool StackPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType StackPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be equal to 0"));
+  PADDLE_ENFORCE_EQ(
+      index, 0,
+      platform::errors::InvalidArgument("The index should be equal to 0"));
   return input_types[0];
 }
 

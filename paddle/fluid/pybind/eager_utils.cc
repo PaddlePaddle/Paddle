@@ -14,6 +14,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+// clang-format will try to move eager_utils.h in front of other headers
+// according to google c++ style, and that cause compiling problems.
+// clang-format off
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -31,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+// clang-format on
 
 namespace paddle {
 namespace pybind {
