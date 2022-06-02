@@ -51,36 +51,32 @@ class FunctionSchema {
 // TODO(dev): make it as abstract class
 class BaseFunction {
  public:
-  BaseFunction(const framework::ProgramDesc &prog,
-               const std::vector<IValue> &params)
-      : prog_(prog), params_(params) {
-    // Construct executor.
-    Init();
+  BaseFunction(const framework::ProgramDesc &program_desc,
+               const std::vector<std::string> param_name_for_program,
+               const std::map<std::string, IValue> &all_param)
+      : program_desc_(program_desc) {
+    // Parse FunctionSchema
+    skip_var_name_ = program_desc_.GetFetchTargetNames();
+    for (auto &in_name : program_desc_.GetFeedTargetNames()) {
+      schema_.input_args.emplace_back(in_name, false);
+    }
+
+    for (auto &out_name : skip_var_name_) {
+      schema_.output_args.emplace_back(out_name, true);
+    }
+    // share params into scope
+    SharePartialIntoScope(param_name_for_program, all_param);
+    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+    // remove feed fetch op
+    RemoveFeedFetch();
   }
   virtual ~BaseFunction() {}
 
   virtual std::vector<IValue> operator()(const std::vector<IValue> &args) = 0;
 
  protected:
-  void Init() {
-    // Parse FunctionSchema
-    skip_vars_ = prog_.GetFetchTargetNames();
-    for (auto &in_name : prog_.GetFeedTargetNames()) {
-      schema_.input_args.emplace_back(in_name, false);
-    }
-
-    for (auto &out_name : skip_vars_) {
-      schema_.output_args.emplace_back(out_name, true);
-    }
-    // share params into scope
-    ShareIntoScope(params_);
-    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    // remove feed fetch op
-    RemoveFeedFetch();
-  }
-
   void FetchOutput(std::vector<IValue> *outs) {
-    for (auto &out_name : skip_vars_) {
+    for (auto &out_name : skip_var_name_) {
       VLOG(3) << "fetch out: " << out_name;
       auto *var = scope_.FindVar(out_name);
       auto &src_tensor = var->Get<phi::DenseTensor>();
@@ -104,9 +100,25 @@ class BaseFunction {
     }
   }
 
+  void SharePartialIntoScope(
+      const std::vector<std::string> param_name_for_program,
+      const std::map<std::string, IValue> &all_param) {
+    VLOG(3) << "ivals size: " << param_name_for_program.size();
+    for (size_t i = 0; i < param_name_for_program.size(); ++i) {
+      std::string name = param_name_for_program[i];
+      IValue val = all_param.find(name)->second;
+      auto &tensor = val.AsTensor();
+      VLOG(3) << "share into scope: " << tensor.name();
+      auto *var = scope_.Var(tensor.name());
+      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
+      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+      *dst_tensor = *t;
+    }
+  }
+
   void RemoveFeedFetch() {
-    for (size_t i = 0; i < prog_.Size(); ++i) {
-      auto *block = prog_.MutableBlock(i);
+    for (size_t i = 0; i < program_desc_.Size(); ++i) {
+      auto *block = program_desc_.MutableBlock(i);
       const auto &all_ops = block->AllOps();
       size_t op_size = all_ops.size();
       VLOG(3) << "op_size: " << op_size;
@@ -122,10 +134,10 @@ class BaseFunction {
   }
 
  protected:
-  framework::ProgramDesc prog_;
+  framework::ProgramDesc program_desc_;
   // TODO(dev): need a better way to share params
-  const std::vector<IValue> &params_;
-  std::vector<std::string> skip_vars_;
+  // std::vector<IValue> &param_for_program_;
+  std::vector<std::string> skip_var_name_;
   FunctionSchema schema_;
   // global_scope place params
   framework::Scope scope_;

@@ -47,16 +47,19 @@ class Deserializer {
  public:
   Layer operator()(const std::string& dir_path) {
     const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
-    std::vector<std::string> func_names;
-    std::vector<framework::ProgramDesc> progs;
-    std::vector<IValue> params;
+    std::vector<std::string> all_func_name;
+    std::vector<framework::ProgramDesc> all_program_desc;
+    std::vector<std::vector<std::string>> param_name_for_each_program;
+    // std::vector<IValue> all_param;
+    std::map<std::string, IValue> param_dict;
     for (auto& it : file_name_prefixs) {
-      func_names.emplace_back(it.first);
-      auto prog = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
-      progs.emplace_back(prog);
+      all_func_name.emplace_back(it.first);
+
+      auto program = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
+      all_program_desc.emplace_back(program);
 
       std::vector<std::string> persistable_var_name;
-      auto all_var_desc = prog.Block(0).AllVars();
+      auto all_var_desc = program.Block(0).AllVars();
       for (auto* desc_ptr : all_var_desc) {
         if (IsPersistable(desc_ptr)) {
           persistable_var_name.emplace_back(desc_ptr->Name());
@@ -65,14 +68,16 @@ class Deserializer {
       // Sorting is required to correspond to the order of
       // parameters in the .pdparam file
       std::sort(persistable_var_name.begin(), persistable_var_name.end());
-      auto tmp_params = ReadTensorData(dir_path + it.second + PDPARAMS_SUFFIX,
-                                       persistable_var_name);
+      param_name_for_each_program.emplace_back(persistable_var_name);
 
+      auto param_for_program = ReadTensorData(
+          dir_path + it.second + PDPARAMS_SUFFIX, persistable_var_name);
       // Now param is saved separately, gather all params
-      params.insert(params.end(), tmp_params.begin(), tmp_params.end());
+      param_dict.insert(param_for_program.begin(), param_for_program.end());
     }
     // TODO(dev): we also need name of Params
-    return Layer(func_names, progs, params);
+    return Layer(all_func_name, all_program_desc, param_name_for_each_program,
+                 param_dict);
   }
 
  private:
@@ -115,22 +120,19 @@ class Deserializer {
     return file_name_prefixs;
   }
 
-  std::vector<IValue> ReadTensorData(
+  std::map<std::string, IValue> ReadTensorData(
       const std::string& file_name,
       const std::vector<std::string>& var_name) const {
     VLOG(3) << "ReadTensorData " << file_name;
     std::ifstream fin(file_name, std::ios::binary);
-    // TODO(dev): how to pass var_name;
-    // std::vector<std::string> var_name = {"linear_0.b_0", "linear_0.w_0",
-    //                                       "linear_1.b_0", "linear_1.w_0"};
-    std::vector<IValue> res;
+    std::map<std::string, IValue> res;
     for (size_t i = 0; i < var_name.size(); ++i) {
       VLOG(3) << "load Tensor: " << var_name[i];
       // TODO(dev): support other tensor type
       Tensor t(std::make_shared<DenseTensor>());
       LoadTensorFromBuffer(fin, dynamic_cast<DenseTensor*>(t.impl().get()));
       t.set_name(var_name[i]);
-      res.emplace_back(t);
+      res[var_name[i]] = IValue(t);
     }
     return res;
   }

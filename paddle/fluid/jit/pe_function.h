@@ -27,9 +27,10 @@ namespace jit {
 
 class PEFunction : public BaseFunction {
  public:
-  PEFunction(const framework::ProgramDesc &prog,
-             const std::vector<IValue> &params)
-      : BaseFunction(prog, params) {}
+  PEFunction(const framework::ProgramDesc &program_desc,
+             const std::vector<std::string> param_name_for_program,
+             const std::map<std::string, IValue> &all_param)
+      : BaseFunction(program_desc, param_name_for_program, all_param) {}
 
   ~PEFunction() {}
 
@@ -37,14 +38,12 @@ class PEFunction : public BaseFunction {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
-    prog_.Proto()->SerializePartialToString(&prog_string);
+    program_desc_.Proto()->SerializePartialToString(&prog_string);
     int64_t program_id = static_cast<int64_t>(string_hash(prog_string));
-    const framework::BlockDesc &global_block = prog_.Block(0);
+    const framework::BlockDesc &global_block = program_desc_.Block(0);
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
-    for (auto op : global_block.AllOps()) {
-      VLOG(3) << "global_block.AllOps(): " << op->Type();
-    }
+
     ShareIntoScope(args);
     // std::vector<std::string> input_var_names = prog_.GetFeedTargetNames();
     // std::vector<std::string> output_var_names = prog_.GetFetchTargetNames();
@@ -59,18 +58,13 @@ class PEFunction : public BaseFunction {
 
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
-      VLOG(3) << "GetExecutorInfoFromCache: " << start_op_index << "; "
-              << end_op_index;
       auto cache_info = framework::GetExecutorInfoFromCache(
-          prog_, phi::CPUPlace(), start_op_index, end_op_index,
+          program_desc_, phi::CPUPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope_);
-      VLOG(3) << "auto &parallel_executor = cache_info.first";
       auto &parallel_executor = cache_info.first;
-      VLOG(3) << "SkipEagerDeleteVars(program_id, false)";
       auto &skip_eager_delete_vars =
           framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
               program_id, false);
-      VLOG(3) << "if (cache_info.second /*is_new_created*/)";
       if (cache_info.second /*is_new_created*/) {
         parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, input_var_names);
         skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
@@ -80,11 +74,8 @@ class PEFunction : public BaseFunction {
                                       dout_var_names.begin(),
                                       dout_var_names.end());
         framework::details::ParseSafeEagerDeletionSkipVars(
-            prog_, end_op_index, output_var_names, &skip_eager_delete_vars);
-      }
-      VLOG(3) << "parallel_executor->RunWithoutFetch(skip_eager_delete_vars)";
-      for (auto name : skip_eager_delete_vars) {
-        VLOG(3) << "skip_eager_delete_vars: " << name;
+            program_desc_, end_op_index, output_var_names,
+            &skip_eager_delete_vars);
       }
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }

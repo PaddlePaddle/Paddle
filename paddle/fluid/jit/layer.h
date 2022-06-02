@@ -34,24 +34,24 @@ class Layer {
   // TODO(dev): Make vector<string>, num_slot as in argument
   // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
   // {}
-  Layer(const std::vector<std::string>& func_names,
-        const std::vector<framework::ProgramDesc>& progs,
-        const std::vector<IValue>& params)
-      : progs_(progs), params_(params) {
-    VLOG(3) << "program size: " << progs.size();
+  Layer(
+      const std::vector<std::string>& all_func_name,
+      const std::vector<framework::ProgramDesc>& all_program_desc,
+      const std::vector<std::vector<std::string>>& param_name_for_each_program,
+      const std::map<std::string, IValue>& param_dict) {
+    VLOG(3) << "program size: " << all_program_desc.size();
     // Layer manage the life time of all parameter.
     // params_ = params;
-    for (size_t i = 0; i < func_names.size(); ++i) {
-      funcs_.insert(std::make_pair(
-          func_names[i],
-          std::make_shared<ExectorFunction>(progs_[i], params_)));
+    for (size_t i = 0; i < all_func_name.size(); ++i) {
+      function_dict[all_func_name[i]] = std::make_shared<ExectorFunction>(
+          all_program_desc[i], param_name_for_each_program[i], param_dict);
     }
   }
 
   // TODO(dev): make it as const function
   std::shared_ptr<BaseFunction> GetFunction(const std::string& name) {
-    VLOG(3) << "funcs_ size: " << funcs_.size();
-    return funcs_[name];
+    VLOG(3) << "funcs_ size: " << function_dict.size();
+    return function_dict[name];
   }
 
   std::vector<IValue> forward(const std::vector<IValue>& args) {
@@ -62,13 +62,10 @@ class Layer {
  private:
   // internal::Object obj_;
   // TODO(dev): we should class them.
-  std::vector<framework::ProgramDesc> progs_;
-  // std::vector<std::string> param_names_;
-  std::vector<IValue> params_;
-  // std::vector<std::shared_ptr<BaseFunction>> funcs_;
-
-  // std::vector<std::string> func_names;
-  std::map<std::string, std::shared_ptr<BaseFunction>> funcs_;
+  // std::vector<framework::ProgramDesc> all_program_desc_;
+  // std::vector<std::vector<std::string>> param_name_for_each_program_;
+  // std::vector<IValue> all_param_;
+  std::map<std::string, std::shared_ptr<BaseFunction>> function_dict;
 };
 
 }  // namespace jit
