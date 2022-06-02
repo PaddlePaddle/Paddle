@@ -250,7 +250,7 @@ TEST(EagerUtils, GetGradAccumulationNode) {
   ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
 }
 
-TEST(EagerUtils, FillZeroForEmptyGradInputs) {
+TEST(EagerUtils, FillZeroForEmptyOptionalGradInput) {
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        egr::kSlotSmallVectorSize>
       grads = {std::vector<paddle::experimental::Tensor>(1)};
@@ -263,7 +263,7 @@ TEST(EagerUtils, FillZeroForEmptyGradInputs) {
   slot_metas[0][0].SetTensorMeta(tensor_meta);
   slot_metas[0][0].SetPlace(phi::CPUPlace());
 
-  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0], slot_metas[0]);
   eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 

@@ -61,7 +61,7 @@ class FunctionCache(object):
 
     def __init__(self):
         # Caches the converted static functions. {dygraph_func: static_func}
-        self._converted_static_func_caches = dict()
+        self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
         self._code_to_ast_caches = dict()
         self._dygraph_to_static = DygraphToStaticAst()
@@ -267,6 +267,8 @@ class StaticFunction(object):
         self._program_trans = ProgramTranslator()
         self._kwargs = kwargs
         self._training = True
+        self._cuda_graph_capture_mode = ""
+        self._cuda_graph_pool_id = 0
 
     def train(self):
         if isinstance(self._class_instance,
@@ -366,6 +368,9 @@ class StaticFunction(object):
                 partial_program_layer.training = self._class_instance.training
             else:
                 partial_program_layer.training = self._training
+
+            partial_program_layer._cuda_graph_capture_mode = self._cuda_graph_capture_mode
+            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
 
             # 4. return outputs.
             try:

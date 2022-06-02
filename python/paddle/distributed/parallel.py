@@ -19,6 +19,7 @@ from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
 import sys
+import paddle
 
 from paddle import compat as cpt
 
@@ -259,6 +260,8 @@ def init_parallel_env():
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
+
+        paddle.distributed.barrier(group=group)
         return group
 
     node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])

@@ -25,7 +25,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext, Di
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
 from .utils import set_dist_op_desc_original_id
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op, is_optimize_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -263,14 +263,14 @@ class Partitioner(object):
                 dist_op_backward_impl.backward(
                     self._dist_context, **kinputs, **koutputs,
                     **{"grad_var_to_var": grad_var_to_var})
-            elif int(op.attr('op_role')) == 2:
+            elif is_optimize_op(op):
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_impl = get_distributed_operator_impl_container(
                     "default").get_impl(0)
                 dist_op_impl.backward(self._dist_context, **kinputs, **koutputs)
             else:
                 raise NotImplementedError(
-                    "partitioner only support forward op and backward op, but got {}".
+                    "partitioner only support forward and backward, optimize ops, but got {}".
                     format(str(op)))
 
     def _is_valid_annotated_program(self, program):

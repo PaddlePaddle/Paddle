@@ -405,9 +405,7 @@ def new_group(ranks=None, backend=None):
 
         # TODO(shenliang03): This is a temporary solution to solve the problem of 
         # hang caused by tcp
-        tmp = paddle.to_tensor([1], dtype="int32")
-        paddle.distributed.all_reduce(tmp, group=group, use_calc_stream=True)
-        paddle.distributed.wait(tmp)
+        paddle.distributed.barrier(group=group)
         return group
 
     if not backend:

@@ -89,8 +89,8 @@ class AllocatorFacade {
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-  void PrepareMemoryPoolForCUDAGraph(CUDAGraphID id);
-  void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id);
+  void PrepareMemoryPoolForCUDAGraph(int64_t id);
+  void RemoveMemoryPoolOfCUDAGraph(int64_t id);
 #endif
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
@@ -98,8 +98,9 @@ class AllocatorFacade {
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
 #ifdef PADDLE_WITH_CUDA
-  std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
+  std::unordered_map<int64_t, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
+  std::unordered_map<int64_t, int64_t> cuda_graph_ref_cnt_;
 #endif
 };
 

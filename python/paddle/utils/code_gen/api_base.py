@@ -48,8 +48,7 @@ class BaseAPI(object):
                 'func']) == 1 or not self.kernel['func'][1].endswith(
                     '_sr') else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
-            self.inplace_map, self.view_map = self.parse_inplace_and_view(
-                api_item_yaml)
+            self.inplace_map, self.view_map = {}, {}
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
@@ -302,31 +301,6 @@ class BaseAPI(object):
                     'data_transform']['support_trans_dtype']
 
         return data_transform
-
-    def parse_inplace_and_view(self, api_item_yaml):
-        inplace_map, view_map = {}, {}
-        for mode in ['inplace', 'view']:
-            if mode in api_item_yaml:
-                if mode == 'inplace':
-                    inplace_map = {}
-                else:
-                    view_map = {}
-                in_out_mapping_list = api_item_yaml[mode].split(',')
-                for item in in_out_mapping_list:
-                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
-                    in_val = result.group('in')
-                    out_val = result.group('out')
-                    assert in_val in self.inputs['names'], \
-                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert out_val in self.outputs['names'], \
-                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
-
-                    if mode == 'inplace':
-                        inplace_map[out_val] = in_val
-                    else:
-                        view_map[out_val] = in_val
-
-        return inplace_map, view_map
 
     # Override by child class
     def get_return_type(self, inplace_flag=False):
