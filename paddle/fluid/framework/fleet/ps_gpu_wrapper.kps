@@ -160,6 +160,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float* src, long long* len,
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ float local_slot_grads[read_len * hidden];
     __local__ FeaturePushValue local_dest_grads[read_len];
+    mfence();
 
     // copy read_len(length) of slots' grad to LM
     for (int k = 0; k < slot_len; k += read_len) {
