@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.nn.functional as F
 from paddle.autograd.functional import _as_tensors
