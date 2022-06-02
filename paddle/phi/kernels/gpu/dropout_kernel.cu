@@ -31,20 +31,20 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
-  dev_ctx.template Alloc<T>(out);
-  float dropout_prob = p;
   bool upscale_in_train = (mode == "upscale_in_train");
+  std::vector<int> axes = {};
+  dev_ctx.template Alloc<T>(out);
   dev_ctx.template Alloc<uint8_t>(mask);
-
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
                                                  mode,
-                                                 dropout_prob,
+                                                 p,
                                                  upscale_in_train,
                                                  fix_seed,
                                                  seed,
                                                  x,
                                                  seed_tensor.get_ptr(),
+                                                 axes,
                                                  mask,
                                                  out);
 }
@@ -61,21 +61,21 @@ void DropoutNdKernel(const Context& dev_ctx,
                      const std::vector<int>& axes,
                      DenseTensor* out,
                      DenseTensor* mask) {
-  dev_ctx.template Alloc<T>(out);
-  float dropout_prob = p;
   bool upscale_in_train = (mode == "upscale_in_train");
+  dev_ctx.template Alloc<T>(out);
   dev_ctx.template Alloc<uint8_t>(mask);
-  paddle::operators::DropoutNdFwGPUKernelDriver<T>(dev_ctx,
-                                                   is_test,
-                                                   mode,
-                                                   dropout_prob,
-                                                   upscale_in_train,
-                                                   fix_seed,
-                                                   seed,
-                                                   x,
-                                                   seed_tensor.get_ptr(),
-                                                   mask,
-                                                   out);
+  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                                 is_test,
+                                                 mode,
+                                                 p,
+                                                 upscale_in_train,
+                                                 fix_seed,
+                                                 seed,
+                                                 x,
+                                                 seed_tensor.get_ptr(),
+                                                 axes,
+                                                 mask,
+                                                 out);
 }
 
 }  // namespace phi
