@@ -25,9 +25,7 @@ namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
   if (buffer_[slot_id][rank].is_dense_tensor()) {
-    auto* t = std::dynamic_pointer_cast<phi::DenseTensor>(
-                  buffer_[slot_id][rank].impl())
-                  .get();
+    auto* t = static_cast<phi::DenseTensor*>(buffer_[slot_id][rank].impl().get());
     auto* dev_ctx =
         paddle::platform::DeviceContextPool::Instance().Get(t->place());
     phi::funcs::set_constant(*dev_ctx, t, 0.0);

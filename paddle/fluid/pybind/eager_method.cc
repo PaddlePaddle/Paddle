@@ -519,8 +519,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     } else if (grad->is_dense_tensor()) {
       if (grad->initialized()) {
         if (set_to_zero) {
-          auto* grad_t =
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl()).get();
+          auto* grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
@@ -561,8 +560,7 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
                        "the grad inside autograd_meta"));
     if (grad->initialized()) {
       if (grad->is_dense_tensor()) {
-        auto* t =
-            std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl()).get();
+        auto* t = static_cast<phi::DenseTensor*>(grad->impl().get());
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
