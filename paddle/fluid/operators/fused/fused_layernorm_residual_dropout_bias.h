@@ -478,11 +478,15 @@ void LaunchLayernormResidualDropoutBias(
 #define LAUNCH_FUSED_FAST_LN_KERNEL       \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(768);  \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1024); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1280); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1536); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1792); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(2048); \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(4096)
 
   bool can_call_fast_ln_kernel = false;
-  if ((cols == 768 || cols == 1024 || cols == 4096) && scale != nullptr &&
-      layernorm_bias != nullptr) {
+  if (((cols >= 768 && cols <= 2048 && cols % 256 == 0) || cols == 4096) &&
+      scale != nullptr && layernorm_bias != nullptr) {
     can_call_fast_ln_kernel = true;
   }
   VLOG(6) << "can_call_fast_ln_kernel = " << can_call_fast_ln_kernel;

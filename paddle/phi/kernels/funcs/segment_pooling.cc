@@ -90,7 +90,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  paddle::optional<const DenseTensor&> index,
+                  const paddle::optional<DenseTensor>& index,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *dev_ctx.eigen_device();

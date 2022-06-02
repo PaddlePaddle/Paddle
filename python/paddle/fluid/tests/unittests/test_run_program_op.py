@@ -188,7 +188,7 @@ class RunProgramOpTest(unittest.TestCase):
             outputs = self.prepare_dygraph_output()
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'],
+                               outputs['OutScope'], outputs['DOut'], None,
                                *self.attrs)
             return outputs['Out']
 
@@ -202,7 +202,7 @@ class RunProgramOpTest(unittest.TestCase):
             outputs = self.prepare_dygraph_output()
 
             _C_ops.run_program(inputs['X'], inputs['Params'], outputs['Out'],
-                               outputs['OutScope'], outputs['DOut'],
+                               outputs['OutScope'], outputs['DOut'], None,
                                *self.attrs)
 
             for param in input_param_list:

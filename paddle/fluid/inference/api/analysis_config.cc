@@ -256,8 +256,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
+  CP_MEMBER(tensorrt_transformer_posid_);
+  CP_MEMBER(tensorrt_transformer_maskid_);
   CP_MEMBER(trt_tuned_dynamic_shape_);
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
@@ -546,7 +548,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -631,11 +633,6 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
-        continue;
-      }
-      // delete_fill_constant_op_pass is not used under trt dynamic shape
-      if ((!min_input_shape_.empty() || trt_tuned_dynamic_shape_) &&
-          pass == "delete_fill_constant_op_pass") {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -1039,9 +1036,13 @@ std::string AnalysisConfig::Summary() {
                                                         ? shape_range_info_path_
                                                         : "false"});
 
-      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_varseqlen", trt_use_varseqlen_ ? "true" : "false"});
       os.InsertRow({"tensorrt_with_interleaved",
                     trt_with_interleaved_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_transformer_posid", tensorrt_transformer_posid_});
+      os.InsertRow(
+          {"tensorrt_transformer_maskid", tensorrt_transformer_maskid_});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});

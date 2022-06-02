@@ -17,6 +17,7 @@ import six
 __all__ = []
 
 
+# print configuration after args are well filled in controller init
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
     for arg, value in sorted(six.iteritems(vars(ctx.args))):
@@ -59,4 +60,4 @@ def rewrite_host_ip(ctx):
         ctx.node.ip = ctx.args.host
 
 
-enabled_plugins = [collective_compatible, rewrite_host_ip, process_args, log]
+enabled_plugins = [collective_compatible, rewrite_host_ip, process_args]

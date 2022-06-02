@@ -46,7 +46,7 @@ class QuantDequantTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
-        self.enable_tensorrt_oss = True
+        self.enable_tensorrt_varseqlen = True
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False
@@ -184,8 +184,8 @@ class QuantDequantTest(unittest.TestCase):
                         self.dynamic_shape_params.max_input_shape,
                         self.dynamic_shape_params.optim_input_shape,
                         self.dynamic_shape_params.disable_trt_plugin_fp16)
-                if self.enable_tensorrt_oss:
-                    config.enable_tensorrt_oss()
+                if self.enable_tensorrt_varseqlen:
+                    config.enable_tensorrt_varseqlen()
 
         elif use_mkldnn:
             config.enable_mkldnn()

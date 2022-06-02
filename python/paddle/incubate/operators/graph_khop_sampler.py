@@ -38,10 +38,6 @@ def graph_khop_sampler(row,
     and `sample_sizes` means the number of neighbors and number of layers we want
     to sample. 
 
-    **Note**: 
-        Currently the API will reindex the output edges after finishing sampling. We
-    will add a choice or a new API for whether to reindex the edges in the near future.
-
     Args:
         row (Tensor): One of the components of the CSC format of the input graph, and 
                       the shape should be [num_edges, 1] or [num_edges]. The available

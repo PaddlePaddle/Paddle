@@ -35,7 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
 
 def is_distributed_env():
     node_role = os.getenv("TRAINING_ROLE")
-    logger.info("-- Role: {} --".format(node_role))
+    print("-- Role: {} --".format(node_role))
     if node_role is None:
         return False
     else:
@@ -167,6 +167,14 @@ def get_user_defined_strategy(config):
     elif sync_mode == "async":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
+        strategy.is_fl_ps_mode = True if config.get(
+            "runner.is_fl_ps_mode") == 1 else False
+        if strategy.is_fl_ps_mode == True:
+            strategy.pipeline = False
+            micro_num = 1
+            strategy.pipeline_configs = {
+                "accumulate_steps": micro_num
+            }  ## num_microbatches
     elif sync_mode == "geo":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -215,13 +223,14 @@ def get_user_defined_strategy(config):
     print("strategy table config:", strategy.sparse_table_configs)
     a_sync_configs = strategy.a_sync_configs
     a_sync_configs["launch_barrier"] = False
+    # a_sync_configs["launch_barrier"] = True
     strategy.a_sync_configs = a_sync_configs
     print("launch_barrier: ", strategy.a_sync_configs["launch_barrier"])
 
     return strategy
 
 
-def get_distributed_strategy(user_defined_strategy):
+def get_distributed_strategy(user_defined_strategy):  # pslib
     from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
     k_steps = user_defined_strategy.a_sync_configs["k_steps"]
@@ -318,14 +327,14 @@ class DnnTrainer(object):
             fleet.init()
 
         if fleet.is_server():
-            logger.info("server: {} started".format(fleet.server_index()))
+            print("server: {} started".format(fleet.server_index()))
         else:
-            logger.info("worker: {} started".format(fleet.worker_index()))
+            print("worker: {} started".format(fleet.worker_index()))
 
     def run_minimize(self):
         self.init_fleet_with_gloo()
         self.model = get_model(self.config)
-        logger.info("cpu_num: {}".format(os.getenv("CPU_NUM")))
+        print("cpu_num: {}".format(os.getenv("CPU_NUM")))
         self.input_data = self.model.create_feeds()
         self.metrics = self.model.net(self.input_data)
         loss = self.model._cost
@@ -337,14 +346,14 @@ class DnnTrainer(object):
 
         self.role_maker._generate_role()  # 必要
         if self.config['debug_new_minimize'] == 1:
-            logger.info("entering run_minimize -- new")
+            print("entering run_minimize -- new")
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
                                          user_defined_strategy)
             ps_optimizer.minimize_impl(loss)
         else:
-            logger.info("entering run_minimize -- old")
+            print("entering run_minimize -- old")
             fleet_obj = fleet.distributed_optimizer(
                 inner_optimizer, user_defined_strategy)  ## Fleet 对象
             fleet_obj.minimize(loss)
@@ -376,7 +385,7 @@ class DnnTrainer(object):
         startup_program = paddle.static.default_startup_program()
         inner_optimizer.minimize(loss, startup_program)
         if self.config['debug_new_pass'] == 1:
-            logger.info("entering run {} - new".format(
+            print("entering run {} - new".format(
                 str(config["applied_pass_name"])))
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
@@ -390,7 +399,7 @@ class DnnTrainer(object):
                                             ps_optimizer.pass_ctx._attrs)
             append_send_ops_pass.apply([_main], [None], ps_optimizer.pass_ctx)
         else:
-            logger.info("entering run {} - old".format(
+            print("entering run {} - old".format(
                 str(config["applied_pass_name"])))
             from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
             dist_strategy = get_distributed_strategy(user_defined_strategy)
@@ -428,7 +437,7 @@ class DnnTrainer(object):
 
         self.role_maker._generate_role()  # 必要
         if self.config['debug_the_one_ps'] == 1:
-            logger.info("entering run_the_one_ps -- new")
+            print("entering run_the_one_ps -- new")
 
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
@@ -455,7 +464,7 @@ class DnnTrainer(object):
         else:
             pass
         '''          
-            logger.info("entering run_the_one_ps -- old")
+            print("entering run_the_one_ps -- old")
             fleet_obj = fleet.distributed_optimizer(
                 inner_optimizer, user_defined_strategy)  
             fleet_obj.minimize(loss)  
@@ -486,7 +495,7 @@ class DnnTrainer(object):
 if __name__ == "__main__":
     paddle.enable_static()
     config = parse_args()
-    logger.info(">>>>>>>>>> python process started")
+    print(">>>>>>>>>> python process started")
     os.environ["CPU_NUM"] = str(config.get("runner.thread_num"))
     benchmark_main = DnnTrainer(config)
     if config['run_single_pass'] == 1:
