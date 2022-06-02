@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.nn.functional as F
 from paddle.autograd.functional import _as_tensors
@@ -490,6 +491,8 @@ class TestHessianClassNoBatch(unittest.TestCase):
                                    self.rtol, self.atol)
 
     def func_create_graph_true(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
         def func(x):
             return paddle.sum(F.sigmoid(x))
 
@@ -501,6 +504,7 @@ class TestHessianClassNoBatch(unittest.TestCase):
         assert hessian[:].stop_gradient == False
         np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
                                    self.rtol, self.atol)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_out_not_single(self):
         def func(x):
@@ -733,6 +737,8 @@ class TestHessian(unittest.TestCase):
                 "does not appear") > 0
 
     def func_create_graph_true(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
         def func(x):
             return paddle.sum(F.sigmoid(x))
 
@@ -745,6 +751,7 @@ class TestHessian(unittest.TestCase):
                                    self.rtol, self.atol)
         triple_grad = paddle.grad(hessian, self.x)
         assert triple_grad is not None
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_all_cases(self):
         with _test_eager_guard():
@@ -1018,6 +1025,8 @@ class TestVHP(unittest.TestCase):
                                    self.atol)
 
     def func_create_graph_true(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
         def func(x):
             return paddle.sum(F.sigmoid(x))
 
@@ -1034,6 +1043,7 @@ class TestVHP(unittest.TestCase):
                                    self.atol)
         triple_grad = paddle.grad(vhp, self.x)
         assert triple_grad is not None
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_all_cases(self):
         with _test_eager_guard():
@@ -1102,6 +1112,8 @@ class TestJacobian(unittest.TestCase):
                                        self.atol)
 
     def func_multi_input_and_multi_output(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
         def func(x, y):
             return paddle.matmul(x, y), x * y
 
@@ -1115,6 +1127,7 @@ class TestJacobian(unittest.TestCase):
                 np.testing.assert_allclose(jacobian[i][j].numpy(),
                                            numerical_jacobian[i][j], self.rtol,
                                            self.atol)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_allow_unused_false(self):
         def func(x, y):

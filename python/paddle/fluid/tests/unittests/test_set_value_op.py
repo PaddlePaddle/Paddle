@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
@@ -1014,9 +1015,11 @@ class TestBackward(unittest.TestCase):
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
     def test_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_test_dynamic()
         self.func_test_dynamic()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):
