@@ -59,11 +59,15 @@ void GraphReindexKernel(const Context& dev_ctx,
     src[i] = node_map[node];
   }
   // Reindex Dst
+  // Add support for multi-type edges reindex
+  int num_edge_types = count.dims()[0] / bs;
   int cnt = 0;
-  for (int i = 0; i < bs; i++) {
-    for (int j = 0; j < count_data[i]; j++) {
-      T node = x_data[i];
-      dst[cnt++] = node_map[node];
+  for (int i = 0; i < num_edge_types; i++) {
+    for (int j = 0; j < bs; j++) {
+      for (int k = 0; k < count_data[i * bs + j]; k++) {
+        T node = x_data[j];
+        dst[cnt++] = node_map[node];
+      }
     }
   }
 
