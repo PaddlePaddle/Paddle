@@ -43,7 +43,7 @@ TEST(table_printer, output) {
   table.InsertRow({"trt_precision", "fp32"});
   table.InsertRow({"enable_dynamic_shape", "true"});
   table.InsertRow({"DisableTensorRtOPs", "{}"});
-  table.InsertRow({"EnableTensorRtOSS", "ON"});
+  table.InsertRow({"EnableVarseqlen", "ON"});
   table.InsertRow({"tensorrt_dla_enabled", "ON"});
   table.InsetDivider();
 
