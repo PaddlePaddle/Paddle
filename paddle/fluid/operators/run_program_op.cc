@@ -90,6 +90,8 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "computes double grad.")
         .AsDuplicable()
         .AsDispensable();
+    AddOutput("CUDAGraph", "The output CUDA Graph when use_cuda_graph=True.")
+        .AsDispensable();
     AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
                         "The global block of executed program desc.");
@@ -107,6 +109,13 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
         "program_id",
         "(int64_t)"
         "The unique hash id used as cache key for ExecutorInfoCache.");
+    AddAttr<std::string>("cuda_graph_capture_mode",
+                         "(str, default '') The CUDA Graph capture mode. "
+                         "Default '' means no CUDA Graph capturing.")
+        .SetDefault("");
+    AddAttr<int64_t>("cuda_graph_pool_id",
+                     "(int64_t, default 0) The CUDA Graph memory pool ID.")
+        .SetDefault(0);
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -191,6 +200,9 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetInput("OutScope", this->Output("OutScope"));
     grad_op->SetInput("DOut", this->Output("DOut"));
+    if (this->HasOutput("CUDAGraph")) {
+      grad_op->SetInput("CUDAGraph", this->Output("CUDAGraph"));
+    }
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     auto block_desc =
