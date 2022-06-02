@@ -18,7 +18,6 @@ from __future__ import print_function
 import unittest
 import threading, time
 import paddle
-from paddle.static import sparsity
 import numpy as np
 
 
@@ -41,9 +40,9 @@ class TestASPUtils(unittest.TestCase):
         x = np.array([[1.0, 1.0, 1.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
                       [1.0, 0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
                       [0.0, 1.0, 0.0, 0.0, 1.0]])
-        self.assertEqual(sparsity.calculate_density(x), 0.56)
+        self.assertEqual(paddle.incubate.asp.calculate_density(x), 0.56)
         x[:, 0] = 0.0
-        self.assertEqual(sparsity.calculate_density(x), 0.4)
+        self.assertEqual(paddle.incubate.asp.calculate_density(x), 0.4)
 
     def test_check_mask_1d(self):
         x = np.array([[1.0, 0.0, 0.0, 1.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
@@ -219,3 +218,7 @@ class TestASPUtils(unittest.TestCase):
                 func_name=paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D,
                 n=2,
                 m=4))
+
+
+if __name__ == '__main__':
+    unittest.main()

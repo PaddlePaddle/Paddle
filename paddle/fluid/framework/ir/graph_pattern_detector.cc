@@ -408,6 +408,13 @@ PDNode *PDNode::assert_is_op(const std::string &op_type) {
   return this;
 }
 
+PDNode *PDNode::assert_is_not_op_type(const std::string &op_type) {
+  asserts_.emplace_back([op_type](Node *x) {
+    return x && x->IsOp() && x->Op()->Type() != op_type;
+  });
+  return this;
+}
+
 PDNode *PDNode::assert_is_var() {
   asserts_.emplace_back([](Node *x) { return x && x->IsVar(); });
   return this;
@@ -720,7 +727,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(), true,
       platform::errors::InvalidArgument(
-          "First parameter of function HasOuput must be Node::Op"));
+          "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -2624,8 +2631,10 @@ PDNode *patterns::Bfloat16Placement::operator()(
 PDNode *patterns::OrphanedBfloat16::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
   prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>(
+                                 "mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
   auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
 
@@ -2638,8 +2647,10 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
   next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    bool data_type_is_missing = !node->Op()->HasAttr("mkldnn_data_type");
+    bool data_type_is_fp32 = node->Op()->GetAttrIfExists<std::string>(
+                                 "mkldnn_data_type") == "float32";
+    return data_type_is_missing || data_type_is_fp32;
   });
 
   prev_op->LinksTo({prev_out});

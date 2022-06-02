@@ -407,8 +407,10 @@ def instance_norm(x,
           print(instance_norm_out)
 
     """
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out, _, _, = _C_ops.final_state_instance_norm(x, weight, bias, eps)
+        return out
+    if _in_legacy_dygraph():
         out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
                                          "momentum", momentum, "data_format",
                                          data_format)

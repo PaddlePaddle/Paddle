@@ -17,15 +17,23 @@ from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDA
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
     from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
+
+    def is_cuda_graph_supported():
+        return True
 else:
     CoreCUDAGraph = None
+
+    def is_cuda_graph_supported():
+        return False
+
+
+ALL_MODES = ["global", "thread_local", "relaxed"]
 
 
 class CUDAGraph:
     def __init__(self, place=None, mode="thread_local"):
         assert CoreCUDAGraph is not None, "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
 
-        ALL_MODES = ["global", "thread_local", "relaxed"]
         self._graph = None
         if place is None:
             device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
@@ -55,3 +63,25 @@ class CUDAGraph:
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)  
         self._graph.print_to_dot_files(dirname, flags)
+
+
+def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
+    assert mode in ALL_MODES
+    from paddle.jit import to_static
+    from paddle.nn import Layer
+    new_function = to_static(function)
+    if isinstance(function, Layer):
+        mock_func = new_function.forward
+    else:
+        mock_func = new_function
+    mock_func._cuda_graph_capture_mode = mode
+    if memory_pool == "default":
+        mock_func._cuda_graph_pool_id = 0
+    elif memory_pool == "new":
+        mock_func._cuda_graph_pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
+    else:
+        if isinstance(memory_pool, Layer):
+            mock_func._cuda_graph_pool_id = memory_pool.forward._cuda_graph_pool_id
+        else:
+            mock_func._cuda_graph_pool_id = memory_pool._cuda_graph_pool_id
+    return new_function

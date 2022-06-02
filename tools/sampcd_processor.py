@@ -339,7 +339,9 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 Please use '.. code-block:: python' to format the sample code.""")
                 return []
         else:
-            logger.warning("Error: No sample code!")
+            logger.error(
+                "Error: No sample code found! Please check if the API comment contais string 'Examples:' correctly"
+            )
             return []
 
     sample_code_filenames = []

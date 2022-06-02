@@ -32,7 +32,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fluid PrelnEmbEltwiseLayerNorm op to tensorrt layer";
 
-    if (!(engine_->use_oss() && engine_->with_interleaved())) {
+    if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
       PADDLE_THROW(platform::errors::Fatal(
           "PrelnErnie: If you want to use oss, must be with interleaved"));
     }

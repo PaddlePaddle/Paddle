@@ -60,6 +60,7 @@ option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"         
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
+include(experimental)       # experimental build options
 
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
@@ -254,10 +255,11 @@ option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm"    OFF)
+option(WITH_FLPS     "FL PS mode"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
 else()            
     include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
 endif()

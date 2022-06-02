@@ -732,6 +732,8 @@ class PsDescBuilder(object):
         self.is_heter_ps_mode = context['is_heter_ps_mode']
         self.use_ps_gpu = context['use_ps_gpu']
         self.barrier_table_id = None
+        print("is_heter_ps_mode in the_one_ps.py? {}".format(
+            self.is_heter_ps_mode))
         self.send_ctx = get_the_one_send_context(
             self.context,
             use_origin_program=True,
@@ -772,6 +774,7 @@ class PsDescBuilder(object):
         self.tensor_tables = self._get_tensor_tables()
         tables.extend(self.tensor_tables)
         tables.append(globals()['BarrierTable'](self.context, len(tables)))
+        print("test_fl_ps: tables len: {}".format(len(tables)))
         return tables
 
     def _get_service(self):
@@ -864,7 +867,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            # print("init params:", idx, table_id, var_names)
+            #print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
@@ -875,7 +878,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            # print("pull all dense:", idx, table_id, var_names)
+            #print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
 
     def _init_params(self, program, scope, send_ctx, recv_map):
@@ -902,7 +905,8 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-
+        #with open("test_fl_ps_worker_desc", "w") as f:
+        #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
@@ -955,7 +959,8 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context[
+                'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
@@ -1010,18 +1015,27 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.scopes = scopes
         if not is_test:
-            if self.context['ps_mode'] == DistributedMode.GEO:
+            if self.context[
+                    'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode == True:
                 self._communicator.init_params(init_params)
             else:
-                if role_id == 0:
-                    self._init_all_params(scopes, send_ctx, dense_map)
+                if not self.context['use_ps_gpu']:
+                    if role_id == 0:
+                        print("entering self._init_all_params()")
+                        self._init_all_params(scopes, send_ctx, dense_map)
 
-            fleet.util.barrier()
+            fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+        if not self.context['use_ps_gpu']:
+            if self.is_heter_ps_mode == True and not self.role_maker._is_first_worker(
+            ):
+                self._communicator.pull_dense(init_params)
+            else:
+                self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context[
+                'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode == True:
             if not self._communicator.is_running():
                 self._communicator.start()
             else:
@@ -1030,7 +1044,6 @@ class TheOnePSRuntime(RuntimeBase):
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
         if launch_barrier and launch_barrier_flag:
-            # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
             if self.is_heter_ps_mode and self.role_maker._get_next_trainers(
             ) != []:
@@ -1042,12 +1055,14 @@ class TheOnePSRuntime(RuntimeBase):
                 next_trainers = []
                 if self.role_maker._get_next_trainers() != []:
                     next_trainers = self.role_maker._get_next_trainers()
-                self._heter_client = HeterClient(next_trainers,
-                                                 previous_trainers,
-                                                 self.role_maker._role_id())
+                self._heter_client = HeterClient(
+                    next_trainers, previous_trainers,
+                    self.role_maker._role_id())  # --> HeterClient::GetInstance
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()
+        #with open("test_fl_ps_server_desc", "w") as f:
+        #    f.write(server_desc)
         role_id = get_role_id(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:

@@ -20,7 +20,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 
 from .utils import print_program_with_dist_attr
-from .operators import find_best_compatible_distributed_operator_impl
+from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
@@ -238,13 +238,17 @@ class Completer:
                             tensor_desc.name())
                         compatible_dims_mapping = compute_compatible_dims_mapping(
                             [op_dims_mapping, tensor_dims_mapping])
+                        if not _validate_dims_mapping(
+                                compatible_dims_mapping,
+                                op_dist_attr.process_mesh):
+                            continue
                         if (compatible_dims_mapping is not None) and \
                             (compatible_dims_mapping != op_dims_mapping):
                             op_dist_attr.set_input_dims_mapping(
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Find the most compatible implemenetations from the distributed operator
-            op_dist_impls = find_best_compatible_distributed_operator_impl(
+            op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=True)
             if op_dist_impls is not None:
                 not_compatible = True
@@ -254,7 +258,8 @@ class Completer:
                     dim_changed = op_dist_impl.update_dims_mapping(dist_op)
                     if dim_changed:
                         changed = True
-                    if op_dist_impl.is_auto_compatible(dist_op):
+                    if op_dist_impl.is_auto_compatible(dist_op) \
+                        and dist_op.validate_dist_attr():
                         if op_dist_impl.type == "elementwise":
                             op_dist_attr.impl_type = "default"
                         else:
@@ -289,13 +294,17 @@ class Completer:
                             tensor_desc.name())
                         compatible_dims_mapping = compute_compatible_dims_mapping(
                             [op_dims_mapping, tensor_dims_mapping])
+                        if not _validate_dims_mapping(
+                                compatible_dims_mapping,
+                                op_dist_attr.process_mesh):
+                            continue
                         if (compatible_dims_mapping is not None) and \
                             (compatible_dims_mapping != op_dims_mapping):
                             op_dist_attr.set_output_dims_mapping(
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Find the most compatible implemenetations from the distributed operator
-            op_dist_impls = find_best_compatible_distributed_operator_impl(
+            op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False)
             if op_dist_impls is not None:
                 not_compatible = True
@@ -305,8 +314,8 @@ class Completer:
                     dim_changed = op_dist_impl.update_dims_mapping(dist_op)
                     if dim_changed:
                         changed = True
-                    if op_dist_impl.is_auto_compatible(dist_op):
-                        not_compatible = False
+                    if op_dist_impl.is_auto_compatible(dist_op) \
+                        and dist_op.validate_dist_attr():
                         if op_dist_impl.type == "elementwise":
                             op_dist_attr.impl_type = "default"
                         else:
@@ -352,6 +361,23 @@ class Completer:
                 changed = True
         return changed
 
+    def _update_dims_mapping_for_special(self):
+        # Set the dims_mapping of a tensor to the dims_mapping inside the op which produces it
+        op_nodes = self._dist_context._serial_ordered_op_nodes
+        for op_node in op_nodes:
+            op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
+            for tensor_node in op_node.outputs:
+                if tensor_node.is_var() and tensor_node.var() is not None:
+                    if tensor_node.var().type() == core.VarDesc.VarType.READER:
+                        continue
+                    tensor_desc = tensor_node.var()
+                    tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                        tensor_node)
+                    if op_dist_attr.process_mesh == tensor_dist_attr.process_mesh:
+                        op_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                            tensor_desc.name())
+                        tensor_dist_attr.dims_mapping = op_dims_mapping
+
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
         reach_fix_point = False
@@ -378,6 +404,7 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+        self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
         op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
@@ -685,7 +712,7 @@ class Completer:
         # Step 3: adjust the process meshes for special ops
         self._update_process_mesh_for_specials()
 
-        # Step 4: adjust the process meshes between graphs 
+        # Step 4: adjust the process meshes between graphs
         self._update_process_mesh_between_graphs()
 
     def _prepare(self):
@@ -727,14 +754,14 @@ class Completer:
         """ Complete annotation for the partial annotated serial_main_program.
         Arguments:
             serial_main_program: partial annotated serial_main_program.
-        Returns:
+        Returns:e
             serial_main_program: completed annotated serial_main_program.
         """
 
         if serial_main_program is None:
             serial_main_program = self._dist_context.serial_main_program
         else:
-            self._dist_context.serial_main_program = serial_main_program
+            self._dist_context._serial_main_program = serial_main_program
 
         self._dist_context.initialize()
 
@@ -757,12 +784,17 @@ class Completer:
 
         return serial_main_program
 
-    def _complete_high_order_grad_annotation(self, serial_main_program):
+    def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """
         NOTE: 
             [HighOrderGrad] Complete the annotation of vars and ops only for high order gradient.
             This function is temporary to support high order gradient, and will be removed in the future.
         """
+
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context._serial_main_program = serial_main_program
 
         def _is_grad_var_name(name):
             if "@GRAD" in name:
@@ -771,7 +803,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -796,10 +828,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops, dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops,
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -915,12 +949,13 @@ class Completer:
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
-    def complete_backward_annotation(self, serial_main_program):
+    def complete_backward_annotation(self, serial_main_program=None):
         """Complete the annotation of vars and ops in the backward phase for parallel program."""
+
         if serial_main_program is None:
             serial_main_program = self._dist_context.serial_main_program
         else:
-            self._dist_context.serial_main_program = serial_main_program
+            self._dist_context._serial_main_program = serial_main_program
 
         def _is_grad_var_name(name):
             if "@GRAD" in name:
@@ -935,7 +970,7 @@ class Completer:
 
         def _get_op_by_id(ops, id):
             for op in ops:
-                if op.desc.id() == id:
+                if op.desc.original_id() == id:
                     return op
             return None
 
@@ -997,11 +1032,12 @@ class Completer:
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
             grad_op = ops[idx]
-            if grad_op.desc.id() in dist_op_context.grad_op_id_to_op_id:
+            if grad_op.desc.original_id(
+            ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(
-                    ops[:first_backward_op_idx],
-                    dist_op_context.grad_op_id_to_op_id[grad_op.desc.id()])
+                forward_op = _get_op_by_id(ops[:first_backward_op_idx],
+                                           dist_op_context.grad_op_id_to_op_id[
+                                               grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 if grad_op.type == "concat" and forward_op.type == "split":
@@ -1029,6 +1065,9 @@ class Completer:
                     grad_op_dist_attr.process_mesh = ref_mesh
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr)
+                    grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+                    grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+
                     continue
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -1075,6 +1114,8 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(output_name,
                                                               ref_dims_mapping)
 
+                grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
+                grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
@@ -1108,6 +1149,8 @@ class Completer:
                             var_name, ref_fwd_dims_mapping)
                     grad_op_dist_attr.set_output_dims_mapping(
                         output_name, ref_fwd_dims_mapping)
+                    grad_op_dist_attr.impl_type = "default"
+                    grad_op_dist_attr.impl_idx = 0
 
                 elif grad_op.type == 'fill_zeros_like':
                     ref_var_name = grad_op.input_arg_names[0]
@@ -1139,12 +1182,13 @@ class Completer:
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
 
-    def complete_update_annotation(self, serial_main_program=None):
+    def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""
-        if serial_main_program is None:
-            serial_main_program = self._dist_context.serial_main_program
-        else:
-            self._dist_context.serial_main_program = serial_main_program
+
+        # Notice: serial_main_program is actually a dist_main_program of current rank,
+        # and must be passed into this function. 
+        # TODO: We should fix this behavior.
+
         ops = list(serial_main_program.global_block().ops)
         vars = serial_main_program.global_block().vars
         learning_rate_completed = False
@@ -1250,3 +1294,70 @@ class Completer:
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr)
                     continue
+
+    def complete_prim_annotation(self, serial_main_program=None):
+        """
+        fill default data parallel annotation for program with primitive operators.
+
+        Arguments:
+            serial_main_program: partial annotated serial_main_program.
+        Returns:
+            serial_main_program: completed annotated serial_main_program.
+        """
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context._serial_main_program = serial_main_program
+
+        import time
+
+        start_time = time.time()
+        self._dist_context._is_initialized = True
+
+        start_time = time.time()
+        self._dist_context._init_dist_attr_for_program()
+
+        start_time = time.time()
+        self._init_global_mesh_for_program()
+
+        # Do the validation check and amend some completion
+        start_time = time.time()
+        self._dist_context.amend_dist_attr_for_program()
+        self._dist_context.validate_dist_attr_for_program()
+
+    def _init_global_mesh_for_program(self):
+        # Copy the dist tensors and dist ops annotated by users from the default context
+        # global mesh
+        from paddle.distributed.auto_parallel.process_group import get_world_process_group
+        world_ranks = get_world_process_group().ranks
+
+        for block in self._dist_context._serial_main_program.blocks:
+            for tensor in block.vars.values():
+                # Copy the distributed tensors in the default context
+                dist_tensor = self._dist_context.get_dist_tensor_for_program(
+                    tensor)
+                assert dist_tensor is not None
+                dist_tensor.dist_attr.process_mesh = world_ranks
+            for op in block.ops:
+                # Copy the distributed operators in the default context
+                dist_op = self._dist_context.get_dist_op_for_program(op)
+                assert dist_op is not None
+                dist_op.dist_attr.process_mesh = world_ranks
+
+                # Find the most compatible implemenetations from the distributed operator
+                op_dist_impls = find_compatible_distributed_operator_impls(
+                    dist_op, fwd=True)
+                if op_dist_impls is not None:
+                    backup_op_dist_attr = copy.deepcopy(dist_op.dist_attr)
+                    for op_dist_impl in op_dist_impls:
+                        dim_changed = op_dist_impl.update_dims_mapping(dist_op)
+                        if op_dist_impl.is_auto_compatible(dist_op):
+                            if op_dist_impl.type == "elementwise":
+                                dist_op.dist_attr.impl_type = "default"
+                            else:
+                                dist_op.dist_attr.impl_type = op_dist_impl.type
+                            # op_dist_attr.impl_type = op_dist_impl.type
+                            dist_op.dist_attr.impl_idx = op_dist_impl.idx
+                            break
+                        else:
+                            dist_op.dist_attr = backup_op_dist_attr

@@ -681,14 +681,19 @@ def assign(input, output=None):
                              "saving it to file and 'load_op' to load it")
         if output is None:
             output = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={
-                'dtype': dtype,
-                'shape': list(input.shape),
-                value_name: values
-            })
+        if _non_static_mode():
+            _C_ops.assign_value(output, 'shape',
+                                list(input.shape), 'dtype', dtype, value_name,
+                                values)
+        else:
+            helper.append_op(
+                type='assign_value',
+                outputs={'Out': [output]},
+                attrs={
+                    'dtype': dtype,
+                    'shape': list(input.shape),
+                    value_name: values
+                })
 
     if is_inplace and _non_static_mode():
         output._bump_inplace_version()
@@ -760,8 +765,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             place = _current_expected_place()
             if force_cpu:
                 place = core.CPUPlace()
+            if isinstance(shape, (list, tuple)):
+                for item in shape:
+                    if not isinstance(item, Variable):
+                        shape = list(
+                            map(lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
+                                shape))
+                        break
 
-            shape = utils.convert_shape_to_list(shape)
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             out = _C_ops.final_state_full(shape, float(value), dtype, place)

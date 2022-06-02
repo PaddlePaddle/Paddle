@@ -19,7 +19,7 @@ from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer, EagerPyLayer
 from paddle.fluid import framework
-from ...utils.recompute import check_recompute_necessary, detach_variable
+from ...utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -151,20 +151,6 @@ def _merge_activation(tensor):
     return _all_gather(tensor, group=mp_group)
 
 
-@contextlib.contextmanager
-def _swith_rng_state_tracker(rng_state, tracker):
-    orig_cuda_rng_state = paddle.get_cuda_rng_state()
-    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
-
-    paddle.set_cuda_rng_state(rng_state)
-    get_rng_state_tracker().set_states_tracker(tracker)
-    try:
-        yield
-    finally:
-        paddle.set_cuda_rng_state(orig_cuda_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
-
-
 class _HPEagerRecomputeFunction(EagerPyLayer):
     """
     Compared with paddle.distributed.fleet.utils.recompute, there are the following differences:
@@ -261,8 +247,8 @@ class _HPEagerRecomputeFunction(EagerPyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with _swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
-                                          ctx.fwd_cuda_rng_state_tracker):
+            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                         ctx.fwd_cuda_rng_state_tracker):
                 with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
@@ -393,8 +379,8 @@ class _HPRecomputeFunction(PyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with _swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
-                                          ctx.fwd_cuda_rng_state_tracker):
+            with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                         ctx.fwd_cuda_rng_state_tracker):
                 with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,

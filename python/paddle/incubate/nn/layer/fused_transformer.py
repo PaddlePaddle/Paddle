@@ -36,6 +36,103 @@ def _set_var_distributed(var):
     main_block._find_var_recursive(var.name).is_distributed = True
 
 
+class FusedBiasDropoutResidualLayerNorm(Layer):
+    """
+    Applies fused_bias_dropout_residual_layer_norm operation.
+
+    Parameters:
+        embed_dim (int): The expected feature size in the input and output.
+        dropout_rate (float, optional): The dropout probability used on attention
+            weights to drop some attention targets for the dropout after attention.
+            0 for no dropout. Default 0.5.
+        bias_attr (ParamAttr|bool, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            If it is set to False, this layer will not have trainable bias parameter.
+            See usage for details in :code:`ParamAttr`.
+        epsilon (float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            # input: [batch_size, seq_len, embed_dim]
+            x = paddle.rand((2, 4, 128))
+            # residual: [batch_size, seq_len, embed_dim]
+            residual = paddle.rand((2, 4, 128))
+            fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
+            output = fused_bias_dropout_residual_ln(x, residual)  # [2, 4, 128]
+    """
+
+    def __init__(self,
+                 embed_dim,
+                 dropout_rate=0.5,
+                 weight_attr=None,
+                 bias_attr=None,
+                 epsilon=1e-5,
+                 name=None):
+        super(FusedBiasDropoutResidualLayerNorm, self).__init__()
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but recieved {}".format(embed_dim))
+        self._dtype = self._helper.get_default_dtype()
+        self._bias_attr = bias_attr
+        self._weight_attr = weight_attr
+        self.embed_dim = embed_dim
+        self.linear_bias = self.create_parameter(
+            shape=[embed_dim],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+        self.ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.ln_bias = self.create_parameter(
+            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        self.dropout_rate = dropout_rate
+        self._epsilon = epsilon
+
+        self.name = name
+
+    def forward(self, x, residual):
+        """
+        Applies fused_bias_dropout_residual_layer_norm operation.
+
+        Parameters:
+            x (Tensor): The input tensor. It is a tensor with shape 
+                `[batch_size, seq_len, embed_dim]`. The data type should be 
+                float32 or float64. 
+            residual (Tensor, optional): The residual tensor. It is a tensor 
+                with shape `[batch_size, value_length, vdim]`. The data type 
+                should be float32 or float64. 
+
+        Returns:
+            Tensor|tuple: It is a tensor that has the same shape and data type \
+                as `x`.
+        """
+
+        out = incubate_f.fused_bias_dropout_residual_layer_norm(
+            x=x,
+            residual=residual,
+            bias=self.linear_bias,
+            ln_scale=self.ln_scale,
+            ln_bias=self.ln_bias,
+            dropout_rate=self.dropout_rate,
+            ln_epsilon=self._epsilon,
+            training=self.training,
+            mode='upscale_in_train',
+            name=self.name)
+        return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
+            self.embed_dim, self.seq_len, self.dropout_rate, self._epsilon,
+            self._dtype, name_str)
+
+
 class FusedMultiHeadAttention(Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
@@ -101,9 +198,9 @@ class FusedMultiHeadAttention(Layer):
         super(FusedMultiHeadAttention, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
-                               "but recieved {}".format(embed_dim))
+                               "but received {}".format(embed_dim))
         assert num_heads > 0, ("Expected nhead to be greater than 0, "
-                               "but recieved {}".format(num_heads))
+                               "but received {}".format(num_heads))
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
@@ -278,10 +375,10 @@ class FusedFeedForward(Layer):
 
         super(FusedFeedForward, self).__init__()
         assert d_model > 0, (
-            "Expected d_model to be greater than 0, but recieved {}".format(
+            "Expected d_model to be greater than 0, but received {}".format(
                 d_model))
         assert dim_feedforward > 0, (
-            "Expected dim_feedforward to be greater than 0, but recieved {}".
+            "Expected dim_feedforward to be greater than 0, but received {}".
             format(dim_feedforward))
 
         self._dtype = self._helper.get_default_dtype()
@@ -434,12 +531,12 @@ class FusedTransformerEncoderLayer(Layer):
 
         super(FusedTransformerEncoderLayer, self).__init__()
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
         attn_dropout_rate = dropout_rate if attn_dropout_rate is None else attn_dropout_rate
         act_dropout_rate = dropout_rate if act_dropout_rate is None else act_dropout_rate
         self.normalize_before = normalize_before
@@ -808,11 +905,11 @@ class FusedMultiTransformer(Layer):
         super(FusedMultiTransformer, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
-                               "but recieved {}".format(embed_dim))
+                               "but received {}".format(embed_dim))
         assert num_heads > 0, ("Expected nhead to be greater than 0, "
-                               "but recieved {}".format(num_heads))
+                               "but received {}".format(num_heads))
         assert dim_feedforward > 0, (
-            "Expected dim_feedforward to be greater than 0, but recieved {}".
+            "Expected dim_feedforward to be greater than 0, but received {}".
             format(dim_feedforward))
 
         self.normalize_before = normalize_before

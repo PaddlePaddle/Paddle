@@ -128,6 +128,11 @@ class IPUOpTest(IPUTest):
         cls.fetch_list: List[str] = None
         cls.output_dict: Optional[Dict] = {}
 
+    def tearDown(self):
+        # Manual reset when using ipumodel
+        if self.use_ipumodel():
+            paddle.framework.core.IpuBackend.get_instance().reset()
+
     @property
     def fp16_enabled(self):
         return True

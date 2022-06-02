@@ -204,6 +204,26 @@ class UtilBase(object):
     def _scatter(self):
         pass
 
+    def get_heter_file_shard(self, files):
+        if not isinstance(files, list):
+            raise TypeError("files should be a list of file need to be read.")
+        trainers = self.role_maker._worker_num()
+        trainer_id = self.role_maker._worker_index() - trainers
+        remainder = len(files) % trainers
+        blocksize = int(len(files) / trainers)
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]
+
     def get_file_shard(self, files):
         """
         Split files before distributed training, and return filelist assigned to the current trainer.
