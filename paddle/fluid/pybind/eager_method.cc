@@ -571,9 +571,8 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     if (meta->MutableGrad()->initialized()) {
       if (meta->MutableGrad()->is_dense_tensor()) {
-        auto* t = std::dynamic_pointer_cast<phi::DenseTensor>(
-                      meta->MutableGrad()->impl())
-                      .get();
+        auto* t =
+            static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
