@@ -38,59 +38,6 @@ DLManager& global_dlmanager_pool() {
   return manager;
 }
 
-void GraphDataGenerator::AllocResource(const paddle::platform::Place& place,
-                                       std::vector<LoDTensor*> feed_vec,
-                                       std::vector<uint64_t>* h_device_keys) {
-  place_ = place;
-  gpuid_ = place_.GetDeviceId();
-  VLOG(3) << "gpuid " << gpuid_;
-  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
-                platform::DeviceContextPool::Instance().Get(place))
-                ->stream();
-  feed_vec_ = feed_vec;
-  h_device_keys_ = h_device_keys;
-  device_key_size_ = h_device_keys_->size();
-  d_device_keys_ =
-      memory::AllocShared(place_, device_key_size_ * sizeof(uint64_t));
-  CUDA_CHECK(cudaMemcpyAsync(d_device_keys_->ptr(), h_device_keys_->data(),
-                             device_key_size_ * sizeof(uint64_t),
-                             cudaMemcpyHostToDevice, stream_));
-  size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
-  d_prefix_sum_ =
-      memory::AllocShared(place_, (once_max_sample_keynum + 1) * sizeof(int));
-  int* d_prefix_sum_ptr = reinterpret_cast<int*>(d_prefix_sum_->ptr());
-  cudaMemsetAsync(d_prefix_sum_ptr, 0,
-                  (once_max_sample_keynum + 1) * sizeof(int), stream_);
-  cursor_ = 0;
-  jump_rows_ = 0;
-  device_keys_ = reinterpret_cast<uint64_t*>(d_device_keys_->ptr());
-  d_walk_ = memory::AllocShared(place_, buf_size_ * sizeof(uint64_t));
-  cudaMemsetAsync(d_walk_->ptr(), 0, buf_size_ * sizeof(uint64_t), stream_);
-  d_sample_keys_ =
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(uint64_t));
-
-  d_sampleidx2rows_.push_back(
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));
-  d_sampleidx2rows_.push_back(
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int)));
-  cur_sampleidx2row_ = 0;
-
-  d_len_per_row_ =
-      memory::AllocShared(place_, once_max_sample_keynum * sizeof(int));
-  for (int i = -window_; i < 0; i++) {
-    window_step_.push_back(i);
-  }
-  for (int i = 0; i < window_; i++) {
-    window_step_.push_back(i + 1);
-  }
-  buf_state_.Init(batch_size_, walk_len_, &window_step_);
-  d_random_row_ = memory::AllocShared(
-      place_,
-      (once_sample_startid_len_ * walk_degree_ * repeat_time_) * sizeof(int));
-  shuffle_seed_ = 0;
-  cudaStreamSynchronize(stream_);
-}
-
 class BufferedLineFileReader {
   typedef std::function<bool()> SampleFunc;
   static const int MAX_FILE_BUFF_SIZE = 4 * 1024 * 1024;
@@ -2643,8 +2590,7 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
-  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_,
-                                          h_device_keys_);
+  gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
 #endif
   return true;
 }

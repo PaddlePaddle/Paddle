@@ -1059,6 +1059,9 @@ class InMemoryDataset(DatasetBase):
             "sample_times_one_chunk", 10)
         self.proto_desc.graph_config.batch_size = config.get("batch_size", 1)
         self.proto_desc.graph_config.debug_mode = config.get("debug_mode", 0)
+        self.proto_desc.graph_config.first_node_type = config.get(
+            "first_node_type", "")
+        self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
 
 
 class QueueDataset(DatasetBase):

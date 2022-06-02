@@ -35,6 +35,8 @@ message GraphConfig {
   optional int32 sample_times_one_chunk = 5 [ default = 10 ];
   optional int32 batch_size = 6 [ default = 1 ];
   optional int32 debug_mode = 7 [ default = 0 ];
+  optional string first_node_type = 8;
+  optional string meta_path = 9;
 }
 
 message DataFeedDesc {
