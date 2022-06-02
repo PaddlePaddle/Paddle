@@ -5,7 +5,6 @@ TOTAL_ERRORS=0
 readonly VERSION="1.6.0"
 
 version=$(cpplint --version)
-echo ${version}
 
 if [[ ! $TRAVIS_BRANCH ]]; then
   # install cpplint on local machine.
