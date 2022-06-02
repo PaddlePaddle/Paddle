@@ -18,26 +18,18 @@ from typing import List, Tuple, Dict, Any
 
 import paddle
 from paddle.framework import core
+from paddle.fluid import layers
 from paddle.fluid.framework import program_guard, device_guard
-from paddle.fluid import unique_name, layers
-from paddle.fluid.clip import append_gradient_clip_ops
 from .pass_base import PassBase, PassType, register_pass
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 world_process_group = get_world_process_group()
 
 
-def _is_the_backward_op(op):
-    OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    OpRole = core.op_proto_and_checker_maker.OpRole
-    return OP_ROLE_KEY in op.attr_names and \
-            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
-
-
 def _is_the_optimizer_op(op):
     OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    OpRole = core.op_proto_and_checker_maker.OpRole
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
@@ -46,13 +38,13 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
     # 1 create tmp block
     # 2 mv optimizer op from global program to tmp block
     # 3 del the op from dist_context
-    from paddle.distributed.fleet.meta_optimizers.common import OpRole
     main_block = main_program.global_block()
     temp_block = main_program._create_block()
     removed_op_idx = []
     optimize_ops_desc = []
+    skip_ops = ["increment", "elementwise_mod", "equal"]
     for idx, op in enumerate(main_block.ops):
-        if _is_the_optimizer_op(op):
+        if _is_the_optimizer_op(op) and op.type not in skip_ops:
             # append optimizer op to tmp block
             new_op_desc = temp_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
@@ -112,24 +104,35 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     set_var_dist_attr(dist_context, cond_var, [-1], world_process_group.ranks)
 
     with device_guard("cpu"):
-        # step_var = (step_var + 1) % k_step
-        layers.increment(x=step_var, value=1.0, in_place=True)
+        # step_var += 1
+        increment_op = main_block.append_op(
+            type='increment',
+            inputs={'X': [step_var]},
+            outputs={'Out': [step_var]},
+            attrs={'step': float(1.0),
+                   'op_role': OpRole.Optimize})
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            increment_op, world_process_group.ranks, [-1], dist_context)
+        # step_var %= k_step
         elementwise_mod_op = main_block.append_op(
             type='elementwise_mod',
             inputs={'X': step_var,
                     'Y': k_step_var},
             outputs={'Out': step_var},
-            attrs={'axis': -1,
-                   'use_mkldnn': False})
+            attrs={
+                'axis': -1,
+                'use_mkldnn': False,
+                'op_role': OpRole.Optimize
+            })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             elementwise_mod_op, world_process_group.ranks, [-1], dist_context)
-
         # cond_var = (step_var == 0)
         equal_op = main_block.append_op(
             type='equal',
             inputs={'X': step_var,
                     'Y': zero_var},
-            outputs={'Out': cond_var})
+            outputs={'Out': cond_var},
+            attrs={'op_role': OpRole.Optimize})
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             equal_op, world_process_group.ranks, [-1], dist_context)
 
@@ -153,7 +156,9 @@ def _append_gradient_merge_backward_op(
 
         _remove_op_role_var(param, grad)
 
-    param_to_gradient_merge = {}
+    # {grad.name: gradient_merge_var.name} to rename opt inputs
+    grad_to_gradient_merge = {}
+    # {param: gradient_merge_var} to insert scale op and fill_constant op
     new_params_to_grads = []
     # step2: create gradient_merge var and init with 0
     for param, grad in params_grads:
@@ -167,7 +172,6 @@ def _append_gradient_merge_backward_op(
             shape=param_var.shape,
             dtype=param_var.dtype,
             persistable=True)
-        param_to_gradient_merge[param_name] = gradient_merge_var
         ref_process_mesh = ref_dist_attr.process_mesh
         ref_dims_mapping = ref_dist_attr.dims_mapping
 
@@ -194,19 +198,23 @@ def _append_gradient_merge_backward_op(
             inputs={'X': grad,
                     'Y': gradient_merge_var},
             outputs={'Out': gradient_merge_var},
-            attrs={'axis': -1,
-                   'use_mkldnn': False})
+            attrs={
+                'axis': -1,
+                'use_mkldnn': False,
+                'op_role': OpRole.Optimize
+            })
         new_params_to_grads.append([param, gradient_merge_var])
+        grad_to_gradient_merge[grad.name] = gradient_merge_var.name
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context)
-    return new_params_to_grads, param_to_gradient_merge
+    return new_params_to_grads, grad_to_gradient_merge
 
 
 def _create_cond_block_and_update_optimizer(
         main_program,
         cond_var,
         new_params_to_grads: List[Tuple[Any, Any]],
-        param_to_gradient_merge: Dict[str, Any],
+        grad_to_gradient_merge: Dict[str, str],
         optimize_ops_desc: List[Any],
         k_steps,
         avg):
@@ -230,7 +238,7 @@ def _create_cond_block_and_update_optimizer(
                         'bias_after_scale': False
                     })
                 new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
-                                      op_maker.OpRole.Optimize)
+                                      OpRole.Optimize)
 
         # append optimizer ops
         for op_desc in optimize_ops_desc:
@@ -239,14 +247,14 @@ def _create_cond_block_and_update_optimizer(
 
             #update input/output
             for input_name in new_op_desc.input_arg_names():
-                if input_name in new_params_to_grads:
-                    new_op_desc._rename_input(input_name,
-                                              new_params_to_grads[input_name])
+                if input_name in grad_to_gradient_merge:
+                    new_op_desc._rename_input(
+                        input_name, grad_to_gradient_merge[input_name])
 
             for output_name in new_op_desc.output_arg_names():
-                if output_name in new_params_to_grads:
-                    new_op_desc._rename_output(output_name,
-                                               new_params_to_grads[output_name])
+                if output_name in grad_to_gradient_merge:
+                    new_op_desc._rename_output(
+                        output_name, grad_to_gradient_merge[output_name])
 
             # remove op_role_var
             if new_op_desc.has_attr(op_maker.kOpRoleVarAttrName()):
@@ -269,10 +277,11 @@ def _create_cond_block_and_update_optimizer(
                 dtype=new_grad.dtype,
                 value=0.0,
                 out=new_grad)
-            new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
-                                  op_maker.OpRole.Optimize)
+            new_grad.op._set_attr(op_maker.kOpRoleAttrName(), OpRole.Optimize)
 
     layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
+    cond_op = main_program.global_block().ops[-1]
+    cond_op._set_attr('op_role', OpRole.Optimize)
 
 
 def parse_program(main_program, startup_program, params_grads, k_steps, avg,
@@ -303,7 +312,6 @@ class GradientMergePass(PassBase):
         super(GradientMergePass, self).__init__()
         self.set_attr("k_steps", -1)
         self.set_attr("avg", True)
-        self.set_attr("inner_optimizer", None)
 
     def _check_self(self):
         if self.get_attr("k_steps") < 1:
