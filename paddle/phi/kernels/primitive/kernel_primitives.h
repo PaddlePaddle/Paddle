@@ -49,6 +49,7 @@
 #define KPDevice phi::GPUContext
 #define _ptr_
 #define __simd__
+#define __local__
 
 #define THREAD_ID_X threadIdx.x
 #define THREAD_ID_Y threadIdx.y
