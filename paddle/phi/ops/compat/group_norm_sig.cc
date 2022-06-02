@@ -23,6 +23,17 @@ KernelSignature GroupNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Y", "Mean", "Variance"});
 }
 
+KernelSignature GroupNormGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "group_norm_grad",
+      {"X", "Scale", "Bias", "Y", "Mean", "Variance", "Y@GRAD"},
+      {"epsilon", "groups", "data_layout"},
+      {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(group_norm, phi::GroupNormOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(group_norm_grad,
+                           phi::GroupNormGradOpArgumentMapping);

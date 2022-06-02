@@ -942,6 +942,7 @@
     func : group_norm
   optional : scale, bias
   intermediate : mean, variance
+  backward : group_norm_grad
 
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)

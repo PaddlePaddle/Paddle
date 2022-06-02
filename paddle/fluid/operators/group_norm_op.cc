@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/group_norm_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/ternary.h"
@@ -182,7 +182,3 @@ REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormInplaceInferer, GroupNormInferShapeFunctor);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    group_norm_grad,
-    ops::GroupNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GroupNormGradKernel<paddle::platform::CPUDeviceContext, double>);
