@@ -383,7 +383,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("gpu_cpu_map_matmul_v2_to_matmul_pass");
     passes_.push_back("matmul_scale_fuse_pass");
     passes_.push_back("gpu_cpu_map_matmul_to_mul_pass");
-    passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
     passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("depthwise_conv_mkldnn_pass");
@@ -403,6 +402,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_mish_mkldnn_fuse_pass");
     passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
     passes_.push_back("conv_gelu_mkldnn_fuse_pass");
+    passes_.push_back("fc_fuse_pass");
+    passes_.push_back("repeated_fc_relu_fuse_pass");
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
