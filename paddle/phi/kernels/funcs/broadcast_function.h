@@ -316,7 +316,7 @@ __device__ void VectorizedBroadcastKernelImpl(
                                          kCallElementwiseAny>()(
       func, args, result, read_lens);
   phi::funcs::
-      ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
           outs, result, block_offset, num, read_lens);
 }
 

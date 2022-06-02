@@ -676,6 +676,29 @@ struct SameDimsElementwisePrimitiveCaller {
 #endif
 };
 
+template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
+struct ElementwiseWriteDataCaller {
+  __device__ __forceinline__ void operator()(
+      phi::Array<_ptr_ OutT *, NumOuts> outs,
+      ConditionalT<OutT, NumOuts> src[VecSize],
+      int block_offset,
+      int num) {
+    OutT dst[NumOuts][VecSize];
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+#pragma unroll
+      for (int j = 0; j < NumOuts; ++j) {
+        dst[j][i] = (src[i])[j];
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < NumOuts; ++i) {
+      kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(
+          outs[i] + block_offset, dst[i], num);
+    }
+  }
+};
+
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
   __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
@@ -688,7 +711,7 @@ struct ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, 1> {
 };
 
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
-struct ElementwiseWriteDataCaller {
+struct ElementwiseWriteDataCallerBc {
   __device__ __forceinline__ void operator()(
       phi::Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
@@ -751,7 +774,7 @@ __device__ void VectorizedElementwiseKernelImpl(
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
 
-  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
+  ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
       outs, result, data_offset, num, read_lens);
 }
 
@@ -817,13 +840,12 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
-  int read_lens = VecSize;
   auto stream = ctx.stream();
   VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize><<<
       gpu_config.block_per_grid,
       gpu_config.thread_per_block,
       0,
-      stream>>>(ins_data, outs_data, numel, main_offset, read_lens, func);
+      stream>>>(ins_data, outs_data, numel, main_offset, VecSize, func);
 #endif
 }
 
