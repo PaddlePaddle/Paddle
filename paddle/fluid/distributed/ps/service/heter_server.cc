@@ -94,7 +94,6 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
     VLOG(4) << "switch inter server server start success! listen on "
             << endpoint_inter_;
   }
-
   {
     std::lock_guard<std::mutex> lock(this->mutex_ready_);
     stoped_ = false;
@@ -115,9 +114,6 @@ void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
-  while (!this->ready_) {
-    sleep(1);
-  }
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithShard(
