@@ -2741,7 +2741,12 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return loss
 
 
-def cosine_embedding_loss(input1, input2, label, margin=0, reduction='mean', name=None):
+def cosine_embedding_loss(input1,
+                          input2,
+                          label,
+                          margin=0,
+                          reduction='mean',
+                          name=None):
     r"""
     This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 

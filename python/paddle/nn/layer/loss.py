@@ -1376,7 +1376,7 @@ class CosineEmbeddingLoss(Layer):
 
     """
 
-    def __init__(self, margin=0, reduction='mean' ,name=None):
+    def __init__(self, margin=0, reduction='mean', name=None):
         if margin > 1 or margin < -1:
             raise ValueError(
                 "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
@@ -1392,4 +1392,9 @@ class CosineEmbeddingLoss(Layer):
 
     def forward(self, input1, input2, label):
         return F.cosine_embedding_loss(
-            input1, input2, label, margin=self.margin, reduction=self.reduction, name=self.name)
+            input1,
+            input2,
+            label,
+            margin=self.margin,
+            reduction=self.reduction,
+            name=self.name)
