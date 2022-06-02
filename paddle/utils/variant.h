@@ -6,6 +6,7 @@
 // 3. remove the visitation implementation under the branhch with
 // MPARK_CPP14_CONSTEXPR defined since lib::cpp14::array could not be converted
 // to std::initializer_list in Paddle's compilation
+// 4. decorate PYBIND11_HIDDEN for struct value_visitor
 
 // MPark.Variant
 //
@@ -24,6 +25,14 @@
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 9
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+
+#if !defined(PYBIND11_HIDDEN)
+#ifdef _WIN32
+#define PYBIND11_HIDDEN __declspec(dllexport)
+#else
+#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
+#endif
 #endif
 
 /*
@@ -1650,7 +1659,7 @@ struct variant {
   };
 
   template <typename Visitor>
-  struct value_visitor {
+  struct PYBIND11_HIDDEN value_visitor {
     Visitor &&visitor_;
 
     template <typename... Alts>
@@ -2709,32 +2718,6 @@ inline constexpr bool operator!=(monostate, monostate) noexcept {
   return false;
 }
 
-/*
-#ifdef MPARK_CPP14_CONSTEXPR
-namespace detail {
-
-inline constexpr bool all(std::initializer_list<bool> bs) {
-  for (bool b : bs) {
-    if (!b) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace detail
-
-template <typename Visitor, typename... Vs>
-inline constexpr decltype(auto) visit(Visitor &&visitor, Vs &&... vs) {
-  return (detail::all(
-              std::array<bool, sizeof...(Vs)>{!vs.valueless_by_exception()...})
-              ? (void)0
-              : throw_bad_variant_access()),
-         detail::visitation::variant::visit_value(
-             lib::forward<Visitor>(visitor), lib::forward<Vs>(vs)...);
-}
-#else
-*/
 namespace detail {
 
 template <std::size_t N>
@@ -2758,12 +2741,11 @@ inline constexpr DECLTYPE_AUTO visit(Visitor &&visitor, Vs &&... vs)
              : throw_bad_variant_access()),
         detail::visitation::variant::visit_value(lib::forward<Visitor>(visitor),
                                                  lib::forward<Vs>(vs)...))
-    //#endif
 
-    template <typename... Ts>
-    inline auto swap(variant<Ts...> &lhs,
-                     variant<Ts...> &rhs) noexcept(noexcept(lhs.swap(rhs)))
-        -> decltype(lhs.swap(rhs)) {
+        template <typename... Ts>
+        inline auto swap(variant<Ts...> &lhs,
+                         variant<Ts...> &rhs) noexcept(noexcept(lhs.swap(rhs)))
+            -> decltype(lhs.swap(rhs)) {
   lhs.swap(rhs);
 }
 
