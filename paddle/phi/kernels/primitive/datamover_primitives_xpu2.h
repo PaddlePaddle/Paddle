@@ -21,6 +21,10 @@ namespace phi {
 namespace kps {
 namespace details {
 
+int RoundUpDiv(int n, int k) {
+    return (n + k - 1) / k;
+}
+
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
   N_1,                  // just like {1} op {100} or {100} op {1}
@@ -425,9 +429,10 @@ __device__ __inline__ void Init(T* dst, T init_data, int read_lens) {
  * it supports different data types of inputs.
  */
 template <typename T, typename ArgsT, int Index, int NX>
-__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
+  mfence();
 #pragma unroll
-  for (int i = 0; i < NX; i++) {
+  for (int i = 0; i < read_lens; i++) {
     std::get<Index>(dst[i]) = init_data;
   }
 }
@@ -523,22 +528,24 @@ template <typename T,
           bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T _global_ptr_* src,
-                                         int num) {
-  int thread_offset = core_id() * NX;
+                                         int num,
+                                         int read_lens) {
+  int thread_offset = core_id() * read_lens;
   __local__ T in_temp[1];
   __local__ T in_vec[NX];
-  if (IsBoundary) {  // core_num() * NX > num
+  if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
+	      mfence();
       }
     }
-  } else {  // core_num() * NX < num
-    GM2LM(src + thread_offset, in_vec, NX * sizeof(T));
+  } else {  // core_num() * read_lens < num
+    GM2LM(src + thread_offset, in_vec, read_lens * sizeof(T));
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       std::get<Index>(dst[idx]) = in_vec[idx];
     }
   }
@@ -727,10 +734,12 @@ __device__ void WriteData(T _global_ptr_* dst,
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         in_temp[0] = src[idx];
+        mfence();
         LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
+    mfence();
     LM2GM(src, dst + thread_offset, read_lens * sizeof(T));
   }
 }
