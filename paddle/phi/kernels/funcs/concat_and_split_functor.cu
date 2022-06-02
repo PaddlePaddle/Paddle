@@ -278,7 +278,6 @@ struct ConcatFunctor<phi::GPUContext, T> {
 
     int inputs_col_num = in_num + 1;
     paddle::memory::AllocationPtr data_alloc, col_alloc;
-    auto* allocator = const_cast<phi::Allocator*>(&context.GetAllocator());
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
@@ -321,10 +320,10 @@ struct ConcatFunctor<phi::GPUContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
-    phi::Allocator::AllocationPtr tmp_dev_ins_data;
+    paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = allocator->Allocate(in_num * sizeof(T*));
+      tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -370,7 +369,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          allocator->Allocate(inputs_col_num * sizeof(int64_t));
+          paddle::memory::Alloc(context, inputs_col_num * sizeof(int64_t));
 
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
@@ -436,7 +435,7 @@ class SplitFunctor<phi::GPUContext, T> {
 
     int outputs_cols_num = o_num + 1;
     paddle::memory::AllocationPtr data_alloc, cols_alloc;
-    auto* allocator = const_cast<phi::Allocator*>(&context.GetAllocator());
+
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
 // hosttodevice, it will be automatically asynchronous.
@@ -481,10 +480,11 @@ class SplitFunctor<phi::GPUContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
-    phi::Allocator::AllocationPtr tmp_dev_outs_data;
+    paddle::memory::allocation::AllocationPtr tmp_dev_outs_data;
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
-      tmp_dev_outs_data = allocator->Allocate(o_num * sizeof(T*));
+      // TODO(chentianyu03): try to find a method to remove the Alloc function
+      tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
@@ -530,7 +530,9 @@ class SplitFunctor<phi::GPUContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          allocator->Allocate(outputs_cols_num * sizeof(int64_t));
+          // TODO(chentianyu03): try to find a method to remove the Alloc
+          // function
+          paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
