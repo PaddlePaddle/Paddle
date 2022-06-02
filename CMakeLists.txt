@@ -255,6 +255,7 @@ option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm"    OFF)
+option(WITH_FLPS     "FL PS mode"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh ${CMAKE_CURRENT_BINARY_DIR}")
