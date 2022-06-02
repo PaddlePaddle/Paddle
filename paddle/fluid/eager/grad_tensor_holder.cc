@@ -18,7 +18,6 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace egr {
