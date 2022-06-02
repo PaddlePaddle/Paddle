@@ -101,7 +101,7 @@ class SparseFcOpConverter : public OpConverter {
 
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid sparse_fc op to tensorrt sparse_fc layer";
+    VLOG(3) << "convert a sparse_fc op to tensorrt sparse_fc layer";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();
     auto input_names = op_desc.InputNames();

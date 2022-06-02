@@ -37,7 +37,7 @@ class ReplaceDenseWithSparsePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  const std::string name_scope_{"replace_dense_with_sparse_pass"};
+  const std::string name_scope_{"desne_to_sparse_pass"};
 };
 
 }  // namespace ir

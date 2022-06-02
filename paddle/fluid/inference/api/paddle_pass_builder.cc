@@ -114,7 +114,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "remove_padding_recover_padding_pass",         //
       "delete_remove_padding_recover_padding_pass",  //
       // "yolo_box_fuse_pass",      //
-      "replace_dense_with_sparse_pass",
+      "desne_to_sparse_pass",
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
