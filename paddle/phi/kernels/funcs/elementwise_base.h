@@ -672,7 +672,6 @@ struct SameDimsElementwisePrimitiveCaller {
     for (int idx = 0; idx < VecSize; ++idx) {
       result[idx] = static_cast<OutT>(Apply(func, args[idx]));
     }
-  }
 #endif
 };
 
@@ -718,7 +717,7 @@ struct ElementwiseWriteDataCallerBc {
       int block_offset,
       int num,
       int read_lens) {
-    __local__ OutT dst[NumOuts][VecSize];
+    OutT dst[NumOuts][VecSize];
 #pragma unroll
     for (int i = 0; i < read_lens; ++i) {
 #pragma unroll
@@ -762,8 +761,8 @@ __device__ void VectorizedElementwiseKernelImpl(
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
-  __local__ ArgsT args[VecSize];
-  __local__ ConditionalT<OutT, NumOuts> result[VecSize];
+  ArgsT args[VecSize];
+  ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
       in, args, num, data_offset, read_lens, IsBoundary);
