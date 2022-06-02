@@ -33,10 +33,9 @@ class PsProgramBuilderFactory(object):
             return globals()['GeoPsProgramBuilder'](pass_ctx)
         elif attrs['use_ps_gpu']:
             return globals()['GpuPsProgramBuilder'](pass_ctx)
-        elif attrs['is_heter_ps_mode']:
+        elif attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:
             return globals()['HeterAsyncPsProgramBuilder'](pass_ctx)
-        elif 'is_fl_ps_mode' in attrs and attrs[
-                'is_fl_ps_mode'] == DistributedMode.FL:
+        elif 'is_fl_ps_mode' in attrs and attrs['is_fl_ps_mode']:
             return globals()['FlPsProgramBuilder'](pass_ctx)
         elif attrs['ps_mode'] == DistributedMode.SYNC:
             return globals()['CpuSyncPsProgramBuilder'](pass_ctx)
