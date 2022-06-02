@@ -69,8 +69,7 @@ struct IsSameKernelHelper<Return (*)(FuncArgs...), kernel_fn> {
         return false;
       }
 
-      constexpr auto NewIsEnd =
-          (IDX + 1 == sizeof(std::tuple_size<TupleT>::value));
+      constexpr auto NewIsEnd = (IDX + 1 == std::tuple_size<TupleT>::value);
       return Impl<TupleT, IDX + 1, NewIsEnd>::Compare(params, args);
     }
   };
