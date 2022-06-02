@@ -123,6 +123,8 @@ class CUDAGraphAllocator
       : underlying_allocator_(allocator) {}
 
  public:
+  ~CUDAGraphAllocator() { VLOG(10) << "CUDAGraphAllocator destructed"; }
+
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
     return std::shared_ptr<Allocator>(new CUDAGraphAllocator(allocator));
@@ -973,7 +975,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    auto id = platform::CUDAGraph::CapturingID();
+    auto id = platform::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter, cuda_graph_map_.end(),
@@ -1116,7 +1118,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
 }
 
 #ifdef PADDLE_WITH_CUDA
-void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
+void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported when the "
@@ -1124,23 +1126,32 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
                         "FLAGS_allocator_strategy=\"%s\"",
                         FLAGS_allocator_strategy));
   auto& allocator = cuda_graph_map_[id];
-  PADDLE_ENFORCE_EQ(
-      allocator.get(), nullptr,
-      platform::errors::InvalidArgument(
-          "The memory pool of the CUDA Graph with ID %d have been prepared.",
-          id));
-  allocator.reset(new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
-
-  VLOG(10) << "Prepare memory pool for CUDA Graph with ID " << id;
+  auto& ref_cnt = cuda_graph_ref_cnt_[id];
+  if (allocator.get() == nullptr) {
+    allocator.reset(
+        new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
+    VLOG(10) << "Create memory pool for CUDA Graph with memory ID " << id;
+  } else {
+    VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
+  }
+  ++ref_cnt;
 }
 
-void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id) {
-  auto iter = cuda_graph_map_.find(id);
-  PADDLE_ENFORCE_NE(iter, cuda_graph_map_.end(),
+void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
+  auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);
+  PADDLE_ENFORCE_NE(ref_cnt_iter, cuda_graph_ref_cnt_.end(),
                     platform::errors::InvalidArgument(
-                        "Cannot find CUDA Graph with ID = %d", id));
-  cuda_graph_map_.erase(iter);
-  VLOG(10) << "Remove memory pool of CUDA Graph with ID " << id;
+                        "Cannot find CUDA Graph with memory ID = %d", id));
+  auto& ref_cnt = ref_cnt_iter->second;
+  --ref_cnt;
+  if (ref_cnt == 0) {
+    cuda_graph_map_.erase(id);
+    cuda_graph_ref_cnt_.erase(ref_cnt_iter);
+    VLOG(10) << "Remove memory pool of CUDA Graph with memory ID " << id;
+  } else {
+    VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
+             << ref_cnt;
+  }
 }
 #endif
 #endif

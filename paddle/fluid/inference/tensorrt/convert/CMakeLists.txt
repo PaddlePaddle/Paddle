@@ -56,7 +56,11 @@ nv_library(tensorrt_converter
 		strided_slice_op.cc
                 preln_skip_layernorm.cc
 		roll_op.cc
+                transformer_input_convert_op.cc
+                remove_padding_op.cc
+                recover_padding_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
   paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine tensorrt_converter)
+  
