@@ -370,11 +370,11 @@ function check_style() {
 
     commit_files=on
     for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
-        if ! pre-commit run --files $file_name ; then
+        if ! pre-commit run --verbose --files $file_name ; then
             commit_files=off
         fi
     done
-
+    
     export PATH=${OLD_PATH}
     
     if [ $commit_files == 'off' ];then
@@ -3347,7 +3347,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
-        set +x
+        
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
@@ -3359,7 +3359,7 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
-        set -x
+        
         assert_api_spec_approvals
         ;;
       check_whl_size)

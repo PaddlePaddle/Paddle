@@ -170,9 +170,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,
-                  ops::AbsGradMaker<paddle::framework::OpDesc>,
-                  ops::AbsGradMaker<paddle::imperative::OpBase>,
+REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,ops::AbsGradMaker<paddle::framework::OpDesc>,ops::AbsGradMaker<paddle::imperative::OpBase>,
                   AbsInferShapeFunctor);
 
 REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
