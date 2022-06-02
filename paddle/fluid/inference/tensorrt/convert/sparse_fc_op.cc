@@ -282,8 +282,7 @@ class SparseFcOpConverter : public OpConverter {
     }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
-    if (engine_->use_oss() && engine_->with_ernie() && x_dim.nbDims == 4 &&
-        x_dim.d[3] == 1 && x_num_col_dims == 2) {
+    if (x_dim.nbDims == 4 && x_num_col_dims == 1) {
       if (enable_int8 || support_int8) {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
             &weight, &bias, activation_type, nvinfer1::DataType::kINT8, n);

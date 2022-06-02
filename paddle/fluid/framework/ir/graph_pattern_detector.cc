@@ -3423,7 +3423,7 @@ PDNode *patterns::DenseFC::operator()() {
   return fc_out;
 }
 
-PDNode *patterns::MultiheadMatmul::operator()() {
+PDNode *patterns::DenseMultiheadMatmul::operator()() {
   auto *multihead_matmul = pattern->NewNode(multihead_matmul_repr())
                                ->assert_is_op("multihead_matmul");
   // Input

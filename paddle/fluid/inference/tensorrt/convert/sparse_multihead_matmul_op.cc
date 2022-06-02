@@ -69,7 +69,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
            weight_t->numel() * sizeof(float));
 
     // (hidden_in, 3, hidden_out)
-    auto weight_dims = weight_t->dims();
+    const auto& weight_dims = weight_t->dims();
 
     int hidden_in = weight_dims[0];   // channels_in
     int three = weight_dims[1];       // channels_out
@@ -90,12 +90,14 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
-
+    bool flag_varseqlen = engine_->use_varseqlen() &&
+                          engine_->tensorrt_transformer_posid() != "" &&
+                          engine_->tensorrt_transformer_maskid() != "";
     if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss()) {
+      if (flag_varseqlen) {
         if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
           PADDLE_THROW(platform::errors::Fatal(
-              "use use_oss must be int8 or half, not float32."));
+              "use use_varseqlen must be int8 or half, not float32."));
         }
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
@@ -104,7 +106,8 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
         if (engine_->with_interleaved()) {
-          VLOG(4) << "fused multihead_matmul op: use_oss and with_interleaved";
+          VLOG(4) << "fused multihead_matmul op: use_varseqlen and "
+                     "with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
             PADDLE_THROW(
                 platform::errors::Fatal("use with_interleaved must be int8."));
@@ -247,9 +250,6 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
                   BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
             }
           }
-
-          auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
-
           auto creator = GetPluginRegistry()->getPluginCreator(
               "CustomQKVToContextPluginDynamic", "2");
           assert(creator != nullptr);
@@ -286,18 +286,10 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(fc_layer->getOutput(0));
-          plugin_inputs.emplace_back(mask_tensor);
-          if (engine_->Has("ernie_pos_name")) {
-            plugin_inputs.emplace_back(engine_->GetITensor(
-                engine_->Get<std::string>("ernie_pos_name")));
-          } else {
-            plugin_inputs.emplace_back(engine_->GetITensor(
-                engine_->network()
-                    ->getInput(2)
-                    ->getName()));  // cu_seqlens, eval_placeholder_2
-          }
-          auto max_seqlen_tensor =
-              engine_->GetITensor(engine_->network()->getInput(3)->getName());
+          plugin_inputs.emplace_back(engine_->GetITensor("qkv_plugin_mask"));
+          plugin_inputs.emplace_back(engine_->GetITensor("pos_id"));
+
+          auto max_seqlen_tensor = engine_->GetITensor("mask_id");
           auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Shuffle,
               *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));

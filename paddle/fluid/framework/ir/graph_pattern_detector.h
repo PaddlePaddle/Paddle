@@ -1974,9 +1974,9 @@ struct DenseFC : public PatternBase {
 //
 // \brief   Pattern looking for multihead matmul fc.
 //
-struct MultiheadMatmul : public PatternBase {
-  MultiheadMatmul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "multihead_matmul") {}
+struct DenseMultiheadMatmul : public PatternBase {
+  DenseMultiheadMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dense_multihead_matmul") {}
 
   PDNode* operator()();
 

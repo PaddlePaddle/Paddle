@@ -47,7 +47,7 @@ void DenseMultiheadMatmulToSparsePass::ApplyImpl(Graph *graph) const {
   FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
 
-  patterns::MultiheadMatmul multihead_matmul_pattern(
+  patterns::DenseMultiheadMatmul multihead_matmul_pattern(
       gpd.mutable_pattern(), "dense_multihead_matmul_replace_pass");
   multihead_matmul_pattern();
   int found_multihead_matmul_count = 0;
