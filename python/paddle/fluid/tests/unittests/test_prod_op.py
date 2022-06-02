@@ -20,6 +20,7 @@ import numpy as np
 
 
 class TestProdOp(unittest.TestCase):
+
     def setUp(self):
         self.input = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
@@ -50,13 +51,16 @@ class TestProdOp(unittest.TestCase):
         self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
 
         dy_result = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
-        expected_result = np.prod(
-            self.input, axis=1, keepdims=True, dtype=np.int64)
+        expected_result = np.prod(self.input,
+                                  axis=1,
+                                  keepdims=True,
+                                  dtype=np.int64)
         self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
 
     def run_static(self, use_gpu=False):
-        input = paddle.fluid.data(
-            name='input', shape=[10, 10, 5], dtype='float32')
+        input = paddle.fluid.data(name='input',
+                                  shape=[10, 10, 5],
+                                  dtype='float32')
         result0 = paddle.prod(input)
         result1 = paddle.prod(input, axis=1)
         result2 = paddle.prod(input, axis=-1)
@@ -86,8 +90,10 @@ class TestProdOp(unittest.TestCase):
         self.assertTrue(np.allclose(static_result[4], expected_result))
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
         self.assertTrue(np.allclose(static_result[5], expected_result))
-        expected_result = np.prod(
-            self.input, axis=1, keepdims=True, dtype=np.int64)
+        expected_result = np.prod(self.input,
+                                  axis=1,
+                                  keepdims=True,
+                                  dtype=np.int64)
         self.assertTrue(np.allclose(static_result[6], expected_result))
 
     def test_cpu(self):
@@ -111,12 +117,14 @@ class TestProdOp(unittest.TestCase):
 
 
 class TestProdOpError(unittest.TestCase):
+
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             x = paddle.fluid.data(name='x', shape=[2, 2, 4], dtype='float32')
-            bool_x = paddle.fluid.data(
-                name='bool_x', shape=[2, 2, 4], dtype='bool')
+            bool_x = paddle.fluid.data(name='bool_x',
+                                       shape=[2, 2, 4],
+                                       dtype='bool')
             # The argument x shoule be a Tensor
             self.assertRaises(TypeError, paddle.prod, [1])
 

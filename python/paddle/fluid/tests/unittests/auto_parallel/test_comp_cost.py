@@ -88,6 +88,7 @@ from test_cluster import cluster_json
 
 
 class TestCompOpCost(unittest.TestCase):
+
     def test_comp_cost(self):
         # Build cluster
         file_dir = os.path.dirname(os.path.abspath(__file__))

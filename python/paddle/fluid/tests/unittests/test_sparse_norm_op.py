@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ import copy
 
 
 class TestSparseBatchNorm(unittest.TestCase):
+
     def test(self):
         with _test_eager_guard():
             paddle.seed(0)
@@ -46,19 +47,17 @@ class TestSparseBatchNorm(unittest.TestCase):
 
             sparse_y = sparse_batch_norm(sparse_x)
             # compare the result with dense batch_norm
-            assert np.allclose(
-                dense_y.flatten().numpy(),
-                sparse_y.values().flatten().numpy(),
-                atol=1e-5,
-                rtol=1e-5)
+            assert np.allclose(dense_y.flatten().numpy(),
+                               sparse_y.values().flatten().numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)
 
             # test backward
             sparse_y.backward(sparse_y)
-            assert np.allclose(
-                dense_x.grad.flatten().numpy(),
-                sparse_x.grad.values().flatten().numpy(),
-                atol=1e-5,
-                rtol=1e-5)
+            assert np.allclose(dense_x.grad.flatten().numpy(),
+                               sparse_x.grad.values().flatten().numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)
 
     def test_error_layout(self):
         with _test_eager_guard():

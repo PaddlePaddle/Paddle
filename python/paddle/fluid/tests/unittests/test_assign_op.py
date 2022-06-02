@@ -26,6 +26,7 @@ from paddle.fluid.backward import append_backward
 
 
 class TestAssignOp(op_test.OpTest):
+
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
@@ -41,6 +42,7 @@ class TestAssignOp(op_test.OpTest):
 
 
 class TestAssignFP16Op(op_test.OpTest):
+
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
@@ -56,14 +58,16 @@ class TestAssignFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
+
     def test_assign_LoDTensorArray(self):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
             x = fluid.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
+            y = fluid.layers.fill_constant(shape=[100, 10],
+                                           dtype='float32',
+                                           value=1)
             z = fluid.layers.elementwise_add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
@@ -72,8 +76,8 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             mean = fluid.layers.mean(sums)
             append_backward(mean)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
@@ -86,11 +90,12 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
 
 
 class TestAssignOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
@@ -98,14 +103,16 @@ class TestAssignOpError(unittest.TestCase):
 
 
 class TestAssignOApi(unittest.TestCase):
+
     def test_assign_LoDTensorArray(self):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
             x = fluid.data(name='x', shape=[100, 10], dtype='float32')
             x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
+            y = fluid.layers.fill_constant(shape=[100, 10],
+                                           dtype='float32',
+                                           value=1)
             z = fluid.layers.elementwise_add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = fluid.layers.array_write(x=z, i=i)
@@ -114,8 +121,8 @@ class TestAssignOApi(unittest.TestCase):
             mean = fluid.layers.mean(sums)
             append_backward(mean)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
         exe = fluid.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
@@ -200,11 +207,12 @@ class TestAssignOApi(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')

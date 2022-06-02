@@ -21,11 +21,12 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFillDiagonal_Test(unittest.TestCase):
+
     def func_dim2_normal(self):
-        expected_np = np.array(
-            [[1, 2, 2], [2, 1, 2], [2, 2, 1]]).astype('float32')
-        expected_grad = np.array(
-            [[0, 1, 1], [1, 0, 1], [1, 1, 0]]).astype('float32')
+        expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2,
+                                                       1]]).astype('float32')
+        expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1,
+                                                         0]]).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -57,10 +58,10 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         self.func_dim2_normal()
 
     def func_offset(self):
-        expected_np = np.array(
-            [[2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype('float32')
-        expected_grad = np.array(
-            [[1, 1, 0], [1, 1, 1], [1, 1, 1]]).astype('float32')
+        expected_np = np.array([[2, 2, 1], [2, 2, 2], [2, 2,
+                                                       2]]).astype('float32')
+        expected_grad = np.array([[1, 1, 0], [1, 1, 1], [1, 1,
+                                                         1]]).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -92,8 +93,8 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         self.func_offset()
 
     def func_bool(self):
-        expected_np = np.array(
-            [[False, True, True], [True, False, True], [True, True, False]])
+        expected_np = np.array([[False, True, True], [True, False, True],
+                                [True, True, False]])
 
         typelist = ['bool']
         places = [fluid.CPUPlace()]
@@ -119,11 +120,11 @@ class TensorFillDiagonal_Test(unittest.TestCase):
 
     def func_dim2_unnormal_wrap(self):
         expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2],
-                                [1, 2, 2], [2, 1, 2],
-                                [2, 2, 1]]).astype('float32')
+                                [1, 2, 2], [2, 1, 2], [2, 2,
+                                                       1]]).astype('float32')
         expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1],
-                                  [0, 1, 1], [1, 0, 1],
-                                  [1, 1, 0]]).astype('float32')
+                                  [0, 1, 1], [1, 0, 1], [1, 1,
+                                                         0]]).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -156,11 +157,11 @@ class TensorFillDiagonal_Test(unittest.TestCase):
 
     def func_dim2_unnormal_unwrap(self):
         expected_np = np.array([[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2],
-                                [2, 2, 2], [2, 2, 2],
-                                [2, 2, 2]]).astype('float32')
+                                [2, 2, 2], [2, 2, 2], [2, 2,
+                                                       2]]).astype('float32')
         expected_grad = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [1, 1, 1],
-                                  [1, 1, 1], [1, 1, 1],
-                                  [1, 1, 1]]).astype('float32')
+                                  [1, 1, 1], [1, 1, 1], [1, 1,
+                                                         1]]).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]
@@ -192,13 +193,14 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         self.func_dim2_unnormal_unwrap()
 
     def func_dim_larger2_normal(self):
-        expected_np = np.array([[[1, 2, 2], [2, 2, 2], [2, 2, 2]], [[2, 2, 2], [
-            2, 1, 2
-        ], [2, 2, 2]], [[2, 2, 2], [2, 2, 2], [2, 2, 1]]]).astype('float32')
-        expected_grad = np.array(
-            [[[0, 1, 1], [1, 1, 1], [1, 1, 1]], [[1, 1, 1], [1, 0, 1],
-                                                 [1, 1, 1]],
-             [[1, 1, 1], [1, 1, 1], [1, 1, 0]]]).astype('float32')
+        expected_np = np.array([[[1, 2, 2], [2, 2, 2], [2, 2, 2]],
+                                [[2, 2, 2], [2, 1, 2], [2, 2, 2]],
+                                [[2, 2, 2], [2, 2, 2], [2, 2,
+                                                        1]]]).astype('float32')
+        expected_grad = np.array([[[0, 1, 1], [1, 1, 1], [1, 1, 1]],
+                                  [[1, 1, 1], [1, 0, 1], [1, 1, 1]],
+                                  [[1, 1, 1], [1, 1, 1],
+                                   [1, 1, 0]]]).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
         places = [fluid.CPUPlace()]

@@ -23,6 +23,7 @@ from paddle.fluid.op import Operator
 
 
 class TestUniqueWithCountsOp(OpTest):
+
     def setUp(self):
         self.op_type = "unique_with_counts"
         self.init_config()
@@ -31,33 +32,33 @@ class TestUniqueWithCountsOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2, 3, 1, 5], dtype='int64'),
-            'Index': np.array(
-                [0, 1, 1, 2, 3, 1], dtype='int32'),
-            'Count': np.array(
-                [1, 3, 1, 1], dtype='int32')
+            'Out': np.array([2, 3, 1, 5], dtype='int64'),
+            'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
+            'Count': np.array([1, 3, 1, 1], dtype='int32')
         }
 
 
 class TestOne(TestUniqueWithCountsOp):
+
     def init_config(self):
-        self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2], dtype='int64'),
-            'Index': np.array(
-                [0], dtype='int32'),
-            'Count': np.array(
-                [1], dtype='int32')
+            'Out': np.array([2], dtype='int64'),
+            'Index': np.array([0], dtype='int32'),
+            'Count': np.array([1], dtype='int32')
         }
 
 
 class TestRandom(TestUniqueWithCountsOp):
+
     def init_config(self):
         input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
         self.inputs = {'X': input_data}
@@ -82,7 +83,9 @@ class TestRandom(TestUniqueWithCountsOp):
 
 
 class TestUniqueWithCountsRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.unique_with_counts([10])
 
@@ -98,16 +101,16 @@ class TestUniqueWithCountsRaiseError(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestOneGPU(TestUniqueWithCountsOp):
+
     def init_config(self):
-        self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.inputs = {
+            'X': np.array([2], dtype='int64'),
+        }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array(
-                [2], dtype='int64'),
-            'Index': np.array(
-                [0], dtype='int32'),
-            'Count': np.array(
-                [1], dtype='int32')
+            'Out': np.array([2], dtype='int64'),
+            'Index': np.array([0], dtype='int32'),
+            'Count': np.array([1], dtype='int32')
         }
 
     def test_check_output(self):
@@ -119,6 +122,7 @@ class TestOneGPU(TestUniqueWithCountsOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestRandomGPU(TestUniqueWithCountsOp):
+
     def init_config(self):
         input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
         self.inputs = {'X': input_data}

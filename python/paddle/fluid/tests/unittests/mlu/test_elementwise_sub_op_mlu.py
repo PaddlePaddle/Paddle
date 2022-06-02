@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -28,6 +29,7 @@ SEED = 2022
 
 
 class TestElementwiseSubOp(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -64,23 +66,22 @@ class TestElementwiseSubOp(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(
-            self.place, ['Y'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set("X"))
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   max_relative_error=0.005,
+                                   no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set('Y'))
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.005,
+                                   no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -92,6 +93,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -103,6 +105,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -117,6 +120,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -131,6 +135,7 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -144,6 +149,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -158,6 +164,7 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_broadcast_4(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -169,6 +176,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_commonuse_1(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -180,6 +188,7 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"
@@ -191,6 +200,7 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseSubOp):
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseSubOp):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_sub"

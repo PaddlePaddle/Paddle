@@ -29,6 +29,7 @@ def simple_func(x):
 
 
 def nested_func(x):
+
     def f1(a):
         return a
 
@@ -48,6 +49,7 @@ def decorated_func2(x):
 
 
 class TestOriginInfo(unittest.TestCase):
+
     def setUp(self):
         self.set_test_func()
         self.dygraph_func = unwrap(self.func)
@@ -117,8 +119,8 @@ class TestOriginInfo(unittest.TestCase):
             origin_info = OriginInfo(
                 Location(self.dygraph_filepath, dy_lineno, dy_col_offset),
                 self.dy_func_name[i], code)
-            self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info))
+            self.assertEqual(str(origin_info_map[staic_loc.line_location]),
+                             str(origin_info))
 
     def test_attach_origin_info(self):
         dygraph_ast = gast.parse(self.source_code)
@@ -145,6 +147,7 @@ class TestOriginInfo(unittest.TestCase):
 
 
 class TestOriginInfoWithNestedFunc(TestOriginInfo):
+
     def set_test_func(self):
         self.func = nested_func
 
@@ -170,6 +173,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
 
 
 class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
+
     def set_test_func(self):
         self.func = decorated_func
 
@@ -204,6 +208,7 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
 
 
 class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
+
     def set_test_func(self):
         self.func = decorated_func2
 

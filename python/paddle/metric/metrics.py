@@ -120,8 +120,9 @@ class Metric(object):
         """
         Reset states and result
         """
-        raise NotImplementedError("function 'reset' not implemented in {}.".
-                                  format(self.__class__.__name__))
+        raise NotImplementedError(
+            "function 'reset' not implemented in {}.".format(
+                self.__class__.__name__))
 
     @abc.abstractmethod
     def update(self, *args):
@@ -135,8 +136,9 @@ class Metric(object):
 
         see :code:`Metric.compute`
         """
-        raise NotImplementedError("function 'update' not implemented in {}.".
-                                  format(self.__class__.__name__))
+        raise NotImplementedError(
+            "function 'update' not implemented in {}.".format(
+                self.__class__.__name__))
 
     @abc.abstractmethod
     def accumulate(self):
@@ -152,8 +154,9 @@ class Metric(object):
         """
         Returns metric name
         """
-        raise NotImplementedError("function 'name' not implemented in {}.".
-                                  format(self.__class__.__name__))
+        raise NotImplementedError(
+            "function 'name' not implemented in {}.".format(
+                self.__class__.__name__))
 
     def compute(self, *args):
         """
@@ -256,8 +259,10 @@ class Accuracy(Metric):
             Tensor: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
         """
         pred = paddle.argsort(pred, descending=True)
-        pred = paddle.slice(
-            pred, axes=[len(pred.shape) - 1], starts=[0], ends=[self.maxk])
+        pred = paddle.slice(pred,
+                            axes=[len(pred.shape) - 1],
+                            starts=[0],
+                            ends=[self.maxk])
         if (len(label.shape) == 1) or \
            (len(label.shape) == 2 and label.shape[-1] == 1):
             # In static mode, the real label data shape may be different
@@ -812,16 +817,15 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
         total = helper.create_variable_for_type_inference(dtype="int32")
-    helper.append_op(
-        type="accuracy",
-        inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        },
-        outputs={
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total],
-        })
+    helper.append_op(type="accuracy",
+                     inputs={
+                         "Out": [topk_out],
+                         "Indices": [topk_indices],
+                         "Label": [label]
+                     },
+                     outputs={
+                         "Accuracy": [acc_out],
+                         "Correct": [correct],
+                         "Total": [total],
+                     })
     return acc_out

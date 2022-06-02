@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
+
     def setUp(self):
         self.shape = [32, 32]
 
@@ -36,8 +37,8 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
-            np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+                                self.shape)
             for dtype in typelist:
                 var = 1.
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
@@ -64,8 +65,8 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
-            np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+                                self.shape)
             for dtype in typelist:
                 var = int(1)
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
@@ -83,6 +84,7 @@ class TensorFill_Test(unittest.TestCase):
         self.func_test_tensor_fill_backward()
 
     def func_test_errors(self):
+
         def test_list():
             x = paddle.to_tensor([2, 3, 4])
             x.fill_([1])
