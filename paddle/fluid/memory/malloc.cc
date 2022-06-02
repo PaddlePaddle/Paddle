@@ -70,11 +70,6 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 
-AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
-                    gpuStream_t stream) {
-  return Alloc(place, size,
-               phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-}
 #endif
 }  // namespace memory
 }  // namespace paddle

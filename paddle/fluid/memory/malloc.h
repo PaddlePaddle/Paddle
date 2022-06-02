@@ -55,9 +55,6 @@ extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
 void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
-
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
-                           gpuStream_t stream);
 #endif
 }  // namespace memory
 }  // namespace paddle
