@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/preln_skip_layernorm_fuse_pass.h"
+#include "paddle/fluid/framework/ir/trt_skip_layernorm_fuse_pass.h"
 
 #include <string>
 
@@ -32,11 +32,11 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct PrelnSkipLayerNorm : public PatternBase {
-  PrelnSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
-      : PatternBase(pattern, name_scope, "preln_skip_layernorm") {}
+struct TrtSkipLayerNorm : public PatternBase {
+  TrtSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "skip_layernorm") {}
 
-  void operator()(PDNode *x, PDNode *y);
+  PDNode *operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise);
@@ -52,26 +52,22 @@ struct PrelnSkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_variance);
 };
 
-void PrelnSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
+PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   // Create nodes for elementwise add op.
   x->assert_is_op_input("elementwise_add", "X");
   y->assert_is_op_input("elementwise_add", "Y");
   auto *elementwise =
       pattern->NewNode(elementwise_repr())->assert_is_op("elementwise_add");
-  auto *elementwise_out_var = pattern->NewNode(elementwise_out_repr())
-                                  ->assert_is_op_output("elementwise_add")
-                                  ->assert_is_op_input("layer_norm", "X")
-                                  ->assert_more([](Node *x) {
-                                    if (x->outputs.size() == 2) {
-                                      return true;
-                                    } else {
-                                      return false;
-                                    }
-                                  });
+  auto *elementwise_out_var =
+      pattern->NewNode(elementwise_out_repr())
+          ->AsOutput()
+          ->assert_is_only_output_of_op("elementwise_add");
+
   // Add links for elementwise_add op.
   elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
 
   // Create nodes for layer_norm op.
+  elementwise_out_var->AsIntermediate()->assert_is_op_input("layer_norm");
   auto *layer_norm =
       pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
   auto *layer_norm_bias_var = pattern->NewNode(layer_norm_bias_repr())
@@ -100,42 +96,30 @@ void PrelnSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
           {elementwise_out_var, layer_norm_bias_var, layer_norm_scale_var})
       .LinksTo(
           {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
+  return layer_norm_out_var;
 }
 
 }  // namespace patterns
 
-void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  FusePassBase::Init("preln_skip_layernorm_fuse", graph);
-  bool enable_int8 = Get<bool>("enable_int8");
-  bool use_varseqlen = Get<bool>("use_varseqlen");
-  bool with_interleaved = Get<bool>("with_interleaved");
-  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  if (!(enable_int8 && use_varseqlen && with_interleaved &&
-        with_dynamic_shape)) {
-    VLOG(4) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
-               "use_varseqlen, "
-               "with_interleaved, with_dynamic_shape. Stop this pass, please "
-               "reconfig. ";
-    return;
-  }
-
+  FusePassBase::Init("skip_layernorm_fuse", graph);
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
-                ->NewNode("preln_skip_layernorm_fuse/x")
+                ->NewNode("skip_layernorm_fuse/x")
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "X")
                 ->assert_var_not_persistable();
   auto *y = gpd.mutable_pattern()
-                ->NewNode("preln_skip_layernorm_fuse/y")
+                ->NewNode("skip_layernorm_fuse/y")
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "Y")
                 ->assert_var_not_persistable();
-  patterns::PrelnSkipLayerNorm fused_pattern(gpd.mutable_pattern(),
-                                             "preln_skip_layernorm_fuse");
+  patterns::TrtSkipLayerNorm fused_pattern(gpd.mutable_pattern(),
+                                           "skip_layernorm_fuse");
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -146,11 +130,11 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     if (!IsCompat(subgraph, graph)) {
-      LOG(WARNING) << "preln_skip_layernorm pass in op compat failed.";
+      LOG(WARNING) << "skip_layernorm pass in op compat failed.";
       return;
     }
 
-    VLOG(4) << "handle PrelnSkipLayerNorm fuse";
+    VLOG(4) << "handle TrtSkipLayerNorm fuse";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
@@ -164,9 +148,9 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     std::unordered_set<const Node *> del_node_set;
 
-    // Create an PrelnSkipLayerNorm op node
-    OpDesc new_desc;
-    new_desc.SetType("preln_skip_layernorm");
+    // Create an TrtSkipLayerNorm op node
+    OpDesc new_desc(elementwise->Op()->Block());
+    new_desc.SetType("skip_layernorm");
 
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
@@ -174,18 +158,14 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
-    if (elementwise->Op()->HasAttr("out_threshold") &&
-        layer_norm->Op()->HasAttr("out_threshold")) {
+    if (layer_norm->Op()->HasAttr("out_threshold")) {
       new_desc.SetAttr("enable_int8", true);
-      new_desc.SetAttr("out_0_threshold",
+      new_desc.SetAttr("out_threshold",
                        layer_norm->Op()->GetAttr("out_threshold"));
-      new_desc.SetAttr("out_1_threshold",
-                       elementwise->Op()->GetAttr("out_threshold"));
     }
 
     // outputs
-    new_desc.SetOutput("Out_0", {layer_norm_out->Name()});
-    new_desc.SetOutput("Out_1", {elementwise_out->Name()});
+    new_desc.SetOutput("Out", {layer_norm_out->Name()});
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
@@ -196,6 +176,7 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     del_node_set.insert(elementwise);
     del_node_set.insert(layer_norm);
+    del_node_set.insert(elementwise_out);
     del_node_set.insert(layer_norm_mean);
     del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
@@ -205,12 +186,36 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     IR_NODE_LINK_TO(layer_norm_scale, fused_node);
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
-    IR_NODE_LINK_TO(fused_node, elementwise_out);
 
     found_subgraph_count++;
   };
 
   gpd(graph, handler);
+  if (found_subgraph_count > 0) {
+    bool use_varseqlen = Get<bool>("use_varseqlen");
+    std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+    std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+    if (use_varseqlen && pos_id != "" && mask_id != "") {
+      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+          graph->Has(framework::ir::kMultiheadMatmulPass)) {
+        VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Use transformer'varseqlen need "
+            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+      }
+    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+      VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
+    } else {
+      PADDLE_THROW(
+          platform::errors::Fatal("Use transformer'varseqlen need config: "
+                                  "use_varseqlen, set pos_id, set "
+                                  "mask_id. Or not use varseqlen, do not set "
+                                  "pos_id, set mask_id. Please "
+                                  "reconfig"));
+    }
+  }
   AddStatis(found_subgraph_count);
 }
 
@@ -218,9 +223,9 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(preln_skip_layernorm_fuse_pass,
-              paddle::framework::ir::PrelnSkipLayerNormFusePass);
-REGISTER_PASS_CAPABILITY(preln_skip_layernorm_fuse_pass)
+REGISTER_PASS(trt_skip_layernorm_fuse_pass,
+              paddle::framework::ir::TrtSkipLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(trt_skip_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)
