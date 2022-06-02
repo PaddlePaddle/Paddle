@@ -901,14 +901,11 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
       cnnlAddN(handle, inputs_desc, inputs, input_num, output_desc, output));
 }
 
-/* static */ void MLUCnnl::Log(const ExecutionContext& ctx,
-                               cnnlComputationPreference_t prefer,
-                               const cnnlTensorDescriptor_t input_desc,
-                               const void* input,
-                               const cnnlTensorDescriptor_t output_desc,
-                               void* output) {
+/* static */ void MLUCnnl::Log(
+    const ExecutionContext& ctx, cnnlComputationPreference_t prefer,
+    cnnlLogBase_t log_base, const cnnlTensorDescriptor_t input_desc,
+    const void* input, const cnnlTensorDescriptor_t output_desc, void* output) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
-  cnnlLogBase_t log_base = CNNL_LOG_E;
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlLog_v2(handle, prefer, log_base, input_desc,
                                         input, output_desc, output));
