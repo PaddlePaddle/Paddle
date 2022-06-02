@@ -888,19 +888,6 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
 #endif
 }
 
-template <typename T>
-static bool CanUseCudnnSoftmax(const GPUContext& dev_ctx) {
-  if (dev_ctx.cudnn_handle() != nullptr) {
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#if CUDNN_VERSION < 8100
-      return false;
-#endif
-    }
-    return true;
-  }
-  return false;
-}
-
 #if CUDNN_VERSION < 8100
 template <>
 inline void SoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
@@ -927,6 +914,25 @@ inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
 }
 #endif
 
+template <typename T>
+bool UseCudnnSoftmax(const GPUContext& ctx, int softmax_dim, bool last_dim) {
+  bool cudnn_available = ctx.cudnn_handle();
+  if (!ctx.cudnn_handle()) {
+    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+#if CUDNN_VERSION < 8100
+      cudnn_available = false;
+#endif
+    }
+  }
+  constexpr int max_dim = 512;
+  if (!cudnn_available || !last_dim ||
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
@@ -941,10 +947,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
   int dim = tensor_dims[1];
   int D = tensor_dims[2];
 
-  constexpr int max_dim = 512;
-
-  if (D == 1 &&
-      (!CanUseCudnnSoftmax<T>(dev_ctx) || (dim <= max_dim && sizeof(T) <= 4))) {
+  if (D == 1 && !UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
     int dim_log2 = static_cast<int>(Log2Ceil(dim));
     int dim_ceil = 1 << dim_log2;
     int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
@@ -1016,10 +1019,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
   int dim = tensor_dims[1];
   int D = tensor_dims[2];
 
-  constexpr int max_dim = 512;
-
-  if (D == 1 &&
-      (!CanUseCudnnSoftmax<T>(dev_ctx) || (dim <= max_dim && sizeof(T) <= 4))) {
+  if (D == 1 && !UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
     int dim_log2 = Log2Ceil(dim);
     int dim_ceil = 1 << dim_log2;
     int warp_size = (dim_ceil < 32) ? dim_ceil : 32;

@@ -360,6 +360,10 @@ function check_style() {
     # pre-commit use python3.8.0 
     OLD_PATH=$PATH
     export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
+    
+    if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
+        pip install pre-commit==2.17.0
+    fi
 
     pre-commit install
     clang-format --version
@@ -1563,6 +1567,10 @@ set +x
         card_test "$exclusive_tests_medium_parallel" -1 4                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_non_parallel" -1 2                # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         exclu_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" 
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s" 
 
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1682,6 +1690,68 @@ set +x
         fi
 set -ex
     fi
+}
+
+function classify_case_by_cardNum() {
+    cd ${PADDLE_ROOT}/build
+    test_cases=$(ctest -N -V) # get all test cases
+    single_card_tests='^job$'                           # all cases list which would take single GPU
+    multiple_card_tests='^job$'
+    exclusive_card_tests='^job$'
+    nightly_tests='^job$'
+
+    is_exclusive=''           # indicate whether the case is exclusive type
+    is_multicard=''           # indicate whether the case is multiple GPUs type
+    is_nightly=''             # indicate whether the case will only run at night
+set +x
+    while read -r line; do
+        if [[ "$line" == "" ]]; then
+            continue
+        fi
+            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            if [[ "$matchstr" == "" ]]; then
+                # Any test case with LABELS property would be parse here
+                # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
+                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+            if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
+                echo $testcase" will only run at night."
+                nightly_tests="$nightly_tests|^$testcase$" 
+                echo "$testcase" >> ${PADDLE_ROOT}/build/nightly_case
+                continue
+            fi
+
+            if [[ "$is_multicard" == "" ]]; then
+                # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+            fi
+            if [[ "$is_exclusive" != "" ]]; then
+                exclusive_card_tests="$exclusive_card_tests|^$testcase$"
+            elif [[ "$is_multicard" != "" ]]; then
+                multiple_card_tests="$multiple_card_tests|^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+            is_exclusive=''
+            is_multicard=''
+            is_nightly=''
+            matchstr=''
+            testcase=''
+    done <<< "$test_cases"; 
+set -x
+    rm -rf ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
+    touch ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
+    echo 'single_card_tests: '$single_card_tests >> ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
+    echo 'multiple_card_tests: '$multiple_card_tests >> ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
+    echo 'exclusive_card_tests: '$exclusive_card_tests >> ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
+    echo 'nightly_tests: '$nightly_tests >> ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
 }
 
 function show_ut_retry_result() {
@@ -1921,8 +1991,15 @@ set -x
     #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
 
+
+    wait;
+    #classify_case_by_cardNum
+    classify_case_by_cardNum    
+    
     #generate ut mem map
-    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir 
+    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
+    python ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
+    
 }
 
 function get_failedUts_precise_map_file {
@@ -2288,6 +2365,220 @@ set -ex
     fi   
 }
 
+function parallel_test_base_gpu_test() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+
+set -x
+        # set trt_convert ut to run 15% cases.
+        export TEST_NUM_PERCENT_CASES=0.15
+        precison_cases=""
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+        fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/added_ut" ];then
+            added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
+        fi
+set +x
+        EXIT_CODE=0;
+        wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/CTestCostData.txt --no-check-certificate
+        mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
+        cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
+        
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
+        test_cases=$(ctest -N -V) # get all test cases
+
+        python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+
+        single_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" 1 4
+        done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+        single_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+
+        single_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
+            card_test "$line" 1 $num
+        done < $PADDLE_ROOT/tools/single_card_tests_new
+        single_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
+
+        multiple_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" 2 4
+        done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
+        multiple_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        multiple_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
+            card_test "$line" 2 $num 
+
+        done < $PADDLE_ROOT/tools/multiple_card_tests_new
+        multiple_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" 
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+        exclusive_ut_mem_0_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" -1 4
+        done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
+        exclusive_ut_mem_0_endTime_s=`date +%s`
+        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+        exclusive_ut_startTime_s=`date +%s`
+        while read line
+        do
+            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+            if [ $num -eq 0 ]; then
+                num=1
+            fi
+            card_test "$line" -1 $num 
+        done < $PADDLE_ROOT/tools/exclusive_card_tests_new
+        exclusive_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
+        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        
+        noparallel_ut_startTime_s=`date +%s`
+        while read line
+        do
+            card_test "$line" -1 2
+        done < $PADDLE_ROOT/tools/no_parallel_case_file
+        noparallel_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
+        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt   
+        ###retry
+        collect_failed_tests
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
+        is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "2" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"                    
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_cases" == "" ]]; then
+                                    retry_cases="^$line$"
+                                else
+                                    retry_cases="$retry_cases|^$line$"
+                                fi
+                            done
+
+                        if [[ "$retry_cases" != "" ]]; then
+                            card_test "$retry_cases" -1 2
+                        fi
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        retry_cases=''
+                    else 
+                        break
+                    fi 
+                done
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
+        fi
+        rerun_ut_endTime_s=`date +%s`
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi
+}
+
 function parallel_test_base_ipu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
@@ -2424,7 +2715,7 @@ function parallel_test() {
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
-        parallel_test_base_gpu
+        parallel_test_base_gpu_test
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
     elif [ "$WITH_ASCEND_CL" == "ON" ];then
@@ -2986,20 +3277,11 @@ function build_develop() {
 }
 
 function check_coverage_build() {
-    if [ ! "${buildSize}" ];then
-        echo "build size not found"
-        exit 1
-    fi
-
-    if [ ${WITH_COVERAGE} != "ON" ];then
-        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
-        exit 1
-    fi
-
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3136,7 +3418,6 @@ function main() {
         parallel_test
         ;;
       cicheck_coverage)
-        check_approvals_of_unittest 1
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
@@ -3145,17 +3426,17 @@ function main() {
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
-        check_approvals_of_unittest 1
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      check_coverage_build)
+        check_coverage_build
         ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
@@ -3300,6 +3581,10 @@ function main() {
       trt_convert_test)
         # only test trt convert.
         trt_convert_test
+        ;;
+      classify_case_by_cardNum)
+        # only class case by card num
+        classify_case_by_cardNum
         ;;
       *)
         print_usage

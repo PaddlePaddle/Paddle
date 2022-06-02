@@ -35,7 +35,16 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             "collective_global_scatter_dygraph.py",
             "global_scatter",
             "nccl",
-            static_mode="0")
+            static_mode="0",
+            eager_mode=False)
+
+    def test_global_scatter_nccl_dygraph_eager(self):
+        self.check_with_place(
+            "collective_global_scatter_dygraph.py",
+            "global_scatter",
+            "nccl",
+            static_mode="0",
+            eager_mode=True)
 
 
 if __name__ == '__main__':

@@ -38,7 +38,7 @@ class TestSparseBatchNorm(unittest.TestCase):
             dense_x2 = copy.deepcopy(dense_x)
             dense_x2.stop_gradient = False
             sparse_x = dense_x2.to_sparse_coo(sparse_dim)
-            sparse_batch_norm = paddle.sparse.BatchNorm(channels)
+            sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
             # set same params
             sparse_batch_norm._mean.set_value(batch_norm._mean)
             sparse_batch_norm._variance.set_value(batch_norm._variance)
@@ -66,7 +66,7 @@ class TestSparseBatchNorm(unittest.TestCase):
                 shape = [2, 3, 6, 6, 3]
                 x = paddle.randn(shape)
                 sparse_x = x.to_sparse_coo(4)
-                sparse_batch_norm = paddle.sparse.BatchNorm(
+                sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(
                     3, data_format='NCDHW')
                 sparse_batch_norm(sparse_x)
 
@@ -77,7 +77,7 @@ class TestSparseBatchNorm(unittest.TestCase):
             x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
             dense_x = paddle.to_tensor(x_data)
             sparse_x = dense_x.to_sparse_coo(4)
-            batch_norm = paddle.sparse.BatchNorm(channels)
+            batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
             batch_norm_out = batch_norm(sparse_x)
             print(batch_norm_out.shape)
             # [1, 6, 6, 6, 3]
