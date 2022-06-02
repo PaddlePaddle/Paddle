@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(divide, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {

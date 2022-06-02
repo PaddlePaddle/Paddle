@@ -90,19 +90,19 @@ DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
-
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, ELUFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishFunctor, beta)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,
@@ -181,5 +181,6 @@ PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
+PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
 PD_REGISTER_KERNEL(
     pow, CPU, ALL_LAYOUT, phi::PowKernel, float, double, int, int64_t) {}

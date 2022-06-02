@@ -123,6 +123,8 @@ class CUDAGraphAllocator
       : underlying_allocator_(allocator) {}
 
  public:
+  ~CUDAGraphAllocator() { VLOG(10) << "CUDAGraphAllocator destructed"; }
+
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
     return std::shared_ptr<Allocator>(new CUDAGraphAllocator(allocator));
@@ -415,6 +417,23 @@ class AllocatorFacadePrivate {
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
+
+    // NOTE(Ruibiao): The default stream will be set when the CUDADeviceContext
+    // created. Normally, the DeviceContextPool is a global singleton and one
+    // Place only correspond to one DeviceContext. However, to support
+    // multi-stream scheduling, standalone executor creates two extra
+    // DeviceContextPools for H2D and D2H stream in StreamAnalyzer, which make
+    // one Place correspond to multiple DeviceContext and unexpectedly reset the
+    // default stream in runtime. To avoid this behavior, we do not allow
+    // changing default stream after initially setting.
+    if (allocator->GetDefaultStream() != nullptr) {
+      VLOG(5) << "The default stream for StreamSafeCUDAAllocator("
+              << allocator.get() << ") in " << place << " has been set to "
+              << allocator->GetDefaultStream()
+              << " before, not allow to change now.";
+      return;
+    }
+
     allocator->SetDefaultStream(stream);
     VLOG(8) << "Set default stream to " << stream
             << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
@@ -819,6 +838,16 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+    for (const auto& dev_type : device_types) {
+      for (size_t dev_id = 0;
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
+        platform::CustomPlace p(dev_type, dev_id);
+        system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      }
+    }
+#endif
   }
 
   void InitZeroSizeAllocators() {
@@ -904,8 +933,11 @@ class AllocatorFacadePrivate {
 
   void WrapStatAllocator() {
     for (auto& pair : allocators_) {
-      // Now memory stats is only supported for GPU
-      if (platform::is_gpu_place(pair.first)) {
+      // Now memory stats is only supported for CPU and GPU
+      const platform::Place& place = pair.first;
+      if (platform::is_cpu_place(place) ||
+          platform::is_cuda_pinned_place(place) ||
+          platform::is_gpu_place(place)) {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }
@@ -943,7 +975,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    auto id = platform::CUDAGraph::CapturingID();
+    auto id = platform::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter, cuda_graph_map_.end(),
@@ -1086,7 +1118,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
 }
 
 #ifdef PADDLE_WITH_CUDA
-void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
+void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported when the "
@@ -1094,23 +1126,32 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
                         "FLAGS_allocator_strategy=\"%s\"",
                         FLAGS_allocator_strategy));
   auto& allocator = cuda_graph_map_[id];
-  PADDLE_ENFORCE_EQ(
-      allocator.get(), nullptr,
-      platform::errors::InvalidArgument(
-          "The memory pool of the CUDA Graph with ID %d have been prepared.",
-          id));
-  allocator.reset(new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
-
-  VLOG(10) << "Prepare memory pool for CUDA Graph with ID " << id;
+  auto& ref_cnt = cuda_graph_ref_cnt_[id];
+  if (allocator.get() == nullptr) {
+    allocator.reset(
+        new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
+    VLOG(10) << "Create memory pool for CUDA Graph with memory ID " << id;
+  } else {
+    VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
+  }
+  ++ref_cnt;
 }
 
-void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id) {
-  auto iter = cuda_graph_map_.find(id);
-  PADDLE_ENFORCE_NE(iter, cuda_graph_map_.end(),
+void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
+  auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);
+  PADDLE_ENFORCE_NE(ref_cnt_iter, cuda_graph_ref_cnt_.end(),
                     platform::errors::InvalidArgument(
-                        "Cannot find CUDA Graph with ID = %d", id));
-  cuda_graph_map_.erase(iter);
-  VLOG(10) << "Remove memory pool of CUDA Graph with ID " << id;
+                        "Cannot find CUDA Graph with memory ID = %d", id));
+  auto& ref_cnt = ref_cnt_iter->second;
+  --ref_cnt;
+  if (ref_cnt == 0) {
+    cuda_graph_map_.erase(id);
+    cuda_graph_ref_cnt_.erase(ref_cnt_iter);
+    VLOG(10) << "Remove memory pool of CUDA Graph with memory ID " << id;
+  } else {
+    VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
+             << ref_cnt;
+  }
 }
 #endif
 #endif

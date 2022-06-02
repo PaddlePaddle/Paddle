@@ -17,6 +17,8 @@ from .utils import paddle_2_number, number_2_dtype
 from ...utils.log_util import logger
 import numpy as np
 from paddle import _C_ops
+import paddle.fluid.core as core
+from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 _hcg = None
 _use_cache = False
@@ -114,7 +116,7 @@ class SendRecvMeta:
         paddle.distributed.send(stop_grad, dst=1, group=group)
 
     def send_meta(self, tensor, group):
-        if isinstance(tensor, paddle.Tensor):
+        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
             paddle.distributed.send(tensor_type, dst=1, group=group)
@@ -129,11 +131,11 @@ class SendRecvMeta:
             paddle.distributed.send(nums, dst=1, group=group)
 
             for d in tensor:
-                assert isinstance(d, paddle.Tensor)
+                assert isinstance(d, (paddle.Tensor, core.eager.Tensor))
                 self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
-        if isinstance(tensor, paddle.Tensor):
+        if isinstance(tensor, (paddle.Tensor, core.eager.Tensor)):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
         elif isinstance(tensor, tuple):
@@ -147,9 +149,15 @@ _send_recv_meta = SendRecvMeta()
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
-    tensor_numel = np.prod(tensor.shape)
-    assert tensor_numel != 0, "can't send/recv zero element"
-    return mp_degree > 1 and tensor_numel % mp_degree == 0
+
+    if _in_legacy_dygraph():
+        tensor_numel = np.prod(tensor.shape)
+        assert tensor_numel != 0, "can't send/recv zero element"
+        return mp_degree > 1 and tensor_numel % mp_degree == 0
+    elif in_dygraph_mode():
+        # TODO(shenliang03) support mp+pp optimizer in future. 
+        # (partial_send/partial_recv/partial_allgather_)
+        return False
 
 
 def send_partial(tensor,

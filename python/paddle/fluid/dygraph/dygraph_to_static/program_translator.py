@@ -61,7 +61,7 @@ class FunctionCache(object):
 
     def __init__(self):
         # Caches the converted static functions. {dygraph_func: static_func}
-        self._converted_static_func_caches = dict()
+        self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
         self._code_to_ast_caches = dict()
         self._dygraph_to_static = DygraphToStaticAst()
@@ -196,10 +196,13 @@ class CacheKey(object):
 
     def __hash__(self):
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
-        return hash((id(self.function_spec),
-                     make_hashable(self.input_args_with_spec, error_msg),
-                     make_hashable(self.input_kwargs_with_spec, error_msg),
-                     self._spec_names_id, self.class_instance))
+        with_hook = self.kwargs.get("with_hook", False)
+        is_train = self.kwargs.get("is_train", False)
+        return hash(
+            (id(self.function_spec),
+             make_hashable(self.input_args_with_spec, error_msg),
+             make_hashable(self.input_kwargs_with_spec, error_msg),
+             self._spec_names_id, self.class_instance, with_hook, is_train))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -264,6 +267,8 @@ class StaticFunction(object):
         self._program_trans = ProgramTranslator()
         self._kwargs = kwargs
         self._training = True
+        self._cuda_graph_capture_mode = ""
+        self._cuda_graph_pool_id = 0
 
     def train(self):
         if isinstance(self._class_instance,
@@ -356,13 +361,16 @@ class StaticFunction(object):
 
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
-                *args, **kwargs)
+                *args, **kwargs, is_train=self._is_train_mode())
 
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training
             else:
                 partial_program_layer.training = self._training
+
+            partial_program_layer._cuda_graph_capture_mode = self._cuda_graph_capture_mode
+            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
 
             # 4. return outputs.
             try:
@@ -381,6 +389,12 @@ class StaticFunction(object):
                     "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
                     " if you can't handle this {} yourself.".format(type(e)))
                 raise e
+
+    def _is_train_mode(self):
+        if self._class_instance is not None:
+            return self._class_instance.training
+        else:
+            return self._training
 
     def _call_dygraph_function(self, *args, **kwargs):
         """
@@ -413,6 +427,10 @@ class StaticFunction(object):
             Traced ConcreteProgram and executable translated Layer.
         """
 
+        with_hook = kwargs.get("with_hook", False)
+        is_train = kwargs.get("is_train", True)
+        if "is_train" in kwargs: kwargs.pop("is_train")
+        if "with_hook" in kwargs: kwargs.pop("with_hook")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
@@ -421,9 +439,14 @@ class StaticFunction(object):
             args, kwargs)
 
         # 2. generate cache key
-        cache_key = CacheKey(self._function_spec, input_args_with_spec,
-                             input_kwargs_with_spec, self._class_instance,
-                             **self._kwargs)
+        cache_key = CacheKey(
+            self._function_spec,
+            input_args_with_spec,
+            input_kwargs_with_spec,
+            self._class_instance,
+            **self._kwargs,
+            with_hook=with_hook,
+            is_train=is_train)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -480,11 +503,13 @@ class StaticFunction(object):
         """
         return self.concrete_program_specify_input_spec(input_spec=None)
 
-    def concrete_program_specify_input_spec(self, input_spec=None):
+    def concrete_program_specify_input_spec(self,
+                                            input_spec=None,
+                                            with_hook=False):
         """
         Returns recent ConcreteProgram instance of decorated function while
         specifying input_spec. If the self._function_spec already has
-        input_spce, it will check the compatibility of input input_spec and
+        input_spec, it will check the compatibility of input input_spec and
         the self._function_spec.input_spec. If input input_spec=None, then
         this method uses self._function_spec.input_spec
 
@@ -516,12 +541,20 @@ class StaticFunction(object):
             has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
                 concrete_program, _ = self.get_concrete_program(
-                    *desired_input_spec)
+                    *desired_input_spec,
+                    with_hook=with_hook,
+                    is_train=self._is_train_mode())
                 return concrete_program
             else:
                 raise ValueError(
                     "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".
                     format(self._function_spec))
+        elif with_hook:
+            cache_key = self._program_cache._recent_cache_key
+            cache_key.kwargs["with_hook"] = True
+            concrete_program, _ = self._program_cache[cache_key]
+            return concrete_program
+
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging_utils.warn(
@@ -588,6 +621,54 @@ def _verify_init_in_dynamic_mode(class_instance):
                     class_instance))
 
 
+class HookHelper(object):
+    """
+    Only For converting pre/post hooks operation in outermost layer while jit.save.
+    Because hooks in sublayer have been processed automatically.
+    """
+
+    def __init__(self, func, class_instance, with_hook=False):
+        self.func = func
+        self.class_instance = class_instance
+        self.with_hook = with_hook
+        self.need_apply_hook = with_hook and isinstance(
+            self.class_instance,
+            layers.Layer) and getattr(func, "__name__") == "forward"
+
+    def apply_pre_hooks(self, inputs):
+        """
+        Apply _forward_pre_hooks from outermost layer
+        """
+        if not self.need_apply_hook: return inputs
+
+        inputs = inputs[1:]
+        for forward_pre_hook in self.class_instance._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self.class_instance, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
+        return [self.class_instance] + list(inputs)
+
+    def apply_post_hooks(self, inputs, outputs):
+        """
+        Apply _forward_post_hooks from outermost layer
+        """
+        if not self.need_apply_hook: return outputs
+
+        inputs = inputs[1:]
+        for forward_post_hook in self.class_instance._forward_post_hooks.values(
+        ):
+            hook_result = forward_post_hook(self.class_instance, inputs,
+                                            outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
+        inputs.insert(0, self.class_instance)
+        return outputs
+
+
 class ConcreteProgram(object):
 
     __slots__ = [
@@ -629,6 +710,9 @@ class ConcreteProgram(object):
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
+        # apply pre\post hook for outermost layer
+        hook_helper = HookHelper(dygraph_function, class_instance,
+                                 kwargs.get("with_hook", False))
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
@@ -642,12 +726,13 @@ class ConcreteProgram(object):
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
-                inputs = func_spec.to_static_inputs_with_spec(input_spec,
-                                                              main_program)
+                static_inputs = func_spec.to_static_inputs_with_spec(
+                    input_spec, main_program)
                 _kwargs = func_spec.to_static_inputs_with_spec(
                     input_kwargs_spec, main_program)
                 if class_instance:
-                    inputs = tuple([class_instance] + list(inputs))
+                    static_inputs = tuple([class_instance] + list(
+                        static_inputs))
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = _extract_indeed_params_buffers(
@@ -658,10 +743,13 @@ class ConcreteProgram(object):
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
                     try:
+                        # only for jit.save, do nothing while train and eval process
+                        inputs = hook_helper.apply_pre_hooks(static_inputs)
                         if _kwargs:
                             outputs = static_func(*inputs, **_kwargs)
                         else:
                             outputs = static_func(*inputs)
+                        outputs = hook_helper.apply_post_hooks(inputs, outputs)
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         error.attach_error_data(e)
@@ -679,7 +767,7 @@ class ConcreteProgram(object):
         main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
-            inputs=inputs,
+            inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
@@ -709,6 +797,7 @@ class ProgramCache(object):
         self._caches = collections.OrderedDict()
         # trace mostly recent used program 
         self._recent_key = None
+        self._recent_cache_key = None
 
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
@@ -724,6 +813,7 @@ class ProgramCache(object):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
         item_id = hash(item)
+        self._recent_cache_key = item
         self._recent_key = item_id
         if item_id not in self._caches:
             self._caches[item_id] = self._build_once(item)

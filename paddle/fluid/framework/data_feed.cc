@@ -220,6 +220,7 @@ bool DataFeed::PickOneFile(std::string* filename) {
       file_idx_, platform::errors::PreconditionNotMet(
                      "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
+  VLOG(4) << "filelist_ size: " << filelist_.size();
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
     return false;
@@ -261,6 +262,8 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_HIP)
     hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_XPU_KP)
+    xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
         "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
@@ -282,6 +285,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::Start()";
   CheckSetFileList();
   read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
   read_thread_.detach();
@@ -293,6 +297,7 @@ bool PrivateQueueDataFeed<T>::Start() {
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -354,6 +359,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
+  VLOG(4) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
@@ -662,6 +668,7 @@ void MultiSlotDataFeed::Init(
 
 void MultiSlotDataFeed::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering MultiSlotDataFeed::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -829,7 +836,6 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
   } else {
     int use_slots_num = use_slots_.size();
     instance->resize(use_slots_num);
-
     const char* str = reader.get();
     std::string line = std::string(str);
 
@@ -969,10 +975,13 @@ void MultiSlotDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
+    VLOG(4) << "MultiSlotDataFeed::PutToFeedVec i: " << i;
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
-
+    VLOG(4) << "total_instance: " << total_instance;
+    // platform::CPUPlace()
+    VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
       float* tensor_ptr =
@@ -2571,6 +2580,7 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 }
 
 bool SlotRecordInMemoryDataFeed::Start() {
+  VLOG(4) << "entering SlotRecordInMemoryDataFeed::Start";
 #ifdef _LINUX
   this->CheckSetFileList();
   if (input_channel_->Size() != 0) {

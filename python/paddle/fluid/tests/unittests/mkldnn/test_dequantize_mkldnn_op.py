@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+import paddle
 
 
 class TestDeQuantizeOp(OpTest):
@@ -110,19 +111,6 @@ class TestDeQuantizeOpBf16(TestDeQuantizeOp):
         self.data_type = 'uint16'
 
 
-class TestDeQuantizeOp_ZeroScale(TestDeQuantizeOp):
-    def set_scale(self):
-        self.scale = 0.0
-
-    def prepare_output_int8(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Dequantization scale cannot be 0.0')
-
-
 # 2-dim input
 # P - positive input, with shift
 class TestDeQuantizeOpShift_2_P(TestDeQuantizeOp):
@@ -177,28 +165,6 @@ class TestDeQuantizeOpShift_4_N(TestDeQuantizeOpShift_2_N):
         self.input_size = [2, 3, 4, 5]
 
 
-class TestDeQuantizeOp_NegativeShift(TestDeQuantizeOp):
-    def set_shift(self):
-        self.shift = -10.0
-
-    def prepare_output_int8(self):
-        self.output = np.zeros(self.input_size)
-        self.outputs = {'Output': self.output}
-
-    def test_check_output(self):
-        self.assertRaises(AttributeError, self.check_raise_error,
-                          'Dequantization shift must be nonnegative.')
-
-
-class TestDeQuantizeOp_TooBigShift(TestDeQuantizeOp_NegativeShift):
-    def set_shift(self):
-        self.shift = 300.0
-
-    def test_check_output(self):
-        self.assertRaises(
-            AttributeError, self.check_raise_error,
-            'Dequantization shift must be less than or equal to 255.')
-
-
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

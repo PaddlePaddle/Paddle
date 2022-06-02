@@ -191,7 +191,8 @@ class TestDistBase(unittest.TestCase):
                          path_id="0",
                          static_mode="1",
                          check_error_log=False,
-                         need_envs={}):
+                         need_envs={},
+                         eager_mode=True):
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
         else:
@@ -216,6 +217,12 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
+
+        if eager_mode:
+            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
+        else:
+            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
+
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
                                                          required_envs)
         np.random.seed(pid0)

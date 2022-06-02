@@ -75,7 +75,6 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    :api_attr: Static Graph
     
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
@@ -94,6 +93,7 @@ def scope_guard(scope):
         None
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -873,7 +873,7 @@ class Executor(object):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
-                    "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
+                    "The item in fetch_list should be str, variable or optimize_op, but received %s.",
                     type(item))
 
         for index, item in enumerate(fetch_list):
@@ -1326,6 +1326,8 @@ class Executor(object):
                     use_program_cache=use_program_cache)
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
+            #print("program._heter_pipeline_opt: {}".format(
+            #    program._heter_pipeline_opt))
             ## change default executor 
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
@@ -1334,6 +1336,7 @@ class Executor(object):
             self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
+                #print("get startup_program from _pipeline_opt")
                 program = program._heter_pipeline_opt["startup_program"]
 
         if isinstance(program, Program) and \
@@ -1386,10 +1389,12 @@ class Executor(object):
 
         def _can_use_interpreter_core(program, place):
             if core.is_compiled_with_npu() or core.is_compiled_with_xpu(
-            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu():
+            ) or core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
+            ) or isinstance(place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
+            # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
                 return False
@@ -1777,24 +1782,26 @@ class Executor(object):
             dataset.set_use_var(data_vars)
         elif program._heter_pipeline_opt is not None:
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
+            #print("test_fl_stage_id: {}".format(stage_id))
             heter_place = program._heter_pipeline_opt["heter_place"]
             if stage_id != 0:
-                import paddle
-                if dataset is not None:
-                    raise RuntimeError(
-                        "dataset should be None for heter pipeline mode")
-                # The following fake dataset is created to call 
-                # the _prepare_trainer api, and it is meaningless.
-                data_vars = []
-                for var in program.global_block().vars.values():
-                    if var.is_data:
-                        data_vars.append(var)
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset')
-                dataset.set_batch_size(1)
-                dataset.set_thread(1)
-                dataset.set_filelist(['None'])
-                dataset.set_use_var(data_vars)
+                if "is_fl_mode" not in program._heter_pipeline_opt:
+                    import paddle
+                    if dataset is not None:
+                        raise RuntimeError(
+                            "dataset should be None for heter pipeline mode")
+                    # The following fake dataset is created to call 
+                    # the _prepare_trainer api, and it is meaningless.
+                    data_vars = []
+                    for var in program.global_block().vars.values():
+                        if var.is_data:
+                            data_vars.append(var)
+                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                        'InMemoryDataset')
+                    dataset.set_batch_size(1)
+                    dataset.set_thread(1)
+                    dataset.set_filelist(['None'])
+                    dataset.set_use_var(data_vars)
             else:
                 if dataset is None:
                     raise RuntimeError(
@@ -1854,10 +1861,11 @@ class Executor(object):
         # warning if dataset not set psgpu in psgpu mode
         if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
             logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
+
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
-            trainer_instance = self._default_executor.init_for_dataset(
+            trainer_instance = self._default_executor.init_for_dataset(  # -->InitForDataset
                 program.desc, trainer._desc(), scope, dataset.dataset)
         else:
             # cache trainer instance for heterps pipeline training
@@ -1868,6 +1876,7 @@ class Executor(object):
             if trainer_instance is None:
                 trainer_instance = self._default_executor.init_for_dataset(
                     program.desc, trainer._desc(), scope, dataset.dataset)
+                #print("test_fl_ps - trainer_desc: {}\n".format(trainer))
                 self._add_trainer_cache(cache_key, trainer_instance)
             else:
                 trainer_instance.ResetDataset(dataset.dataset)
@@ -2340,20 +2349,6 @@ class Executor(object):
                             fetch_info=None,
                             print_period=100,
                             fetch_handler=None):
-        return self._start_heter_trainer(program, scope, False, debug,
-                                         fetch_list, fetch_info, print_period,
-                                         fetch_handler)
-
-    def _start_heter_trainer(self,
-                             program=None,
-                             scope=None,
-                             is_infer=False,
-                             debug=False,
-                             fetch_list=None,
-                             fetch_info=None,
-                             print_period=100,
-                             fetch_handler=None):
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=None,
@@ -2364,7 +2359,7 @@ class Executor(object):
             fetch_info=fetch_info,
             print_period=print_period)
 
-        trainer._set_infer(is_infer)
+        trainer._set_infer(False)
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)

@@ -1,8 +1,8 @@
 # Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows. Temporarily add paddle_inference_api dependency to solve the problem
 if(WIN32)
-nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost paddle_inference_api)
+    nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost paddle_inference_api)
 else()
-nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
+    nv_library(tensorrt_engine SRCS engine.cc trt_int8_calibrator.cc DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
 endif()
 nv_library(tensorrt_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost)
 nv_test(test_tensorrt SRCS test_tensorrt.cc DEPS dynload_cuda device_context dynamic_loader)

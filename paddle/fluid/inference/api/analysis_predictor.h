@@ -38,6 +38,9 @@
 
 namespace paddle_infer {
 using float16 = paddle::platform::float16;
+namespace experimental {
+class InternalUtils;
+};
 }
 ///
 /// \file analysis_predictor.h
@@ -492,6 +495,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<distributed::FleetExecutor> fleet_exe_;
   std::shared_ptr<distributed::TaskNode> task_node_;
 #endif
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 }  // namespace paddle

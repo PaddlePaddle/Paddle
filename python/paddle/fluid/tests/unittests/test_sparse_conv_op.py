@@ -31,19 +31,21 @@ class TestSparseConv(unittest.TestCase):
             paddings = [0, 0, 0]
             strides = [1, 1, 1]
             dilations = [1, 1, 1]
+            bias = [1]
 
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [1, 2, 3, 4]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
-            correct_out_values = [[4], [10]]
+            correct_out_values = [[5], [11]]
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
-            out = paddle.sparse.functional.conv3d(
+            out = paddle.incubate.sparse.nn.functional.conv3d(
                 sparse_input,
                 dense_kernel,
-                bias=None,
+                bias=paddle.to_tensor(
+                    bias, dtype='float32'),
                 stride=strides,
                 padding=paddings,
                 dilation=dilations,
@@ -59,10 +61,11 @@ class TestSparseConv(unittest.TestCase):
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(
+            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                 indices, values, dense_shape, stop_gradient=True)
             weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.functional.subm_conv3d(sparse_x, weight)
+            y = paddle.incubate.sparse.nn.functional.subm_conv3d(sparse_x,
+                                                                 weight)
             assert np.array_equal(sparse_x.indices().numpy(),
                                   y.indices().numpy())
 
@@ -76,16 +79,16 @@ class TestSparseConv(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
             correct_out_values = [[4], [10]]
-            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
-                                                           dense_shape, False)
+            sparse_input = paddle.incubate.sparse.sparse_coo_tensor(
+                indices, values, dense_shape, False)
 
-            sparse_conv3d = paddle.sparse.Conv3D(
+            sparse_conv3d = paddle.incubate.sparse.nn.Conv3D(
                 1, 1, (1, 3, 3), data_format='NDHWC')
             sparse_out = sparse_conv3d(sparse_input)
             #test errors
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
-                conv3d = paddle.sparse.SubmConv3D(
+                conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                     1, 1, (1, 3, 3), data_format='NCDHW')
 
     def test_SubmConv3D(self):
@@ -96,10 +99,10 @@ class TestSparseConv(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
             correct_out_values = [[4], [10]]
-            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
-                                                           dense_shape, False)
+            sparse_input = paddle.incubate.sparse.sparse_coo_tensor(
+                indices, values, dense_shape, False)
 
-            subm_conv3d = paddle.sparse.SubmConv3D(
+            subm_conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                 1, 1, (1, 3, 3), data_format='NDHWC')
             # test extra_repr
             print(subm_conv3d.extra_repr())
@@ -111,5 +114,5 @@ class TestSparseConv(unittest.TestCase):
             #test errors
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
-                conv3d = paddle.sparse.SubmConv3D(
+                conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                     1, 1, (1, 3, 3), data_format='NCDHW')

@@ -177,8 +177,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
-                'data_format': self.data_format,
-                'fuse_brelu': True
+                'data_format': self.data_format
             })
 
     def remove_fuse_activation_attribute(self, graph):
@@ -196,9 +195,6 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 self.assertTrue(op.op().has_attr("fuse_activation"))
                 if op.op().has_attr("fuse_relu") and op.op().attr("fuse_relu"):
                     self.assertTrue(op.op().attr("fuse_activation") == "relu")
-                if op.op().has_attr("fuse_brelu") and op.op().attr(
-                        "fuse_brelu"):
-                    self.assertTrue(op.op().attr("fuse_activation") == "relu6")
 
     def test_quant_update_activation(self):
         program = fluid.Program()

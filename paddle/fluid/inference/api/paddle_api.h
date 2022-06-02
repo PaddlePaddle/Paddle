@@ -420,8 +420,10 @@ using hipStream_t = struct ihipStream_t*;
 
 namespace paddle_infer {
 class Predictor;
+class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+// Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
   // Note: Can only be used under thread_local semantics.
@@ -429,8 +431,24 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
+
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
+
+  static void SetTransformerPosid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_posid);
+
+  static void SetTransformerMaskid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
+
+  static void SyncStream(paddle_infer::Predictor* pred);
+  static void SyncStream(cudaStream_t stream);
+  template <typename T>
+  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t, const T* data,
+                                      cudaStream_t stream);
+  template <typename T>
+  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t, T* data,
+                                    cudaStream_t stream);
 };
 }  // namespace experimental
 }  // namespace paddle_infer

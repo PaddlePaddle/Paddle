@@ -21,7 +21,7 @@ import string
 from six.moves import cStringIO
 from ..static import Variable
 from ..fluid.proto import framework_pb2
-from ..framework import OpProtoHolder, core, convert_np_dtype_to_dtype_
+from ..framework import OpProtoHolder, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 import paddle
@@ -256,7 +256,13 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if paddle.in_dynamic_mode():
+        final_state_op_type = "final_state_%s" % op_type
+        if in_dygraph_mode() and hasattr(_C_ops, final_state_op_type):
+            op = getattr(_C_ops, final_state_op_type)
+            return op(x)
+        # TODO(dev): Because some ops' yaml has not been migrated.
+        # Replace it with _in_legacy_dygraph while all yaml work is done.
+        if _non_static_mode():
             op = getattr(_C_ops, op_type)
             return op(x)
 
@@ -265,9 +271,10 @@ def generate_activation_fn(op_type):
                                      op_type)
         else:
             # abs exp square ops support dtype(int32, int64, float16, float32, float64)
-            check_variable_and_dtype(
-                x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
-                op_type)
+            check_variable_and_dtype(x, 'x', [
+                'int32', 'int64', 'float16', 'float32', 'float64', 'complex64',
+                'complex128'
+            ], op_type)
 
         helper = LayerHelper(op_type, **locals())
 
@@ -296,7 +303,7 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
-        if paddle.in_dynamic_mode():
+        if _non_static_mode():
             op = getattr(_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(

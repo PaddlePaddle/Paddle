@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
+from setuptools.command.egg_info import egg_info
 
 
 class BinaryDistribution(Distribution):
@@ -280,6 +281,7 @@ packages=['paddle',
           'paddle.incubate.tensor',
           'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
+          'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
           'paddle.distributed.sharding',
@@ -311,6 +313,8 @@ packages=['paddle',
           'paddle.distributed.auto_parallel.tuner',
           'paddle.distributed.auto_parallel.cost',
           'paddle.distributed.passes',
+          'paddle.distributed.models',
+          'paddle.distributed.models.moe',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -365,6 +369,15 @@ packages=['paddle',
           'paddle.incubate.nn.functional',
           'paddle.incubate.nn.layer',
           'paddle.incubate.optimizer.functional',
+          'paddle.incubate.autograd',
+          'paddle.incubate.distributed',
+          'paddle.incubate.distributed.models',
+          'paddle.incubate.distributed.models.moe',
+          'paddle.incubate.distributed.models.moe.gate',
+          'paddle.incubate.sparse',
+          'paddle.incubate.sparse.nn',
+          'paddle.incubate.sparse.nn.layer',
+          'paddle.incubate.sparse.nn.functional',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -385,9 +398,6 @@ packages=['paddle',
           'paddle.device.cuda',
           'paddle.version',
           'paddle.profiler',
-          'paddle.sparse',
-          'paddle.sparse.layer',
-          'paddle.sparse.functional',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -678,6 +688,17 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+class EggInfo(egg_info):
+    """Copy license file into `.dist-info` folder."""
+
+    def run(self):
+        # don't duplicate license into `.dist-info` when building a distribution
+        if not self.distribution.have_run.get('install', True):
+            self.mkpath(self.egg_info)
+            self.copy_file("@PADDLE_SOURCE_DIR@/LICENSE", self.egg_info)
+
+        egg_info.run(self)
+
 # we redirect setuptools log for non-windows
 if sys.platform != 'win32':
     @contextmanager
@@ -733,6 +754,7 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+            'egg_info': EggInfo,
         },
         entry_points={
             'console_scripts': [

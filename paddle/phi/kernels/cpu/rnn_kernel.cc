@@ -808,7 +808,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   mode,
                   is_test);
 
-    // concat the the output result
+    // concat the output result
     funcs::ConcatFunctor<CPUContext, T> concat_functor;
     concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
   }
@@ -819,7 +819,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               paddle::optional<const DenseTensor&> sequence_length,
+               const paddle::optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,

@@ -26,12 +26,12 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
-  Copy<Context>(dev_ctx, x, x.place(), false, out);
+  paddle::framework::TensorCopy(x, x.place(), out);
 }
 
 template <typename Context>
 void AssignRawKernel(const Context& dev_ctx,
-                     paddle::optional<const DenseTensor&> x,
+                     const paddle::optional<DenseTensor>& x,
                      DenseTensor* out) {
   if (x) {
     if (!x->IsInitialized()) {

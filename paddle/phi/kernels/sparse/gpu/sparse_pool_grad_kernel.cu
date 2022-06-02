@@ -64,7 +64,7 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
   int rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
-      h_counter(kernel_size);
+      h_counter(rulebook_len, 0);
   phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
                                      rulebook_ptr,
                                      rulebook_len * sizeof(IntT),

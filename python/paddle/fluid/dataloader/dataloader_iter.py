@@ -31,6 +31,7 @@ import queue
 
 import paddle
 import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 from .. import core, layers
 from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
@@ -95,6 +96,7 @@ class _DataLoaderIterBase(object):
         self._auto_collate_batch = loader.auto_collate_batch
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
+        self._prefetch_factor = loader.prefetch_factor
         self._use_shared_memory = loader.use_shared_memory
         self._timeout = loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
@@ -165,9 +167,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._structure_infos = []
 
         # NOTE: len(self._places) batch data compose as an output
-        # iteration, set blocking_queue can cache 2 iteration datas
+        # iteration, set blocking_queue can cache "self._prefetch_factor" iteration datas
         # at most here
-        self._blocking_queue_capacity = 1 * len(self._places)
+        self._blocking_queue_capacity = self._prefetch_factor * len(
+            self._places)
 
         self._init_thread()
         self._shutdown = False
@@ -252,10 +255,11 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
-        trace_event = profiler.RecordEvent(
-            name="_DataLoaderIterSingleProcess",
-            event_type=profiler.TracerEventType.Dataloader)
-        trace_event.begin()
+        if in_profiler_mode():
+            trace_event = profiler.RecordEvent(
+                name="_DataLoaderIterSingleProcess",
+                event_type=profiler.TracerEventType.Dataloader)
+            trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
@@ -294,7 +298,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.end()
+            if in_profiler_mode():
+                trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -360,11 +365,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # indices outstand as _outstanding_capacity at first, and
         # blocking_queue capacity is also _outstanding_capacity.
         # _outstanding_capacity here to make sure each indices_queue
-        # has at least 2 indices, and outstanding batch cached
-        # output data for at least 2 iterations(Note that len(_places)
+        # has at least "_prefetch_factor" indices, and outstanding batch cached
+        # output data for at least "_prefetch_factor" iterations(Note that len(_places)
         # batches will be composed as an iteration output)
-        self._outstanding_capacity = 2 * max(self._num_workers,
-                                             len(self._places))
+        self._outstanding_capacity = self._prefetch_factor * max(
+            self._num_workers, len(self._places))
 
         # see _try_put_indices
         self._thread_lock = threading.Lock()
@@ -708,10 +713,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
-        trace_event = profiler.RecordEvent(
-            name="_DataLoaderIterMultiProcess",
-            event_type=profiler.TracerEventType.Dataloader)
-        trace_event.begin()
+        if in_profiler_mode():
+            trace_event = profiler.RecordEvent(
+                name="_DataLoaderIterMultiProcess",
+                event_type=profiler.TracerEventType.Dataloader)
+            trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
@@ -765,7 +771,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
         finally:
-            trace_event.end()
+            if in_profiler_mode():
+                trace_event.end()
 
     # python2 compatibility
     def next(self):
