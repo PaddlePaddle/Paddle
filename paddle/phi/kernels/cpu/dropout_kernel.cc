@@ -22,6 +22,29 @@
 namespace phi {
 
 template <typename T, typename Context>
+void ComputeDropoutInference(const Context& ctx,
+                             const DenseTensor& x,
+                             float dropout_prob,
+                             bool upscale_in_train,
+                             DenseTensor* y) {
+  if (upscale_in_train) {
+    const auto* X_data = x.data<T>();
+    T* Y_data = ctx.template Alloc<T>(y);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (int i = 0; i < x.numel(); i++) {
+      Y_data[i] = X_data[i];
+    }
+  } else {
+    auto X = EigenMatrix<T>::Reshape(x, 1);
+    auto Y = EigenMatrix<T>::Reshape(*y, 1);
+    auto& place = *ctx.eigen_device();
+    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+  }
+}
+
+template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
@@ -76,21 +99,8 @@ void DropoutRawKernel(const Context& dev_ctx,
       }
     }
   } else {
-    if (upscale_in_train) {
-      const auto* X_data = x.data<T>();
-      T* Y_data = dev_ctx.template Alloc<T>(y);
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-      for (int i = 0; i < x.numel(); i++) {
-        Y_data[i] = X_data[i];
-      }
-    } else {
-      auto X = EigenMatrix<T>::Reshape(x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto& place = *dev_ctx.eigen_device();
-      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
-    }
+    ComputeDropoutInference<T, Context>(
+        dev_ctx, x, dropout_prob, upscale_in_train, y);
   }
 }
 
@@ -173,21 +183,8 @@ void DropoutNdKernel(const Context& dev_ctx,
       }
     }
   } else {
-    if (upscale_in_train) {
-      const auto* X_data = x.data<T>();
-      T* Y_data = dev_ctx.template Alloc<T>(y);
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-      for (int i = 0; i < x.numel(); i++) {
-        Y_data[i] = X_data[i];
-      }
-    } else {
-      auto X = EigenMatrix<T>::Reshape(x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto& place = *dev_ctx.eigen_device();
-      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
-    }
+    ComputeDropoutInference<T, Context>(
+        dev_ctx, x, dropout_prob, upscale_in_train, y);
   }
 }
 

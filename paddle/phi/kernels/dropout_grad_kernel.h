@@ -35,6 +35,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                          float p,
                          bool is_test,
                          const std::string& mode,
+                         const std::vector<int>& axes,
                          DenseTensor* x_grad);
 
 }  // namespace phi

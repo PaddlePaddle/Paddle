@@ -41,6 +41,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                          float p,
                          bool is_test,
                          const std::string& mode,
+                         const std::vector<int>& axes,
                          DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   auto size = x_grad->numel();
