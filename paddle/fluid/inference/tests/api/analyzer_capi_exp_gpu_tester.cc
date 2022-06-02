@@ -65,7 +65,7 @@ TEST(PD_Config, gpu_interface) {
                                   &min_shape_ptr, &max_shape_ptr,
                                   &opt_shape_ptr, FALSE);
   PD_ConfigDisableTensorRtOPs(config, 1, &ops_name);
-  PD_ConfigEnableTensorRtOSS(config);
+  PD_ConfigEnableVarseqlen(config);
   bool oss_enabled = PD_ConfigTensorRtOssEnabled(config);
   EXPECT_TRUE(oss_enabled);
 

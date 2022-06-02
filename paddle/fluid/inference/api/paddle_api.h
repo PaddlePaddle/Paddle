@@ -435,6 +435,12 @@ class PD_INFER_DECL InternalUtils {
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
 
+  static void SetTransformerPosid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_posid);
+
+  static void SetTransformerMaskid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
+
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);
   template <typename T>
