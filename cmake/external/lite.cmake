@@ -106,7 +106,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   else()
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
     set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
-                           -DLITE_WITH_CUDA=${WITH_GPU}
+                           -DLITE_WITH_CUDA=OFF
                            -DWITH_MKLDNN=OFF
                            -DLITE_WITH_X86=ON
                            -DLITE_WITH_PROFILE=OFF
