@@ -21,9 +21,7 @@ namespace phi {
 namespace kps {
 namespace details {
 
-int RoundUpDiv(int n, int k) {
-    return (n + k - 1) / k;
-}
+int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
 
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
@@ -539,7 +537,7 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
-	mfence();
+        mfence();
       }
     }
   } else {  // core_num() * read_lens < num

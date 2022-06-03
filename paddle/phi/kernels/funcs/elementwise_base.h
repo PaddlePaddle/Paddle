@@ -516,17 +516,20 @@ struct Loader {
                                int read_lens,
                                bool is_boundary) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f), read_lens);
+    kps::Init<Type, ArgsT, Index, VecSize>(
+        args, static_cast<Type>(1.0f), read_lens);
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
           args,
           reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
-          num, read_lens);
+          num,
+          read_lens);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
           args,
           reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
-          num, read_lens);
+          num,
+          read_lens);
     }
   }
 };
@@ -661,8 +664,10 @@ template <typename OutT,
           typename ArgsT,
           int Arity>
 struct SameDimsElementwisePrimitiveCaller {
-  __device__ inline void operator()(Functor func, ArgsT *args, OutT *result,
-                                   int read_lens) {
+  __device__ inline void operator()(Functor func,
+                                    ArgsT *args,
+                                    OutT *result,
+                                    int read_lens) {
 #ifdef PADDLE_WITH_XPU_KP
     for (int idx = 0; idx < read_lens; ++idx) {
       result[idx] = static_cast<OutT>(Apply(func, args[idx]));
@@ -805,7 +810,8 @@ __global__ void VectorizedElementwiseKernel(
                                     Arity,
                                     NumOuts,
                                     VecSize,
-                                    true>(ins, outs, num, data_offset, read_lens, func);
+                                    true>(
+        ins, outs, num, data_offset, read_lens, func);
   }
 }
 
@@ -890,8 +896,8 @@ void ElementwiseKernel(const KPDevice &ctx,
   int block_size = 64;
   int grid_size = 8;
   int nthreads = block_size * grid_size;
-  int read_lens = std::min(buf_size,
-      kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
+  int read_lens =
+      std::min(buf_size, kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
   int vec_size = buf_size;
 #else
   // calculate the max vec_size for all ins and outs
