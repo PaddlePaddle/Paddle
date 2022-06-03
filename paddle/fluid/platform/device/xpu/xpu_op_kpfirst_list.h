@@ -113,6 +113,12 @@ XPUOpMap& get_kp_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_amin", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_sync_calc_stream",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_sync_comm_stream",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"c_allreduce_sum",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu_kp_kernels;

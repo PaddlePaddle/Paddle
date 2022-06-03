@@ -78,9 +78,11 @@ class TensorFill_Test(unittest.TestCase):
                 self.assertEqual((y.grad.numpy() == 0).all().item(), True)
 
     def test_tensor_fill_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_test_tensor_fill_backward()
         self.func_test_tensor_fill_backward()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_test_errors(self):
         def test_list():
