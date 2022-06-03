@@ -68,13 +68,13 @@ def func_decorated_by_other_2():
 
 
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
-
     def __init__(self, fc_size=20):
         super(LayerErrorInCompiletime, self).__init__()
         self._linear = fluid.dygraph.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
-        input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')])
+        input_spec=[paddle.static.InputSpec(
+            shape=[20, 20], dtype='float32')])
     def forward(self, x):
         y = self._linear(x)
         z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")
@@ -83,7 +83,6 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
 
 
 class LayerErrorInCompiletime2(fluid.dygraph.Layer):
-
     def __init__(self):
         super(LayerErrorInCompiletime2, self).__init__()
 
@@ -110,7 +109,6 @@ def func_error_in_runtime_with_empty_line(x):
 
 
 class SuggestionErrorTestNet(paddle.nn.Layer):
-
     def __init__(self):
         super(SuggestionErrorTestNet, self).__init__()
         self.inner_net = SuggestionErrorTestNet2()
@@ -121,7 +119,6 @@ class SuggestionErrorTestNet(paddle.nn.Layer):
 
 
 class SuggestionErrorTestNet2():
-
     def __init__(self):
         super(SuggestionErrorTestNet2, self).__init__()
         self.w = paddle.to_tensor([2.])
@@ -137,7 +134,6 @@ def func_suggestion_error_in_runtime(x):
 
 
 class TestFlags(unittest.TestCase):
-
     def setUp(self):
         self.reset_flags_to_default()
 
@@ -169,7 +165,6 @@ class TestFlags(unittest.TestCase):
 
 
 class TestErrorBase(unittest.TestCase):
-
     def setUp(self):
         self.set_input()
         self.set_func()
@@ -244,7 +239,6 @@ class TestErrorBase(unittest.TestCase):
 
 # Situation 1: Call StaticLayer.__call__ to use Dynamic-to-Static
 class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
-
     def set_func(self):
         self.func = func_error_in_compile_time
 
@@ -276,7 +270,6 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
 class TestErrorStaticLayerCallInCompiletime_2(
         TestErrorStaticLayerCallInCompiletime):
-
     def set_func(self):
         self.func = func_error_in_compile_time_2
 
@@ -297,7 +290,6 @@ class TestErrorStaticLayerCallInCompiletime_2(
 
 class TestErrorStaticLayerCallInCompiletime_3(
         TestErrorStaticLayerCallInCompiletime):
-
     def setUp(self):
         self.reset_flags_to_default()
         self.set_func_call()
@@ -326,7 +318,6 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
 
 class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
-
     def set_func(self):
         self.func = func_error_in_runtime
 
@@ -346,7 +337,6 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
 
 class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
-
     def set_func(self):
         self.func = func_error_in_runtime_with_empty_line
 
@@ -363,29 +353,22 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
 # Situation 2: Call ProgramTranslator().get_output(...) to use Dynamic-to-Static
 class TestErrorGetOutputInCompiletime(TestErrorStaticLayerCallInCompiletime):
-
     def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input)
+        self.func_call = lambda : self.prog_trans.get_output(unwrap(self.func), self.input)
 
 
-class TestErrorGetOutputInCompiletime_2(TestErrorStaticLayerCallInCompiletime_2
-                                        ):
-
+class TestErrorGetOutputInCompiletime_2(
+        TestErrorStaticLayerCallInCompiletime_2):
     def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input)
+        self.func_call = lambda : self.prog_trans.get_output(unwrap(self.func), self.input)
 
 
 class TestErrorGetOutputInRuntime(TestErrorStaticLayerCallInRuntime):
-
     def set_func_call(self):
-        self.func_call = lambda: self.prog_trans.get_output(
-            unwrap(self.func), self.input)
+        self.func_call = lambda : self.prog_trans.get_output(unwrap(self.func), self.input)
 
 
 class TestJitSaveInCompiletime(TestErrorBase):
-
     def setUp(self):
         self.reset_flags_to_default()
         self.set_func_call()
@@ -409,8 +392,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_func_call(self):
         layer = LayerErrorInCompiletime()
-        self.func_call = lambda: paddle.jit.save(
-            layer, path="./test_dy2stat_error/model")
+        self.func_call = lambda : paddle.jit.save(layer, path="./test_dy2stat_error/model")
 
     def test_error(self):
         self._test_raise_new_exception()
@@ -418,7 +400,6 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
 # # Situation 4: NotImplementedError
 class TestErrorInOther(unittest.TestCase):
-
     def test(self):
         paddle.disable_static()
         prog_trans = paddle.jit.ProgramTranslator()
@@ -430,7 +411,6 @@ class TestErrorInOther(unittest.TestCase):
 
 
 class TestSuggestionErrorInRuntime(TestErrorBase):
-
     def set_func(self):
         self.func = func_suggestion_error_in_runtime
 
