@@ -45,7 +45,7 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx, const InT *x,
   out_arr[0] = y;
   phi::funcs::VectorizedElementwiseKernel<
       OutT, FunctorT, 1, 1, VecSize><<<block, thread, 0, stream>>>(
-      in_arr, out_arr, n, main_offset, FunctorT());
+      in_arr, out_arr, n, main_offset, VecSize, FunctorT());
 }
 
 }  // namespace details
