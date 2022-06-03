@@ -539,7 +539,7 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
-	      mfence();
+	mfence();
       }
     }
   } else {  // core_num() * read_lens < num

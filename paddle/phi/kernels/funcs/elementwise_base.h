@@ -673,6 +673,7 @@ struct SameDimsElementwisePrimitiveCaller {
       result[idx] = static_cast<OutT>(Apply(func, args[idx]));
     }
 #endif
+  }
 };
 
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
