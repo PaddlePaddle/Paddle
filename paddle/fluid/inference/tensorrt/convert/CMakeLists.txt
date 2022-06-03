@@ -26,6 +26,11 @@ nv_library(tensorrt_converter
 		strided_slice_op.cc
                 preln_skip_layernorm.cc
 		roll_op.cc
+                sum_op.cc
+                fill_constant_op.cc
+                shape_op.cc
+                rnn_op.cc
+                fill_constant_batch_size_like_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS

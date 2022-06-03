@@ -294,6 +294,30 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  // Create and add 1D constant float layer
+  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<float>& data,
+                                        const std::string& weight_name,
+                                        bool scalar = false) {
+    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    int data_size = data.size();
+    tmp_tensor->Resize({data_size});
+    auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+    for (int i = 0; i < data_size; i++) {
+      tmp_data[i] = data[i];
+    }
+    engine_->SetWeights(weight_name, std::move(tmp_tensor));
+
+    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+                                  static_cast<void*>(tmp_data),
+                                  static_cast<size_t>(data_size)};
+    nvinfer1::Dims input_shape;
+    input_shape.nbDims = scalar ? 0 : 1;
+    input_shape.d[0] = data_size;
+    auto const_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
+    return const_layer->getOutput(0);
+  }
+
   // Create and add 1D constant layer
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
                                         const std::string& weight_name) {

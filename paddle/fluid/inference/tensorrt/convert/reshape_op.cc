@@ -38,10 +38,42 @@ class ReshapeOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
-    if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode
-      reshape_dim.nbDims = nbDims_num;
-      for (int i = 0; i < nbDims_num; ++i) {
-        reshape_dim.d[i] = shape[i];
+    nvinfer1::ITensor* real_shape_tensor;
+    std::vector<nvinfer1::ITensor*> concat_inputs;
+
+    if (engine_->with_dynamic_shape()) {
+      if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
+          op_desc.Input("ShapeTensor").size() > 0) {
+        for (size_t i = 0; i < op_desc.Input("ShapeTensor").size(); i++)
+          concat_inputs.push_back(
+              engine_->GetITensor(op_desc.Input("ShapeTensor")[i]));
+        real_shape_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data(),
+                                 concat_inputs.size())
+                ->getOutput(0);
+      } else {
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
+        std::vector<int> del_batch_shape(shape.begin() + 1, shape.end());
+        auto input_shape_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+        std::vector<int32_t> gather_indices(1, 0);
+        std::string name = "_add_reshape_op_";
+        std::cout << name << std::endl;
+        auto gather_indices_tensor =
+            Add1DConstantLayer(gather_indices, name + "gather_indices");
+        auto batch_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Gather, *input_shape_tensor,
+                                 *gather_indices_tensor, 0)
+                ->getOutput(0);
+        auto del_batch_shape_tensor =
+            Add1DConstantLayer(del_batch_shape, name + "del_batch_shape");
+        concat_inputs.push_back(batch_tensor);
+        concat_inputs.push_back(del_batch_shape_tensor);
+        real_shape_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs.data(),
+                                 concat_inputs.size())
+                ->getOutput(0);
       }
     } else {  // running the TRT Static Shape mode
       reshape_dim.nbDims = nbDims_num - 1;
@@ -50,7 +82,10 @@ class ReshapeOpConverter : public OpConverter {
       }
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    layer->setReshapeDimensions(reshape_dim);
+    if (!engine_->with_dynamic_shape())
+      layer->setReshapeDimensions(reshape_dim);
+    else
+      layer->setInput(1, *real_shape_tensor);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
   }

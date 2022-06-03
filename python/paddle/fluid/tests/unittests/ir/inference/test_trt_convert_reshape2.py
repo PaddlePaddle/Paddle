@@ -27,21 +27,6 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if self.dims == 1:
-            if len(attrs[0]['shape']) != 1:
-                return False
-
-        #To test if the shape contains 0
-        if len(attrs[0]['shape']) == 3:
-            if attrs[0]['shape'][1] == 0:
-                if self.dims != 3:
-                    return False
-
-        if len(attrs[0]['shape']) == 4:
-            if attrs[0]['shape'][2] == 0:
-                if self.dims != 4:
-                    return False
-
         return True
 
     def sample_program_configs(self):
@@ -65,56 +50,53 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             return np.array([24]).astype(np.int32)
 
         for dims in [4, 3, 2, 1]:
-            for num_input in [0, 1, 2, 3]:
-                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12],
-                              [1, 0, 6], [1, -1, 12], [2, -1], [3, 16],
-                              [3, 4, 4], [48], [-1, 48]]:
+            for num_input in [0]:
+                for shape in [[-1, 48]]:
                     dics = [{"shape": shape, }, {}]
                     self.num_input = num_input
                     self.dims = dims
                     dics_intput = [{
                         "X": ["reshape_input"],
-                        "Shape": ["shape_data"],
                         "ShapeTensor": ["shapeT1_data", "shapeT2_data"],
-                    }, {
-                        "X": ["reshape_input"],
-                        "Shape": ["shape_data"],
-                    }, {
-                        "X": ["reshape_input"],
-                        "ShapeTensor": ["shapeT1_data", "shapeT2_data"],
-                    }, {
-                        "X": ["reshape_input"]
-                    }]
-
-                    dics_weight = [{
-                        "shape_data":
-                        TensorConfig(data_gen=partial(generate_weight1, dics)),
-                        "shapeT1_data": TensorConfig(data_gen=partial(
-                            generate_shapeT1_data, dics)),
-                        "shapeT2_data": TensorConfig(data_gen=partial(
-                            generate_shapeT2_data, dics))
-                    }, {
-                        "shape_data":
-                        TensorConfig(data_gen=partial(generate_weight1, dics))
-                    }, {
-                        "shapeT1_data": TensorConfig(data_gen=partial(
-                            generate_shapeT1_data, dics)),
-                        "shapeT2_data": TensorConfig(data_gen=partial(
-                            generate_shapeT2_data, dics))
-                    }, {}]
-
-                    ops_config = [{
-                        "op_type": "reshape",
-                        "op_inputs": dics_intput[num_input],
-                        "op_outputs": {
-                            "Out": ["reshape_out"]
+                    }, ]
+                    ops_config = [
+                        {
+                            "op_type": "fill_constant",
+                            "op_inputs": {},
+                            "op_outputs": {
+                                "Out": ["shapeT1_data"]
+                            },
+                            "op_attrs": {
+                                "dtype": 2,
+                                "str_value": "2",
+                                "shape": [1],
+                            },
                         },
-                        "op_attrs": dics[0]
-                    }]
+                        {
+                            "op_type": "fill_constant",
+                            "op_inputs": {},
+                            "op_outputs": {
+                                "Out": ["shapeT2_data"]
+                            },
+                            "op_attrs": {
+                                "dtype": 2,
+                                "str_value": "24",
+                                "shape": [1],
+                            },
+                        },
+                        {
+                            "op_type": "reshape",
+                            "op_inputs": dics_intput[num_input],
+                            "op_outputs": {
+                                "Out": ["reshape_out"]
+                            },
+                            "op_attrs": dics[0]
+                        },
+                    ]
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
-                        weights=dics_weight[num_input],
+                        weights={},
                         inputs={
                             "reshape_input": TensorConfig(data_gen=partial(
                                 generate_input1, dics))
@@ -167,17 +149,11 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if attrs[0]['shape'][0] > 1 and len(attrs[0]['shape']) > 1:
+        if attrs[2]['shape'][0] > 1 and len(attrs[2]['shape']) > 1:
             pass
         else:
-            # for static_shape
-            clear_dynamic_shape()
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False), 1e-5
-            self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False), 1e-5
+            # this py only dynamic reshape!
+            pass
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -191,7 +167,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
             if len(program_config.weights) >= 1:
-                return True
+                return False
             return False
 
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,

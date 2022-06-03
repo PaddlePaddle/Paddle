@@ -118,6 +118,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "strided_slice",
+      "sum",
+      "fill_constant",
+      "shape",
+      "rnn",
+      "fill_constant_batch_size_like",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
       "preln_skip_layernorm"};
@@ -181,6 +186,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "strided_slice",
+      "sum",
+      "fill_constant",
+      "shape",
+      "rnn",
+      "fill_constant_batch_size_like",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
@@ -1079,6 +1089,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "sum") {
+      return true;
+    }
+
+    if (op_type == "fill_constant") {
+      auto fill_constant_inputs = desc.Inputs();
+      if (fill_constant_inputs.find("ValueTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ValueTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensorList") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensorList").size()) return false;
+      }
+    }
+
+    if (op_type == "shape") {
+      if (!with_dynamic_shape) return false;
+    }
+
     if (op_type == "fused_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "fused_embedding_eltwise_layernorm should run on dynamic "
@@ -1515,6 +1549,35 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
+      if (with_dynamic_shape) {
+        auto reshape_inputs = desc.Inputs();
+        if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
+          if (desc.Input("ShapeTensor").size() >= 1) {
+            return true;
+          }
+        }
+        if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
+          if (desc.Input("Shape").size() >= 1) {
+            return false;
+          }
+        }
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        auto* block = desc.Block();
+        auto x_var_name = desc.Input("X")[0];
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        int input_num = std::accumulate(x_shape.begin() + 1, x_shape.end(), 1,
+                                        std::multiplies<int>());
+        int shape_num = std::accumulate(shape.begin() + 1, shape.end(), 1,
+                                        std::multiplies<int>());
+        if (input_num != shape_num || shape_num <= 0) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+
       if (!desc.HasAttr("shape")) {
         return false;
       }
