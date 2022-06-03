@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from .layer_function_generator import templatedoc
 from ..framework import core, Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, convert_np_dtype_to_dtype_
 from ..layer_helper import LayerHelper
@@ -1382,35 +1383,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if in_dygraph_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-        if maxlen is not None:
-            if isinstance(maxlen, core.eager.Tensor):
-                attrs = ('out_dtype', dtype)
-                out = _C_ops.sequence_mask(x, maxlen, *attrs)
-            else:
-                attrs = ('out_dtype', dtype, 'maxlen', maxlen)
-                out = _C_ops.sequence_mask(x, None, *attrs)
-            out.stop_gradient = True
-            return out
-
-    helper = LayerHelper('sequence_mask', **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    inputs = {'X': [x]}
-    attrs = {'out_dtype': out.dtype}
-    if maxlen is not None:
-        if isinstance(maxlen, Variable):
-            inputs['MaxLenTensor'] = maxlen
-        else:
-            attrs['maxlen'] = maxlen
-
-    helper.append_op(
-        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs)
-
-    out.stop_gradient = True
-    return out
+    return paddle.nn.functional.sequence_mask(x, maxlen, dtype, name)
 
 
 @templatedoc()

@@ -90,8 +90,10 @@ class ServiceHandlerBase {
 
 using SharedMiniScope =
     std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+
 using SharedMicroScope = std::shared_ptr<std::unordered_map<
     int, std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
+
 using SharedTaskQueue = std::shared_ptr<
     std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
                                 std::pair<std::string, int>>>>>;
@@ -226,6 +228,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     auto* tensor = var->GetMutable<framework::LoDTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
+    VLOG(4) << "micro_id in heter server: " << micro_id;
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
@@ -261,6 +264,9 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::DeserializeFromMultiVarMsgAndIOBuf(
         *request, &request_io_buffer, *dev_ctx_, micro_scope);
     // blocking queue handles multi thread
+    VLOG(4) << "Handle in HeterServer: " << message_name << ", "
+            << microbatch_index;
+    VLOG(4) << "task_queue_ size: " << task_queue_->size();
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
 
@@ -274,6 +280,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name, response_var_names, empty_var_names, *dev_ctx_,
         &local_scope, response, &response_io_buffer);
+    VLOG(4) << "Handle over";
     return 0;
   }
 
@@ -612,11 +619,9 @@ class HeterServer {
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
+    std::unique_lock<std::mutex> lock(mtx_);
     if (s_instance_ == nullptr) {
-      std::unique_lock<std::mutex> lock(mtx_);
-      if (NULL == s_instance_) {
-        s_instance_.reset(new HeterServer());
-      }
+      s_instance_.reset(new HeterServer());
     }
     return s_instance_;
   }

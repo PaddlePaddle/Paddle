@@ -333,13 +333,40 @@ class PSGPUWrapper {
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
+    std::cout << "yxf set: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " << std::endl;
   }
 
 #ifdef PADDLE_WITH_CUDA
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
-    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
+  }
+
+  void InitSlotInfo() {
+    if (slot_info_initialized_) {
+      return;
+    }
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    auto slots_vec = dataset->GetSlots();
+    slot_offset_vector_.clear();
+    for (auto& slot : slot_vector_) {
+      for (size_t i = 0; i < slots_vec.size(); ++i) {
+        if (std::to_string(slot) == slots_vec[i]) {
+          slot_offset_vector_.push_back(i);
+          break;
+        }
+      }
+    }
+    std::cout << "psgpu wrapper use slots: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " << std::endl;
+    for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
 
@@ -368,6 +395,7 @@ class PSGPUWrapper {
         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+    slot_info_initialized_ = true;
   }
 #endif
 
@@ -408,6 +436,12 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
+
+  double time_1 = 0.0;
+  double time_2 = 0.0;
+  double time_3 = 0.0;
+  double time_4 = 0.0;
+
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
@@ -428,6 +462,7 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  bool slot_info_initialized_ = false;
   int use_afs_api_ = 0;
 
 #ifdef PADDLE_WITH_CUDA

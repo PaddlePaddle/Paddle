@@ -18,6 +18,9 @@ import unittest
 import paddle
 from paddle.fluid import core
 
+import os
+os.environ['FLAGS_new_einsum'] = "0"
+
 
 class TestErrors(unittest.TestCase):
     def setUp(self):

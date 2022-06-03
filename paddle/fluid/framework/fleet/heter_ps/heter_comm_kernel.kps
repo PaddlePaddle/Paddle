@@ -18,6 +18,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"  // NOLINT
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
@@ -91,7 +92,7 @@ __global__ void calc_shard_offset_kernel(T* idx, T* left, T* right,
     // read batch from GM will boost performance
     int read_len = min(len_per_loop, len - i);
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
-    for (int k = 0; k < read_len; k++) {
+    for (int k = 0; k < read_len - 1; k++) {
       if (local_idx[k] != local_idx[k + 1]) {
         int real_idx = i + k;
         local_right[local_idx[k]] = real_idx;
@@ -102,7 +103,7 @@ __global__ void calc_shard_offset_kernel(T* idx, T* left, T* right,
       local_left[local_idx[i]] = i;
     }
     if (i + read_len == len) {
-      local_right[local_idx[len - 1]] = len - 1;
+      local_right[local_idx[read_len - 1]] = len - 1;
     }
   }
   // to be optimized: call LM2GM too frequently
@@ -150,7 +151,7 @@ __global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
   const int buf_size = 400;
-  __local__ KeyType local_keys[buf_size];
+  // __local__ KeyType local_keys[buf_size];
   __local__ KeyType local_shard_keys[buf_size];
   __local__ T local_idx[buf_size];
   int len_per_loop = min(buf_size, roundup_div(len, nthreads));
@@ -158,10 +159,11 @@ __global__ void fill_shard_key_kernel(KeyType* d_shard_keys, KeyType* d_keys,
        i += nthreads * len_per_loop) {
     // read batch from GM will boost performance
     int read_len = min(len_per_loop, len - i);
-    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
+    // GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     for (int k = 0; k < read_len; k++) {
-      local_shard_keys[k] = local_keys[local_idx[k]];
+      GM2LM(d_keys + local_idx[k], &local_shard_keys[k], 1 * sizeof(KeyType));
+      // local_shard_keys[k] = local_keys[local_idx[k]];
     }
     LM2GM(local_shard_keys, d_shard_keys + i, read_len * sizeof(KeyType));
   }
@@ -181,9 +183,9 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const int buf_size = 100;
-  __local__ KeyType local_keys[buf_size];
-  __local__ GradType local_grads[buf_size];
+  const int buf_size = 50;
+  // __local__ KeyType local_keys[buf_size];
+  // __local__ GradType local_grads[buf_size];
   __local__ KeyType local_shard_keys[buf_size];
   __local__ GradType local_shard_grads[buf_size];
   __local__ T local_idx[buf_size];
@@ -193,12 +195,15 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys, KeyType* d_keys,
        i += nthreads * len_per_loop) {
     // read batch from GM will boost performance
     int read_len = min(len_per_loop, len - i);
-    GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
-    GM2LM(d_grads + i, local_grads, read_len * sizeof(GradType));
+    // GM2LM(d_keys + i, local_keys, read_len * sizeof(KeyType));
+    // GM2LM(d_grads + i, local_grads, read_len * sizeof(GradType));
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     for (int k = 0; k < read_len; k++) {
-      local_shard_keys[k] = local_keys[local_idx[k]];
-      local_shard_grads[k] = local_grads[local_idx[k]];
+      GM2LM(d_keys + local_idx[k], &local_shard_keys[k], 1 * sizeof(KeyType));
+      GM2LM(d_grads + local_idx[k], &local_shard_grads[k],
+            1 * sizeof(GradType));
+      // local_shard_keys[k] = local_keys[local_idx[k]];
+      // local_shard_grads[k] = local_grads[local_idx[k]];
     }
     LM2GM(local_shard_keys, d_shard_keys + i, read_len * sizeof(KeyType));
     LM2GM(local_shard_grads, d_shard_grads + i, read_len * sizeof(GradType));
@@ -227,9 +232,10 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     GM2LM(d_shard_vals + i, local_shard_vals, read_len * sizeof(ValType));
     for (int k = 0; k < read_len; k++) {
-      local_vals[local_idx[k]] = local_shard_vals[k];
+      LM2GM(&local_shard_vals[k], d_vals + local_idx[k], 1 * sizeof(ValType));
+      // local_vals[local_idx[k]] = local_shard_vals[k];
     }
-    LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
+    // LM2GM(local_vals, d_vals + i, read_len * sizeof(ValType));
   }
 }
 

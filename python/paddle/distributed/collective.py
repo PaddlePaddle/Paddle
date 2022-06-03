@@ -403,6 +403,9 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of 
+        # hang caused by tcp
+        paddle.distributed.barrier(group=group)
         return group
 
     if not backend:

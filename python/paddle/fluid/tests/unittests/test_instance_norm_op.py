@@ -22,6 +22,7 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
 from paddle.fluid.dygraph import to_variable
+from paddle.fluid.framework import _test_eager_guard
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -253,6 +254,10 @@ class TestElasticNormOp(unittest.TestCase):
                 outputs = instance_norm(to_variable(inputs))
                 self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
 
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_norm()
+
 
 class TestElasticNormOpCase2(unittest.TestCase):
     def init_test_case(self):
@@ -281,6 +286,10 @@ class TestElasticNormOpCase2(unittest.TestCase):
                     3, param_attr=True, bias_attr=True)
                 outputs = instance_norm(to_variable(inputs))
                 self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
+
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_norm()
 
 
 if __name__ == '__main__':

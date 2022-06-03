@@ -482,19 +482,20 @@ def full_like(x, fill_value, dtype=None, name=None):
 def ones(shape, dtype=None, name=None):
     """
 
-    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
+    Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
 
     Args:
-        shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of shape is int32 or int64.
-        dtype(np.dtype|str, optional): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64. Default: if None, the data type is 'float32'.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        shape (tuple|list|Tensor): Shape of the Tensor to be created, the data type of shape should be int32 or int64.
+        dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
+            bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     
     Returns:
-        Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
+        Tensor: A Tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements are 1.
 
     Examples:
         .. code-block:: python
+          :name: ones-example
 
           import paddle 
           
@@ -1510,12 +1511,14 @@ def assign(x, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        if _non_static_mode():
+        if in_dygraph_mode():
             if output is None:
-                if _in_legacy_dygraph():
-                    output = core.VarBase()
-                else:
-                    output = core.eager.Tensor()
+                output = _C_ops.final_state_assign(input)
+            else:
+                _C_ops.final_state_assign_out_(input, output)
+        elif _in_legacy_dygraph():
+            if output is None:
+                output = core.VarBase()
             _C_ops.assign(input, output)
         else:
             check_dtype(input.dtype, 'input', [
@@ -1566,16 +1569,21 @@ def assign(x, output=None):
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
-        helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={
-                'dtype': dtype,
-                'shape': list(input.shape),
-                value_name: values
-            })
+        if _non_static_mode():
+            _C_ops.assign_value(output, 'shape',
+                                list(input.shape), 'dtype', dtype, value_name,
+                                values)
+        else:
+            helper.append_op(
+                type='assign_value',
+                outputs={'Out': [output]},
+                attrs={
+                    'dtype': dtype,
+                    'shape': list(input.shape),
+                    value_name: values
+                })
 
-    if is_inplace and _non_static_mode():
+    if is_inplace and _in_legacy_dygraph():
         output._bump_inplace_version()
 
     return output
@@ -1712,4 +1720,91 @@ def complex(real, imag, name=None):
     outputs = {"Out": out}
     attrs = {}
     helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
+    return out
+
+
+def tril_indices(row, col, offset=0, dtype='int64'):
+    """
+    Return the indices of the lower triangular part of the 2-D matrix 
+    whose row and col is knowed.Indices are ordered based on row and then columns. 
+    The lower triangular part of the matrix is defined as the elements on
+    and below the diagonal.
+    
+    Args:
+        row (int): The input x which is a int number describe the number of row of the matrix.
+        col (int): The input x which is a int number describe the number of col of the matrix.
+        offset (int, optional): The offset to consider, default value is 0.
+
+            - If offset = 0, all elements on and below the main diagonal are retained.  
+            - If offset > 0, include just as many diagonals above the main diagonal.  
+            - If offset < 0, excludes just as many diagonals below the main diagonal.  
+ 
+        dtype (int, optional): the data type of the output tensor, can be int32, int64.
+
+    Returns:
+        Tensor: Results of the indices of lower triangular part of a row * col matrix,
+        where the first row contains row coordinates of and the second row contains column coordinates.
+
+    Examples:
+        .. code-block:: python
+            :name: tril_indices-example
+
+            import paddle
+            
+            # example 1, default offset value
+            data1 = paddle.tril_indices(4,4,0)
+            print(data1)
+            # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
+            #  [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
+
+            # example 2, positive offset value
+            data2 = paddle.tril_indices(4,4,2)
+            print(data2)
+            # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
+            #  [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
+
+            # example 3, negative offset value
+            data3 = paddle.tril_indices(4,4,-1)
+            print(data3)
+            # [[ 1, 2, 2, 3, 3, 3],
+            #  [ 0, 0, 1, 0, 1, 2]]
+    """
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
+    if not isinstance(offset, int):
+        raise TypeError("offset should be a  int")
+
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_tril_indices(row, col, offset, dtype,
+                                              _current_expected_place())
+        return out
+
+    if _in_legacy_dygraph():
+        out = _C_ops.tril_indices('rows', row, 'cols', col, 'offset', offset,
+                                  "dtype", dtype)
+        return out
+
+    else:
+        helper = LayerHelper("tril_indices", **locals())
+
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(
+            type='tril_indices',
+            inputs={},
+            outputs={'out': [out]},
+            attrs={'rows': row,
+                   'cols': col,
+                   'offset': offset,
+                   'dtype': dtype})
     return out

@@ -25,6 +25,11 @@ KernelSignature ElementwiseAddOpArgumentMapping(
   return KernelSignature("add_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ElementwiseGradAddOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});
+}
+
 KernelSignature ElementwiseSubOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
@@ -317,3 +322,4 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
                            phi::ElementwiseHeavisideGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
                            phi::ElementwisePowGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(grad_add, phi::ElementwiseGradAddOpArgumentMapping);
