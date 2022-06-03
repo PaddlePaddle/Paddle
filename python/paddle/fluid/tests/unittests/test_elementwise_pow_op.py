@@ -197,6 +197,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         print(self.grad_res, self.grad_x, self.grad_y)
 
     def test_grad(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if fluid.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -212,6 +213,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
                 self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
                 self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
                 self.assertTrue(np.array_equal(y.gradient(), self.grad_y))
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

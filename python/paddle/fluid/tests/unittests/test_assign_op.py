@@ -35,10 +35,14 @@ class TestAssignOp(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_output(check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_grad(['X'], 'Out', check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestAssignFP16Op(op_test.OpTest):
@@ -51,15 +55,20 @@ class TestAssignFP16Op(op_test.OpTest):
         self.outputs = {'Out': x}
 
     def test_forward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_output(check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.check_grad(['X'], 'Out', check_eager=True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
 
     def test_assign_LoDTensorArray(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
@@ -75,6 +84,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             sums = fluid.layers.array_read(array=init_array, i=i)
             mean = fluid.layers.mean(sums)
             append_backward(mean)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
@@ -180,6 +190,7 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_clone(self):
         paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.python_api = paddle.clone
 
         x = paddle.ones([2])
@@ -192,6 +203,7 @@ class TestAssignOApi(unittest.TestCase):
         self.assertTrue(np.array_equal(x, [1, 1]), True)
         self.assertTrue(np.array_equal(clone_x.grad.numpy(), [3, 3]), True)
         self.assertTrue(np.array_equal(x.grad.numpy(), [3, 3]), True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.enable_static()
 
         with program_guard(Program(), Program()):
@@ -209,6 +221,7 @@ class TestAssignOApi(unittest.TestCase):
 class TestAssignOpErrorApi(unittest.TestCase):
 
     def test_errors(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
             x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
@@ -217,6 +230,7 @@ class TestAssignOpErrorApi(unittest.TestCase):
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, paddle.assign, x2)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_type_error(self):
         paddle.enable_static()

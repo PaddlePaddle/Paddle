@@ -47,6 +47,7 @@ class TestRecurrentFeed(unittest.TestCase):
         original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
         original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")
         with fluid.dygraph.guard():
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             original_in1 = to_variable(original_np1)
@@ -63,8 +64,10 @@ class TestRecurrentFeed(unittest.TestCase):
                 dyout = out.gradient()
                 original_in1.stop_gradient = True
                 rt.clear_gradients()
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
         with fluid.dygraph.guard():
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
             with _test_eager_guard():
                 fluid.default_startup_program().random_seed = seed
                 fluid.default_main_program().random_seed = seed
@@ -82,6 +85,7 @@ class TestRecurrentFeed(unittest.TestCase):
                     eager_dyout = out.gradient()
                     original_in1.stop_gradient = True
                     rt.clear_gradients()
+            fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed

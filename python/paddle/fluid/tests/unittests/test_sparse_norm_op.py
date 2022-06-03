@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 import copy
 
@@ -23,6 +24,7 @@ import copy
 class TestSparseBatchNorm(unittest.TestCase):
 
     def test(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             paddle.seed(0)
             channels = 4
@@ -54,10 +56,12 @@ class TestSparseBatchNorm(unittest.TestCase):
 
             # test backward
             sparse_y.backward(sparse_y)
-            assert np.allclose(dense_x.grad.flatten().numpy(),
-                               sparse_x.grad.values().flatten().numpy(),
-                               atol=1e-5,
-                               rtol=1e-5)
+            assert np.allclose(
+                dense_x.grad.flatten().numpy(),
+                sparse_x.grad.values().flatten().numpy(),
+                atol=1e-5,
+                rtol=1e-5)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_error_layout(self):
         with _test_eager_guard():

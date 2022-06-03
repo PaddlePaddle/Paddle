@@ -57,9 +57,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     True)
 
     def test_dim2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_dim2()
         self.func_dim2()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_dim2_offset_1(self):
         expected_np = np.array([[2, 2, 2], [1, 2, 2], [2, 1, 2],
@@ -89,9 +91,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     True)
 
     def test_dim2_offset_1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_dim2_offset_1()
         self.func_dim2_offset_1()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_dim2_offset1(self):
         expected_np = np.array([[2, 1, 2], [2, 2, 1], [2, 2, 2],
@@ -121,9 +125,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     True)
 
     def test_dim2_offset1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_dim2_offset1()
         self.func_dim2_offset1()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_dim4(self):
         expected_np = np.array([[[[0, 3], [2, 2], [2, 2]],
@@ -166,9 +172,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     True)
 
     def test_func_dim4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_dim4()
         self.func_dim4()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_largedim(self):
         #large dim only test on gpu because the cpu version is too slow for ci test, and the memory is limited
@@ -195,9 +203,11 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual((y.grad == expected_grad).all(), True)
 
     def test_largedim(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_largedim()
         self.func_largedim()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

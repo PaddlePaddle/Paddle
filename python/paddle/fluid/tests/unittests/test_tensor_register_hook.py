@@ -162,9 +162,11 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_print_hook_for_interior_var(print_hook, removed=True)
 
     def test_hook_for_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_interior_var()
         self.func_hook_for_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_leaf_var(self):
 
@@ -207,9 +209,11 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_leaf_var(lambda grad: grad * 2, removed=True)
 
     def test_hook_for_leaf_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_leaf_var()
         self.func_hook_for_leaf_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_interior_var(self):
 
@@ -268,9 +272,11 @@ class TestTensorRegisterHook(unittest.TestCase):
                                                           removed=True)
 
     def test_hook_for_accumulated_grad_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_accumulated_grad_interior_var()
         self.func_hook_for_accumulated_grad_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_leaf_var(self):
 
@@ -368,9 +374,11 @@ class TestTensorRegisterHook(unittest.TestCase):
         self.assertTrue(np.array_equal(linear1_b_grad, linear1_b_grad_rm))
 
     def test_func_hook_in_model(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_in_model()
         self.func_hook_in_model()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_multiple_hooks_for_interior_var(self):
 
@@ -452,9 +460,11 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.assertTrue(np.array_equal(y_grad, z))
 
     def test_multiple_hooks_for_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_multiple_hooks_for_interior_var()
         self.func_multiple_hooks_for_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_in_double_grad(self):
 

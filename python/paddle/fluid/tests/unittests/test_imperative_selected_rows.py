@@ -78,9 +78,11 @@ class TestSimpleNet(unittest.TestCase):
                     paddle.enable_static()
 
     def test_selectedrows_gradient1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_selectedrows_gradient1()
         self.func_selectedrows_gradient1()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
@@ -117,9 +119,11 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(input_emb.gradient() is not None)
 
     def test_selectedrows_gradient2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_selectedrows_gradient2()
         self.func_selectedrows_gradient2()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

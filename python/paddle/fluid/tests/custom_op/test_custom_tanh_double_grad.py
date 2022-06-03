@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 import paddle.static as static
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
@@ -40,6 +41,7 @@ custom_ops = load(
 
 
 def custom_tanh_double_grad_dynamic(func, device, dtype, np_x):
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
@@ -57,6 +59,7 @@ def custom_tanh_double_grad_dynamic(func, device, dtype, np_x):
     assert out.grad is not None
     assert dx[0].grad is not None
     return dx[0].numpy(), dx[0].grad.numpy(), out.grad.numpy()
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestCustomTanhDoubleGradJit(unittest.TestCase):
@@ -88,9 +91,11 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                         dout, pd_dout))
 
     def test_func_double_grad_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_double_grad_dynamic()
         self.func_double_grad_dynamic()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == "__main__":
