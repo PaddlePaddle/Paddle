@@ -260,7 +260,6 @@ void TCPStore::waitWorkers() {
   }
   add(_init_key, 1);
 
-  auto begin = std::chrono::steady_clock::now();
   do {
     auto value = get(_init_key);
     int completed = std::stoi(std::string(value.begin(), value.end()));
