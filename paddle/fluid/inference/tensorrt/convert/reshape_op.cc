@@ -38,7 +38,7 @@ class ReshapeOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
-    nvinfer1::ITensor* real_shape_tensor;
+    nvinfer1::ITensor* real_shape_tensor = nullptr;
     std::vector<nvinfer1::ITensor*> concat_inputs;
 
     if (engine_->with_dynamic_shape()) {

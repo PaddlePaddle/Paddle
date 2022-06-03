@@ -26,9 +26,10 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        for hidden_size in [48]:
-            for input_size in [288]:
-                for batch in [16]:
+        self.trt_param.workspace_size = 1073741824
+        for hidden_size in [16]:
+            for input_size in [32]:
+                for batch in [8]:
                     for seq_len in [25]:
                         for num_layers in [2]:
 
@@ -167,7 +168,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        print(attrs)
         num_layers = attrs[3]["num_layers"]
         hidden_size = attrs[3]["hidden_size"]
         batch = attrs[3]["batch"]
@@ -201,7 +201,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        print(attrs)
         self.trt_param.max_batch_size = 16
         # for static_shape
         # clear_dynamic_shape()
@@ -222,9 +221,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                                                      True), 7e-2
 
     def test(self):
-        # TODO(inference): fix.
-        # trt6 and trt7.1 has bug.
-        # trt7.2 deserialize has bug.
         self.run_test()
         pass
 

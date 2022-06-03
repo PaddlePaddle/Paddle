@@ -35,8 +35,8 @@ class FillConstantOpConverter : public OpConverter {
         new framework::Tensor());
     paddle_out_tensor->Resize(phi::make_ddim(shape));
 
-    nvinfer1::DataType trt_dtype;
-    void* trt_data;
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kINT32;
+    void* trt_data = nullptr;
     size_t trt_num;
     if (dtype == 2) {  // int
       auto* tmp_ptr =
