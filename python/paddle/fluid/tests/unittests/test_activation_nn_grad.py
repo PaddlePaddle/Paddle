@@ -67,8 +67,10 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.sigmoid_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -95,8 +97,10 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -123,8 +127,10 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -151,8 +157,10 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.abs_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -240,8 +248,10 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.elu_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -253,6 +263,9 @@ class TestELUDoubleGradCheck(unittest.TestCase):
 
 
 class TestCELUDoubleGradCheck(unittest.TestCase):
+    def celu_wrapper(self, x):
+        return paddle.nn.functional.celu(x[0], alpha=0.2)
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -269,6 +282,10 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.celu_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -280,6 +297,9 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
 
 
 class TestSqrtDoubleGradCheck(unittest.TestCase):
+    def sqrt_wrapper(self, x):
+        return paddle.sqrt(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -294,6 +314,8 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sqrt_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -305,6 +327,9 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
 
 
 class TestRsqrtDoubleGradCheck(unittest.TestCase):
+    def rsqrt_wrapper(self, x):
+        return paddle.rsqrt(x[0])
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -319,6 +344,8 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.rsqrt_wrapper, [x], y, x_init=x_arr, place=place)
 
     def test_grad(self):
         paddle.enable_static()
@@ -330,6 +357,9 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
 
 
 class TestSquareDoubleGradCheck(unittest.TestCase):
+    def square_wrapper(self, x):
+        return paddle.square(x[0])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -344,6 +374,10 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.square_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()
@@ -401,8 +435,10 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.log_wrapper, [x], y, x_init=x_arr, place=place)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
         paddle.enable_static()

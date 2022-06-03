@@ -24,9 +24,10 @@ BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 def is_elementwise_op(op_type):
-    for eltwise_op in _g_elementwise_ops:
-        if eltwise_op in op_type:
-            return True
+    if op_type in _g_elementwise_ops:
+        return True
+    if "elementwise" in op_type:
+        return True
     return False
 
 
@@ -156,9 +157,7 @@ def register_distributed_operator_impl(op_type, dist_impl):
         assert False, "Must register distributed operator registry first."
 
 
-def find_best_compatible_distributed_operator_impl(dist_op,
-                                                   fwd=True,
-                                                   partial=True):
+def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
     Here just return the first compatible implemention. 
     This will be improved by cost model in the future.

@@ -464,5 +464,37 @@ class TestNumpyTests(unittest.TestCase):
             self.check_output_equal(a, e)
 
 
+class TestStaticGraphShape(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def test_shape(self):
+        A = paddle.static.data(name='x', shape=[-1])
+        B = paddle.static.data(name='y', shape=[384])
+        C = paddle.einsum('i,d->id', A, B)
+        self.assertEqual(C.shape, (-1, 384))
+
+
+class TestBF16(unittest.TestCase):
+    """
+    EinsumOp support bfloat16 type, add unittest here for the correctness.
+    """
+
+    def test_shape(self):
+        cuda_major = paddle.version.cuda().split('.')[0].strip()
+        if paddle.is_compiled_with_cuda() and int(cuda_major) >= 11:
+            """ MatmulKernel support bfloat16 only if cuda_major > 11.0.
+            """
+            A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
+            A = A.cuda()
+            B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
+            B = B.cuda()
+            C = paddle.einsum('i,i->', A, B)
+            self.assertEqual(C.item(), 8.0)
+
+
 if __name__ == "__main__":
-    u
+    unittest.main()

@@ -109,12 +109,13 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_skip_layernorm_fuse", graph);
   bool enable_int8 = Get<bool>("enable_int8");
-  bool use_oss = Get<bool>("use_oss");
+  bool use_varseqlen = Get<bool>("use_varseqlen");
   bool with_interleaved = Get<bool>("with_interleaved");
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  if (!(enable_int8 && use_oss && with_interleaved && with_dynamic_shape)) {
+  if (!(enable_int8 && use_varseqlen && with_interleaved &&
+        with_dynamic_shape)) {
     VLOG(4) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
-               "use_oss, "
+               "use_varseqlen, "
                "with_interleaved, with_dynamic_shape. Stop this pass, please "
                "reconfig. ";
     return;

@@ -65,6 +65,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "exp",
+      "log",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -77,6 +79,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_sub",
       "elementwise_mul",
       "elementwise_div",
+      "elementwise_pow",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -98,6 +101,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
+      "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -125,7 +130,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fill_constant_batch_size_like",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -133,6 +141,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv2d_fusion",
       "pool2d",
       "relu",
+      "exp",
+      "log",
       "softmax",
       "sigmoid",
       "hard_swish",
@@ -145,6 +155,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_sub",
       "elementwise_mul",
       "elementwise_div",
+      "elementwise_pow",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -166,6 +177,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gather",
       "gather_nd",
       "yolo_box",
+      "yolo_box_head",
+      "arg_max",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -194,7 +207,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
-      "multiclass_nms3"};
+      "multiclass_nms3",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -210,7 +226,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
   for (auto& teller : tellers_) {
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
-        op_type == "sigmoid") {
+        op_type == "sigmoid" || op_type == "exp" || op_type == "log") {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -640,6 +656,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!has_attrs) return false;
     }
 
+    if (op_type == "yolo_box_head") {
+      if (with_dynamic_shape) return false;
+      bool has_attrs = desc.HasAttr("class_num") && desc.HasAttr("anchors");
+      if (!has_attrs) return false;
+    }
+
+    if (op_type == "arg_max") {
+      if (with_dynamic_shape) return false;
+      int axis = desc.HasAttr("axis")
+                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     : -1;
+      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      if (axis == 0 || flatten || dtype != 2) return false;
+    }
+
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
@@ -951,9 +983,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "strided_slice") {
-      if (!with_dynamic_shape) {
-        return false;
-      }
+#if !IS_TRT_VERSION_GE(7000)
+      VLOG(3)
+          << "strided_slice converter does not support trt versions below 7.0";
+      return false;
+#endif
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
@@ -1019,7 +1053,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
-        op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        op_type == "elementwise_sub" || op_type == "elementwise_div" ||
+        op_type == "elementwise_pow") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1049,32 +1084,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
-        if (y_shape.size() != 1) {
-          return false;
-        }
-        if (y_shape[0] != x_shape[1]) {
-          return false;
-        }
-      }
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
-      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
-        if (x_var_desc->Persistable()) {
-          VLOG(3) << "Input X is a parameter which is not supported for "
-                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                     "y will work";
-          return false;
-        }
-      }
-      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
-        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
-          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
-                     "for elementwise_sub/elementwise_div in tensorrt";
-          return false;
-        }
+      if (x_var_desc->Persistable()) {
+        VLOG(3) << "Input X is a parameter which is not supported for "
+                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                   "y will work";
+        return false;
       }
     }
 

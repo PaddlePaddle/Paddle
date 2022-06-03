@@ -51,7 +51,7 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 template <typename T>
 void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
                          framework::Tensor *cpu_out) {
-  auto in_dims = cpu_in.dims();
+  const auto &in_dims = cpu_in.dims();
   EXPECT_EQ(cpu_in.dims().size(), 4);
 
   const T *cpu_in_ptr = cpu_in.data<T>();
@@ -184,7 +184,7 @@ template <typename T>
 void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
                             framework::Tensor *cpu_sum,
                             framework::Tensor *cpu_sum_of_square) {
-  auto dims = cpu_out.dims();
+  const auto &dims = cpu_out.dims();
   int64_t c = dims[3];
 
   const T *cpu_out_ptr = cpu_out.data<T>();

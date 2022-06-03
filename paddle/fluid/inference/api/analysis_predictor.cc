@@ -333,6 +333,15 @@ bool AnalysisPredictor::CreateExecutor() {
         "You tried to use IPU forward propagation, but Paddle was not compiled "
         "with WITH_IPU."));
 #endif
+  } else if (config_.use_custom_device()) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    place_ = paddle::platform::CustomPlace(config_.custom_device_type());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use CustomDevice forward propagation, but Paddle was not "
+        "compiled "
+        "with WITH_CUSTOM_DEVICE."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -844,8 +853,10 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
-  argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+  argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_.SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
+  argument_.SetTensorRtTransformerMaskid(config_.tensorrt_transformer_maskid_);
   argument_.SetMinInputShape(config_.min_input_shape_);
   argument_.SetMaxInputShape(config_.max_input_shape_);
   argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -1241,6 +1252,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_custom_place(place_)) {
+    auto custom_place = place_;
+    auto paddleplace = static_cast<PaddlePlace>(
+        static_cast<size_t>(PaddlePlace::kCUSTOM) +
+        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1290,6 +1307,12 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_custom_place(place_)) {
+    auto custom_place = place_;
+    auto paddleplace = static_cast<PaddlePlace>(
+        static_cast<size_t>(PaddlePlace::kCUSTOM) +
+        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+    res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1710,6 +1733,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
 
 #if PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(elementwise_sub_weight);
+USE_TRT_CONVERTER(elementwise_mul_weight);
+USE_TRT_CONVERTER(elementwise_div_weight);
+USE_TRT_CONVERTER(elementwise_pow_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
 USE_TRT_CONVERTER(elementwise_div_tensor);
@@ -1723,6 +1750,8 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
+USE_TRT_CONVERTER(exp);
+USE_TRT_CONVERTER(log);
 USE_TRT_CONVERTER(sigmoid);
 USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
@@ -1754,6 +1783,8 @@ USE_TRT_CONVERTER(clip);
 USE_TRT_CONVERTER(gather);
 USE_TRT_CONVERTER(anchor_generator);
 USE_TRT_CONVERTER(yolo_box);
+USE_TRT_CONVERTER(yolo_box_head);
+USE_TRT_CONVERTER(arg_max);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
@@ -1779,6 +1810,9 @@ USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(rnn)
 USE_TRT_CONVERTER(fill_constant_batch_size_like)
+USE_TRT_CONVERTER(transformer_input_convert)
+USE_TRT_CONVERTER(recover_padding)
+USE_TRT_CONVERTER(remove_padding)
 #endif
 
 namespace paddle_infer {
@@ -1944,6 +1978,20 @@ void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
 #ifdef PADDLE_WITH_CUDA
   c->trt_with_interleaved_ = with_interleaved;
+#endif
+}
+
+void InternalUtils::SetTransformerPosid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_posid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_posid_ = tensorrt_transformer_posid;
+#endif
+}
+
+void InternalUtils::SetTransformerMaskid(
+    paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
+#ifdef PADDLE_WITH_CUDA
+  c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
 #endif
 }
 

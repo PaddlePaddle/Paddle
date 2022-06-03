@@ -209,11 +209,13 @@ class TestDygraphTripleGrad(TestCase):
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
 
     def test_all_cases(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_exception()
         self.func_example_with_gradient_and_create_graph()
         with _test_eager_guard():
             self.func_exception()
             self.func_example_with_gradient_and_create_graph()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestDygraphTripleGradBradcastCase(TestCase):
@@ -298,9 +300,11 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         self.assertTrue(np.allclose(dddx_grad_actual, dddx_expected))
 
     def test_all_cases(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_example_with_gradient_and_create_graph()
         with _test_eager_guard():
             self.func_example_with_gradient_and_create_graph()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 if __name__ == '__main__':

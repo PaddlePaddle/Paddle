@@ -28,46 +28,40 @@
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
-                            const paddle::experimental::Tensor& t) {
-  if (!tensor->defined() || !tensor->initialized()) {
-    // Simply copy tensor->impl
+                            const paddle::experimental::Tensor& t,
+                            bool is_fake_empty) {
+  if (is_fake_empty) {
     *tensor = t;
   } else {
-    // Accumulation
-    PADDLE_ENFORCE_EQ(t.initialized(), true,
-                      paddle::platform::errors::Fatal(
-                          "We can only accumulate initialized tensor, but we "
-                          "got tensor: %s is empty please check you network "
-                          "and make sure it creates grads.",
-                          t.name()));
-    PADDLE_ENFORCE_NOT_NULL(
-        tensor, paddle::platform::errors::Fatal(
-                    "We can only accumulate initialized tensor to non-nullptr "
-                    "tensor but we got nullptr please check you network "
-                    "and make sure it creates grads."));
-
-    if (t.is_dense_tensor()) {
-      if (tensor->is_dense_tensor()) {
-        paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
-
+    if (!tensor->defined() || !tensor->initialized()) {
+      // Simply copy tensor->impl
+      *tensor = t;
+    } else {
+      // Accumulation
+      if (LIKELY(t.is_dense_tensor())) {
+        if (LIKELY(tensor->is_dense_tensor())) {
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t,
+                                                                      tensor);
+        } else {
+          // TODO(jiabin): Support Other TensorBase later
+          // TODO(zhanlve): Replace SelectedRowsAddTensor with
+          // add_dygraph_function once it's supported
+          paddle::experimental::Tensor new_buffer(
+              std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
+          paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
+          tensor->set_impl(new_buffer.impl());
+        }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
-        // add_dygraph_function once it's supported
-        paddle::experimental::Tensor new_buffer(
-            std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
-        paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
-        tensor->set_impl(new_buffer.impl());
-      }
-    } else {
-      // TODO(jiabin): Support Other TensorBase later
-      // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function
-      // once it's supported
-      if (tensor->is_dense_tensor()) {
-        paddle::imperative::SelectedRowsAddToTensor(t, tensor);
-      } else {
-        *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
-                            paddle::experimental::Tensor>(t, *tensor));
+        // add_dygraph_function
+        // once it's supported
+        if (tensor->is_dense_tensor()) {
+          paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+        } else {
+          *tensor = std::move(*paddle::imperative::SelectedRowsMerge<
+                              paddle::experimental::Tensor>(t, *tensor));
+        }
       }
     }
   }
@@ -104,7 +98,8 @@ GradNodeAccumulation::operator()(
 
   if (!weak_grad_.expired() && !is_new_grad) {
     auto grad = weak_grad_.lock();
-    CopyOrAddTensor(grad.get(), grad_out);
+    CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
+    is_fake_empty_ = false;
   }
 
   // Apply Reduce Hooks

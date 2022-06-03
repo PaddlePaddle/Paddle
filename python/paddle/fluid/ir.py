@@ -101,6 +101,9 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     if build_strategy.enable_auto_fusion and use_cuda:
         apply_pass("fusion_group_pass")
         build_strategy.enable_auto_fusion = False
+    if build_strategy.fuse_gemm_epilogue:
+        apply_pass("fuse_gemm_epilogue_pass")
+        build_strategy.fuse_gemm_epilogue = False
     if build_strategy.fuse_elewise_add_act_ops:
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False

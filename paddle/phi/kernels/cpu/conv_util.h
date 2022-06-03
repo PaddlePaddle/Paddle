@@ -38,7 +38,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
         phi::errors::InvalidArgument(
             "Attribute padding's size should be the same or twice as the "
             "input's dimension. "
-            "But recieved: padding's size is %d, padding is [%s]; input's "
+            "But received: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
             paddings->size(),
             make_ddim(*paddings),

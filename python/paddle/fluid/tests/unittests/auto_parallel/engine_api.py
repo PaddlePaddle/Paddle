@@ -107,7 +107,6 @@ def train():
         epsilon=1e-08,
         grad_clip=None)
 
-    dataset = MyDataset(batch_num * batch_size)
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
     labels_spec = InputSpec([batch_size], 'int64', 'label')
 
@@ -119,24 +118,29 @@ def train():
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
+    # init engine
     engine = Engine(
         mlp,
         inputs_spec=inputs_spec,
         labels_spec=labels_spec,
         strategy=dist_strategy)
-    engine.prepare(optimizer, loss)
-    engine.fit(dataset,
-               batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size,
-               sample_generator=True)
+    engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
+    # train
+    train_dataset = MyDataset(batch_num * batch_size)
+    engine.fit(train_dataset,
+               batch_size=batch_size,
+               steps_per_epoch=batch_num * batch_size)
+
+    # eval
     eval_dataset = MyDataset(batch_size)
-    engine.prepare(optimizer, loss, mode='eval')
     engine.evaluate(eval_dataset, batch_size)
 
+    # predict
     test_dataset = MyDataset(batch_size)
-    engine.prepare(mode='predict')
     engine.predict(test_dataset, batch_size)
+
+    # save
     engine.save('./mlp_inf', training=False, mode='predict')
 
 

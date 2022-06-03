@@ -54,6 +54,8 @@ void FloorDivideKernel(const Context& dev_ctx,
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
+// Create the definition of Heaviside
+DEFINE_CUDA_ELEMENTWISE_OP(ElementwiseHeaviside)
 // Create the definition of Pow
 DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 template <typename T, typename Context>
@@ -128,6 +130,14 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(elementwise_heaviside_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideRawKernel,
+                   float,
+                   double,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,

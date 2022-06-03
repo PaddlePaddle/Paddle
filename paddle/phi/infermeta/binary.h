@@ -56,7 +56,7 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaConfig config = MetaConfig());
 
 void BincountInferMeta(const MetaTensor& x,
-                       const paddle::optional<const MetaTensor&> weights,
+                       const MetaTensor& weights,
                        int minlength,
                        MetaTensor* out);
 
@@ -136,7 +136,7 @@ void DistInferMeta(const MetaTensor& x,
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
-                      paddle::optional<const MetaTensor&> seed_tensor,
+                      const MetaTensor& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,
@@ -154,8 +154,14 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void EmbeddingInferMeta(const MetaTensor& x,
+                        const MetaTensor& weight,
+                        int64_t padding_idx,
+                        bool sparse,
+                        MetaTensor* out);
+
 void ExpandAsInferMeta(const MetaTensor& x,
-                       paddle::optional<const MetaTensor&> y,
+                       const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
 

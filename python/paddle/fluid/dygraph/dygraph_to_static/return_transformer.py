@@ -336,7 +336,7 @@ class ReturnTransformer(gast.NodeTransformer):
         # Here assume that the parent node of return is gast.If
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = True'
-            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, True)".format(
+            node_str = "{} = _jst.create_bool_as_type({}, True)".format(
                 return_name,
                 ast_to_source_code(parent_node_of_return.test).strip())
 
@@ -449,7 +449,7 @@ class ReturnTransformer(gast.NodeTransformer):
         # Here assume that the parent node of return is gast.If
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = False'
-            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, False)".format(
+            node_str = "{} = _jst.create_bool_as_type({}, False)".format(
                 return_name,
                 ast_to_source_code(parent_node_of_return.test).strip())
             assign_false_node = gast.parse(node_str).body[0]
