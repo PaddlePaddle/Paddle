@@ -513,19 +513,23 @@ struct Loader {
                                ArgsT *args,
                                int num,
                                int data_offset,
+                               int read_lens,
                                bool is_boundary) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
+    kps::Init<Type, ArgsT, Index, VecSize>(
+        args, static_cast<Type>(1.0f), read_lens);
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
           args,
           reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
-          num);
+          num,
+          read_lens);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
           args,
           reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
-          num);
+          num,
+          read_lens);
     }
   }
 };
@@ -660,11 +664,20 @@ template <typename OutT,
           typename ArgsT,
           int Arity>
 struct SameDimsElementwisePrimitiveCaller {
-  __device__ inline void operator()(Functor func, ArgsT *args, OutT *result) {
+  __device__ inline void operator()(Functor func,
+                                    ArgsT *args,
+                                    OutT *result,
+                                    int read_lens) {
+#ifdef PADDLE_WITH_XPU_KP
+    for (int idx = 0; idx < read_lens; ++idx) {
+      result[idx] = static_cast<OutT>(Apply(func, args[idx]));
+    }
+#else
 #pragma unroll
     for (int idx = 0; idx < VecSize; ++idx) {
       result[idx] = static_cast<OutT>(Apply(func, args[idx]));
     }
+#endif
   }
 };
 
@@ -750,6 +763,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     phi::Array<_ptr_ OutT *, NumOuts> outs,
     int num,
     int data_offset,
+    int read_lens,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
@@ -757,16 +771,16 @@ __device__ void VectorizedElementwiseKernelImpl(
   ConditionalT<OutT, NumOuts> result[VecSize];
 
   Unroller<Loader, VecSize, Arity>::step(
-      in, args, num, data_offset, IsBoundary);
+      in, args, num, data_offset, read_lens, IsBoundary);
 
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
                                      Functor,
                                      ArgsT,
-                                     Arity>()(func, args, result);
+                                     Arity>()(func, args, result, read_lens);
 
-  ElementwiseWriteDataCaller<OutT, VecSize, IsBoundary, NumOuts>()(
-      outs, result, data_offset, num);
+  ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, data_offset, num, read_lens);
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
@@ -775,9 +789,10 @@ __global__ void VectorizedElementwiseKernel(
     phi::Array<_ptr_ OutT *, NumOuts> outs,
     int size,
     int main_offset,
+    int read_lens,
     Functor func) {
-  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  int data_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
+  int stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
   for (; data_offset < main_offset; data_offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -785,7 +800,7 @@ __global__ void VectorizedElementwiseKernel(
                                     NumOuts,
                                     VecSize,
                                     false>(
-        ins, outs, VecSize * BLOCK_NUM_X, data_offset, func);
+        ins, outs, read_lens * BLOCK_NUM_X, data_offset, read_lens, func);
   }
 
   int num = size - data_offset;
@@ -795,7 +810,8 @@ __global__ void VectorizedElementwiseKernel(
                                     Arity,
                                     NumOuts,
                                     VecSize,
-                                    true>(ins, outs, num, data_offset, func);
+                                    true>(
+        ins, outs, num, data_offset, read_lens, func);
   }
 }
 
@@ -803,6 +819,7 @@ template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void ElementwiseCudaKernel(const KPDevice &ctx,
                            const std::vector<const DenseTensor *> &ins,
                            std::vector<DenseTensor *> *outs,
+                           int read_lens,
                            Functor func) {
   auto numel =
       (*outs)[0]->numel();  // To avoid running errors when ins.size()== 0
@@ -817,13 +834,13 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
+  int main_offset = (numel / (read_lens * block_size)) * read_lens * block_size;
   VectorizedElementwiseKernel<OutT,
                               Functor,
                               Arity,
                               NumOuts,
                               VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, outs_data, numel, main_offset, func);
+      ins_data, outs_data, numel, main_offset, read_lens, func);
 #else
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
@@ -834,7 +851,7 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
       gpu_config.block_per_grid,
       gpu_config.thread_per_block,
       0,
-      stream>>>(ins_data, outs_data, numel, main_offset, func);
+      stream>>>(ins_data, outs_data, numel, main_offset, VecSize, func);
 #endif
 }
 
@@ -873,20 +890,32 @@ void ElementwiseKernel(const KPDevice &ctx,
     }
   }
 
+#ifdef PADDLE_WITH_XPU_KP
+  const int buf_size = 256;
+  int numel = (*outs)[0]->numel();
+  int block_size = 64;
+  int grid_size = 8;
+  int nthreads = block_size * grid_size;
+  int read_lens =
+      std::min(buf_size, kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
+  int vec_size = buf_size;
+#else
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
+  int read_lens = vec_size;
+#endif
   switch (vec_size) {
-    case 4:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
-          ctx, ins, outs, func);
+    case VecSizeL:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
+          ctx, ins, outs, read_lens, func);
       break;
-    case 2:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
-          ctx, ins, outs, func);
+    case VecSizeM:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
+          ctx, ins, outs, read_lens, func);
       break;
-    case 1:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
-          ctx, ins, outs, func);
+    case VecSizeS:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+          ctx, ins, outs, read_lens, func);
       break;
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
