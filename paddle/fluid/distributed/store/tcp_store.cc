@@ -268,16 +268,8 @@ void TCPStore::waitWorkers() {
     if (completed >= _num_workers) {
       break;
     }
-    const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::steady_clock::now() - begin);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (_timeout != tcputils::kNoTimeout && elapsed > _timeout) {
-      PADDLE_ENFORCE_EQ(
-          completed, _num_workers,
-          platform::errors::InvalidArgument(
-              "TCPStore timeouted and not all workers got ready."));
-    }
   } while (true);
   VLOG(3) << "TCPStore initialized.";
 }
