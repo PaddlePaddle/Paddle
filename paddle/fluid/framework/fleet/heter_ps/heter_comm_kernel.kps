@@ -304,9 +304,12 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
                                  int end_bit,
                                  XPUStream stream,
                                  bool debug_synchronous) {
+    temp_storage_bytes = num_items;
+    if (NULL != d_temp_storage) {
+        return;
+    }
+
     // Not used.
-    (void)d_temp_storage;
-    (void)temp_storage_bytes;
     (void)begin_bit;
     (void)end_bit;
     (void)debug_synchronous;
@@ -314,10 +317,22 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     platform::XPUDeviceContext xpu_dev_ctx(place);
     auto ctx_xpu = xpu_dev_ctx.x_context();
 
+    // TODO: remove cast.
+    xpu::ctx_guard RAII_GUARD(ctx_xpu);
+    uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
+
+    xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
+        reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
+
     int r = xpu::sort_pairs<unsigned int, ::FeaturePushValue>(
         ctx_xpu,
-        reinterpret_cast<const unsigned int*>(d_keys_in),
-        reinterpret_cast<unsigned int*>(d_keys_out),
+        reinterpret_cast<const unsigned int*>(d_keys_in_cast),
+        reinterpret_cast<unsigned int*>(d_keys_out_cast),
         reinterpret_cast<const ::FeaturePushValue*>(d_values_in),
         reinterpret_cast<::FeaturePushValue*>(d_values_out),
         num_items,
@@ -326,6 +341,9 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
         r, XPU_SUCCESS,
         platform::errors::External("XPU sum kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
+
+    xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
+        reinterpret_cast<int64_t*>(d_keys_out), num_items);
 }
 
 template <typename KeyT, typename ValueT, typename StreamType>
@@ -333,13 +351,20 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
                                  void* d_temp_storage,
                                  size_t& temp_storage_bytes,  // NOLINT
                                  const KeyT* d_keys_in,       // NOLINT
-                                 KeyT* d_keys_out, const ValueT* d_values_in,
-                                 ValueT* d_values_out, int num_items,
-                                 int begin_bit, int end_bit, StreamType stream,
+                                 KeyT* d_keys_out,
+                                 const ValueT* d_values_in,
+                                 ValueT* d_values_out,
+                                 int num_items,
+                                 int begin_bit,
+                                 int end_bit,
+                                 StreamType stream,
                                  bool debug_synchronous) {
+    temp_storage_bytes = num_items;
+    if (NULL != d_temp_storage) {
+        return;
+    }
+
     // Not used.
-    (void)d_temp_storage;
-    (void)temp_storage_bytes;
     (void)begin_bit;
     (void)end_bit;
     (void)debug_synchronous;
