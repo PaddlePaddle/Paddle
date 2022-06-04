@@ -399,6 +399,77 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingWellfordParallel
   }
 }
 
+
+template <typename T, int BlockDim, phi::DataLayout layout>
+static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingSMem(
+    const T *x,
+    const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *bias,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    double exponentialAverageFactor,
+    T *y,
+    BatchNormParamType<T> *mean,
+    BatchNormParamType<T> *variance,
+    BatchNormParamType<T> *save_mean,
+    BatchNormParamType<T> *save_inv_variance) {
+  extern __shared__ __align__(sizeof(double)) char smem_buf[];
+  BatchNormParamType<T>* x_buf = reinterpret_cast<BatchNormParamType<T>*>(smem_buf);
+
+  int outer_size = C;
+  int inner_size = N * HxW;
+  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage mean_storage;
+  __shared__ typename BlockReduce::TempStorage variance_storeage;
+  __shared__ BatchNormParamType<T> mean_val;
+  __shared__ BatchNormParamType<T> variance_val;
+  __shared__ BatchNormParamType<T> inv_var_val;
+
+  for (int i = blockIdx.x; i < outer_size; i += gridDim.x) {
+    BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
+    BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
+
+    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int index = layout == phi::DataLayout::kNCHW
+                            ? (j / HxW * C + i) * HxW + j % HxW
+                            : j * outer_size + i;
+      BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
+      x_buf[j] = x_i;
+      x_sum += x_i;
+      x_square_sum += x_i * x_i;
+    }
+    x_sum = BlockReduce(mean_storage).Reduce(x_sum, cub::Sum());
+    x_square_sum =
+        BlockReduce(variance_storeage).Reduce(x_square_sum, cub::Sum());
+    if (threadIdx.x == 0) {
+      mean_val = x_sum / inner_size;
+      variance_val = x_square_sum / inner_size - mean_val * mean_val;
+      inv_var_val = 1 / sqrt(variance_val + epsilon);
+
+      if (save_mean && save_inv_variance) {
+        save_mean[i] = mean_val;
+        save_inv_variance[i] = inv_var_val;
+      }
+      mean[i] = (1 - exponentialAverageFactor) * mean_val +
+                exponentialAverageFactor * mean[i];
+      variance[i] = (1 - exponentialAverageFactor) * variance_val +
+                    exponentialAverageFactor * variance[i];
+    }
+    __syncthreads();
+
+    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int index = layout == phi::DataLayout::kNCHW
+                            ? (j / HxW * C + i) * HxW + j % HxW
+                            : j * outer_size + i;
+      BatchNormParamType<T> x_sub_mean =
+          static_cast<BatchNormParamType<T>>(x_buf[j]) - mean_val;
+      y[index] = scale[i] * x_sub_mean * inv_var_val + bias[i];
+    }
+  }
+}
+
 template <typename T, typename Context>
 void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
@@ -786,16 +857,16 @@ void BatchNormKernel(const Context &ctx,
       //const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
       const bool use_native_kernel = true;
       if(use_native_kernel) {
-        const int num = transformed_x.numel();
-        const int block = 1024;
+        const int block = 512;
         const int max_threads = ctx.GetMaxPhysicalThreadCount();
         const int max_blocks = std::max(max_threads / block, 1);
         const int grid = std::min(C, max_blocks);
+        const size_t smem_size = N * H * W * D * sizeof(BatchNormParamType<T>);
         if (compute_format == DataLayout::kNCHW) {
-          BNForwardTrainingWellfordParallel<
+          BNForwardTrainingSMem<
               T,
               block,
-              DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
+              DataLayout::kNCHW><<<grid, block, smem_size, ctx.stream()>>>(
               transformed_x.template data<T>(),
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
@@ -810,10 +881,10 @@ void BatchNormKernel(const Context &ctx,
               saved_mean->template data<BatchNormParamType<T>>(),
               saved_variance->template data<BatchNormParamType<T>>());
         } else {
-          BNForwardTrainingWellfordParallel<
+          BNForwardTrainingSMem<
               T,
               block,
-              DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
+              DataLayout::kNHWC><<<grid, block, smem_size, ctx.stream()>>>(
               transformed_x.template data<T>(),
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
