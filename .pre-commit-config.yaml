@@ -55,3 +55,13 @@ repos:
             (?x)^(
                 paddle/utils/.*
             )$
+-   repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    -   id: cmake-format
+        # exclude paddle/fluid/operators/CMakeLists.txt, see the comment
+        # https://github.com/PaddlePaddle/Paddle/pull/43057#pullrequestreview-993471860
+        exclude: |
+            (?x)^(
+                paddle/fluid/operators/CMakeLists.txt
+            )$
