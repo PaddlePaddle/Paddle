@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+
 #include <algorithm>
 #include <limits>
 #include <map>
 #include <numeric>
 #include <unordered_map>
 #include <utility>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -33,10 +35,10 @@
 
 namespace paddle {
 
-using platform::CPUPlace;
 using framework::LoDTensor;
 using framework::Variable;
 using framework::ir::Graph;
+using platform::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =
@@ -57,8 +59,9 @@ static void check_var(const Variable* var, const std::string& var_name) {
 }
 
 static void check_tensor(const LoDTensor& tensor) {
-  PADDLE_ENFORCE_GT(tensor.dims().size(), 0, platform::errors::InvalidArgument(
-                                                 "Tensor dimension is empty."));
+  PADDLE_ENFORCE_GT(
+      tensor.dims().size(), 0,
+      platform::errors::InvalidArgument("Tensor dimension is empty."));
 }
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
@@ -531,8 +534,9 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
   PADDLE_ENFORCE_GE(max_val, min_val,
                     platform::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, max_val (" +
-                        std::to_string(max_val) + ") must be greater or equal"
-                                                  "to min_val (" +
+                        std::to_string(max_val) +
+                        ") must be greater or equal"
+                        "to min_val (" +
                         std::to_string(min_val) + ")."));
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
                                         var_tensor.numel(), 1};
@@ -570,7 +574,8 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({
-      "cpu_quantize_pass", "cpu_quantize_squash_pass",
+      "cpu_quantize_pass",
+      "cpu_quantize_squash_pass",
       "int8_scale_calculation_mkldnn_pass",
   });
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();

@@ -97,13 +97,13 @@ class NumberCountOpCUDAKernel : public framework::OpKernel<T> {
     auto out_data = number_count->mutable_data<T>(out_dims, place);
     const T* gate_data = numbers->data<T>();
 
-    initialize_zero_kernel<
-        T><<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-        out_data, upper_range);
+    initialize_zero_kernel<T>
+        <<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+            out_data, upper_range);
 
-    NumberCount<
-        T><<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
-        gate_data, out_data, batch_size, upper_range);
+    NumberCount<T>
+        <<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
+            gate_data, out_data, batch_size, upper_range);
   }
 };
 

@@ -61,10 +61,11 @@ class ClipXPUKernel : public framework::OpKernel<T> {
     auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());
     int r = xpu::clip_v2(dev_ctx.x_context(), x_data, out_data, x->numel(), min,
                          max);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                          "XPU API(clip_v2) return wrong "
-                                          "value[%d %s]",
-                                          r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU API(clip_v2) return wrong "
+                                   "value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 

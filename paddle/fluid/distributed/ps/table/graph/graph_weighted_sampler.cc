@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
+
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/generator.h"
 namespace paddle {
 namespace distributed {

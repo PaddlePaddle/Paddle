@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <string>
+
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {

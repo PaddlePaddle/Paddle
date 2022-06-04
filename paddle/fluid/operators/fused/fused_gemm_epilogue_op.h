@@ -16,9 +16,11 @@ limitations under the License. */
 #pragma once
 
 #include <cuda_runtime_api.h>
+
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"

@@ -33,7 +33,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class GarbageCollector;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode;

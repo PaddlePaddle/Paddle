@@ -456,21 +456,16 @@ void LaunchBroadcastKernel(
                     read_lens * gpu_config.GetBlockSize();
   int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
 #endif
-  VectorizedBroadcastKernel<InT,
-                            OutT,
-                            Functor,
-                            Arity,
-                            NumOuts,
-                            VecSize><<<blocks, threads, 0, stream>>>(
-      ins_data,
-      outs_data,
-      use_broadcast,
-      numel,
-      configs,
-      main_offset,
-      tail_tid,
-      read_lens,
-      func);
+  VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
+      <<<blocks, threads, 0, stream>>>(ins_data,
+                                       outs_data,
+                                       use_broadcast,
+                                       numel,
+                                       configs,
+                                       main_offset,
+                                       tail_tid,
+                                       read_lens,
+                                       func);
 }
 
 template <ElementwiseType ET,
@@ -589,10 +584,9 @@ void BroadcastKernel(const KPDevice &ctx,
     dims_size.emplace_back(in->dims().size());
   }
 
-  axis = axis == -1
-             ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                   *std::min_element(dims_size.begin(), dims_size.end())
-             : axis;
+  axis = axis == -1 ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                          *std::min_element(dims_size.begin(), dims_size.end())
+                    : axis;
   BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
       ctx, ins, outs, axis, func);
 }

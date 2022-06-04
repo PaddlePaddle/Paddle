@@ -18,18 +18,18 @@ limitations under the License. */
 
 #include <cuda_fp16.h>
 #include <float.h>
+
 #include <cub/cub.cuh>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -861,10 +861,9 @@ inline size_t smem_size_in_bytes(
   size_t smem_sz = smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE,           \
                                          THDS_PER_BLOCK, pad_active_groups);   \
   dim3 grid(params.num_head, params.batch_size);                               \
-  masked_multihead_attention_kernel<                                           \
-      T, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE,                             \
-      THDS_PER_BLOCK><<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(              \
-      params, pad_active_groups)
+  masked_multihead_attention_kernel<T, Dh, Dh_MAX, THDS_PER_KEY,               \
+                                    THDS_PER_VALUE, THDS_PER_BLOCK>            \
+      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(params, pad_active_groups)
 
 template <typename T, int Dh, int Dh_MAX>
 void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,

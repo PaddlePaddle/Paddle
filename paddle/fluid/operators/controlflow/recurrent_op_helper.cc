@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+
 #include <string>
 
 namespace paddle {

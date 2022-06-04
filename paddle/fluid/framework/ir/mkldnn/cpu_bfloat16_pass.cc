@@ -226,7 +226,7 @@ class DeQuantizer final : public Quanter {
     return Quanter::create_quant_op(output_name, input_name);
   }
 };
-}
+}  // namespace
 using string::PrettyLogDetail;
 
 void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {

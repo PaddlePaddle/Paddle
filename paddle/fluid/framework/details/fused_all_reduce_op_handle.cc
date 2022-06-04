@@ -325,9 +325,10 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
 
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
-        true, platform::errors::InvalidArgument(
-                  "The variable '%s' at scope %d is not in the right place.",
-                  var_name, scope_idx));
+        true,
+        platform::errors::InvalidArgument(
+            "The variable '%s' at scope %d is not in the right place.",
+            var_name, scope_idx));
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }
@@ -356,10 +357,11 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
     // Get element number
     int64_t len = grad_tensor.at(i).second->numel();
     PADDLE_ENFORCE_GT(
-        len, 0, platform::errors::InvalidArgument(
-                    "The size of grad tensors of fused_all_reduce_op_handle  "
-                    "must be > 0, but got %d.",
-                    len));
+        len, 0,
+        platform::errors::InvalidArgument(
+            "The size of grad tensors of fused_all_reduce_op_handle  "
+            "must be > 0, but got %d.",
+            len));
     *numel +=
         platform::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }

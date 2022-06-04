@@ -49,7 +49,8 @@ struct Cell {
 };
 
 template <typename T,
-          template <typename> class EigenActivationFunctor,
+          template <typename>
+          class EigenActivationFunctor,
           funcs::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const CPUContext* dev_ctx,

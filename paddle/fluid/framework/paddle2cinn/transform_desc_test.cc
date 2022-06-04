@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include <unordered_map>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
+// clang-format on
 
 namespace paddle {
 namespace framework {

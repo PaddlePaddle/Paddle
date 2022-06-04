@@ -24,6 +24,7 @@ limitations under the License. */
 #include <sys/wait.h>
 #endif
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <atomic>
 #include <ctime>
@@ -36,6 +37,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -65,10 +67,12 @@ class BasicAucCalculator {
     _local_pred = 0;
   }
   void add_data(double pred, int label) {
-    PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
-                                     "pred should be greater than 0"));
-    PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
-                                     "pred should be lower than 1"));
+    PADDLE_ENFORCE_GE(
+        pred, 0.0,
+        platform::errors::PreconditionNotMet("pred should be greater than 0"));
+    PADDLE_ENFORCE_LE(
+        pred, 1.0,
+        platform::errors::PreconditionNotMet("pred should be lower than 1"));
     PADDLE_ENFORCE_EQ(
         label * label, label,
         platform::errors::PreconditionNotMet(
@@ -172,13 +176,15 @@ class AfsManager {
                                          pwd.c_str(), conf_path.c_str());
     VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
     int ret = _afshandler->Init(true, (com_logstatus() == 0));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Init Interface Failed."));
+    PADDLE_ENFORCE_EQ(ret, 0,
+                      platform::errors::PreconditionNotMet(
+                          "Called AFSAPI Init Interface Failed."));
     // Too high level will hurt the performance
     comlog_set_log_level(4);
     ret = _afshandler->Connect();
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Connect Interface Failed"));
+    PADDLE_ENFORCE_EQ(ret, 0,
+                      platform::errors::PreconditionNotMet(
+                          "Called AFSAPI Connect Interface Failed"));
   }
   virtual ~AfsManager() {
     if (_afshandler != NULL) {
@@ -294,8 +300,9 @@ class AfsManager {
     int ret =
         PopenBidirectionalInternal(cmd.c_str(), rfp, wfp, pid, true, true);
 
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called PopenBidirectionalInternal Failed"));
+    PADDLE_ENFORCE_EQ(ret, 0,
+                      platform::errors::PreconditionNotMet(
+                          "Called PopenBidirectionalInternal Failed"));
     std::string filename(path);
     if (strncmp(filename.c_str(), "afs:", 4) == 0) {
       filename = filename.substr(4);
@@ -451,8 +458,9 @@ class BoxWrapper {
     std::string ret_str;
     int ret = boxps_ptr_->SaveBase(batch_model_path, xbox_model_path, ret_str,
                                    seconds_from_1970 / 86400);
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "SaveBase failed in BoxPS."));
+    PADDLE_ENFORCE_EQ(
+        ret, 0,
+        platform::errors::PreconditionNotMet("SaveBase failed in BoxPS."));
     return ret_str;
   }
 
@@ -460,8 +468,9 @@ class BoxWrapper {
     VLOG(3) << "Begin SaveDelta";
     std::string ret_str;
     int ret = boxps_ptr_->SaveDelta(xbox_model_path, ret_str);
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "SaveDelta failed in BoxPS."));
+    PADDLE_ENFORCE_EQ(
+        ret, 0,
+        platform::errors::PreconditionNotMet("SaveDelta failed in BoxPS."));
     return ret_str;
   }
 

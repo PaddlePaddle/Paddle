@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+
 #include <algorithm>
 
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -148,8 +149,9 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(is_init_, true, platform::errors::PreconditionNotMet(
-                                        "Using carrier before initialized."));
+  PADDLE_ENFORCE_EQ(is_init_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
             << ".";

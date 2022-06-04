@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -145,9 +146,9 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     return x->outputs[fc_idx]->outputs[0];
   };
 
-  auto var_next_is_fc_act_repeated_n_times = [=](
-      Node* x, int repeated_times, const std::string& act_type = "relu",
-      bool check_in_has_only_one_out = true) -> bool {
+  auto var_next_is_fc_act_repeated_n_times =
+      [=](Node* x, int repeated_times, const std::string& act_type = "relu",
+          bool check_in_has_only_one_out = true) -> bool {
     for (int i = 0; i < repeated_times; ++i) {
       if (!var_next_is_fc_act(x, act_type,
                               i == 0 && check_in_has_only_one_out)) {
@@ -191,9 +192,9 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     return nullptr;
   };
 
-  auto var_before_is_fc_act_repeated_n_times = [=](
-      Node* x, int repeated_times,
-      const std::string& act_type = "relu") -> bool {
+  auto var_before_is_fc_act_repeated_n_times = [=](Node* x, int repeated_times,
+                                                   const std::string& act_type =
+                                                       "relu") -> bool {
     for (int i = 0; i < repeated_times; ++i) {
       if (!var_before_is_fc_act(x, act_type, i == repeated_times - 1)) {
         return false;
