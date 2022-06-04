@@ -344,8 +344,12 @@ class DistributedContext:
                 self._serial_startup_program = self._original_serial_startup_program
             if not self._serial_loss:
                 if isinstance(self._original_serial_loss, list):
-                    assert len(self._original_serial_loss) == 1
-                    self._serial_loss = self._original_serial_loss[0]
+                    if len(self._original_serial_loss) == 1:
+                        self._serial_loss = self._original_serial_loss[0]
+                    elif len(self._original_serial_loss) == 0:
+                        self._serial_loss = self._original_serial_loss
+                    else:
+                        raise ValueError("multi loss vars are not supported.")
                 else:
                     self._serial_loss = self._original_serial_loss
             if not self._serial_optimizer:

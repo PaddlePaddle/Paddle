@@ -479,9 +479,11 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_grad2, static_grad))
 
     def test_layer_in_out(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_layer_in_out()
         self.func_layer_in_out()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_mlp(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)

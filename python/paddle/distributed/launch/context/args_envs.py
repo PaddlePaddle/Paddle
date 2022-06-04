@@ -35,7 +35,6 @@ env_args_mapping = {
     'PADDLE_TRAINERS_ENDPOINTS': 'trainers',
     'PADDLE_GLOO_PORT': 'gloo_port',
     'PADDLE_WITH_GLOO': 'with_gloo',
-    'PADDLE_DEVICE_NUM': 'device_num'
 }
 
 
@@ -100,12 +99,6 @@ def parse_args():
         type=str,
         default=None,
         help="accelerate devices. as --gpus,npus,xps")
-
-    base_group.add_argument(
-        "--device_num",
-        type=int,
-        default=None,
-        help="the number of accelerate devices.")
 
     base_group.add_argument("--host", type=str, default=None, help="host ip")
 

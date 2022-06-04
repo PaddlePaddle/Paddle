@@ -179,7 +179,7 @@ def multiclass_nms(bboxes,
 class TensorRTMultiClassNMS3Test(InferencePassTest):
     def setUp(self):
         self.enable_trt = True
-        self.enable_tensorrt_oss = True
+        self.enable_tensorrt_varseqlen = True
         self.precision = AnalysisConfig.Precision.Float32
         self.serialize = False
         self.bs = 1
@@ -291,8 +291,8 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         self.background = 7
         self.run_test()
 
-    def test_disable_oss(self):
-        self.diable_tensorrt_oss = False
+    def test_disable_varseqlen(self):
+        self.diable_tensorrt_varseqlen = False
         self.run_test()
 
 
