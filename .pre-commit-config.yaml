@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    sha: v1.0.1
+    rev: v1.1.14
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
@@ -54,4 +54,14 @@ repos:
         exclude: |
             (?x)^(
                 paddle/utils/.*
+            )$
+-   repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    -   id: cmake-format
+        # exclude paddle/fluid/operators/CMakeLists.txt, see the comment
+        # https://github.com/PaddlePaddle/Paddle/pull/43057#pullrequestreview-993471860
+        exclude: |
+            (?x)^(
+                paddle/fluid/operators/CMakeLists.txt
             )$

@@ -473,33 +473,14 @@ class MultiThread(GradAllReduce):
                 print(
                     "begin to _transpile_startup_program for single-node in XPU")
                 block = self.startup_program.global_block()
-                comm_id_var = block.create_var(
-                    name=unique_name.generate('comm_id'),
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
                 block.append_op(
-                    type='c_gen_bkcl_id',
-                    inputs={},
-                    outputs={'Out': comm_id_var},
+                    type='c_comm_init_all',
                     attrs={
-                        'rank': self.rank,
-                        'endpoint': self.current_endpoint,
-                        'other_endpoints': self.other_endpoints,
-                        'ring_id': 0,
-                        self.op_role_key: OpRole.Forward
+                        'devices': list(
+                            map(int,
+                                os.getenv("FLAGS_selected_gpus").split(","))),
+                        'ring_id': 0
                     })
-                block.append_op(
-                    type='c_comm_init',
-                    inputs={'X': comm_id_var},
-                    outputs={},
-                    attrs={
-                        'nranks':
-                        len(os.getenv("FLAGS_selected_gpus").split(",")),
-                        'rank': self.rank,
-                        'ring_id': 0,
-                        self.op_role_key: OpRole.Forward
-                    })
-
             else:
                 print("begin to _transpile_startup_program for single-node")
                 block = self.startup_program.global_block()
@@ -515,6 +496,11 @@ class MultiThread(GradAllReduce):
         elif self.trans_mode == "fuse_all_reduce":
             print("begin to transpile in fuse all-reduce mode")
             self._insert_fuse_allreduce_ops()
+        elif self.trans_mode == "all_reduce_xpu" and len(
+                os.getenv("FLAGS_selected_gpus").split(",")) == 1:
+            print(
+                "skip transpile in all-reduce-xpu mode when number of devices is only one"
+            )
         else:
             print("begin to transpile in all-reduce mode")
             self._insert_allreduce_ops()

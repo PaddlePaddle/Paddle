@@ -82,7 +82,7 @@ struct DropoutParam {
     auto& dropout_implementation =
         context.Attr<std::string>(pre_fix + "implementation");
     is_upscale_in_train = (dropout_implementation == "upscale_in_train");
-    is_test = context.Attr<bool>(pre_fix + "is_test");
+    is_test = context.Attr<bool>("is_test");
     fix_seed = context.Attr<bool>(pre_fix + "fix_seed");
 
     std::string str_seed = "Dropout";

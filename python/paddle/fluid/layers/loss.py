@@ -336,28 +336,7 @@ def square_error_cost(input, label):
             # [0.01, 0.01]
 
     """
-    if _non_static_mode():
-        minus_out = _C_ops.elementwise_sub(input, label)
-        square_out = _C_ops.square(minus_out)
-        return square_out
-
-    check_variable_and_dtype(input, "input", ['float32', 'float64'],
-                             'square_error_cost')
-    check_variable_and_dtype(label, "label", ['float32', 'float64'],
-                             'square_error_cost')
-    helper = LayerHelper('square_error_cost', **locals())
-    minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='elementwise_sub',
-        inputs={'X': [input],
-                'Y': [label]},
-        outputs={'Out': [minus_out]})
-
-    square_out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='square', inputs={'X': [minus_out]},
-        outputs={'Out': [square_out]})
-    return square_out
+    return paddle.nn.functional.square_error_cost(input, label)
 
 
 def edit_distance(input,
@@ -433,45 +412,8 @@ def edit_distance(input,
             # [4]
 
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
-    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
-    helper = LayerHelper("edit_distance", **locals())
-
-    # remove some tokens from input and labels
-    if ignored_tokens is not None and len(ignored_tokens) > 0:
-        erased_input = helper.create_variable_for_type_inference(dtype="int64")
-        erased_label = helper.create_variable_for_type_inference(dtype="int64")
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [input]},
-            outputs={"Out": [erased_input]},
-            attrs={"tokens": ignored_tokens})
-        input = erased_input
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [label]},
-            outputs={"Out": [erased_label]},
-            attrs={"tokens": ignored_tokens})
-        label = erased_label
-
-    this_inputs = {"Hyps": [input], "Refs": [label]}
-    if input_length is not None and label_length is not None:
-        this_inputs['HypsLength'] = [input_length]
-        this_inputs['RefsLength'] = [label_length]
-
-    # edit distance op
-    edit_distance_out = helper.create_variable_for_type_inference(dtype="int64")
-    sequence_num = helper.create_variable_for_type_inference(dtype="int64")
-    helper.append_op(
-        type="edit_distance",
-        inputs=this_inputs,
-        outputs={"Out": [edit_distance_out],
-                 "SequenceNum": [sequence_num]},
-        attrs={"normalized": normalized})
-
-    return edit_distance_out, sequence_num
+    return paddle.nn.functional.loss.edit_distance(
+        input, label, normalized, ignored_tokens, input_length, label_length)
 
 
 def warpctc(input,
@@ -1279,52 +1221,9 @@ def softmax_with_cross_entropy(logits,
             out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
             print(out)
     """
-    if _non_static_mode():
-        if core.is_compiled_with_npu():
-            softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
-                logits, label, 'soft_label', soft_label, 'ignore_index',
-                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
-                'axis', axis)
-        else:
-            if in_dygraph_mode():
-                softmax, loss = _C_ops.final_state_cross_entropy_with_softmax(
-                    logits, label, soft_label, True, numeric_stable_mode,
-                    ignore_index, axis)
-            if _in_legacy_dygraph():
-                softmax, loss = _C_ops.softmax_with_cross_entropy(
-                    logits, label, 'soft_label', soft_label, 'ignore_index',
-                    ignore_index, 'numeric_stable_mode', numeric_stable_mode,
-                    'axis', axis)
-        if not return_softmax:
-            return loss
-        else:
-            return loss, softmax
-
-    attrs = {
-        'soft_label': soft_label,
-        'ignore_index': ignore_index,
-        'numeric_stable_mode': numeric_stable_mode,
-        'axis': axis
-    }
-    helper = LayerHelper('softmax_with_cross_entropy', **locals())
-    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
-
-    outputs = {'Softmax': softmax, 'Loss': loss}
-    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
-        backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
-        outputs['Backprop'] = backprop
-    helper.append_op(
-        type='softmax_with_cross_entropy',
-        inputs={'Logits': logits,
-                'Label': label},
-        outputs=outputs,
-        attrs=attrs)
-
-    if return_softmax:
-        return loss, softmax
-
-    return loss
+    return paddle.nn.functional.loss.fluid_softmax_with_cross_entropy(
+        logits, label, soft_label, ignore_index, numeric_stable_mode,
+        return_softmax, axis)
 
 
 def rank_loss(label, left, right, name=None):
@@ -1733,33 +1632,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
           print(npair_loss)
   
     """
-    check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
-                             'npair_loss')
-    check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
-                             'positive')
-    check_variable_and_dtype(labels, 'labels', ['float32', 'float64', 'int64'],
-                             'labels')
-    Beta = 0.25
-    batch_size = labels.shape[0]
-
-    labels = nn.reshape(labels, shape=[batch_size, 1])
-    labels = paddle.tile(labels, repeat_times=[1, batch_size])
-
-    labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
-    labels = labels / nn.reduce_sum(labels, dim=1, keep_dim=True)
-
-    l2loss = nn.reduce_mean(nn.reduce_sum(square(anchor), 1)) \
-             + nn.reduce_mean(nn.reduce_sum(square(positive), 1))
-    l2loss = l2loss * Beta * l2_reg
-
-    similarity_matrix = paddle.matmul(
-        anchor, positive, transpose_x=False, transpose_y=True)
-    softmax_ce = softmax_with_cross_entropy(
-        logits=similarity_matrix, label=labels, soft_label=True)
-    cross_entropy = nn.reduce_sum(labels * softmax_ce, 0)
-    celoss = nn.reduce_mean(cross_entropy)
-
-    return l2loss + celoss
+    return paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg)
 
 
 def mse_loss(input, label):

@@ -20,7 +20,7 @@
 namespace phi {
 namespace sr {
 
-// Note: use `const paddle::optional<const SelectedRows&> x`
+// Note: use `const paddle::optional<SelectedRows>& x`
 // as input if needed
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,

@@ -28,6 +28,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
 
     def test_dim2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]).astype('float32')
         expected_grad = np.array(
@@ -53,8 +54,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim2_offset_1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 2, 2], [1, 2, 2], [2, 1, 2], [2, 2, 1]]).astype('float32')
         expected_grad = np.array(
@@ -80,8 +83,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim2_offset1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 1, 2], [2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype('float32')
         expected_grad = np.array(
@@ -107,8 +112,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_dim4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[[[0, 3], [2, 2], [2, 2]], [[2, 2], [1, 4], [2, 2]],
               [[2, 2], [2, 2], [2, 5]], [[2, 2], [2, 2], [2, 2]]],
@@ -143,6 +150,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual(
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_largedim(self):
         if len(self.places) > 1:

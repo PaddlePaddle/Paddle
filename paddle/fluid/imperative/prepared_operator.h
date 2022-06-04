@@ -279,16 +279,14 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     if (it == ins.end()) {
       if (LIKELY(input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+                 std::type_index(typeid(paddle::optional<phi::DenseTensor>)))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
       } else if (input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<
-                            const std::vector<const phi::DenseTensor*>>))) {
+                 std::type_index(typeid(
+                     paddle::optional<std::vector<const phi::DenseTensor*>>))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);

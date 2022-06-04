@@ -148,6 +148,9 @@ class PartialProgramLayer:
 
         self._origin_main_program = self._verify_program(main_program)
         self._tmp_scope_vec = self._create_scope_vec()
+        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        self._cuda_graph_capture_mode = ""
+        self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
 
@@ -339,9 +342,15 @@ class PartialProgramLayer:
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
-        attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
-                 0, 'end_op_index', self._get_end_op_index(), 'is_test',
-                 not self.training, 'program_id', self.program_id)
+        attrs = [
+            'global_block', self.program.desc.block(0), 'start_op_index', 0,
+            'end_op_index', self._get_end_op_index(), 'is_test',
+            not self.training, 'program_id', self.program_id
+        ]
+        if self._cuda_graph_capture_mode:
+            attrs.extend(
+                ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
+                 'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
@@ -349,7 +358,7 @@ class PartialProgramLayer:
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
-            *attrs)
+            self._cuda_graph_vec, *attrs)
         self.drop_scope_if_no_grad()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -470,6 +479,12 @@ class PartialProgramLayer:
         else:
             tmp_scope_vec = [inner_scope]
         return tmp_scope_vec
+
+    def _create_cuda_graph_vec(self):
+        var = core.VarBase(core.VarDesc.VarType.FP32, [], "cuda_graph",
+                           core.VarDesc.VarType.RAW, True)
+        var.stop_gradient = True
+        return var
 
     def _restore_out(self, out_vars):
         """
