@@ -470,6 +470,81 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTrainingSMem(
   }
 }
 
+template <typename T, typename Context, phi::DataLayout layout>
+inline bool TryDispatchBNForwardTrainingSMem(
+    const Context &ctx,
+    const T *x,
+    const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *bias,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    double exponentialAverageFactor,
+    T *y,
+    BatchNormParamType<T> *mean,
+    BatchNormParamType<T> *variance,
+    BatchNormParamType<T> *save_mean,
+    BatchNormParamType<T> *save_inv_variance) {
+  constexpr int block_size = 512;
+  const size_t smem = N * HxW * sizeof(BatchNormParamType<T>);
+  int max_active_blocks_conf;
+  {
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &max_active_blocks_conf,
+        BNForwardTrainingSMem<T, block_size, layout>,
+        block_size, smem);
+  }
+  if (max_active_blocks_conf <= 0) {
+    return false;
+  }
+  const int max_threads = ctx.GetMaxPhysicalThreadCount();
+  const int max_blocks = std::max(max_threads / block_size, 1);
+  const int grid = std::min(C, max_blocks);
+  BNForwardTrainingSMem<T, block_size, layout><<<grid, block_size, smem, ctx.stream()>>>(
+    x, scale, bias, C, N, HxW, epsilon, exponentialAverageFactor,
+    y, mean, variance, save_mean, save_inv_variance);
+  return true;
+}
+
+template <typename T, typename Context, phi::DataLayout layout>
+inline void DispatchBNForwardTraining(
+        const Context &ctx,
+        const T *x,
+        const BatchNormParamType<T> *scale,
+        const BatchNormParamType<T> *bias,
+        const int C,
+        const int N,
+        const int HxW,
+        const double epsilon,
+        double exponentialAverageFactor,
+        T *y,
+        BatchNormParamType<T> *mean,
+        BatchNormParamType<T> *variance,
+        BatchNormParamType<T> *save_mean,
+        BatchNormParamType<T> *save_inv_variance) {
+  if ((N * HxW) <= 1024) {
+    // TODO: impl register-cache version
+    return;
+  } else {
+    bool dispatch_smem_impl_success = false;
+    {
+      dispatch_smem_impl_success = TryDispatchBNForwardTrainingSMem<T, Context, layout>(
+          ctx, x, scale, bias, C, N, HxW, epsilon, exponentialAverageFactor,
+          y, mean, variance, save_mean, save_inv_variance);
+    }
+    if (!dispatch_smem_impl_success) {
+      const int block = 512;
+      const int max_threads = ctx.GetMaxPhysicalThreadCount();
+      const int max_blocks = std::max(max_threads / block, 1);
+      const int grid = std::min(C, max_blocks);
+      return BNForwardTraining<T, block, layout><<<grid, block, 0, ctx.stream()>>>(
+        x, scale, bias, C, N, HxW, epsilon, exponentialAverageFactor,
+        y, mean, variance, save_mean, save_inv_variance);
+    }
+  }
+}
+
 template <typename T, typename Context>
 void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
@@ -857,16 +932,9 @@ void BatchNormKernel(const Context &ctx,
       //const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
       const bool use_native_kernel = true;
       if(use_native_kernel) {
-        const int block = 512;
-        const int max_threads = ctx.GetMaxPhysicalThreadCount();
-        const int max_blocks = std::max(max_threads / block, 1);
-        const int grid = std::min(C, max_blocks);
-        const size_t smem_size = N * H * W * D * sizeof(BatchNormParamType<T>);
         if (compute_format == DataLayout::kNCHW) {
-          BNForwardTrainingSMem<
-              T,
-              block,
-              DataLayout::kNCHW><<<grid, block, smem_size, ctx.stream()>>>(
+          DispatchBNForwardTraining<T, Context, DataLayout::kNCHW>(
+              ctx,
               transformed_x.template data<T>(),
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
@@ -881,10 +949,8 @@ void BatchNormKernel(const Context &ctx,
               saved_mean->template data<BatchNormParamType<T>>(),
               saved_variance->template data<BatchNormParamType<T>>());
         } else {
-          BNForwardTrainingSMem<
-              T,
-              block,
-              DataLayout::kNHWC><<<grid, block, smem_size, ctx.stream()>>>(
+          DispatchBNForwardTraining<T, Context, DataLayout::kNHWC>(
+              ctx,
               transformed_x.template data<T>(),
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
