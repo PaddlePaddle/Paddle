@@ -739,8 +739,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   R"DOC(If true, use the transpose of `Y`.
         )DOC")
         .SetDefault(false);
-    AddAttr<float>("alpha", "The scale of Out")
-        .SetDefault(1.0f);
+    AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")

@@ -424,7 +424,7 @@ class MatMulMKLDNNHandler
   dnnl::primitive_attr CreatePostOps(const ExecutionContext& ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
-    
+
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
