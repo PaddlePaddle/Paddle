@@ -48,7 +48,7 @@ static inline __device__ void sync_all() {
 
 #define ncores 64
 template <typename T, typename OpFunc, int VecSize>
-__device__ void BlockXReduce(T* data, OpFunc reducer) {
+__device__ void BlockXReduce(T* out, const T* data, OpFunc reducer) {
   __shared__ T sum_array[ncores * VecSize];
   int core_idx = core_id() * VecSize;
   mfence();
@@ -57,21 +57,22 @@ __device__ void BlockXReduce(T* data, OpFunc reducer) {
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
     mfence();
-    sum_array[core_idx + i] = data[i];
+    sum_array[i * ncores + core_idx] = data[i];
     mfence();
-    data[i] = 0;
   }
   sync_all();
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
+    T start = data[i * ncores];
 #pragma unroll
-    for (int j = 0; j < ncores; j++) {
+    for (int j = 1; j < ncores; j++) {
       mfence();
-      T tmp = sum_array[j * VecSize + i];
+      T tmp = sum_array[i * ncores + j];
       mfence();
-      data[i] = reducer(data[i], tmp);
+      start = reducer(start, tmp);
       mfence();
     }
+    out[i] = start;
   }
   sync_all();
 }
@@ -346,7 +347,7 @@ __device__ __forceinline__ void Reduce(T* out,
     if (reduce_last_dim) {
 #pragma unroll
       for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
-        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], reducer);
+        details::BlockXReduce<T, ReduceFunctor, 1>(&out[i], &in[i], reducer);
       }
     }
   } else {  // else  kLocalMode

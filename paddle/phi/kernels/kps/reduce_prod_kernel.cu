@@ -14,27 +14,32 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_prod_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+void ProdRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+  phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
 
 }  // namespace phi
-
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float) {}
+PD_REGISTER_KERNEL(prod_raw, KPS, ALL_LAYOUT, phi::ProdRawKernel, float) {}
 #else
-PD_REGISTER_KERNEL(
-    max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ProdRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 #endif
