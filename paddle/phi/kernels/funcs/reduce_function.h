@@ -281,7 +281,7 @@ struct ReduceIndexMapping {
     if ((!ReduceLastDim) && (loop_size == 1)) {
       return dim.deal_size_x;
     } else {
-      return dim.loop_size;
+      return loop_size;
     }
   }
 #else
