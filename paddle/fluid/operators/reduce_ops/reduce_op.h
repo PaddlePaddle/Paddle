@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
@@ -655,6 +655,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
     auto* in_x = context.Input<Tensor>("X");
+
     auto* d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -685,10 +686,105 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }
+    // Broadcast(out_y, x) = y_broadcast, Equal_tensor
+    // Reduce Equal_tensor = count_tensor
+    // Broadcast(y_broadcast / count_tensor)
+
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     phi::ReduceGrad<T, TransformOp<T, MPType>>(
         dev_ctx, pt_d_out.get(), pt_d_x.get(), pt_out_dtype,
         TransformOp<T, MPType>(reduce_num));
+  }
+};
+
+template <typename T>
+struct EqualFunctor {
+  inline T initial() { return static_cast<T>(0.0f); }
+
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return static_cast<T>(a == b);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct DivideFunctor {
+  inline T initial() { return static_cast<T>(1.0f); }
+
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
+};
+
+template <typename T, template <typename, typename> class TransformOp>
+class ReduceCudaAMaxAMinGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* out_y = context.Input<Tensor>("Out");
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto out_dtype = context.Attr<int>("in_dtype");
+    auto pt_out_dtype = framework::TransToPhiDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    // get reduce_dim and reduce_num for reduce_mean_grad
+    int dim_size = in_x->dims().size();
+    std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
+    auto update_dims = vectorize(d_x->dims());
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (in_x->dims())[i];
+      update_dims[i] = 1;
+    }
+    auto& dev_ctx = context.cuda_device_context();
+
+    // make new tensor reduce_out
+    phi::DenseTensor new_y(out_y->type());
+    new_y.ShareDataWith(*out_y);
+    new_y.Resize(phi::make_ddim(update_dims));
+
+    // make new tensor d_out
+    phi::DenseTensor new_dout(d_out->type());
+    new_dout.ShareDataWith(*d_out);
+    new_dout.Resize(phi::make_ddim(update_dims));
+    d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
+
+    auto new_in = paddle::experimental::MakePhiDenseTensor(*in_x);
+    auto new_in_tensor = new_in.get();
+
+    auto new_dx = paddle::experimental::MakePhiDenseTensor(*d_x);
+    auto new_dx_tensor = new_dx.get();
+
+    // make equal_out
+    phi::DenseTensor* equal_out = new phi::DenseTensor();
+    equal_out->Resize(in_x->dims());
+    dev_ctx.template Alloc<T>(equal_out);
+    auto equal_out_tensor = *equal_out;
+
+    // make new tensor equal_count
+    phi::DenseTensor* equal_count = new phi::DenseTensor();
+    equal_count->Resize(phi::make_ddim(update_dims));
+    dev_ctx.template Alloc<T>(equal_count);
+
+    // compute
+    // 1. equal_out = Equal(x, y)
+    std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, new_in_tensor};
+    std::vector<phi::DenseTensor*> equal_outputs = {&equal_out_tensor};
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        dev_ctx, equal_inputs, &equal_outputs, 0, EqualFunctor<T>());
+    // 2. equal_count = reduceSum(equal_out)
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor,
+                             kps::IdentityFunctor<T, MPType>>(
+        dev_ctx, equal_out_tensor, equal_count,
+        kps::IdentityFunctor<T, MPType>(), reduce_dims, false);
+
+    // 3. dx = Div(dout, equal_out)
+    std::vector<const phi::DenseTensor*> grad_inputs = {&equal_out_tensor,
+                                                        equal_count};
+    std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        dev_ctx, grad_inputs, &grad_outputs, 0, DivideFunctor<T>());
   }
 };
 #endif
