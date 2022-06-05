@@ -2269,19 +2269,19 @@ def triplet_margin_loss(input,
 
         negative (Tensor): Negative tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
-	    
-	    margin (float, Optional): Default: :math:`1`.
-        
+
+        margin (float, Optional): Default: :math:`1`.
+
         p (int, Optional): The norm degree for pairwise distance. Default: :math:`2`.
 
         epsilon (float, Optional): Add small value to avoid division by zero,
             default value is 1e-6.
-	
-	    swap (bool,Optional): The distance swap change the negative distance to the distance between
-            positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
-	        Default: ``False``.
 
-        
+        swap (bool,Optional): The distance swap change the negative distance to the distance between
+            positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
+            Default: ``False``.
+
+
         reduction (str, Optional):Indicate how to average the loss by batch_size.
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
