@@ -139,9 +139,10 @@ class DatasetFolder(Dataset):
         samples = make_dataset(self.root, class_to_idx, extensions,
                                is_valid_file)
         if len(samples) == 0:
-            raise (RuntimeError(
-                "Found 0 directories in subfolders of: " + self.root + "\n"
-                "Supported extensions are: " + ",".join(extensions)))
+            raise (RuntimeError("Found 0 directories in subfolders of: " +
+                                self.root + "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions
@@ -297,9 +298,10 @@ class ImageFolder(Dataset):
                     samples.append(f)
 
         if len(samples) == 0:
-            raise (RuntimeError(
-                "Found 0 files in subfolders of: " + self.root + "\n"
-                "Supported extensions are: " + ",".join(extensions)))
+            raise (RuntimeError("Found 0 files in subfolders of: " + self.root +
+                                "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions

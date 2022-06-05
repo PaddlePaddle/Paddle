@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <vector>
+
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 

@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/gather.h"
+
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/kernels/funcs/gather.h"
 
 TEST(Gather, GatherData) {
   paddle::framework::Tensor* src = new paddle::framework::Tensor();

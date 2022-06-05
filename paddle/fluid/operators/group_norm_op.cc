@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -234,7 +235,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInferer, {"X", "Y"});
 DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInferer,
                            {framework::GradVarName("Y"),
                             framework::GradVarName("X")});
@@ -256,8 +256,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
-                  ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInferer);
+                  ops::GroupNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(

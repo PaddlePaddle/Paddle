@@ -33,8 +33,9 @@ def test_static_assert_true(self, x_list, p_list):
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                np.testing.assert_allclose(
-                    result[0], expected_output, rtol=5e-5)
+                np.testing.assert_allclose(result[0],
+                                           expected_output,
+                                           rtol=5e-5)
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
@@ -43,8 +44,9 @@ def test_dygraph_assert_true(self, x_list, p_list):
             input_tensor = paddle.to_tensor(x)
             output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
-            np.testing.assert_allclose(
-                output.numpy(), expected_output, rtol=5e-5)
+            np.testing.assert_allclose(output.numpy(),
+                                       expected_output,
+                                       rtol=5e-5)
 
 
 def gen_input():
@@ -81,6 +83,7 @@ def gen_empty_input():
 
 
 class API_TestStaticCond(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         # test calling results of 'cond' in static mode
@@ -90,6 +93,7 @@ class API_TestStaticCond(unittest.TestCase):
 
 
 class API_TestDygraphCond(unittest.TestCase):
+
     def func_out(self):
         paddle.disable_static()
         # test calling results of 'cond' in dynamic mode
@@ -104,6 +108,7 @@ class API_TestDygraphCond(unittest.TestCase):
 
 
 class TestCondAPIError(unittest.TestCase):
+
     def func_dygraph_api_error(self):
         paddle.disable_static()
         # test raising errors when 'cond' is called in dygraph mode
@@ -160,6 +165,7 @@ class TestCondAPIError(unittest.TestCase):
 
 
 class TestCondEmptyTensorInput(unittest.TestCase):
+
     def func_dygraph_empty_tensor_input(self):
         paddle.disable_static()
         # test calling results of 'cond' when input is an empty tensor in dynamic mode

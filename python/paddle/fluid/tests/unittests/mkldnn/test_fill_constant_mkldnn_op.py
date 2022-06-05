@@ -22,6 +22,7 @@ import paddle
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestFillConstant2DOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "fill_constant"
         self.dtype = np.float32
@@ -63,14 +64,16 @@ class TestFillConstant2DOneDNNOp(OpTest):
         self.check_output()
 
 
-class TestFillZerosLike4DShapeTensorPriorityOneDNNOp(
-        TestFillConstant2DOneDNNOp):
+class TestFillZerosLike4DShapeTensorPriorityOneDNNOp(TestFillConstant2DOneDNNOp
+                                                     ):
+
     def set_inputs(self):
         self.inputs = {'ShapeTensor': np.array([5, 6, 7, 8]).astype("int32")}
 
 
 class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
         TestFillConstant2DOneDNNOp):
+
     def set_inputs(self):
         shape = (4, 5, 6, 7)
         self.shape_tensor_list = []
@@ -82,13 +85,15 @@ class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
 
 
 class TestFillZerosLike2DStringValueInfOneDNNOp(TestFillConstant2DOneDNNOp):
+
     def set_attrs(self):
         self.str_value = "inf"
         self.attrs = {'shape': (10, 13), 'use_mkldnn': True, 'str_value': "inf"}
 
 
-class TestFillZerosLike2DStringValueMinusInfOneDNNOp(
-        TestFillConstant2DOneDNNOp):
+class TestFillZerosLike2DStringValueMinusInfOneDNNOp(TestFillConstant2DOneDNNOp
+                                                     ):
+
     def set_attrs(self):
         self.str_value = "-inf"
         self.attrs = {
@@ -99,6 +104,7 @@ class TestFillZerosLike2DStringValueMinusInfOneDNNOp(
 
 
 class TestFillZerosLike2DStringValueFloatOneDNNOp(TestFillConstant2DOneDNNOp):
+
     def set_attrs(self):
         self.str_value = "0.123"
         self.attrs = {
@@ -110,6 +116,7 @@ class TestFillZerosLike2DStringValueFloatOneDNNOp(TestFillConstant2DOneDNNOp):
 
 class TestFillZerosLike2DValueTensorPriorityOneDNNOp(
         TestFillZerosLike2DStringValueFloatOneDNNOp):
+
     def set_inputs(self):
         self.inputs = {'ValueTensor': np.atleast_1d(2.25).astype("float32")}
 

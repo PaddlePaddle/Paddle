@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
+
 #include <gflags/gflags.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
 

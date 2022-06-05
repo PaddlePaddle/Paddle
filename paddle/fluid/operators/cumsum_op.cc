@@ -86,13 +86,12 @@ REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
 
-REGISTER_OP_VERSION(cumsum)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(cumsum).AddCheckpoint(
+    R"ROC(
       Upgrade cumsum add a new attribute [flatten].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "flatten",
-            "In order to compute the cumsum over the flattened array when the "
-            "argument `axis` in python API is None.",
-            false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "flatten",
+        "In order to compute the cumsum over the flattened array when the "
+        "argument `axis` in python API is None.",
+        false));

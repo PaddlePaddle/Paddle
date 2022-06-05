@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/solve_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {

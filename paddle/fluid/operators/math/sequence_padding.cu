@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 

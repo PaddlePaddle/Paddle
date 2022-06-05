@@ -14,9 +14,8 @@
 
 #include "paddle/phi/kernels/pool_grad_kernel.h"
 
-#include "paddle/phi/kernels/impl/pool_grad_kernel_impl.h"
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/pool_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     pool2d_grad, CPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, double) {}

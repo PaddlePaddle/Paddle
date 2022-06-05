@@ -182,19 +182,20 @@ void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
   std::string data_layout = "NHWC";
   attrs.insert({"data_layout", data_layout});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "batch_norm", {{"X", {"X"}},
-                     {"Scale", {"Scale"}},
-                     {"Bias", {"Bias"}},
-                     {"Mean", {"Mean"}},
-                     {"Variance", {"Variance"}}},
-      {{"Y", {"Y"}},
-       {"MeanOut", {"Mean"}},
-       {"VarianceOut", {"Variance"}},
-       {"SavedMean", {"SavedMean"}},
-       {"SavedVariance", {"SavedVariance"}},
-       {"ReserveSpace", {"ReserveSpace"}}},
-      attrs);
+  auto op =
+      framework::OpRegistry::CreateOp("batch_norm",
+                                      {{"X", {"X"}},
+                                       {"Scale", {"Scale"}},
+                                       {"Bias", {"Bias"}},
+                                       {"Mean", {"Mean"}},
+                                       {"Variance", {"Variance"}}},
+                                      {{"Y", {"Y"}},
+                                       {"MeanOut", {"Mean"}},
+                                       {"VarianceOut", {"Variance"}},
+                                       {"SavedMean", {"SavedMean"}},
+                                       {"SavedVariance", {"SavedVariance"}},
+                                       {"ReserveSpace", {"ReserveSpace"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
@@ -314,8 +315,9 @@ void ComputeFusedBNAddReluBackward(
   attrs.insert({"epsilon", epsilon});
   attrs.insert({"act_type", act_type});
 
-  auto op = framework::OpRegistry::CreateOp(
-      "fused_bn_add_activation_grad", {{"X", {"X"}},
+  auto op =
+      framework::OpRegistry::CreateOp("fused_bn_add_activation_grad",
+                                      {{"X", {"X"}},
                                        {"Y", {"Y"}},
                                        {"Y@GRAD", {"Y@GRAD"}},
                                        {"Scale", {"Scale"}},
@@ -323,11 +325,11 @@ void ComputeFusedBNAddReluBackward(
                                        {"SavedMean", {"SavedMean"}},
                                        {"SavedVariance", {"SavedVariance"}},
                                        {"ReserveSpace", {"ReserveSpace"}}},
-      {{"X@GRAD", {"X@GRAD"}},
-       {"Z@GRAD", {"Z@GRAD"}},
-       {"Scale@GRAD", {"Scale@GRAD"}},
-       {"Bias@GRAD", {"Bias@GRAD"}}},
-      attrs);
+                                      {{"X@GRAD", {"X@GRAD"}},
+                                       {"Z@GRAD", {"Z@GRAD"}},
+                                       {"Scale@GRAD", {"Scale@GRAD"}},
+                                       {"Bias@GRAD", {"Bias@GRAD"}}},
+                                      attrs);
   op->Run(scope, ctx.GetPlace());
 
   paddle::framework::TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);

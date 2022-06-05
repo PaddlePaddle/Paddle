@@ -153,7 +153,7 @@ REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
                   ops::GatherGradNoNeedBufferVarInferer,
                   GatherGradInferShapeFunctor);
 
-REGISTER_OP_VERSION(gather)
-    .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
-                   paddle::framework::compatible::OpVersionDesc().NewInput(
-                       "Axis", "Specify the axis of gather operation."));
+REGISTER_OP_VERSION(gather).AddCheckpoint(
+    R"ROC(upgrad gather, add a new input [Axis])ROC",
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "Axis", "Specify the axis of gather operation."));

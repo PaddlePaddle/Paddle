@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -284,6 +285,6 @@ struct NodeQueryResult {
   };
   ~NodeQueryResult() {}
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #endif

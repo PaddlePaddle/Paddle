@@ -56,6 +56,7 @@ def gru_np(input,
            batch_first=False,
            is_bidirect=False,
            sequence_length=None):
+
     def step(step_in, pre_hidden, gate_w, gate_b, candidate_w, candidate_b):
         concat_1 = np.concatenate([step_in, pre_hidden], 1)
 
@@ -66,8 +67,8 @@ def gru_np(input,
 
         r_hidden = r * pre_hidden
 
-        candidate = np.matmul(
-            np.concatenate([step_in, r_hidden], 1), candidate_w)
+        candidate = np.matmul(np.concatenate([step_in, r_hidden], 1),
+                              candidate_w)
 
         candidate += candidate_b
         c = tanh(candidate)
@@ -95,8 +96,8 @@ def gru_np(input,
     if is_bidirect:
         direc_num = 2
     if init_h:
-        init_h = np.reshape(
-            init_h, shape=[num_layers, direc_num, -1, hidden_size])
+        init_h = np.reshape(init_h,
+                            shape=[num_layers, direc_num, -1, hidden_size])
     else:
         init_h = np.zeros([num_layers, direc_num, batch_size, hidden_size])
 
@@ -141,8 +142,9 @@ def gru_np(input,
 
         return rnn_out, last_hidden_out
 
-    fw_rnn_out, fw_last_hidden = get_single_direction_output(
-        input, mask, direc_index=0)
+    fw_rnn_out, fw_last_hidden = get_single_direction_output(input,
+                                                             mask,
+                                                             direc_index=0)
 
     if is_bidirect:
         bw_input = input[::-1]
@@ -150,8 +152,9 @@ def gru_np(input,
         if mask is not None:
             bw_mask = mask[::-1]
 
-        bw_rnn_out, bw_last_hidden = get_single_direction_output(
-            bw_input, bw_mask, direc_index=1)
+        bw_rnn_out, bw_last_hidden = get_single_direction_output(bw_input,
+                                                                 bw_mask,
+                                                                 direc_index=1)
 
         bw_rnn_out = bw_rnn_out[::-1]
 
@@ -175,6 +178,7 @@ def gru_np(input,
 
 
 class TestBasicGRUApi(unittest.TestCase):
+
     def setUp(self):
         self.hidden_size = 10
         self.batch_size = 5
@@ -184,12 +188,12 @@ class TestBasicGRUApi(unittest.TestCase):
         self.batch_first = False
 
     def test_run(self):
-        x = layers.data(
-            name='x',
-            shape=[-1, self.batch_size, self.hidden_size],
-            dtype='float32')
-        sequence_length = layers.data(
-            name="sequence_length", shape=[-1], dtype='float32')
+        x = layers.data(name='x',
+                        shape=[-1, self.batch_size, self.hidden_size],
+                        dtype='float32')
+        sequence_length = layers.data(name="sequence_length",
+                                      shape=[-1],
+                                      dtype='float32')
 
         rnn_out, last_hidden = basic_gru( x, None, self.hidden_size, num_layers=self.num_layers, \
                 batch_first = self.batch_first, bidirectional=self.is_bidirect, sequence_length=sequence_length )
@@ -221,29 +225,29 @@ class TestBasicGRUApi(unittest.TestCase):
             candidate_b_name = "basic_gru_layers_" + str(
                 i) + "/BasicGRUUnit_0.b_1"
 
-            gate_w = np.array(fluid.global_scope().find_var(gate_w_name)
-                              .get_tensor())
-            gate_w = np.random.uniform(
-                -0.1, 0.1, size=gate_w.shape).astype('float32')
-            fluid.global_scope().find_var(gate_w_name).get_tensor().set(gate_w,
-                                                                        place)
+            gate_w = np.array(
+                fluid.global_scope().find_var(gate_w_name).get_tensor())
+            gate_w = np.random.uniform(-0.1, 0.1,
+                                       size=gate_w.shape).astype('float32')
+            fluid.global_scope().find_var(gate_w_name).get_tensor().set(
+                gate_w, place)
 
-            gate_b = np.array(fluid.global_scope().find_var(gate_b_name)
-                              .get_tensor())
-            gate_b = np.random.uniform(
-                -0.1, 0.1, size=gate_b.shape).astype('float32')
-            fluid.global_scope().find_var(gate_b_name).get_tensor().set(gate_b,
-                                                                        place)
+            gate_b = np.array(
+                fluid.global_scope().find_var(gate_b_name).get_tensor())
+            gate_b = np.random.uniform(-0.1, 0.1,
+                                       size=gate_b.shape).astype('float32')
+            fluid.global_scope().find_var(gate_b_name).get_tensor().set(
+                gate_b, place)
 
-            candidate_w = np.array(fluid.global_scope().find_var(
-                candidate_w_name).get_tensor())
+            candidate_w = np.array(
+                fluid.global_scope().find_var(candidate_w_name).get_tensor())
             candidate_w = np.random.uniform(
                 -0.1, 0.1, size=candidate_w.shape).astype('float32')
             fluid.global_scope().find_var(candidate_w_name).get_tensor().set(
                 candidate_w, place)
 
-            candidate_b = np.array(fluid.global_scope().find_var(
-                candidate_b_name).get_tensor())
+            candidate_b = np.array(
+                fluid.global_scope().find_var(candidate_b_name).get_tensor())
             candidate_b = np.random.uniform(
                 -0.1, 0.1, size=candidate_b.shape).astype('float32')
             fluid.global_scope().find_var(candidate_b_name).get_tensor().set(
@@ -265,17 +269,17 @@ class TestBasicGRUApi(unittest.TestCase):
                 candidate_b_name = "basic_gru_reverse_layers_" + str(
                     i) + "/BasicGRUUnit_0.b_1"
 
-                gate_w = np.array(fluid.global_scope().find_var(gate_w_name)
-                                  .get_tensor())
-                gate_w = np.random.uniform(
-                    -0.1, 0.1, size=gate_w.shape).astype('float32')
+                gate_w = np.array(
+                    fluid.global_scope().find_var(gate_w_name).get_tensor())
+                gate_w = np.random.uniform(-0.1, 0.1,
+                                           size=gate_w.shape).astype('float32')
                 fluid.global_scope().find_var(gate_w_name).get_tensor().set(
                     gate_w, place)
 
-                gate_b = np.array(fluid.global_scope().find_var(gate_b_name)
-                                  .get_tensor())
-                gate_b = np.random.uniform(
-                    -0.1, 0.1, size=gate_b.shape).astype('float32')
+                gate_b = np.array(
+                    fluid.global_scope().find_var(gate_b_name).get_tensor())
+                gate_b = np.random.uniform(-0.1, 0.1,
+                                           size=gate_b.shape).astype('float32')
                 fluid.global_scope().find_var(gate_b_name).get_tensor().set(
                     gate_b, place)
 
@@ -283,53 +287,53 @@ class TestBasicGRUApi(unittest.TestCase):
                     candidate_w_name).get_tensor())
                 candidate_w = np.random.uniform(
                     -0.1, 0.1, size=candidate_w.shape).astype('float32')
-                fluid.global_scope().find_var(candidate_w_name).get_tensor(
-                ).set(candidate_w, place)
+                fluid.global_scope().find_var(
+                    candidate_w_name).get_tensor().set(candidate_w, place)
 
                 candidate_b = np.array(fluid.global_scope().find_var(
                     candidate_b_name).get_tensor())
                 candidate_b = np.random.uniform(
                     -0.1, 0.1, size=candidate_b.shape).astype('float32')
-                fluid.global_scope().find_var(candidate_b_name).get_tensor(
-                ).set(candidate_b, place)
+                fluid.global_scope().find_var(
+                    candidate_b_name).get_tensor().set(candidate_b, place)
 
                 gate_weight.append(gate_w)
                 gate_bias.append(gate_b)
                 candidate_weight.append(candidate_w)
                 candidate_bias.append(candidate_b)
 
-        step_input_np = np.random.uniform(-0.1, 0.1, (
-            self.seq_len, self.batch_size, self.hidden_size)).astype('float32')
+        step_input_np = np.random.uniform(
+            -0.1, 0.1,
+            (self.seq_len, self.batch_size, self.hidden_size)).astype('float32')
         sequence_length_np = np.random.randint(
             self.seq_len // 2, self.seq_len,
             size=(self.batch_size)).astype('int64')
 
-        out = exe.run(
-            feed={'x': step_input_np,
-                  'sequence_length': sequence_length_np},
-            fetch_list=[rnn_out, last_hidden])
+        out = exe.run(feed={
+            'x': step_input_np,
+            'sequence_length': sequence_length_np
+        },
+                      fetch_list=[rnn_out, last_hidden])
 
         api_rnn_out = out[0]
         api_last_hidden = out[1]
 
-        np_out = gru_np(
-            step_input_np,
-            None,
-            self.hidden_size,
-            gate_weight,
-            gate_bias,
-            candidate_weight,
-            candidate_bias,
-            num_layers=self.num_layers,
-            batch_first=self.batch_first,
-            is_bidirect=self.is_bidirect,
-            sequence_length=sequence_length_np)
+        np_out = gru_np(step_input_np,
+                        None,
+                        self.hidden_size,
+                        gate_weight,
+                        gate_bias,
+                        candidate_weight,
+                        candidate_bias,
+                        num_layers=self.num_layers,
+                        batch_first=self.batch_first,
+                        is_bidirect=self.is_bidirect,
+                        sequence_length=sequence_length_np)
 
         self.assertTrue(np.allclose(api_rnn_out, np_out[0], rtol=1e-4, atol=0))
 
         self.assertTrue(
-            np.allclose(
-                api_last_hidden, np_out[1], rtol=1e-4, atol=0))
+            np.allclose(api_last_hidden, np_out[1], rtol=1e-4, atol=0))
 
 
 if __name__ == '__main__':

@@ -16,12 +16,6 @@ from .primx import prim2orig
 from .utils import enable_prim, disable_prim, prim_enabled
 
 __all__ = [  # noqa
-    'vjp',
-    'jvp',
-    'Jacobian',
-    'Hessian',
-    'prim2orig',
-    'enable_prim',
-    'disable_prim',
-    'prim_enabled'
+    'vjp', 'jvp', 'Jacobian', 'Hessian', 'prim2orig', 'enable_prim',
+    'disable_prim', 'prim_enabled'
 ]

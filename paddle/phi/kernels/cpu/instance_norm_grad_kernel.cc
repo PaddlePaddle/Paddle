@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -142,12 +143,11 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   dx_arr.device(*place) = scale_arr.broadcast(bcast_param) *
                           inv_var_arr.broadcast(bcast) *
                           (dy_arr - dy_mean -
-                           tmp *
-                               (dy_arr * tmp)
-                                   .mean(mean_rdims)
-                                   .reshape(NxC_shape)
-                                   .eval()
-                                   .broadcast(bcast));
+                           tmp * (dy_arr * tmp)
+                                     .mean(mean_rdims)
+                                     .reshape(NxC_shape)
+                                     .eval()
+                                     .broadcast(bcast));
 }
 
 template <typename T, typename Context>

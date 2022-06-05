@@ -173,8 +173,9 @@ Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
 Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
                            const std::vector<Node *> &inputs,
                            const std::vector<Node *> &outputs, int64_t axis) {
-  PADDLE_ENFORCE_EQ(inputs.size(), 1, platform::errors::InvalidArgument(
-                                          "Softmax op only support one input"));
+  PADDLE_ENFORCE_EQ(
+      inputs.size(), 1,
+      platform::errors::InvalidArgument("Softmax op only support one input"));
   auto x_shape = inputs[0]->Var()->GetShape();
   int x_rank = x_shape.size();
   if (axis < 0) {
