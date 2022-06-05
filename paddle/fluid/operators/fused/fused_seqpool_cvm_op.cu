@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"

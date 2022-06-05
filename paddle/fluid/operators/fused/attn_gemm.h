@@ -14,12 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/elementwise_functor.h"
-
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 

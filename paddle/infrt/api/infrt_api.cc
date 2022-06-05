@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "paddle/infrt/api/infrt_api.h"
 
 #include <llvm/ADT/SmallVector.h>
@@ -61,6 +62,7 @@
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
 #endif
+// clang-format on
 
 using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT

@@ -13,14 +13,13 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 #include <string>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {

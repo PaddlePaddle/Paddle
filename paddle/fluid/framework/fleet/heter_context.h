@@ -17,6 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 
 #include <ThreadPool.h>
+
 #include <algorithm>
 #include <map>
 #include <unordered_map>

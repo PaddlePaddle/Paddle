@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 DECLARE_int32(min_loss_scaling);

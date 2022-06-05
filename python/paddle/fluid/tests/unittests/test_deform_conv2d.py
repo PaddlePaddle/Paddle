@@ -47,11 +47,11 @@ class TestDeformConv2D(TestCase):
         self.filter_shape = filter_shape
 
         self.weight = np.random.uniform(
-            -1, 1, (self.out_channels, self.in_channels // self.groups
-                    ) + filter_shape).astype(self.dtype)
+            -1, 1, (self.out_channels, self.in_channels // self.groups) +
+            filter_shape).astype(self.dtype)
         if not self.no_bias:
-            self.bias = np.random.uniform(-1, 1, (
-                self.out_channels, )).astype(self.dtype)
+            self.bias = np.random.uniform(-1, 1, (self.out_channels, )).astype(
+                self.dtype)
 
         def out_size(in_size, pad_size, dilation_size, kernel_size,
                      stride_size):
@@ -66,8 +66,8 @@ class TestDeformConv2D(TestCase):
                      self.kernel_size[1], self.stride[1]))
         out_shape = (out_h, out_w)
 
-        self.input_shape = (self.batch_size, self.in_channels
-                            ) + self.spatial_shape
+        self.input_shape = (self.batch_size,
+                            self.in_channels) + self.spatial_shape
 
         self.offset_shape = (self.batch_size, self.deformable_groups * 2 *
                              filter_shape[0] * filter_shape[1]) + out_shape
@@ -88,8 +88,8 @@ class TestDeformConv2D(TestCase):
         start = paddle.static.Program()
         paddle.enable_static()
         with paddle.static.program_guard(main, start):
-            x = paddle.static.data(
-                "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
+            x = paddle.static.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
             offset = paddle.static.data(
                 "offset", (-1, self.deformable_groups * 2 *
                            self.filter_shape[0] * self.filter_shape[1], -1, -1),
@@ -215,11 +215,11 @@ class TestDeformConv2DFunctional(TestCase):
         self.filter_shape = filter_shape
 
         self.weight = np.random.uniform(
-            -1, 1, (self.out_channels, self.in_channels // self.groups
-                    ) + filter_shape).astype(self.dtype)
+            -1, 1, (self.out_channels, self.in_channels // self.groups) +
+            filter_shape).astype(self.dtype)
         if not self.no_bias:
-            self.bias = np.random.uniform(-1, 1, (
-                self.out_channels, )).astype(self.dtype)
+            self.bias = np.random.uniform(-1, 1, (self.out_channels, )).astype(
+                self.dtype)
 
         def out_size(in_size, pad_size, dilation_size, kernel_size,
                      stride_size):
@@ -234,8 +234,8 @@ class TestDeformConv2DFunctional(TestCase):
                      self.kernel_size[1], self.stride[1]))
         out_shape = (out_h, out_w)
 
-        self.input_shape = (self.batch_size, self.in_channels
-                            ) + self.spatial_shape
+        self.input_shape = (self.batch_size,
+                            self.in_channels) + self.spatial_shape
 
         self.offset_shape = (self.batch_size, self.deformable_groups * 2 *
                              filter_shape[0] * filter_shape[1]) + out_shape
@@ -256,8 +256,8 @@ class TestDeformConv2DFunctional(TestCase):
         start = paddle.static.Program()
         paddle.enable_static()
         with paddle.static.program_guard(main, start):
-            x = paddle.static.data(
-                "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
+            x = paddle.static.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
             offset = paddle.static.data(
                 "offset", (-1, self.deformable_groups * 2 *
                            self.filter_shape[0] * self.filter_shape[1], -1, -1),
@@ -326,7 +326,8 @@ class TestDeformConv2DFunctional(TestCase):
             padding=self.padding,
             dilation=self.dilation,
             deformable_groups=self.deformable_groups,
-            groups=self.groups, )
+            groups=self.groups,
+        )
 
         y_v2 = paddle.vision.ops.deform_conv2d(
             x=x,
@@ -338,7 +339,8 @@ class TestDeformConv2DFunctional(TestCase):
             padding=self.padding,
             dilation=self.dilation,
             deformable_groups=self.deformable_groups,
-            groups=self.groups, )
+            groups=self.groups,
+        )
 
         out_v1 = y_v1.numpy()
         out_v2 = y_v2.numpy()
@@ -350,8 +352,8 @@ class TestDeformConv2DFunctional(TestCase):
         start = paddle.static.Program()
         paddle.enable_static()
         with paddle.static.program_guard(main, start):
-            x = paddle.static.data(
-                "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
+            x = paddle.static.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
             offset = paddle.static.data(
                 "offset", (-1, self.deformable_groups * 2 *
                            self.filter_shape[0] * self.filter_shape[1], -1, -1),
@@ -361,8 +363,9 @@ class TestDeformConv2DFunctional(TestCase):
                          self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
 
-            weight = paddle.static.data(
-                "weight", list(self.weight.shape), dtype=self.dtype)
+            weight = paddle.static.data("weight",
+                                        list(self.weight.shape),
+                                        dtype=self.dtype)
 
             if not self.no_bias:
                 bias = paddle.static.data("bias", [-1], dtype=self.dtype)
@@ -376,7 +379,8 @@ class TestDeformConv2DFunctional(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 deformable_groups=self.deformable_groups,
-                groups=self.groups, )
+                groups=self.groups,
+            )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
                 x=x,
@@ -388,7 +392,8 @@ class TestDeformConv2DFunctional(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 deformable_groups=self.deformable_groups,
-                groups=self.groups, )
+                groups=self.groups,
+            )
 
         exe = paddle.static.Executor(self.place)
         exe.run(start)
@@ -430,6 +435,7 @@ class TestDeformConv2DFunctional(TestCase):
 
 # testcases for DeformConv2D
 class TestDeformConv2DWithPadding(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -443,6 +449,7 @@ class TestDeformConv2DWithPadding(TestDeformConv2D):
 
 
 class TestDeformConv2DWithBias(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -456,6 +463,7 @@ class TestDeformConv2DWithBias(TestDeformConv2D):
 
 
 class TestDeformConv2DWithAsynPadding(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -469,6 +477,7 @@ class TestDeformConv2DWithAsynPadding(TestDeformConv2D):
 
 
 class TestDeformConv2DWithDilation(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -482,6 +491,7 @@ class TestDeformConv2DWithDilation(TestDeformConv2D):
 
 
 class TestDeformConv2DWithStride(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -495,6 +505,7 @@ class TestDeformConv2DWithStride(TestDeformConv2D):
 
 
 class TestDeformConv2DWithDeformable_Groups(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 5
         self.out_channels = 5
@@ -508,6 +519,7 @@ class TestDeformConv2DWithDeformable_Groups(TestDeformConv2D):
 
 
 class TestDeformConv2DWithGroups(TestDeformConv2D):
+
     def setUp(self):
         self.in_channels = 5
         self.out_channels = 5
@@ -522,6 +534,7 @@ class TestDeformConv2DWithGroups(TestDeformConv2D):
 
 # testcases for deform_conv2d
 class TestDeformConv2DFunctionalWithPadding(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -535,6 +548,7 @@ class TestDeformConv2DFunctionalWithPadding(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DFunctionalWithBias(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -548,6 +562,7 @@ class TestDeformConv2DFunctionalWithBias(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DFunctionalWithAsynPadding(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -561,6 +576,7 @@ class TestDeformConv2DFunctionalWithAsynPadding(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DFunctionalWithDilation(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -574,6 +590,7 @@ class TestDeformConv2DFunctionalWithDilation(TestDeformConv2DFunctional):
 
 
 class TestDeformConv2DFunctionalWithStride(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -586,8 +603,9 @@ class TestDeformConv2DFunctionalWithStride(TestDeformConv2DFunctional):
         self.no_bias = False
 
 
-class TestDeformConv2DFunctionalWithDeformable_Groups(
-        TestDeformConv2DFunctional):
+class TestDeformConv2DFunctionalWithDeformable_Groups(TestDeformConv2DFunctional
+                                                      ):
+
     def setUp(self):
         self.in_channels = 5
         self.out_channels = 5
@@ -601,6 +619,7 @@ class TestDeformConv2DFunctionalWithDeformable_Groups(
 
 
 class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
+
     def setUp(self):
         self.in_channels = 5
         self.out_channels = 5

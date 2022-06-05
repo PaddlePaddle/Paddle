@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/quant_dequant_mkldnn_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -124,10 +126,11 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
       auto* op_desc = op_node->Op();
       const int bit_length =
           BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
-      PADDLE_ENFORCE_EQ(bit_length, 8, platform::errors::InvalidArgument(
-                                           "Unsupported number quantization "
-                                           "bits: %d, only 8 is supported now.",
-                                           bit_length));
+      PADDLE_ENFORCE_EQ(bit_length, 8,
+                        platform::errors::InvalidArgument(
+                            "Unsupported number quantization "
+                            "bits: %d, only 8 is supported now.",
+                            bit_length));
 
       auto x_var_name = op_desc->Input("X")[0];
       auto scale_name = op_desc->Input("InScale")[0];

@@ -19,6 +19,7 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION, fus
 
 
 class TestFusionLSTMINT8MKLDNNOp(OpTest):
+
     def set_confs(self):
         pass
 
@@ -58,8 +59,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         s8_max = 127.0
 
         scale_weights = s8_max / np.max(
-            np.abs(np.concatenate(
-                [wx[:, :], wh[:, :]], axis=0)), axis=0)
+            np.abs(np.concatenate([wx[:, :], wh[:, :]], axis=0)), axis=0)
 
         scale_weights = scale_weights.astype('float')
 
@@ -80,10 +80,11 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             h0 = np.zeros((N, self.OC)).astype('float32')
             c0 = np.zeros((N, self.OC)).astype('float32')
 
-        hidden_f32, c = fusion_lstm(
-            x_f32, self.lod, wx, bx, h0, c0, wh, w_b, w_c, self.is_reverse,
-            ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
-            ACTIVATION[self.act_cand])
+        hidden_f32, c = fusion_lstm(x_f32, self.lod, wx, bx, h0, c0, wh, w_b,
+                                    w_c, self.is_reverse,
+                                    ACTIVATION[self.act_gate],
+                                    ACTIVATION[self.act_cell],
+                                    ACTIVATION[self.act_cand])
 
         self.inputs = {
             'X': (x_u8, self.lod),
@@ -128,23 +129,25 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(
-                check_dygraph=False,
-                no_check_set=["Cell"],
-                atol=self.error_margin)
+            self.check_output(check_dygraph=False,
+                              no_check_set=["Cell"],
+                              atol=self.error_margin)
 
 
 class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+
     def set_confs(self):
         self.force_fp32_output = True
 
 
 class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+
     def set_confs(self):
         self.has_initial_state = True
 

@@ -17,6 +17,7 @@
 #define _LINUX
 #endif
 #include "paddle/fluid/framework/op_def_api.h"
+
 #include <fstream>
 #include <mutex>
 #include <string>
@@ -28,6 +29,7 @@
 #endif
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_def.pb.h"
 

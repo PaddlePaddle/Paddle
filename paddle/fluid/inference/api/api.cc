@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sstream>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"

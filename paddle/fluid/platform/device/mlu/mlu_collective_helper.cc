@@ -14,6 +14,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CNCL)
 #include <utility>
+
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 

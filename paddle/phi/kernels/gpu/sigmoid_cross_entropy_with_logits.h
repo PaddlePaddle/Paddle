@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

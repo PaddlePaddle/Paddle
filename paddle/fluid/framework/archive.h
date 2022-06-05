@@ -20,6 +20,7 @@
 #endif
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -31,6 +32,7 @@
 #include <utility>
 #include <valarray>
 #include <vector>
+
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/enforce.h"
 

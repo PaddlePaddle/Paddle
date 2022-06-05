@@ -867,43 +867,43 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     bool is_double_grad = (i == 2);
 
     // GradOpDescMaker
-    info.grad_op_maker_ = [grad_op_name, grad_op_inputs, grad_op_outputs,
-                           is_double_grad](
-        const OpDesc& fwd_op,
-        const std::unordered_set<std::string>& no_grad_set,
-        std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block) {
-      CustomGradOpMaker<paddle::framework::OpDesc> maker(
-          fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
-          grad_op_inputs, grad_op_outputs, is_double_grad);
-      return maker();
-    };
+    info.grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const OpDesc& fwd_op,
+            const std::unordered_set<std::string>& no_grad_set,
+            std::unordered_map<std::string, std::string>* grad_to_var,
+            const std::vector<BlockDesc*>& grad_block) {
+          CustomGradOpMaker<paddle::framework::OpDesc> maker(
+              fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
+              grad_op_inputs, grad_op_outputs, is_double_grad);
+          return maker();
+        };
 
     // GradOpBaseMaker
-    info.dygraph_grad_op_maker_ = [grad_op_name, grad_op_inputs,
-                                   grad_op_outputs, is_double_grad](
-        const std::string& type,
-        const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out,
-        const framework::AttributeMap& attrs,
-        const framework::AttributeMap& default_attrs,
-        const std::map<std::string, std::string>& inplace_map) {
-      CustomGradOpMaker<paddle::imperative::OpBase> maker(
-          type, var_base_map_in, var_base_map_out, attrs, inplace_map,
-          grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
-      maker.SetDygraphDefaultAttrsMap(default_attrs);
-      return maker();
-    };
+    info.dygraph_grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const std::string& type,
+            const imperative::NameVarBaseMap& var_base_map_in,
+            const imperative::NameVarBaseMap& var_base_map_out,
+            const framework::AttributeMap& attrs,
+            const framework::AttributeMap& default_attrs,
+            const std::map<std::string, std::string>& inplace_map) {
+          CustomGradOpMaker<paddle::imperative::OpBase> maker(
+              type, var_base_map_in, var_base_map_out, attrs, inplace_map,
+              grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
+          maker.SetDygraphDefaultAttrsMap(default_attrs);
+          return maker();
+        };
 
     /* Grad op register */
     OpInfo grad_info;
 
     // Grad Op
-    grad_info.creator_ = [](
-        const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
-      return new CustomOperator(type, inputs, outputs, attrs);
-    };
+    grad_info.creator_ =
+        [](const std::string& type, const VariableNameMap& inputs,
+           const VariableNameMap& outputs, const AttributeMap& attrs) {
+          return new CustomOperator(type, inputs, outputs, attrs);
+        };
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {

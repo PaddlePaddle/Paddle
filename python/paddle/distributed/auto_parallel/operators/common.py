@@ -32,6 +32,7 @@ def is_elementwise_op(op_type):
 
 
 class DistributedOperatorImplContainer:
+
     def __init__(self, op_type):
         self._type = op_type
         self._impls = []
@@ -81,6 +82,7 @@ class DistributedOperatorImplContainer:
 
 
 class DistributedOperatorImpl(abc.ABC):
+
     def __init__(self, name):
         self._name = name
         self._type = None

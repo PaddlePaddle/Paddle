@@ -16,6 +16,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/SVD>
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"

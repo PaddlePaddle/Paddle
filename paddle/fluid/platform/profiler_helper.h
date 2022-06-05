@@ -390,8 +390,8 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
             index++;
           }
           if (split_pos == -1 && !main_thread_event_name.count(rit->name())) {
-            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
-                         rit->name();
+            event_name = "thread" + std::to_string(rit->thread_id()) +
+                         "::" + rit->name();
           } else {
             if (!main_thread_event_name.count(rit->name())) {
               event_name =
