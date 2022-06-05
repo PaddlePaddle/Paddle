@@ -19,11 +19,10 @@
 
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
-
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {

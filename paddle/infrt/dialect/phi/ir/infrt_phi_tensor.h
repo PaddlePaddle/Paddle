@@ -14,6 +14,7 @@
 
 #pragma once
 
+// clang-format off
 #include <mlir/Dialect/Traits.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
@@ -37,3 +38,4 @@
 // NOLINT
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h.inc"
+// clang-format on

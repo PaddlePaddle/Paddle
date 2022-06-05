@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
+#include <boost/variant.hpp>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
+
 #include "boost/blank.hpp"
 #include "paddle/utils/variant.h"
 

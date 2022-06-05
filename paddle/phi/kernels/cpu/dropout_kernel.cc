@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dropout_kernel.h"
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      paddle::optional<const DenseTensor&> seed_tensor,
+                      const paddle::optional<DenseTensor>& seed_tensor,
                       float p,
                       bool is_test,
                       const std::string& mode,

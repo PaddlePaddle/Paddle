@@ -79,8 +79,9 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
     int ret = boxps_ptr_->PullSparseGPU(
         total_keys, reinterpret_cast<void*>(total_values_gpu),
         static_cast<int>(total_length), device_id);
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PullSparseGPU failed in BoxPS."));
+    PADDLE_ENFORCE_EQ(
+        ret, 0,
+        platform::errors::PreconditionNotMet("PullSparseGPU failed in BoxPS."));
     pull_boxps_timer.Pause();
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
@@ -144,8 +145,9 @@ void BoxWrapper::PushSparseGradCase(
     int ret = boxps_ptr_->PushSparseGPU(
         total_keys, reinterpret_cast<void*>(total_grad_values_gpu),
         static_cast<int>(total_length), place.GetDeviceId());
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PushSparseGPU failed in BoxPS."));
+    PADDLE_ENFORCE_EQ(
+        ret, 0,
+        platform::errors::PreconditionNotMet("PushSparseGPU failed in BoxPS."));
     push_boxps_timer.Pause();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

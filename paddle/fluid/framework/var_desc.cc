@@ -318,18 +318,20 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   bool valid = attr_type == proto::AttrType::INT ||
                attr_type == proto::AttrType::STRING ||
                attr_type == proto::AttrType::INTS;
-  PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
-                                     "The value for attr (%s) must be "
-                                     "one of list or int or string.",
-                                     name));
+  PADDLE_ENFORCE_EQ(
+      valid, true,
+      platform::errors::InvalidArgument("The value for attr (%s) must be "
+                                        "one of list or int or string.",
+                                        name));
 
   this->attrs_[name] = v;
 }
 
 Attribute VarDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 

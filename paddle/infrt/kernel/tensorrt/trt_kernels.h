@@ -19,7 +19,6 @@
 #include <utility>
 
 #include "mlir/IR/Operation.h"
-
 #include "paddle/infrt/backends/tensorrt/trt_engine.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 

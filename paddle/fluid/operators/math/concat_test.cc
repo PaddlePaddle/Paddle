@@ -119,13 +119,13 @@ void ConcatCase1(DeviceContext* context) {
 }
 
 /**
-  * case 2:
-  *    inputs:
-  *        t_a.shape: [2, 3, 4]
-  *        t_b.shape: [2, 4, 4]
-  *    output:
-  *        out.shape: [2, 7, 4]
-  */
+ * case 2:
+ *    inputs:
+ *        t_a.shape: [2, 3, 4]
+ *        t_b.shape: [2, 4, 4]
+ *    output:
+ *        out.shape: [2, 7, 4]
+ */
 template <typename DeviceContext, typename Place>
 void ConcatCase2(DeviceContext* context) {
   paddle::framework::Tensor input_a_cpu;
@@ -222,13 +222,13 @@ void ConcatCase2(DeviceContext* context) {
 }
 
 /**
-  * case 3:
-  *    inputs:
-  *        t_a.shape: [2, 3, 5]
-  *        t_b.shape: [2, 3, 4]
-  *    output:
-  *        out.shape: [2, 3, 9]
-  */
+ * case 3:
+ *    inputs:
+ *        t_a.shape: [2, 3, 5]
+ *        t_b.shape: [2, 3, 4]
+ *    output:
+ *        out.shape: [2, 3, 9]
+ */
 template <typename DeviceContext, typename Place>
 void ConcatCase3(DeviceContext* context) {
   paddle::framework::Tensor input_a_cpu;
@@ -326,14 +326,14 @@ void ConcatCase3(DeviceContext* context) {
 }
 
 /**
-  * case 4:
-  *    inputs:
-  *        axis = 1
-  *        t_a.shape: [2, 3, 4]
-  *        t_b.shape: [2, 3, 4]
-  *    output:
-  *        out.shape: [2, 6, 4]
-  */
+ * case 4:
+ *    inputs:
+ *        axis = 1
+ *        t_a.shape: [2, 3, 4]
+ *        t_b.shape: [2, 3, 4]
+ *    output:
+ *        out.shape: [2, 6, 4]
+ */
 template <typename DeviceContext, typename Place>
 void ConcatCase4(DeviceContext* context) {
   paddle::framework::Tensor input_a_cpu;

@@ -14,10 +14,12 @@
 
 #ifdef PADDLE_WITH_BOX_PS
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
+
 #include <algorithm>
 #include <ctime>
 #include <memory>
 #include <numeric>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -186,26 +188,30 @@ void BasicAucCalculator::calculate_bucket_error() {
 void BoxWrapper::FeedPass(int date,
                           const std::vector<uint64_t>& feasgin_to_box) const {
   int ret = boxps_ptr_->FeedPass(date, feasgin_to_box);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "FeedPass failed in BoxPS."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::PreconditionNotMet("FeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) const {
   int ret = boxps_ptr_->BeginFeedPass(date, *agent);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "BeginFeedPass failed in BoxPS."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::PreconditionNotMet("BeginFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
   int ret = boxps_ptr_->EndFeedPass(agent);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "EndFeedPass failed in BoxPS."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::PreconditionNotMet("EndFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginPass() const {
   int ret = boxps_ptr_->BeginPass();
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "BeginPass failed in BoxPS."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::PreconditionNotMet("BeginPass failed in BoxPS."));
 }
 
 void BoxWrapper::SetTestMode(bool is_test) const {

@@ -41,8 +41,9 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
       is_encoded_(is_encoded),
       nranks_(nranks) {
   // TODO(gongwb) :polish them!
-  PADDLE_ENFORCE_EQ(is_encoded, true, platform::errors::InvalidArgument(
-                                          "The argument is_encoded is false."));
+  PADDLE_ENFORCE_EQ(
+      is_encoded, true,
+      platform::errors::InvalidArgument("The argument is_encoded is false."));
   VLOG(1) << "Use dgc allreduce mode"
           << ", nranks:" << nranks_;
 
@@ -193,11 +194,12 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
 
     sparse_reduce_calls.emplace_back([=] {
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
-                            gather_buff, k, out_tensor_buf,
-                            static_cast<int>(out_numel), nranks_, stream),
-                        true, platform::errors::Unavailable(
-                                  "Calling sparseReduce() failed."));
+      PADDLE_ENFORCE_EQ(
+          paddle::communication::dgc::sparseReduce(
+              gather_buff, k, out_tensor_buf, static_cast<int>(out_numel),
+              nranks_, stream),
+          true,
+          platform::errors::Unavailable("Calling sparseReduce() failed."));
     });
   }
 

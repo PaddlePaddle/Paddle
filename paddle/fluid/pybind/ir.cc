@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -31,18 +33,18 @@
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
-using paddle::framework::ir::Graph;
-using paddle::framework::ir::Node;
-using paddle::framework::ir::NodeComp;
-using paddle::framework::ir::GraphSafeRemoveNodes;
-using paddle::framework::ir::HasCircle;
-using paddle::framework::ir::GraphNum;
-using paddle::framework::ir::TopologySortOperations;
-using paddle::framework::ir::BuildOperationAdjList;
 using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::Scope;
 using paddle::framework::VarDesc;
+using paddle::framework::ir::BuildOperationAdjList;
+using paddle::framework::ir::Graph;
+using paddle::framework::ir::GraphNum;
+using paddle::framework::ir::GraphSafeRemoveNodes;
+using paddle::framework::ir::HasCircle;
+using paddle::framework::ir::Node;
+using paddle::framework::ir::NodeComp;
+using paddle::framework::ir::TopologySortOperations;
 using pybind11::return_value_policy;
 
 namespace paddle {
@@ -104,16 +106,18 @@ void BindGraph(py::module *m) {
            })
       .def("erase", &Graph::Erase)
       .def("nodes", &Graph::Nodes, return_value_policy::reference)
-      .def("create_var_node",
-           [](Graph &self, VarDesc &var_desc) {
-             return self.CreateVarNode(&var_desc);
-           },
-           return_value_policy::reference)
-      .def("create_op_node",
-           [](Graph &self, OpDesc &op_desc) {
-             return self.CreateOpNode(&op_desc);
-           },
-           return_value_policy::reference)
+      .def(
+          "create_var_node",
+          [](Graph &self, VarDesc &var_desc) {
+            return self.CreateVarNode(&var_desc);
+          },
+          return_value_policy::reference)
+      .def(
+          "create_op_node",
+          [](Graph &self, OpDesc &op_desc) {
+            return self.CreateOpNode(&op_desc);
+          },
+          return_value_policy::reference)
       .def("create_control_dep_var", &Graph::CreateControlDepVar,
            return_value_policy::reference)
       .def("create_empty_node", &Graph::CreateEmptyNode,

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 
 #include <string>
+
 #include "boost/blank.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -495,8 +496,9 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
 
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return static_cast<proto::AttrType>(it->second.index() - 1);
 }
 
@@ -599,8 +601,9 @@ void OpDesc::SetAttrMap(
 
 Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 
@@ -854,10 +857,11 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
-                                     "Input(%s) should have only one value, "
-                                     "but it has %d values now.",
-                                     name, length));
+  PADDLE_ENFORCE_EQ(
+      length, 1UL,
+      platform::errors::InvalidArgument("Input(%s) should have only one value, "
+                                        "but it has %d values now.",
+                                        name, length));
   return block_.HasVarRecursive(input_names[0]);
 }
 
@@ -870,10 +874,11 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
-                                     "Output(%s) should have only one value, "
-                                     "but it has %d values now.",
-                                     name, length));
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    platform::errors::InvalidArgument(
+                        "Output(%s) should have only one value, "
+                        "but it has %d values now.",
+                        name, length));
   return block_.HasVarRecursive(output_names[0]);
 }
 

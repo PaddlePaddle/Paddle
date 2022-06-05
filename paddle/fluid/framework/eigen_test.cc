@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/phi/core/ddim.h"
 
 #include <gtest/gtest.h>
+
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {

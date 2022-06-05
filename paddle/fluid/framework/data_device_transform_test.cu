@@ -13,17 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/framework/phi_utils.h"
 
 namespace paddle {
 namespace framework {

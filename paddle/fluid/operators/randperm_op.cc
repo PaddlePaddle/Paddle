@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -29,10 +30,11 @@ class RandpermOp : public framework::OperatorWithKernel {
                           "The output(Out) of randperm op must not be null."));
     int n = ctx->Attrs().Get<int>("n");
     PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument(
-                  "The input 'n' of randperm op should be greater than 0. "
-                  "But received %d.",
-                  n));
+        n, 0,
+        platform::errors::InvalidArgument(
+            "The input 'n' of randperm op should be greater than 0. "
+            "But received %d.",
+            n));
 
     ctx->SetOutputDim("Out", phi::make_ddim({n}));
   }

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
+
 #include <algorithm>
 #include <cstdio>
 
@@ -88,9 +89,10 @@ DeformableConvPlugin::DeformableConvPlugin(
   dilations_.insert(dilations_.end(), dilations.cbegin(), dilations.cend());
   PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
                         data_type_ == nvinfer1::DataType::kHALF,
-                    true, platform::errors::InvalidArgument(
-                              "The DeformableConv TRT Plugin's input type "
-                              "should be float or half."));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
       paddings_.size(), strides_.size(),
       platform::errors::InvalidArgument(
@@ -124,9 +126,10 @@ DeformableConvPlugin::DeformableConvPlugin(
   output_dim_.insert(output_dim_.end(), output_dim.cbegin(), output_dim.cend());
   PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
                         data_type_ == nvinfer1::DataType::kHALF,
-                    true, platform::errors::InvalidArgument(
-                              "The DeformableConv TRT Plugin's input type "
-                              "should be float or half."));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
       paddings_.size(), strides_.size(),
       platform::errors::InvalidArgument(
@@ -363,13 +366,11 @@ __global__ void ModulatedDeformableIm2colGpuKernel<float>(
     const float* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const float* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const float* data_mask_ptr =
-        data_mask +
-        (b_col * deformable_group + deformable_group_index) * kernel_h *
-            kernel_w * height_col * width_col;
+        data_mask + (b_col * deformable_group + deformable_group_index) *
+                        kernel_h * kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -432,13 +433,11 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
     const half* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const half* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const half* data_mask_ptr =
-        data_mask +
-        (b_col * deformable_group + deformable_group_index) * kernel_h *
-            kernel_w * height_col * width_col;
+        data_mask + (b_col * deformable_group + deformable_group_index) *
+                        kernel_h * kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {

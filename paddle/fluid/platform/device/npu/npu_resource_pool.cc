@@ -14,6 +14,7 @@
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
+
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 
 namespace paddle {

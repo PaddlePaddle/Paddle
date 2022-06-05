@@ -442,10 +442,10 @@ inline constexpr remove_reference_t<T> &&move(T &&t) noexcept {
 }
 
 #ifdef MPARK_INTEGER_SEQUENCE
-using std::integer_sequence;
 using std::index_sequence;
-using std::make_index_sequence;
 using std::index_sequence_for;
+using std::integer_sequence;
+using std::make_index_sequence;
 #else
 template <typename T, T... Is>
 struct integer_sequence {
@@ -610,14 +610,14 @@ struct Invoke;
 template <>
 struct Invoke<true /* pmf */, 0 /* is_base_of */> {
   template <typename R, typename T, typename Arg, typename... Args>
-  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&... args)
+  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&...args)
       MPARK_RETURN((lib::forward<Arg>(arg).*pmf)(lib::forward<Args>(args)...))
 };
 
 template <>
 struct Invoke<true /* pmf */, 1 /* is_reference_wrapper */> {
   template <typename R, typename T, typename Arg, typename... Args>
-  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&... args)
+  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&...args)
       MPARK_RETURN((lib::forward<Arg>(arg).get().*
                     pmf)(lib::forward<Args>(args)...))
 };
@@ -625,7 +625,7 @@ struct Invoke<true /* pmf */, 1 /* is_reference_wrapper */> {
 template <>
 struct Invoke<true /* pmf */, 2 /* otherwise */> {
   template <typename R, typename T, typename Arg, typename... Args>
-  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&... args)
+  inline static constexpr auto invoke(R T::*pmf, Arg &&arg, Args &&...args)
       MPARK_RETURN(((*lib::forward<Arg>(arg)).*
                     pmf)(lib::forward<Args>(args)...))
 };
@@ -652,27 +652,29 @@ struct Invoke<false /* pmo */, 2 /* otherwise */> {
 };
 
 template <typename R, typename T, typename Arg, typename... Args>
-inline constexpr auto invoke(R T::*f, Arg &&arg, Args &&... args) MPARK_RETURN(
-    Invoke<std::is_function<R>::value,
-           (std::is_base_of<T, lib::decay_t<Arg>>::value
-                ? 0
-                : is_reference_wrapper<lib::decay_t<Arg>>::value ? 1 : 2)>::
-        invoke(f, lib::forward<Arg>(arg), lib::forward<Args>(args)...))
+inline constexpr auto invoke(R T::*f, Arg &&arg, Args &&...args)
+    MPARK_RETURN(Invoke<std::is_function<R>::value,
+                        (std::is_base_of<T, lib::decay_t<Arg>>::value ? 0
+                         : is_reference_wrapper<lib::decay_t<Arg>>::value
+                             ? 1
+                             : 2)>::invoke(f,
+                                           lib::forward<Arg>(arg),
+                                           lib::forward<Args>(args)...))
 
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4100)
 #endif
-    template <typename F, typename... Args>
-    inline constexpr auto invoke(F &&f, Args &&... args)
-        MPARK_RETURN(lib::forward<F>(f)(lib::forward<Args>(args)...))
+        template <typename F, typename... Args>
+        inline constexpr auto invoke(F &&f, Args &&...args)
+            MPARK_RETURN(lib::forward<F>(f)(lib::forward<Args>(args)...))
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 }  // namespace detail
 
 template <typename F, typename... Args>
-inline constexpr auto invoke(F &&f, Args &&... args)
+inline constexpr auto invoke(F &&f, Args &&...args)
     MPARK_RETURN(detail::invoke(lib::forward<F>(f),
                                 lib::forward<Args>(args)...))
 
@@ -855,10 +857,10 @@ using type_pack_element_t = typename type_pack_element<I, Ts...>::type;
 #endif
 
 #ifdef MPARK_TRIVIALITY_TYPE_TRAITS
-using std::is_trivially_copy_constructible;
-using std::is_trivially_move_constructible;
 using std::is_trivially_copy_assignable;
+using std::is_trivially_copy_constructible;
 using std::is_trivially_move_assignable;
+using std::is_trivially_move_constructible;
 #else
 template <typename T>
 struct is_trivially_copy_constructible
@@ -1062,12 +1064,14 @@ struct valueless_t {};
 enum class Trait { TriviallyAvailable, Available, Unavailable };
 
 template <typename T,
-          template <typename> class IsTriviallyAvailable,
-          template <typename> class IsAvailable>
+          template <typename>
+          class IsTriviallyAvailable,
+          template <typename>
+          class IsAvailable>
 inline constexpr Trait trait() {
-  return IsTriviallyAvailable<T>::value
-             ? Trait::TriviallyAvailable
-             : IsAvailable<T>::value ? Trait::Available : Trait::Unavailable;
+  return IsTriviallyAvailable<T>::value ? Trait::TriviallyAvailable
+         : IsAvailable<T>::value        ? Trait::Available
+                                        : Trait::Unavailable;
 }
 
 #ifdef MPARK_CPP14_CONSTEXPR
@@ -1208,7 +1212,7 @@ struct base {
 
     template <typename Visitor, typename... Alts>
     inline static constexpr DECLTYPE_AUTO invoke(Visitor &&visitor,
-                                                 Alts &&... alts)
+                                                 Alts &&...alts)
         DECLTYPE_AUTO_RETURN(lib::invoke(lib::forward<Visitor>(visitor),
                                          lib::forward<Alts>(alts)...))
   };
@@ -1243,12 +1247,12 @@ struct base {
   struct dispatcher<true, R, ITs...> {
     template <std::size_t B, typename F>
     MPARK_ALWAYS_INLINE static constexpr R dispatch(
-        F &&f, typename ITs::type &&... visited_vs) {
+        F &&f, typename ITs::type &&...visited_vs) {
       using Expected = R;
-      using Actual = decltype(
-          lib::invoke(lib::forward<F>(f),
-                      access::base::get_alt<ITs::value>(
-                          lib::forward<typename ITs::type>(visited_vs))...));
+      using Actual = decltype(lib::invoke(
+          lib::forward<F>(f),
+          access::base::get_alt<ITs::value>(
+              lib::forward<typename ITs::type>(visited_vs))...));
       return visit_return_type_check<Expected, Actual>::invoke(
           lib::forward<F>(f),
           access::base::get_alt<ITs::value>(
@@ -1257,7 +1261,7 @@ struct base {
 
     template <std::size_t B, typename F, typename V, typename... Vs>
     MPARK_ALWAYS_INLINE static constexpr R dispatch(
-        F &&f, typename ITs::type &&... visited_vs, V &&v, Vs &&... vs) {
+        F &&f, typename ITs::type &&...visited_vs, V &&v, Vs &&...vs) {
 #define MPARK_DISPATCH(I)                                                   \
   dispatcher<(I < lib::decay_t<V>::size()),                                 \
              R,                                                             \
@@ -1349,11 +1353,11 @@ struct base {
     }
 
     template <std::size_t I, typename F, typename... Vs>
-    MPARK_ALWAYS_INLINE static constexpr R dispatch_case(F &&f, Vs &&... vs) {
+    MPARK_ALWAYS_INLINE static constexpr R dispatch_case(F &&f, Vs &&...vs) {
       using Expected = R;
-      using Actual = decltype(
-          lib::invoke(lib::forward<F>(f),
-                      access::base::get_alt<I>(lib::forward<Vs>(vs))...));
+      using Actual = decltype(lib::invoke(
+          lib::forward<F>(f),
+          access::base::get_alt<I>(lib::forward<Vs>(vs))...));
       return visit_return_type_check<Expected, Actual>::invoke(
           lib::forward<F>(f),
           access::base::get_alt<I>(lib::forward<Vs>(vs))...);
@@ -1363,7 +1367,7 @@ struct base {
     MPARK_ALWAYS_INLINE static constexpr R dispatch_at(std::size_t index,
                                                        F &&f,
                                                        V &&v,
-                                                       Vs &&... vs) {
+                                                       Vs &&...vs) {
       static_assert(lib::all<(lib::decay_t<V>::size() ==
                               lib::decay_t<Vs>::size())...>::value,
                     "all of the variants must be the same size.");
@@ -1462,7 +1466,7 @@ struct base {
 
   template <typename F, typename... Fs>
   inline static constexpr lib::array<lib::decay_t<F>, sizeof...(Fs) + 1>
-  make_farray(F &&f, Fs &&... fs) {
+  make_farray(F &&f, Fs &&...fs) {
     return {{lib::forward<F>(f), lib::forward<Fs>(fs)...}};
   }
 
@@ -1470,11 +1474,11 @@ struct base {
   struct make_fmatrix_impl {
     template <std::size_t... Is>
     inline static constexpr dispatch_result_t<F, Vs...> dispatch(F &&f,
-                                                                 Vs &&... vs) {
+                                                                 Vs &&...vs) {
       using Expected = dispatch_result_t<F, Vs...>;
-      using Actual = decltype(
-          lib::invoke(lib::forward<F>(f),
-                      access::base::get_alt<Is>(lib::forward<Vs>(vs))...));
+      using Actual = decltype(lib::invoke(
+          lib::forward<F>(f),
+          access::base::get_alt<Is>(lib::forward<Vs>(vs))...));
       return visit_return_type_check<Expected, Actual>::invoke(
           lib::forward<F>(f),
           access::base::get_alt<Is>(lib::forward<Vs>(vs))...);
@@ -1528,11 +1532,11 @@ struct base {
   struct make_fdiagonal_impl {
     template <std::size_t I>
     inline static constexpr dispatch_result_t<F, Vs...> dispatch(F &&f,
-                                                                 Vs &&... vs) {
+                                                                 Vs &&...vs) {
       using Expected = dispatch_result_t<F, Vs...>;
-      using Actual = decltype(
-          lib::invoke(lib::forward<F>(f),
-                      access::base::get_alt<I>(lib::forward<Vs>(vs))...));
+      using Actual = decltype(lib::invoke(
+          lib::forward<F>(f),
+          access::base::get_alt<I>(lib::forward<Vs>(vs))...));
       return visit_return_type_check<Expected, Actual>::invoke(
           lib::forward<F>(f),
           access::base::get_alt<I>(lib::forward<Vs>(vs))...);
@@ -1584,8 +1588,7 @@ constexpr fdiagonal_t<F, Vs...> fdiagonal<F, Vs...>::value;
 
 struct alt {
   template <typename Visitor, typename... Vs>
-  inline static constexpr DECLTYPE_AUTO visit_alt(Visitor &&visitor,
-                                                  Vs &&... vs)
+  inline static constexpr DECLTYPE_AUTO visit_alt(Visitor &&visitor, Vs &&...vs)
 #ifdef MPARK_VARIANT_SWITCH_VISIT
       DECLTYPE_AUTO_RETURN(
           base::dispatcher<true,
@@ -1610,7 +1613,7 @@ struct alt {
 
           template <typename Visitor, typename... Vs>
           inline static constexpr DECLTYPE_AUTO
-      visit_alt_at(std::size_t index, Visitor &&visitor, Vs &&... vs)
+      visit_alt_at(std::size_t index, Visitor &&visitor, Vs &&...vs)
 #ifdef MPARK_VARIANT_SWITCH_VISIT
           DECLTYPE_AUTO_RETURN(
               base::dispatcher<
@@ -1653,7 +1656,7 @@ struct variant {
                   "`visit` requires the visitor to be exhaustive.");
 
     inline static constexpr DECLTYPE_AUTO invoke(Visitor &&visitor,
-                                                 Values &&... values)
+                                                 Values &&...values)
         DECLTYPE_AUTO_RETURN(lib::invoke(lib::forward<Visitor>(visitor),
                                          lib::forward<Values>(values)...))
   };
@@ -1663,7 +1666,7 @@ struct variant {
     Visitor &&visitor_;
 
     template <typename... Alts>
-    inline constexpr DECLTYPE_AUTO operator()(Alts &&... alts) const
+    inline constexpr DECLTYPE_AUTO operator()(Alts &&...alts) const
         DECLTYPE_AUTO_RETURN(visit_exhaustiveness_check<
                              Visitor,
                              decltype((lib::forward<Alts>(alts).value))...>::
@@ -1678,13 +1681,13 @@ struct variant {
           public
       : template <typename Visitor, typename... Vs>
         inline static constexpr DECLTYPE_AUTO
-        visit_alt(Visitor &&visitor, Vs &&... vs)
+        visit_alt(Visitor &&visitor, Vs &&...vs)
             DECLTYPE_AUTO_RETURN(alt::visit_alt(lib::forward<Visitor>(visitor),
                                                 lib::forward<Vs>(vs).impl_...))
 
                 template <typename Visitor, typename... Vs>
                 inline static constexpr DECLTYPE_AUTO
-        visit_alt_at(std::size_t index, Visitor &&visitor, Vs &&... vs)
+        visit_alt_at(std::size_t index, Visitor &&visitor, Vs &&...vs)
             DECLTYPE_AUTO_RETURN(
                 alt::visit_alt_at(index,
                                   lib::forward<Visitor>(visitor),
@@ -1692,13 +1695,13 @@ struct variant {
 
                 template <typename Visitor, typename... Vs>
                 inline static constexpr DECLTYPE_AUTO
-        visit_value(Visitor &&visitor, Vs &&... vs) DECLTYPE_AUTO_RETURN(
+        visit_value(Visitor &&visitor, Vs &&...vs) DECLTYPE_AUTO_RETURN(
             visit_alt(make_value_visitor(lib::forward<Visitor>(visitor)),
                       lib::forward<Vs>(vs)...))
 
             template <typename Visitor, typename... Vs>
             inline static constexpr DECLTYPE_AUTO
-        visit_value_at(std::size_t index, Visitor &&visitor, Vs &&... vs)
+        visit_value_at(std::size_t index, Visitor &&visitor, Vs &&...vs)
             DECLTYPE_AUTO_RETURN(
                 visit_alt_at(index,
                              make_value_visitor(lib::forward<Visitor>(visitor)),
@@ -1716,7 +1719,7 @@ struct alt {
 #pragma warning(disable : 4244)
 #endif
   template <typename... Args>
-  inline explicit constexpr alt(in_place_t, Args &&... args)
+  inline explicit constexpr alt(in_place_t, Args &&...args)
       : value(lib::forward<Args>(args)...) {}
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -1740,12 +1743,12 @@ union recursive_union<DestructibleTrait, Index> {};
                                                                            \
     template <typename... Args>                                            \
     inline explicit constexpr recursive_union(in_place_index_t<0>,         \
-                                              Args &&... args)             \
+                                              Args &&...args)              \
         : head_(in_place_t{}, lib::forward<Args>(args)...) {}              \
                                                                            \
     template <std::size_t I, typename... Args>                             \
     inline explicit constexpr recursive_union(in_place_index_t<I>,         \
-                                              Args &&... args)             \
+                                              Args &&...args)              \
         : tail_(in_place_index_t<I - 1>{}, lib::forward<Args>(args)...) {} \
                                                                            \
     recursive_union(const recursive_union &) = default;                    \
@@ -1778,11 +1781,10 @@ template <Trait DestructibleTrait, typename... Ts>
 class base {
  public:
   inline explicit constexpr base(valueless_t tag) noexcept
-      : data_(tag),
-        index_(static_cast<index_t>(-1)) {}
+      : data_(tag), index_(static_cast<index_t>(-1)) {}
 
   template <std::size_t I, typename... Args>
-  inline explicit constexpr base(in_place_index_t<I>, Args &&... args)
+  inline explicit constexpr base(in_place_index_t<I>, Args &&...args)
       : data_(in_place_index_t<I>{}, lib::forward<Args>(args)...), index_(I) {}
 
   inline constexpr bool valueless_by_exception() const noexcept {
@@ -1836,9 +1838,9 @@ struct dtor {
 #if !defined(_MSC_VER) || _MSC_VER >= 1910
 #define MPARK_INHERITING_CTOR(type, base) using base::base;
 #else
-#define MPARK_INHERITING_CTOR(type, base)         \
-  template <typename... Args>                     \
-  inline explicit constexpr type(Args &&... args) \
+#define MPARK_INHERITING_CTOR(type, base)        \
+  template <typename... Args>                    \
+  inline explicit constexpr type(Args &&...args) \
       : base(lib::forward<Args>(args)...) {}
 #endif
 
@@ -1864,19 +1866,21 @@ class destructor;
     destroy                                                               \
   }
 
-MPARK_VARIANT_DESTRUCTOR(Trait::TriviallyAvailable, ~destructor() = default;
-                         , inline void destroy() noexcept {
-                           this->index_ = static_cast<index_t>(-1);
-                         });
+MPARK_VARIANT_DESTRUCTOR(
+    Trait::TriviallyAvailable, ~destructor() = default;
+    , inline void destroy() noexcept {
+      this->index_ = static_cast<index_t>(-1);
+    });
 
-MPARK_VARIANT_DESTRUCTOR(Trait::Available,
-                         ~destructor() { destroy(); },
-                         inline void destroy() noexcept {
-                           if (!this->valueless_by_exception()) {
-                             visitation::alt::visit_alt(dtor{}, *this);
-                           }
-                           this->index_ = static_cast<index_t>(-1);
-                         });
+MPARK_VARIANT_DESTRUCTOR(
+    Trait::Available,
+    ~destructor() { destroy(); },
+    inline void destroy() noexcept {
+      if (!this->valueless_by_exception()) {
+        visitation::alt::visit_alt(dtor{}, *this);
+      }
+      this->index_ = static_cast<index_t>(-1);
+    });
 
 MPARK_VARIANT_DESTRUCTOR(Trait::Unavailable, ~destructor() = delete;
                          , inline void destroy() noexcept = delete;);
@@ -1902,7 +1906,7 @@ class constructor : public destructor<Traits> {
 #endif
 
   template <std::size_t I, typename T, typename... Args>
-  inline static T &construct_alt(alt<I, T> &a, Args &&... args) {
+  inline static T &construct_alt(alt<I, T> &a, Args &&...args) {
     auto *result = ::new (static_cast<void *>(lib::addressof(a)))
         alt<I, T>(in_place_t{}, lib::forward<Args>(args)...);
     return result->value;
@@ -1989,11 +1993,11 @@ MPARK_VARIANT_COPY_CONSTRUCTOR(
     Trait::TriviallyAvailable,
     copy_constructor(const copy_constructor &that) = default;);
 
-MPARK_VARIANT_COPY_CONSTRUCTOR(Trait::Available,
-                               copy_constructor(const copy_constructor &that)
-                               : copy_constructor(valueless_t{}) {
-                                 this->generic_construct(*this, that);
-                               });
+MPARK_VARIANT_COPY_CONSTRUCTOR(
+    Trait::Available, copy_constructor(const copy_constructor &that)
+    : copy_constructor(valueless_t{}) {
+      this->generic_construct(*this, that);
+    });
 
 MPARK_VARIANT_COPY_CONSTRUCTOR(
     Trait::Unavailable, copy_constructor(const copy_constructor &) = delete;);
@@ -2009,7 +2013,7 @@ class assignment : public copy_constructor<Traits> {
   using super::operator=;
 
   template <std::size_t I, typename... Args>
-  inline /* auto & */ auto emplace(Args &&... args)
+  inline /* auto & */ auto emplace(Args &&...args)
       -> decltype(this->construct_alt(access::base::get_alt<I>(*this),
                                       lib::forward<Args>(args)...)) {
     this->destroy();
@@ -2174,18 +2178,19 @@ class impl : public copy_assignment<traits<Ts...>> {
     if (this->valueless_by_exception() && that.valueless_by_exception()) {
       // do nothing.
     } else if (this->index() == that.index()) {
-      visitation::alt::visit_alt_at(this->index(),
+      visitation::alt::visit_alt_at(
+          this->index(),
 #ifdef MPARK_GENERIC_LAMBDAS
-                                    [](auto &this_alt, auto &that_alt) {
-                                      using std::swap;
-                                      swap(this_alt.value, that_alt.value);
-                                    }
+          [](auto &this_alt, auto &that_alt) {
+            using std::swap;
+            swap(this_alt.value, that_alt.value);
+          }
 #else
-                                    swapper {}
+          swapper {}
 #endif
-                                    ,
-                                    *this,
-                                    that);
+          ,
+          *this,
+          that);
     } else {
       impl *lhs = this;
       impl *rhs = lib::addressof(that);
@@ -2288,7 +2293,7 @@ struct is_in_place_type : std::false_type {};
 template <typename T>
 struct is_in_place_type<in_place_type_t<T>> : std::true_type {};
 
-}  // detail
+}  // namespace detail
 
 template <typename... Ts>
 class variant {
@@ -2334,8 +2339,7 @@ class variant {
             lib::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
   inline explicit constexpr variant(
       in_place_index_t<I>,
-      Args
-          &&... args) noexcept(std::is_nothrow_constructible<T, Args...>::value)
+      Args &&...args) noexcept(std::is_nothrow_constructible<T, Args...>::value)
       : impl_(in_place_index_t<I>{}, lib::forward<Args>(args)...) {}
 
   template <
@@ -2349,11 +2353,11 @@ class variant {
   inline explicit constexpr variant(
       in_place_index_t<I>,
       std::initializer_list<Up> il,
-      Args &&... args) noexcept(std::
-                                    is_nothrow_constructible<
-                                        T,
-                                        std::initializer_list<Up> &,
-                                        Args...>::value)
+      Args &&...args) noexcept(std::
+                                   is_nothrow_constructible<
+                                       T,
+                                       std::initializer_list<Up> &,
+                                       Args...>::value)
       : impl_(in_place_index_t<I>{}, il, lib::forward<Args>(args)...) {}
 
   template <typename T,
@@ -2362,8 +2366,7 @@ class variant {
             lib::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
   inline explicit constexpr variant(
       in_place_type_t<T>,
-      Args
-          &&... args) noexcept(std::is_nothrow_constructible<T, Args...>::value)
+      Args &&...args) noexcept(std::is_nothrow_constructible<T, Args...>::value)
       : impl_(in_place_index_t<I>{}, lib::forward<Args>(args)...) {}
 
   template <
@@ -2377,11 +2380,11 @@ class variant {
   inline explicit constexpr variant(
       in_place_type_t<T>,
       std::initializer_list<Up> il,
-      Args &&... args) noexcept(std::
-                                    is_nothrow_constructible<
-                                        T,
-                                        std::initializer_list<Up> &,
-                                        Args...>::value)
+      Args &&...args) noexcept(std::
+                                   is_nothrow_constructible<
+                                       T,
+                                       std::initializer_list<Up> &,
+                                       Args...>::value)
       : impl_(in_place_index_t<I>{}, il, lib::forward<Args>(args)...) {}
 
   ~variant() = default;
@@ -2408,7 +2411,7 @@ class variant {
             typename... Args,
             typename T = lib::type_pack_element_t<I, Ts...>,
             lib::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
-  inline T &emplace(Args &&... args) {
+  inline T &emplace(Args &&...args) {
     return impl_.template emplace<I>(lib::forward<Args>(args)...);
   }
 
@@ -2420,7 +2423,7 @@ class variant {
       lib::enable_if_t<
           std::is_constructible<T, std::initializer_list<Up> &, Args...>::value,
           int> = 0>
-  inline T &emplace(std::initializer_list<Up> il, Args &&... args) {
+  inline T &emplace(std::initializer_list<Up> il, Args &&...args) {
     return impl_.template emplace<I>(il, lib::forward<Args>(args)...);
   }
 
@@ -2428,7 +2431,7 @@ class variant {
             typename... Args,
             std::size_t I = detail::find_index_sfinae<T, Ts...>::value,
             lib::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
-  inline T &emplace(Args &&... args) {
+  inline T &emplace(Args &&...args) {
     return impl_.template emplace<I>(lib::forward<Args>(args)...);
   }
 
@@ -2440,7 +2443,7 @@ class variant {
       lib::enable_if_t<
           std::is_constructible<T, std::initializer_list<Up> &, Args...>::value,
           int> = 0>
-  inline T &emplace(std::initializer_list<Up> il, Args &&... args) {
+  inline T &emplace(std::initializer_list<Up> il, Args &&...args) {
     return impl_.template emplace<I>(il, lib::forward<Args>(args)...);
   }
 
@@ -2547,10 +2550,10 @@ inline constexpr const T &&get(const variant<Ts...> &&v) {
 namespace detail {
 
 template <std::size_t I, typename V>
-inline constexpr /* auto * */ AUTO generic_get_if(V *v) noexcept AUTO_RETURN(
-    v &&holds_alternative<I>(*v)
-        ? lib::addressof(access::variant::get_alt<I>(*v).value)
-        : nullptr)
+inline constexpr /* auto * */ AUTO generic_get_if(V *v) noexcept
+    AUTO_RETURN(v &&holds_alternative<I>(*v)
+                    ? lib::addressof(access::variant::get_alt<I>(*v).value)
+                    : nullptr)
 
 }  // namespace detail
 
@@ -2733,7 +2736,7 @@ inline constexpr bool all(const lib::array<bool, N> &bs) {
 }  // namespace detail
 
 template <typename Visitor, typename... Vs>
-inline constexpr DECLTYPE_AUTO visit(Visitor &&visitor, Vs &&... vs)
+inline constexpr DECLTYPE_AUTO visit(Visitor &&visitor, Vs &&...vs)
     DECLTYPE_AUTO_RETURN(
         (detail::all(lib::array<bool, sizeof...(Vs)>{
              {!vs.valueless_by_exception()...}})

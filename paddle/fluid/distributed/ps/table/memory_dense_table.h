@@ -17,7 +17,9 @@
 #include <ThreadPool.h>
 #include <assert.h>
 #include <pthread.h>
+
 #include <string>
+
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"

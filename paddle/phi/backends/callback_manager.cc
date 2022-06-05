@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/callback_manager.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include <ThreadPool.h>
+
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace phi {
 

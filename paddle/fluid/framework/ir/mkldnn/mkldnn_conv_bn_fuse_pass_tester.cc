@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <boost/logic/tribool.hpp>
 #include <random>
 #include <string>
 #include <unordered_set>
-
-#include <boost/logic/tribool.hpp>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"

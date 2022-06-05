@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"

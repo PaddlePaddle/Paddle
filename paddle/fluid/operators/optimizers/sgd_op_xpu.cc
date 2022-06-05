@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include <string>
+
+#include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {

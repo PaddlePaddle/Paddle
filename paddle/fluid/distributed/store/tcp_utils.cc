@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/store/tcp_utils.h"
+
 #include <cerrno>
 #include <cstring>
 #include <thread>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -51,12 +53,13 @@ void close_socket(SocketType socket) {
   int n;
   n = ::getaddrinfo(node, port_cstr, &hints, &res);
   const char* gai_err = ::gai_strerror(n);
-  const char* proto =
-      (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");
-  PADDLE_ENFORCE_EQ(
-      n, 0, platform::errors::InvalidArgument(
-                "%s network %s:%s cannot be obtained. Details: %s.", proto,
-                host, port, gai_err));
+  const char* proto = (family == AF_INET    ? "IPv4"
+                       : family == AF_INET6 ? "IPv6"
+                                            : "");
+  PADDLE_ENFORCE_EQ(n, 0,
+                    platform::errors::InvalidArgument(
+                        "%s network %s:%s cannot be obtained. Details: %s.",
+                        proto, host, port, gai_err));
 
   return res;
 }
@@ -79,10 +82,11 @@ SocketType tcp_connect(const std::string host, const std::string port,
   do {
     for (::addrinfo* cur = res; cur != nullptr; cur = cur->ai_next) {
       sockfd = ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
-      PADDLE_ENFORCE_GT(sockfd, 0, platform::errors::InvalidArgument(
-                                       "Create socket to connect %s:%s failed. "
-                                       "Details: %s. ",
-                                       host, port, socket_error().message()));
+      PADDLE_ENFORCE_GT(sockfd, 0,
+                        platform::errors::InvalidArgument(
+                            "Create socket to connect %s:%s failed. "
+                            "Details: %s. ",
+                            host, port, socket_error().message()));
 
       if (::connect(sockfd, cur->ai_addr, cur->ai_addrlen) == 0) {
         retry = false;

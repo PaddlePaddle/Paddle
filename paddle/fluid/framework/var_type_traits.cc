@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/var_type_traits.h"
+
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
@@ -25,6 +26,7 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include <cudnn.h>
+
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
@@ -40,6 +42,8 @@
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
+
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 
 namespace paddle {
 namespace framework {

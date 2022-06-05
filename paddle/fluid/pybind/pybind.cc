@@ -604,6 +604,8 @@ PYBIND11_MODULE(core_noavx, m) {
                         place, static_cast<cudaStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def_static("gen_new_memory_pool_id",
+                  &platform::CUDAGraph::UniqueMemoryPoolID)
       .def("replay", &platform::CUDAGraph::Replay)
       .def("reset", &platform::CUDAGraph::Reset)
       .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
@@ -691,56 +693,56 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def("_get_all_register_op_kernels",
-        [](const std::string &lib) {
-          std::unordered_map<std::string, std::vector<std::string>>
-              all_kernels_info;
-          if (lib == "fluid" || lib == "all") {
-            auto &all_kernels =
-                paddle::framework::OperatorWithKernel::AllOpKernels();
+  m.def(
+      "_get_all_register_op_kernels",
+      [](const std::string &lib) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        if (lib == "fluid" || lib == "all") {
+          auto &all_kernels =
+              paddle::framework::OperatorWithKernel::AllOpKernels();
 
-            for (auto &kernel_pair : all_kernels) {
-              auto op_type = kernel_pair.first;
-              std::vector<std::string> kernel_types;
-              for (auto &info_pair : kernel_pair.second) {
-                paddle::framework::OpKernelType kernel_type = info_pair.first;
-                kernel_types.emplace_back(
-                    paddle::framework::KernelTypeToString(kernel_type));
+          for (auto &kernel_pair : all_kernels) {
+            auto op_type = kernel_pair.first;
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              paddle::framework::OpKernelType kernel_type = info_pair.first;
+              kernel_types.emplace_back(
+                  paddle::framework::KernelTypeToString(kernel_type));
+            }
+            all_kernels_info.emplace(op_type, kernel_types);
+          }
+        }
+        if (lib == "phi" || lib == "all") {
+          auto phi_kernels = phi::KernelFactory::Instance().kernels();
+          for (auto &kernel_pair : phi_kernels) {
+            auto op_type = phi::TransToFluidOpName(kernel_pair.first);
+            std::vector<std::string> kernel_types;
+            for (auto &info_pair : kernel_pair.second) {
+              framework::OpKernelType kernel_type =
+                  framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
+              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
+              if (all_kernels_info.count(op_type)) {
+                if (std::find(all_kernels_info[op_type].begin(),
+                              all_kernels_info[op_type].end(),
+                              kernel_type_str) ==
+                    all_kernels_info[op_type].end()) {
+                  all_kernels_info[op_type].emplace_back(kernel_type_str);
+                }
+              } else {
+                kernel_types.emplace_back(kernel_type_str);
               }
+            }
+            if (!kernel_types.empty()) {
               all_kernels_info.emplace(op_type, kernel_types);
             }
           }
-          if (lib == "phi" || lib == "all") {
-            auto phi_kernels = phi::KernelFactory::Instance().kernels();
-            for (auto &kernel_pair : phi_kernels) {
-              auto op_type = phi::TransToFluidOpName(kernel_pair.first);
-              std::vector<std::string> kernel_types;
-              for (auto &info_pair : kernel_pair.second) {
-                framework::OpKernelType kernel_type =
-                    framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-                auto kernel_type_str =
-                    framework::KernelTypeToString(kernel_type);
-                if (all_kernels_info.count(op_type)) {
-                  if (std::find(all_kernels_info[op_type].begin(),
-                                all_kernels_info[op_type].end(),
-                                kernel_type_str) ==
-                      all_kernels_info[op_type].end()) {
-                    all_kernels_info[op_type].emplace_back(kernel_type_str);
-                  }
-                } else {
-                  kernel_types.emplace_back(kernel_type_str);
-                }
-              }
-              if (!kernel_types.empty()) {
-                all_kernels_info.emplace(op_type, kernel_types);
-              }
-            }
-          }
+        }
 
-          return all_kernels_info;
-        },
-        py::arg("lib") = "all",
-        R"DOC(
+        return all_kernels_info;
+      },
+      py::arg("lib") = "all",
+      R"DOC(
            Return the registered kernels in paddle.
 
            Args:
@@ -1009,9 +1011,10 @@ PYBIND11_MODULE(core_noavx, m) {
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
 
-      .def("shape",
-           [](framework::Tensor &self) { return vectorize(self.dims()); },
-           R"DOC(
+      .def(
+          "shape",
+          [](framework::Tensor &self) { return vectorize(self.dims()); },
+          R"DOC(
            Return the shape of Tensor.
 
            Returns:
@@ -1099,20 +1102,21 @@ PYBIND11_MODULE(core_noavx, m) {
       // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
-      .def("set_lod",
-           [](framework::Tensor &self,
-              const std::vector<std::vector<size_t>> &lod) {
-             // the input lod is offset-based level-of-detail info
-             LoD new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             PADDLE_ENFORCE_EQ(
-                 CheckLoD(new_lod, vectorize(self.dims()).front()), true,
-                 platform::errors::InvalidArgument(
-                     "The provided LoD is invalid, the LoD is %s", new_lod));
-             self.set_lod(new_lod);
-           },
-           py::arg("lod"), R"DOC(
+      .def(
+          "set_lod",
+          [](framework::Tensor &self,
+             const std::vector<std::vector<size_t>> &lod) {
+            // the input lod is offset-based level-of-detail info
+            LoD new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            PADDLE_ENFORCE_EQ(
+                CheckLoD(new_lod, vectorize(self.dims()).front()), true,
+                platform::errors::InvalidArgument(
+                    "The provided LoD is invalid, the LoD is %s", new_lod));
+            self.set_lod(new_lod);
+          },
+          py::arg("lod"), R"DOC(
            Set LoD of the Tensor.
 
            Args:
@@ -1132,28 +1136,29 @@ PYBIND11_MODULE(core_noavx, m) {
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
-      .def("set_recursive_sequence_lengths",
-           [](framework::Tensor &self, const std::vector<std::vector<size_t>>
-                                           &recursive_sequence_lengths) {
-             // the input recursive_sequence_lengths is length-based
-             // level-of-detail info
-             LoD new_lod;
-             new_lod.reserve(recursive_sequence_lengths.size());
-             std::copy(recursive_sequence_lengths.begin(),
-                       recursive_sequence_lengths.end(),
-                       std::back_inserter(new_lod));
-             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE_EQ(
-                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
-                 platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is "
-                     "invalid, "
-                     "the LoD converted by recursive_sequence_lengths is "
-                     "%s",
-                     new_lod));
-             self.set_lod(new_offset_lod);
-           },
-           py::arg("recursive_sequence_lengths"), R"DOC(
+      .def(
+          "set_recursive_sequence_lengths",
+          [](framework::Tensor &self, const std::vector<std::vector<size_t>>
+                                          &recursive_sequence_lengths) {
+            // the input recursive_sequence_lengths is length-based
+            // level-of-detail info
+            LoD new_lod;
+            new_lod.reserve(recursive_sequence_lengths.size());
+            std::copy(recursive_sequence_lengths.begin(),
+                      recursive_sequence_lengths.end(),
+                      std::back_inserter(new_lod));
+            LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+            PADDLE_ENFORCE_EQ(
+                CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
+                platform::errors::InvalidArgument(
+                    "The provided recursive_sequence_lengths info is "
+                    "invalid, "
+                    "the LoD converted by recursive_sequence_lengths is "
+                    "%s",
+                    new_lod));
+            self.set_lod(new_offset_lod);
+          },
+          py::arg("recursive_sequence_lengths"), R"DOC(
            Set LoD of the Tensor according to recursive sequence lengths.
 
            For example, if recursive_sequence_lengths=[[2, 3]], which means
@@ -1178,16 +1183,17 @@ PYBIND11_MODULE(core_noavx, m) {
                  print(t.recursive_sequence_lengths())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
            )DOC")
-      .def("lod",
-           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
-             // output the offset-based lod info
-             LoD lod = self.lod();
-             std::vector<std::vector<size_t>> new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             return new_lod;
-           },
-           R"DOC(
+      .def(
+          "lod",
+          [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
+            // output the offset-based lod info
+            LoD lod = self.lod();
+            std::vector<std::vector<size_t>> new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            return new_lod;
+          },
+          R"DOC(
            Return the LoD of the Tensor.
 
            Returns:
@@ -1205,16 +1211,17 @@ PYBIND11_MODULE(core_noavx, m) {
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
       // Set above comments of set_lod.
-      .def("recursive_sequence_lengths",
-           [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
-             // output the length-based lod info
-             LoD lod = phi::ConvertToLengthBasedLoD(self.lod());
-             std::vector<std::vector<size_t>> new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             return new_lod;
-           },
-           R"DOC(
+      .def(
+          "recursive_sequence_lengths",
+          [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
+            // output the length-based lod info
+            LoD lod = phi::ConvertToLengthBasedLoD(self.lod());
+            std::vector<std::vector<size_t>> new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            return new_lod;
+          },
+          R"DOC(
            Return the recursive sequence lengths corresponding to of the LodD 
            of the Tensor.
 
@@ -1232,13 +1239,14 @@ PYBIND11_MODULE(core_noavx, m) {
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
-      .def("has_valid_recursive_sequence_lengths",
-           [](framework::Tensor &self) -> bool {
-             // Check that the lod info is valid and match the outermost
-             // dimension of the Tensor data
-             return CheckLoD(self.lod(), vectorize(self.dims()).front());
-           },
-           R"DOC(
+      .def(
+          "has_valid_recursive_sequence_lengths",
+          [](framework::Tensor &self) -> bool {
+            // Check that the lod info is valid and match the outermost
+            // dimension of the Tensor data
+            return CheckLoD(self.lod(), vectorize(self.dims()).front());
+          },
+          R"DOC(
            Check whether the LoD of the Tensor is valid.
 
            Returns:
@@ -1622,9 +1630,10 @@ PYBIND11_MODULE(core_noavx, m) {
               const int64_t &height) {
              new (&instance) phi::SelectedRows(rows, height);
            })
-      .def("get_tensor",
-           [](phi::SelectedRows &self) { return self.mutable_value(); },
-           py::return_value_policy::reference)
+      .def(
+          "get_tensor",
+          [](phi::SelectedRows &self) { return self.mutable_value(); },
+          py::return_value_policy::reference)
       .def("numel",
            [](phi::SelectedRows &self) -> int64_t {
              return self.value().numel();
@@ -1666,11 +1675,12 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("get_float",
            [](const Variable &var) -> float { return var.Get<float>(); })
-      .def("get_tensor",
-           [](Variable &self) -> LoDTensor * {
-             return self.GetMutable<LoDTensor>();
-           },
-           py::return_value_policy::reference)
+      .def(
+          "get_tensor",
+          [](Variable &self) -> LoDTensor * {
+            return self.GetMutable<LoDTensor>();
+          },
+          py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
              return py::bytes(*self.GetMutable<std::string>());
@@ -1681,53 +1691,60 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("set_vocab", [](Variable &self,
                            Vocab vocab) { *self.GetMutable<Vocab>() = vocab; })
-      .def("get_string_tensor",
-           [](Variable &self) { return self.GetMutable<Strings>(); },
-           py::return_value_policy::reference)
-      .def("get_map_tensor",
-           [](Variable &self) { return self.GetMutable<Vocab>(); },
-           py::return_value_policy::reference)
-      .def("get_lod_rank_table",
-           [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
-           py::return_value_policy::reference)
-      .def("get_selected_rows",
-           [](Variable &self) -> phi::SelectedRows * {
-             return self.GetMutable<phi::SelectedRows>();
-           },
-           py::return_value_policy::reference)
-      .def("get_lod_tensor_array",
-           [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
-           py::return_value_policy::reference)
-      .def("get_fetch_list",
-           [](Variable &self) { return self.GetMutable<FetchList>(); },
-           py::return_value_policy::reference)
+      .def(
+          "get_string_tensor",
+          [](Variable &self) { return self.GetMutable<Strings>(); },
+          py::return_value_policy::reference)
+      .def(
+          "get_map_tensor",
+          [](Variable &self) { return self.GetMutable<Vocab>(); },
+          py::return_value_policy::reference)
+      .def(
+          "get_lod_rank_table",
+          [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
+          py::return_value_policy::reference)
+      .def(
+          "get_selected_rows",
+          [](Variable &self) -> phi::SelectedRows * {
+            return self.GetMutable<phi::SelectedRows>();
+          },
+          py::return_value_policy::reference)
+      .def(
+          "get_lod_tensor_array",
+          [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
+          py::return_value_policy::reference)
+      .def(
+          "get_fetch_list",
+          [](Variable &self) { return self.GetMutable<FetchList>(); },
+          py::return_value_policy::reference)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      .def("get_communicator",
-           [](Variable &self) -> platform::Communicator * {
-             return self.GetMutable<platform::Communicator>();
-           },
-           py::return_value_policy::reference)
+      .def(
+          "get_communicator",
+          [](Variable &self) -> platform::Communicator * {
+            return self.GetMutable<platform::Communicator>();
+          },
+          py::return_value_policy::reference)
 #endif
-      .def("get_reader",
-           [](Variable &self) -> framework::ReaderHolder * {
-             PADDLE_ENFORCE_EQ(
-                 self.IsType<framework::ReaderHolder>(), true,
-                 platform::errors::InvalidArgument(
-                     "The variable is not type of ReaderHolder."));
-             return self.GetMutable<framework::ReaderHolder>();
-           },
-           py::return_value_policy::reference)
-      .def("get_scope",
-           [](Variable &self) -> Scope * {
-             auto scope_vec =
-                 self.GetMutable<std::vector<framework::Scope *>>();
-             PADDLE_ENFORCE_GT(
-                 scope_vec->size(), 0,
-                 platform::errors::InvalidArgument(
-                     "The size of scope_vec should be greater than 0"));
-             return scope_vec->front();
-           },
-           py::return_value_policy::reference)
+      .def(
+          "get_reader",
+          [](Variable &self) -> framework::ReaderHolder * {
+            PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true,
+                              platform::errors::InvalidArgument(
+                                  "The variable is not type of ReaderHolder."));
+            return self.GetMutable<framework::ReaderHolder>();
+          },
+          py::return_value_policy::reference)
+      .def(
+          "get_scope",
+          [](Variable &self) -> Scope * {
+            auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
+            PADDLE_ENFORCE_GT(
+                scope_vec->size(), 0,
+                platform::errors::InvalidArgument(
+                    "The size of scope_vec should be greater than 0"));
+            return scope_vec->front();
+          },
+          py::return_value_policy::reference)
       .def("set_scope", [](Variable &self, Scope &scope) {
         auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
         scope_vec->emplace_back(&scope);
@@ -1760,12 +1777,13 @@ All parameter, weight, gradient are variables in Paddle.
   _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
-      .def("var",
-           [](Scope &self, const std::string &name) -> Variable * {
-             return self.Var(name);
-           },
-           py::arg("name"),
-           R"DOC(
+      .def(
+          "var",
+          [](Scope &self, const std::string &name) -> Variable * {
+            return self.Var(name);
+          },
+          py::arg("name"),
+          R"DOC(
            Find or create variable named :code:`name` in the current scope.
 
            If the variable named :code:`name` does not exist in the
@@ -1778,7 +1796,7 @@ All parameter, weight, gradient are variables in Paddle.
            Returns:
                out (core.Variable): the found or created variable.
            )DOC",
-           py::return_value_policy::reference)
+          py::return_value_policy::reference)
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
@@ -1804,33 +1822,35 @@ All parameter, weight, gradient are variables in Paddle.
                None
            )DOC",
            py::return_value_policy::reference)
-      .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
-           R"DOC(
+      .def(
+          "new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
+          R"DOC(
            Create a new sub-scope of the current scope.
 
            Returns:
                out (core._Scope): the created sub-scope.
            )DOC",
-           py::return_value_policy::reference)
+          py::return_value_policy::reference)
       .def("drop_kids", &Scope::DropKids,
            R"DOC(
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids);
 
-  m.def("Scope",
-        []() -> Scope * {
-          auto *s = new Scope();
-          ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
-          return s;
-        },
-        R"DOC(
+  m.def(
+      "Scope",
+      []() -> Scope * {
+        auto *s = new Scope();
+        ScopePool::Instance().Insert(std::unique_ptr<Scope>(s));
+        return s;
+      },
+      R"DOC(
         Create a new scope.
 
         Returns:
             out (core._Scope): the created scope.
         )DOC",
-        py::return_value_policy::reference);
+      py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
@@ -1917,11 +1937,12 @@ All parameter, weight, gradient are variables in Paddle.
     return std::make_tuple(ProgramDesc(pruned_desc),
                            pruned_origin_block_id_map);
   });
-  m.def("prune_backward",
-        [](const framework::ProgramDesc &program) {
-          return PruneBackward(program);
-        },
-        R"DOC(
+  m.def(
+      "prune_backward",
+      [](const framework::ProgramDesc &program) {
+        return PruneBackward(program);
+      },
+      R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
               
@@ -2788,8 +2809,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("outputs",
            [](const OperatorBase &op)
                -> std::map<std::string, std::vector<std::string>> {
-                 return op.Outputs();
-               })
+             return op.Outputs();
+           })
       .def("output_vars",
            [](const OperatorBase &op) { return op.OutputVars(true); })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
@@ -2804,11 +2825,12 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::TrainerBase, std::shared_ptr<framework::TrainerBase>>(
       m, "TrainerBase")
-      .def("get_worker_scope",
-           [](TrainerBase &self, int thread_id) -> Scope * {
-             return self.GetWorkerScope(thread_id);
-           },
-           py::return_value_policy::reference)
+      .def(
+          "get_worker_scope",
+          [](TrainerBase &self, int thread_id) -> Scope * {
+            return self.GetWorkerScope(thread_id);
+          },
+          py::return_value_policy::reference)
       .def("finalize", &TrainerBase::Finalize)
       .def("ResetDataset", &TrainerBase::ResetDataset);
 
@@ -3005,23 +3027,26 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return stats_map;
   });
-  m.def("memory_stat_get_current", memory::StatGetCurrentValue);
-  m.def("memory_stat_get_peak", memory::StatGetPeakValue);
-  m.def("run_cmd",
-        [](const std::string &cmd, int time_out = -1,
-           int sleep_inter = -1) -> const std::string {
-          return paddle::framework::shell_get_command_output(cmd, time_out,
-                                                             sleep_inter);
-        },
-        py::arg("cmd"), py::arg("time_out") = -1, py::arg("sleep_inter") = -1);
-  m.def("shell_execute_cmd",
-        [](const std::string &cmd, int time_out = 0, int sleep_inter = 0,
-           bool redirect_stderr = false) -> std::vector<std::string> {
-          return paddle::framework::shell_execute_cmd(
-              cmd, time_out, sleep_inter, redirect_stderr);
-        },
-        py::arg("cmd"), py::arg("time_out") = 0, py::arg("sleep_inter") = 0,
-        py::arg("redirect_stderr") = false);
+  m.def("device_memory_stat_current_value",
+        memory::DeviceMemoryStatCurrentValue);
+  m.def("device_memory_stat_peak_value", memory::DeviceMemoryStatPeakValue);
+  m.def(
+      "run_cmd",
+      [](const std::string &cmd, int time_out = -1,
+         int sleep_inter = -1) -> const std::string {
+        return paddle::framework::shell_get_command_output(cmd, time_out,
+                                                           sleep_inter);
+      },
+      py::arg("cmd"), py::arg("time_out") = -1, py::arg("sleep_inter") = -1);
+  m.def(
+      "shell_execute_cmd",
+      [](const std::string &cmd, int time_out = 0, int sleep_inter = 0,
+         bool redirect_stderr = false) -> std::vector<std::string> {
+        return paddle::framework::shell_execute_cmd(cmd, time_out, sleep_inter,
+                                                    redirect_stderr);
+      },
+      py::arg("cmd"), py::arg("time_out") = 0, py::arg("sleep_inter") = 0,
+      py::arg("redirect_stderr") = false);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
@@ -3089,9 +3114,10 @@ All parameter, weight, gradient are variables in Paddle.
   pylodtensorarray
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
-      .def("__getitem__",
-           [](LoDTensorArray &self, size_t i) { return &self.at(i); },
-           py::return_value_policy::reference)
+      .def(
+          "__getitem__",
+          [](LoDTensorArray &self, size_t i) { return &self.at(i); },
+          py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
            [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
@@ -3102,13 +3128,14 @@ All parameter, weight, gradient are variables in Paddle.
              self[i].ShareDataWith(t);
              self[i].set_lod(t.lod());
            })
-      .def("append",
-           [](LoDTensorArray &self, const LoDTensor &t) {
-             self.emplace_back();
-             self.back().ShareDataWith(t);
-             self.back().set_lod(t.lod());
-           },
-           py::arg("tensor"), R"DOC(
+      .def(
+          "append",
+          [](LoDTensorArray &self, const LoDTensor &t) {
+            self.emplace_back();
+            self.back().ShareDataWith(t);
+            self.back().set_lod(t.lod());
+          },
+          py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
               
              Args:
@@ -3128,89 +3155,94 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
-      .def("_move_to_list",
-           [](LoDTensorArray &self) -> py::list {
-             py::list res(self.size());
-             for (size_t i = 0; i < self.size(); ++i) {
-               res[i] = py::cast(std::move(self[i]));
-             }
-             self.clear();
-             return res;
-           },
-           py::return_value_policy::take_ownership);
+      .def(
+          "_move_to_list",
+          [](LoDTensorArray &self) -> py::list {
+            py::list res(self.size());
+            for (size_t i = 0; i < self.size(); ++i) {
+              res[i] = py::cast(std::move(self[i]));
+            }
+            self.clear();
+            return res;
+          },
+          py::return_value_policy::take_ownership);
 
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
         vector of paddle::variant<LoDTensor, LoDTensorArray>.
         )DOC")
-      .def("_move_to_list",
-           [](FetchList &self) -> py::list {
-             py::list res(self.size());
-             for (size_t i = 0; i < self.size(); ++i) {
-               if (data_is_lod_tensor(self[i])) {
-                 auto &data = BOOST_GET(LoDTensor, self[i]);
-                 res[i] = py::cast(std::move(data));
-               } else {
-                 auto &data = BOOST_GET(LoDTensorArray, self[i]);
-                 py::list tmp(data.size());
-                 for (size_t j = 0; j < data.size(); ++j) {
-                   tmp[j] = py::cast(std::move(data[j]));
-                 }
-                 res[i] = std::move(tmp);
-               }
-             }
-             self.clear();
-             return res;
-           },
-           py::return_value_policy::take_ownership)
+      .def(
+          "_move_to_list",
+          [](FetchList &self) -> py::list {
+            py::list res(self.size());
+            for (size_t i = 0; i < self.size(); ++i) {
+              if (data_is_lod_tensor(self[i])) {
+                auto &data = BOOST_GET(LoDTensor, self[i]);
+                res[i] = py::cast(std::move(data));
+              } else {
+                auto &data = BOOST_GET(LoDTensorArray, self[i]);
+                py::list tmp(data.size());
+                for (size_t j = 0; j < data.size(); ++j) {
+                  tmp[j] = py::cast(std::move(data[j]));
+                }
+                res[i] = std::move(tmp);
+              }
+            }
+            self.clear();
+            return res;
+          },
+          py::return_value_policy::take_ownership)
 
-      .def("append",
-           [](FetchList &self, const LoDTensor &t) {
-             self.emplace_back();
-             auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
-             lod_tensor.ShareDataWith(t);
-             lod_tensor.set_lod(t.lod());
-           },
-           py::arg("var"))
+      .def(
+          "append",
+          [](FetchList &self, const LoDTensor &t) {
+            self.emplace_back();
+            auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
+            lod_tensor.ShareDataWith(t);
+            lod_tensor.set_lod(t.lod());
+          },
+          py::arg("var"))
 
-      .def("append",
-           [](FetchList &self, const LoDTensorArray &t) {
-             self.emplace_back();
-             auto &lod_tensor_array = BOOST_GET(LoDTensorArray, self.back());
-             for (size_t i = 0; i < t.size(); ++i) {
-               lod_tensor_array[i].ShareDataWith(t[i]);
-               lod_tensor_array[i].set_lod(t[i].lod());
-             }
-           },
-           py::arg("var"));
+      .def(
+          "append",
+          [](FetchList &self, const LoDTensorArray &t) {
+            self.emplace_back();
+            auto &lod_tensor_array = BOOST_GET(LoDTensorArray, self.back());
+            for (size_t i = 0; i < t.size(); ++i) {
+              lod_tensor_array[i].ShareDataWith(t[i]);
+              lod_tensor_array[i].set_lod(t[i].lod());
+            }
+          },
+          py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
         FetchUnmergedList is 2-D array of FetchType(paddle::variant(LoDTensor, LoDTensorArray)).
         )DOC")
-      .def("_move_to_list",
-           [](FetchUnmergedList &self) -> py::list {
-             py::list res(self.size());
-             for (size_t i = 0; i < self.size(); ++i) {
-               py::list tmp(self[i].size());
-               for (size_t j = 0; j < self[i].size(); ++j) {
-                 if (data_is_lod_tensor(self[i][j])) {
-                   auto &var = BOOST_GET(LoDTensor, self[i][j]);
-                   tmp[j] = py::cast(std::move(var));
-                 } else {
-                   auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
-                   py::list tmp_array(var.size());
-                   for (size_t k = 0; k < var.size(); ++k) {
-                     tmp_array[k] = std::move(var[k]);
-                   }
-                   tmp[j] = std::move(tmp_array);
-                 }
-               }
-               res[i] = std::move(tmp);
-               self[i].clear();
-             }
-             self.clear();
-             return res;
-           },
-           py::return_value_policy::take_ownership);
+      .def(
+          "_move_to_list",
+          [](FetchUnmergedList &self) -> py::list {
+            py::list res(self.size());
+            for (size_t i = 0; i < self.size(); ++i) {
+              py::list tmp(self[i].size());
+              for (size_t j = 0; j < self[i].size(); ++j) {
+                if (data_is_lod_tensor(self[i][j])) {
+                  auto &var = BOOST_GET(LoDTensor, self[i][j]);
+                  tmp[j] = py::cast(std::move(var));
+                } else {
+                  auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
+                  py::list tmp_array(var.size());
+                  for (size_t k = 0; k < var.size(); ++k) {
+                    tmp_array[k] = std::move(var[k]);
+                  }
+                  tmp[j] = std::move(tmp_array);
+                }
+              }
+              res[i] = std::move(tmp);
+              self[i].clear();
+            }
+            self.clear();
+            return res;
+          },
+          py::return_value_policy::take_ownership);
 
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -3224,11 +3256,12 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("get_device_properties",
-        [](int id) -> const gpuDeviceProp & {
-          return platform::GetDeviceProperties(id);
-        },
-        py::return_value_policy::copy);
+  m.def(
+      "get_device_properties",
+      [](int id) -> const gpuDeviceProp & {
+        return platform::GetDeviceProperties(id);
+      },
+      py::return_value_policy::copy);
 
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
       .def_property_readonly(
@@ -3406,15 +3439,16 @@ All parameter, weight, gradient are variables in Paddle.
              profiler->Prepare();
            })
       .def("start", &paddle::platform::Profiler::Start)
-      .def("stop",
-           [](paddle::platform::Profiler *profiler) {
-             platform::DisableHostEventRecorder();
-             auto result = profiler->Stop();
-             framework::StaticGraphExecutorPerfStatistics(
-                 result->GetNodeTrees());
-             return result;
-           },
-           py::return_value_policy::automatic_reference);
+      .def(
+          "stop",
+          [](paddle::platform::Profiler *profiler) {
+            platform::DisableHostEventRecorder();
+            auto result = profiler->Stop();
+            framework::StaticGraphExecutorPerfStatistics(
+                result->GetNodeTrees());
+            return result;
+          },
+          py::return_value_policy::automatic_reference);
 
   py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
       .def(py::init<>())
@@ -3663,11 +3697,12 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(This config that the this is distributed training with parameter server
               )DOC")
-      .def_property("_dry_run",
-                    [](const ExecutionStrategy &self) { return self.dry_run_; },
-                    [](ExecutionStrategy &self, bool dry_run) {
-                      self.dry_run_ = dry_run;
-                    });
+      .def_property(
+          "_dry_run",
+          [](const ExecutionStrategy &self) { return self.dry_run_; },
+          [](ExecutionStrategy &self, bool dry_run) {
+            self.dry_run_ = dry_run;
+          });
 
   exec_strategy.def_property(
       "use_experimental_executor",
@@ -3915,11 +3950,12 @@ All parameter, weight, gradient are variables in Paddle.
              const std::vector<std::string> &trainers_endpoints) {
             self.trainers_endpoints_ = trainers_endpoints;
           })
-      .def_property("trainer_id",
-                    [](const BuildStrategy &self) { return self.trainer_id_; },
-                    [](BuildStrategy &self, int trainer_id) {
-                      self.trainer_id_ = trainer_id;
-                    })
+      .def_property(
+          "trainer_id",
+          [](const BuildStrategy &self) { return self.trainer_id_; },
+          [](BuildStrategy &self, int trainer_id) {
+            self.trainer_id_ = trainer_id;
+          })
       .def_property(
           "nccl_comm_num",
           [](const BuildStrategy &self) { return self.nccl_comm_num_; },
@@ -3932,20 +3968,22 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int bkcl_comm_num) {
             self.bkcl_comm_num_ = bkcl_comm_num;
           })
-      .def_property("use_hierarchical_allreduce",
-                    [](const BuildStrategy &self) {
-                      return self.use_hierarchical_allreduce_;
-                    },
-                    [](BuildStrategy &self, bool use) {
-                      self.use_hierarchical_allreduce_ = use;
-                    })
-      .def_property("hierarchical_allreduce_inter_nranks",
-                    [](const BuildStrategy &self) {
-                      return self.hierarchical_allreduce_inter_nranks_;
-                    },
-                    [](BuildStrategy &self, int nranks) {
-                      self.hierarchical_allreduce_inter_nranks_ = nranks;
-                    })
+      .def_property(
+          "use_hierarchical_allreduce",
+          [](const BuildStrategy &self) {
+            return self.use_hierarchical_allreduce_;
+          },
+          [](BuildStrategy &self, bool use) {
+            self.use_hierarchical_allreduce_ = use;
+          })
+      .def_property(
+          "hierarchical_allreduce_inter_nranks",
+          [](const BuildStrategy &self) {
+            return self.hierarchical_allreduce_inter_nranks_;
+          },
+          [](BuildStrategy &self, int nranks) {
+            self.hierarchical_allreduce_inter_nranks_ = nranks;
+          })
 
       .def_property(
           "fuse_elewise_add_act_ops",
@@ -4104,19 +4142,20 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
-      .def_property("fuse_broadcast_ops",
-                    [](const BuildStrategy &self) {
-                      return self.fuse_broadcast_ops_ == true ||
-                             self.fuse_broadcast_ops_ == paddle::none;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
-                                        platform::errors::PreconditionNotMet(
-                                            "BuildStrategy has been finlaized, "
-                                            "cannot be configured again."));
-                      self.fuse_broadcast_ops_ = b;
-                    },
-                    R"DOC((bool, optional): fuse_broadcast_op indicates whether
+      .def_property(
+          "fuse_broadcast_ops",
+          [](const BuildStrategy &self) {
+            return self.fuse_broadcast_ops_ == true ||
+                   self.fuse_broadcast_ops_ == paddle::none;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, "
+                                  "cannot be configured again."));
+            self.fuse_broadcast_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
@@ -4134,18 +4173,19 @@ All parameter, weight, gradient are variables in Paddle.
                               build_strategy = static.BuildStrategy()
                               build_strategy.fuse_broadcast_ops = True
                     )DOC")
-      .def_property("fuse_all_optimizer_ops",
-                    [](const BuildStrategy &self) {
-                      return self.fuse_all_optimizer_ops_ == true ||
-                             self.fuse_all_optimizer_ops_ == paddle::none;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
-                                        platform::errors::PreconditionNotMet(
-                                            "BuildStrategy has been finlaized, "
-                                            "cannot be configured again."));
-                      self.fuse_all_optimizer_ops_ = b;
-                    })
+      .def_property(
+          "fuse_all_optimizer_ops",
+          [](const BuildStrategy &self) {
+            return self.fuse_all_optimizer_ops_ == true ||
+                   self.fuse_all_optimizer_ops_ == paddle::none;
+          },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, "
+                                  "cannot be configured again."));
+            self.fuse_all_optimizer_ops_ = b;
+          })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
@@ -4228,9 +4268,10 @@ All parameter, weight, gradient are variables in Paddle.
             self.is_distribution_ = b;
 #endif
           })
-      .def_property("async_mode",
-                    [](const BuildStrategy &self) { return self.async_mode_; },
-                    [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
+      .def_property(
+          "async_mode",
+          [](const BuildStrategy &self) { return self.async_mode_; },
+          [](BuildStrategy &self, bool b) { self.async_mode_ = b; })
       .def_property(
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
@@ -4246,13 +4287,14 @@ All parameter, weight, gradient are variables in Paddle.
                    self.fuse_all_reduce_ops_ == paddle::none;
           },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
-      .def_property("enable_backward_optimizer_op_deps",
-                    [](const BuildStrategy &self) {
-                      return self.enable_backward_optimizer_op_deps_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.enable_backward_optimizer_op_deps_ = b;
-                    })
+      .def_property(
+          "enable_backward_optimizer_op_deps",
+          [](const BuildStrategy &self) {
+            return self.enable_backward_optimizer_op_deps_;
+          },
+          [](BuildStrategy &self, bool b) {
+            self.enable_backward_optimizer_op_deps_ = b;
+          })
       .def_property(
           "cache_runtime_context",
           [](const BuildStrategy &self) { return self.cache_runtime_context_; },
@@ -4272,24 +4314,26 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
-      .def_property("allow_cuda_graph_capture",
-                    [](const BuildStrategy &self) {
-                      return self.allow_cuda_graph_capture_;
-                    },
-                    [](BuildStrategy &self, bool allow_cuda_graph_capture) {
-                      self.allow_cuda_graph_capture_ = allow_cuda_graph_capture;
-                    })
+      .def_property(
+          "allow_cuda_graph_capture",
+          [](const BuildStrategy &self) {
+            return self.allow_cuda_graph_capture_;
+          },
+          [](BuildStrategy &self, bool allow_cuda_graph_capture) {
+            self.allow_cuda_graph_capture_ = allow_cuda_graph_capture;
+          })
       .def("_copy",
            [](const BuildStrategy &self) {
              auto new_bs = self;
              new_bs.ClearFinalized();
              return new_bs;
            })
-      .def("_finalize_strategy_and_create_passes",
-           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
-             return self.CreatePassesFromStrategy(true);
-           },
-           R"DOC(Allow user to customized passes. Normally model-specific
+      .def(
+          "_finalize_strategy_and_create_passes",
+          [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
+            return self.CreatePassesFromStrategy(true);
+          },
+          R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
@@ -4307,11 +4351,12 @@ All parameter, weight, gradient are variables in Paddle.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
       // one by one and mark them as reference.
-      .def("local_scopes",
-           [](ParallelExecutor &self) -> std::vector<Scope *> * {
-             return &self.GetLocalScopes();
-           },
-           py::return_value_policy::reference)
+      .def(
+          "local_scopes",
+          [](ParallelExecutor &self) -> std::vector<Scope *> * {
+            return &self.GetLocalScopes();
+          },
+          py::return_value_policy::reference)
       .def("drop_local_exe_scopes", &ParallelExecutor::DropLocalExeScopes)
       .def("_need_create_local_exe_scopes",
            &ParallelExecutor::NeedCreateLocalExeScope)
@@ -4343,12 +4388,13 @@ All parameter, weight, gradient are variables in Paddle.
              std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>>(
       m, "IpuBackend")
       // manage IpuBackend in C++
-      .def("get_instance",
-           []() {
-             return std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>(
-                 platform::ipu::IpuBackend::GetInstance());
-           },
-           py::return_value_policy::reference)
+      .def(
+          "get_instance",
+          []() {
+            return std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>(
+                platform::ipu::IpuBackend::GetInstance());
+          },
+          py::return_value_policy::reference)
       .def("weights_to_host", &platform::ipu::IpuBackend::WeightsToHost)
       .def("detach", &platform::ipu::IpuBackend::Detach)
       .def("reset", &platform::ipu::IpuBackend::Reset)

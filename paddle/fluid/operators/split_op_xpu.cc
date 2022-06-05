@@ -12,9 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/split_op.h"
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/split_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {

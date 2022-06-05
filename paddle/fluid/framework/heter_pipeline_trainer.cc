@@ -32,7 +32,9 @@ using TaskQueue =
                                 std::pair<std::string, int>>>>;
 
 void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
+#ifndef PADDLE_WITH_FLPS
   if (pipeline_stage_ == 0) {
+#endif
     SetDataset(dataset);
     const std::vector<paddle::framework::DataFeed*> readers =
         dataset->GetReaders();
@@ -51,40 +53,39 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
       this_worker->SetDataFeed(readers[cnt]);
       this_worker->SetReaderPlace(place_);
     }
+#ifndef PADDLE_WITH_FLPS
   }
+#endif
 }
 
 void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
+  trainer_desc_ = trainer_desc;
   thread_num_ = trainer_desc.thread_num();
   ParseDumpConfig(trainer_desc);
   SetDebug(trainer_desc.debug());
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
-  VLOG(3) << "readers num: " << readers.size();
   // change thread num to readers num
   thread_num_ = readers.size();
-  VLOG(3) << "worker thread num: " << thread_num_;
+  VLOG(3) << "worker(readers) thread num: " << thread_num_;
   const auto& heter_section_params = trainer_desc.heter_section_param();
   num_pipeline_stages_ = heter_section_params.num_pipeline_stages();
   pipeline_stage_ = heter_section_params.pipeline_stage();
   num_microbatches_ = heter_section_params.num_microbatches();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
-  trainer_desc_ = trainer_desc;
   trainer_id_ = trainer_desc.trainer_id();
   for (int i = 0; i < num_pipeline_stages_; ++i) {
     auto trainer_num = trainer_desc.trainers(i);
     trainers_.push_back(trainer_num);
   }
   int cpu_trainer_num = trainers_[0];
-  // int cur_stage_trainer_num = trainers_[pipeline_stage_];
-  // int global_thread_num = cpu_trainer_num * thread_num_;
-  // int previous_trainers = 0;
-  // for (int i = 0; i < pipeline_stage_; i++) previous_trainers +=
-  // trainers_[i];
-  // int stage_trainer_id =
-  //    trainer_id_ - previous_trainers;  // trainer id in current stage
-
+  VLOG(4) << "trainer_id_: " << trainer_id_;
+  VLOG(4) << "cpu_trainer_num: " << cpu_trainer_num
+          << " xpu_trainer_num: " << trainers_[1];
+#ifdef PADDLE_WITH_FLPS
+  thread_num_ = 1;
+#endif
   if (pipeline_stage_ == 0) {  // for cpu trainer
     int cnt = -1;
     int real_thread_id = trainer_id_;
@@ -103,25 +104,33 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
       this_worker->InitRandomDumpConfig(trainer_desc);
       this_worker->SetDeviceIndex(real_thread_id);
       real_thread_id += cpu_trainer_num;
-      // if (pipeline_stage_ == 0) {
       this_worker->SetDataFeed(readers[cnt]);
-      //}
       this_worker->SetMicrobatchNum(num_microbatches_);
       this_worker->SetPipelineStageNum(num_pipeline_stages_);
       this_worker->SetPipelineStage(pipeline_stage_);
     }
-  } else {  // for heter_trainer
-    // heter trainer with thread_id == -1 is not for
-    // real training
+  } else {
+    // for heter_trainer
+    // heter trainer with thread_id == -1 is not for real training, just for run
+    // listen op
     workers_[-1] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
     auto this_worker =
         std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(
             workers_[-1]);
+#ifdef PADDLE_WITH_FLPS
+    this_worker->SetDebug(debug_);
+    this_worker->SetNeedDumpField(need_dump_field_);
+    this_worker->SetNeedDumpParam(need_dump_param_);
+    this_worker->SetDumpFieldVector(dump_fields_);
+    this_worker->SetDumpParamVector(dump_param_);
+    this_worker->InitRandomDumpConfig(trainer_desc);
+    this_worker->SetDataFeed(readers[0]);
+#endif
+    this_worker->SetDeviceIndex(-1);
     this_worker->SetMicrobatchNum(num_microbatches_);
     this_worker->SetPipelineStageNum(num_pipeline_stages_);
     this_worker->SetPipelineStage(pipeline_stage_);
-    this_worker->SetDeviceIndex(-1);
   }
 }
 
@@ -159,14 +168,19 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& worker_pair : workers_) {
     auto worker_index = worker_pair.first;
     auto device_worker = worker_pair.second;
+    VLOG(0) << "workers index in InitTrainerEnv: " << worker_index;
     auto this_worker =
         std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(
             device_worker);
     this_worker->SetPlace(place);
     this_worker->Initialize(trainer_desc_);
+#ifdef PADDLE_WITH_FLPS
+    this_worker->SetReaderPlace(place);
+#else
     if (pipeline_stage_ == 0) {
       this_worker->SetReaderPlace(place);
     }
+#endif
     this_worker->SetRootScope(root_scope_);
     // generate mini_batch scope for every worker
     auto* minibatch_scope = &root_scope_->NewScope();
@@ -175,6 +189,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     // after set micro num & mini batch scope
     this_worker->CreateMicrobatchScopes();
     (*micro_scopes_)[worker_index] = this_worker->GetMicrobatchScopes();
+    VLOG(4) << "worker_index: " << worker_index;
     (*task_queue_)[worker_index] = this_worker->GetThreadQueue();
   }
 }
@@ -182,6 +197,7 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 void HeterPipelineTrainer::Run() {
   VLOG(3) << "Going to run HeterPipelineTrainer::Run()";
   if (listen_ptr_ == nullptr) {
+    VLOG(3) << "listen_ptr_ is null";
     for (auto& worker_pair : workers_) {
       auto& device_worker = worker_pair.second;
       auto worker_0 =
@@ -196,10 +212,14 @@ void HeterPipelineTrainer::Run() {
   heter_server->WaitServerReady();
   heter_server->SetMiniBatchScopes(mini_scopes_);
   heter_server->SetMicroBatchScopes(micro_scopes_);
+  VLOG(4) << "heter_server SetTaskQueue";
   heter_server->SetTaskQueue(task_queue_);
+
   // main training logic
+  VLOG(3) << "pipeline_stage_ is " << pipeline_stage_;
   if (pipeline_stage_ == 0) {  // for cpu trainer
     for (auto& worker_pair : workers_) {
+      VLOG(4) << "cpu worker index : " << worker_pair.first;
       auto device_worker = worker_pair.second;
       if (!debug_) {
         threads_.push_back(
@@ -212,6 +232,7 @@ void HeterPipelineTrainer::Run() {
   } else {  // for heter worker
     // start thread_worker with thread_id = -1
     for (auto& worker_pair : workers_) {
+      VLOG(4) << "xpu worker index : " << worker_pair.first;
       auto device_worker = worker_pair.second;
       if (!debug_) {
         threads_.push_back(
@@ -252,6 +273,10 @@ void HeterPipelineTrainer::Run() {
           this_worker->SetPipelineStageNum(num_pipeline_stages_);
           this_worker->SetPipelineStage(pipeline_stage_);
           this_worker->SetPlace(place_);
+#ifdef PADDLE_WITH_FLPS
+          this_worker->SetDataFeed(workers_[-1]->device_reader_);
+          this_worker->SetReaderPlace(place_);
+#endif
           this_worker->Initialize(trainer_desc_);
           this_worker->SetRootScope(root_scope_);
 
@@ -308,5 +333,5 @@ Scope* HeterPipelineTrainer::GetWorkerScope(int thread_id) {
 }
 
 }  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle
 #endif

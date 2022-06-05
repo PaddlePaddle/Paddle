@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
+
 #include <algorithm>
 #include <utility>
+
+#include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -616,8 +617,8 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     int len = tensor->numel();
     CHECK(slot_dim * len == g_tensor->numel())
         << "len:" << len << " g_numel:" << g_tensor->numel();
-    CHECK(len == tensor->numel()) << "len:" << len
-                                  << "t_numel:" << tensor->numel();
+    CHECK(len == tensor->numel())
+        << "len:" << len << "t_numel:" << tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -626,15 +627,15 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
       }
       memcpy(push_g[fea_idx].data() + offset, g, sizeof(float) * slot_dim);
       push_g[fea_idx][0] = 1.0f;
-      CHECK(fea_idx < fea_info.size()) << "fea_idx:" << fea_idx
-                                       << " size:" << fea_info.size();
+      CHECK(fea_idx < fea_info.size())
+          << "fea_idx:" << fea_idx << " size:" << fea_info.size();
       push_g[fea_idx][1] = static_cast<float>(fea_info[fea_idx].label);
       g += slot_dim;
       fea_idx++;
     }
   }
-  CHECK(fea_idx == features.size()) << "fea_idx:" << fea_idx
-                                    << " features size:" << features.size();
+  CHECK(fea_idx == features.size())
+      << "fea_idx:" << fea_idx << " features size:" << features.size();
   CHECK_GT(features.size(), 0);
 
   std::vector<float*> push_g_vec;
@@ -701,5 +702,5 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
 }
 #endif
 
-}  // einit_modelnd namespace framework
+}  // namespace framework
 }  // end namespace paddle

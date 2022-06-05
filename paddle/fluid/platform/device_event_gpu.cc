@@ -101,8 +101,8 @@ void EventResetCUDA(const DeviceEvent* event) {
 }  // namespace platform
 }  // namespace paddle
 
-using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
+using ::paddle::platform::kCUDA;
 REGISTER_EVENT_CREATE_FUNCTION(kCUDA, paddle::platform::DeviceEventCreateCUDA)
 REGISTER_EVENT_RECORD_FUNCTION(kCUDA, paddle::platform::DeviceEventRecordCUDA)
 REGISTER_EVENT_QUERY_FUNCTION(kCUDA, paddle::platform::DeviceEventQueryCUDA)

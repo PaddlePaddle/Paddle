@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #include <dirent.h>
+
 #include <string>
 #include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {

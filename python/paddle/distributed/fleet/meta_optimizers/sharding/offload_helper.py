@@ -58,23 +58,21 @@ class OffloadHelper(object):
     def _insert_cast_op(self, block, idx, src_name, dst_name):
         src_var = block.var(src_name)
         if not block.has_var(dst_name):
-            block.create_var(
-                name=dst_name,
-                shape=src_var.shape,
-                dtype=core.VarDesc.VarType.FP16,
-                persistable=True)
+            block.create_var(name=dst_name,
+                             shape=src_var.shape,
+                             dtype=core.VarDesc.VarType.FP16,
+                             persistable=True)
         dst_var = block.var(dst_name)
         assert dst_var.dtype == core.VarDesc.VarType.FP16
-        block._insert_op_without_sync(
-            idx,
-            type='cast',
-            inputs={'X': src_var},
-            outputs={'Out': dst_var},
-            attrs={
-                'in_dtype': src_var.dtype,
-                'out_dtype': dst_var.dtype,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
+        block._insert_op_without_sync(idx,
+                                      type='cast',
+                                      inputs={'X': src_var},
+                                      outputs={'Out': dst_var},
+                                      attrs={
+                                          'in_dtype': src_var.dtype,
+                                          'out_dtype': dst_var.dtype,
+                                          OP_ROLE_KEY: OpRole.Optimize
+                                      })
 
     def _insert_broadcast_op(self, block, idx, param_name):
         rings = []
@@ -90,30 +88,28 @@ class OffloadHelper(object):
 
         # the insert op order is: mp, dp
         for ring in rings:
-            block._insert_op_without_sync(
-                idx,
-                type="c_broadcast",
-                inputs={'X': param_name},
-                outputs={'Out': param_name},
-                attrs={
-                    'ring_id': ring,
-                    'root': 0,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Forward,
-                })
+            block._insert_op_without_sync(idx,
+                                          type="c_broadcast",
+                                          inputs={'X': param_name},
+                                          outputs={'Out': param_name},
+                                          attrs={
+                                              'ring_id': ring,
+                                              'root': 0,
+                                              'use_calc_stream': True,
+                                              OP_ROLE_KEY: OpRole.Forward,
+                                          })
 
     def _insert_memcpy_op(self, block, idx, src_name, dst_name, dst_place_type):
         src_var = block.var(src_name)
         dst_var = block.var(dst_name)
-        block._insert_op_without_sync(
-            idx,
-            type='memcpy',
-            inputs={'X': src_var},
-            outputs={'Out': dst_var},
-            attrs={
-                'dst_place_type': dst_place_type,
-                OP_ROLE_KEY: OpRole.Optimize,
-            })
+        block._insert_op_without_sync(idx,
+                                      type='memcpy',
+                                      inputs={'X': src_var},
+                                      outputs={'Out': dst_var},
+                                      attrs={
+                                          'dst_place_type': dst_place_type,
+                                          OP_ROLE_KEY: OpRole.Optimize,
+                                      })
 
     def _insert_fetch_op(self, block, idx, src_name, dst_name):
         self._insert_memcpy_op(block, idx, src_name, dst_name,
@@ -130,11 +126,10 @@ class OffloadHelper(object):
         for block in blocks:
             var = block.var(var_name)
             var.persistable = False
-            offload_var = block.create_var(
-                name=offload_var_name,
-                shape=var.shape,
-                dtype=var.dtype,
-                persistable=True)
+            offload_var = block.create_var(name=offload_var_name,
+                                           shape=var.shape,
+                                           dtype=var.dtype,
+                                           persistable=True)
 
     def offload_fp32param(self, block, startup_block, offload=True):
         """

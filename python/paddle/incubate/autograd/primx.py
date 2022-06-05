@@ -38,8 +38,7 @@ def topo_path(xs, ys, block=None):
         path, the unused variables in `xs`, and the unreached variables in `ys`
     """
 
-    if block is None:
-        block = default_main_program().current_block()
+    block = default_main_program().current_block() if block is None else block
 
     path = []
     backpath = []
@@ -52,7 +51,9 @@ def topo_path(xs, ys, block=None):
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
-    reaching = lambda op: any(id(v) in reached_vars for v in flatten_and_remove_none(get_input_var_list(op)))
+    reaching = lambda op: any(
+        id(v) in reached_vars
+        for v in flatten_and_remove_none(get_input_var_list(op)))
 
     # block.ops are supposedly in the order that preserves correct data
     # dependence.
@@ -64,7 +65,9 @@ def topo_path(xs, ys, block=None):
                 reached_vars[id(var)] = var
 
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
-    back_reaching = lambda op: any(id(out) in used_vars for out in flatten_and_remove_none(get_output_var_list(op)))
+    back_reaching = lambda op: any(
+        id(out) in used_vars
+        for out in flatten_and_remove_none(get_output_var_list(op)))
 
     # Backward pass to find all used variables
     for op in reversed(path):
@@ -160,11 +163,14 @@ class VarMap(object):
         return id(value_var) in self.tab.values()
 
 
+# TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 class Transform(object):
     """ An object that maintains the state of transformations applied to a 
     primitve program. """
 
     def __init__(self, block):
+        assert block == default_main_program().current_block(
+        ), f'only support transform on current block of main program.'
         self.block = block
         self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
@@ -274,7 +280,7 @@ class Transform(object):
             self.var2dot.delete(x)
 
         for op in path:
-            # An input var may not be on the input-output path, which implies 
+            # An input var may not be on the input-output path, which implies
             # there may be None's in `ins_dot`. In this case we place
             # the original input in the position of the otherwise forward
             # gradient.
@@ -400,6 +406,7 @@ class Transform(object):
         return ys_bar, xs_bar
 
 
+# TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 def _lower(block, reverse):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
@@ -430,10 +437,6 @@ def _lower(block, reverse):
     # Step1: Do some preparatory work for lower
     lower_fn = _prim2orig if reverse else _orig2prim
     lookup_fn = lookup_prim2orig if reverse else lookup_orig2prim
-    if block is None:
-        program = default_main_program()
-        assert program.num_blocks == 1, "The lower transform is designed to process only one block."
-        block = program.current_block()
 
     value_table = {}
     to_bind = {}
@@ -477,13 +480,12 @@ def _lower(block, reverse):
             from paddle.fluid.dygraph.base import param_guard
             new_op_desc = block.desc.append_op()
             with param_guard(inputs), param_guard(outputs):
-                op = Operator(
-                    block=block,
-                    desc=new_op_desc,
-                    type=op.type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs)
+                op = Operator(block=block,
+                              desc=new_op_desc,
+                              type=op.type,
+                              inputs=inputs,
+                              outputs=outputs,
+                              attrs=attrs)
             block.ops.append(op)
 
     # Step3: Do some post-processing work
@@ -516,6 +518,7 @@ def orig2prim(block=None):
     """ 
     .. note::
         **This API is ONLY available in the static mode.**
+        **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
     If it is an original operator, it will be transformed into
@@ -523,13 +526,14 @@ def orig2prim(block=None):
     equivalent function.
     
     Args:
-        block(paddle.fluid.framework.Variable|None, optional): The
+        block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
-    
-    Returns:
-        None
     """
+
+    block = default_main_program().current_block() if block is None else block
+    assert block == default_main_program().current_block(
+    ), f'block is neither None nor current block of main program'
     _lower(block, reverse=False)
 
 
@@ -538,6 +542,7 @@ def prim2orig(block=None):
     """
     .. note::
         **ONLY available in the static mode.**
+        **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
     If it is an automatic differential basic operator, it will be
@@ -545,10 +550,10 @@ def prim2orig(block=None):
     equivalent function to support execution.
     
     Args:
-        block(paddle.static.Variable|None, optional): The
+        block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
-       
+    
     Examples:
 
         .. code-block:: python
@@ -566,6 +571,10 @@ def prim2orig(block=None):
             if prim_enabled():
                 prim2orig()
     """
+
+    block = default_main_program().current_block() if block is None else block
+    assert block == default_main_program().current_block(
+    ), f'block is neither None nor current block of main program'
     _lower(block, reverse=True)
 
 
@@ -583,10 +592,12 @@ def _gradients(ys, xs, ys_bar=None):
     """
 
     ys, xs = to_tensors(ys), to_tensors(xs)
-    block = ys[0].block
+    block = default_main_program().current_block()
+    for el in xs + ys:
+        assert el is None or el.block == block, f'variable in xs and ys should be None or in current block of main program'
     # TODO(Tongxin) without any prior knowledge about whether the program
     # is completely lowered to primitive ops, it's mandatory to run the lowering
-    # pass once and again. This is obviously inefficient and needs to be 
+    # pass once and again. This is obviously inefficient and needs to be
     # optimized.
     orig2prim(block)
 

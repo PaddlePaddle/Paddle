@@ -32,7 +32,9 @@ TEST(FuseFCActOneDNNPass, ThrowUseMkldnn) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}}, false);
   test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
@@ -51,7 +53,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   auto* act_op = test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}},
@@ -83,7 +87,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   auto* act_op = test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}},
@@ -115,7 +121,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
@@ -145,7 +153,9 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(&prog, "tanh", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
@@ -175,7 +185,9 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(&prog, "sigmoid", {{"Input", "fc_y"}}, {{"Out", "act_y"}},
@@ -206,7 +218,9 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(&prog, "mish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
@@ -236,7 +250,9 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
       test::BuildProgramDesc({"x", "fc_y", "act_y"}, {"weights", "bias"});
   test::CreateOp(&prog, "fc",
                  {
-                     {"Input", "x"}, {"Weights", "weights"}, {"Bias", "bias"},
+                     {"Input", "x"},
+                     {"Weights", "weights"},
+                     {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(&prog, "hard_swish", {{"Input", "fc_y"}}, {{"Out", "act_y"}},

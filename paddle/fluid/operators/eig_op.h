@@ -15,8 +15,10 @@
 #pragma once
 
 #include <math.h>
+
 #include <algorithm>
 #include <complex>
+
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
