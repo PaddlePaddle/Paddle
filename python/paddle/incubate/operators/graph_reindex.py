@@ -128,19 +128,23 @@ def graph_reindex(x,
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
     reindex_dst = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="graph_reindex",
-        inputs={
-            "X": x,
-            "Neighbors": neighbors,
-            "Count": count,
-            "HashTable_Value": value_buffer if flag_buffer_hashtable else None,
-            "HashTable_Index": index_buffer if flag_buffer_hashtable else None,
-        },
-        outputs={
-            "Reindex_Src": reindex_src,
-            "Reindex_Dst": reindex_dst,
-            "Out_Nodes": out_nodes
-        },
-        attrs={"flag_buffer_hashtable": flag_buffer_hashtable})
+    helper.append_op(type="graph_reindex",
+                     inputs={
+                         "X":
+                         x,
+                         "Neighbors":
+                         neighbors,
+                         "Count":
+                         count,
+                         "HashTable_Value":
+                         value_buffer if flag_buffer_hashtable else None,
+                         "HashTable_Index":
+                         index_buffer if flag_buffer_hashtable else None,
+                     },
+                     outputs={
+                         "Reindex_Src": reindex_src,
+                         "Reindex_Dst": reindex_dst,
+                         "Out_Nodes": out_nodes
+                     },
+                     attrs={"flag_buffer_hashtable": flag_buffer_hashtable})
     return reindex_src, reindex_dst, out_nodes

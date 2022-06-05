@@ -110,8 +110,8 @@ class Cifar10(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+                    backend))
         self.backend = backend
 
         self._init_url_md5_flag()
@@ -119,8 +119,10 @@ class Cifar10(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, self.data_url, self.data_md5, 'cifar', download)
+            self.data_file = _check_exists_and_download(data_file,
+                                                        self.data_url,
+                                                        self.data_md5, 'cifar',
+                                                        download)
 
         self.transform = transform
 
@@ -146,8 +148,8 @@ class Cifar10(Dataset):
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
-                labels = batch.get(
-                    six.b('labels'), batch.get(six.b('fine_labels'), None))
+                labels = batch.get(six.b('labels'),
+                                   batch.get(six.b('fine_labels'), None))
                 assert labels is not None
                 for sample, label in six.moves.zip(data, labels):
                     self.data.append((sample, label))

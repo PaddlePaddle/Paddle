@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import math
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ np.random.seed(1243)
 
 
 class TestROIAlignNPUOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -73,8 +75,8 @@ class TestROIAlignNPUOp(OpTest):
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
             np.float32)
-        bilinear_w = np.zeros(
-            [self.pooled_height, self.pooled_width, count, 4], np.float32)
+        bilinear_w = np.zeros([self.pooled_height, self.pooled_width, count, 4],
+                              np.float32)
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -195,6 +197,7 @@ class TestROIAlignNPUOp(OpTest):
 
 
 class TestROIAlignOpWithMinusSample(TestROIAlignNPUOp):
+
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3
