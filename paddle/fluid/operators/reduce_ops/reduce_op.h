@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
-#include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
@@ -686,9 +685,6 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }
-    // Broadcast(out_y, x) = y_broadcast, Equal_tensor
-    // Reduce Equal_tensor = count_tensor
-    // Broadcast(y_broadcast / count_tensor)
 
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     phi::ReduceGrad<T, TransformOp<T, MPType>>(
