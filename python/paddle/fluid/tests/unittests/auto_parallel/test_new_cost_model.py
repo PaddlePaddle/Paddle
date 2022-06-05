@@ -35,6 +35,7 @@ def check_cost(cost):
 
 
 class TestCost(unittest.TestCase):
+
     def test_base_cost(self):
         cost = cost_model.Cost(memory=100, flops=200, time=0.5)
         self.assertTrue(check_cost(cost))

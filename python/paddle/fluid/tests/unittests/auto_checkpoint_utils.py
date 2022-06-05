@@ -54,6 +54,7 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def sample_list_generator_creator():
+
     def __reader__():
         for _ in range(BATCH_NUM):
             sample_list = []
@@ -67,19 +68,21 @@ def sample_list_generator_creator():
 
 
 class AutoCheckpointBase(unittest.TestCase):
+
     def _init_env(self,
                   exe,
                   main_prog,
                   startup_prog,
                   minimize=True,
                   iterable=True):
+
         def simple_net():
             image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
             fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
-            cross_entropy = fluid.layers.softmax_with_cross_entropy(fc_tmp,
-                                                                    label)
+            cross_entropy = fluid.layers.softmax_with_cross_entropy(
+                fc_tmp, label)
             loss = fluid.layers.reduce_mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             if minimize:

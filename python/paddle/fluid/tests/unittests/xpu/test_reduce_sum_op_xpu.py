@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -28,10 +29,12 @@ paddle.enable_static()
 
 
 class XPUTestReduceSumOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'reduce_sum'
 
     class XPUTestReduceSumBase(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -49,8 +52,9 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
                 self.outputs = {'Out': self.inputs['X'].sum()}
             else:
                 self.outputs = {
-                    'Out': self.inputs['X'].sum(axis=self.axis,
-                                                keepdims=self.attrs['keep_dim'])
+                    'Out':
+                    self.inputs['X'].sum(axis=self.axis,
+                                         keepdims=self.attrs['keep_dim'])
                 }
 
         def init_case(self):
@@ -66,6 +70,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceSumCase1(XPUTestReduceSumBase):
+
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0, )

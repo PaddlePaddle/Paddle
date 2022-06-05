@@ -65,8 +65,8 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
     for i in range(fout_size):
         jac_i = list([] for _ in range(fin_size))
         for j in range(fin_size):
-            jac_i[j] = np.zeros(
-                (_product(ys[i].shape), _product(xs[j].shape)), dtype=np_dtype)
+            jac_i[j] = np.zeros((_product(ys[i].shape), _product(xs[j].shape)),
+                                dtype=np_dtype)
         jacobian[i] = jac_i
 
     for j in range(fin_size):
@@ -109,16 +109,16 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
                     orig = _get_item(xs[j], q)
                     x_pos = orig + delta
                     xs[j] = _set_item(xs[j], q, x_pos)
-                    jacobian_pos = _compute_numerical_jacobian(func, xs, delta,
-                                                               np_dtype)
+                    jacobian_pos = _compute_numerical_jacobian(
+                        func, xs, delta, np_dtype)
                     x_neg = orig - delta
                     xs[j] = _set_item(xs[j], q, x_neg)
-                    jacobian_neg = _compute_numerical_jacobian(func, xs, delta,
-                                                               np_dtype)
+                    jacobian_neg = _compute_numerical_jacobian(
+                        func, xs, delta, np_dtype)
                     xs[j] = _set_item(xs[j], q, orig)
                     hessian[i][j][p][q] = (
-                        jacobian_pos[0][i][0][p] - jacobian_neg[0][i][0][p]
-                    ) / delta / 2.
+                        jacobian_pos[0][i][0][p] -
+                        jacobian_neg[0][i][0][p]) / delta / 2.
     return hessian
 
 
@@ -197,8 +197,7 @@ def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
     mid = len(hessian_res) // 2
     for i in range(mid):
         hessian_result.append(
-            np.stack(
-                (hessian_res[i], hessian_res[mid + i]), axis=0))
+            np.stack((hessian_res[i], hessian_res[mid + i]), axis=0))
     return hessian_result
 
 
@@ -262,6 +261,7 @@ def unuse(x, y):
 
 
 def nested(x):
+
     def inner(y):
         return x * y
 

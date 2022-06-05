@@ -33,7 +33,9 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
-def adaptive_pool2d_forward(x, output_size, data_format='NCHW',
+def adaptive_pool2d_forward(x,
+                            output_size,
+                            data_format='NCHW',
                             pool_type="avg"):
 
     N = x.shape[0]
@@ -68,16 +70,16 @@ def adaptive_pool2d_forward(x, output_size, data_format='NCHW',
             if data_format == 'NCHW':
                 x_masked = x[:, :, in_h_start:in_h_end, in_w_start:in_w_end]
                 if pool_type == 'avg':
-                    field_size = (
-                        (in_h_end - in_h_start) * (in_w_end - in_w_start))
+                    field_size = ((in_h_end - in_h_start) *
+                                  (in_w_end - in_w_start))
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
                 elif pool_type == 'max':
                     out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
             elif data_format == 'NHWC':
                 x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
                 if pool_type == 'avg':
-                    field_size = (
-                        (in_h_end - in_h_start) * (in_w_end - in_w_start))
+                    field_size = ((in_h_end - in_h_start) *
+                                  (in_w_end - in_w_start))
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))
@@ -85,25 +87,29 @@ def adaptive_pool2d_forward(x, output_size, data_format='NCHW',
 
 
 class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
-        self.res_1_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[3, 3], pool_type="avg")
+        self.res_1_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[3, 3],
+                                                pool_type="avg")
 
-        self.res_2_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=5, pool_type="avg")
+        self.res_2_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
 
-        self.res_3_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[2, 5], pool_type="avg")
+        self.res_3_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[2, 5],
+                                                pool_type="avg")
 
-        self.res_4_np = adaptive_pool2d_forward(
-            x=self.x_np,
-            output_size=[3, 3],
-            pool_type="avg",
-            data_format="NHWC")
+        self.res_4_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[3, 3],
+                                                pool_type="avg",
+                                                data_format="NHWC")
 
-        self.res_5_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[None, 3], pool_type="avg")
+        self.res_5_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[None, 3],
+                                                pool_type="avg")
 
     def test_static_graph(self):
         for use_cuda in ([False, True]
@@ -112,25 +118,26 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             paddle.enable_static()
             x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
-            out_1 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3])
+            out_1 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[3, 3])
 
             out_2 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=5)
 
-            out_3 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[2, 5])
+            out_3 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[2, 5])
 
-            out_4 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3], data_format="NHWC")
+            out_4 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[3, 3],
+                                                             data_format="NHWC")
 
             out_5 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[None, 3])
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
-                feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5])
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -149,22 +156,24 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
-            out_1 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3])
+            out_1 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[3, 3])
 
             out_2 = paddle.nn.functional.adaptive_avg_pool2d(x=x, output_size=5)
 
-            out_3 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[2, 5])
+            out_3 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[2, 5])
 
-            out_4 = paddle.nn.functional.adaptive_avg_pool2d(
-                x=x, output_size=[3, 3], data_format="NHWC")
+            out_4 = paddle.nn.functional.adaptive_avg_pool2d(x=x,
+                                                             output_size=[3, 3],
+                                                             data_format="NHWC")
 
             out_5 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[None, 3])
 
-            out_6 = paddle.nn.functional.interpolate(
-                x=x, mode="area", size=[2, 5])
+            out_6 = paddle.nn.functional.interpolate(x=x,
+                                                     mode="area",
+                                                     size=[2, 5])
 
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
@@ -180,25 +189,29 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
 
 class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
-        self.res_1_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[3, 3], pool_type="avg")
+        self.res_1_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[3, 3],
+                                                pool_type="avg")
 
-        self.res_2_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=5, pool_type="avg")
+        self.res_2_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
 
-        self.res_3_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[2, 5], pool_type="avg")
+        self.res_3_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[2, 5],
+                                                pool_type="avg")
 
-        self.res_4_np = adaptive_pool2d_forward(
-            x=self.x_np,
-            output_size=[3, 3],
-            pool_type="avg",
-            data_format="NHWC")
+        self.res_4_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[3, 3],
+                                                pool_type="avg",
+                                                data_format="NHWC")
 
-        self.res_5_np = adaptive_pool2d_forward(
-            x=self.x_np, output_size=[None, 3], pool_type="avg")
+        self.res_5_np = adaptive_pool2d_forward(x=self.x_np,
+                                                output_size=[None, 3],
+                                                pool_type="avg")
 
     def test_static_graph(self):
         for use_cuda in ([False, True]
@@ -216,8 +229,8 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[2, 5])
             out_3 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
-                output_size=[3, 3], data_format="NHWC")
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[3, 3],
+                                                            data_format="NHWC")
             out_4 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
@@ -225,10 +238,10 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             out_5 = adaptive_avg_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
-                feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5])
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -256,8 +269,8 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[2, 5])
             out_3 = adaptive_avg_pool(x=x)
 
-            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
-                output_size=[3, 3], data_format="NHWC")
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[3, 3],
+                                                            data_format="NHWC")
             out_4 = adaptive_avg_pool(x=x)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(

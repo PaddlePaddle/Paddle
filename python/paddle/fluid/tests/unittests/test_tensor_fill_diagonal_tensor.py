@@ -21,6 +21,7 @@ import paddle
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
+
     def setUp(self):
         self.typelist = ['float32', 'float64', 'int32', 'int64']
         self.places = [fluid.CPUPlace()]
@@ -135,8 +136,8 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             for dtype in self.typelist:
-                v = paddle.to_tensor(
-                    np.arange(12).reshape(2, 2, 3), dtype=dtype)
+                v = paddle.to_tensor(np.arange(12).reshape(2, 2, 3),
+                                     dtype=dtype)
                 var = (np.random.random() + 1)
                 x = paddle.ones((2, 4, 3, 2), dtype=dtype)
                 x.stop_gradient = False
@@ -158,8 +159,8 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             fsdim = 128
             paddle.set_device('gpu')
             for dtype in self.typelist:
-                v = paddle.arange(
-                    bsdim * fsdim, dtype=dtype).reshape((bsdim, fsdim))
+                v = paddle.arange(bsdim * fsdim, dtype=dtype).reshape(
+                    (bsdim, fsdim))
                 y = paddle.ones((bsdim, fsdim, fsdim), dtype=dtype)
                 y.stop_gradient = False
                 y = y * 2
