@@ -781,6 +781,8 @@ class ReduceCudaAMaxAMinGradKernel : public framework::OpKernel<T> {
     std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};
     phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
         dev_ctx, grad_inputs, &grad_outputs, 0, DivideFunctor<T>());
+    delete equal_out;
+    delete equal_count;
   }
 };
 #endif
