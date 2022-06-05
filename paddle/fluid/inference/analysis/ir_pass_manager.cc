@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
+
 #include <map>
 #include <memory>
 #include <string>
@@ -20,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
@@ -29,8 +31,8 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLogEndl;
 using string::PrettyLog;
+using string::PrettyLogEndl;
 using string::Style;
 
 IRPassManager::IRPassManager(Argument *argument) {

@@ -118,19 +118,16 @@ REGISTER_OPERATOR(trace_grad, ops::TraceGradOp,
                   ops::TraceGradNoNeedBufferVarsInferer);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(trace)
-    .AddCheckpoint(
-        R"ROC(Upgrade trace add a new attribute [axis2])ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("axis1",
-                     "The added attribute 'axis1' is not yet registered.",
-                     std::vector<float>{0.0f})
-            .NewAttr("axis2",
-                     "The added attribute 'axis2' is not yet registered.",
-                     std::vector<float>{1.0f})
-            .DeleteAttr("dim1",
-                        "The attribute 'dim1' is not recommend according to "
-                        "the specification 2.0.")
-            .DeleteAttr("dim2",
-                        "The attribute 'dim2' is not recommend according to "
-                        "the specification 2.0."));
+REGISTER_OP_VERSION(trace).AddCheckpoint(
+    R"ROC(Upgrade trace add a new attribute [axis2])ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("axis1", "The added attribute 'axis1' is not yet registered.",
+                 std::vector<float>{0.0f})
+        .NewAttr("axis2", "The added attribute 'axis2' is not yet registered.",
+                 std::vector<float>{1.0f})
+        .DeleteAttr("dim1",
+                    "The attribute 'dim1' is not recommend according to "
+                    "the specification 2.0.")
+        .DeleteAttr("dim2",
+                    "The attribute 'dim2' is not recommend according to "
+                    "the specification 2.0."));

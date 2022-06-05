@@ -16,12 +16,12 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
@@ -112,8 +112,9 @@ struct TupleTensorResult {
                   PyObject* args, ssize_t arg_idx) {
     TupleTensorResult<Tuple, N - 1>::Run(out, result, value_idx, args, arg_idx);
     if (N - 1 == value_idx) {
-      PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out),
-                                                 value_idx, args, arg_idx));
+      PyTuple_SET_ITEM(
+          result, N - 1,
+          ToPyObject(std::get<N - 1>(out), value_idx, args, arg_idx));
     } else {
       PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
     }

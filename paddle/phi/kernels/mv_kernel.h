@@ -24,4 +24,4 @@ void MvKernel(const Context& ctx,
               const DenseTensor& vec,
               DenseTensor* out);
 
-}  // namepsace phi
+}  // namespace phi

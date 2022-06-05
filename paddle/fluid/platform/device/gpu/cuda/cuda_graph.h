@@ -20,10 +20,10 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"

@@ -168,10 +168,11 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
       r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
                                          index->data<int64_t>(),
                                          index_int_ptr_l3, index->numel());
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                            "XPU API(cast_v2) return wrong "
-                                            "value[%d %s]",
-                                            r, XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU API(cast_v2) return wrong "
+                                     "value[%d %s]",
+                                     r, XPUAPIErrorMsg[r]));
 
       r = xpu::gather_grad<XPUType, int>(
           dev_ctx.x_context(),

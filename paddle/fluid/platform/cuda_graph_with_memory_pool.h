@@ -24,10 +24,9 @@ namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
-#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond, __kernel_func, __grid,     \
-                                           __block, __sm_size, __stream,      \
-                                           __seed_inc, __seed_expr,           \
-                                           __offset_expr, ...)                \
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(                                   \
+    __cond, __kernel_func, __grid, __block, __sm_size, __stream, __seed_inc,  \
+    __seed_expr, __offset_expr, ...)                                          \
   do {                                                                        \
     if (::paddle::platform::CUDAGraph::IsThisThreadCapturing() && (__cond)) { \
       using __Helper =                                                        \
@@ -36,9 +35,9 @@ namespace platform {
       auto *dev_ctx =                                                         \
           ::paddle::platform::DeviceContextPool::Instance().GetByPlace(       \
               ::paddle::platform::CUDAGraph::CapturingPlace());               \
-      auto __set_seed_func = [=](                                             \
-          ::paddle::platform::CUDAKernelParams *__params,                     \
-          bool __check_only) -> bool {                                        \
+      auto __set_seed_func =                                                  \
+          [=](::paddle::platform::CUDAKernelParams *__params,                 \
+              bool __check_only) -> bool {                                    \
         if (__check_only) {                                                   \
           return __params->func() == &__kernel_func &&                        \
                  __Helper::Compare(*__params, __VA_ARGS__);                   \
@@ -56,12 +55,11 @@ namespace platform {
     __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);     \
   } while (0)
 #else
-#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond, __kernel_func, __grid, \
-                                           __block, __sm_size, __stream,  \
-                                           __seed_inc, __seed_expr,       \
-                                           __offset_expr, ...)            \
-  do {                                                                    \
-    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__); \
+#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(                                  \
+    __cond, __kernel_func, __grid, __block, __sm_size, __stream, __seed_inc, \
+    __seed_expr, __offset_expr, ...)                                         \
+  do {                                                                       \
+    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);    \
   } while (0)
 #endif
 
