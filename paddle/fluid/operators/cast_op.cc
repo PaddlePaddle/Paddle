@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"

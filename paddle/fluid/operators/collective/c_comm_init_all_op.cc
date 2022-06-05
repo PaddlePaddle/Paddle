@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/collective_helper.h"
 
@@ -53,9 +52,9 @@ class CCommInitAllOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-// PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
-//                   platform::errors::PreconditionNotMet(
-//                       "CCommInitAllOp can run on gpu place only"));
+    // PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
+    //                   platform::errors::PreconditionNotMet(
+    //                       "CCommInitAllOp can run on gpu place only"));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     std::vector<int> devices = Attr<std::vector<int>>("devices");

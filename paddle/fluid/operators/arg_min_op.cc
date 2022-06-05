@@ -27,20 +27,18 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ArgMinInferShapeFunctor);
 
-REGISTER_OP_VERSION(arg_min)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(arg_min).AddCheckpoint(
+    R"ROC(
               Upgrade argmin add a new attribute [flatten] and modify the attribute of dtype)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("flatten",
-                     "In order to compute the argmin over the flattened array "
-                     "when the "
-                     "argument `axis` in python API is None.",
-                     false)
-            .ModifyAttr(
-                "dtype",
-                "Change the default value of dtype from -1 to 3"
-                ", means return the int64 indices directly. The rearse why "
-                "changing the default value is that the int64 value in "
-                "VarType is 3 in the frameworke.proto.",
-                3));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("flatten",
+                 "In order to compute the argmin over the flattened array "
+                 "when the "
+                 "argument `axis` in python API is None.",
+                 false)
+        .ModifyAttr("dtype",
+                    "Change the default value of dtype from -1 to 3"
+                    ", means return the int64 indices directly. The rearse why "
+                    "changing the default value is that the int64 value in "
+                    "VarType is 3 in the frameworke.proto.",
+                    3));

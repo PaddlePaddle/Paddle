@@ -18,6 +18,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/data_feed.h"
+
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
@@ -231,8 +232,9 @@ bool DataFeed::PickOneFile(std::string* filename) {
 }
 
 void DataFeed::CheckInit() {
-  PADDLE_ENFORCE_EQ(finish_init_, true, platform::errors::PreconditionNotMet(
-                                            "DataFeed initialization failed."));
+  PADDLE_ENFORCE_EQ(
+      finish_init_, true,
+      platform::errors::PreconditionNotMet("DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
@@ -1619,9 +1621,10 @@ template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
 bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fd_ = open(filename.c_str(), O_RDONLY);
   PADDLE_ENFORCE_NE(
-      fd_, -1, platform::errors::Unavailable(
-                   "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
-                   filename.c_str()));
+      fd_, -1,
+      platform::errors::Unavailable(
+          "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
+          filename.c_str()));
 
   struct stat sb;
   fstat(fd_, &sb);
@@ -2182,7 +2185,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
     SlotRecordPool().get(&record_vec, OBJPOOL_BLOCK_SIZE);
     // get slotrecord object function
     auto record_func = [this, &offset, &record_vec, &old_offset](
-        std::vector<SlotRecord>& vec, int num) {
+                           std::vector<SlotRecord>& vec, int num) {
       vec.resize(num);
       if (offset + num > OBJPOOL_BLOCK_SIZE) {
         input_channel_->WriteMove(offset, &record_vec[0]);
@@ -2675,8 +2678,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
     size_t* off_start_ptr = &offsets[j * offset_cols_size];
 
     int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
-    CHECK(total_instance >= 0) << "slot idx:" << j
-                               << ", total instance:" << total_instance;
+    CHECK(total_instance >= 0)
+        << "slot idx:" << j << ", total instance:" << total_instance;
     auto& info = used_slots_info_[j];
 
     // fill slot value with default value 0

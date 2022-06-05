@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #ifdef PADDLE_WITH_CUDA
@@ -27,11 +28,11 @@
 #include "paddle/fluid/platform/profiler/profiler.h"
 
 TEST(ProfilerTest, TestHostTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::TracerEventType;
-  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 2;
   options.trace_switch = 3;
@@ -58,8 +59,8 @@ TEST(ProfilerTest, TestHostTracer) {
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
   using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 0;

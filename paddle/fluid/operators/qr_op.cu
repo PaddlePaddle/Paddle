@@ -16,8 +16,10 @@ limitations under the License. */
 // HIP not support cusolver
 
 #include <thrust/device_vector.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/qr_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -43,8 +45,9 @@ class QrGPUKernel : public framework::OpKernel<T> {
     std::tie(compute_q, reduced_mode) = _parse_qr_mode(mode);
 
     auto numel = x.numel();
-    PADDLE_ENFORCE_GT(numel, 0, platform::errors::PreconditionNotMet(
-                                    "The input of QR is empty."));
+    PADDLE_ENFORCE_GT(
+        numel, 0,
+        platform::errors::PreconditionNotMet("The input of QR is empty."));
     auto x_dims = x.dims();
     int x_rank = x_dims.size();
     int m = x_dims[x_rank - 2];

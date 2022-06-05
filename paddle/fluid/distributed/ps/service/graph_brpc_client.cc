@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+
 #include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
@@ -149,7 +151,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
 std::future<int32_t> GraphBrpcClient::clear_nodes(uint32_t table_id,
                                                   int type_id, int idx_) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      server_size, [&, server_size = this->server_size ](void *done) {
+      server_size, [&, server_size = this->server_size](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;
         size_t fail_num = 0;
@@ -665,5 +667,5 @@ int32_t GraphBrpcClient::Initialize() {
   local_channel = NULL;
   return 0;
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

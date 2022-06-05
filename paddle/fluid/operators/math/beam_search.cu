@@ -348,11 +348,10 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     float* selected_scores_data =
         selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
     int* parent_idx_data =
-        parent_idx
-            ? parent_idx->mutable_data<int>(
-                  {static_cast<int64_t>(num_seqs * beam_size)},
-                  context.GetPlace())
-            : nullptr;
+        parent_idx ? parent_idx->mutable_data<int>(
+                         {static_cast<int64_t>(num_seqs * beam_size)},
+                         context.GetPlace())
+                   : nullptr;
 
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
@@ -369,8 +368,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                             static_cast<int>(beam_size));
       switch (platform::RoundToPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq><<<
-                1, kMaxThreadsPerSeq, 0, context.stream()>>>(
+            BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq>
+            <<<1, kMaxThreadsPerSeq, 0, context.stream()>>>(
                 selected_ids_data, selected_scores_data, parent_idx_data,
                 selected_offsets, pre_ids_data, pre_scores_data, ids_data,
                 scores_data, seq_length, static_cast<int>(seq_width),
@@ -387,8 +386,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                             static_cast<int>(beam_size));
       switch (platform::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs><<<
-                1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
+            BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs>
+            <<<1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
                 selected_ids_data, selected_scores_data, parent_idx_data,
                 selected_offsets, pre_ids_data, pre_scores_data, ids_data,
                 scores_data, seq_offsets, static_cast<int>(num_seqs),

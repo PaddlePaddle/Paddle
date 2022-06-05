@@ -815,23 +815,23 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
     const int threads = 256;
     if (hidden % 2 == 0) {
       if (std::is_same<T, float>::value) {
-        SkipLayerNormKernel2<float, float2,
-                             threads><<<block, threads, 0, stream>>>(
-            num, hidden / 2, reinterpret_cast<const float2 *>(input1),
-            reinterpret_cast<const float2 *>(input2),
-            reinterpret_cast<float2 *>(output),
-            reinterpret_cast<const float2 *>(scale),
-            reinterpret_cast<const float2 *>(bias), eps);
+        SkipLayerNormKernel2<float, float2, threads>
+            <<<block, threads, 0, stream>>>(
+                num, hidden / 2, reinterpret_cast<const float2 *>(input1),
+                reinterpret_cast<const float2 *>(input2),
+                reinterpret_cast<float2 *>(output),
+                reinterpret_cast<const float2 *>(scale),
+                reinterpret_cast<const float2 *>(bias), eps);
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #ifndef __HIPCC__
       } else if (std::is_same<T, __half>::value) {
-        SkipLayerNormKernel2<__half, __half2,
-                             threads><<<block, threads, 0, stream>>>(
-            num, hidden / 2, reinterpret_cast<const __half2 *>(input1),
-            reinterpret_cast<const __half2 *>(input2),
-            reinterpret_cast<__half2 *>(output),
-            reinterpret_cast<const float2 *>(scale),
-            reinterpret_cast<const float2 *>(bias), eps);
+        SkipLayerNormKernel2<__half, __half2, threads>
+            <<<block, threads, 0, stream>>>(
+                num, hidden / 2, reinterpret_cast<const __half2 *>(input1),
+                reinterpret_cast<const __half2 *>(input2),
+                reinterpret_cast<__half2 *>(output),
+                reinterpret_cast<const float2 *>(scale),
+                reinterpret_cast<const float2 *>(bias), eps);
 #endif
       } else {
         assert(false);

@@ -874,8 +874,9 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           }
 
           PADDLE_ENFORCE_EQ(var_info.var->Var().IsType<framework::LoDTensor>(),
-                            true, platform::errors::PermissionDenied(
-                                      "Gradient var must be LoDTensor"));
+                            true,
+                            platform::errors::PermissionDenied(
+                                "Gradient var must be LoDTensor"));
           if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var->MutableVar(), var_info.var->MutableVar(),
                           var_info.unchange_input);
@@ -896,9 +897,10 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           PADDLE_ENFORCE_EQ(
               var_info.var->Var().IsType<framework::LoDTensor>() ||
                   var_info.var->Var().IsType<phi::SelectedRows>(),
-              true, platform::errors::PermissionDenied("The type of Gradient "
-                                                       "var must be LoDTensor "
-                                                       "or SelectedRows"));
+              true,
+              platform::errors::PermissionDenied("The type of Gradient "
+                                                 "var must be LoDTensor "
+                                                 "or SelectedRows"));
           if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var->MutableVar(), var_info.var->MutableVar(),
                           var_info.unchange_input);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
+
 #include <memory>
 #include <string>
 
@@ -30,11 +31,12 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // Check the lod_level for compile-time.
       auto in_lod_level = ctx->GetLoDLevel("X");
-      PADDLE_ENFORCE_GT(in_lod_level, 0, platform::errors::InvalidArgument(
-                                             "The LoD level of Input(X) should "
-                                             "be larger than 0, but received: "
-                                             "lod level %u.",
-                                             in_lod_level));
+      PADDLE_ENFORCE_GT(
+          in_lod_level, 0,
+          platform::errors::InvalidArgument("The LoD level of Input(X) should "
+                                            "be larger than 0, but received: "
+                                            "lod level %u.",
+                                            in_lod_level));
       ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
