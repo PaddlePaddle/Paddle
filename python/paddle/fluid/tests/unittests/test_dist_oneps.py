@@ -15,12 +15,14 @@
 import unittest
 
 import paddle
+
 paddle.enable_static()
 
 from paddle.distributed.fleet.runtime.the_one_ps import Table
 
 
 class TestTable(unittest.TestCase):
+
     def test_table_tensor(self):
         table = Table()
         table.id = 1001

@@ -18,6 +18,7 @@ __all__ = []
 
 
 class MetaParallelBase(Layer):
+
     def __init__(self, layers, hcg, strategy):
         super(MetaParallelBase,
               self).__init__(layers.full_name() + "_meta_parallel_base")

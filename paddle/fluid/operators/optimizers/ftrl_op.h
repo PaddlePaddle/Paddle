@@ -74,9 +74,8 @@ class SparseFTRLFunctor {
       l_acc_out_[j] += g - (std::sqrt(new_acc) - std::sqrt(s_acc)) / lr * p;
     } else {
       l_acc_out_[j] +=
-          g -
-          (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) / lr *
-              p;
+          g - (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) /
+                  lr * p;
     }
 
     auto l_acc = l_acc_out_[j];

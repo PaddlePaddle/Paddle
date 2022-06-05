@@ -17,6 +17,7 @@ limitations under the License. */
 #include <atomic>
 #include <map>
 #include <string>
+
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -149,15 +150,16 @@ void HostMemoryStatUpdate(const std::string& stat_type, int dev_id,
 #define DEVICE_MEMORY_STAT_UPDATE(item, id, increment) \
   DEVICE_MEMORY_STAT_FUNC(item, id, Update, increment)
 
-#define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                           \
-  [&] {                                                                      \
-    PADDLE_ENFORCE_EQ(id, 0, paddle::platform::errors::OutOfRange(           \
-                                 "Only support device id 0 for host memory " \
-                                 "stats, not support device id: %d",         \
-                                 id));                                       \
-    return paddle::memory::Stat<                                             \
-               paddle::memory::HostMemoryStat##item##0>::GetInstance()       \
-        ->func(__VA_ARGS__);                                                 \
+#define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                     \
+  [&] {                                                                \
+    PADDLE_ENFORCE_EQ(id, 0,                                           \
+                      paddle::platform::errors::OutOfRange(            \
+                          "Only support device id 0 for host memory "  \
+                          "stats, not support device id: %d",          \
+                          id));                                        \
+    return paddle::memory::Stat<                                       \
+               paddle::memory::HostMemoryStat##item##0>::GetInstance() \
+        ->func(__VA_ARGS__);                                           \
   }()
 
 #define HOST_MEMORY_STAT_CURRENT_VALUE(item, id) \

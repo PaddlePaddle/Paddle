@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -44,8 +45,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
         x_fill = paddle.full_like(x, **self.attrs)
         out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
         self.fetch_list = [out.name]
@@ -62,6 +64,7 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {'fill_value': 3, 'dtype': 'int32'}
 

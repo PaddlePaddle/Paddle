@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/dlnne/dlnne_engine_op.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"

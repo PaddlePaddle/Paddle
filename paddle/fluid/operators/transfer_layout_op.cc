@@ -146,7 +146,7 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_layout, float,
                                ops::TransferLayoutKernel);
 REGISTER_OP_VERSION(transfer_layout)
-    .AddCheckpoint(
-        R"ROC(refine transfer_layout, add src_layout attribute)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "src_layout", "(int, the layout of the input tensor", -1));
+    .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "src_layout", "(int, the layout of the input tensor",
+                       -1));

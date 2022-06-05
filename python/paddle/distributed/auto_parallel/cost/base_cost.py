@@ -85,8 +85,8 @@ def _parse_op_to_desc(op, dist_context=None):
 def parse_to_desc(op=None, dist_op=None, dist_context=None):
     desc = None
     if op is None and dist_op is not None and dist_context is not None:
-        desc = _parse_op_to_desc(
-            op=dist_op.serial_op, dist_context=dist_context)
+        desc = _parse_op_to_desc(op=dist_op.serial_op,
+                                 dist_context=dist_context)
     elif op is not None and dist_op is None and dist_context is None:
         desc = _parse_op_to_desc(op)
 
@@ -94,6 +94,7 @@ def parse_to_desc(op=None, dist_op=None, dist_context=None):
 
 
 def parse_desc_to_str(desc):
+
     def _parse_dtype(dtype):
         dtype_str = ""
         if dtype == paddle.float32:
@@ -248,10 +249,10 @@ class CommContext:
         else:
             for i in range(len(ranks)):
                 for j in range(i + 1, len(ranks)):
-                    forward_order_beta = self.cluster.get_beta(ranks[i],
-                                                               ranks[j])
-                    backward_order_beta = self.cluster.get_beta(ranks[j],
-                                                                ranks[i])
+                    forward_order_beta = self.cluster.get_beta(
+                        ranks[i], ranks[j])
+                    backward_order_beta = self.cluster.get_beta(
+                        ranks[j], ranks[i])
                     beta = forward_order_beta if forward_order_beta > backward_order_beta else backward_order_beta
                     if max_beta == None:
                         max_beta = beta
@@ -275,6 +276,7 @@ class CommContext:
 
 
 class Cost:
+
     def __init__(self, time=0, memory=0, flops=0):
         self.time = time
         self.memory = memory
@@ -338,6 +340,7 @@ class Cost:
 
 
 class OpCost:
+
     def __init__(self, op=None, op_desc=None):
         self._op = op
         self._op_desc = op_desc
@@ -462,8 +465,8 @@ class CommOpCost(OpCost):
             elif dtype == paddle.float16:
                 factor = 2
             else:
-                raise TypeError("This dtype {} is not supported now".format(
-                    dtype))
+                raise TypeError(
+                    "This dtype {} is not supported now".format(dtype))
             comm_count = reduce(lambda x, y: x * y, shape) * factor
             self._comm_count = comm_count
 
@@ -506,8 +509,9 @@ class CommOpCost(OpCost):
     def _check_comm_op_type(cls):
         if cls.OP_TYPE != "COMM":
             if cls.OP_TYPE not in COMM_OP_TYPE:
-                raise TypeError("Please Check op type in {}, but got {}.".
-                                format(COMM_OP_TYPE, cls.OP_TYPE))
+                raise TypeError(
+                    "Please Check op type in {}, but got {}.".format(
+                        COMM_OP_TYPE, cls.OP_TYPE))
 
 
 class CompOpCost(OpCost):
@@ -523,8 +527,9 @@ class CompOpCost(OpCost):
     def _check_comp_op_type(cls):
         if cls.OP_TYPE != "COMP":
             if cls.OP_TYPE in NON_COMP_TYPE:
-                raise TypeError("Please Check op type not in {}, but got {}.".
-                                format(NON_COMP_TYPE, cls.OP_TYPE))
+                raise TypeError(
+                    "Please Check op type not in {}, but got {}.".format(
+                        NON_COMP_TYPE, cls.OP_TYPE))
 
 
 def register_op_cost(cls):

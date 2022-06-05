@@ -21,6 +21,7 @@ import os
 
 
 class TestMNIST(TestParallelExecutorBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -43,8 +44,10 @@ class TestMNIST(TestParallelExecutorBase):
         # add enable_inplace=False here to force pass the unittest
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={
+                "image": img,
+                "label": label
+            },
             use_device=use_device,
             fuse_elewise_add_act_ops=False,
             use_ir_memory_optimize=False,
@@ -52,8 +55,10 @@ class TestMNIST(TestParallelExecutorBase):
             optimizer=_optimizer)
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={
+                "image": img,
+                "label": label
+            },
             use_device=use_device,
             fuse_elewise_add_act_ops=True,
             use_ir_memory_optimize=False,

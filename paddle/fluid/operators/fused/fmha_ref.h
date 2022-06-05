@@ -186,8 +186,9 @@ class FMHARef {
     if (dropout_param_.dropout_prob_) {
       DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
-          dropout_param_.is_test_, static_cast<const std::string>(
-                                       dropout_param_.dropout_implementation_),
+          dropout_param_.is_test_,
+          static_cast<const std::string>(
+              dropout_param_.dropout_implementation_),
           dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
           dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
           static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
