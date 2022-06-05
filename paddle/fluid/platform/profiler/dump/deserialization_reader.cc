@@ -174,6 +174,9 @@ HostTraceEventNode* DeserializationReader::RestoreHostTraceEventNode(
   return new HostTraceEventNode(host_event);
 }
 
+DeviceTraceEventNode* DeserializationReader::RestoreDeviceTraceEventNode(
+    const MemTraceEventNodeProto& device_node_proto) {}
+
 KernelEventInfo DeserializationReader::HandleKernelEventInfoProto(
     const DeviceTraceEventProto& device_event_proto) {
   const KernelEventInfoProto& kernel_info_proto =

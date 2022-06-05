@@ -36,6 +36,7 @@ class ChromeTracingLogger : public BaseLogger {
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
   void LogMetaInfo(const std::unordered_map<std::string, std::string>);
+  void LogMemTraceEventNode(const MemTraceEventNode&) override;
 
  private:
   void OpenFile();

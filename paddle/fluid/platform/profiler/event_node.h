@@ -48,6 +48,9 @@ class MemTraceEventNode {
   uint64_t CurrentAllocated() const { return mem_event_.current_allocated; }
   uint64_t CurrentReserved() const { return mem_event_.current_reserved; }
 
+  // member function
+  void LogMe(BaseLogger* logger) { logger->LogMemTraceEventNode(*this); }
+
  private:
   // data
   MemTraceEvent mem_event_;
@@ -206,7 +209,7 @@ class HostTraceEventNode {
     return mem_node_ptrs_;
   }
 
-  const OperatorSupplementEventNode* GetOperatorSupplementEventNode() const {
+  OperatorSupplementEventNode* GetOperatorSupplementEventNode() const {
     return op_supplement_node_ptr_;
   }
 
@@ -221,7 +224,7 @@ class HostTraceEventNode {
   std::vector<HostTraceEventNode*> children_;
   // memory events happened in this event period
   std::vector<MemTraceEventNode*> mem_node_ptrs_;
-  OperatorSupplementEventNode* op_supplement_node_ptr_;
+  OperatorSupplementEventNode* op_supplement_node_ptr_ = nullptr;
 };
 
 class NodeTrees {
@@ -269,7 +272,9 @@ class NodeTrees {
   void LogMe(BaseLogger* logger);
   void HandleTrees(std::function<void(HostTraceEventNode*)>,
                    std::function<void(CudaRuntimeTraceEventNode*)>,
-                   std::function<void(DeviceTraceEventNode*)>);
+                   std::function<void(DeviceTraceEventNode*)>,
+                   std::function<void(MemTraceEventNode*)>,
+                   std::function<void(OperatorSupplementEventNode*)>);
   const std::map<uint64_t, HostTraceEventNode*>& GetNodeTrees() const {
     return thread_event_trees_map_;
   }

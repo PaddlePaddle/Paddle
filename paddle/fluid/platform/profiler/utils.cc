@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/utils.h"
 
+#include <sstream>
 #include <vector>
-
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
@@ -60,6 +60,22 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
   return occupancy;
 }
 #endif
+
+const char* StringTracerMemEventType(TracerMemEventType type) {
+  static const char* categary_name_[] = {"Allocate", "Free"};
+  return categary_name_[static_cast<int>(type)];
+}
+
+const char* StringTracerEventType(TracerEventType type) {
+  static const char* categary_name_[] = {
+      "Operator",      "Dataloader",  "ProfileStep",
+      "CudaRuntime",   "Kernel",      "Memcpy",
+      "Memset",        "UserDefined", "OperatorInner",
+      "Forward",       "Backward",    "Optimization",
+      "Communication", "PythonOp",    "PythonUserDefined",
+      "MluRuntime"};
+  return categary_name_[static_cast<int>(type)];
+}
 
 }  // namespace platform
 }  // namespace paddle

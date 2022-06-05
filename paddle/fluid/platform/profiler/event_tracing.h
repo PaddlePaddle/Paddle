@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -105,35 +103,6 @@ class RecordEvent {
   TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
-};
-
-// Memory event tracing. A trace marks memory manipulation such as allocation
-// and free.
-// The events can be used to draw memory variation curve.
-class RecordMemEvent {
- public:
-  /**
-   * @param ptr:  Pointer address allocated or free.
-   * @param place: Device for this memory event.
-   * @param size: Memory size allocated or free.
-   * @param current_allocated: Current total allocated memory size, which is a
-   * statistic metric.
-   * @param current_reserved: Current total reserved memory size, which is a
-   * statistic metric.
-   * @param type: Denote manipulation type for this memory event.
-   */
-  explicit RecordMemEvent(
-      const void* ptr, const Place& place, size_t size,
-      uint64_t current_allocated, uint64_t current_reserved,
-      const TracerMemEventType type = TracerMemEventType::Allocate);
-};
-
-class RecordOpInfoSupplement {
- public:
-  explicit RecordOpInfoSupplement(const std::string& type,
-                                  const framework::AttributeMap& attrs,
-                                  const framework::InferShapeContext& shape_ctx,
-                                  const framework::RuntimeContext& ctx);
 };
 
 }  // namespace platform

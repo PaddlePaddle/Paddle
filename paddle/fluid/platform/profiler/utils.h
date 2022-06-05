@@ -14,10 +14,14 @@ limitations under the License. */
 #pragma once
 
 #include <ctime>
+#include <map>
+#include <ostream>
 #include <string>
+#include <vector>
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -34,6 +38,79 @@ std::string string_format(const std::string& format, Args... args) {
   return std::string(buf.get(), size - 1);  // exclude the '\0'
 }
 
+template <typename basic_type>
+std::string json_vector(const std::vector<basic_type> type_vector) {
+  std::ostringstream res_stream;
+  auto count = type_vector.size();
+  res_stream << "[";
+  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << (*it) << ",";
+    } else {
+      res_stream << (*it);
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+template <typename basic_type>
+std::string json_vector(
+    const std::vector<std::vector<basic_type>> shape_vector) {
+  std::ostringstream res_stream;
+  auto count = shape_vector.size();
+  res_stream << "[";
+  for (auto it = shape_vector.begin(); it != shape_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << json_vector(*it) << ",";
+    } else {
+      res_stream << json_vector(*it);
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+template <>
+std::string json_vector<std::string>(
+    const std::vector<std::string> type_vector) {
+  std::ostringstream res_stream;
+  auto count = type_vector.size();
+  res_stream << "[";
+  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << "\"" << (*it) << "\""
+                 << ",";
+    } else {
+      res_stream << "\"" << (*it) << "\"";
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+template <typename type>
+std::string json_dict(const std::map<std::string, std::vector<type>> data_map) {
+  std::ostringstream res_stream;
+  auto count = data_map.size();
+  res_stream << "{";
+  for (auto it = data_map.begin(); it != data_map.end(); it++) {
+    if (count > 1) {
+      res_stream << "\"" << it->first << "\""
+                 << ":" << json_vector(it->second) << ",";
+    } else {
+      res_stream << "\"" << it->first << "\""
+                 << ":" << json_vector(it->second);
+    }
+    count--;
+  }
+  res_stream << "}";
+  return res_stream.str();
+}
+
 static std::string GetStringFormatLocalTime() {
   std::time_t rawtime;
   std::tm* timeinfo;
@@ -48,6 +125,10 @@ static int64_t nsToUs(uint64_t end_ns, uint64_t start_ns = 0) {
   return (end_ns - start_ns) / 1000;
 }
 
+const char* StringTracerMemEventType(TracerMemEventType type);
+
+const char* StringTracerEventType(TracerEventType type);
+
 static float nsToUsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
   return static_cast<float>(end_ns - start_ns) / 1000;
 }
@@ -61,5 +142,6 @@ float CalculateEstOccupancy(uint32_t deviceId, uint16_t registersPerThread,
                             int32_t dynamicSharedMemory, int32_t blockX,
                             int32_t blockY, int32_t blockZ, float blocksPerSm);
 #endif
+
 }  // namespace platform
 }  // namespace paddle
