@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -146,9 +147,9 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
     int threads = 512;
     size_t size = batch_size * num_true;
     int grid = (size + threads - 1) / threads;
-    GPUSetLabel<
-        T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-        size, num_true, sampled_labels_data);
+    GPUSetLabel<T>
+        <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+            size, num_true, sampled_labels_data);
 
     if (use_customized_samples) {
       const Tensor* customized_samples =
@@ -190,17 +191,17 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
 
     size = batch_size * num_take;
     grid = (size + threads - 1) / threads;
-    GPUTakeAlongD1<
-        T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-        size, batch_size, array_slice_size, idx_slice_size, p_array, p_index,
-        p_value);
+    GPUTakeAlongD1<T>
+        <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+            size, batch_size, array_slice_size, idx_slice_size, p_array,
+            p_index, p_value);
 
     if (remove_accidental_hits) {
       const size_t size = batch_size * (num_true + num_samples);
       int grid = (size + threads - 1) / threads;
-      gpu_compute_remove_accidental_hits<
-          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, num_true, idx_slice_size, p_index, p_value);
+      gpu_compute_remove_accidental_hits<T>
+          <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+              size, num_true, idx_slice_size, p_index, p_value);
     }
 
     // subtracted sampled logits with logQ(y|x)
@@ -246,10 +247,10 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
     const size_t size = batch_size;
     int grid = (size + threads - 1) / threads;
 
-    GPUPutAlongD1<
-        T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-        size, batch_size, array_slice_size, idx_slice_size, p_array, p_index,
-        p_value);
+    GPUPutAlongD1<T>
+        <<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+            size, batch_size, array_slice_size, idx_slice_size, p_array,
+            p_index, p_value);
   }
 };
 

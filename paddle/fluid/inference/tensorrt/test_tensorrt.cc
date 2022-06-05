@@ -15,6 +15,7 @@ limitations under the License. */
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include "NvInfer.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/dynload/tensorrt.h"

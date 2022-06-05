@@ -10,9 +10,11 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -112,11 +114,12 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
 
   PADDLE_ENFORCE_EQ("bilinear" == interp_method || "nearest" == interp_method ||
                         "bicubic" == interp_method,
-                    true, platform::errors::InvalidArgument(
-                              "Interpolation method can only be \"bilinear\" "
-                              "or \"nearest\" or \"bicubic\" when "
-                              "Input(X) dimension is 4, but got method is %s.",
-                              interp_method));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Interpolation method can only be \"bilinear\" "
+                        "or \"nearest\" or \"bicubic\" when "
+                        "Input(X) dimension is 4, but got method is %s.",
+                        interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 

@@ -213,14 +213,14 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
         platform::errors::AlreadyExists(
             "GradOpDescMaker of %s has been registered", op_type));
 
-    info->grad_op_maker_ = [](
-        const OpDesc& fwd_op,
-        const std::unordered_set<std::string>& no_grad_set,
-        std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block) {
-      T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
-      return maker();
-    };
+    info->grad_op_maker_ =
+        [](const OpDesc& fwd_op,
+           const std::unordered_set<std::string>& no_grad_set,
+           std::unordered_map<std::string, std::string>* grad_to_var,
+           const std::vector<BlockDesc*>& grad_block) {
+          T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
+          return maker();
+        };
 
     info->use_default_grad_op_desc_maker_ =
         std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
@@ -244,17 +244,17 @@ struct OpInfoFiller<T, kGradOpBaseMaker> {
         platform::errors::AlreadyExists(
             "GradOpBaseMaker of %s has been registered", op_type));
 
-    info->dygraph_grad_op_maker_ = [](
-        const std::string& type,
-        const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out,
-        const framework::AttributeMap& attrs,
-        const framework::AttributeMap& default_attrs,
-        const std::map<std::string, std::string>& inplace_map) {
-      T maker(type, var_base_map_in, var_base_map_out, attrs, inplace_map);
-      maker.SetDygraphDefaultAttrsMap(default_attrs);
-      return maker();
-    };
+    info->dygraph_grad_op_maker_ =
+        [](const std::string& type,
+           const imperative::NameVarBaseMap& var_base_map_in,
+           const imperative::NameVarBaseMap& var_base_map_out,
+           const framework::AttributeMap& attrs,
+           const framework::AttributeMap& default_attrs,
+           const std::map<std::string, std::string>& inplace_map) {
+          T maker(type, var_base_map_in, var_base_map_out, attrs, inplace_map);
+          maker.SetDygraphDefaultAttrsMap(default_attrs);
+          return maker();
+        };
   }
 };
 

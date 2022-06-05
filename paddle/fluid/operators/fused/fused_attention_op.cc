@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -88,12 +89,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("QKVW");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 3, platform::errors::InvalidArgument(
-                                           "The dimensions of x must be 3"
-                                           "(batch_size, seq_len, dim_embed),"
-                                           "but received dimensions of"
-                                           "Input is [%d]",
-                                           x_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(), 3,
+        platform::errors::InvalidArgument("The dimensions of x must be 3"
+                                          "(batch_size, seq_len, dim_embed),"
+                                          "but received dimensions of"
+                                          "Input is [%d]",
+                                          x_dim.size()));
     PADDLE_ENFORCE_EQ(y_dim.size(), 4,
                       platform::errors::InvalidArgument(
                           "The dimensions of qkv_weight must be 4"

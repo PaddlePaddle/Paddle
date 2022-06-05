@@ -26,8 +26,9 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
-                                     "The value of nranks should be >=2."));
+    PADDLE_ENFORCE_GE(nranks, 2,
+                      platform::errors::InvalidArgument(
+                          "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
     if (dim[0] < 0) dim[0] = -1;

@@ -27,6 +27,7 @@ from functools import reduce
 
 
 class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -45,41 +46,41 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
-        im2sequence_op = OpConfig(
-            type="im2sequence",
-            inputs={"X": ["input_data"]},
-            outputs={"Out": ["seq_out"]},
-            attrs={
-                "kernels": [6, 1],
-                "out_stride": [1, 1],
-                "paddings": [0, 0, 0, 0],
-                "strides": [1, 1]
-            })
+        im2sequence_op = OpConfig(type="im2sequence",
+                                  inputs={"X": ["input_data"]},
+                                  outputs={"Out": ["seq_out"]},
+                                  attrs={
+                                      "kernels": [6, 1],
+                                      "out_stride": [1, 1],
+                                      "paddings": [0, 0, 0, 0],
+                                      "strides": [1, 1]
+                                  })
 
-        sequence_conv_op = OpConfig(
-            type="sequence_conv",
-            inputs={"X": ["seq_out"],
-                    "Filter": ["conv_weight"]},
-            outputs={"Out": ["conv_out"]},
-            attrs={
-                "contextLength": contextLength,
-                "contextStart": contextStart,
-                "contextStride": contextStride,
-                "paddingTrainable": paddingTrainable
-            })
+        sequence_conv_op = OpConfig(type="sequence_conv",
+                                    inputs={
+                                        "X": ["seq_out"],
+                                        "Filter": ["conv_weight"]
+                                    },
+                                    outputs={"Out": ["conv_out"]},
+                                    attrs={
+                                        "contextLength": contextLength,
+                                        "contextStart": contextStart,
+                                        "contextStride": contextStride,
+                                        "paddingTrainable": paddingTrainable
+                                    })
 
-        elementwise_add_op = OpConfig(
-            type="elementwise_add",
-            inputs={"X": ["conv_out"],
-                    "Y": ["elt_weight"]},
-            outputs={"Out": ["elt_output"]},
-            attrs={'axis': axis})
+        elementwise_add_op = OpConfig(type="elementwise_add",
+                                      inputs={
+                                          "X": ["conv_out"],
+                                          "Y": ["elt_weight"]
+                                      },
+                                      outputs={"Out": ["elt_output"]},
+                                      attrs={'axis': axis})
 
-        relu_op = OpConfig(
-            type="relu",
-            inputs={"X": ["elt_output"]},
-            outputs={"Out": ["relu_output"]},
-            attrs={})
+        relu_op = OpConfig(type="relu",
+                           inputs={"X": ["elt_output"]},
+                           outputs={"Out": ["relu_output"]},
+                           attrs={})
 
         model_net = [
             im2sequence_op, sequence_conv_op, elementwise_add_op, relu_op
@@ -88,8 +89,10 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "conv_weight": TensorConfig(data_gen=partial(
-                    generate_weight, [768 * contextLength, 16])),
+                "conv_weight":
+                TensorConfig(
+                    data_gen=partial(generate_weight, [768 *
+                                                       contextLength, 16])),
                 "elt_weight":
                 TensorConfig(data_gen=partial(generate_weight, [16]))
             },
@@ -102,12 +105,12 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config()
-        yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (1e-5,
-                                                                      1e-5)
+        yield config, ["im2sequence",
+                       "fusion_seqconv_eltadd_relu"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
-            quant=False, passes=["seqconv_eltadd_relu_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            passes=["seqconv_eltadd_relu_fuse_pass"])
 
 
 if __name__ == "__main__":

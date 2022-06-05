@@ -14,6 +14,7 @@
 
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
+
 #include <algorithm>
 
 #include "paddle/fluid/inference/tensorrt/plugin/roi_align_op_plugin.h"
@@ -281,13 +282,12 @@ int RoiAlignPluginDynamic::enqueue_impl(
         width, pooled_height_, pooled_width_, sampling_ratio_, rois_num / batch,
         aligned_, static_cast<OutT*>(outputs[0]));
   } else {
-    GPUROIAlignOpt<
-        T, OutT,
-        false><<<blocks, threads, width * height * sizeof(T), stream>>>(
-        output_size, static_cast<const T*>(inputs[0]),
-        static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
-        width, pooled_height_, pooled_width_, sampling_ratio_, rois_num / batch,
-        aligned_, static_cast<OutT*>(outputs[0]));
+    GPUROIAlignOpt<T, OutT, false>
+        <<<blocks, threads, width * height * sizeof(T), stream>>>(
+            output_size, static_cast<const T*>(inputs[0]),
+            static_cast<const T*>(inputs[1]), spatial_scale_, channels, height,
+            width, pooled_height_, pooled_width_, sampling_ratio_,
+            rois_num / batch, aligned_, static_cast<OutT*>(outputs[0]));
   }
 
   return cudaGetLastError() != cudaSuccess;

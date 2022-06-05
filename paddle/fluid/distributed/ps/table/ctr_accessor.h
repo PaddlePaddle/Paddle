@@ -15,7 +15,9 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"

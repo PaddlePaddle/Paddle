@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -210,7 +210,11 @@ std::shared_ptr<paddle_infer::Predictor> InitPredictor() {
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
   // erinie varlen must be used with oss
-  config.EnableTensorRtOSS();
+  config.EnableVarseqlen();
+  paddle_infer::experimental::InternalUtils::SetTransformerPosid(&config,
+                                                                 input_name2);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(&config,
+                                                                  input_name3);
 
   return paddle_infer::CreatePredictor(config);
 }
@@ -222,13 +226,78 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
 
   int32_t i1[run_seq_len] = {
       // sentence 1
-      1, 3558, 4, 75, 491, 89, 340, 313, 93, 4, 255, 10, 75, 321, 4095, 1902, 4,
-      134, 49, 75, 311, 14, 44, 178, 543, 15, 12043, 2, 75, 201, 340, 9, 14, 44,
-      486, 218, 1140, 279, 12043, 2,
+      1,
+      3558,
+      4,
+      75,
+      491,
+      89,
+      340,
+      313,
+      93,
+      4,
+      255,
+      10,
+      75,
+      321,
+      4095,
+      1902,
+      4,
+      134,
+      49,
+      75,
+      311,
+      14,
+      44,
+      178,
+      543,
+      15,
+      12043,
+      2,
+      75,
+      201,
+      340,
+      9,
+      14,
+      44,
+      486,
+      218,
+      1140,
+      279,
+      12043,
+      2,
       // sentence 2
-      101, 2054, 2234, 2046, 2486, 2044, 1996, 2047, 4552, 2001, 9536, 1029,
-      102, 2004, 1997, 2008, 2154, 1010, 1996, 2047, 4552, 9536, 2075, 1996,
-      2117, 3072, 2234, 2046, 2486, 1012, 102,
+      101,
+      2054,
+      2234,
+      2046,
+      2486,
+      2044,
+      1996,
+      2047,
+      4552,
+      2001,
+      9536,
+      1029,
+      102,
+      2004,
+      1997,
+      2008,
+      2154,
+      1010,
+      1996,
+      2047,
+      4552,
+      9536,
+      2075,
+      1996,
+      2117,
+      3072,
+      2234,
+      2046,
+      2486,
+      1012,
+      102,
   };
   int32_t i2[run_seq_len] = {
       // sentence 1

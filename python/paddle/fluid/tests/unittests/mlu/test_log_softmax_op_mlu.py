@@ -41,6 +41,7 @@ def ref_log_softmax_grad(x, axis):
 
 
 class TestLogSoftmaxOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
@@ -69,21 +70,24 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                   user_defined_grads=[self.x_grad])
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
+
     def set_attrs(self):
         self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+
     def set_attrs(self):
         self.axis = 1
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]
@@ -118,6 +122,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]

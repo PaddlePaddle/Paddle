@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <vector>
+
+#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -52,43 +53,27 @@ void MainTest(const std::string& activation_type) {
   }
 }
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh) {
-  MainTest("tanh")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh){MainTest("tanh")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu) {
-  MainTest("relu")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu){MainTest("relu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithLeakyRelu) {
-  MainTest("leaky_relu")
-}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithLeakyRelu){MainTest("leaky_relu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSwish) {
-  MainTest("swish")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSwish){MainTest("swish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithHardswish) {
-  MainTest("hardswish")
-}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithHardswish){MainTest("hardswish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt) {
-  MainTest("sqrt")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt){MainTest("sqrt")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs) { MainTest("abs") }
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs){MainTest("abs")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip) {
-  MainTest("clip")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip){MainTest("clip")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu) {
-  MainTest("gelu")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu){MainTest("gelu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu6) {
-  MainTest("relu6")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu6){MainTest("relu6")}
 
 TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSigmoid) {
   MainTest("sigmoid")

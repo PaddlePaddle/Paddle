@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
@@ -169,28 +170,32 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
     const float* offset_ptr = offset.data<float>();
     const float* mask_ptr = mask.data<float>();
     if (dx_data == nullptr) {
-      PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dx_data),
-                                   input->numel() * sizeof(T)),
-                        XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                         "XPU has no enough memory"));
+      PADDLE_ENFORCE_EQ(
+          xpu_malloc(reinterpret_cast<void**>(&dx_data),
+                     input->numel() * sizeof(T)),
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     }
     if (dw_data == nullptr) {
-      PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dw_data),
-                                   filter.numel() * sizeof(T)),
-                        XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                         "XPU has no enough memory"));
+      PADDLE_ENFORCE_EQ(
+          xpu_malloc(reinterpret_cast<void**>(&dw_data),
+                     filter.numel() * sizeof(T)),
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     }
     if (doffset_data == nullptr) {
-      PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&doffset_data),
-                                   offset.numel() * sizeof(T)),
-                        XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                         "XPU has no enough memory"));
+      PADDLE_ENFORCE_EQ(
+          xpu_malloc(reinterpret_cast<void**>(&doffset_data),
+                     offset.numel() * sizeof(T)),
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     }
     if (dmask_data == nullptr) {
-      PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dmask_data),
-                                   mask.numel() * sizeof(T)),
-                        XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                         "XPU has no enough memory"));
+      PADDLE_ENFORCE_EQ(
+          xpu_malloc(reinterpret_cast<void**>(&dmask_data),
+                     mask.numel() * sizeof(T)),
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     }
 
     int input_dim = input->numel() / input->dims()[0];
@@ -207,10 +212,11 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
     int f = filter.dims()[0];
 
     T* filter_grad_tmp = nullptr;
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&filter_grad_tmp),
-                                 filter_grad->numel() * sizeof(T)),
-                      XPU_SUCCESS, platform::errors::ResourceExhausted(
-                                       "XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(
+        xpu_malloc(reinterpret_cast<void**>(&filter_grad_tmp),
+                   filter_grad->numel() * sizeof(T)),
+        XPU_SUCCESS,
+        platform::errors::ResourceExhausted("XPU has no enough memory"));
 
     // set zeros for d_table_data
     const int zero = 0;

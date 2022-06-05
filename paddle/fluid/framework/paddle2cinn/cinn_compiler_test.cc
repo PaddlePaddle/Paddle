@@ -44,8 +44,8 @@ DECLARE_string(deny_cinn_ops);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
-using ir::Graph;
 using ::cinn::common::Target;
+using ir::Graph;
 
 namespace {
 template <typename T, typename Alloc = std::allocator<T>>

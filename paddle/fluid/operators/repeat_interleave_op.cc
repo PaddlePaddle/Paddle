@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/repeat_interleave_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -51,11 +52,12 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           repeats_dim.size() == 1 ||
               (repeats_dim.size() == 2 && repeats_dim[1] == 1),
-          true, platform::errors::InvalidArgument(
-                    "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
-                    "But received: the 'shape' of Input(Index) is [%s], "
-                    "the dimension of Input(Index) is [%d].",
-                    repeats_dim, repeats_dim.size()));
+          true,
+          platform::errors::InvalidArgument(
+              "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
+              "But received: the 'shape' of Input(Index) is [%s], "
+              "the dimension of Input(Index) is [%d].",
+              repeats_dim, repeats_dim.size()));
 
       PADDLE_ENFORCE_EQ(repeats_dim[0] != 0, true,
                         platform::errors::InvalidArgument(
