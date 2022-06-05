@@ -28,6 +28,7 @@ from paddle.fluid import core
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle is not compiled with CUDA")
 class TestFusedGateAttentionOp(OpTest):
+
     def setUp(self):
         self.__class__.op_type = "fused_gate_attention"
         # use autograd to check grad in this unittest.
@@ -51,6 +52,7 @@ class TestFusedGateAttentionOp(OpTest):
         self.bias_attr = True
 
     def generate_input_data(self):
+
         def _random(shape):
             if self.dtype == "bfloat16":
                 data = np.random.random(shape).astype("float32")
@@ -97,8 +99,8 @@ class TestFusedGateAttentionOp(OpTest):
         paddle.disable_static(place=paddle.CUDAPlace(0))
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
-        key = query if self.merge_qkv else paddle.to_tensor(
-            self.key, stop_gradient=False)
+        key = query if self.merge_qkv else paddle.to_tensor(self.key,
+                                                            stop_gradient=False)
         q_weight = paddle.to_tensor(self.q_weight, stop_gradient=False)
         k_weight = paddle.to_tensor(self.k_weight, stop_gradient=False)
         v_weight = paddle.to_tensor(self.v_weight, stop_gradient=False)
@@ -112,12 +114,12 @@ class TestFusedGateAttentionOp(OpTest):
         # [batch_size, msa_len, num_heads, m_size, key_dim]
         v = paddle.einsum('nbka,ahc->nbkhc', key, v_weight)
 
-        # [batch_size, msa_len, num_heads, res_len, m_size] 
+        # [batch_size, msa_len, num_heads, res_len, m_size]
         logits = paddle.einsum('nbqhc,nbkhc->nbhqk', q, k)  # qk_out
         logits = logits + src_mask
         if self.bias_attr:
-            nonbatched_bias = paddle.to_tensor(
-                self.nonbatched_bias, stop_gradient=False)
+            nonbatched_bias = paddle.to_tensor(self.nonbatched_bias,
+                                               stop_gradient=False)
             logits = logits + nonbatched_bias
 
         weights = nn.functional.softmax(logits)  # softmax_out
@@ -136,8 +138,8 @@ class TestFusedGateAttentionOp(OpTest):
 
         out = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
                             output_w) + output_b
-        paddle.autograd.backward(
-            [out], [paddle.to_tensor(self.dout)], retain_graph=True)
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
         if self.merge_qkv:
             return out, query.grad, None
         else:
@@ -163,8 +165,8 @@ class TestFusedGateAttentionOp(OpTest):
         src_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
 
         if self.bias_attr:
-            nonbatched_bias = paddle.to_tensor(
-                self.nonbatched_bias, stop_gradient=False)
+            nonbatched_bias = paddle.to_tensor(self.nonbatched_bias,
+                                               stop_gradient=False)
         else:
             nonbatched_bias = None
         if self.has_gating:
@@ -182,8 +184,8 @@ class TestFusedGateAttentionOp(OpTest):
             nonbatched_bias, src_mask, gating_w, gating_b, output_w, output_b,
             'has_gating', self.has_gating, 'merge_qkv', self.merge_qkv)
 
-        paddle.autograd.backward(
-            [out], [paddle.to_tensor(self.dout)], retain_graph=True)
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)],
+                                 retain_graph=True)
         if key is not None:
             return out, query.grad, key.grad
         else:
@@ -193,17 +195,22 @@ class TestFusedGateAttentionOp(OpTest):
         out_ref, query_grad_ref, key_grad_ref = self.get_reference_out()
         out, query_grad, key_grad = self.get_fused_gate_attention_out()
         np.testing.assert_allclose(out_ref, out.numpy(), atol=atol, rtol=rtol)
-        np.testing.assert_allclose(
-            query_grad_ref, query_grad.numpy(), atol=atol, rtol=rtol)
+        np.testing.assert_allclose(query_grad_ref,
+                                   query_grad.numpy(),
+                                   atol=atol,
+                                   rtol=rtol)
         if key_grad_ref is not None and key_grad is not None:
-            np.testing.assert_allclose(
-                key_grad_ref, key_grad.numpy(), atol=atol, rtol=rtol)
+            np.testing.assert_allclose(key_grad_ref,
+                                       key_grad.numpy(),
+                                       atol=atol,
+                                       rtol=rtol)
 
     def test_output_and_grad(self):
         self.check_output_and_grad(atol=1e-5, rtol=1e-5)
 
 
 class TestSeparatedQKVCase(TestFusedGateAttentionOp):
+
     def config(self):
         self.dtype = "float32"
         self.has_gating = False
@@ -220,6 +227,7 @@ class TestSeparatedQKVCase(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVNoBiasGatingCase(TestFusedGateAttentionOp):
+
     def config(self):
         super().config()
         self.has_gating = False
@@ -227,6 +235,7 @@ class TestMergeQKVNoBiasGatingCase(TestFusedGateAttentionOp):
 
 
 class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
+
     def config(self):
         super().config()
         self.dtype = "float16"
@@ -240,6 +249,7 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
 )
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
+
     def config(self):
         super().config()
         self.dtype = "bfloat16"

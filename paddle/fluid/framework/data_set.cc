@@ -13,6 +13,7 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
+
 #include "google/protobuf/text_format.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"

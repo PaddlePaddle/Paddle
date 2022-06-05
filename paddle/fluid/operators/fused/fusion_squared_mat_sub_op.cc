@@ -13,8 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_squared_mat_sub_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {

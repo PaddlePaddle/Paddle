@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <math.h>
+
 #include <limits>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #if defined(PADDLE_WITH_CUDA)
@@ -90,17 +92,15 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
       if (cur_block_col < cur_block_nnz) {
         // read kp mask
         T cur_kp_mask;
-        if ((kp_mask != nullptr) &&
-            std::abs(kp_mask[colindex[cur_block_col]]) <
-                std::numeric_limits<T>::epsilon()) {
+        if ((kp_mask != nullptr) && std::abs(kp_mask[colindex[cur_block_col]]) <
+                                        std::numeric_limits<T>::epsilon()) {
           cur_kp_mask = -std::numeric_limits<T>::infinity();
         } else {
           cur_kp_mask = 0;
         }
         // do mask operation
-        if ((attnptr != nullptr) &&
-            std::abs(attnptr[colindex[cur_block_col]]) <
-                std::numeric_limits<T>::epsilon()) {
+        if ((attnptr != nullptr) && std::abs(attnptr[colindex[cur_block_col]]) <
+                                        std::numeric_limits<T>::epsilon()) {
           srcdata[cur_reg_index] =
               -std::numeric_limits<T>::infinity() * scale + cur_kp_mask;
         } else {
@@ -280,37 +280,37 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
   T scaling = static_cast<T>(1.0) / sqrt(static_cast<T>(num_cols));
 
   if (num_cols <= 4) {
-    BlockSparseSoftmaxBackward<T, block_size, 4><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 4>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 4 && num_cols <= 8) {
-    BlockSparseSoftmaxBackward<T, block_size, 8><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 8>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 8 && num_cols <= 16) {
-    BlockSparseSoftmaxBackward<T, block_size, 16><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 16>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 16 && num_cols <= 32) {
-    BlockSparseSoftmaxBackward<T, block_size, 32><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 32>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 32 && num_cols <= 64) {
-    BlockSparseSoftmaxBackward<T, block_size, 64><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 64>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 64 && num_cols <= 128) {
-    BlockSparseSoftmaxBackward<T, block_size, 128><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 128>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 128 && num_cols <= 256) {
-    BlockSparseSoftmaxBackward<T, block_size, 256><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 256>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else if (num_cols > 256 && num_cols <= 512) {
-    BlockSparseSoftmaxBackward<T, block_size, 512><<<grid, blocks>>>(
-        dx_data, dout_data, out_data, scaling, offset_data, columns_data,
-        num_rows);
+    BlockSparseSoftmaxBackward<T, block_size, 512>
+        <<<grid, blocks>>>(dx_data, dout_data, out_data, scaling, offset_data,
+                           columns_data, num_rows);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The head_dim of query in sparse_attention op should less or equal "

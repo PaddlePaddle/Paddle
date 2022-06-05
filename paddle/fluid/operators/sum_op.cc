@@ -36,9 +36,8 @@ class SumOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "sum");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sum");
 
-    if (ctx->IsRuntime() &&
-        ctx->GetOutputsVarType("Out")[0] ==
-            framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    if (ctx->IsRuntime() && ctx->GetOutputsVarType("Out")[0] ==
+                                framework::proto::VarType::LOD_TENSOR_ARRAY) {
       return;  // skip runtime infershape when is tensor array;
     }
 
@@ -47,11 +46,12 @@ class SumOp : public framework::OperatorWithKernel {
 
     auto N = x_dims.size();
     PADDLE_ENFORCE_GT(
-        N, 0, platform::errors::InvalidArgument(
-                  "The input tensor X's dimensions of SumOp "
-                  "should be larger than 0. But received X's dimensions %d, "
-                  "X's shape = [%s].",
-                  N, &x_dims));
+        N, 0,
+        platform::errors::InvalidArgument(
+            "The input tensor X's dimensions of SumOp "
+            "should be larger than 0. But received X's dimensions %d, "
+            "X's shape = [%s].",
+            N, &x_dims));
     if (N == 1) {
       VLOG(3) << "Warning: SumOp have only one input, may waste memory";
     }
@@ -115,8 +115,9 @@ class SumOp : public framework::OperatorWithKernel {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
-    PADDLE_ENFORCE_GT(x_vars.size(), 0, platform::errors::InvalidArgument(
-                                            "Input[X] should not be empty"));
+    PADDLE_ENFORCE_GT(
+        x_vars.size(), 0,
+        platform::errors::InvalidArgument("Input[X] should not be empty"));
 
     PADDLE_ENFORCE_NOT_NULL(
         x_vars[0], platform::errors::NotFound(

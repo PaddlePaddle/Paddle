@@ -21,6 +21,7 @@ from api_base import BaseAPI
 
 
 class BackwardAPI(BaseAPI):
+
     def __init__(self, backward_item_yaml):
         super(BackwardAPI, self).__init__(backward_item_yaml)
         self.check_args(backward_item_yaml['forward'])
@@ -271,20 +272,17 @@ def generate_backward_api(backward_yaml_path, header_file_path,
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ backward API files')
-    parser.add_argument(
-        '--backward_yaml_path',
-        help='path to backward yaml file',
-        nargs='+',
-        default='python/paddle/utils/code_gen/backward.yaml')
-    parser.add_argument(
-        '--backward_header_path',
-        help='output of generated backward header code file',
-        default='paddle/phi/api/backward/backward_api.h')
+    parser.add_argument('--backward_yaml_path',
+                        help='path to backward yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/backward.yaml')
+    parser.add_argument('--backward_header_path',
+                        help='output of generated backward header code file',
+                        default='paddle/phi/api/backward/backward_api.h')
 
-    parser.add_argument(
-        '--backward_source_path',
-        help='output of generated backward source code file',
-        default='paddle/phi/api/lib/backward_api.cc')
+    parser.add_argument('--backward_source_path',
+                        help='output of generated backward source code file',
+                        default='paddle/phi/api/lib/backward_api.cc')
 
     options = parser.parse_args()
 

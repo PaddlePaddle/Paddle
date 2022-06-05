@@ -233,9 +233,8 @@ template <typename Return,
           Return (*kernel_fn)(DevCtx, Args...)>
 struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   static void Compute(KernelContext* ctx) {
-    KernelCallHelper<DevCtx,
-                     Args...,
-                     TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
+    KernelCallHelper<DevCtx, Args..., TypeTag<int>>::
+        template Compute<0, 0, 0, 0>(ctx);
   }
 
   static void VariadicCompute(const DeviceContext& dev_ctx, Args... args) {

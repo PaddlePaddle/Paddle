@@ -34,8 +34,9 @@ from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict, ImperativeLenet, ImperativeLinearBn
 from imperative_test_utils import ImperativeLinearBn_hook
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class TestFuseLinearBn(unittest.TestCase):
@@ -54,15 +55,15 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (isinstance(layer, nn.BatchNorm1D) or
-                            isinstance(layer, nn.BatchNorm2D))
+                assert not (isinstance(layer, nn.BatchNorm1D)
+                            or isinstance(layer, nn.BatchNorm2D))
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
         out_quant_h = quant_h(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
-        print('fuse linear+bn',
-              cos_sim_func(out.flatten(), out_quant.flatten()))
+        print('fuse linear+bn', cos_sim_func(out.flatten(),
+                                             out_quant.flatten()))
         print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
 
@@ -98,8 +99,8 @@ class TestImperativePTQ(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
-                                                          zip_path)
+            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+                target_folder, zip_path)
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -126,23 +127,23 @@ class TestImperativePTQ(unittest.TestCase):
             'batch_norm2d_0': [[0.37673383951187134], [0.44249194860458374]],
             're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
             'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
-            'linear_0':
-            [[1.7058950662612915], [14.405526161193848], [0.4373355209827423]],
+            'linear_0': [[1.7058950662612915], [14.405526161193848],
+                         [0.4373355209827423]],
             'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
         }
 
     def model_test(self, model, batch_num=-1, batch_size=8):
         model.eval()
 
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
 
         eval_acc_top1_list = []
         for batch_id, data in enumerate(test_reader()):
             x_data = np.array([x[0].reshape(1, 28, 28)
                                for x in data]).astype('float32')
-            y_data = np.array(
-                [x[1] for x in data]).astype('int64').reshape(-1, 1)
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -165,11 +166,11 @@ class TestImperativePTQ(unittest.TestCase):
 
     def program_test(self, program_path, batch_num=-1, batch_size=8):
         exe = paddle.static.Executor(paddle.CPUPlace())
-        [inference_program, feed_target_names, fetch_targets] = (
-            paddle.static.load_inference_model(program_path, exe))
+        [inference_program, feed_target_names, fetch_targets
+         ] = (paddle.static.load_inference_model(program_path, exe))
 
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
 
         top1_correct_num = 0.
         total_num = 0.
@@ -214,11 +215,11 @@ class TestImperativePTQ(unittest.TestCase):
                                           self.batch_size)
 
         input_spec = [
-            paddle.static.InputSpec(
-                shape=[None, 1, 28, 28], dtype='float32')
+            paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
-        self.ptq.save_quantized_model(
-            model=quant_model, path=self.save_path, input_spec=input_spec)
+        self.ptq.save_quantized_model(model=quant_model,
+                                      path=self.save_path,
+                                      input_spec=input_spec)
         print('Quantized model saved in {%s}' % self.save_path)
 
         after_acc_top1 = self.model_test(quant_model, self.batch_num,
@@ -234,13 +235,11 @@ class TestImperativePTQ(unittest.TestCase):
         print('After converted acc_top1: %s' % after_acc_top1)
         print('Infer acc_top1: %s' % infer_acc_top1)
 
-        self.assertTrue(
-            after_acc_top1 >= self.eval_acc_top1,
-            msg="The test acc {%f} is less than {%f}." %
-            (after_acc_top1, self.eval_acc_top1))
-        self.assertTrue(
-            infer_acc_top1 >= after_acc_top1,
-            msg='The acc is lower after converting model.')
+        self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
+                        msg="The test acc {%f} is less than {%f}." %
+                        (after_acc_top1, self.eval_acc_top1))
+        self.assertTrue(infer_acc_top1 >= after_acc_top1,
+                        msg='The acc is lower after converting model.')
 
         end_time = time.time()
         print("total time: %ss \n" % (end_time - start_time))
@@ -252,6 +251,7 @@ class TestImperativePTQ(unittest.TestCase):
 
 
 class TestImperativePTQfuse(TestImperativePTQ):
+
     def func_ptq(self):
         start_time = time.time()
 
@@ -270,17 +270,17 @@ class TestImperativePTQfuse(TestImperativePTQ):
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
-                assert not (isinstance(layer, nn.BatchNorm1D) or
-                            isinstance(layer, nn.BatchNorm2D))
+                assert not (isinstance(layer, nn.BatchNorm1D)
+                            or isinstance(layer, nn.BatchNorm2D))
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
 
         input_spec = [
-            paddle.static.InputSpec(
-                shape=[None, 1, 28, 28], dtype='float32')
+            paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
-        self.ptq.save_quantized_model(
-            model=quant_model, path=self.save_path, input_spec=input_spec)
+        self.ptq.save_quantized_model(model=quant_model,
+                                      path=self.save_path,
+                                      input_spec=input_spec)
         print('Quantized model saved in {%s}' % self.save_path)
 
         after_acc_top1 = self.model_test(quant_model, self.batch_num,
@@ -298,15 +298,13 @@ class TestImperativePTQfuse(TestImperativePTQ):
 
         #Check whether the quant_model is correct after converting.
         #The acc of quantized model should be higher than 0.95.
-        self.assertTrue(
-            after_acc_top1 >= self.eval_acc_top1,
-            msg="The test acc {%f} is less than {%f}." %
-            (after_acc_top1, self.eval_acc_top1))
-        #Check the saved infer_model.The acc of infer model 
+        self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
+                        msg="The test acc {%f} is less than {%f}." %
+                        (after_acc_top1, self.eval_acc_top1))
+        #Check the saved infer_model.The acc of infer model
         #should not be lower than the one of dygraph model.
-        self.assertTrue(
-            infer_acc_top1 >= after_acc_top1,
-            msg='The acc is lower after converting model.')
+        self.assertTrue(infer_acc_top1 >= after_acc_top1,
+                        msg='The acc is lower after converting model.')
 
         end_time = time.time()
         print("total time: %ss \n" % (end_time - start_time))
@@ -318,6 +316,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
 
 
 class TestImperativePTQHist(TestImperativePTQ):
+
     def set_vars(self):
         config = PTQConfig(HistQuantizer(), AbsmaxQuantizer())
         self.ptq = ImperativePTQ(config)
@@ -327,18 +326,19 @@ class TestImperativePTQHist(TestImperativePTQ):
         self.eval_acc_top1 = 0.98
 
         self.gt_thresholds = {
-            'conv2d_0':
-            [[0.99853515625], [0.35732391771364225], [0.10933732241392136]],
+            'conv2d_0': [[0.99853515625], [0.35732391771364225],
+                         [0.10933732241392136]],
             'batch_norm2d_0': [[0.35732391771364225], [0.4291427868761275]],
             're_lu_0': [[0.4291427868761275], [0.2359918110742001]],
             'max_pool2d_0': [[0.2359918110742001], [0.25665526917146053]],
-            'linear_0':
-            [[1.7037603475152991], [14.395224522473026], [0.4373355209827423]],
+            'linear_0': [[1.7037603475152991], [14.395224522473026],
+                         [0.4373355209827423]],
             'add_0': [[1.7037603475152991, 0.0], [1.7037603475152991]],
         }
 
 
 class TestImperativePTQKL(TestImperativePTQ):
+
     def set_vars(self):
         config = PTQConfig(KLQuantizer(), PerChannelAbsmaxQuantizer())
         self.ptq = ImperativePTQ(config)

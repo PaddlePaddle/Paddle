@@ -65,8 +65,9 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::dynload::cudnnSpatialTfGridGeneratorForward(
             handle, cudnn_st_desc, theta_data, output_data),
-        0, platform::errors::Fatal("Some errors has occurred "
-                                   "during forward computation in cudnn."));
+        0,
+        platform::errors::Fatal("Some errors has occurred "
+                                "during forward computation in cudnn."));
   }
 };
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <paddle/fluid/platform/device_context.h>
+
 #include <algorithm>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"

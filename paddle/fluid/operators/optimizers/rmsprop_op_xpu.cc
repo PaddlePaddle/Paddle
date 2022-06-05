@@ -15,7 +15,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <gflags/gflags.h>
+
 #include <iostream>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 

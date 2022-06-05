@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/one_hot_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

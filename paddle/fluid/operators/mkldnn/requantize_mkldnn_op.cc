@@ -46,10 +46,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE_NE(scale_in, 0.0f, platform::errors::InvalidArgument(
-                                          "Scale of input cannot be 0.0"));
-    PADDLE_ENFORCE_NE(scale_out, 0.0f, platform::errors::InvalidArgument(
-                                           "Scale of output cannot be 0.0"));
+    PADDLE_ENFORCE_NE(
+        scale_in, 0.0f,
+        platform::errors::InvalidArgument("Scale of input cannot be 0.0"));
+    PADDLE_ENFORCE_NE(
+        scale_out, 0.0f,
+        platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
           framework::TransToProtoVarType(input->dtype()),

@@ -21,6 +21,7 @@ paddle.enable_static()
 
 
 class TestDistMnistNCCL2BackWardDeps(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False

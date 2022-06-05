@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/top_k_grad_kernel.h"
-
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/top_k_grad_kernel.h"
 
 namespace phi {
 
@@ -71,9 +70,9 @@ void TopkGradKernel(const Context& dev_ctx,
   int grid_size = std::min(max_blocks, pre);
 
   // lanuch the cuda kernel to assign the grad
-  ops::AssignGradWithAxis<
-      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
-      out_grad_data, indices_data, x_grad_data, pre, post, n, k);
+  ops::AssignGradWithAxis<T>
+      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+          out_grad_data, indices_data, x_grad_data, pre, post, n, k);
 }
 
 }  // namespace phi

@@ -80,14 +80,12 @@ class CompareOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_OP_VERSION(op_type)                               \
-  REGISTER_OP_VERSION(op_type)                                             \
-      .AddCheckpoint(                                                      \
-          R"ROC(Upgrade compare ops, add a new attribute [force_cpu])ROC", \
-          paddle::framework::compatible::OpVersionDesc().ModifyAttr(       \
-              "force_cpu",                                                 \
-              "In order to force fill output variable to gpu memory.",     \
-              false));
+#define REGISTER_COMPARE_OP_VERSION(op_type)                           \
+  REGISTER_OP_VERSION(op_type).AddCheckpoint(                          \
+      R"ROC(Upgrade compare ops, add a new attribute [force_cpu])ROC", \
+      paddle::framework::compatible::OpVersionDesc().ModifyAttr(       \
+          "force_cpu",                                                 \
+          "In order to force fill output variable to gpu memory.", false));
 
 #define REGISTER_COMPARE_OP(op_type, _equation)                          \
   struct _##op_type##Comment {                                           \

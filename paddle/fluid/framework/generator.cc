@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
+
 #include <memory>
 #include <utility>
 

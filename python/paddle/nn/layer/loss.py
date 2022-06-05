@@ -394,16 +394,15 @@ class CrossEntropyLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        ret = paddle.nn.functional.cross_entropy(
-            input,
-            label,
-            weight=self.weight,
-            ignore_index=self.ignore_index,
-            reduction=self.reduction,
-            soft_label=self.soft_label,
-            axis=self.axis,
-            use_softmax=self.use_softmax,
-            name=self.name)
+        ret = paddle.nn.functional.cross_entropy(input,
+                                                 label,
+                                                 weight=self.weight,
+                                                 ignore_index=self.ignore_index,
+                                                 reduction=self.reduction,
+                                                 soft_label=self.soft_label,
+                                                 axis=self.axis,
+                                                 use_softmax=self.use_softmax,
+                                                 name=self.name)
 
         return ret
 
@@ -512,25 +511,25 @@ class HSigmoidLoss(Layer):
               " small parameter prefetch may cause speed down")
 
         C = self._num_classes if is_custom else self._num_classes - 1
-        self.weight = self.create_parameter(
-            [C, self._feature_size],
-            attr=self._weight_attr,
-            is_bias=False,
-            dtype=self._dtype)
-        self.bias = self.create_parameter(
-            [C, 1], attr=self._bias_attr, is_bias=True, dtype=self._dtype)
+        self.weight = self.create_parameter([C, self._feature_size],
+                                            attr=self._weight_attr,
+                                            is_bias=False,
+                                            dtype=self._dtype)
+        self.bias = self.create_parameter([C, 1],
+                                          attr=self._bias_attr,
+                                          is_bias=True,
+                                          dtype=self._dtype)
 
     def forward(self, input, label, path_table=None, path_code=None):
-        out = F.hsigmoid_loss(
-            input,
-            label,
-            self._num_classes,
-            self.weight,
-            self.bias,
-            path_table=path_table,
-            path_code=path_code,
-            is_sparse=self._is_sparse,
-            name=self._name)
+        out = F.hsigmoid_loss(input,
+                              label,
+                              self._num_classes,
+                              self.weight,
+                              self.bias,
+                              path_table=path_table,
+                              path_code=path_code,
+                              is_sparse=self._is_sparse,
+                              name=self._name)
         return out
 
 
@@ -596,10 +595,12 @@ class MSELoss(Layer):
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(
-                label, 'label', ['float32', 'float64'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                                       ['float32', 'float64'],
+                                                       'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(label, 'label',
+                                                       ['float32', 'float64'],
+                                                       'MSELoss')
 
         if in_dygraph_mode():
             square_out = paddle._C_ops.final_state_square(
@@ -691,8 +692,10 @@ class L1Loss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return paddle.nn.functional.l1_loss(
-            input, label, self.reduction, name=self.name)
+        return paddle.nn.functional.l1_loss(input,
+                                            label,
+                                            self.reduction,
+                                            name=self.name)
 
 
 class BCELoss(Layer):
@@ -780,8 +783,10 @@ class BCELoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.binary_cross_entropy(
-            input, label, self.weight, self.reduction, self.name)
+        out = paddle.nn.functional.binary_cross_entropy(input, label,
+                                                        self.weight,
+                                                        self.reduction,
+                                                        self.name)
         return out
 
 
@@ -888,13 +893,12 @@ class NLLLoss(Layer):
         self._name = name
 
     def forward(self, input, label):
-        return F.nll_loss(
-            input,
-            label,
-            weight=self._weight,
-            ignore_index=self._ignore_index,
-            reduction=self._reduction,
-            name=self._name)
+        return F.nll_loss(input,
+                          label,
+                          weight=self._weight,
+                          ignore_index=self._ignore_index,
+                          reduction=self._reduction,
+                          name=self._name)
 
 
 class KLDivLoss(Layer):
@@ -1037,8 +1041,10 @@ class MarginRankingLoss(Layer):
         self.name = name
 
     def forward(self, input, other, label):
-        out = paddle.nn.functional.margin_ranking_loss(
-            input, other, label, self.margin, self.reduction, self.name)
+        out = paddle.nn.functional.margin_ranking_loss(input, other, label,
+                                                       self.margin,
+                                                       self.reduction,
+                                                       self.name)
         return out
 
 
@@ -1128,14 +1134,13 @@ class CTCLoss(Layer):
                 input_lengths,
                 label_lengths,
                 norm_by_times=False):
-        return paddle.nn.functional.ctc_loss(
-            log_probs,
-            labels,
-            input_lengths,
-            label_lengths,
-            self.blank,
-            self.reduction,
-            norm_by_times=norm_by_times)
+        return paddle.nn.functional.ctc_loss(log_probs,
+                                             labels,
+                                             input_lengths,
+                                             label_lengths,
+                                             self.blank,
+                                             self.reduction,
+                                             norm_by_times=norm_by_times)
 
 
 class SmoothL1Loss(Layer):
@@ -1205,12 +1210,11 @@ class SmoothL1Loss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.smooth_l1_loss(
-            input,
-            label,
-            reduction=self.reduction,
-            delta=self.delta,
-            name=self.name)
+        return F.smooth_l1_loss(input,
+                                label,
+                                reduction=self.reduction,
+                                delta=self.delta,
+                                name=self.name)
 
 
 class HingeEmbeddingLoss(Layer):
@@ -1300,12 +1304,11 @@ class HingeEmbeddingLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.hinge_embedding_loss(
-            input,
-            label,
-            reduction=self.reduction,
-            margin=self.margin,
-            name=self.name)
+        return F.hinge_embedding_loss(input,
+                                      label,
+                                      reduction=self.reduction,
+                                      margin=self.margin,
+                                      name=self.name)
 
 
 class TripletMarginLoss(Layer):

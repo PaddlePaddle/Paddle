@@ -120,6 +120,7 @@ message BuildStrategy {
   optional bool fix_op_run_order = 13 [ default = false ];
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
+  optional bool fuse_gemm_epilogue = 16 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -314,6 +315,7 @@ message DistributedStrategy {
   optional bool adam_d2sum = 36 [ default = false ];
   optional bool auto_search = 37 [ default = false ];
   optional bool heter_ccl_mode = 38 [ default = false ];
+  optional bool is_fl_ps_mode = 39 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
