@@ -869,7 +869,8 @@ endif()
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data_without_verify(
   ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
+                            analyzer_bert_tester.cc)
 
 # multiple models prediction
 set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
