@@ -63,7 +63,7 @@ def dgc_comm(x, gather, grad, k_var, group):
     nranks = group.nranks
     ring_id = group.id
 
-    assert _non_static_mode(), "dgc comm op do not support static graphh now."
+    assert _non_static_mode(), "dgc comm op do not support static graph now."
 
     return _C_ops.dgc_comm(x, gather, \
                                 grad,  \
