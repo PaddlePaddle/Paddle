@@ -549,6 +549,20 @@ struct ElementwiseActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+// Matmul with Activation
+struct MatmulActivation : public PatternBase {
+  MatmulActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_activation") {}
+
+  PDNode* operator()(const std::string& matmul_type,
+                     const std::string& activation_type);
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(activation);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:

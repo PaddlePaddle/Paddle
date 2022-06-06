@@ -955,6 +955,23 @@ PDNode *patterns::ElementwiseActivation::operator()(
   return activation_out_var;
 }
 
+PDNode *patterns::MatmulActivation::operator()(
+    const std::string &matmul_type, const std::string &activation_type) {
+  auto *matmul_op = pattern->NewNode(matmul_repr())->assert_is_op(matmul_type);
+  auto *matmul_out_var = pattern->NewNode(matmul_out_repr())
+                             ->AsIntermediate()
+                             ->assert_is_only_output_of_op(matmul_type)
+                             ->assert_is_op_input(activation_type);
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  auto *activation_out_var = pattern->NewNode(activation_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output(activation_type);
+  matmul_op->LinksTo({matmul_out_var});
+  activation_op->LinksFrom({matmul_out_var}).LinksTo({activation_out_var});
+  return activation_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
