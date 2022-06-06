@@ -18,7 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/float16.h"
 
@@ -88,6 +90,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
 
 TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   // Weight in CPU memory.
+#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
   float16 raw_weight[512];
   for (int i = 0; i < 128; i++) {
     if (i % 16 <= 7) {
@@ -157,12 +160,14 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   auto dims = engine_->GetITensor("y")->getDimensions();
   ASSERT_EQ(dims.nbDims, 4);
   ASSERT_EQ(dims.d[1], 16);
-
   ASSERT_EQ(y_cpu[0], 136);
+
   ASSERT_EQ(y_cpu[1], 105);
   ASSERT_EQ(y_cpu[32], 136);
   ASSERT_EQ(y_cpu[64], 136);
   ASSERT_EQ(y_cpu[96], 136);
+#endif
+  return;
 }
 
 }  // namespace tensorrt
