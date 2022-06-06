@@ -49,23 +49,22 @@ __global__ void RollCudaKernel(const T* input,
   output[output_idx] = input[idx];
 }
 
-#define CALL_ROLL_CUDA_KERNEL(N)                                              \
-  case N: {                                                                   \
-    phi::Array<int64_t, N> _strides;                                          \
-    phi::Array<int64_t, N> _shifts;                                           \
-    phi::Array<int64_t, N> _sizes;                                            \
-    for (size_t idx = 0; idx < N; ++idx) {                                    \
-      _strides[idx] = strides[idx];                                           \
-      _shifts[idx] = shifts_data[idx];                                        \
-      _sizes[idx] = sizes[idx];                                               \
-    }                                                                         \
-    RollCudaKernel<                                                           \
-        T,                                                                    \
-        N><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS, \
-             PADDLE_CUDA_NUM_THREADS,                                         \
-             0,                                                               \
-             stream>>>(in_data, out_data, numel, _shifts, _strides, _sizes);  \
-    break;                                                                    \
+#define CALL_ROLL_CUDA_KERNEL(N)                                            \
+  case N: {                                                                 \
+    phi::Array<int64_t, N> _strides;                                        \
+    phi::Array<int64_t, N> _shifts;                                         \
+    phi::Array<int64_t, N> _sizes;                                          \
+    for (size_t idx = 0; idx < N; ++idx) {                                  \
+      _strides[idx] = strides[idx];                                         \
+      _shifts[idx] = shifts_data[idx];                                      \
+      _sizes[idx] = sizes[idx];                                             \
+    }                                                                       \
+    RollCudaKernel<T, N>                                                    \
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS, \
+           PADDLE_CUDA_NUM_THREADS,                                         \
+           0,                                                               \
+           stream>>>(in_data, out_data, numel, _shifts, _strides, _sizes);  \
+    break;                                                                  \
   }
 
 }  // namespace phi

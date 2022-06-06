@@ -18,7 +18,9 @@
 #endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"

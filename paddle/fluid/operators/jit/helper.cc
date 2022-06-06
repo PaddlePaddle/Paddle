@@ -13,7 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/helper.h"
+
 #include <numeric>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -112,10 +114,11 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
   int block, rest;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {
-    PADDLE_ENFORCE_GT(i, 0, platform::errors::InvalidArgument(
-                                "Each element of groups should be larger than "
-                                "0. However the element: %d doesn't satify.",
-                                i));
+    PADDLE_ENFORCE_GT(i, 0,
+                      platform::errors::InvalidArgument(
+                          "Each element of groups should be larger than "
+                          "0. However the element: %d doesn't satify.",
+                          i));
   });
   int sum = std::accumulate(groups.begin(), groups.end(), 0);
   std::memset(dst, 0, k * sum * block * sizeof(float));

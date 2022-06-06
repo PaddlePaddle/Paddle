@@ -23,6 +23,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestNonZeroAPI(unittest.TestCase):
+
     def test_nonzero_api_as_tuple(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):

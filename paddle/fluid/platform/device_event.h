@@ -23,8 +23,8 @@
  *  for USE_PASS from pass_library.
  */
 
-using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
+using ::paddle::platform::kCUDA;
 
 USE_EVENT(kCPU)
 USE_EVENT_WAIT(kCPU, kCPU)

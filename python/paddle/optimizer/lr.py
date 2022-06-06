@@ -20,22 +20,10 @@ import paddle.fluid.core as core
 from ..fluid.framework import _in_legacy_dygraph
 
 __all__ = [  # noqa
-    'LRScheduler',
-    'NoamDecay',
-    'PiecewiseDecay',
-    'NaturalExpDecay',
-    'InverseTimeDecay',
-    'PolynomialDecay',
-    'LinearWarmup',
-    'ExponentialDecay',
-    'MultiStepDecay',
-    'StepDecay',
-    'LambdaDecay',
-    'ReduceOnPlateau',
-    'CosineAnnealingDecay',
-    'MultiplicativeDecay',
-    'OneCycleLR',
-    'CyclicLR'
+    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
+    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
+    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+    'CosineAnnealingDecay', 'MultiplicativeDecay', 'OneCycleLR', 'CyclicLR'
 ]
 
 
@@ -184,8 +172,8 @@ class LRScheduler(object):
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".
-                    format(key))
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
+                    .format(key))
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -379,8 +367,8 @@ class PiecewiseDecay(LRScheduler):
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
         self.boundaries = boundaries
         self.values = values
-        super(PiecewiseDecay, self).__init__(
-            last_epoch=last_epoch, verbose=verbose)
+        super(PiecewiseDecay, self).__init__(last_epoch=last_epoch,
+                                             verbose=verbose)
 
     def get_lr(self):
         for i in range(len(self.boundaries)):
@@ -669,8 +657,8 @@ class PolynomialDecay(LRScheduler):
             tmp_epoch_num = min(self.last_epoch, self.decay_steps)
 
         return (self.base_lr - self.end_lr) * (
-            (1 - float(tmp_epoch_num) / float(tmp_decay_steps)
-             )**self.power) + self.end_lr
+            (1 - float(tmp_epoch_num) / float(tmp_decay_steps))**
+            self.power) + self.end_lr
 
 
 class LinearWarmup(LRScheduler):
@@ -769,8 +757,8 @@ class LinearWarmup(LRScheduler):
             learning_rate, int) or isinstance(learning_rate, LRScheduler)
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".
-                format(learning_rate))
+                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}"
+                .format(learning_rate))
         self.learning_rate = learning_rate
         assert warmup_steps > 0 and isinstance(
             warmup_steps, int), " 'warmup_steps' must be a positive integer."
@@ -1374,8 +1362,8 @@ class ReduceOnPlateau(LRScheduler):
         elif not isinstance(metrics,
                             (int, float, numpy.float32, numpy.float64)):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".
-                format(type(metrics)))
+                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}"
+                .format(type(metrics)))
 
         if self.cooldown_counter > 0:
             self.cooldown_counter -= 1
@@ -1518,16 +1506,16 @@ class CosineAnnealingDecay(LRScheduler):
         if self.last_epoch == 0:
             return self.base_lr
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return self.last_lr + (self.base_lr - self.eta_min) * (1 - math.cos(
-                math.pi / self.T_max)) / 2
+            return self.last_lr + (self.base_lr - self.eta_min) * (
+                1 - math.cos(math.pi / self.T_max)) / 2
 
         return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
             1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)) * (
                 self.last_lr - self.eta_min) + self.eta_min
 
     def _get_closed_form_lr(self):
-        return self.eta_min + (self.base_lr - self.eta_min) * (1 + math.cos(
-            math.pi * self.last_epoch / self.T_max)) / 2
+        return self.eta_min + (self.base_lr - self.eta_min) * (
+            1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
 
 
 class MultiplicativeDecay(LRScheduler):
@@ -1707,16 +1695,18 @@ class OneCycleLR(LRScheduler):
 
         # Check type and value of total_steps
         if not isinstance(total_steps, int):
-            raise TypeError("'total_step' must be 'int', but received {}".
-                            format(type(total_steps)))
+            raise TypeError(
+                "'total_step' must be 'int', but received {}".format(
+                    type(total_steps)))
         if total_steps <= 0:
             raise ValueError("'total_step' must be a positive integer.")
         self.total_steps = total_steps
 
         # Check type and value of pac_start
         if not isinstance(phase_pct, float):
-            raise TypeError("'phase_pct' must be 'float', but received {}".
-                            format(type(phase_pct)))
+            raise TypeError(
+                "'phase_pct' must be 'float', but received {}".format(
+                    type(phase_pct)))
         if phase_pct < 0 or phase_pct > 1:
             raise ValueError(
                 "'phase_pct' must be between 0 and 1, but received {}".format(
@@ -1775,8 +1765,8 @@ class OneCycleLR(LRScheduler):
             self.anneal_func = self._linear_annealing
         else:
             raise ValueError(
-                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".
-                format(anneal_strategy))
+                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}"
+                .format(anneal_strategy))
         super(OneCycleLR, self).__init__(initial_lr, last_epoch, verbose)
 
     def _cos_annealing(self, start_lr, end_lr, pct):
@@ -1794,8 +1784,8 @@ class OneCycleLR(LRScheduler):
                 "Tried to step {} times. However the number of total steps is {}"
                 .format(current_step, self.total_steps))
 
-        for (i, (end_step, step_size)
-             ) in enumerate(zip(self._step_config[1:], self._steps_size)):
+        for (i, (end_step, step_size)) in enumerate(
+                zip(self._step_config[1:], self._steps_size)):
             # i == len(self._lr_config) - 2 catch the last step, otherwise it will return None.
             if current_step <= end_step or i == len(self._lr_config) - 2:
                 # self._step_config[i] means start step of a phase.

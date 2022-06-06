@@ -15,6 +15,7 @@
 #pragma once
 
 #include <unordered_map>
+
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 

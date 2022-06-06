@@ -14,6 +14,7 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/diag_embed_op.h"
 

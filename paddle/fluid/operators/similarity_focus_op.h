@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -67,16 +68,16 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
 
     std::vector<std::pair<T, int64_t>> array(array_size);
 
-    bool (*cmp)(std::pair<T, int64_t>, std::pair<T, int64_t>) = [](
-        std::pair<T, int64_t> x, std::pair<T, int64_t> y) {
-      return x.first > y.first;
-    };
+    bool (*cmp)(std::pair<T, int64_t>, std::pair<T, int64_t>) =
+        [](std::pair<T, int64_t> x, std::pair<T, int64_t> y) {
+          return x.first > y.first;
+        };
 
-    int64_t (*compute_index)(int64_t*, int, int, int, int) = [](
-        int64_t* dim, int d1, int d2, int d3, int d4) {
-      return d1 * dim[1] * dim[2] * dim[3] + d2 * dim[2] * dim[3] +
-             d3 * dim[3] + d4;
-    };
+    int64_t (*compute_index)(int64_t*, int, int, int, int) =
+        [](int64_t* dim, int d1, int d2, int d3, int d4) {
+          return d1 * dim[1] * dim[2] * dim[3] + d2 * dim[2] * dim[3] +
+                 d3 * dim[3] + d4;
+        };
 
     PADDLE_ENFORCE_GT(
         axis, 0,

@@ -16,11 +16,9 @@ limitations under the License. */
 #define BLOOMFILTER_MAGIC_NUM_NEW 17070416
 
 #include <inttypes.h>
-#include <stdlib.h>
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
 #include <unistd.h>
 
 namespace paddle {

@@ -18,14 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
-
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/mlu/cncl_helper.h"
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -184,8 +182,9 @@ paddle::platform::DeviceContext *CNCLParallelContext::GetDeviceContext(
 }
 
 void CNCLParallelContext::WaitCompute(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_GE(
+      ring_id, 0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < compute events size,"
@@ -205,8 +204,9 @@ void CNCLParallelContext::WaitCompute(int ring_id) {
 }
 
 void CNCLParallelContext::WaitComm(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0, platform::errors::OutOfRange(
-                                    "ring id must >= 0, but got %d", ring_id));
+  PADDLE_ENFORCE_GE(
+      ring_id, 0,
+      platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < comm events size,"

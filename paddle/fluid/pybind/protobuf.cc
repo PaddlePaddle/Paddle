@@ -76,11 +76,12 @@ void BindProgramDesc(pybind11::module *m) {
                  platform::errors::InvalidArgument(
                      "Failed to parse ProgramDesc from binary string."));
            })
-      .def("_set_version",
-           [](pd::ProgramDesc &self, int64_t version) {
-             return self.SetVersion(version);
-           },
-           pybind11::arg("version") = pd::kCurProgramVersion)
+      .def(
+          "_set_version",
+          [](pd::ProgramDesc &self, int64_t version) {
+            return self.SetVersion(version);
+          },
+          pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
            [](pd::ProgramDesc &self) -> int64_t { return self.Version(); })
       .def("get_op_deps", [](const framework::ProgramDesc &program) {
@@ -113,18 +114,20 @@ void BindBlockDesc(pybind11::module *m) {
       .def("_insert_op", &pd::BlockDesc::InsertOp,
            pybind11::return_value_policy::reference)
       .def("_remove_op", &pd::BlockDesc::RemoveOp)
-      .def("var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.Var(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("has_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.HasVar(name);
-           },
-           pybind11::return_value_policy::reference)
+      .def(
+          "var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.Var(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "has_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.HasVar(name);
+          },
+          pybind11::return_value_policy::reference)
       .def("_rename_var",
            [](pd::BlockDesc &self, const pybind11::bytes &byte_name,
               const pybind11::bytes &byte_name_new) {
@@ -137,24 +140,27 @@ void BindBlockDesc(pybind11::module *m) {
              std::string name = byte_name;
              return self.HasVarRecursive(name);
            })
-      .def("find_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.FindVar(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("find_var_recursive",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.FindVarRecursive(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("_remove_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.RemoveVar(name);
-           },
-           pybind11::return_value_policy::reference)
+      .def(
+          "find_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.FindVar(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "find_var_recursive",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.FindVarRecursive(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "_remove_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.RemoveVar(name);
+          },
+          pybind11::return_value_policy::reference)
       .def("all_vars", &pd::BlockDesc::AllVars,
            pybind11::return_value_policy::reference)
       .def("op_size", &pd::BlockDesc::OpSize)
@@ -258,8 +264,9 @@ void BindOpDesc(pybind11::module *m) {
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
-      .def("__init__", [](pd::OpDesc &self) { new (&self) pd::OpDesc(); },
-           pybind11::return_value_policy::reference)
+      .def(
+          "__init__", [](pd::OpDesc &self) { new (&self) pd::OpDesc(); },
+          pybind11::return_value_policy::reference)
       .def("copy_from", &pd::OpDesc::CopyFrom)
       .def("type", &pd::OpDesc::Type)
       .def("set_type", &pd::OpDesc::SetType)
@@ -304,8 +311,9 @@ void BindOpDesc(pybind11::module *m) {
       .def("infer_var_type", &pd::OpDesc::InferVarType)
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
-      .def("block", [](pd::OpDesc &self) { return self.Block(); },
-           pybind11::return_value_policy::reference)
+      .def(
+          "block", [](pd::OpDesc &self) { return self.Block(); },
+          pybind11::return_value_policy::reference)
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)

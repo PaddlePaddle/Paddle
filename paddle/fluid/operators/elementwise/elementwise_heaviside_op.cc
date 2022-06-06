@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {

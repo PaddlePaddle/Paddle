@@ -1967,6 +1967,7 @@ multi_cluster_json = """{
 
 
 class TestCluster(unittest.TestCase):
+
     def test_single_machine(self):
         # Build cluster
         file_dir = os.path.dirname(os.path.abspath(__file__))

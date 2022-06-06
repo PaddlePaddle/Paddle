@@ -14,7 +14,9 @@
 
 #pragma once
 #include <thrust/host_vector.h>
+
 #include <chrono>
+
 #include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -123,7 +125,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
   std::condition_variable cv_;
   int cpu_table_status;
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 //#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
 #endif

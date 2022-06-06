@@ -24,6 +24,7 @@ __all__ = []
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(GraphExecutionOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -94,9 +95,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"NCCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":
@@ -120,9 +124,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"BKCLID": comm_id_var},
                 attrs={
-                    "trainers": trainer_endpoints,
-                    "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
                     "use_hierarchical_allreduce":
                     build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks":

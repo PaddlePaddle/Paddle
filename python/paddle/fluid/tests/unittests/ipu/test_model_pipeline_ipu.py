@@ -26,6 +26,7 @@ SEED = 2021
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
+
     def _test(self, run_ipu=True):
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
@@ -38,14 +39,19 @@ class TestCastNet(unittest.TestCase):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name='image', shape=[1, 3, 10, 10], dtype='float32')
+                image = paddle.static.data(name='image',
+                                           shape=[1, 3, 10, 10],
+                                           dtype='float32')
                 with paddle.static.ipu_shard_guard(index=0):
-                    conv1 = paddle.static.nn.conv2d(
-                        image, num_filters=3, filter_size=3, bias_attr=False)
+                    conv1 = paddle.static.nn.conv2d(image,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
                 with paddle.static.ipu_shard_guard(index=1):
-                    conv2 = paddle.static.nn.conv2d(
-                        conv1, num_filters=3, filter_size=3, bias_attr=False)
+                    conv2 = paddle.static.nn.conv2d(conv1,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
                     loss = paddle.mean(conv2)
 
             if run_ipu:
@@ -59,8 +65,9 @@ class TestCastNet(unittest.TestCase):
                 feed_list = [image.name]
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(
-                    num_ipus=2, is_training=False, enable_manual_shard=True)
+                ipu_strategy.set_graph_config(num_ipus=2,
+                                              is_training=False,
+                                              enable_manual_shard=True)
                 ipu_strategy.set_pipelining_config(enable_pipelining=False)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,

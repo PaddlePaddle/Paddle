@@ -18,6 +18,7 @@ import paddle
 
 
 class TestBroadcastShape(unittest.TestCase):
+
     def test_result(self):
         shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
         self.assertEqual(shape, [2, 3, 3])

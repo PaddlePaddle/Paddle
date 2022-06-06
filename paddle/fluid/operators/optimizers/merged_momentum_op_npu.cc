@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
-
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
@@ -151,10 +150,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
       // NOTE: ApplyMomentum will change the input
-      const auto& runner = NpuOpRunner(
-          "ApplyMomentum", {*param_out, *velocity_out, *learning_rate,
-                            regularized_grad, mu_tensor},
-          {*param_out}, {{"use_nesterov", use_nesterov}});
+      const auto& runner =
+          NpuOpRunner("ApplyMomentum",
+                      {*param_out, *velocity_out, *learning_rate,
+                       regularized_grad, mu_tensor},
+                      {*param_out}, {{"use_nesterov", use_nesterov}});
       runner.Run(dev_ctx.stream());
     }
   }

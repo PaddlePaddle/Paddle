@@ -41,7 +41,7 @@ using float16 = paddle::platform::float16;
 namespace experimental {
 class InternalUtils;
 };
-}
+}  // namespace paddle_infer
 ///
 /// \file analysis_predictor.h
 ///
@@ -55,10 +55,10 @@ class InternalUtils;
 
 namespace paddle {
 
-using inference::analysis::Argument;
-using inference::analysis::Analyzer;
-using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
+using framework::proto::ProgramDesc;
+using inference::analysis::Analyzer;
+using inference::analysis::Argument;
 
 ///
 /// \class AnalysisPredictor

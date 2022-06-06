@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {

@@ -19,10 +19,11 @@ namespace operators {
 
 void InputShapeCheck(const framework::DDim& dims, std::string tensor_name) {
   if (dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(dims[1], 1, platform::errors::InvalidArgument(
-                                      "The last dim of %s should be 1 when it "
-                                      "is 2D, but we get %d",
-                                      tensor_name, dims[1]));
+    PADDLE_ENFORCE_EQ(dims[1], 1,
+                      platform::errors::InvalidArgument(
+                          "The last dim of %s should be 1 when it "
+                          "is 2D, but we get %d",
+                          tensor_name, dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
         dims.size(), 1,
