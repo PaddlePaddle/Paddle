@@ -123,10 +123,9 @@ class TestGradientMergePass(AutoPallelPassTestBase):
         dist_strategy.semi_auto = True
         dist_strategy.gradient_merge = True
         dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
-        dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
-    def test_gm(self):
+    def test_result(self):
         no_pass_rets = self._distributed_launch(model=None,
                                                 apply_pass=False,
                                                 gpus=[0],
