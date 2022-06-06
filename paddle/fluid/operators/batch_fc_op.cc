@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_fc_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -42,8 +43,9 @@ class BatchFCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(input_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "Input of BatchFCOp should have 3D."));
-    PADDLE_ENFORCE_EQ(w_dims.size(), 3, platform::errors::InvalidArgument(
-                                            "W of BatchFCOp should have 3D."));
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(), 3,
+        platform::errors::InvalidArgument("W of BatchFCOp should have 3D."));
     PADDLE_ENFORCE_EQ(
         input_dims[0], w_dims[0],
         platform::errors::InvalidArgument(

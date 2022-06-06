@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ from paddle.device.cuda import device_count, memory_reserved, max_memory_reserve
 
 
 class TestMaxMemoryreserved(unittest.TestCase):
+
     def test_max_memory_reserved(self, device=None):
         if core.is_compiled_with_cuda():
             alloc_time = 100
@@ -47,7 +48,8 @@ class TestMaxMemoryreserved(unittest.TestCase):
     def test_max_memory_reserved_exception(self):
         if core.is_compiled_with_cuda():
             wrong_device = [
-                core.CPUPlace(), device_count() + 1, -2, 0.5, "gpu1", "npu"
+                core.CPUPlace(),
+                device_count() + 1, -2, 0.5, "gpu1", "npu"
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

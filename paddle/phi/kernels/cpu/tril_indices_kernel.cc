@@ -26,7 +26,7 @@ void TrilIndicesKernel(const Context& dev_ctx,
                        DataType dtype,
                        DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
-  auto out_dims = out->dims();
+  const auto& out_dims = out->dims();
   int64_t tril_size = out_dims[1];
   int64_t i = 0;
   T r = std::max<int64_t>(0, -offset), c = 0;

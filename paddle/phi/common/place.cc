@@ -19,7 +19,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/ext/exception.h"
 
 namespace phi {

@@ -9,7 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
+
 #include <cstring>
+
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {

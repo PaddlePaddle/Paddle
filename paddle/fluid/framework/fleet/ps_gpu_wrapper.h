@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
@@ -333,6 +334,11 @@ class PSGPUWrapper {
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
+    std::cout << "yxf set: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " << std::endl;
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -431,6 +437,12 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
+
+  double time_1 = 0.0;
+  double time_2 = 0.0;
+  double time_3 = 0.0;
+  double time_4 = 0.0;
+
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;

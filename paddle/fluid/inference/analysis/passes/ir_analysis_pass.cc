@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
+
 #include <memory>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 

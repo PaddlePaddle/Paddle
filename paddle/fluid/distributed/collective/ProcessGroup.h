@@ -21,7 +21,6 @@
 
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -109,6 +108,19 @@ class ProcessGroup {
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
+                                                           int, int,
+                                                           int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors, int, int, int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support receive", GetBackendName()));
   }

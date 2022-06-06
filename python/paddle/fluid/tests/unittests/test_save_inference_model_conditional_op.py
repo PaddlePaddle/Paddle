@@ -31,13 +31,14 @@ def getModelOp(model_path):
 
     result = set()
     for i in range(0, size):
-        #print(main_block.op(i).type())    
+        #print(main_block.op(i).type())
         result.add(main_block.op(i).type())
 
     return result
 
 
 class WhileNet(paddle.nn.Layer):
+
     def __init__(self):
         super(WhileNet, self).__init__()
 
@@ -55,6 +56,7 @@ class WhileNet(paddle.nn.Layer):
 
 
 class ForNet(paddle.nn.Layer):
+
     def __init__(self):
         super(ForNet, self).__init__()
 
@@ -68,6 +70,7 @@ class ForNet(paddle.nn.Layer):
 
 
 class IfElseNet(paddle.nn.Layer):
+
     def __init__(self):
         super(IfElseNet, self).__init__()
 
@@ -81,15 +84,15 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestConditionalOp(unittest.TestCase):
+
     def test_while_op(self):
         paddle.disable_static()
         net = WhileNet()
-        net = paddle.jit.to_static(
-            net,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[1, 3, 8, 8], dtype='float32')
-            ])
+        net = paddle.jit.to_static(net,
+                                   input_spec=[
+                                       paddle.static.InputSpec(
+                                           shape=[1, 3, 8, 8], dtype='float32')
+                                   ])
         paddle.jit.save(net, './while_net')
 
         right_pdmodel = set([
@@ -107,9 +110,7 @@ class TestConditionalOp(unittest.TestCase):
         paddle.disable_static()
         net = ForNet()
         net = paddle.jit.to_static(
-            net,
-            input_spec=[paddle.static.InputSpec(
-                shape=[1], dtype='int32')])
+            net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')])
         paddle.jit.save(net, './for_net')
 
         right_pdmodel = set([
@@ -127,9 +128,7 @@ class TestConditionalOp(unittest.TestCase):
         paddle.disable_static()
         net = IfElseNet()
         net = paddle.jit.to_static(
-            net,
-            input_spec=[paddle.static.InputSpec(
-                shape=[1], dtype='int32')])
+            net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')])
         paddle.jit.save(net, './if_net')
 
         right_pdmodel = set([

@@ -46,7 +46,7 @@ class NCCLContextMap;
 class BKCLContextMap;
 class BKCLCommunicator;
 #endif
-}
+}  // namespace platform
 
 namespace framework {
 class Scope;

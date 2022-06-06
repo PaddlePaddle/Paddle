@@ -13,8 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_repeated_fc_relu_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
@@ -24,10 +26,11 @@ void FusionRepeatedFCReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusionRepeatedFCRelu");
   auto sz = ctx->Inputs("W").size();
-  PADDLE_ENFORCE_GT(sz, 1UL, platform::errors::InvalidArgument(
-                                 "Inputs(W) of FusionRepeatedFCReluOp should "
-                                 "be greater than 1, but received value is %d.",
-                                 sz));
+  PADDLE_ENFORCE_GT(sz, 1UL,
+                    platform::errors::InvalidArgument(
+                        "Inputs(W) of FusionRepeatedFCReluOp should "
+                        "be greater than 1, but received value is %d.",
+                        sz));
   PADDLE_ENFORCE_EQ(
       ctx->Inputs("Bias").size(), sz,
       platform::errors::InvalidArgument(
@@ -130,7 +133,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     int weight_sz = static_cast<int>(weights.size());
 
     auto i_dims = in->dims();
-    auto w_dims = weights[0]->dims();
+    const auto& w_dims = weights[0]->dims();
     jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
@@ -140,8 +143,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
             relus[0]->mutable_data<T>(place), attr);
 
     for (int i = 1; i < weight_sz - 1; ++i) {
-      auto i_dims = relus[i - 1]->dims();
-      auto w_dims = weights[i]->dims();
+      const auto& i_dims = relus[i - 1]->dims();
+      const auto& w_dims = weights[i]->dims();
       attr.m = i_dims[0];
       attr.n = w_dims[1];
       attr.k = w_dims[0];
@@ -150,8 +153,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
               biases[i]->data<T>(), relus[i]->mutable_data<T>(place), attr);
     }
 
-    auto i_dims_last = relus[weight_sz - 2]->dims();
-    auto w_dims_last = weights[weight_sz - 1]->dims();
+    const auto& i_dims_last = relus[weight_sz - 2]->dims();
+    const auto& w_dims_last = weights[weight_sz - 1]->dims();
     attr.m = i_dims_last[0];
     attr.n = w_dims_last[1];
     attr.k = w_dims_last[0];
