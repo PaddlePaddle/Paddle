@@ -628,8 +628,8 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         idx = key
         for i, op in enumerate(value):
             # update the mapping between fwd and bwd
-            if _grad_op_desc_to_op.get(op_descs[idx + i], None) is not None:
-                _grad_op_desc_to_op[op] = _grad_op_desc_to_op[op_descs[idx + i]]
+            if _grad_op_desc_to_op.get(op_descs[idx], None) is not None:
+                _grad_op_desc_to_op[op] = _grad_op_desc_to_op[op_descs[idx]]
             op_descs.insert(idx + i, op)
 
     return op_descs
