@@ -840,7 +840,7 @@ void PSGPUWrapper::EndPass() {
   }
 
   int thread_num = 6;
-  auto dump_pool_to_cpu_func = [this](int i, int j, int z) {
+  auto dump_pool_to_cpu_func = [this, thread_num](int i, int j, int z) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
     auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
@@ -869,7 +869,7 @@ void PSGPUWrapper::EndPass() {
                cudaMemcpyDeviceToHost);
     CHECK(len == hbm_pool->capacity());
     uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
-    for (int i = lft; i < right; ++i) {
+    for (int i = left; i < right; ++i) {
       if (device_keys[i] == unuse_key) {
         continue;
       }
