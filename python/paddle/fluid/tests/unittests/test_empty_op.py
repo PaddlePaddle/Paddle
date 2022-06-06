@@ -25,6 +25,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 # Situation 1: Attr(shape) is a list(without tensor)
 class TestEmptyOp(OpTest):
+
     def setUp(self):
         self.op_type = "empty"
         self.init_config()
@@ -61,6 +62,7 @@ class TestEmptyOp(OpTest):
 
 
 class TestEmptyOp2(TestEmptyOp):
+
     def init_config(self):
         shape = [500, 3]
         dtype = 'float64'
@@ -71,6 +73,7 @@ class TestEmptyOp2(TestEmptyOp):
 
 
 class TestEmptyOp3(TestEmptyOp):
+
     def init_config(self):
         shape = [500, 3]
         dtype = 'int32'
@@ -81,6 +84,7 @@ class TestEmptyOp3(TestEmptyOp):
 
 
 class TestEmptyOp4(TestEmptyOp):
+
     def init_config(self):
         shape = [500, 3]
         dtype = 'int64'
@@ -91,6 +95,7 @@ class TestEmptyOp4(TestEmptyOp):
 
 
 class TestEmptyOp5(TestEmptyOp):
+
     def init_config(self):
         shape = [500, 3]
         dtype = 'bool'
@@ -102,6 +107,7 @@ class TestEmptyOp5(TestEmptyOp):
 
 # Situation 2: shape is a tensor
 class TestEmptyOp_ShapeTensor(OpTest):
+
     def setUp(self):
         self.op_type = "empty"
         self.init_config()
@@ -139,6 +145,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
 
 # Situation 3: Attr(shape) is a list(with tensor)
 class TestEmptyOp_ShapeTensorList(OpTest):
+
     def setUp(self):
         self.op_type = "empty"
         self.init_config()
@@ -183,6 +190,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
 
 
 class TestEmptyAPI(unittest.TestCase):
+
     def __check_out__(self, out, dtype='float32'):
         max_value = np.nanmax(np.array(out))
         min_value = np.nanmin(np.array(out))
@@ -228,12 +236,15 @@ class TestEmptyAPI(unittest.TestCase):
         positive_2_int32 = fluid.layers.fill_constant([1], "int32", 3)
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 3)
 
-        shape_tensor_int32 = fluid.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32")
-        shape_tensor_int64 = fluid.data(
-            name="shape_tensor_int64", shape=[2], dtype="int64")
-        shape_tensor_unknown = fluid.data(
-            name="shape_tensor_unknown", shape=[-1], dtype="int64")
+        shape_tensor_int32 = fluid.data(name="shape_tensor_int32",
+                                        shape=[2],
+                                        dtype="int32")
+        shape_tensor_int64 = fluid.data(name="shape_tensor_int64",
+                                        shape=[2],
+                                        dtype="int64")
+        shape_tensor_unknown = fluid.data(name="shape_tensor_unknown",
+                                          shape=[-1],
+                                          dtype="int64")
 
         out_1 = paddle.empty(shape=[200, 3], dtype=dtype)
         out_2 = paddle.empty(shape=shape_tensor_int32, dtype=dtype)
@@ -262,7 +273,9 @@ class TestEmptyAPI(unittest.TestCase):
 
 
 class TestEmptyError(unittest.TestCase):
+
     def test_attr(self):
+
         def test_dtype():
             shape = [200, 3]
             dtype = 'uint8'

@@ -42,10 +42,11 @@ static void DeepCopy(const framework::LoDTensor &src_item,
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       framework::innerTransDataLayoutFromMKLDNN(
-          src_item.layout(), fetch_var_name == framework::GradVarName("Filter")
-                                 ? framework::DataLayout::kNCHW
-                                 : paddle::platform::MKLDNNDeviceContext::tls()
-                                       .get_cur_paddle_data_layout(),
+          src_item.layout(),
+          fetch_var_name == framework::GradVarName("Filter")
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::MKLDNNDeviceContext::tls()
+                    .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
       paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
@@ -123,11 +124,12 @@ class FetchV2Kernel {
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
-        col, 0, platform::errors::InvalidArgument(
-                    "Expected the column index (the attribute 'col' of "
-                    "operator 'Fetch') of current fetching variable to be "
-                    "no less than 0. But received column index = %d.",
-                    col));
+        col, 0,
+        platform::errors::InvalidArgument(
+            "Expected the column index (the attribute 'col' of "
+            "operator 'Fetch') of current fetching variable to be "
+            "no less than 0. But received column index = %d.",
+            col));
 
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 

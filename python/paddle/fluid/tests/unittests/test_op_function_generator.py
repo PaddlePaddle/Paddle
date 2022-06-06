@@ -25,6 +25,7 @@ from paddle import _C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
+
     def __init__(self, name_scope):
         super(TestTracedLayer, self).__init__(name_scope)
 
@@ -33,6 +34,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
 
 
 class TestVariable(unittest.TestCase):
+
     def setUp(self):
         self.shape = [512, 768]
         self.dtype = np.float32

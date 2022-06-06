@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -860,9 +861,10 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[0];
     }
   }
-  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                  "out_w in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_w, 0,
+                    platform::errors::InvalidArgument(
+                        "out_w in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_w};
@@ -942,12 +944,14 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[1];
     }
   }
-  PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
-                                  "out_h in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                  "out_w in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_h, 0,
+                    platform::errors::InvalidArgument(
+                        "out_h in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_w, 0,
+                    platform::errors::InvalidArgument(
+                        "out_w in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
@@ -984,21 +988,21 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    KeNearestNeighborInterpFw<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+    KeNearestNeighborInterpFw<T>
+        <<<config.block_per_grid, config.thread_per_block, 0,
+           ctx.cuda_device_context().stream()>>>(
+            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+            out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
     KeBilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpFw<T><<<config.block_per_grid, 512, 0,
-                           ctx.cuda_device_context().stream()>>>(
-        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+    KeBicubicInterpFw<T>
+        <<<config.block_per_grid, 512, 0, ctx.cuda_device_context().stream()>>>(
+            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+            out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
 }
 
@@ -1051,15 +1055,18 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[2];
     }
   }
-  PADDLE_ENFORCE_GT(out_d, 0, platform::errors::InvalidArgument(
-                                  "out_d in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
-                                  "out_h in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
-                                  "out_w in Attr(out_shape) of Op(interpolate) "
-                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_d, 0,
+                    platform::errors::InvalidArgument(
+                        "out_d in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_h, 0,
+                    platform::errors::InvalidArgument(
+                        "out_h in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_w, 0,
+                    platform::errors::InvalidArgument(
+                        "out_w in Attr(out_shape) of Op(interpolate) "
+                        "should be greater than 0."));
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
@@ -1271,11 +1278,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    KeNearestNeighborInterpBw<
-        T><<<config.block_per_grid, config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
-        n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+    KeNearestNeighborInterpBw<T>
+        <<<config.block_per_grid, config.thread_per_block, 0,
+           ctx.cuda_device_context().stream()>>>(
+            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
+            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
     KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
@@ -1283,10 +1290,10 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
         data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpBw<T><<<config.block_per_grid, 512, 0,
-                           ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
-        n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+    KeBicubicInterpBw<T>
+        <<<config.block_per_grid, 512, 0, ctx.cuda_device_context().stream()>>>(
+            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
+            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
 }
 

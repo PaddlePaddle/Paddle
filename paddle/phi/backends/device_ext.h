@@ -34,7 +34,9 @@ typedef enum {
   C_INTERNAL_ERROR  // plugin error
 } C_Status;
 
-typedef struct C_Device_st { int id; } * C_Device;
+typedef struct C_Device_st {
+  int id;
+} * C_Device;
 
 typedef struct C_Stream_st* C_Stream;
 

@@ -22,6 +22,7 @@ import numbers
 
 
 class TestTensorPtr(unittest.TestCase):
+
     def test_tensor_ptr(self):
         t = core.Tensor()
         np_arr = numpy.zeros([2, 3])
@@ -30,6 +31,7 @@ class TestTensorPtr(unittest.TestCase):
 
 
 class TestTensor(unittest.TestCase):
+
     def setUp(self):
         self.support_dtypes = [
             'bool', 'uint8', 'int8', 'int16', 'int32', 'int64', 'float16',
@@ -79,8 +81,10 @@ class TestTensor(unittest.TestCase):
         scope = core.Scope()
         var = scope.var("int8_tensor")
         cpu_tensor = var.get_tensor()
-        tensor_array = numpy.random.randint(
-            -127, high=128, size=[100, 200], dtype=numpy.int8)
+        tensor_array = numpy.random.randint(-127,
+                                            high=128,
+                                            size=[100, 200],
+                                            dtype=numpy.int8)
         place = core.CPUPlace()
         cpu_tensor.set(tensor_array, place)
         cpu_tensor_array_2 = numpy.array(cpu_tensor)
@@ -88,8 +92,10 @@ class TestTensor(unittest.TestCase):
 
         if core.is_compiled_with_cuda():
             cuda_tensor = var.get_tensor()
-            tensor_array = numpy.random.randint(
-                -127, high=128, size=[100, 200], dtype=numpy.int8)
+            tensor_array = numpy.random.randint(-127,
+                                                high=128,
+                                                size=[100, 200],
+                                                dtype=numpy.int8)
             place = core.CUDAPlace(0)
             cuda_tensor.set(tensor_array, place)
             cuda_tensor_array_2 = numpy.array(cuda_tensor)
@@ -203,10 +209,10 @@ class TestTensor(unittest.TestCase):
         shape = [3, 3, 3]
         tensor._set_dims(shape)
 
-        tensor_array = numpy.array(
-            [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-             [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-             [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype(dtype)
+        tensor_array = numpy.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                    [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                                    [[19, 20, 21], [22, 23, 24],
+                                     [25, 26, 27]]]).astype(dtype)
 
         tensor.set(tensor_array, place)
         n1 = tensor[1]
@@ -284,16 +290,16 @@ class TestTensor(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.assertTrue(
-                isinstance(
-                    tensor._mutable_data(place, dtype), numbers.Integral))
+                isinstance(tensor._mutable_data(place, dtype),
+                           numbers.Integral))
             place = core.CUDAPinnedPlace()
             self.assertTrue(
-                isinstance(
-                    tensor._mutable_data(place, dtype), numbers.Integral))
+                isinstance(tensor._mutable_data(place, dtype),
+                           numbers.Integral))
             places = fluid.cuda_pinned_places()
             self.assertTrue(
-                isinstance(
-                    tensor._mutable_data(places[0], dtype), numbers.Integral))
+                isinstance(tensor._mutable_data(places[0], dtype),
+                           numbers.Integral))
 
     def test_tensor_set_fp16(self):
         array = numpy.random.random((300, 500)).astype("float16")

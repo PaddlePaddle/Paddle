@@ -135,13 +135,14 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-    helper.append_op(
-        type='diag_embed',
-        inputs={'Input': [input]},
-        attrs={'offset': offset,
-               'dim1': dim1,
-               'dim2': dim2},
-        outputs={'Out': [out]})
+    helper.append_op(type='diag_embed',
+                     inputs={'Input': [input]},
+                     attrs={
+                         'offset': offset,
+                         'dim1': dim1,
+                         'dim2': dim2
+                     },
+                     outputs={'Out': [out]})
     out.stop_gradient = True
     return out
 
@@ -230,8 +231,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         else:
             attrs['maxlen'] = maxlen
 
-    helper.append_op(
-        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs)
+    helper.append_op(type='sequence_mask',
+                     inputs=inputs,
+                     outputs={'Y': out},
+                     attrs=attrs)
 
     out.stop_gradient = True
     return out
@@ -311,11 +314,12 @@ def gather_tree(ids, parents):
                                      'gather_tree')
             out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
-            helper.append_op(
-                type="gather_tree",
-                inputs={"Ids": ids,
-                        "Parents": parents},
-                outputs={"Out": out})
+            helper.append_op(type="gather_tree",
+                             inputs={
+                                 "Ids": ids,
+                                 "Parents": parents
+                             },
+                             outputs={"Out": out})
 
             return out
 
@@ -371,13 +375,12 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
 
-    helper.append_op(
-        type="temporal_shift",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={
-            "seg_num": seg_num,
-            "shift_ratio": shift_ratio,
-            "data_format": data_format
-        })
+    helper.append_op(type="temporal_shift",
+                     inputs={"X": x},
+                     outputs={"Out": out},
+                     attrs={
+                         "seg_num": seg_num,
+                         "shift_ratio": shift_ratio,
+                         "data_format": data_format
+                     })
     return out

@@ -31,19 +31,19 @@ class MKLDNNDeviceContext;
 namespace paddle {
 namespace operators {
 
+using dnnl::inner_product_forward;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::prop_kind;
+using dnnl::stream;
 using framework::DataLayout;
-using framework::Tensor;
-using framework::LoDTensor;
 using framework::DDim;
 using framework::ExecutionContext;
+using framework::LoDTensor;
+using framework::Tensor;
+using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
-using platform::GetMKLDNNFormat;
-using dnnl::memory;
-using dnnl::inner_product_forward;
-using dnnl::primitive;
-using dnnl::stream;
-using dnnl::prop_kind;
 
 template <typename T_in, typename T_w, typename T_out>
 class FCPrimitiveFactory {

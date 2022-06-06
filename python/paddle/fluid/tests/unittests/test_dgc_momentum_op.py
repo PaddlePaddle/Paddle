@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 
 
 class TestDGCMomentumOp1(unittest.TestCase):
+
     def get_tensor(self, name, value, place=None):
         tensor = self.scope.var(name).get_tensor()
         tensor.set(value, self.place if place is None else place)
@@ -49,14 +50,14 @@ class TestDGCMomentumOp1(unittest.TestCase):
         # get tensor
         self.param_name, self.param_tensor = self.get_tensor('Param', param)
         self.grad_name, self.grad_tensor = self.get_tensor('Grad', grad)
-        self.velocity_name, self.velocity_tensor = self.get_tensor('Velocity',
-                                                                   velocity)
+        self.velocity_name, self.velocity_tensor = self.get_tensor(
+            'Velocity', velocity)
         self.learning_rate_name, self.learning_rate_tensor = self.get_tensor(
             'LearningRate', learning_rate)
         self.current_step_name, self.current_step_tensor = self.get_tensor(
             'current_step', current_step, core.CPUPlace())
-        self.nranks_name, self.nranks_tensor = self.get_tensor('nranks', nranks,
-                                                               core.CPUPlace())
+        self.nranks_name, self.nranks_tensor = self.get_tensor(
+            'nranks', nranks, core.CPUPlace())
 
         self.kwargs = {
             # inputs
@@ -95,10 +96,9 @@ class TestDGCMomentumOp1(unittest.TestCase):
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
         self.assertTrue(
-            np.allclose(
-                actual_t, expect_t, atol=atol),
-            "Output (" + out_name + ") has diff at " + str(place) + "\nExpect "
-            + str(expect_t) + "\n" + "But Got" + str(actual_t))
+            np.allclose(actual_t, expect_t, atol=atol),
+            "Output (" + out_name + ") has diff at " + str(place) +
+            "\nExpect " + str(expect_t) + "\n" + "But Got" + str(actual_t))
 
     def check_momentum_step(self, place):
         self.setup(place=place)
@@ -106,13 +106,11 @@ class TestDGCMomentumOp1(unittest.TestCase):
         dgc_momentum_op = Operator(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
 
-        self.check(
-            np.array(self.param_tensor), self.outputs['ParamOut'], self.place,
-            self.param_name)
+        self.check(np.array(self.param_tensor), self.outputs['ParamOut'],
+                   self.place, self.param_name)
 
-        self.check(
-            np.array(self.velocity_tensor), self.outputs['VelocityOut'],
-            self.place, self.velocity_name)
+        self.check(np.array(self.velocity_tensor), self.outputs['VelocityOut'],
+                   self.place, self.velocity_name)
 
     def check_sgd_step(self, place):
         self.setup(place=place, step=15.0)
@@ -120,9 +118,8 @@ class TestDGCMomentumOp1(unittest.TestCase):
         dgc_momentum_op = Operator(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
 
-        self.check(
-            np.array(self.param_tensor), self.outputs['SGDOut'], self.place,
-            self.param_name)
+        self.check(np.array(self.param_tensor), self.outputs['SGDOut'],
+                   self.place, self.param_name)
 
     def test_cuda_place(self):
         if not core.is_compiled_with_cuda():

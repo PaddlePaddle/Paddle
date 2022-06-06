@@ -100,7 +100,7 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
 
   // graph.Nodes() return unordered_set, here using set to avoid the same graph
   // may return different result
-  std::set<ir::Node *, bool (*)(ir::Node *, ir::Node *)> node_set(compare),
+  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> node_set(compare),
       output_set(compare);
   node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
 
