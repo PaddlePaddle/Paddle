@@ -25,7 +25,6 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/operators/norm_utils.h"
@@ -525,10 +524,9 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-      //const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
-      const bool use_native_kernel = true;
+      const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
       if(use_native_kernel) {
-        const int block = 256;
+        const int block = 512;
         const int max_threads = ctx.GetMaxPhysicalThreadCount();
         const int max_blocks = std::max(max_threads / block, 1);
         const int grid = std::min(C, max_blocks);
@@ -551,8 +549,10 @@ void BatchNormKernel(const Context &ctx,
             saved_mean->template data<BatchNormParamType<T>>(),
             saved_variance->template data<BatchNormParamType<T>>());
         } else {
-          BNForwardTraining2D<T, block_size, DataLayout::kNHWC>
-            <<<grid, block, smem_size, ctx.stream()>>>(
+          BNForwardTraining<
+            T,
+            block,
+            DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
             transformed_x.template data<T>(),
             scale.template data<BatchNormParamType<T>>(),
             bias.template data<BatchNormParamType<T>>(),
@@ -565,9 +565,7 @@ void BatchNormKernel(const Context &ctx,
             mean_out->template data<BatchNormParamType<T>>(),
             variance_out->template data<BatchNormParamType<T>>(),
             saved_mean->template data<BatchNormParamType<T>>(),
-            saved_variance->template data<BatchNormParamType<T>>(),
-            block_data_ptr,
-            flag_ptr);
+            saved_variance->template data<BatchNormParamType<T>>());
         }
       } else {
 #if CUDNN_VERSION_MIN(7, 4, 1)
