@@ -40,20 +40,67 @@ class SimpleModel(nn.Layer):
         return x
 
 
-class TestCudaGraphAttr(unittest.TestCase):
+class CudaGraphWrapModel(nn.Layer):
 
-    def test_layer(self):
+    def __init__(self, in_size, out_size):
+        super(CudaGraphWrapModel, self).__init__()
+        self.linear = wrap_cuda_graph(nn.Linear(in_size, out_size))
+        self.dropout_1 = paddle.nn.Dropout(0.1)
+        self.relu = wrap_cuda_graph(nn.ReLU())
+        self.dropout_2 = paddle.nn.Dropout(0.5)
+        self.gelu = wrap_cuda_graph(nn.GELU())
+
+    def forward(self, x):
+        x = self.linear(x)
+        x = self.dropout_1(x)
+        x = self.relu(x)
+        x = self.dropout_2(x)
+        x = self.gelu(x)
+        return x
+
+
+class TestCudaGraphAttrAll(unittest.TestCase):
+
+    def test_all_program(self):
         if not is_cuda_graph_supported():
             return
-        model = SimpleModel(10, 20)
-        cuda_graph_model = wrap_cuda_graph(model)
-        x = paddle.static.data(shape=[3, 10], dtype='float32')
-        y = cuda_graph_model(x)
-        program = paddle.static.default_main_program()
-        block = program.global_block()
-        for op in block.ops:
-            assert op._cuda_graph_attr is not None
-            print(op._cuda_graph_attr)
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            model = SimpleModel(10, 20)
+            cuda_graph_model = wrap_cuda_graph(model)
+            x = paddle.static.data(shape=[3, 10], dtype='float32', name='x')
+            y = cuda_graph_model(x)
+
+            block = main_prog.global_block()
+            for op in block.ops:
+                assert op._cuda_graph_attr is not None
+                assert op._cuda_graph_attr == 'thread_local;0;0'
+
+            loss = paddle.mean(y)
+            opt = paddle.optimizer.SGD()
+            opt.minimize(loss)
+
+    def test_partial_program(self):
+        if not is_cuda_graph_supported():
+            return
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            model = CudaGraphWrapModel(10, 20)
+            x = paddle.static.data(shape=[3, 10], dtype='float32', name='x')
+            y = model(x)
+
+            block = main_prog.global_block()
+            for op in block.ops:
+                if op.type == 'dropout':
+                    assert op._cuda_graph_attr is None
+                else:
+                    assert op._cuda_graph_attr is not None
+
+            loss = paddle.mean(y)
+            opt = paddle.optimizer.SGD()
+            opt.minimize(loss)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDAPlace
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
