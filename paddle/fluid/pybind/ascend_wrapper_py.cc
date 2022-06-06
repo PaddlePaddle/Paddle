@@ -26,11 +26,13 @@ limitations under the License. */
 #include <ge/ge_api.h>
 #include <graph/attr_value.h>
 #include <graph/operator_factory.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #include "paddle/fluid/platform/device/npu/ascend_npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -78,8 +80,9 @@ ge::Status ge_initialize(
   py::gil_scoped_release release;
   auto init_options = convert_map(options);
   ge::Status res = ge::GEInitialize(init_options);
-  PADDLE_ENFORCE_EQ(res, ge::SUCCESS, platform::errors::Fatal(
-                                          "ge initialize not success:%d", res));
+  PADDLE_ENFORCE_EQ(
+      res, ge::SUCCESS,
+      platform::errors::Fatal("ge initialize not success:%d", res));
   py::gil_scoped_acquire acquire;
   return res;
 }
@@ -253,7 +256,7 @@ void BindAscendGraph(py::module *m) {
         return std::unique_ptr<ge::Session>(
             new ge::Session(convert_map(options)));
       }))
-      .def("add_graph", (ge::Status (Session::*)(uint32_t, const Graph &)) &
+      .def("add_graph", (ge::Status(Session::*)(uint32_t, const Graph &)) &
                             Session::AddGraph)
       .def("add_graph",
            [](Session &ss, uint32_t index, const Graph &graph,
@@ -261,14 +264,15 @@ void BindAscendGraph(py::module *m) {
              return ss.AddGraph(index, graph, convert_map(options));
            })
       .def("remove_graph", &Session::RemoveGraph)
-      .def("run_graph",
-           [](Session &ss, uint32_t graphId,
-              const std::vector<Tensor> &inputs) -> py::tuple {
-             std::vector<Tensor> outputs;
-             ge::Status res = ss.RunGraph(graphId, inputs, outputs);
-             return py::make_tuple(outputs, res);
-           },
-           py::call_guard<py::gil_scoped_release>())
+      .def(
+          "run_graph",
+          [](Session &ss, uint32_t graphId,
+             const std::vector<Tensor> &inputs) -> py::tuple {
+            std::vector<Tensor> outputs;
+            ge::Status res = ss.RunGraph(graphId, inputs, outputs);
+            return py::make_tuple(outputs, res);
+          },
+          py::call_guard<py::gil_scoped_release>())
       .def("build_graph", &Session::BuildGraph)
       .def("run_graph_async", &Session::RunGraphAsync)
 #ifdef PADDLE_WITH_ASCEND_STRING
@@ -385,7 +389,7 @@ void BindAscendGraph(py::module *m) {
            })
 #ifdef PADDLE_WITH_ASCEND_STRING
       .def("get_input_desc",
-           (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetInputDesc)
+           (TensorDesc(Operator::*)(uint32_t) const) & Operator::GetInputDesc)
       .def("get_input_desc",
            [](Operator &op, const std::string &name) {
              return op.GetInputDescByName(name.c_str());
@@ -420,7 +424,7 @@ void BindAscendGraph(py::module *m) {
              return op.GetOutputDescByName(name.c_str());
            })
       .def("get_output_desc",
-           (TensorDesc (Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
+           (TensorDesc(Operator::*)(uint32_t) const) & Operator::GetOutputDesc)
       .def("update_output_desc",
            static_cast<ge::graphStatus (ge::Operator::*)(  // NOLINT
                const char *, const TensorDesc &)>(&Operator::UpdateOutputDesc))
@@ -779,19 +783,18 @@ void BindAscendGraph(py::module *m) {
       .def("get_tensor_desc", &Tensor::GetTensorDesc)
       // .def("set_data", (graphStatus(Tensor::*)(std::vector<uint8_t> &&)) &
       // Tensor::SetData)
-      .def("set_data", (graphStatus (Tensor::*)(const std::vector<uint8_t> &)) &
+      .def("set_data", (graphStatus(Tensor::*)(const std::vector<uint8_t> &)) &
                            Tensor::SetData)
       .def("set_data",
-           (graphStatus (Tensor::*)(const uint8_t *, size_t)) & Tensor::SetData)
+           (graphStatus(Tensor::*)(const uint8_t *, size_t)) & Tensor::SetData)
 #ifdef PADDLE_WITH_ASCEND_STRING
-      .def("set_data",
-           (graphStatus (Tensor::*)(const char *)) & Tensor::SetData)
+      .def("set_data", (graphStatus(Tensor::*)(const char *)) & Tensor::SetData)
 #else
       .def("set_data",
            (graphStatus (Tensor::*)(const std::string &)) & Tensor::SetData)
 #endif
       .def("set_data",
-           (graphStatus (Tensor::*)(const std::vector<AscendString> &)) &
+           (graphStatus(Tensor::*)(const std::vector<AscendString> &)) &
                Tensor::SetData)
 
       .def("get_data",
@@ -813,8 +816,9 @@ void BindAscendGraph(py::module *m) {
       .def(py::init<Shape, Format, DataType>(), py::arg("shape"),
            py::arg("format") = FORMAT_ND, py::arg("dt") = DT_FLOAT)
       .def(py::init<const TensorDesc &>())
-      .def("update", (void (TensorDesc::*)(const Shape &, Format, DataType)) &
-                         TensorDesc::Update,
+      .def("update",
+           (void(TensorDesc::*)(const Shape &, Format, DataType)) &
+               TensorDesc::Update,
            py::arg("shape"), py::arg("format") = FORMAT_ND,
            py::arg("dt") = DT_FLOAT)
       .def("set_shape", &TensorDesc::SetShape)

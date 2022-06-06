@@ -148,6 +148,7 @@ class BatchSampler(Sampler):
 
 
 class _InfiniteIterableSampler(object):
+
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset
@@ -277,9 +278,10 @@ class DistributedBatchSampler(BatchSampler):
                 subsampled_indices.extend(indices[i:i + self.batch_size])
 
             indices = indices[len(indices) - last_batch_size:]
-            subsampled_indices.extend(indices[
-                self.local_rank * last_local_batch_size:(
-                    self.local_rank + 1) * last_local_batch_size])
+            subsampled_indices.extend(
+                indices[self.local_rank *
+                        last_local_batch_size:(self.local_rank + 1) *
+                        last_local_batch_size])
             return subsampled_indices
 
         if self.nranks > 1:

@@ -26,8 +26,9 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
 
-    PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
-                                     "The value of nranks should be >=2."));
+    PADDLE_ENFORCE_GE(nranks, 2,
+                      platform::errors::InvalidArgument(
+                          "The value of nranks should be >=2."));
     PADDLE_ENFORCE_EQ(
         (rank >= 0 && rank < nranks), true,
         platform::errors::InvalidArgument(

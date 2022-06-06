@@ -381,7 +381,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 break
 
             # Generate Python-C Function Definetion
-            self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
+            python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
                 parse_attributes_str, set_device_str,
@@ -389,10 +389,19 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 return_str)
 
-            # Generate Python-C Function Registration
-            self.python_c_function_reg_str += "\n," + PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+            python_c_inplace_func_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                 forward_api_name_prefix, inplaced_forward_api_name, namespace,
                 inplaced_forward_api_name, inplaced_forward_api_name)
+
+            # self.forward_api_name ending with '_' means it only has inplace api
+            if self.forward_api_name[-1] == '_':
+                self.python_c_function_str = python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str = python_c_inplace_func_reg_str
+            else:
+                self.python_c_function_str += python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str += "\n," + python_c_inplace_func_reg_str
 
     def run(self):
         # Initialized is_forward_only

@@ -51,14 +51,14 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-using ir::Graph;
-using ir::Node;
-using inference::analysis::Dot;
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
+using inference::analysis::Dot;
+using ir::Graph;
+using ir::Node;
 
 CinnCompiler* CinnCompiler::GetInstance() {
   static CinnCompiler* instance = new CinnCompiler();

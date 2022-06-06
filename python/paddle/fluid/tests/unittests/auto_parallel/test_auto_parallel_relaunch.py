@@ -79,6 +79,7 @@ cluster_json = """
 
 
 class TestAutoParallelReLaunch(unittest.TestCase):
+
     def test_relaunch(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
@@ -105,8 +106,8 @@ class TestAutoParallelReLaunch(unittest.TestCase):
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):
             os.remove(cluster_json_path)
-        rank_mapping_json_path = os.path.join(file_dir,
-                                              "auto_parallel_rank_mapping.json")
+        rank_mapping_json_path = os.path.join(
+            file_dir, "auto_parallel_rank_mapping.json")
         if os.path.exists(rank_mapping_json_path):
             os.remove(rank_mapping_json_path)
         log_path = os.path.join(file_dir, "log")

@@ -15,17 +15,20 @@
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <hiprand_kernel.h>
+
 #include <hipcub/hipcub.hpp>
 typedef hiprandState curandState;
 namespace cub = hipcub;
 #else
 #include <curand.h>
 #include <curand_kernel.h>
+
 #include <cub/cub.cuh>
 #endif
 
 #include <iterator>
 #include <random>
+
 #include "paddle/fluid/operators/class_center_sample_op.h"
 #include "paddle/phi/api/include/tensor.h"
 

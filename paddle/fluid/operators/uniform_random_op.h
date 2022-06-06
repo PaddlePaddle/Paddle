@@ -16,10 +16,12 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/random.h>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -102,8 +104,9 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
           "Expected dtype of ShapeTensorList of %d-th must be int32, int64. "
           "But got "
           "unsupport dtype: %s.",
-          i, paddle::framework::DataTypeToString(
-                 framework::TransToProtoVarType(tensor->dtype()))));
+          i,
+          paddle::framework::DataTypeToString(
+              framework::TransToProtoVarType(tensor->dtype()))));
     }
   }
 

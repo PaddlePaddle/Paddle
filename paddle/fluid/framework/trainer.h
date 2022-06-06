@@ -129,6 +129,7 @@ class MultiTrainer : public TrainerBase {
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
+  std::vector<std::string> trainable_param_;
 #ifdef PADDLE_WITH_HETERPS
   std::vector<platform::Place> places_;
 #endif

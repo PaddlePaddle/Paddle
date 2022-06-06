@@ -127,10 +127,10 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         int64_t size = output_dim[dim];
         int64_t delta = input_dim[dim] - size;
 
-        index_select_cuda_kernel<T, int64_t><<<
-            (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
-                                                  numel, stride, size, delta);
+        index_select_cuda_kernel<T, int64_t>
+            <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                in_data, out_data, index_data, numel, stride, size, delta);
       } else {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
 
@@ -143,10 +143,10 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         int64_t size = output_dim[dim];
         int64_t delta = input_dim[dim] - size;
 
-        index_select_cuda_kernel<T, int><<<
-            (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
-                                                  numel, stride, size, delta);
+        index_select_cuda_kernel<T, int>
+            <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                in_data, out_data, index_data, numel, stride, size, delta);
       }
     } else if (repeats > 0) {
       int64_t index_size = in->dims()[dim] * repeats;
@@ -169,10 +169,10 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
       int64_t delta = input_dim[dim] - size;
 
       const int* index_data = index.data<int>();
-      index_select_cuda_kernel<T, int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                                             PADDLE_CUDA_NUM_THREADS,
-                                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, index_data, numel, stride, size, delta);
+      index_select_cuda_kernel<T, int>
+          <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              in_data, out_data, index_data, numel, stride, size, delta);
       platform::GpuStreamSync(stream);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -206,9 +206,9 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
 
-    index_select_grad_init<
-        T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_grad_data, numel);
+    index_select_grad_init<T>
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_grad_data, numel);
 
     int repeats = context.Attr<int>("Repeats");
     framework::LoDTensor index;
@@ -237,22 +237,24 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
         int64_t index_nums = index.numel();
 
         const int64_t* index_data = index.data<int64_t>();
-        index_select_grad_cuda_kernel<T, int64_t><<<
-            (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-            output_grad_data, in_grad_data, index_data, index_nums, out_nums,
-            stride, size, delta);
+        index_select_grad_cuda_kernel<T, int64_t>
+            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
+                   PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                output_grad_data, in_grad_data, index_data, index_nums,
+                out_nums, stride, size, delta);
         platform::GpuStreamSync(stream);
       } else {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
         int64_t index_nums = index.numel();
 
         const int* index_data = index.data<int>();
-        index_select_grad_cuda_kernel<T, int><<<
-            (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-            output_grad_data, in_grad_data, index_data, index_nums, out_nums,
-            stride, size, delta);
+        index_select_grad_cuda_kernel<T, int>
+            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
+                   PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                output_grad_data, in_grad_data, index_data, index_nums,
+                out_nums, stride, size, delta);
         platform::GpuStreamSync(stream);
       }
     } else if (repeats > 0) {
@@ -268,11 +270,11 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
 
       const int* index_data = index.data<int>();
       int64_t index_nums = index.numel();
-      index_select_grad_cuda_kernel<T, int><<<
-          (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
-                                                index_data, index_nums,
-                                                out_nums, stride, size, delta);
+      index_select_grad_cuda_kernel<T, int>
+          <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              output_grad_data, in_grad_data, index_data, index_nums, out_nums,
+              stride, size, delta);
       platform::GpuStreamSync(stream);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

@@ -34,6 +34,7 @@ from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, F
 
 
 class dcgmFileReader(FileReader):
+
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
         displaySize = min(self._displaySize, len(fileFist))
@@ -53,10 +54,10 @@ class dcgmFileReader(FileReader):
 
             taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
             for task in taskList:
-                subproc = Process(
-                    target=self._parseTask, args=(
-                        task,
-                        q, ))
+                subproc = Process(target=self._parseTask, args=(
+                    task,
+                    q,
+                ))
                 processPool.append(subproc)
                 subproc.start()
                 pidList.append(subproc.pid)
@@ -77,8 +78,9 @@ class dcgmFileReader(FileReader):
                     isFistProcess = False
                     dcgm_data = q.get()
                 else:
-                    dcgm_data = pd.concat(
-                        [dcgm_data, q.get()], axis=0, join='outer')
+                    dcgm_data = pd.concat([dcgm_data, q.get()],
+                                          axis=0,
+                                          join='outer')
 
             return dcgm_data
 
@@ -94,8 +96,9 @@ class dcgmFileReader(FileReader):
                 is_first = False
                 dcgm_data = tmp_data
             else:
-                dcgm_data = pd.concat(
-                    [dcgm_data, tmp_data], axis=0, join='outer')
+                dcgm_data = pd.concat([dcgm_data, tmp_data],
+                                      axis=0,
+                                      join='outer')
         dcgm_data = dcgm_data.dropna()
         if not q is None:
             q.put(dcgm_data)
@@ -123,8 +126,8 @@ class dcgmFileReader(FileReader):
                 if 'nv-hostengine' in line or 'dmon' in line or 'Host Engine Listener Started' in line:
                     continue
 
-                if not line.strip().startswith("GPU") and not line.strip(
-                ).startswith("# Entity"):
+                if not line.strip().startswith(
+                        "GPU") and not line.strip().startswith("# Entity"):
                     continue
 
                 # skip non-needed headers (only the header in 1th line was needed)
@@ -223,14 +226,14 @@ class dcgmFileReader(FileReader):
         pidList = []
 
         for gpuId in range(self._gpuPerTrainer):
-            subproc = Process(
-                target=self._getDCGMTraceInfoByGpuId,
-                args=(
-                    groupId,
-                    gpuId,
-                    dcgm_data,
-                    pid_map,
-                    q, ))
+            subproc = Process(target=self._getDCGMTraceInfoByGpuId,
+                              args=(
+                                  groupId,
+                                  gpuId,
+                                  dcgm_data,
+                                  pid_map,
+                                  q,
+                              ))
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)

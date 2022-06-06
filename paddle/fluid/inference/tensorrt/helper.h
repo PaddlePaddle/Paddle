@@ -17,9 +17,11 @@
 #include <NvInfer.h>
 #include <cuda.h>
 #include <glog/logging.h>
+
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <stdio.h>
+
 #include <cstdio>
 #include <vector>
 #ifdef __NVCC__

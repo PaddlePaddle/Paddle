@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
 

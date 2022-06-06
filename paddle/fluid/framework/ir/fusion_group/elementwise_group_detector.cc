@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"

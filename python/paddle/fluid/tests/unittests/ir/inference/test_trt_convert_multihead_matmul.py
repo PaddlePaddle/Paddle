@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,12 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(batch, dim1):
             return np.random.random((batch, dim1, 768)).astype(np.float32)
 
@@ -154,8 +156,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose21_output"],
-                                        "XShape":
-                                        ["transpose21_output_xshape"]
+                                        "XShape": ["transpose21_output_xshape"]
                                     },
                                     "op_attrs": dics[3]
                                 },
@@ -199,8 +200,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose22_output"],
-                                        "XShape":
-                                        ["transpose22_output_xshape"]
+                                        "XShape": ["transpose22_output_xshape"]
                                     },
                                     "op_attrs": dics[7]
                                 },
@@ -244,8 +244,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose23_output"],
-                                        "XShape":
-                                        ["transpose23_output_xshape"]
+                                        "XShape": ["transpose23_output_xshape"]
                                     },
                                     "op_attrs": dics[11]
                                 },
@@ -319,8 +318,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose24_output"],
-                                        "XShape":
-                                        ["transpose24_output_xshape"]
+                                        "XShape": ["transpose24_output_xshape"]
                                     },
                                     "op_attrs": dics[18]
                                 },
@@ -335,7 +333,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                     },
                                     "op_attrs": dics[19]
                                 },
-                                # In order to fuse ops with 
+                                # In order to fuse ops with
                                 # multihead_matmul_fuse_pass_v2, the last op
                                 # must be mul.
                                 {
@@ -355,28 +353,35 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={
-                                    "mul1_weight": TensorConfig(
+                                    "mul1_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul2_weight": TensorConfig(
+                                    "mul2_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul3_weight": TensorConfig(
+                                    "mul3_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul4_weight": TensorConfig(
+                                    "mul4_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "elementwise_add1_weight": TensorConfig(
+                                    "elementwise_add1_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
-                                    "elementwise_add2_weight": TensorConfig(
+                                    "elementwise_add2_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
-                                    "elementwise_add3_weight": TensorConfig(
+                                    "elementwise_add3_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
                                 },
                                 inputs={
-                                    "input_data1": TensorConfig(
-                                        data_gen=partial(generate_input1, batch,
-                                                         dim1)),
-                                    "input_data2": TensorConfig(
-                                        data_gen=partial(generate_input2,
-                                                         input2_shape)),
+                                    "input_data1":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, batch, dim1)),
+                                    "input_data2":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input2, input2_shape)),
                                 },
                                 outputs=["mul4_output"])
 
@@ -384,6 +389,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
@@ -408,8 +414,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -427,6 +432,7 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if self.trt_param.precision == paddle_infer.PrecisionType.Half:
                 return True
@@ -462,7 +468,9 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
 
 class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
+
     def sample_program_configs(self):
+
         def generate_input1(batch, dim1):
             return np.random.random((batch, dim1, 768)).astype(np.float32)
 
@@ -600,8 +608,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose21_output"],
-                                        "XShape":
-                                        ["transpose21_output_xshape"]
+                                        "XShape": ["transpose21_output_xshape"]
                                     },
                                     "op_attrs": dics[3]
                                 },
@@ -645,8 +652,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose22_output"],
-                                        "XShape":
-                                        ["transpose22_output_xshape"]
+                                        "XShape": ["transpose22_output_xshape"]
                                     },
                                     "op_attrs": dics[7]
                                 },
@@ -690,8 +696,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose23_output"],
-                                        "XShape":
-                                        ["transpose23_output_xshape"]
+                                        "XShape": ["transpose23_output_xshape"]
                                     },
                                     "op_attrs": dics[11]
                                 },
@@ -765,8 +770,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     },
                                     "op_outputs": {
                                         "Out": ["transpose24_output"],
-                                        "XShape":
-                                        ["transpose24_output_xshape"]
+                                        "XShape": ["transpose24_output_xshape"]
                                     },
                                     "op_attrs": dics[18]
                                 },
@@ -781,7 +785,7 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                     },
                                     "op_attrs": dics[19]
                                 },
-                                # In order to fuse ops with 
+                                # In order to fuse ops with
                                 # multihead_matmul_fuse_pass_v2, the last op
                                 # must be mul.
                                 {
@@ -801,28 +805,35 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={
-                                    "mul1_weight": TensorConfig(
+                                    "mul1_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul2_weight": TensorConfig(
+                                    "mul2_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul3_weight": TensorConfig(
+                                    "mul3_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "mul4_weight": TensorConfig(
+                                    "mul4_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight1)),
-                                    "elementwise_add1_weight": TensorConfig(
+                                    "elementwise_add1_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
-                                    "elementwise_add2_weight": TensorConfig(
+                                    "elementwise_add2_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
-                                    "elementwise_add3_weight": TensorConfig(
+                                    "elementwise_add3_weight":
+                                    TensorConfig(
                                         data_gen=partial(generate_weight2)),
                                 },
                                 inputs={
-                                    "input_data1": TensorConfig(
-                                        data_gen=partial(generate_input1, batch,
-                                                         dim1)),
-                                    "input_data2": TensorConfig(
-                                        data_gen=partial(generate_input2,
-                                                         input2_shape)),
+                                    "input_data1":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, batch, dim1)),
+                                    "input_data2":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input2, input2_shape)),
                                 },
                                 outputs=["mul4_output"])
 

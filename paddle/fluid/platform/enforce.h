@@ -36,6 +36,7 @@ limitations under the License. */
 #include <cusparse.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+
 #include "paddle/fluid/platform/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
@@ -77,6 +78,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
+
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -88,6 +90,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
+
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
