@@ -41,6 +41,7 @@ def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):
 
 
 class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
+
     def setUp(self):
         self.input1_np = np.random.random(size=(5, 3)).astype(np.float64)
         self.input2_np = np.random.random(size=(5, 3)).astype(np.float64)
