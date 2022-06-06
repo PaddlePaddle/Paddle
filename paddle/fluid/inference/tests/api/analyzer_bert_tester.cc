@@ -21,138 +21,119 @@ namespace inference {
 using paddle::PaddleTensor;
 
 template <typename T>
-void GetValueFromStream(std::stringstream *ss, T *t) {
-  (*ss) >> (*t);
+T GetValueFromStream(std::stringstream& ss) {
+  T result;
+  ss >> result;
+  return result;
 }
 
 template <>
-void GetValueFromStream<std::string>(std::stringstream *ss, std::string *t) {
-  *t = ss->str();
+std::string GetValueFromStream<std::string>(std::stringstream& ss) {
+  return ss.str();
 }
 
 // Split string to vector
 template <typename T>
-void Split(const std::string &line, char sep, std::vector<T> *v) {
+std::vector<T> Split(const std::string& line, char sep) {
+  std::vector<T> result;
   std::stringstream ss;
-  T t;
   for (auto c : line) {
     if (c != sep) {
       ss << c;
     } else {
-      GetValueFromStream<T>(&ss, &t);
-      v->push_back(std::move(t));
+      result.emplace_back(GetValueFromStream<T>(ss));
       ss.str({});
       ss.clear();
     }
   }
 
-  if (!ss.str().empty()) {
-    GetValueFromStream<T>(&ss, &t);
-    v->push_back(std::move(t));
-    ss.str({});
-    ss.clear();
-  }
+  auto ss_is_not_empty = !ss.str().empty();
+  if (ss_is_not_empty)
+    result.emplace_back(GetValueFromStream<T>(ss));
+
+  return result;
 }
 
 // Parse tensor from string
 template <typename T>
-bool ParseTensor(const std::string &field, paddle::PaddleTensor *tensor) {
-  std::vector<std::string> data;
-  Split(field, ':', &data);
-  if (data.size() < 2) return false;
+paddle::PaddleTensor ParseTensor(const std::string& field) {
+  const auto data = Split<std::string>(field, ':');
+  if (data.size() < 2) throw "invalid field";
 
   std::string shape_str = data[0];
-
-  std::vector<int> shape;
-  Split(shape_str, ' ', &shape);
-
-  std::string mat_str = data[1];
-
-  std::vector<T> mat;
-  Split(mat_str, ' ', &mat);
-
-  tensor->shape = shape;
+  const auto shape = Split<int>(shape_str, ' ');
+  paddle::PaddleTensor tensor;
+  tensor.shape = shape;
   auto size =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
-  tensor->data.Resize(size);
-  std::copy(mat.begin(), mat.end(), static_cast<T *>(tensor->data.data()));
-  tensor->dtype = GetPaddleDType<T>();
+  tensor.data.Resize(size);
 
-  return true;
+  std::string mat_str = data[1];
+  const auto mat = Split<T>(mat_str, ' ');
+  std::copy(mat.cbegin(), mat.cend(), static_cast<T*>(tensor.data.data()));
+  tensor.dtype = GetPaddleDType<T>();
+
+  return tensor;
 }
 
 // Parse input tensors from string
-bool ParseLine(const std::string &line,
-               std::vector<paddle::PaddleTensor> *tensors) {
-  std::vector<std::string> fields;
-  Split(line, ';', &fields);
+std::vector<paddle::PaddleTensor> ParseLine(const std::string &line) {
+  const auto fields = Split<std::string>(line, ';');
 
-  if (fields.size() < 5) return false;
+  if (fields.size() < 5) throw "invalid line";
 
-  tensors->clear();
-  tensors->reserve(5);
+  std::vector<paddle::PaddleTensor> tensors;
 
-  int i = 0;
-  // src_id
-  paddle::PaddleTensor src_id;
-  ParseTensor<int64_t>(fields[i++], &src_id);
-  tensors->push_back(src_id);
+  tensors.reserve(5);
 
-  // pos_id
-  paddle::PaddleTensor pos_id;
-  ParseTensor<int64_t>(fields[i++], &pos_id);
-  tensors->push_back(pos_id);
+  const std::size_t src_id = 0;
+  const std::size_t pos_id = 1;
+  const std::size_t segment_id = 2;
+  const std::size_t self_attention_bias = 3;
+  const std::size_t next_segment_index = 4;
 
-  // segment_id
-  paddle::PaddleTensor segment_id;
-  ParseTensor<int64_t>(fields[i++], &segment_id);
-  tensors->push_back(segment_id);
+  tensors.push_back(ParseTensor<int64_t>(fields[src_id]));
+  tensors.push_back(ParseTensor<int64_t>(fields[pos_id]));
+  tensors.push_back(ParseTensor<int64_t>(fields[segment_id]));
+  tensors.push_back(ParseTensor<float>(fields[self_attention_bias]));
+  tensors.push_back(ParseTensor<int64_t>(fields[next_segment_index]));
 
-  // self_attention_bias
-  paddle::PaddleTensor self_attention_bias;
-  ParseTensor<float>(fields[i++], &self_attention_bias);
-  tensors->push_back(self_attention_bias);
-
-  // next_segment_index
-  paddle::PaddleTensor next_segment_index;
-  ParseTensor<int64_t>(fields[i++], &next_segment_index);
-  tensors->push_back(next_segment_index);
-
-  return true;
+  return tensors;
 }
 
-bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
+std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
-    return false;
+    throw "missing input data path";
   }
 
   std::ifstream fin(FLAGS_infer_data);
   std::string line;
   int sample = 0;
 
+  std::vector<std::vector<paddle::PaddleTensor>> inputs;
+
   // The unit-test dataset only have 10 samples, each sample have 5 feeds.
   while (std::getline(fin, line)) {
-    std::vector<paddle::PaddleTensor> feed_data;
-    ParseLine(line, &feed_data);
-    inputs->push_back(std::move(feed_data));
+    inputs.push_back(ParseLine(line));
     sample++;
     if (!FLAGS_test_all_data && sample == FLAGS_batch_size) break;
   }
   LOG(INFO) << "number of samples: " << sample;
 
-  return true;
+  return inputs;
 }
 
-void SetConfig(AnalysisConfig *config) {
-  config->SetModel(FLAGS_infer_model);
-  config->DisableFCPadding();
+AnalysisConfig SetConfig() {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_infer_model);
+  config.DisableFCPadding();
+  return config;
 }
 
 void profile(bool use_mkldnn = false) {
-  AnalysisConfig config;
-  SetConfig(&config);
+  auto config(SetConfig());
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
@@ -162,8 +143,7 @@ void profile(bool use_mkldnn = false) {
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
+  auto inputs = LoadInputData();
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
                  inputs, &outputs, FLAGS_num_threads);
 }
@@ -175,8 +155,7 @@ TEST(Analyzer_bert, profile_mkldnn) { profile(true); }
 
 // Check the fuse status
 TEST(Analyzer_bert, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
+  auto cfg(SetConfig());
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
@@ -186,14 +165,12 @@ TEST(Analyzer_bert, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
+  auto cfg(SetConfig());
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
   }
 
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
+  auto inputs = LoadInputData();
   CompareNativeAndAnalysis(
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
@@ -205,18 +182,15 @@ TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
 
 // Compare Deterministic result
 TEST(Analyzer_bert, compare_determine) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
+  auto cfg(SetConfig());
 
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
+  auto inputs = LoadInputData();
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        inputs);
 }
 
 TEST(Analyzer_bert, transfer_scope_cache) {
-  AnalysisConfig config;
-  SetConfig(&config);
+  auto config(SetConfig());
 
   std::vector<PaddleTensor> input, output;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
@@ -234,7 +208,7 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   for (int i = 0; i < threads_num; i++) {
     threads.emplace_back([&, i]() {
       std::getline(fin, line);
-      ParseLine(line, &input);
+      input = ParseLine(line);
       predictor->Run(input, &output, FLAGS_batch_size);
       global_transfer_scope_cache.insert(
           &paddle::framework::global_transfer_scope_cache());
