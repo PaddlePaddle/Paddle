@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,13 +26,12 @@ from filters import to_input_name
 from parse_utils import to_named_dict
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
-env = Environment(
-    loader=file_loader,
-    keep_trailing_newline=True,
-    trim_blocks=True,
-    lstrip_blocks=True,
-    undefined=StrictUndefined,
-    extensions=['jinja2.ext.do'])
+env = Environment(loader=file_loader,
+                  keep_trailing_newline=True,
+                  trim_blocks=True,
+                  lstrip_blocks=True,
+                  undefined=StrictUndefined,
+                  extensions=['jinja2.ext.do'])
 env.filters["to_op_attr_type"] = to_op_attr_type
 env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
@@ -82,8 +81,9 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
     op_template = env.get_template('op.c.j2')
     with open(output_op_path, "wt") as f:
-        msg = op_template.render(
-            apis=apis, backward_apis=backward_apis, api_dict=api_dict)
+        msg = op_template.render(apis=apis,
+                                 backward_apis=backward_apis,
+                                 api_dict=api_dict)
         f.write(msg)
 
     ks_template = env.get_template('ks.c.j2')
@@ -95,14 +95,15 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate operator file from api yaml.")
-    parser.add_argument(
-        '--api_yaml_path', type=str, help="parsed api yaml file.")
-    parser.add_argument(
-        '--backward_api_yaml_path',
-        type=str,
-        help="parsed backward api yaml file.")
-    parser.add_argument(
-        "--output_op_path", type=str, help="path to save generated operators.")
+    parser.add_argument('--api_yaml_path',
+                        type=str,
+                        help="parsed api yaml file.")
+    parser.add_argument('--backward_api_yaml_path',
+                        type=str,
+                        help="parsed backward api yaml file.")
+    parser.add_argument("--output_op_path",
+                        type=str,
+                        help="path to save generated operators.")
     parser.add_argument(
         "--output_arg_map_path",
         type=str,

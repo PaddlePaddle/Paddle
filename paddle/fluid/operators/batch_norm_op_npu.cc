@@ -113,8 +113,9 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       runner_reduce.Run(stream);
 
       const auto &runner_update = NpuOpRunner(
-          "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
-                               *running_mean, *running_var},
+          "BNTrainingUpdate",
+          {x_tensor, sum, square_sum, *scale, *bias, *running_mean,
+           *running_var},
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
@@ -216,10 +217,11 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
                         {dx_tensor}, {{"epsilon", epsilon}});
         runner_infer.Run(stream);
       } else {
-        const auto &runner_reduce = NpuOpRunner(
-            "BNTrainingReduceGrad", {dy_tensor, x_tensor, *d_scale, *d_bias,
-                                     *scale, *saved_mean, *saved_inv_variance},
-            {dx_tensor}, {{"epsilon", epsilon}});
+        const auto &runner_reduce =
+            NpuOpRunner("BNTrainingReduceGrad",
+                        {dy_tensor, x_tensor, *d_scale, *d_bias, *scale,
+                         *saved_mean, *saved_inv_variance},
+                        {dx_tensor}, {{"epsilon", epsilon}});
         runner_reduce.Run(stream);
       }
     }

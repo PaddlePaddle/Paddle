@@ -71,9 +71,9 @@ class RandomRoutingOpCUDAKernel : public framework::OpKernel<T> {
     auto topk_idx_data = topk_idx->data<int64_t>();
     auto out_data = out->data<int64_t>();
 
-    random_routing_kernel<
-        T><<<GET_BLOCKS(num_idx), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-        out_data, num_idx, N, D, prob_data, topk_idx_data, topk_value_data);
+    random_routing_kernel<T>
+        <<<GET_BLOCKS(num_idx), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+            out_data, num_idx, N, D, prob_data, topk_idx_data, topk_value_data);
   }
 };
 

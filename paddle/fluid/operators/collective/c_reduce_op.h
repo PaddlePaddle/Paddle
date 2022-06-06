@@ -40,6 +40,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/reduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -261,10 +262,11 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_reduce(comm->comm(), sendbuff, recvbuff, numel,
-                                  dtype, bkcl_red_type, root, stream),
-                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                        "BKCL all reduce failed"));
+    PADDLE_ENFORCE_EQ(
+        bkcl_reduce(comm->comm(), sendbuff, recvbuff, numel, dtype,
+                    bkcl_red_type, root, stream),
+        BKCL_SUCCESS,
+        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
@@ -319,9 +321,10 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_ENFORCE_EQ(true, false, platform::errors::InvalidArgument(
-                                           "red_type must be one of kRedSum, "
-                                           "kRedMax, kRedMin, kRedProd."));
+        PADDLE_ENFORCE_EQ(true, false,
+                          platform::errors::InvalidArgument(
+                              "red_type must be one of kRedSum, "
+                              "kRedMax, kRedMin, kRedProd."));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(

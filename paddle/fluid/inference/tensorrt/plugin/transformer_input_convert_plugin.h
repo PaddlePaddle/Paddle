@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <cassert>
-
 #include <string>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
 

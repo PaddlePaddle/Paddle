@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT
@@ -217,7 +218,7 @@ class BKCLCommunicator {
    *bkcl_all_reduce
    *parallelly. So create a new bkcl comm for sync_batch_norm_op. And these
    *codes should be polished with a unified bkcl management.
-  */
+   */
   BKCLContextMap *GetSyncBatchNormCtx(
       framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *bkcl_id_var = scope->FindVar(BKCL_ID_VARNAME);

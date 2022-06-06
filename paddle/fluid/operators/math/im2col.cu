@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -220,16 +221,18 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
                        (dilation[0] * (filter_height - 1) + 1)) /
                               stride[0] +
                           1,
-                      col_height, platform::errors::InvalidArgument(
-                                      "Output_height and padding(padding_up, "
-                                      "padding_down) are inconsistent."));
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width, platform::errors::InvalidArgument(
-                                     "col_width and padding(padding_left, "
-                                     "padding_right) are inconsistent."));
+                      col_height,
+                      platform::errors::InvalidArgument(
+                          "Output_height and padding(padding_up, "
+                          "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         (dilation[1] * (filter_width - 1) + 1)) /
+                stride[1] +
+            1,
+        col_width,
+        platform::errors::InvalidArgument("col_width and padding(padding_left, "
+                                          "padding_right) are inconsistent."));
 
     size_t num_kernels = im_channels * im_height * im_width;
 
@@ -430,16 +433,18 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
                        (dilation[0] * (filter_height - 1) + 1)) /
                               stride[0] +
                           1,
-                      col_height, platform::errors::InvalidArgument(
-                                      "Output_height and padding(padding_up, "
-                                      "padding_down) are inconsistent."));
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       (dilation[1] * (filter_width - 1) + 1)) /
-                              stride[1] +
-                          1,
-                      col_width, platform::errors::InvalidArgument(
-                                     "col_width and padding(padding_left, "
-                                     "padding_right) are inconsistent."));
+                      col_height,
+                      platform::errors::InvalidArgument(
+                          "Output_height and padding(padding_up, "
+                          "padding_down) are inconsistent."));
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         (dilation[1] * (filter_width - 1) + 1)) /
+                stride[1] +
+            1,
+        col_width,
+        platform::errors::InvalidArgument("col_width and padding(padding_left, "
+                                          "padding_right) are inconsistent."));
 
     int block_dim_x = 0;
     int block_dim_y = 0;

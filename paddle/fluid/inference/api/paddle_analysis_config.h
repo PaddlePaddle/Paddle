@@ -912,11 +912,18 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_gpu_fp16_{false};
   std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
-      "conv2d_fusion", "conv2d", "roll", "strided_slice", "depthwise_conv2d",
-      "unfold", "generate_proposals_v2", "nearest_interp_v2",
+      "conv2d_fusion",
+      "conv2d",
+      "roll",
+      "strided_slice",
+      "depthwise_conv2d",
+      "unfold",
+      "generate_proposals_v2",
+      "nearest_interp_v2",
       "bilinear_interp_v2"
       "yolo_box",
-      "multiclass_nms3", "matrix_nms"};
+      "multiclass_nms3",
+      "matrix_nms"};
 
   bool use_cudnn_{false};
 

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/nan_inf_utils.h"
+
 #include <iostream>
 #include <limits>
 #include <tuple>
 
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/api.h"

@@ -83,10 +83,10 @@ class GradScaler(AmpScaler):
                  incr_every_n_steps=1000,
                  decr_every_n_nan_or_inf=2,
                  use_dynamic_loss_scaling=True):
-        super(GradScaler, self).__init__(enable, init_loss_scaling, incr_ratio,
-                                         decr_ratio, incr_every_n_steps,
-                                         decr_every_n_nan_or_inf,
-                                         use_dynamic_loss_scaling)
+        super(GradScaler,
+              self).__init__(enable, init_loss_scaling, incr_ratio, decr_ratio,
+                             incr_every_n_steps, decr_every_n_nan_or_inf,
+                             use_dynamic_loss_scaling)
 
     def scale(self, var):
         """

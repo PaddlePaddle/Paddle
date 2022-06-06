@@ -43,8 +43,8 @@ struct TrtSkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
   PATTERN_DECL_NODE(
-      elementwise_out);  // (elementwise_input_x,elementwise_input_y) ->
-                         // elementwise_out
+      elementwise_out);  // (elementwise_input_x,elementwise_input_y)
+                         // -> elementwise_out
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
   PATTERN_DECL_NODE(layer_norm_out);

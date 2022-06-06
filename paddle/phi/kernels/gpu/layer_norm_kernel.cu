@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/layer_norm_kernel.h"
-
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace phi {
 
@@ -37,11 +36,10 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
-    FIXED_BLOCK_DIM_CASE(paddle::operators::LayerNormForward<
-                         T,
-                         T,
-                         kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
-        input, scale, bias, output, mean, variance, eps, feature_size));
+    FIXED_BLOCK_DIM_CASE(
+        paddle::operators::LayerNormForward<T, T, kBlockDim>
+        <<<batch_size, kBlockDim, 0, stream>>>(
+            input, scale, bias, output, mean, variance, eps, feature_size));
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Product from begin_norm_axis to end in layer_norm must be larger "
@@ -108,22 +106,18 @@ void LayerNormKernel(const Context &dev_ctx,
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
   do {                                                                     \
     switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
-      FIXED_BLOCK_DIM_CASE(paddle::operators::LayerNormForward<            \
-                           T,                                              \
-                           U,                                              \
-                           kBlockDim,                                      \
-                           IsScaleBiasSameDTypeWithX><<<batch_size,        \
-                                                        kBlockDim,         \
-                                                        0,                 \
-                                                        stream>>>(         \
-          x_data,                                                          \
-          static_cast<const ScaleBiasT *>(void_scale_data),                \
-          static_cast<const ScaleBiasT *>(void_bias_data),                 \
-          y_data,                                                          \
-          mean_data,                                                       \
-          var_data,                                                        \
-          epsilon,                                                         \
-          feature_size));                                                  \
+      FIXED_BLOCK_DIM_CASE(                                                \
+          paddle::operators::                                              \
+              LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
+          <<<batch_size, kBlockDim, 0, stream>>>(                          \
+              x_data,                                                      \
+              static_cast<const ScaleBiasT *>(void_scale_data),            \
+              static_cast<const ScaleBiasT *>(void_bias_data),             \
+              y_data,                                                      \
+              mean_data,                                                   \
+              var_data,                                                    \
+              epsilon,                                                     \
+              feature_size));                                              \
       default:                                                             \
         PADDLE_THROW(phi::errors::InvalidArgument(                         \
             "Product from begin_norm_axis to end must be larger than 1")); \
@@ -142,23 +136,23 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    paddle::operators::fast_ln_fwd_kernel<                                   \
-        T,                                                                   \
-        U,                                                                   \
-        ScaleT,                                                              \
-        VecSize,                                                             \
-        WARPS_M,                                                             \
-        WARPS_N,                                                             \
-        BYTES_PER_LDG><<<grid, THREADS_PER_CTA, 0, stream>>>(                \
-        batch_size,                                                          \
-        feature_size,                                                        \
-        epsilon,                                                             \
-        x_data,                                                              \
-        static_cast<const ScaleT *>(void_scale_data),                        \
-        static_cast<const ScaleT *>(void_bias_data),                         \
-        mean_data,                                                           \
-        var_data,                                                            \
-        y_data);                                                             \
+    paddle::operators::fast_ln_fwd_kernel<T,                                 \
+                                          U,                                 \
+                                          ScaleT,                            \
+                                          VecSize,                           \
+                                          WARPS_M,                           \
+                                          WARPS_N,                           \
+                                          BYTES_PER_LDG>                     \
+        <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
+            batch_size,                                                      \
+            feature_size,                                                    \
+            epsilon,                                                         \
+            x_data,                                                          \
+            static_cast<const ScaleT *>(void_scale_data),                    \
+            static_cast<const ScaleT *>(void_bias_data),                     \
+            mean_data,                                                       \
+            var_data,                                                        \
+            y_data);                                                         \
   } break
 
 #define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \

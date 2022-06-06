@@ -17,7 +17,9 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <iostream>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #if defined(PADDLE_CUDA_BF16)

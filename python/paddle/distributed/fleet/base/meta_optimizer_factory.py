@@ -26,6 +26,7 @@ meta_optimizer_names.remove("HeterParallelOptimizer")
 
 
 class MetaOptimizerFactory(object):
+
     def __init__(self):
         pass
 
