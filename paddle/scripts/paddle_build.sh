@@ -2375,12 +2375,19 @@ EOF
 
 set -x
         # set trt_convert ut to run 15% cases.
+        added_ut_startTime_s=`date +%s`
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        added_ut_endTime_s=`date +%s`
+        echo "1 added_ut_time is: $[ $added_ut_endTime_s - $added_ut_startTime_s ]s"
+        pr_ut_startTime_s=`date +%s`
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
+        pr_ut_endTime_s=`date +%s`
+        echo "2 pr_ut_time is: $[ $pr_ut_endTime_s - $pr_ut_startTime_s ]s"
+        duplicate_ut_startTime_s=`date +%s`
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -2393,6 +2400,9 @@ set -x
                 set -x
             fi
         fi
+        duplicate_ut_endTime_s=`date +%s`
+        echo "3 duplicate_ut_time is: $[ $duplicate_ut_endTime_s - $duplicate_ut_startTime_s ]s"
+        added_ut_test_startTime_s=`date +%s`
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
@@ -2404,8 +2414,11 @@ set -x
                 exit 8;
             fi
         fi
+        added_ut_test_endTime_s=`date +%s`
+        echo "4 added_ut_test_time is: $[ $added_ut_test_endTime_s - $added_ut_test_startTime_s ]s"
 set +x
         EXIT_CODE=0;
+        prepare_ut_test_startTime_s=`date +%s`
         wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/CTestCostData.txt --no-check-certificate
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
@@ -2415,6 +2428,10 @@ set +x
         test_cases=$(ctest -N -V) # get all test cases
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+        prepare_ut_test_endTime_s=`date +%s`
+        echo "5 prepare_ut_test_time is: $[ $prepare_ut_test_endTime_s - $prepare_ut_test_startTime_s ]s"
+
+        ut_test_startTime_s=`date +%s`
 
         single_ut_mem_0_startTime_s=`date +%s`
         while read line
@@ -2490,6 +2507,8 @@ set +x
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt   
+        ut_test_endTime_s=`date +%s`
+        echo "6 ut_test_time is: $[ $ut_test_endTime_s - $ut_test_startTime_s ]s"
         ###retry
         collect_failed_tests
         rm -f $tmp_dir/*
