@@ -355,7 +355,6 @@ int32_t MemoryDenseTable::Save(const std::string& path,
   result_buffer_param.reserve(param_dim_);
 //  std::vector<std::string> result_buffer_fixed_len;
 //  result_buffer_fixed_len.reserve(fixed_len_params_dim_);
-
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
@@ -364,7 +363,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     for (int x = 0; x < param_dim_; ++x) {
       result_buffer_param.emplace_back(
           std::to_string(values_[param_idx_][x]));
-    }
+   }
 
   } else {
     CostTimer timer3("save dense build d2sum");
@@ -377,7 +376,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
-      result_buffer_param.emplace_back(std::move(os.str()));
+     result_buffer_param.emplace_back(std::move(os.str()));
     }
   }
 
@@ -400,7 +399,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       CostTimer timer6("save dense write_line");
       if (0 !=
           //write_channel->write_line(paddle::string::join_strings(t, ' '))) {
-          write_channel->write_line(t)) {
+         write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;
         LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
