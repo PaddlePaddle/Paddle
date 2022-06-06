@@ -44,6 +44,31 @@ class FunctionSchema {
  public:
   FunctionSchema() = default;
 
+  std::vector<std::string> GetInputArgNames() {
+    std::vector<std::string> input_arg_names;
+    for (auto &arg : input_args) {
+      input_arg_names.emplace_back(arg.Name());
+    }
+    return input_arg_names;
+  }
+
+  std::vector<std::string> GetOutputArgNames() {
+    std::vector<std::string> output_arg_names;
+    for (auto &arg : output_args) {
+      output_arg_names.emplace_back(arg.Name());
+    }
+    return output_arg_names;
+  }
+
+  void AddInputArg(std::string name, bool is_output) {
+    input_args.emplace_back(name, is_output);
+  }
+
+  void AddOutputArg(std::string name, bool is_output) {
+    output_args.emplace_back(name, is_output);
+  }
+
+ private:
   std::vector<Argument> input_args;
   std::vector<Argument> output_args;
 };
@@ -52,31 +77,30 @@ class FunctionSchema {
 class BaseFunction {
  public:
   BaseFunction(const framework::ProgramDesc &program_desc,
-               const std::vector<std::string> param_name_for_program,
-               const std::map<std::string, IValue> &all_param)
+               const std::vector<std::string> param_names_for_program,
+               const std::map<std::string, IValue> &params_dict)
       : program_desc_(program_desc) {
     // Parse FunctionSchema
-    skip_var_name_ = program_desc_.GetFetchTargetNames();
+    // skip_var_name_ = program_desc_.GetFetchTargetNames();
     for (auto &in_name : program_desc_.GetFeedTargetNames()) {
-      schema_.input_args.emplace_back(in_name, false);
+      schema_.AddInputArg(in_name, false);
     }
-
-    for (auto &out_name : skip_var_name_) {
-      schema_.output_args.emplace_back(out_name, true);
+    for (auto &out_name : program_desc_.GetFetchTargetNames()) {
+      schema_.AddOutputArg(out_name, true);
     }
     // share params into scope
-    SharePartialIntoScope(param_name_for_program, all_param);
+    SharePartialIntoScope(param_names_for_program, params_dict);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // remove feed fetch op
     RemoveFeedFetch();
   }
   virtual ~BaseFunction() {}
 
-  virtual std::vector<IValue> operator()(const std::vector<IValue> &args) = 0;
+  virtual std::vector<IValue> operator()(const std::vector<IValue> &inputs) = 0;
 
  protected:
   void FetchOutput(std::vector<IValue> *outs) {
-    for (auto &out_name : skip_var_name_) {
+    for (auto &out_name : schema_.GetOutputArgNames()) {
       VLOG(3) << "fetch out: " << out_name;
       auto *var = scope_.FindVar(out_name);
       auto &src_tensor = var->Get<phi::DenseTensor>();
@@ -101,12 +125,12 @@ class BaseFunction {
   }
 
   void SharePartialIntoScope(
-      const std::vector<std::string> param_name_for_program,
-      const std::map<std::string, IValue> &all_param) {
-    VLOG(3) << "ivals size: " << param_name_for_program.size();
-    for (size_t i = 0; i < param_name_for_program.size(); ++i) {
-      std::string name = param_name_for_program[i];
-      IValue val = all_param.find(name)->second;
+      const std::vector<std::string> param_names_for_program,
+      const std::map<std::string, IValue> &params_dict) {
+    VLOG(3) << "ivals size: " << param_names_for_program.size();
+    for (size_t i = 0; i < param_names_for_program.size(); ++i) {
+      std::string name = param_names_for_program[i];
+      IValue val = params_dict.find(name)->second;
       auto &tensor = val.AsTensor();
       VLOG(3) << "share into scope: " << tensor.name();
       auto *var = scope_.Var(tensor.name());
@@ -124,7 +148,6 @@ class BaseFunction {
       VLOG(3) << "op_size: " << op_size;
       for (int i = op_size - 1; i >= 0; i--) {
         auto op = all_ops[i];
-        VLOG(3) << "i: " << i << " " << op->Type();
         if (op->Type() == "feed" || op->Type() == "fetch") {
           VLOG(3) << "remove op type: " << op->Type() << ", index: " << i;
           block->RemoveOp(i, i + 1);
@@ -137,7 +160,7 @@ class BaseFunction {
   framework::ProgramDesc program_desc_;
   // TODO(dev): need a better way to share params
   // std::vector<IValue> &param_for_program_;
-  std::vector<std::string> skip_var_name_;
+  // std::vector<std::string> skip_var_name_;
   FunctionSchema schema_;
   // global_scope place params
   framework::Scope scope_;

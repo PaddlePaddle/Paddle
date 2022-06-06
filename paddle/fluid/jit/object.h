@@ -51,7 +51,7 @@ class Object {
     return slots_[slot];
   }
 
-  IValue GetAttrtr(const std::string& name) const;
+  IValue GetAttr(const std::string& name) const;
 
   void SetAttr(const std::string& name, IValue val);
 

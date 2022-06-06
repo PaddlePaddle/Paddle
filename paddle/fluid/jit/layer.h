@@ -35,16 +35,16 @@ class Layer {
   // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
   // {}
   Layer(
-      const std::vector<std::string>& all_func_name,
-      const std::vector<framework::ProgramDesc>& all_program_desc,
-      const std::vector<std::vector<std::string>>& param_name_for_each_program,
-      const std::map<std::string, IValue>& param_dict) {
-    VLOG(3) << "program size: " << all_program_desc.size();
+      const std::vector<std::string>& func_names,
+      const std::vector<framework::ProgramDesc>& program_descs,
+      const std::vector<std::vector<std::string>>& param_names_for_each_program,
+      const std::map<std::string, IValue>& params_dict) {
+    VLOG(3) << "program size: " << program_descs.size();
     // Layer manage the life time of all parameter.
-    // params_ = params;
-    for (size_t i = 0; i < all_func_name.size(); ++i) {
-      function_dict[all_func_name[i]] = std::make_shared<ExectorFunction>(
-          all_program_desc[i], param_name_for_each_program[i], param_dict);
+    for (size_t i = 0; i < func_names.size(); ++i) {
+      // TODO(dev): choose exector or pe by flag
+      function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
+          program_descs[i], param_names_for_each_program[i], params_dict);
     }
   }
 
@@ -54,9 +54,9 @@ class Layer {
     return function_dict[name];
   }
 
-  std::vector<IValue> forward(const std::vector<IValue>& args) {
+  std::vector<IValue> forward(const std::vector<IValue>& inputs) {
     auto func = GetFunction("forward");
-    return (*func)(args);
+    return (*func)(inputs);
   }
 
  private:

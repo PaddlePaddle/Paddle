@@ -48,15 +48,15 @@ class Deserializer {
  public:
   Layer operator()(const std::string& dir_path) {
     const auto& file_name_prefixs = GetPdmodelFileNamePrefix(dir_path);
-    std::vector<std::string> all_func_name;
-    std::vector<framework::ProgramDesc> all_program_desc;
-    std::vector<std::vector<std::string>> param_name_for_each_program;
-    std::map<std::string, IValue> param_dict;
+    std::vector<std::string> func_names;
+    std::vector<framework::ProgramDesc> program_descs;
+    std::vector<std::vector<std::string>> param_names_for_each_program;
+    std::map<std::string, IValue> params_dict;
     for (auto& it : file_name_prefixs) {
-      all_func_name.emplace_back(it.first);
+      func_names.emplace_back(it.first);
 
       auto program = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
-      all_program_desc.emplace_back(program);
+      program_descs.emplace_back(program);
 
       std::vector<std::string> persistable_var_name;
       auto all_var_desc = program.Block(0).AllVars();
@@ -68,15 +68,15 @@ class Deserializer {
       // Sorting is required to correspond to the order of
       // parameters in the .pdparam file
       std::sort(persistable_var_name.begin(), persistable_var_name.end());
-      param_name_for_each_program.emplace_back(persistable_var_name);
+      param_names_for_each_program.emplace_back(persistable_var_name);
 
       auto param_for_program = ReadTensorData(
           dir_path + it.second + PDPARAMS_SUFFIX, persistable_var_name);
       // Now param is saved separately, gather all params
-      param_dict.insert(param_for_program.begin(), param_for_program.end());
+      params_dict.insert(param_for_program.begin(), param_for_program.end());
     }
-    return Layer(all_func_name, all_program_desc, param_name_for_each_program,
-                 param_dict);
+    return Layer(func_names, program_descs, param_names_for_each_program,
+                 params_dict);
   }
 
  private:

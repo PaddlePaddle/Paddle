@@ -109,11 +109,7 @@ class IValue {
 
   // Tensor AsTensor() &&;
   // Tensor& AsTensor() &;
-  const Tensor& AsTensor() const {
-    // VLOG(3) << holder_.as_tensor.defined();
-    // VLOG(3) << holder_.as_tensor.is_initialized();
-    return holder_.as_tensor;
-  }
+  const Tensor& AsTensor() const { return holder_.as_tensor; }
 
   int64_t AsInt() const { return holder_.cv.as_int; }
   double AsDouble() const { return holder_.cv.as_double; }

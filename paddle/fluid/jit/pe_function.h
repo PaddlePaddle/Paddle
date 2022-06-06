@@ -28,13 +28,13 @@ namespace jit {
 class PEFunction : public BaseFunction {
  public:
   PEFunction(const framework::ProgramDesc &program_desc,
-             const std::vector<std::string> param_name_for_program,
-             const std::map<std::string, IValue> &all_param)
-      : BaseFunction(program_desc, param_name_for_program, all_param) {}
+             const std::vector<std::string> param_names_for_program,
+             const std::map<std::string, IValue> &params_dict)
+      : BaseFunction(program_desc, param_names_for_program, params_dict) {}
 
   ~PEFunction() {}
 
-  std::vector<IValue> operator()(const std::vector<IValue> &args) {
+  std::vector<IValue> operator()(const std::vector<IValue> &inputs) {
     // bool is_test = true;
     std::string prog_string;
     std::hash<std::string> string_hash;
@@ -44,16 +44,9 @@ class PEFunction : public BaseFunction {
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
-    ShareIntoScope(args);
-    std::vector<std::string> input_var_names;
-    for (auto &name : schema_.input_args) {
-      input_var_names.emplace_back(name.Name());
-    }
-    std::vector<std::string> output_var_names;
-    for (auto &name : schema_.output_args) {
-      output_var_names.emplace_back(name.Name());
-    }
-
+    ShareIntoScope(inputs);
+    std::vector<std::string> input_var_names = schema_.GetInputArgNames();
+    std::vector<std::string> output_var_names = schema_.GetOutputArgNames();
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
       // TODO(dev): support other devices
