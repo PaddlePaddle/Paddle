@@ -59,7 +59,6 @@ class ReshapeOpConverter : public OpConverter {
             TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
         std::vector<int32_t> gather_indices(1, 0);
         std::string name = "_add_reshape_op_";
-        std::cout << name << std::endl;
         auto gather_indices_tensor =
             Add1DConstantLayer(gather_indices, name + "gather_indices");
         auto batch_tensor =
