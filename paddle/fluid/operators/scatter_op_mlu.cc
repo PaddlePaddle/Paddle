@@ -53,7 +53,7 @@ class ScatterMLUKernel : public framework::OpKernel<T> {
                               updates_desc.get(), GetBasePtr(updates),
                               indices_desc.get(), GetBasePtr(indices), mode);
     }
-    out->ShareDataWith(*x);
+    paddle::framework::TensorCopy(*x, place, out);
   }
 };
 
