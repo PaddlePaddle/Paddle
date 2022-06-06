@@ -42,6 +42,8 @@ _logger = log_helper.get_logger(__name__,
                                 logging.INFO,
                                 fmt='%(asctime)s-%(levelname)s: %(message)s')
 
+grad_op_desc_to_op = {}  # for cuda graph usage
+
 
 class ProgramStats(object):
 
@@ -827,6 +829,8 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
         7) Note3: current forward recomputation backpropagation does not handle programs with subblock
     """
 
+    global grad_op_desc_to_op
+
     checkpoints_name = [x.name for x in checkpoints]
     checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
@@ -926,6 +930,11 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # record the mapping between fwd and bwd
+            for op_desc in grad_op_desc:
+                grad_op_desc_to_op[op_desc] = op
+
             # Set device for grad_op according to forward Op
             if op.desc.has_attr(device_attr_name):
                 op_device = op.desc.attr(device_attr_name)
@@ -945,6 +954,11 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # record the mapping between fwd and bwd
+            for op_desc in grad_op_desc:
+                grad_op_desc_to_op[op_desc] = op
+
             # Set device for grad_op according to forward Op
             if op.desc.has_attr(device_attr_name):
                 op_device = op.desc.attr(device_attr_name)
@@ -998,6 +1012,10 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # record the mapping between fwd and bwd
+            for g_op_desc in grad_op_desc:
+                grad_op_desc_to_op[g_op_desc] = op
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
@@ -1115,6 +1133,8 @@ def _append_backward_ops_(block,
             Only used in for high order gradient.
     """
 
+    global grad_op_desc_to_op
+
     # Build the mapping between the forward op and backward op (Only for auto parallel)
     def update_distop_context(distop_context, op_grad_to_var,
                               appending_grad_times):
@@ -1163,6 +1183,10 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # record the mapping between fwd and bwd
+        for op_desc in grad_op_desc:
+            grad_op_desc_to_op[op_desc] = op
 
         # Build the mapping between the forward op and backward op (Only for auto parallel)
         if distop_context is not None:
@@ -1585,6 +1609,8 @@ def append_backward(loss,
             p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+    global grad_op_desc_to_op
+
     check_type(loss, 'loss', framework.Variable,
                'paddle.static.append_backward')
 
@@ -1721,6 +1747,11 @@ def append_backward(loss,
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
+
+    for op in target_grad_block.ops:
+        if grad_op_desc_to_op.get(op.desc, None) is not None:
+            fwd_op = grad_op_desc_to_op[op.desc]
+            op._cuda_graph_attr = fwd_op._cuda_graph_attr
 
     if parameter_list is not None:
         check_type(parameter_list, 'parameter_list', (list, tuple, set),
