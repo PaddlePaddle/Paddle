@@ -3848,6 +3848,8 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+    if in_dygraph_mode():
+        return _C_ops.final_state_lerp_( x, y, weight)
     return _C_ops.lerp_(x, y, weight)
 
 def erfinv(x, name=None):
@@ -3896,6 +3898,8 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
+    if in_dygraph_mode():
+        return _C_ops.final_state_erfinv_( x )
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):

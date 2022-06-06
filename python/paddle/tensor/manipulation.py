@@ -1498,8 +1498,9 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
         return _C_ops.final_state_flatten_(x, start_axis, stop_axis)
 
     if _in_legacy_dygraph():
-        dy_out, _ = _C_ops.flatten_contiguous_range_(
-            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis',
+                                                     start_axis, 'stop_axis',
+                                                     stop_axis)
         return dy_out
 
 
@@ -3374,7 +3375,7 @@ def reshape_(x, shape, name=None):
             # NOTE(pangyoki): Cannot support the case where the shape Tensor
             # is negative. In the infer_shape stage, the input's dim will
             # be changed to a negative number.
-            # Thus, convert Shape Tensor to list firstly and then call 
+            # Thus, convert Shape Tensor to list firstly and then call
             # reshape inplace op.
             shape_list = shape.numpy().tolist()
             out, _ = _C_ops.reshape2_(x, None, 'shape', shape_list)
@@ -4317,6 +4318,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     if broadcast_shape:
         indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.broadcast_to(values, indices.shape)
+    if in_dygraph_mode():
+        return _C_ops.final_state_put_along_axis_(arr, indices, values, axis,
+                                                  reduce)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
 

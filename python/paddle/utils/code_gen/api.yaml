@@ -692,11 +692,12 @@
 # erfinv
 - api : erfinv
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : erfinv
+  inplace : (x -> out)
   backward : erfinv_grad
 
 # exp
@@ -1156,11 +1157,12 @@
 
 - api : lerp
   args : (Tensor x, Tensor y, Tensor weight)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : LerpInferMeta
   kernel :
     func : lerp
+  inplace : (x -> out)
   backward : lerp_grad
 
 - api : less_equal
@@ -1690,13 +1692,14 @@
 # put_along_axis
 - api : put_along_axis
   args : (Tensor x, Tensor index, Tensor value, int axis, str reduce)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [index]
   kernel :
     func : put_along_axis
     data_type : x
+  inplace : (x -> out)
   backward : put_along_axis_grad
 
 - api : qr
