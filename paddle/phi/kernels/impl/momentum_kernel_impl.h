@@ -418,6 +418,16 @@ void MomentumDenseImpl(const Context& ctx,
                        DenseTensor* param_out,
                        DenseTensor* velocity_out,
                        DenseTensor* master_param_out) {
+  LOG(INFO) << "==========mm=========param===" << param;
+  LOG(INFO) << "==========mm=========grad====" << grad;
+  LOG(INFO) << "==========mm=========velocity===" << velocity;
+  LOG(INFO) << "==========mm=========learning_rate===" << learning_rate;
+  LOG(INFO) << "==========mm=========mu_t===" << mu_t;
+  LOG(INFO) << "==========mm=========use_nesterov===" << use_nesterov;
+  LOG(INFO) << "==========mm=========regularization_method===" << regularization_method;
+  LOG(INFO) << "==========mm=========regularization_coeff_t===" << regularization_coeff_t;
+
+
   MT regularization_coeff = static_cast<MT>(regularization_coeff_t);
   RegularizationType regularization_flag{
       RegularizationType::kNONE};  // disable regularization
@@ -492,6 +502,9 @@ void MomentumDenseImpl(const Context& ctx,
       }
     }
   }
+
+  LOG(INFO) << "==========mm=========param_out===" << *param_out;
+  LOG(INFO) << "==========mm=========velocity_out===" << *velocity_out; 
 }
 
 template <typename T, typename MT, typename Context>

@@ -189,15 +189,24 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
           in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
           comm, stream));
+          LOG(INFO) << "==========pass======";
+          LOG(INFO) << "==========pass=======in_tensor_buf===" <<in;
+          LOG(INFO) << "==========pass=======gather_buff===" << *gathers[i];
     });
 
     sparse_reduce_calls.emplace_back([=] {
       platform::CUDADeviceGuard guard(dev_id);
+      LOG(INFO) << "============pass=====dev_id===" << dev_id;
+      LOG(INFO) << "============pass=======k==" << k;
+      LOG(INFO) << "============pass========nramks===" << nranks_;
+      LOG(INFO) << "============pass=======gather_buff===" <<*gathers[i];
       PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
                             gather_buff, k, out_tensor_buf,
                             static_cast<int>(out_numel), nranks_, stream),
                         true, platform::errors::Unavailable(
                                   "Calling sparseReduce() failed."));
+      LOG(INFO) << "============pass==============out_tensor_buf=="<<out;
+     
     });
   }
 

@@ -53,6 +53,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
 
+    LOG(INFO) << "========input============";
+    LOG(INFO) << "===========U=============" << *u;
+    LOG(INFO) << "===========V=============" << *v;
+    LOG(INFO) << "===========g=============" << *g;
     // attrs
     float m = ctx.Attr<float>("m");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
@@ -70,6 +74,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     // regularization
     auto p = ctx.Input<framework::Tensor>("Param");
+    LOG(INFO) << "============Param==========" << *p;
     float regular_coeff = ctx.Attr<float>("regular_coeff");
     int regular_type = ctx.Attr<int>("regular_type");
 
@@ -100,18 +105,20 @@ class DGCOpKernel : public framework::OpKernel<T> {
       // L2Decay. grad = grad + coeff * param
       grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e + regular_coeff * p_e;
     }
-
+    
     // current step
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
+      LOG(INFO) << "=========no use dgc=====>" <<  *current_step;
       VLOG(10) << "current_step:" << *current_step
                << " < rampup_begin_step:" << rampup_begin_step
                << " so does't use dgc";
       return;
     }
 
+    LOG(INFO) << "=========use dgc=====>" <<  *current_step;
     float ratio =
         1 - get_period_sparcity(
                 sparsity, static_cast<float>(*current_step - rampup_begin_step),
@@ -175,6 +182,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
                                  ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
+    LOG(INFO) << "=========buff_size=======" << buf_size;
     auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
@@ -186,6 +194,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "V_out numel error, V_out numel is %d.", v_out->numel()));
     }
+    LOG(INFO) << "==========u_out========" << *u_out;
+    LOG(INFO) << "==========v_out========" << *v_out;
+    LOG(INFO) << "==========gather_buff==========" << *gather_buff;
+    LOG(INFO) << "====encode_grad_out====>" << *encode_grad_out;
 
     phi::funcs::SetConstant<DeviceContext, T> tset;
     tset(dev_ctx, grad_out, static_cast<T>(0));

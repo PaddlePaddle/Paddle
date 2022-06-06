@@ -47,6 +47,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
             nranks));
 
     const framework::Tensor* g = context.Input<framework::Tensor>("Grad");
+    LOG(INFO) << "===========gg111111111============grad====" << *g;
     framework::Tensor* g_out = context.Output<framework::Tensor>("Grad_out");
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto g_out_e = framework::EigenVector<T>::Flatten(*g_out);
@@ -84,6 +85,16 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       if (grad_var->IsType<framework::Tensor>()) {
         // sgd_dense
         auto* grad = context.Input<framework::Tensor>("Grad");
+        LOG(INFO) << "=========general momentum in dgc=========";
+        LOG(INFO) << "===========gg============param====" << *param;
+        LOG(INFO) << "===========gg============grad====" << *grad;
+        LOG(INFO) << "===========gg============velocity====" << *velocity;
+        LOG(INFO) << "===========gg============learning_rate====" << *learning_rate;
+        LOG(INFO) << "===========gg============mu====" << mu;
+        LOG(INFO) << "===========gg============use_nesterov====" << use_nesterov;
+        LOG(INFO) << "===========gg============multi_precision====" << multi_precision;
+        LOG(INFO) << "===========gg============rescale=====" << rescale_grad;
+        LOG(INFO) << "===========gg============regularization_method====" << regularization_method;
         phi::MomentumDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
@@ -91,6 +102,8 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
             use_nesterov, regularization_method, regularization_coeff,
             multi_precision, rescale_grad, param_out, velocity_out,
             master_param_out);
+        LOG(INFO) << "=============param_out==========" << *param_out;
+        LOG(INFO) << "=============velocity_out========" << *velocity_out;
       } else {
         // sgd dense param sparse grad
         auto* grad = context.Input<phi::SelectedRows>("Grad");
@@ -107,9 +120,10 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     }
 
     VLOG(10) << " so use sgd optimizer";
-
+    LOG(INFO) << "===========ddddggggccc=======";
     const auto* param_var = context.InputVar("Param");
 
+    LOG(INFO) << "===========ddggcc============param====" << param_var;
     auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
     bool multi_precision = context.Attr<bool>("multi_precision");
     if (param_var->IsType<framework::LoDTensor>()) {
@@ -127,11 +141,14 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       if (grad_var->IsType<framework::Tensor>()) {
         // sgd_dense
         auto* grad = context.Input<framework::Tensor>("Grad");
+        LOG(INFO) << "===========ddggcc============grad====" << *grad;
+        LOG(INFO) << "===========ddggcc============learning_rate====" << *learning_rate;
         phi::SGDDenseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
             *param, *learning_rate, *grad, master_param_opt, multi_precision,
             param_out, master_param_out);
+        LOG(INFO) << "===========ddggcc============param_out====" << *param_out;
       } else {
         // sgd dense param sparse grad
         auto* grad = context.Input<phi::SelectedRows>("Grad");
