@@ -37,7 +37,6 @@ class SimpleModel(nn.Layer):
         x = self.relu(x)
         x = self.dropout_2(x)
         x = self.gelu(x)
-        x = paddle.mean(x)
         return x
 
 
@@ -52,14 +51,18 @@ class TestCudaGraphAttrAll(unittest.TestCase):
             model = SimpleModel(10, 20)
             cuda_graph_model = wrap_cuda_graph(model)
             x = paddle.static.data(shape=[3, 10], dtype='float32', name='x')
-            loss = cuda_graph_model(x)
+            y = cuda_graph_model(x)
+            loss = paddle.mean(y)
             opt = paddle.optimizer.SGD()
             opt.minimize(loss)
 
             block = main_prog.global_block()
             for op in block.ops:
                 if op._cuda_graph_attr is None:
-                    assert op.type == 'sgd'
+                    assert op.type in [
+                        'sgd', 'reduce_mean', 'fill_constant',
+                        'reduce_mean_grad'
+                    ]
                 else:
                     assert op._cuda_graph_attr == 'thread_local;0;0'
 

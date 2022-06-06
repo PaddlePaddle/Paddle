@@ -7030,7 +7030,17 @@ def _switch_cuda_graph_mode(cuda_graph_attr):
 
 @signature_safe_contextmanager
 def _cuda_graph_guard(cuda_graph_attr=None):
-    # A very low level api, user should not call this api directly
+    """
+
+    Note:
+        The API only supports static mode.
+
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+
+    Args:
+        cuda_graph_attr(str|None): The cuda graph attr with the format of:
+                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
+    """
     assert not _non_static_mode(
     ), "cuda_graph_guard only works under static mode"
     assert core.is_compiled_with_cuda(
