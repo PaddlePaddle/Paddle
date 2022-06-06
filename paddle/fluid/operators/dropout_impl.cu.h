@@ -198,11 +198,13 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
+#define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T, uint8_t>
     PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(
-        !is_fix_seed, (VectorizedRandomGenerator<T, uint8_t>), grid_size,
-        block_size, 0, stream, offset, KERNEL_PARAMS.As<uint64_t>(1),
-        KERNEL_PARAMS.As<uint64_t>(7), size, seed_data, dropout_prob, x_data,
-        mask_data, y_data, upscale_in_train, increment, main_offset);
+        !is_fix_seed, PD_DROPOUT_KERNEL_NAME, grid_size, block_size, 0, stream,
+        offset, KERNEL_PARAMS.As<uint64_t>(1), KERNEL_PARAMS.As<uint64_t>(7),
+        size, seed_data, dropout_prob, x_data, mask_data, y_data,
+        upscale_in_train, increment, main_offset);
+#undef PD_DROPOUT_KERNEL_NAME
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?
