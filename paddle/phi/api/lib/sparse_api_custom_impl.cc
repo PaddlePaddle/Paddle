@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 
 #include <memory>
+
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"

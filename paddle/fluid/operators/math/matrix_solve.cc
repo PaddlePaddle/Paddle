@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_solve.h"
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/phi/kernels/funcs/blas/blas.h"

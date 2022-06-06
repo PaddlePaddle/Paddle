@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
@@ -35,8 +36,9 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_dims.size(), 4,
         platform::errors::InvalidArgument("Conv intput should be 4-D tensor."));
-    PADDLE_ENFORCE_EQ(w_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "There should be 4 filters."));
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(), 4,
+        platform::errors::InvalidArgument("There should be 4 filters."));
     PADDLE_ENFORCE_EQ(w_dims[0][1], in_dims[1],
                       platform::errors::InvalidArgument(
                           "Invalid fileter channel number %d, which should be "

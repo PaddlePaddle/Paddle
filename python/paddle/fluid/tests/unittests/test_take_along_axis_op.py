@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class TestTakeAlongAxisOp(OpTest):
+
     def setUp(self):
         self.init_data()
         self.op_type = "take_along_axis"
@@ -52,13 +53,14 @@ class TestTakeAlongAxisOp(OpTest):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
         self.index_type = "int32"
-        self.index = np.array(
-            [[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(self.index_type)
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]],
+                               [[3]]]).astype(self.index_type)
         self.axis = 2
         self.axis_type = "int64"
 
 
 class TestCase1(TestTakeAlongAxisOp):
+
     def init_data(self):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
@@ -69,6 +71,7 @@ class TestCase1(TestTakeAlongAxisOp):
 
 
 class TestTakeAlongAxisAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3]
@@ -87,8 +90,10 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             index = paddle.fluid.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place[0])
-            res = exe.run(feed={'X': self.x_np,
-                                'Index': self.index_np},
+            res = exe.run(feed={
+                'X': self.x_np,
+                'Index': self.index_np
+            },
                           fetch_list=[out])
         out_ref = np.array(
             np.take_along_axis(self.x_np, self.index_np, self.axis))
@@ -107,12 +112,13 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
 
 
 class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
-        self.index_np = np.array(
-            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1,
+                                                           0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0

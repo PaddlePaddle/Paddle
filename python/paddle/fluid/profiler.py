@@ -42,8 +42,8 @@ NVPROF_CONFIG = [
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
-    reason="Please use new profiler tool, this profiler tool is no longer maintained."
-)
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 @signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
     """
@@ -121,8 +121,8 @@ def npu_profiler(output_file, config=None):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
-    reason="Please use new profiler tool, this profiler tool is no longer maintained."
-)
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def reset_profiler():
     """
     Clear the previous time record. It works for
@@ -149,8 +149,8 @@ def reset_profiler():
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
-    reason="Please use new profiler tool, this profiler tool is no longer maintained."
-)
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def start_profiler(state, tracer_option='Default'):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -223,8 +223,8 @@ def start_profiler(state, tracer_option='Default'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
-    reason="Please use new profiler tool, this profiler tool is no longer maintained."
-)
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     """
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -286,8 +286,8 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
-    reason="Please use new profiler tool, this profiler tool is no longer maintained."
-)
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
 @signature_safe_contextmanager
 def profiler(state,
              sorted_key=None,

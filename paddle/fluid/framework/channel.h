@@ -20,6 +20,7 @@
 #endif
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <deque>
@@ -28,6 +29,7 @@
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/expect.h"
 
 namespace paddle {

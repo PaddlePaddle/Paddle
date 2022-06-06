@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"

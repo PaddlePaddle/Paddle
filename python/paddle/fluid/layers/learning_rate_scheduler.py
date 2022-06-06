@@ -96,16 +96,17 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     with default_main_program()._lr_schedule_guard():
         if _non_static_mode():
-            decay = imperate_lr.NoamDecay(
-                d_model, warmup_steps, learning_rate=learning_rate)
+            decay = imperate_lr.NoamDecay(d_model,
+                                          warmup_steps,
+                                          learning_rate=learning_rate)
             return decay
         else:
             global_step = _decay_step_counter(1)
 
             a = global_step**-0.5
             b = (warmup_steps**-1.5) * global_step
-            lr_value = learning_rate * (d_model**-0.5) * nn.elementwise_min(a,
-                                                                            b)
+            lr_value = learning_rate * (d_model**-0.5) * nn.elementwise_min(
+                a, b)
 
             return lr_value
 
@@ -341,20 +342,23 @@ def polynomial_decay(learning_rate,
 
             if cycle:
                 div_res = ops.ceil(global_step / decay_steps)
-                zero_var = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=0.0)
-                one_var = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=1.0)
+                zero_var = tensor.fill_constant(shape=[1],
+                                                dtype='float32',
+                                                value=0.0)
+                one_var = tensor.fill_constant(shape=[1],
+                                               dtype='float32',
+                                               value=1.0)
 
                 with control_flow.Switch() as switch:
                     with switch.case(global_step == zero_var):
                         tensor.assign(input=one_var, output=div_res)
                 decay_steps = decay_steps * div_res
             else:
-                decay_steps_var = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=float(decay_steps))
-                global_step = nn.elementwise_min(
-                    x=global_step, y=decay_steps_var)
+                decay_steps_var = tensor.fill_constant(shape=[1],
+                                                       dtype='float32',
+                                                       value=float(decay_steps))
+                global_step = nn.elementwise_min(x=global_step,
+                                                 y=decay_steps_var)
 
             decayed_lr = (learning_rate - end_learning_rate) * \
                 ((1 - global_step / decay_steps) ** power) + end_learning_rate
@@ -411,32 +415,29 @@ Applies piecewise decay to the initial learning rate.
         else:
             global_step = _decay_step_counter()
 
-            lr = tensor.create_global_var(
-                shape=[1],
-                value=0.0,
-                dtype='float32',
-                persistable=True,
-                name="learning_rate")
+            lr = tensor.create_global_var(shape=[1],
+                                          value=0.0,
+                                          dtype='float32',
+                                          persistable=True,
+                                          name="learning_rate")
 
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
-                    boundary_val = tensor.fill_constant(
-                        shape=[1],
-                        dtype='float32',
-                        value=float(boundaries[i]),
-                        force_cpu=True)
+                    boundary_val = tensor.fill_constant(shape=[1],
+                                                        dtype='float32',
+                                                        value=float(
+                                                            boundaries[i]),
+                                                        force_cpu=True)
                     with switch.case(global_step < boundary_val):
-                        tensor.fill_constant(
-                            shape=[1],
-                            dtype="float32",
-                            value=float(values[i]),
-                            out=lr)
+                        tensor.fill_constant(shape=[1],
+                                             dtype="float32",
+                                             value=float(values[i]),
+                                             out=lr)
                 with switch.default():
-                    tensor.fill_constant(
-                        shape=[1],
-                        dtype="float32",
-                        value=float(values[len(values) - 1]),
-                        out=lr)
+                    tensor.fill_constant(shape=[1],
+                                         dtype="float32",
+                                         value=float(values[len(values) - 1]),
+                                         out=lr)
 
             return lr
 
@@ -556,12 +557,11 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                                             start_lr, end_lr)
             return lr
         else:
-            lr = tensor.create_global_var(
-                shape=[1],
-                value=0.0,
-                dtype=dtype,
-                persistable=True,
-                name="learning_rate_warmup")
+            lr = tensor.create_global_var(shape=[1],
+                                          value=0.0,
+                                          dtype=dtype,
+                                          persistable=True,
+                                          name="learning_rate_warmup")
 
             global_step = _decay_step_counter()
 
