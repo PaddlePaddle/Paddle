@@ -45,8 +45,6 @@ class PEFunction : public BaseFunction {
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
     ShareIntoScope(args);
-    // std::vector<std::string> input_var_names = prog_.GetFeedTargetNames();
-    // std::vector<std::string> output_var_names = prog_.GetFetchTargetNames();
     std::vector<std::string> input_var_names;
     for (auto &name : schema_.input_args) {
       input_var_names.emplace_back(name.Name());
@@ -58,6 +56,7 @@ class PEFunction : public BaseFunction {
 
     std::vector<std::string> dout_var_names;
     if (end_op_index > start_op_index) {
+      // TODO(dev): support other devices
       auto cache_info = framework::GetExecutorInfoFromCache(
           program_desc_, phi::CPUPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope_);

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <dirent.h>
+
 #include <algorithm>
 #include <fstream>
 #include <string>
@@ -50,7 +51,6 @@ class Deserializer {
     std::vector<std::string> all_func_name;
     std::vector<framework::ProgramDesc> all_program_desc;
     std::vector<std::vector<std::string>> param_name_for_each_program;
-    // std::vector<IValue> all_param;
     std::map<std::string, IValue> param_dict;
     for (auto& it : file_name_prefixs) {
       all_func_name.emplace_back(it.first);
@@ -75,7 +75,6 @@ class Deserializer {
       // Now param is saved separately, gather all params
       param_dict.insert(param_for_program.begin(), param_for_program.end());
     }
-    // TODO(dev): we also need name of Params
     return Layer(all_func_name, all_program_desc, param_name_for_each_program,
                  param_dict);
   }
@@ -111,8 +110,6 @@ class Deserializer {
         std::string prefix = file_name.substr(
             0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
         std::string func_name = prefix.substr(prefix.find_first_of(".") + 1);
-        VLOG(3) << "func_name: " << func_name;
-        VLOG(3) << "prefix: " << prefix;
         file_name_prefixs.emplace_back(std::make_pair(func_name, prefix));
       }
     }
@@ -123,7 +120,7 @@ class Deserializer {
   std::map<std::string, IValue> ReadTensorData(
       const std::string& file_name,
       const std::vector<std::string>& var_name) const {
-    VLOG(3) << "ReadTensorData " << file_name;
+    VLOG(3) << "ReadTensorData from: " << file_name;
     std::ifstream fin(file_name, std::ios::binary);
     std::map<std::string, IValue> res;
     for (size_t i = 0; i < var_name.size(); ++i) {

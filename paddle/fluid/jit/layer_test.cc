@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/jit/layer.h"
+
 #include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <string>
 #include <unordered_map>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -63,29 +64,25 @@ std::vector<IValue> PrepareInputs() {
   return {iv_t};
 }
 
-void Print(const IValue &ival) {
-  auto t = ival.AsTensor();
-  auto dt = std::dynamic_pointer_cast<phi::DenseTensor>(t.impl());
-  auto *data = dt->data<float>();
-  VLOG(3) << "------------------------";
-  for (int i = 0; i < dt->numel(); ++i) {
-    VLOG(3) << "print data: " << data[i];
-  }
-}
-
 TEST(layer, Construct) {
-  std::string path = "./";
+  std::string path = "./Testing/";
   auto layer = jit::Load(path);
   auto inputs = PrepareInputs();
+
   auto outs = layer.forward(inputs);
-  for (auto &out : outs) {
-    Print(out);
-  }
+  auto out_tensor = outs[0].AsTensor();
+  auto out_dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(out_tensor.impl());
+  auto *out_data = out_dense_tensor->data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
+
   auto func = layer.GetFunction("infer");
-  auto outputs = (*func)(inputs);
-  for (auto &out : outputs) {
-    Print(out);
-  }
+  outs = (*func)(inputs);
+  out_tensor = outs[0].AsTensor();
+  out_dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(out_tensor.impl());
+  out_data = out_dense_tensor->data<float>();
+  EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
 }
 
 }  // namespace jit

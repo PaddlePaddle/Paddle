@@ -30,6 +30,7 @@ class ExectorFunction : public BaseFunction {
   ~ExectorFunction() {}
 
   std::vector<IValue> operator()(const std::vector<IValue> &args) {
+    // TODO(dev): support other devices
     framework::Executor inner_exe_{phi::CPUPlace()};
     // share input into scope
     ShareIntoScope(args);
