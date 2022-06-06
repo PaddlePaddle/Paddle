@@ -55,10 +55,10 @@ class TestCudaGraphAttrAll(unittest.TestCase):
             loss = paddle.mean(y)
             opt = paddle.optimizer.SGD()
             opt.minimize(loss)
-
             block = main_prog.global_block()
             for op in block.ops:
                 if op._cuda_graph_attr is None:
+                    # the loss and opt are not wrapped
                     assert op.type in [
                         'sgd', 'reduce_mean', 'fill_constant',
                         'reduce_mean_grad'
