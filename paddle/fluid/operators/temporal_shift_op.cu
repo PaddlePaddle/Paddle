@@ -179,13 +179,13 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
     if (data_layout == DataLayout::kNCHW) {
-      KeTemporalShiftFwNCHW<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
+      KeTemporalShiftFwNCHW<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     } else {
-      KeTemporalShiftFwNHWC<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
+      KeTemporalShiftFwNHWC<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
     }
   }
 };
@@ -233,13 +233,15 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
     if (data_layout == DataLayout::kNCHW) {
-      KeTemporalShiftBwNCHW<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          output_grad_data, input_grad_data, ntchw, tchw, chw, hw, t, c1, c2);
+      KeTemporalShiftBwNCHW<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              output_grad_data, input_grad_data, ntchw, tchw, chw, hw, t, c1,
+              c2);
     } else {
-      KeTemporalShiftBwNHWC<
-          T><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          output_grad_data, input_grad_data, ntchw, tchw, chw, t, c, c1, c2);
+      KeTemporalShiftBwNHWC<T>
+          <<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+              output_grad_data, input_grad_data, ntchw, tchw, chw, t, c, c1,
+              c2);
     }
   }
 };

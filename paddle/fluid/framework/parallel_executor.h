@@ -42,9 +42,9 @@ namespace framework {
 
 class ParallelExecutorPrivate;
 
-using details::VariableInfo;
 using details::BuildStrategy;
 using details::ExecutionStrategy;
+using details::VariableInfo;
 namespace p = paddle::platform;
 using DeviceType = paddle::platform::DeviceType;
 

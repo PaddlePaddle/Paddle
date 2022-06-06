@@ -128,16 +128,14 @@ class BasicGRUUnit(Layer):
             gate_bias_attr = self._bias_attr
             candidate_bias_attr = self._bias_attr
 
-        self._gate_bias = self.create_parameter(
-            attr=gate_bias_attr,
-            shape=[2 * self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True)
-        self._candidate_bias = self.create_parameter(
-            attr=candidate_bias_attr,
-            shape=[self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True)
+        self._gate_bias = self.create_parameter(attr=gate_bias_attr,
+                                                shape=[2 * self._hiden_size],
+                                                dtype=self._dtype,
+                                                is_bias=True)
+        self._candidate_bias = self.create_parameter(attr=candidate_bias_attr,
+                                                     shape=[self._hiden_size],
+                                                     dtype=self._dtype,
+                                                     is_bias=True)
 
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
@@ -151,8 +149,8 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
-            layers.concat([input, r_hidden], 1), self._candidate_weight)
+        candidate = layers.matmul(layers.concat([input, r_hidden], 1),
+                                  self._candidate_weight)
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
@@ -304,8 +302,9 @@ def basic_gru(input,
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
-        mask = layers.sequence_mask(
-            sequence_length, maxlen=max_seq_len, dtype='float32')
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
         mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
@@ -330,10 +329,9 @@ def basic_gru(input,
                 if init_hidden:
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                 else:
-                    pre_hidden = rnn.memory(
-                        batch_ref=rnn_input,
-                        shape=[-1, hidden_size],
-                        ref_batch_dim_idx=1)
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size],
+                                            ref_batch_dim_idx=1)
 
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
@@ -349,7 +347,8 @@ def basic_gru(input,
                 if dropout_prob != None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
-                        dropout_prob=dropout_prob, )
+                        dropout_prob=dropout_prob,
+                    )
 
             rnn.step_output(step_input)
 
@@ -363,22 +362,26 @@ def basic_gru(input,
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
-            last_hidden_output, shape=[num_layers, -1, hidden_size])
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output
         # seq_len, batch_size, hidden_size
 
-    fw_rnn_out, fw_last_hidden = get_single_direction_output(
-        input, fw_unit_list, mask, direc_index=0)
+    fw_rnn_out, fw_last_hidden = get_single_direction_output(input,
+                                                             fw_unit_list,
+                                                             mask,
+                                                             direc_index=0)
 
     if bidirectional:
         bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
             bw_mask = layers.reverse(mask, axis=[0])
-        bw_rnn_out, bw_last_hidden = get_single_direction_output(
-            bw_input, bw_unit_list, bw_mask, direc_index=1)
+        bw_rnn_out, bw_last_hidden = get_single_direction_output(bw_input,
+                                                                 bw_unit_list,
+                                                                 bw_mask,
+                                                                 direc_index=1)
 
         bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
 
@@ -532,15 +535,14 @@ def basic_lstm(input,
         else:
             layer_bias_attr = bias_attr
         fw_unit_list.append(
-            BasicLSTMUnit(
-                new_name,
-                hidden_size,
-                param_attr=layer_param_attr,
-                bias_attr=layer_bias_attr,
-                gate_activation=gate_activation,
-                activation=activation,
-                forget_bias=forget_bias,
-                dtype=dtype))
+            BasicLSTMUnit(new_name,
+                          hidden_size,
+                          param_attr=layer_param_attr,
+                          bias_attr=layer_bias_attr,
+                          gate_activation=gate_activation,
+                          activation=activation,
+                          forget_bias=forget_bias,
+                          dtype=dtype))
     if bidirectional:
         bw_unit_list = []
 
@@ -557,15 +559,14 @@ def basic_lstm(input,
             else:
                 layer_bias_attr = param_attr
             bw_unit_list.append(
-                BasicLSTMUnit(
-                    new_name,
-                    hidden_size,
-                    param_attr=layer_param_attr,
-                    bias_attr=layer_bias_attr,
-                    gate_activation=gate_activation,
-                    activation=activation,
-                    forget_bias=forget_bias,
-                    dtype=dtype))
+                BasicLSTMUnit(new_name,
+                              hidden_size,
+                              param_attr=layer_param_attr,
+                              bias_attr=layer_bias_attr,
+                              gate_activation=gate_activation,
+                              activation=activation,
+                              forget_bias=forget_bias,
+                              dtype=dtype))
 
     if batch_first:
         input = layers.transpose(input, [1, 0, 2])
@@ -573,8 +574,9 @@ def basic_lstm(input,
     mask = None
     if sequence_length:
         max_seq_len = layers.shape(input)[0]
-        mask = layers.sequence_mask(
-            sequence_length, maxlen=max_seq_len, dtype='float32')
+        mask = layers.sequence_mask(sequence_length,
+                                    maxlen=max_seq_len,
+                                    dtype='float32')
 
         mask = layers.transpose(mask, [1, 0])
 
@@ -605,10 +607,10 @@ def basic_lstm(input,
                     pre_hidden = rnn.memory(init=init_hidden[i, direc_index])
                     pre_cell = rnn.memory(init=init_cell[i, direc_index])
                 else:
-                    pre_hidden = rnn.memory(
-                        batch_ref=rnn_input, shape=[-1, hidden_size])
-                    pre_cell = rnn.memory(
-                        batch_ref=rnn_input, shape=[-1, hidden_size])
+                    pre_hidden = rnn.memory(batch_ref=rnn_input,
+                                            shape=[-1, hidden_size])
+                    pre_cell = rnn.memory(batch_ref=rnn_input,
+                                          shape=[-1, hidden_size])
 
                 new_hidden, new_cell = unit_list[i](step_input, pre_hidden,
                                                     pre_cell)
@@ -650,11 +652,11 @@ def basic_lstm(input,
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
-            last_hidden_output, shape=[num_layers, -1, hidden_size])
+        last_hidden_output = layers.reshape(last_hidden_output,
+                                            shape=[num_layers, -1, hidden_size])
         last_cell_output = layers.concat(last_cell_array, axis=0)
-        last_cell_output = layers.reshape(
-            last_cell_output, shape=[num_layers, -1, hidden_size])
+        last_cell_output = layers.reshape(last_cell_output,
+                                          shape=[num_layers, -1, hidden_size])
 
         return rnn_output, last_hidden_output, last_cell_output
         # seq_len, batch_size, hidden_size
@@ -788,8 +790,9 @@ class BasicLSTMUnit(Layer):
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._forget_bias = layers.fill_constant(
-            [1], dtype=dtype, value=forget_bias)
+        self._forget_bias = layers.fill_constant([1],
+                                                 dtype=dtype,
+                                                 value=forget_bias)
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
 
@@ -802,11 +805,10 @@ class BasicLSTMUnit(Layer):
             shape=[self._input_size + self._hiden_size, 4 * self._hiden_size],
             dtype=self._dtype)
 
-        self._bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[4 * self._hiden_size],
-            dtype=self._dtype,
-            is_bias=True)
+        self._bias = self.create_parameter(attr=self._bias_attr,
+                                           shape=[4 * self._hiden_size],
+                                           dtype=self._dtype,
+                                           is_bias=True)
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)

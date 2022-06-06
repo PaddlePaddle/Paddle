@@ -15,8 +15,9 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 
 REGISTER_OP_CUDA_KERNEL(
-    reduce_amin_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                            float, ops::AMaxOrAMinGradFunctor>,
+    reduce_amin_grad,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, float,
+                          ops::AMaxOrAMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
                           ops::AMaxOrAMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,

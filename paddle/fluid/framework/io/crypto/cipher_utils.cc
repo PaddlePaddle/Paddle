@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 
 #include <cryptopp/osrng.h>
+
 #include <sstream>
 
 #include "paddle/fluid/platform/enforce.h"

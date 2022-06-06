@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/yolov3_loss_kernel.h"
+
 #include <algorithm>
 #include <vector>
-
-#include "paddle/phi/kernels/yolov3_loss_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

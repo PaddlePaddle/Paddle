@@ -23,9 +23,10 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTMultiClassNMSTest(InferencePassTest):
+
     def setUp(self):
         self.enable_trt = True
-        self.enable_tensorrt_oss = True
+        self.enable_tensorrt_varseqlen = True
         self.precision = AnalysisConfig.Precision.Float32
         self.serialize = False
         self.bs = 1
@@ -42,12 +43,12 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            boxes = fluid.data(
-                name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32')
-            scores = fluid.data(
-                name='scores',
-                shape=[-1, self.num_classes, self.num_boxes],
-                dtype='float32')
+            boxes = fluid.data(name='bboxes',
+                               shape=[-1, self.num_boxes, 4],
+                               dtype='float32')
+            scores = fluid.data(name='scores',
+                                shape=[-1, self.num_classes, self.num_boxes],
+                                dtype='float32')
             multiclass_nms_out = fluid.layers.multiclass_nms(
                 bboxes=boxes,
                 scores=scores,
@@ -88,10 +89,12 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         }
         opt_shape = max_shape
         dynamic_shape_opt = [
-            None, InferencePassTest.DynamicShapeParam({
-                'bboxes': [1, 1, 4],
-                'scores': [1, 1, 1]
-            }, max_shape, opt_shape, False)
+            None,
+            InferencePassTest.DynamicShapeParam(
+                {
+                    'bboxes': [1, 1, 4],
+                    'scores': [1, 1, 1]
+                }, max_shape, opt_shape, False)
         ]
         for precision, serialize, dynamic_shape in itertools.product(
                 precision_opt, serialize_opt, dynamic_shape_opt):
@@ -125,18 +128,19 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
             'scores': [self.bs, self.num_classes, self.num_boxes],
         }
         opt_shape = max_shape
-        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
-            'bboxes': [1, 1, 4],
-            'scores': [1, 1, 1]
-        }, max_shape, opt_shape, False)
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+            {
+                'bboxes': [1, 1, 4],
+                'scores': [1, 1, 1]
+            }, max_shape, opt_shape, False)
         self.run_test()
 
     def test_background(self):
         self.background = 7
         self.run_test()
 
-    def test_disable_oss(self):
-        self.diable_tensorrt_oss = False
+    def test_disable_varseqlen(self):
+        self.diable_tensorrt_varseqlen = False
         self.run_test()
 
 

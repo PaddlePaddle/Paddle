@@ -14,9 +14,11 @@
 
 #include <cuda_runtime.h>
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
 
@@ -301,14 +303,16 @@ bool SlicePluginDynamic::supportsFormatCombination(
 nvinfer1::DataType SlicePluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Slice Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Slice Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
-                    true, platform::errors::InvalidArgument(
-                              "The input type should be half or float"));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input type should be half or float"));
   return input_types[0];
 }
 

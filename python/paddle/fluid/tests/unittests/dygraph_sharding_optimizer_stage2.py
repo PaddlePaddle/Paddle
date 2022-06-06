@@ -1,13 +1,13 @@
 # -*- coding: UTF-8 -*-
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,6 +38,7 @@ class_dim = 102
 
 
 class MLP(fluid.Layer):
+
     def __init__(self, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
@@ -51,6 +52,7 @@ class MLP(fluid.Layer):
 
 
 def reader_decorator():
+
     def __reader__():
         for _ in range(100):
             img = np.random.rand(10).astype('float32')
@@ -76,18 +78,18 @@ def train_mlp():
     mlp = MLP()
 
     optimizer = optimizer_setting(parameter_list=mlp.parameters())
-    oss_optimizer = ShardingOptimizerStage2(
-        params=mlp.parameters(), optim=optimizer, group=group)
+    oss_optimizer = ShardingOptimizerStage2(params=mlp.parameters(),
+                                            optim=optimizer,
+                                            group=group)
     # cover grad_storage code
     trainable_param2align = dict()
     for p in mlp.parameters():
         trainable_param2align[p.name] = 0
-    grad_storage = GradStorage(
-        10000,
-        dtype=paddle.float32,
-        device="gpu",
-        destination=0,
-        parm2align=trainable_param2align)
+    grad_storage = GradStorage(10000,
+                               dtype=paddle.float32,
+                               device="gpu",
+                               destination=0,
+                               parm2align=trainable_param2align)
     for p in mlp.parameters():
         grad_storage.can_add_grad_view(p, trainable_param2align[p.name])
         grad_storage.add_grad(p, trainable_param2align[p.name])
@@ -95,15 +97,15 @@ def train_mlp():
     grad_storage.rebuild()
     grad_storage.reset_checked_in()
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True)
+    train_reader = paddle.batch(reader_decorator(),
+                                batch_size=batch_size,
+                                drop_last=True)
 
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True)
+    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
+                                                       use_double_buffer=True,
+                                                       iterable=True,
+                                                       return_list=True,
+                                                       use_multiprocess=True)
     train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):

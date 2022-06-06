@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
@@ -272,9 +273,10 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
-    auto ToBatch = [&batch_gate, &to_batch](
-        const DeviceContext& ctx, const framework::LoDTensor& src,
-        const framework::DDim& dims, framework::LoDTensor& dst) {
+    auto ToBatch = [&batch_gate, &to_batch](const DeviceContext& ctx,
+                                            const framework::LoDTensor& src,
+                                            const framework::DDim& dims,
+                                            framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
       to_batch(ctx, src, &dst, false);

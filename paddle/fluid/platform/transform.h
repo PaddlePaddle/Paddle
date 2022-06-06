@@ -25,6 +25,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
+
 #include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
 #endif
 
