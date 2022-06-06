@@ -623,13 +623,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
 #else
   int total_device = resource_->total_device();
-#if defined(PADDLE_WITH_CUDA)
-  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
-  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
-
-//#elif defined(PADDLE_WITH_XPU_KP)
-  // get XPUDeviceContext according to xpu place
-#endif
   int h_left[total_device];   // NOLINT
   int h_right[total_device];  // NOLINT
 
@@ -638,9 +631,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-  auto d_idx = memory::Alloc(place, len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+#if defined(PADDLE_WITH_CUDA)
+  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
+#elif defined(PADDLE_WITH_XPU_KP)
+  // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
@@ -654,6 +650,10 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
                         XPUAPIErrorMsg[r2]));
+#endif
+
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
