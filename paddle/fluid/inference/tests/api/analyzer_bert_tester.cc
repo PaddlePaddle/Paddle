@@ -150,7 +150,10 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_bert, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, profile_mkldnn) { profile(true); }
+TEST(Analyzer_bert, profile_mkldnn) {
+  auto use_mkldnn = true;
+  profile(use_mkldnn);
+}
 #endif
 
 // Check the fuse status
@@ -177,7 +180,10 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_bert, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_bert, compare_mkldnn) {
+  auto use_mkldnn = true;
+  compare(use_mkldnn);
+}
 #endif
 
 // Compare Deterministic result
