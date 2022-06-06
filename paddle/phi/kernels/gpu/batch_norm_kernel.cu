@@ -1109,11 +1109,13 @@ void BatchNormKernel(const Context &ctx,
         BatchNormParamType<T>* block_data_ptr = nullptr;
         int* flag_ptr = nullptr;
         if(grid.y > 1) {
-          block_data_tensor.Resize({static_cast<int64_t>(2 * C * grid.y * sizeof(BatchNormParamType<T>))});
-          flag_tensor.Resize({static_cast<int64_t>(grid.x * sizeof(int))});
+          block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(ctx, {2 * C * grid.y});
+          flag_tensor = phi::Empty<int, Context>(ctx, {grid.x});
 
-          block_data_ptr = static_cast<BatchNormParamType<T>*>(ctx.template Alloc<BatchNormParamType<T>>(&block_data_tensor));
-          flag_ptr = static_cast<int*>(ctx.template Alloc<int>(&flag_tensor));
+          block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
+          flag_ptr = flag_tensor.data<int>();
+          funcs::SetConstant<Context, int> set_zero;
+          set_zero(ctx, &flag_tensor, static_cast<int>(0));
         }
 
         size_t smem_size = 3 * sizeof(BatchNormParamType<T>) * block.x;
