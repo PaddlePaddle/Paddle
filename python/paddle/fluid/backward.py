@@ -617,6 +617,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
                                                   len(op_descs),
                                                   var_device[var_name])
 
+    op_descs_len = len(op_descs)
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(
             reversed(list(pending_sum_ops.items()))).items():
@@ -628,8 +629,10 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         idx = key
         for i, op in enumerate(value):
             # update the mapping between fwd and bwd
-            if _grad_op_desc_to_op.get(op_descs[idx], None) is not None:
-                _grad_op_desc_to_op[op] = _grad_op_desc_to_op[op_descs[idx]]
+            target_idx = idx - 1 if idx == op_descs_len else idx + i
+            if _grad_op_desc_to_op.get(op_descs[target_idx], None) is not None:
+                _grad_op_desc_to_op[op] = _grad_op_desc_to_op[
+                    op_descs[target_idx]]
             op_descs.insert(idx + i, op)
 
     return op_descs
