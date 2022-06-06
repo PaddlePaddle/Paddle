@@ -343,7 +343,6 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
          op_supplement_it < op_supplement_events.end(); ++op_supplement_it) {
       if ((*op_supplement_it)->TimeStampNs() >= (*it)->StartNs() &&
           (*op_supplement_it)->TimeStampNs() <= (*it)->EndNs()) {
-        LOG(INFO) << (*it)->Name();
         if (!hasenter) {
           firstposition = op_supplement_it;
           hasenter = true;
