@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include <glog/logging.h>
+
 #include <sstream>
 #include <string>
 
@@ -1205,10 +1206,11 @@ bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
   if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-    VLOG(6) << "Warning: " << type_ << " don't find its MKLDNN Kernel in Fluid "
-                                       "Registered Kernels. And We don't "
-                                       "search its kernels in phi lib, "
-                                       "SupportsMKLDNN() return false.";
+    VLOG(6) << "Warning: " << type_
+            << " don't find its MKLDNN Kernel in Fluid "
+               "Registered Kernels. And We don't "
+               "search its kernels in phi lib, "
+               "SupportsMKLDNN() return false.";
     return false;
   }
   auto& op_kernels = op_kernel_iter->second;
@@ -1440,7 +1442,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
         && (!is_xpu_unsupport || use_phi_xpu_kp)
 #endif
-            ) {
+    ) {
       run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1464,7 +1466,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
-              ) {
+      ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
@@ -2238,8 +2240,9 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     if (arg_map_fn) {
       arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
     } else {
-      auto func = [this](
-          const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
+      auto func =
+          [this](
+              const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
       arg_map_fn_.reset(new phi::ArgumentMappingFn(func));

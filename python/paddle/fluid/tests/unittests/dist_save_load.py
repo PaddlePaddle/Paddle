@@ -40,7 +40,9 @@ from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
+
     def _load_persistable_vars(self, executor, dirname, program):
+
         def _is_checkpoint_var(var):
             """
             the checkpoint will not save or load all the variables.
@@ -68,20 +70,18 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
             return var.persistable
 
-        io.load_vars(
-            executor,
-            dirname=dirname,
-            main_program=program,
-            predicate=_is_checkpoint_var,
-            filename=None)
+        io.load_vars(executor,
+                     dirname=dirname,
+                     main_program=program,
+                     predicate=_is_checkpoint_var,
+                     filename=None)
 
     def run_pserver(self, args):
         self.get_model(batch_size=2)
         # NOTE: pserver should not call memory optimize
-        t = self.get_transpiler(args.trainer_id,
-                                fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, False,
-                                args.current_endpoint)
+        t = self.get_transpiler(args.trainer_id, fluid.default_main_program(),
+                                args.endpoints, args.trainers, args.sync_mode,
+                                False, args.current_endpoint)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -130,11 +130,10 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
 
-        exe = fluid.ParallelExecutor(
-            args.use_cuda,
-            loss_name=avg_cost.name,
-            exec_strategy=strategy,
-            build_strategy=build_stra)
+        exe = fluid.ParallelExecutor(args.use_cuda,
+                                     loss_name=avg_cost.name,
+                                     exec_strategy=strategy,
+                                     build_strategy=build_stra)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -167,8 +166,8 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                 if need_save and model_dir:
                     io.save_persistables(startup_exe, model_dir, trainer_prog)
 
-            var = np.array(fluid.global_scope().find_var('__fc_b__').get_tensor(
-            ))
+            var = np.array(
+                fluid.global_scope().find_var('__fc_b__').get_tensor())
             sys.stdout.buffer.write(pickle.dumps(np.ravel(var).tolist()))
 
         elif save_mode == "DIST":

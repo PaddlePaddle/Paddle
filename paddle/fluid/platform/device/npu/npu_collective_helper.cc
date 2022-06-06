@@ -14,6 +14,7 @@
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include <utility>
+
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 

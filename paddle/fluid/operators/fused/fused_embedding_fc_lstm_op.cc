@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_fc_lstm_op.h"
+
 #include <string>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
@@ -100,10 +102,11 @@ void FusedEmbeddingFCLSTMOp::InferShape(
       platform::errors::InvalidArgument(
           "The rank of Input(Bias) should be 2, but received value is:%d.",
           b_dims.size()));
-  PADDLE_ENFORCE_EQ(b_dims[0], 1, platform::errors::InvalidArgument(
-                                      "The first dimension of Input(Bias) "
-                                      "should be 1, but received value is:%d.",
-                                      b_dims[0]));
+  PADDLE_ENFORCE_EQ(b_dims[0], 1,
+                    platform::errors::InvalidArgument(
+                        "The first dimension of Input(Bias) "
+                        "should be 1, but received value is:%d.",
+                        b_dims[0]));
   PADDLE_ENFORCE_EQ(
       b_dims[1], (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
       platform::errors::InvalidArgument(
@@ -237,21 +240,21 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 template <typename T>
 class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
  public:
-#define INIT_VEC_FUNC                                                          \
-  std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand; \
-  auto& act_gate_str = ctx.Attr<std::string>("gate_activation");               \
-  auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
-  auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
-  if (platform::MayIUse(platform::avx)) {                                      \
-    phi::funcs::VecActivations<T, platform::avx> act_functor;                  \
-    act_gate = act_functor(act_gate_str);                                      \
-    act_cell = act_functor(act_cell_str);                                      \
-    act_cand = act_functor(act_cand_str);                                      \
-  } else {                                                                     \
-    phi::funcs::VecActivations<T, platform::isa_any> act_functor;              \
-    act_gate = act_functor(act_gate_str);                                      \
-    act_cell = act_functor(act_cell_str);                                      \
-    act_cand = act_functor(act_cand_str);                                      \
+#define INIT_VEC_FUNC                                                        \
+  std::function<void(const int, const T*, T*)> act_gate, act_cell, act_cand; \
+  auto& act_gate_str = ctx.Attr<std::string>("gate_activation");             \
+  auto& act_cell_str = ctx.Attr<std::string>("cell_activation");             \
+  auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");        \
+  if (platform::MayIUse(platform::avx)) {                                    \
+    phi::funcs::VecActivations<T, platform::avx> act_functor;                \
+    act_gate = act_functor(act_gate_str);                                    \
+    act_cell = act_functor(act_cell_str);                                    \
+    act_cand = act_functor(act_cand_str);                                    \
+  } else {                                                                   \
+    phi::funcs::VecActivations<T, platform::isa_any> act_functor;            \
+    act_gate = act_functor(act_gate_str);                                    \
+    act_cell = act_functor(act_cell_str);                                    \
+    act_cand = act_functor(act_cand_str);                                    \
   }
 
 #define INIT_BASE_INPUT_OUTPUT                        \

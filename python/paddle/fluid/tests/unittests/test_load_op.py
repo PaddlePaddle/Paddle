@@ -40,8 +40,9 @@ class TestLoadOp(unittest.TestCase):
                         self.ones)))
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        fluid.io.save_persistables(
-            exe, dirname="./model", main_program=main_prog)
+        fluid.io.save_persistables(exe,
+                                   dirname="./model",
+                                   main_program=main_prog)
 
     def test_load(self):
         main_prog = fluid.Program()

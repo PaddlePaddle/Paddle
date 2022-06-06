@@ -44,8 +44,8 @@ def softmax(x):
 def batch_matmul(x, y):
     assert x.shape[0] == y.shape[0]
     assert x.shape[1] == y.shape[1]
-    retval = np.zeros(
-        (x.shape[0], x.shape[1], x.shape[2], y.shape[3]), dtype=np.float64)
+    retval = np.zeros((x.shape[0], x.shape[1], x.shape[2], y.shape[3]),
+                      dtype=np.float64)
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
             retval[i, j, :, :] = np.matmul(x[i, j, :, :], y[i, j, :, :])
@@ -90,8 +90,9 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     head_dim = qkv_weight.shape[2]
     # embed_dim, 3, num_heads, self.head_dim
     qkv_weight = qkv_weight.transpose((3, 0, 1, 2))
-    qkv_weight = qkv_weight.reshape(qkv_weight.shape[0], qkv_weight.shape[1] *
-                                    qkv_weight.shape[2] * qkv_weight.shape[3])
+    qkv_weight = qkv_weight.reshape(
+        qkv_weight.shape[0],
+        qkv_weight.shape[1] * qkv_weight.shape[2] * qkv_weight.shape[3])
 
     if qkv_bias is not None:
         qkv_bias = qkv_bias.reshape(qkv_bias.shape[0] * qkv_bias.shape[1] *
@@ -165,6 +166,7 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
 
 
 class TestFusedAttentionAPI(unittest.TestCase):
+
     def setUp(self):
         self.setXType()
         self.setPreLn()
@@ -218,10 +220,9 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.query = np.random.rand(self.batch_size, self.query_length,
                                     self.embed_dim).astype(self.x_type)
         if self.has_attn_mask:
-            self.attn_mask = np.ones(
-                (self.batch_size, self.num_heads, self.query_length,
-                 self.key_length),
-                dtype=self.attn_mask_type)
+            self.attn_mask = np.ones((self.batch_size, self.num_heads,
+                                      self.query_length, self.key_length),
+                                     dtype=self.attn_mask_type)
             if self.attn_mask_type == np.int64:
                 self.attn_mask = np.tril(self.attn_mask)
             elif self.attn_mask_type == np.float64:
@@ -238,18 +239,19 @@ class TestFusedAttentionAPI(unittest.TestCase):
             attn_mask_tensor = paddle.to_tensor(self.attn_mask)
         else:
             attn_mask_tensor = None
-        fused_attn = FusedMultiHeadAttention(
-            self.embed_dim, self.num_heads, self.dropout_prob,
-            self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
-            self.need_weight, self.weight_attr, self.bias_attr)
+        fused_attn = FusedMultiHeadAttention(self.embed_dim, self.num_heads,
+                                             self.dropout_prob,
+                                             self.attn_dropout_prob, self.kdim,
+                                             self.vdim, self.pre_layer_norm,
+                                             self.need_weight, self.weight_attr,
+                                             self.bias_attr)
         if self.bias_attr is not False:
-            qkv_bias = np.random.random(fused_attn.qkv_bias.shape).astype(
-                'float32')
+            qkv_bias = np.random.random(
+                fused_attn.qkv_bias.shape).astype('float32')
             fused_attn.qkv_bias.set_value(paddle.to_tensor(qkv_bias))
-        out = fused_attn(
-            paddle.to_tensor(self.query),
-            paddle.to_tensor(self.query),
-            paddle.to_tensor(self.query), attn_mask_tensor)
+        out = fused_attn(paddle.to_tensor(self.query),
+                         paddle.to_tensor(self.query),
+                         paddle.to_tensor(self.query), attn_mask_tensor)
 
         fused_attn_qkv_bias = None
         fused_attn_linear_bias = None
@@ -267,27 +269,31 @@ class TestFusedAttentionAPI(unittest.TestCase):
             fused_attn.ln_scale.numpy(), fused_attn_ln_bias,
             fused_attn.qkv_weight.numpy(), fused_attn_qkv_bias,
             fused_attn.linear_weight.numpy(), fused_attn_linear_bias)
-        np.testing.assert_allclose(
-            ref_out, out.numpy(), rtol=self.rtol, atol=self.atol)
+        np.testing.assert_allclose(ref_out,
+                                   out.numpy(),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
 
     def run_static(self):
-        fused_attn = FusedMultiHeadAttention(
-            self.embed_dim, self.num_heads, self.dropout_prob,
-            self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
-            self.need_weight, self.weight_attr, self.bias_attr)
+        fused_attn = FusedMultiHeadAttention(self.embed_dim, self.num_heads,
+                                             self.dropout_prob,
+                                             self.attn_dropout_prob, self.kdim,
+                                             self.vdim, self.pre_layer_norm,
+                                             self.need_weight, self.weight_attr,
+                                             self.bias_attr)
 
         x = paddle.static.data(
             name='X',
             shape=[self.batch_size, self.query_length, self.embed_dim],
             dtype=self.x_type)
         if self.has_attn_mask:
-            attn_mask = paddle.static.data(
-                name='SrcMask',
-                shape=[
-                    self.batch_size, self.num_heads, self.query_length,
-                    self.key_length
-                ],
-                dtype=self.attn_mask_type)
+            attn_mask = paddle.static.data(name='SrcMask',
+                                           shape=[
+                                               self.batch_size, self.num_heads,
+                                               self.query_length,
+                                               self.key_length
+                                           ],
+                                           dtype=self.attn_mask_type)
             final_out = fused_attn(x, x, x, attn_mask)
         else:
             final_out = fused_attn(x, x, x)
@@ -304,8 +310,10 @@ class TestFusedAttentionAPI(unittest.TestCase):
             if self.bias_attr is False:
                 out, qkv_weight, out_linear_weight, ln_scale, ln_2_scale = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"X": self.query,
-                          "SrcMask": self.attn_mask},
+                    feed={
+                        "X": self.query,
+                        "SrcMask": self.attn_mask
+                    },
                     fetch_list=[
                         final_out, fused_attn.qkv_weight,
                         fused_attn.linear_weight, fused_attn.pre_ln_scale,
@@ -314,8 +322,10 @@ class TestFusedAttentionAPI(unittest.TestCase):
             else:
                 out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"X": self.query,
-                          "SrcMask": self.attn_mask},
+                    feed={
+                        "X": self.query,
+                        "SrcMask": self.attn_mask
+                    },
                     fetch_list=[
                         final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
                         fused_attn.linear_weight, fused_attn.linear_bias,
@@ -326,7 +336,9 @@ class TestFusedAttentionAPI(unittest.TestCase):
             if self.bias_attr is False:
                 out, qkv_weight, out_linear_weight, ln_scale, ln_2_scale = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"X": self.query, },
+                    feed={
+                        "X": self.query,
+                    },
                     fetch_list=[
                         final_out, fused_attn.qkv_weight,
                         fused_attn.linear_weight, fused_attn.pre_ln_scale,
@@ -335,7 +347,9 @@ class TestFusedAttentionAPI(unittest.TestCase):
             else:
                 out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
                     paddle.static.default_main_program(),
-                    feed={"X": self.query, },
+                    feed={
+                        "X": self.query,
+                    },
                     fetch_list=[
                         final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
                         fused_attn.linear_weight, fused_attn.linear_bias,
@@ -361,6 +375,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
 
 class TestFusedAttentionAPINoneAttnMask(TestFusedAttentionAPI):
+
     def setAttnMask(self):
         self.has_attn_mask = False
 
@@ -369,6 +384,7 @@ class TestFusedAttentionAPINoneAttnMask(TestFusedAttentionAPI):
 
 
 class TestFusedAttentionAPIBiasIsNone(TestFusedAttentionAPI):
+
     def setBiasAttr(self):
         self.bias_attr = False
 

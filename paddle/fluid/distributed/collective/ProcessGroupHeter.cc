@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
+
 #include <chrono>
+
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
@@ -129,8 +131,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
             gid_, {dense_cpu_tensor.name()}, send_size, dense_cpu_tensor.data(),
             dense_cpu_tensor.numel() *
                 framework::DataTypeSize(dense_cpu_tensor.dtype()));
-        PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                      "Send to the switch module error."));
+        PADDLE_ENFORCE_EQ(ret, 0,
+                          platform::errors::PreconditionNotMet(
+                              "Send to the switch module error."));
         phi::DenseTensor cpu_tensor2;
         cpu_tensor2.AllocateFrom(
             std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -140,8 +143,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
         ret = client_->Recv(
             gid_, {dense_cpu_tensor.name()}, cpu_tensor2.data(),
             cpu_tensor2.numel() * framework::DataTypeSize(cpu_tensor2.dtype()));
-        PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                      "Recv from the switch module error."));
+        PADDLE_ENFORCE_EQ(ret, 0,
+                          platform::errors::PreconditionNotMet(
+                              "Recv from the switch module error."));
 
         switch (dense_cpu_tensor.dtype()) {
           case DataType::FLOAT32:
@@ -226,8 +230,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
               dense_cpu_tensor.data(),
               dense_cpu_tensor.numel() *
                   framework::DataTypeSize(dense_cpu_tensor.dtype()));
-          PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                        "Send to the switch module error."));
+          PADDLE_ENFORCE_EQ(ret, 0,
+                            platform::errors::PreconditionNotMet(
+                                "Send to the switch module error."));
         } else {
           int ret = client_->Recv(
               gid_, {dense_cpu_tensor.name()}, dense_cpu_tensor.data(),
@@ -286,8 +291,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Send(
   VLOG(2) << "tensor_name:" << tensor_name;
   int ret = client_->Send(gid_, {tensor_name}, send_size, cpu_tensor.data(),
                           tensor_size);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "Send to the switch module error."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::PreconditionNotMet("Send to the switch module error."));
   return CreateTask(rank_, CommType::SEND, in_tensors);
 }
 
@@ -319,8 +325,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Recv(
   int ret = client_->Recv(
       gid_, {tensor_name}, cpu_tensor.data(),
       cpu_tensor.numel() * framework::DataTypeSize(cpu_tensor.dtype()));
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                "receive to the switch module error."));
+  PADDLE_ENFORCE_EQ(ret, 0,
+                    platform::errors::PreconditionNotMet(
+                        "receive to the switch module error."));
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> diff = end - start;
   double goodput = cpu_tensor.numel() *

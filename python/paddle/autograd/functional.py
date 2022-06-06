@@ -139,7 +139,7 @@ def _double_backward_trick(ys, xs, v):
     """Double backward trick for computing ``jvp`` by ``vjp``
     see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
     """
-    # The value of ys_grad is not important, it can be any random value in 
+    # The value of ys_grad is not important, it can be any random value in
     # theory, but it's required to set stop_gradient=False.
     ys_grad = _zeros_like_with_grad(ys)
     xs_grad = _grad(ys, xs, ys_grad)
@@ -302,10 +302,11 @@ class Hessian(object):
     """
 
     def __init__(self, func, xs, is_batched=False):
+
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
-            if (is_batched and jac.shape[1] != 1) or (not is_batched and
-                                                      jac.shape[0] != 1):
+            if (is_batched and jac.shape[1] != 1) or (not is_batched
+                                                      and jac.shape[0] != 1):
                 raise RuntimeError(
                     "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
                 )
@@ -362,18 +363,18 @@ class _Jacobian(object):
 
     def _lazy_indexes(self, indexes):
         idx = indexes[self._lazy_axis]
-        return (idx, ) if isinstance(
-            idx, int) else tuple(range(idx.start, idx.stop, idx.step))
+        return (idx, ) if isinstance(idx, int) else tuple(
+            range(idx.start, idx.stop, idx.step))
 
     def _flatten(self, xs):
         raise NotImplementedError
 
     def _shifted_indexes(self, indexes, lazy_axis_size=0):
         idx = indexes[self._lazy_axis]
-        shifted_lazy_axis_idx = 0 if isinstance(
-            idx, int) else slice(0, lazy_axis_size, 1)
-        return indexes[:self._lazy_axis] + (shifted_lazy_axis_idx,
-                                            ) + indexes[self._lazy_axis + 1:]
+        shifted_lazy_axis_idx = 0 if isinstance(idx, int) else slice(
+            0, lazy_axis_size, 1)
+        return indexes[:self._lazy_axis] + (
+            shifted_lazy_axis_idx, ) + indexes[self._lazy_axis + 1:]
 
     def __getitem__(self, indexes):
         indexes = _multi_index(indexes, self.shape)
@@ -381,8 +382,8 @@ class _Jacobian(object):
         if isinstance(indexes[self._lazy_axis], int):
             other_indexes = indexes[:self._lazy_axis] + \
                 indexes[self._lazy_axis+1:]
-            return self._cached_evaluate(indexes[self._lazy_axis])[
-                other_indexes]
+            return self._cached_evaluate(
+                indexes[self._lazy_axis])[other_indexes]
         lazy_indexes = self._lazy_indexes(indexes)
         part_jac = paddle.stack(
             [self._cached_evaluate(i) for i in lazy_indexes],
@@ -424,7 +425,8 @@ class _JacobianNoBatch(_Jacobian):
     def _evaluate(self, row_index):
         return self._flatten(_grad(
             self._flatten_ys[row_index],
-            self._xs, ))
+            self._xs,
+        ))
 
 
 class _JacobianBatchLast(_Jacobian):
@@ -508,8 +510,8 @@ def _multi_index(indexes, shape):
     positive_indexes = []
     for i, index in enumerate(indexes):
         if isinstance(index, slice):
-            index = slice(index.start or 0, index.stop or shape[i],
-                          index.step or 1)
+            index = slice(index.start or 0, index.stop or shape[i], index.step
+                          or 1)
             positive_indexes.append(
                 slice(
                     index.start + shape[i] if index.start < 0 else index.start,
@@ -530,9 +532,8 @@ def _as_tensors(xs):
 
 def _stack_tensor_or_return_none(origin_list):
     assert len(origin_list) > 0, "Can't not stack an empty list"
-    return paddle.stack(
-        origin_list, axis=0) if isinstance(
-            origin_list[0], paddle.fluid.framework.Variable) else None
+    return paddle.stack(origin_list, axis=0) if isinstance(
+        origin_list[0], paddle.fluid.framework.Variable) else None
 
 
 def _replace_none_with_zero_tensor(xs, refs):
@@ -809,23 +810,20 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(
-        paddle.reshape(
-            output, shape=[-1]) for output in outputs)
+        paddle.reshape(output, shape=[-1]) for output in outputs)
     jacobian = tuple()
     for i, flat_output in enumerate(flat_outputs):
         jac_i = list([] for _ in range(fin_size))
         for k in range(len(flat_output)):
-            row_k = paddle.grad(
-                flat_output[k],
-                inputs,
-                create_graph=create_graph,
-                retain_graph=True,
-                allow_unused=allow_unused)
+            row_k = paddle.grad(flat_output[k],
+                                inputs,
+                                create_graph=create_graph,
+                                retain_graph=True,
+                                allow_unused=allow_unused)
             for j in range(fin_size):
                 jac_i[j].append(
-                    paddle.reshape(
-                        row_k[j], shape=[-1])
-                    if isinstance(row_k[j], paddle.Tensor) else None)
+                    paddle.reshape(row_k[j], shape=[-1]) if isinstance(
+                        row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
             _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
     if fin_size == 1 and fout_size == 1:
@@ -957,25 +955,22 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(
-        paddle.reshape(
-            output, shape=[batch_size, -1]) for output in outputs)
+        paddle.reshape(output, shape=[batch_size, -1]) for output in outputs)
     jacobian = tuple()
     for i, flat_output in enumerate(flat_outputs):
         jac_i = list([] for _ in range(fin_size))
         for k in range(flat_output.shape[1]):
 
-            row_k = paddle.grad(
-                flat_output[:, k],
-                inputs,
-                create_graph=create_graph,
-                retain_graph=True,
-                allow_unused=allow_unused)
+            row_k = paddle.grad(flat_output[:, k],
+                                inputs,
+                                create_graph=create_graph,
+                                retain_graph=True,
+                                allow_unused=allow_unused)
 
             for j in range(fin_size):
                 jac_i[j].append(
-                    paddle.reshape(
-                        row_k[j], shape=[-1])
-                    if isinstance(row_k[j], paddle.Tensor) else None)
+                    paddle.reshape(row_k[j], shape=[-1]) if isinstance(
+                        row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
             _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
     if fin_size == 1 and fout_size == 1:
@@ -1119,18 +1114,19 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
     ], "The function to compute batched Hessian matrix should return a Tensor of shape [batch_size, 1]"
 
     def jac_func(*ins):
-        grad_inputs = paddle.grad(
-            outputs,
-            ins,
-            create_graph=True,
-            retain_graph=True,
-            allow_unused=allow_unused)
+        grad_inputs = paddle.grad(outputs,
+                                  ins,
+                                  create_graph=True,
+                                  retain_graph=True,
+                                  allow_unused=allow_unused)
         return tuple(
             _replace_none_with_zero_tensor(grad_inputs[i], inputs[i])
             for i in range(len(inputs)))
 
-    return batch_jacobian(
-        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
+    return batch_jacobian(jac_func,
+                          inputs,
+                          create_graph=create_graph,
+                          allow_unused=allow_unused)
 
 
 @framework.dygraph_only
@@ -1245,18 +1241,19 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
     ], "The function to compute Hessian matrix should return a Tensor with a single element"
 
     def jac_func(*ins):
-        grad_inputs = paddle.grad(
-            outputs,
-            ins,
-            create_graph=True,
-            retain_graph=True,
-            allow_unused=allow_unused)
+        grad_inputs = paddle.grad(outputs,
+                                  ins,
+                                  create_graph=True,
+                                  retain_graph=True,
+                                  allow_unused=allow_unused)
         return tuple(
             _replace_none_with_zero_tensor(grad_inputs[i], inputs[i])
             for i in range(len(inputs)))
 
-    return jacobian(
-        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
+    return jacobian(jac_func,
+                    inputs,
+                    create_graph=create_graph,
+                    allow_unused=allow_unused)
 
 
 def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):

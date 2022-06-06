@@ -321,8 +321,8 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".
-                    format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'."
+                    .format(arg, name, ori_value, new_value))
 
         for name in Inputs_error.get(QUANT, {}):
             print(" * The added Input '{}' is `quant`, need slim to review.".
@@ -345,8 +345,8 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".
-                    format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'."
+                    .format(arg, name, ori_value, new_value))
 
         for name in Outputs_error.get(QUANT, {}):
             print(" * The added Output '{}' is `quant`, need slim to review.".
@@ -371,8 +371,8 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".
-                    format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'."
+                    .format(arg, name, ori_value, new_value))
 
         for name in attrs_error.get(QUANT, {}):
             # TODO(Wilber):
@@ -414,13 +414,15 @@ def print_version_error_message(error_message):
         error_list = attrs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
-                print(" * The added attribute '{}' is not yet registered.".
-                      format(tup[1]))
-        error_dic = error_message.get(op_name, {}).get(ATTRS, {}).get(CHANGE,
-                                                                      {})
+                print(
+                    " * The added attribute '{}' is not yet registered.".format(
+                        tup[1]))
+        error_dic = error_message.get(op_name, {}).get(ATTRS,
+                                                       {}).get(CHANGE, {})
         for key, val in error_dic.items():
-            print(" * The change of attribute '{}' is not yet registered.".
-                  format(key))
+            print(
+                " * The change of attribute '{}' is not yet registered.".format(
+                    key))
 
 
 def print_repeat_process():
@@ -446,8 +448,8 @@ if len(sys.argv) == 3:
     with open(sys.argv[2], 'r') as f:
         new_op_desc = f.read()
 
-    desc_error_message, version_error_message = compare_op_desc(origin_op_desc,
-                                                                new_op_desc)
+    desc_error_message, version_error_message = compare_op_desc(
+        origin_op_desc, new_op_desc)
     if error:
         print("-" * 30)
         print_desc_error_message(desc_error_message)

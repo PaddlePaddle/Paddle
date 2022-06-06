@@ -19,7 +19,7 @@
 struct cinn_type_t;
 namespace cinn::common {
 struct Type;
-}  // ::cinn::common
+}  // namespace cinn::common
 
 namespace paddle::framework::paddle2cinn {
 
