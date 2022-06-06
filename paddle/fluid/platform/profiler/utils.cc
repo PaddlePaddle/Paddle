@@ -14,13 +14,34 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/utils.h"
 
+#include <sstream>
 #include <vector>
-
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
+
+template <>
+std::string json_vector<std::string>(
+    const std::vector<std::string> type_vector) {
+  std::ostringstream res_stream;
+  auto count = type_vector.size();
+  res_stream << "[";
+  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
+    if (count > 1) {
+      res_stream << "\"" << (*it) << "\""
+                 << ",";
+    } else {
+      res_stream << "\"" << (*it) << "\"";
+    }
+    count--;
+  }
+  res_stream << "]";
+  return res_stream.str();
+}
+
+
 #ifdef PADDLE_WITH_CUPTI
 float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
                             int32_t StaticSharedMemory,
@@ -60,6 +81,22 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
   return occupancy;
 }
 #endif
+
+const char* StringTracerMemEventType(TracerMemEventType type) {
+  static const char* categary_name_[] = {"Allocate", "Free"};
+  return categary_name_[static_cast<int>(type)];
+}
+
+const char* StringTracerEventType(TracerEventType type) {
+  static const char* categary_name_[] = {
+      "Operator",      "Dataloader",  "ProfileStep",
+      "CudaRuntime",   "Kernel",      "Memcpy",
+      "Memset",        "UserDefined", "OperatorInner",
+      "Forward",       "Backward",    "Optimization",
+      "Communication", "PythonOp",    "PythonUserDefined",
+      "MluRuntime"};
+  return categary_name_[static_cast<int>(type)];
+}
 
 }  // namespace platform
 }  // namespace paddle
