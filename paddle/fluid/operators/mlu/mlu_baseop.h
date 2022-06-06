@@ -41,6 +41,13 @@ const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
     {"reduce_prod", CNNL_REDUCE_MUL},
 };
 
+const std::map<std::string, cnnlInterpMode_t> MLUInterpModeMap = {
+    {"bilinear", CNNL_INTERP_BILINEAR},
+    {"nearest", CNNL_INTERP_NEAREST},
+    {"linear", CNNL_INTERP_LINEAR},
+    {"trilinear", CNNL_INTERP_TRILINEAR},
+    {"bicubic", CNNL_INTERP_BICUBIC}};
+
 inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   auto iter = MLUReduceOpMap.find(reduce_name);
   if (iter != MLUReduceOpMap.end()) {
@@ -48,6 +55,15 @@ inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
   }
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
+inline cnnlInterpMode_t GetMLUCnnlInterpMode(const std::string interp_mode) {
+  auto iter = MLUInterpModeMap.find(interp_mode);
+  if (iter != MLUInterpModeMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
