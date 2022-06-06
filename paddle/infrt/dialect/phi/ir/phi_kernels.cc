@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
+
 #include <mlir/IR/BuiltinTypes.h>
 
 #include "paddle/infrt/dialect/phi/ir/phi_gpu_kernelsDialect.cpp.inc"
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/ir/phi_cpu_kernels.cpp.inc"  // NOLINT
-
 #include "paddle/infrt/dialect/phi/ir/phi_cpu_kernelsDialect.cpp.inc"
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/ir/phi_gpu_kernels.cpp.inc"  // NOLINT

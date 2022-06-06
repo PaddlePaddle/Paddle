@@ -43,8 +43,9 @@ os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def get_vaild_warning_num(warning, w):
@@ -56,6 +57,7 @@ def get_vaild_warning_num(warning, w):
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
+
     def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
@@ -68,50 +70,36 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
         self.features = Sequential(
-            Conv2D(
-                in_channels=1,
-                out_channels=6,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                weight_attr=conv2d_w1_attr,
-                bias_attr=False),
-            BatchNorm2D(6),
-            ReLU(),
-            MaxPool2D(
-                kernel_size=2, stride=2),
-            Conv2D(
-                in_channels=6,
-                out_channels=16,
-                kernel_size=5,
-                stride=1,
-                padding=0,
-                weight_attr=conv2d_w2_attr,
-                bias_attr=conv2d_b2_attr),
-            BatchNorm2D(16),
-            PReLU(),
-            MaxPool2D(
-                kernel_size=2, stride=2))
+            Conv2D(in_channels=1,
+                   out_channels=6,
+                   kernel_size=3,
+                   stride=1,
+                   padding=1,
+                   weight_attr=conv2d_w1_attr,
+                   bias_attr=False), BatchNorm2D(6), ReLU(),
+            MaxPool2D(kernel_size=2, stride=2),
+            Conv2D(in_channels=6,
+                   out_channels=16,
+                   kernel_size=5,
+                   stride=1,
+                   padding=0,
+                   weight_attr=conv2d_w2_attr,
+                   bias_attr=conv2d_b2_attr), BatchNorm2D(16), PReLU(),
+            MaxPool2D(kernel_size=2, stride=2))
 
         self.fc = Sequential(
-            Linear(
-                in_features=400,
-                out_features=120,
-                weight_attr=fc_w1_attr,
-                bias_attr=fc_b1_attr),
-            LeakyReLU(),
-            Linear(
-                in_features=120,
-                out_features=84,
-                weight_attr=fc_w2_attr,
-                bias_attr=fc_b2_attr),
-            Sigmoid(),
-            Linear(
-                in_features=84,
-                out_features=num_classes,
-                weight_attr=fc_w3_attr,
-                bias_attr=fc_b3_attr),
-            Softmax())
+            Linear(in_features=400,
+                   out_features=120,
+                   weight_attr=fc_w1_attr,
+                   bias_attr=fc_b1_attr), LeakyReLU(),
+            Linear(in_features=120,
+                   out_features=84,
+                   weight_attr=fc_w2_attr,
+                   bias_attr=fc_b2_attr), Sigmoid(),
+            Linear(in_features=84,
+                   out_features=num_classes,
+                   weight_attr=fc_w3_attr,
+                   bias_attr=fc_b3_attr), Softmax())
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -122,6 +110,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class TestImperativeOutSclae(unittest.TestCase):
+
     def func_out_scale_acc(self):
         seed = 1000
         lr = 0.001
@@ -141,10 +130,11 @@ class TestImperativeOutSclae(unittest.TestCase):
             lenet = fix_model_dict(lenet)
             imperative_out_scale.quantize(lenet)
 
-            reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
-            adam = AdamOptimizer(
-                learning_rate=lr, parameter_list=lenet.parameters())
+            reader = paddle.batch(paddle.dataset.mnist.test(),
+                                  batch_size=32,
+                                  drop_last=True)
+            adam = AdamOptimizer(learning_rate=lr,
+                                 parameter_list=lenet.parameters())
             loss_list = train_lenet(lenet, reader, adam)
             lenet.eval()
 
@@ -157,14 +147,13 @@ class TestImperativeOutSclae(unittest.TestCase):
             layer=lenet,
             path=save_path,
             input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32')
+                paddle.static.InputSpec(shape=[None, 1, 28, 28],
+                                        dtype='float32')
             ])
 
         for i in range(len(loss_list) - 1):
-            self.assertTrue(
-                loss_list[i] > loss_list[i + 1],
-                msg='Failed to do the imperative qat.')
+            self.assertTrue(loss_list[i] > loss_list[i + 1],
+                            msg='Failed to do the imperative qat.')
 
     def test_out_scale_acc(self):
         with _test_eager_guard():
@@ -173,6 +162,7 @@ class TestImperativeOutSclae(unittest.TestCase):
 
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
+
     def func_save_quantized_model(self):
         lr = 0.001
 
@@ -191,10 +181,11 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             imperative_out_scale.quantize(lenet)
             lenet.set_dict(load_dict)
 
-            reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
-            adam = AdamOptimizer(
-                learning_rate=lr, parameter_list=lenet.parameters())
+            reader = paddle.batch(paddle.dataset.mnist.test(),
+                                  batch_size=32,
+                                  drop_last=True)
+            adam = AdamOptimizer(learning_rate=lr,
+                                 parameter_list=lenet.parameters())
             loss_list = train_lenet(lenet, reader, adam)
             lenet.eval()
 
@@ -202,14 +193,13 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             layer=lenet,
             path=save_path,
             input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32')
+                paddle.static.InputSpec(shape=[None, 1, 28, 28],
+                                        dtype='float32')
             ])
 
         for i in range(len(loss_list) - 1):
-            self.assertTrue(
-                loss_list[i] > loss_list[i + 1],
-                msg='Failed to do the imperative qat.')
+            self.assertTrue(loss_list[i] > loss_list[i + 1],
+                            msg='Failed to do the imperative qat.')
 
     def test_save_quantized_model(self):
         with _test_eager_guard():

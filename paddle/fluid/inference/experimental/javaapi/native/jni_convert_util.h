@@ -17,6 +17,7 @@
 
 #include <jni.h>
 #include <string.h>
+
 #include <string>
 #include <vector>
 
@@ -54,8 +55,8 @@ inline jstring cpp_string_to_jstring(JNIEnv *env, std::string str) {
                           reinterpret_cast<const jbyte *>(data));
 
   jstring encoding = env->NewStringUTF("UTF-8");
-  jstring res = (jstring)(
-      env->NewObject(strClass, strClassInitMethodID, bytes, encoding));
+  jstring res = (jstring)(env->NewObject(strClass, strClassInitMethodID, bytes,
+                                         encoding));
 
   env->DeleteLocalRef(strClass);
   env->DeleteLocalRef(encoding);

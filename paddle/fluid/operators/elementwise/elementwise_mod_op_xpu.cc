@@ -15,11 +15,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 

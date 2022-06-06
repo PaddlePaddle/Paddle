@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/phi/kernels/full_kernel.h"
 
 namespace paddle {

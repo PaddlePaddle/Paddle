@@ -19,6 +19,7 @@ limitations under the License. */
 #include <mutex>
 #include <set>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -100,8 +101,9 @@ static size_t GpuAllocSize(bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
       available_to_alloc, alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));
@@ -149,8 +151,8 @@ class RecordedGpuMallocHelper {
     if (FLAGS_enable_gpu_memory_usage_log) {
       // A fake UPDATE to trigger the construction of memory stat instances,
       // make sure that they are destructed after RecordedGpuMallocHelper.
-      MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
-      MEMORY_STAT_UPDATE(Allocated, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Allocated, dev_id, 0);
     }
   }
 
@@ -161,15 +163,18 @@ class RecordedGpuMallocHelper {
     if (FLAGS_enable_gpu_memory_usage_log) {
       if (FLAGS_enable_gpu_memory_usage_log_mb) {
         std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
-                  << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) / 1048576.0
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) /
+                         1048576.0
                   << ", Allocated = "
-                  << MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) / 1048576.0
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) /
+                         1048576.0
                   << std::endl;
       } else {
         std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : Reserved = "
-                  << MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
                   << ", Allocated = "
-                  << MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) << std::endl;
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_)
+                  << std::endl;
       }
     }
   }
@@ -222,15 +227,15 @@ class RecordedGpuMallocHelper {
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
-      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
-               << " MB";
       result = cudaMalloc(ptr, size);
+      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
+               << " MB, result=" << result;
     }
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
@@ -269,7 +274,7 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /

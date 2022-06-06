@@ -20,6 +20,7 @@ _WARNING_TO_LOG = True
 
 
 class _DatasetFetcher(object):
+
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
         self.dataset = dataset
         self.auto_collate_batch = auto_collate_batch
@@ -67,15 +68,17 @@ class _DatasetFetcher(object):
                     "dtype=float32)]', and in Paddle >= 2.1, data is in format" \
                     " 'Tensor(shape=(1, 2, 3), dtype=float32)'\n"
 
-        logger = get_logger(
-            "DataLoader", logging.INFO, fmt='%(levelname)s: %(message)s')
+        logger = get_logger("DataLoader",
+                            logging.INFO,
+                            fmt='%(levelname)s: %(message)s')
         logger.warning(warn_str)
 
 
 class _IterableDatasetFetcher(_DatasetFetcher):
+
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
-        super(_IterableDatasetFetcher, self).__init__(
-            dataset, auto_collate_batch, collate_fn, drop_last)
+        super(_IterableDatasetFetcher,
+              self).__init__(dataset, auto_collate_batch, collate_fn, drop_last)
         self.dataset_iter = iter(dataset)
 
     def fetch(self, batch_indices, done_event=None):
@@ -91,8 +94,8 @@ class _IterableDatasetFetcher(_DatasetFetcher):
                 else:
                     return None
 
-            if len(data) == 0 or (self.drop_last and
-                                  len(data) < len(batch_indices)):
+            if len(data) == 0 or (self.drop_last
+                                  and len(data) < len(batch_indices)):
                 raise StopIteration
 
             global _WARNING_TO_LOG
@@ -109,6 +112,7 @@ class _IterableDatasetFetcher(_DatasetFetcher):
 
 
 class _MapDatasetFetcher(_DatasetFetcher):
+
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
         super(_MapDatasetFetcher, self).__init__(dataset, auto_collate_batch,
                                                  collate_fn, drop_last)

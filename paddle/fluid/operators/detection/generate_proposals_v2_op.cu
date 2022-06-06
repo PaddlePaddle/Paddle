@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"

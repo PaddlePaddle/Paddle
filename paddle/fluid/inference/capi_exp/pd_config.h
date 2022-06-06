@@ -432,7 +432,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigDisableTensorRtOPs(
 ///
 /// \param[in] pd_onfig config
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtOSS(
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableVarseqlen(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief A boolean state telling whether to use the TensorRT OSS.

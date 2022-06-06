@@ -26,7 +26,7 @@ void BilinearTensorProductKernel(const Context& ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  const DenseTensor& weight,
-                                 paddle::optional<const DenseTensor&> bias,
+                                 const paddle::optional<DenseTensor>& bias,
                                  DenseTensor* out) {
   ctx.template Alloc<T>(out);
 

@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class TestGcdAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = 12
         self.y_np = 20
@@ -40,15 +41,17 @@ class TestGcdAPI(unittest.TestCase):
             y = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
             out = paddle.gcd(x, y)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
             exe = fluid.Executor(place)
             res = exe.run(fluid.default_main_program(),
-                          feed={'input1': self.x_np,
-                                'input2': self.y_np},
+                          feed={
+                              'input1': self.x_np,
+                              'input2': self.y_np
+                          },
                           fetch_list=[out])
-            self.assertTrue((np.array(res[0]) == np.gcd(self.x_np, self.y_np)
-                             ).all())
+            self.assertTrue((np.array(res[0]) == np.gcd(self.x_np,
+                                                        self.y_np)).all())
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -62,6 +65,7 @@ class TestGcdAPI(unittest.TestCase):
 
 
 class TestGcdAPI2(TestGcdAPI):
+
     def setUp(self):
         self.x_np = np.arange(6).astype(np.int32)
         self.y_np = np.array([20]).astype(np.int32)
@@ -70,6 +74,7 @@ class TestGcdAPI2(TestGcdAPI):
 
 
 class TestGcdAPI3(TestGcdAPI):
+
     def setUp(self):
         self.x_np = 0
         self.y_np = 20
@@ -78,6 +83,7 @@ class TestGcdAPI3(TestGcdAPI):
 
 
 class TestGcdAPI4(TestGcdAPI):
+
     def setUp(self):
         self.x_np = 0
         self.y_np = 0
@@ -86,6 +92,7 @@ class TestGcdAPI4(TestGcdAPI):
 
 
 class TestGcdAPI5(TestGcdAPI):
+
     def setUp(self):
         self.x_np = 12
         self.y_np = -20

@@ -15,13 +15,13 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 TEST(CudnnHelper, ScopedTensorDescriptor) {
-  using paddle::platform::ScopedTensorDescriptor;
   using paddle::platform::DataLayout;
+  using paddle::platform::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -65,8 +65,8 @@ TEST(CudnnHelper, ScopedTensorDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedFilterDescriptor) {
-  using paddle::platform::ScopedFilterDescriptor;
   using paddle::platform::DataLayout;
+  using paddle::platform::ScopedFilterDescriptor;
 
   ScopedFilterDescriptor filter_desc;
   std::vector<int> shape = {2, 3, 3};
@@ -129,8 +129,8 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
 }
 
 TEST(CudnnHelper, ScopedPoolingDescriptor) {
-  using paddle::platform::ScopedPoolingDescriptor;
   using paddle::platform::PoolingMode;
+  using paddle::platform::ScopedPoolingDescriptor;
 
   ScopedPoolingDescriptor pool_desc;
   std::vector<int> src_kernel = {2, 2, 5};

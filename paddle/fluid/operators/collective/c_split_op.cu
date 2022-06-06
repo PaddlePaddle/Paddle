@@ -59,10 +59,11 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
     int rank = ctx.Attr<int>("rank");
     auto place = ctx.GetPlace();
 
-    PADDLE_ENFORCE_GE(rank, 0, platform::errors::PreconditionNotMet(
-                                   "The value of rank (%d) for c_split must be "
-                                   "greater than or equal to 0.",
-                                   rank));
+    PADDLE_ENFORCE_GE(rank, 0,
+                      platform::errors::PreconditionNotMet(
+                          "The value of rank (%d) for c_split must be "
+                          "greater than or equal to 0.",
+                          rank));
     PADDLE_ENFORCE_GE(nranks, 2,
                       platform::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_split must be "

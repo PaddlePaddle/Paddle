@@ -11,6 +11,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {

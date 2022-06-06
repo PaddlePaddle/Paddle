@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/io.h"

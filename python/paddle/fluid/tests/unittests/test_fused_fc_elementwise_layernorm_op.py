@@ -27,6 +27,7 @@ np.random.random(123)
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle core is not compiled with CUDA")
 class TestFusedFCElementwiseLayerNormOp(OpTest):
+
     def config(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
         self.y_shape = [1, 15]
@@ -72,6 +73,7 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
 
 
 class TestFusedFCElementwiseLayerNormOp2(TestFusedFCElementwiseLayerNormOp):
+
     def config(self):
         self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
         self.y_shape = [4, 6]

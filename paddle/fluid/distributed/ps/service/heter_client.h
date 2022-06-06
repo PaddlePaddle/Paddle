@@ -155,13 +155,13 @@ class HeterClient {
 
   // HeterClient singleton
   static std::shared_ptr<HeterClient> GetInstance(
-      const std::vector<std::string>& endpoint,
-      const std::vector<std::string>& previous_endpoint,
+      const std::vector<std::string>& endpoints,
+      const std::vector<std::string>& previous_endpoints,
       const int& trainer_id) {
     if (NULL == s_instance_) {
       s_instance_.reset(new HeterClient());
-      s_instance_->SetXpuList(endpoint);
-      s_instance_->SetPreviousXpuList(previous_endpoint);
+      s_instance_->SetXpuList(endpoints);
+      s_instance_->SetPreviousXpuList(previous_endpoints);
       s_instance_->SetTrainerID(trainer_id);
       s_instance_->CreateClient2XpuConnection();
     }

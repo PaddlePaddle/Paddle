@@ -20,6 +20,7 @@ import numpy as np
 
 
 class TestSelectedRows(unittest.TestCase):
+
     def test_selected_rows(self):
         place = core.CPUPlace()
         height = 10

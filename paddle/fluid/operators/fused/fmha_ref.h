@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,12 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/dropout_impl.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/fused/fused_softmax_mask.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
@@ -160,9 +163,9 @@ class FMHARef {
         ins.emplace_back(src_mask_tensor);
         outs.emplace_back(src_mask_out_tensor);
         int elewise_add_axis = -1;
-        paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                       T, T>(
-            dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
+        phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+            dev_ctx_, ins, &outs, elewise_add_axis,
+            phi::funcs::AddFunctor<T>());
 
         phi::SoftmaxForwardCUDAKernelDriver<T>(
             dev_ctx_, *src_mask_out_tensor, softmax_axis, softmax_out_tensor);
@@ -183,8 +186,9 @@ class FMHARef {
     if (dropout_param_.dropout_prob_) {
       DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
-          dropout_param_.is_test_, static_cast<const std::string>(
-                                       dropout_param_.dropout_implementation_),
+          dropout_param_.is_test_,
+          static_cast<const std::string>(
+              dropout_param_.dropout_implementation_),
           dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
           dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
           static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
@@ -297,7 +301,6 @@ class FMHARef {
       phi::SoftmaxBackwardCUDAKernelDriver<T>(
           dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
           src_mask_out_grad_tensor);
-
       // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
       // src_mask
       // Special case when dy is not needed and dx doesn't reduce
