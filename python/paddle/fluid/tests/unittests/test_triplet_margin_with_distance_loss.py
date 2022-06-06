@@ -18,13 +18,14 @@ import unittest
 
 
 def call_TripletMarginDistanceLoss_layer(
-        input,
-        positive,
-        negative,
-        distance_function=None,
-        margin=0.3,
-        swap=False,
-        reduction='mean', ):
+    input,
+    positive,
+    negative,
+    distance_function=None,
+    margin=0.3,
+    swap=False,
+    reduction='mean',
+):
     triplet_margin_with_distance_loss = paddle.nn.TripletMarginWithDistanceLoss(
         distance_function=distance_function,
         margin=margin,
@@ -33,18 +34,20 @@ def call_TripletMarginDistanceLoss_layer(
     res = triplet_margin_with_distance_loss(
         input=input,
         positive=positive,
-        negative=negative, )
+        negative=negative,
+    )
     return res
 
 
 def call_TripletMaginDistanceLoss_functional(
-        input,
-        positive,
-        negative,
-        distance_function=None,
-        margin=0.3,
-        swap=False,
-        reduction='mean', ):
+    input,
+    positive,
+    negative,
+    distance_function=None,
+    margin=0.3,
+    swap=False,
+    reduction='mean',
+):
     res = paddle.nn.functional.triplet_margin_with_distance_loss(
         input=input,
         positive=positive,
@@ -68,12 +71,15 @@ def test_static(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.static.data(
-            name='input', shape=input_np.shape, dtype='float64')
-        positive = paddle.static.data(
-            name='positive', shape=positive_np.shape, dtype='float64')
-        negative = paddle.static.data(
-            name='negative', shape=negative_np.shape, dtype='float64')
+        input = paddle.static.data(name='input',
+                                   shape=input_np.shape,
+                                   dtype='float64')
+        positive = paddle.static.data(name='positive',
+                                      shape=positive_np.shape,
+                                      dtype='float64')
+        negative = paddle.static.data(name='negative',
+                                      shape=negative_np.shape,
+                                      dtype='float64')
         feed_dict = {
             "input": input_np,
             "positive": positive_np,
@@ -143,13 +149,14 @@ def test_dygraph(place,
 
 
 def calc_triplet_margin_distance_loss(
-        input,
-        positive,
-        negative,
-        distance_function=None,
-        margin=0.3,
-        swap=False,
-        reduction='mean', ):
+    input,
+    positive,
+    negative,
+    distance_function=None,
+    margin=0.3,
+    swap=False,
+    reduction='mean',
+):
     distance_function = np.linalg.norm
     positive_dist = distance_function((input - positive), 2, axis=1)
     negative_dist = distance_function((input - negative), 2, axis=1)
@@ -170,10 +177,12 @@ def calc_triplet_margin_distance_loss(
 
 
 class TestTripletMarginWithDistanceLoss(unittest.TestCase):
+
     def test_TripletMarginDistanceLoss(self):
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        shape = (5, 5)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -192,41 +201,40 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
                     input=input,
                     positive=positive,
                     negative=negative,
-                    reduction=reduction, )
+                    reduction=reduction,
+                )
 
                 static_result = test_static(
                     place=place,
                     input_np=input,
                     positive_np=positive,
                     negative_np=negative,
-                    reduction=reduction, )
+                    reduction=reduction,
+                )
                 self.assertTrue(np.allclose(static_result, expected))
                 self.assertTrue(np.allclose(static_result, dy_result))
                 self.assertTrue(np.allclose(dy_result, expected))
-                static_functional = test_static(
-                    place=place,
-                    input_np=input,
-                    positive_np=positive,
-                    negative_np=negative,
-                    reduction=reduction,
-                    functional=True)
-                dy_functional = test_dygraph(
-                    place=place,
-                    input=input,
-                    positive=positive,
-                    negative=negative,
-                    reduction=reduction,
-                    functional=True)
+                static_functional = test_static(place=place,
+                                                input_np=input,
+                                                positive_np=positive,
+                                                negative_np=negative,
+                                                reduction=reduction,
+                                                functional=True)
+                dy_functional = test_dygraph(place=place,
+                                             input=input,
+                                             positive=positive,
+                                             negative=negative,
+                                             reduction=reduction,
+                                             functional=True)
                 self.assertTrue(np.allclose(static_functional, expected))
                 self.assertTrue(np.allclose(static_functional, dy_functional))
                 self.assertTrue(np.allclose(dy_functional, expected))
 
     def test_TripletMarginDistanceLoss_error(self):
         paddle.disable_static()
-        self.assertRaises(
-            ValueError,
-            paddle.nn.TripletMarginWithDistanceLoss,
-            reduction="unsupport reduction")
+        self.assertRaises(ValueError,
+                          paddle.nn.TripletMarginWithDistanceLoss,
+                          reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
         negative = paddle.to_tensor([[0.2, 0.1]], dtype='float32')
@@ -240,6 +248,7 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
         paddle.enable_static()
 
     def test_TripletMarginDistanceLoss_distance_function(self):
+
         def distance_function_1(x1, x2):
             return 1.0 - paddle.nn.functional.cosine_similarity(x1, x2)
 
@@ -247,9 +256,10 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             return paddle.max(paddle.abs(x1 - x2), axis=1)
 
         distance_function_list = [distance_function_1, distance_function_2]
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        shape = (5, 5)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
         place = paddle.CPUPlace()
         reduction = 'mean'
@@ -260,7 +270,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
                 positive=positive,
                 negative=negative,
                 distance_function=distance_function,
-                reduction=reduction, )
+                reduction=reduction,
+            )
 
             static_result = test_static(
                 place=place,
@@ -268,24 +279,23 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
                 positive_np=positive,
                 negative_np=negative,
                 distance_function=distance_function,
-                reduction=reduction, )
+                reduction=reduction,
+            )
             self.assertTrue(np.allclose(static_result, dy_result))
-            static_functional = test_static(
-                place=place,
-                input_np=input,
-                positive_np=positive,
-                negative_np=negative,
-                distance_function=distance_function,
-                reduction=reduction,
-                functional=True)
-            dy_functional = test_dygraph(
-                place=place,
-                input=input,
-                positive=positive,
-                negative=negative,
-                distance_function=distance_function,
-                reduction=reduction,
-                functional=True)
+            static_functional = test_static(place=place,
+                                            input_np=input,
+                                            positive_np=positive,
+                                            negative_np=negative,
+                                            distance_function=distance_function,
+                                            reduction=reduction,
+                                            functional=True)
+            dy_functional = test_dygraph(place=place,
+                                         input=input,
+                                         positive=positive,
+                                         negative=negative,
+                                         distance_function=distance_function,
+                                         reduction=reduction,
+                                         functional=True)
             self.assertTrue(np.allclose(static_functional, dy_functional))
 
     def test_TripletMarginWithDistanceLoss_distance_funtion_error(self):
@@ -295,9 +305,10 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             return -1.0 - paddle.nn.functional.cosine_similarity(x1, x2)
 
         func = distance_function
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
+        shape = (5, 5)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
         self.assertRaises(
             ValueError,
@@ -305,7 +316,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             input=input,
             positive=positive,
             negative=negative,
-            distance_function=func, )
+            distance_function=func,
+        )
         paddle.enable_static()
 
     def test_TripletMarginDistanceLoss_dimension(self):
@@ -319,7 +331,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             paddle.nn.functional.triplet_margin_with_distance_loss,
             input=input,
             positive=positive,
-            negative=negative, )
+            negative=negative,
+        )
         triplet_margin_with_distance_loss = paddle.nn.loss.TripletMarginWithDistanceLoss(
         )
         self.assertRaises(
@@ -327,21 +340,22 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             triplet_margin_with_distance_loss,
             input=input,
             positive=positive,
-            negative=negative, )
+            negative=negative,
+        )
         paddle.enable_static()
 
     def test_TripletMarginWithDistanceLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()
-        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(20, 30)).astype(np.float64)
-        expected = calc_triplet_margin_distance_loss(
-            input=input,
-            swap=True,
-            positive=positive,
-            negative=negative,
-            reduction=reduction)
+        shape = (5, 5)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        expected = calc_triplet_margin_distance_loss(input=input,
+                                                     swap=True,
+                                                     positive=positive,
+                                                     negative=negative,
+                                                     reduction=reduction)
 
         dy_result = test_dygraph(
             place=place,
@@ -349,7 +363,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             input=input,
             positive=positive,
             negative=negative,
-            reduction=reduction, )
+            reduction=reduction,
+        )
 
         static_result = test_static(
             place=place,
@@ -357,26 +372,25 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             input_np=input,
             positive_np=positive,
             negative_np=negative,
-            reduction=reduction, )
+            reduction=reduction,
+        )
         self.assertTrue(np.allclose(static_result, expected))
         self.assertTrue(np.allclose(static_result, dy_result))
         self.assertTrue(np.allclose(dy_result, expected))
-        static_functional = test_static(
-            place=place,
-            swap=True,
-            input_np=input,
-            positive_np=positive,
-            negative_np=negative,
-            reduction=reduction,
-            functional=True)
-        dy_functional = test_dygraph(
-            place=place,
-            swap=True,
-            input=input,
-            positive=positive,
-            negative=negative,
-            reduction=reduction,
-            functional=True)
+        static_functional = test_static(place=place,
+                                        swap=True,
+                                        input_np=input,
+                                        positive_np=positive,
+                                        negative_np=negative,
+                                        reduction=reduction,
+                                        functional=True)
+        dy_functional = test_dygraph(place=place,
+                                     swap=True,
+                                     input=input,
+                                     positive=positive,
+                                     negative=negative,
+                                     reduction=reduction,
+                                     functional=True)
         self.assertTrue(np.allclose(static_functional, expected))
         self.assertTrue(np.allclose(static_functional, dy_functional))
         self.assertTrue(np.allclose(dy_functional, expected))
@@ -394,7 +408,8 @@ class TestTripletMarginWithDistanceLoss(unittest.TestCase):
             margin=margin,
             input=input,
             positive=positive,
-            negative=negative, )
+            negative=negative,
+        )
         paddle.enable_static()
 
 
