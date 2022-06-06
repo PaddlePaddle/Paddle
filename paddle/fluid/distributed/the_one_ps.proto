@@ -114,7 +114,7 @@ message TableParameter {
   optional TensorAccessorParameter tensor = 5;
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
-  optional bool compress_in_save = 8 [ default = false ];
+  optional bool compress_in_save = 8 [ default = true ];
   optional GraphParameter graph_parameter = 9;
   // for cache model
   optional bool enable_sparse_table_cache = 10 [ default = true ];

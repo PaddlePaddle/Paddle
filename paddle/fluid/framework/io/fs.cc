@@ -78,6 +78,8 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
           }};
   }
 
+  VLOG(0) << "debug zcb open write path: " << path;
+
   return fp;
 }
 

@@ -111,9 +111,9 @@ class MemorySparseTable : public Table {
                             int save_param);
 
   const int _task_pool_size = 24;
-  size_t _avg_local_shard_num;
-  size_t _real_local_shard_num;
-  size_t _sparse_table_shard_num;
+  int _avg_local_shard_num;
+  int _real_local_shard_num;
+  int _sparse_table_shard_num;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::unique_ptr<shard_type[]> _local_shards;
 

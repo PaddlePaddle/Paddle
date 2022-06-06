@@ -45,6 +45,14 @@ int32_t MemorySparseTable::Initialize() {
   auto& profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_sparse_update_all");
   profiler.register_profiler("pserver_sparse_select_all");
+  profiler.register_profiler("sparse table save one key");
+  profiler.register_profiler("sparse table write_line");
+  profiler.register_profiler("accessor save");
+  profiler.register_profiler("accessor parse_to_string");
+  profiler.register_profiler("sparse table save shard");
+  profiler.register_profiler("sparse table save shard while");
+  profiler.register_profiler("sparse table save check one key");
+  profiler.register_profiler("sparse table save shard close");
   InitializeValue();
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
@@ -121,6 +129,10 @@ int32_t MemorySparseTable::Load(const std::string& path,
   }
 
   size_t file_start_idx = _shard_idx * _avg_local_shard_num;
+
+  if (file_start_idx >= file_list.size()) {
+    return 0;
+  }
 
   size_t feature_value_size =
       _value_accesor->GetAccessorInfo().size / sizeof(float);
@@ -332,6 +344,7 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    CostTimer timer("sparse table save shard");
     FsChannelConfig channel_config;
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path = paddle::string::format_string(
@@ -351,12 +364,14 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
     int err_no = 0;
     auto& shard = _local_shards[i];
     do {
+      CostTimer timer2("sparse table save shard while");
       err_no = 0;
       feasign_size = 0;
       is_write_failed = false;
       auto write_channel =
           _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
       for (auto it = shard.begin(); it != shard.end(); ++it) {
+        CostTimer timer11("sparse table save check one key");
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
             _value_accesor->Save(it.value().data(), 4)) {
@@ -364,8 +379,10 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
         }
 
         if (_value_accesor->Save(it.value().data(), save_param)) {
+          CostTimer timer1("sparse table save one key");
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
+          CostTimer timer0("sparse table write_line");
           if (0 !=
               write_channel->write_line(paddle::string::format_string(
                   "%lu %s", it.key(), format_value.c_str()))) {
@@ -379,6 +396,8 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
           ++feasign_size;
         }
       }
+      VLOG(0) << "debug zcb begin close " << channel_config.path;
+      CostTimer timer12("sparse table save shard close");
       write_channel->close();
       if (err_no == -1) {
         ++retry_num;
@@ -396,11 +415,12 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
       }
     } while (is_write_failed);
     feasign_size_all += feasign_size;
-    for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
-    }
+//    CostTimer timer3("sparse table save shard updatestat " + std::to_string(i));
+//    for (auto it = shard.begin(); it != shard.end(); ++it) {
+//      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+//    }
     LOG(INFO) << "MemorySparseTable save prefix success, path: "
-              << channel_config.path;
+              << channel_config.path << " feasign_size: " << feasign_size;
   }
   _local_show_threshold = tk.top();
   // int32 may overflow need to change return value
@@ -512,7 +532,6 @@ int64_t MemorySparseTable::CacheShuffle(
   int shuffle_node_num = _config.sparse_table_cache_file_num();
   LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
   // TODO(zhaocaibei123): check shuffle_node_num <= server_node_num
-  shuffle_node_num = 2;  // TODO(zhaocaibei123): just for test, remove it later
   size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 

@@ -15,6 +15,7 @@
 import warnings
 
 import os
+import paddle
 import paddle.fluid as fluid
 from paddle.distributed import fleet
 from paddle.fluid import core
@@ -29,6 +30,7 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
+import time
 
 __all__ = [
     'Table', 'SparseTable', 'GeoSparseTable', 'BarrierTable', 'TensorTable',
@@ -1149,6 +1151,7 @@ class TheOnePSRuntime(RuntimeBase):
                               scope,
                               program,
                               var_names=None):
+        begin = time.time()
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
         send_ctx = get_the_one_send_context(
@@ -1158,15 +1161,25 @@ class TheOnePSRuntime(RuntimeBase):
             ep_list=self.endpoints)
         if program is None or len(self.origin_main_programs) == 1:
             program = self.origin_main_programs[0]
+        end = time.time()
+        print('debug zcb save_dense_params prepare cost ', (end - begin) / 60.0)
+        begin = time.time()
         dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
+        end = time.time()
+        print('debug zcb save_dense_params pull_dense cost ', (end - begin) / 60.0)
         save_var_names = dense_var_names if var_names is None else var_names
-        print("save_var_names:", save_var_names)
+#        print("save_var_names:", save_var_names)
+        begin = time.time()
+#        for var in save_var_names:
+#            tensor = scope.find_var(var).get_tensor()
+#            paddle.save(
+#                tensor, os.path.join(dirname, var), use_binary_format=True)
 
-        import paddle
-        for var in save_var_names:
-            tensor = scope.find_var(var).get_tensor()
-            paddle.save(
-                tensor, os.path.join(dirname, var), use_binary_format=True)
+        vars = [program.global_block().var(i) for i in save_var_names]
+        with fluid.scope_guard(scope):
+            fluid.io.save_vars(executor, "./", program, vars=vars, filename=dirname)
+        end = time.time()
+        print('debug zcb save_dense_params save cost ', (end - begin) / 60.0)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
@@ -1221,7 +1234,10 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
+        begin = time.time()
         self._worker.save_all_model(dirname, mode)
+        end = time.time()
+        print('debug zcb save model cost: ', (end - begin) / 60.0)
 
     def _ps_inference_save_inference_model(self,
                                            executor,
@@ -1304,7 +1320,7 @@ class TheOnePSRuntime(RuntimeBase):
                 use_binary_format=True)
 
     def _save_cache_model(self, dirname, **kwargs):
-        mode = kwargs.get("mode", 0)
+        mode = kwargs.get("mode", 1)
         table_id = kwargs.get("table_id", 0)
         self._worker.client_flush()
         fleet.util.barrier()
@@ -1412,9 +1428,9 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
 
     def _save_dense_params(self, *args, **kwargs):
-        if self.role_maker._is_first_worker():
-            self._ps_save_dense_params(*args, **kwargs)
-        fleet.util.barrier()
+#        if self.role_maker._is_first_worker():
+        self._ps_save_dense_params(*args, **kwargs)
+#        fleet.util.barrier()
 
     def _save_persistables(self, *args, **kwargs):
         if self.role_maker._is_first_worker():
