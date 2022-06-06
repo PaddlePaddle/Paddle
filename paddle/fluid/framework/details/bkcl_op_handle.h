@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "xpu/bkcl.h"
-
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,6 +22,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "xpu/bkcl.h"
 
 DECLARE_bool(sync_bkcl_allreduce);
 

@@ -15,8 +15,10 @@
 #pragma once
 
 #include <math.h>
+
 #include <algorithm>
 #include <complex>
+
 #include "paddle/fluid/operators/eig_op.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"

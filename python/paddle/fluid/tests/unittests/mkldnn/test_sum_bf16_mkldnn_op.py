@@ -26,6 +26,7 @@ import paddle.fluid.op as fluid_op
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestSumBF16MKLDNN(TestSumOp):
+
     def setUp(self):
         self.op_type = "sum"
         self.use_mkldnn = True

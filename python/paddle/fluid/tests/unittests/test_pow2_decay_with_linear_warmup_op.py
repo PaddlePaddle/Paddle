@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,19 +34,18 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
 
 
 class Pow2Warmup(LinearWarmup):
+
     def __init__(self, warmup_steps, total_steps, base_lr, end_lr):
         assert total_steps > warmup_steps
-        lr_sch = PolynomialDecay(
-            learning_rate=base_lr,
-            decay_steps=total_steps - warmup_steps,
-            end_lr=end_lr,
-            power=2)
+        lr_sch = PolynomialDecay(learning_rate=base_lr,
+                                 decay_steps=total_steps - warmup_steps,
+                                 end_lr=end_lr,
+                                 power=2)
 
-        super(Pow2Warmup, self).__init__(
-            learning_rate=lr_sch,
-            warmup_steps=warmup_steps,
-            start_lr=0.0,
-            end_lr=base_lr)
+        super(Pow2Warmup, self).__init__(learning_rate=lr_sch,
+                                         warmup_steps=warmup_steps,
+                                         start_lr=0.0,
+                                         end_lr=base_lr)
 
 
 def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):
@@ -58,6 +57,7 @@ def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):
 
 
 class TestPow2WarmupLRScheduler(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         self.params = {

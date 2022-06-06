@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
@@ -66,8 +67,8 @@ float Algo(const phi::GPUContext& ctx,
                      N);
 #else
   VLOG(3) << "Vecsize is " << Vecsize;
-  VecSumTest<float, Vecsize><<<blocks, threads, 0, ctx.stream()>>>(
-      d_in_data, d_out_data, N);
+  VecSumTest<float, Vecsize>
+      <<<blocks, threads, 0, ctx.stream()>>>(d_in_data, d_out_data, N);
 #endif
   return Vecsize;
 }

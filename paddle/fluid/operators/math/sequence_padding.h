@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -64,13 +65,14 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
   PADDLE_ENFORCE_EQ(
       seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
           seq_tensor_dims.size() == pad_tensor_dims.size(),
-      true, platform::errors::InvalidArgument(
-                "pad_tensor's rank should be 1 greater than seq_tensor's "
-                "rank, or be equal with it. The pad_tensor's rank is %ld, "
-                "expected the seq_tensor's rank is %ld or %ld, but got %ld. "
-                "Please check the input value.",
-                pad_tensor_dims.size(), pad_tensor_dims.size(),
-                pad_tensor_dims.size() - 1, seq_tensor_dims.size()));
+      true,
+      platform::errors::InvalidArgument(
+          "pad_tensor's rank should be 1 greater than seq_tensor's "
+          "rank, or be equal with it. The pad_tensor's rank is %ld, "
+          "expected the seq_tensor's rank is %ld or %ld, but got %ld. "
+          "Please check the input value.",
+          pad_tensor_dims.size(), pad_tensor_dims.size(),
+          pad_tensor_dims.size() - 1, seq_tensor_dims.size()));
 }
 
 /*

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
+
 #include <memory>
+
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {

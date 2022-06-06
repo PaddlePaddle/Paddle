@@ -21,6 +21,7 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestHighOrderGrad(unittest.TestCase):
+
     def test_dp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "high_order_grad.py")

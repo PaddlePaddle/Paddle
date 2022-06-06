@@ -16,6 +16,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT
@@ -264,7 +265,7 @@ class NCCLCommunicator {
    *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
    *create a new nccl comm for sync_batch_norm_op. And these codes should be
    *polished with a unified nccl management.
-  */
+   */
   NCCLContextMap *GetSyncBatchNormCtx(
       framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);

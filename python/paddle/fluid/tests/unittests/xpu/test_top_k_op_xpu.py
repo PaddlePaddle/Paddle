@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from paddle.fluid.op import Operator
 import paddle.fluid.core as core
@@ -29,6 +30,7 @@ paddle.enable_static()
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestTopkOp(OpTest):
+
     def setUp(self):
         self.variable_k = False
         self.use_xpu = True

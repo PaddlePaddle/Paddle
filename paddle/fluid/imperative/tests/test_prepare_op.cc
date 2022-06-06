@@ -17,9 +17,11 @@
 //
 
 #include <paddle/fluid/framework/op_registry.h>
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/prepared_operator.h"

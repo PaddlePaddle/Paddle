@@ -134,12 +134,12 @@ class DocstringChecker(BaseChecker):
                   symbol + "-missing", 'Add docstring longer >=10'),
         'W9006': ('Docstring indent error, use 4 space for indent',
                   symbol + "-indent-error", 'Use 4 space for indent'),
-        'W9007': ('You should add `Returns` in comments',
-                  symbol + "-with-returns",
-                  'There should be a `Returns` section in comments'),
-        'W9008': ('You should add `Raises` section in comments',
-                  symbol + "-with-raises",
-                  'There should be a `Raises` section in comments'),
+        'W9007':
+        ('You should add `Returns` in comments', symbol + "-with-returns",
+         'There should be a `Returns` section in comments'),
+        'W9008':
+        ('You should add `Raises` section in comments', symbol + "-with-raises",
+         'There should be a `Raises` section in comments'),
     }
     options = ()
 
@@ -333,17 +333,20 @@ class DocstringChecker(BaseChecker):
         parsed_args = doc.args
         args_not_documented = set(args) - set(parsed_args)
         if len(args) > 0 and len(parsed_args) <= 0:
-            self.add_message(
-                'W9003',
-                node=node,
-                line=node.fromlineno,
-                args=list(args_not_documented))
+            self.add_message('W9003',
+                             node=node,
+                             line=node.fromlineno,
+                             args=list(args_not_documented))
             return False
 
         for t in args:
             if t not in parsed_args:
-                self.add_message(
-                    'W9003', node=node, line=node.fromlineno, args=[t, ])
+                self.add_message('W9003',
+                                 node=node,
+                                 line=node.fromlineno,
+                                 args=[
+                                     t,
+                                 ])
                 return False
 
         return True

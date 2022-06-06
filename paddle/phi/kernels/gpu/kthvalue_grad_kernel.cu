@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/kthvalue_grad_kernel.h"
-
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/kthvalue_grad_kernel.h"
 
 namespace phi {
 static int getBlockSize(int col) {
@@ -53,9 +52,9 @@ void KthvalueGradKernel(const Context& dev_ctx,
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
-  paddle::operators::AssignGradWithAxis<
-      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
-      out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
+  paddle::operators::AssignGradWithAxis<T>
+      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+          out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }
 
 }  // namespace phi

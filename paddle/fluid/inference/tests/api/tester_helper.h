@@ -1081,7 +1081,7 @@ static bool CompareTensor(const framework::LoDTensor &a,
 }
 
 void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
-                       ) {
+) {
   int num = 1;
   for (auto dim : tensor.shape) {
     num *= dim;
@@ -1101,7 +1101,7 @@ void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
 }
 
 void ConvertFP16toFP32(paddle::PaddleTensor &tensor  // NOLINT
-                       ) {
+) {
   int num = 1;
   for (auto dim : tensor.shape) {
     num *= dim;

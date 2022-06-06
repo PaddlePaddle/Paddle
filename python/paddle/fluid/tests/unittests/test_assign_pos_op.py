@@ -68,6 +68,7 @@ def assert_allclose(res, out, cum_count):
 
 
 def get_redefined_allclose(cum_count):
+
     def redefined_allclose(x, y, *args, **kwargs):
         return assert_allclose(x, y, cum_count)
 
@@ -77,6 +78,7 @@ def get_redefined_allclose(cum_count):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestAssignPosOpInt64(op_test.OpTest):
+
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -98,6 +100,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestAssignPosAPI(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(self.x, 16)
@@ -109,12 +112,15 @@ class TestAssignPosAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            cum_count = paddle.fluid.data(
-                'cum_count', self.cum_count.shape, dtype="int64")
+            cum_count = paddle.fluid.data('cum_count',
+                                          self.cum_count.shape,
+                                          dtype="int64")
             out = utils._assign_pos(x, cum_count)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': self.x,
-                                "cum_count": self.cum_count},
+            res = exe.run(feed={
+                'x': self.x,
+                "cum_count": self.cum_count
+            },
                           fetch_list=[out])
             assert_allclose(res[0], self.out, self.cum_count)
 

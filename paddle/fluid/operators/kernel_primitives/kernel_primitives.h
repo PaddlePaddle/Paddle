@@ -19,4 +19,4 @@ namespace paddle {
 namespace operators {
 namespace kernel_primitives = phi::kps;
 }
-}
+}  // namespace paddle

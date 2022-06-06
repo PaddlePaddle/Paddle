@@ -168,8 +168,9 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(gpu_alloc_size_, size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
@@ -223,8 +224,9 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   gpuError_t err;
-  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
-                                  "The index should be 1, but got %d", index));
+  PADDLE_ENFORCE_EQ(index, 1,
+                    platform::errors::InvalidArgument(
+                        "The index should be 1, but got %d", index));
 
   PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size,
                     platform::errors::InvalidArgument(
@@ -310,8 +312,9 @@ void* NPUAllocator::Alloc(size_t* index, size_t size) {
 
 void NPUAllocator::Free(void* p, size_t size, size_t index) {
   VLOG(4) << "Free " << p << " size " << size;
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(npu_alloc_size_, size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
@@ -355,8 +358,9 @@ void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
   aclError err;
-  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
-                                  "The index should be 1, but got %d", index));
+  PADDLE_ENFORCE_EQ(index, 1,
+                    platform::errors::InvalidArgument(
+                        "The index should be 1, but got %d", index));
 
   PADDLE_ENFORCE_GE(npu_pinnd_alloc_size_, size,
                     platform::errors::InvalidArgument(
@@ -425,8 +429,9 @@ void* MLUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void MLUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(mlu_alloc_size_, size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "
@@ -469,8 +474,9 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
 
 void CustomAllocator::Free(void* p, size_t size, size_t index) {
   VLOG(4) << "CustomAllocator::Free " << p << " size " << size;
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The index should be 0, index is %d", index));
   PADDLE_ENFORCE_GE(plug_alloc_size, size,
                     platform::errors::InvalidArgument(
                         "The size of memory (%d) to free exceeds the size of "

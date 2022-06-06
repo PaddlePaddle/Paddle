@@ -14,8 +14,10 @@
 
 #pragma once
 #include <glog/logging.h>
+
 #include <memory>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/common/layout.h"
 

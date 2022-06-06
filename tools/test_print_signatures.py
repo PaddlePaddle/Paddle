@@ -1,13 +1,13 @@
 #! /usr/bin/env python
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +55,7 @@ class ClassExample():
 
 
 class Test_all_in_print_signatures(unittest.TestCase):
+
     def test_md5(self):
         algo = hashlib.md5()
         algo.update(func_example.__doc__.encode('utf-8'))
@@ -63,12 +64,13 @@ class Test_all_in_print_signatures(unittest.TestCase):
 
 
 class Test_is_primitive(unittest.TestCase):
+
     def test_single(self):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
-        self.assertFalse(
-            is_primitive("hello paddle".encode('UTF-8')))  # True for python2
+        self.assertFalse(is_primitive(
+            "hello paddle".encode('UTF-8')))  # True for python2
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 

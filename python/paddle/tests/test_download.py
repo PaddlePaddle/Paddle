@@ -20,6 +20,7 @@ from paddle.utils.download import get_path_from_url
 
 
 class TestDownload(unittest.TestCase):
+
     def download(self, url, md5sum):
         get_weights_path_from_url(url, md5sum)
 
@@ -106,7 +107,8 @@ class TestDownload(unittest.TestCase):
             from paddle.utils.download import _download
             _download(
                 'www.baidu.com',
-                './test', )
+                './test',
+            )
 
     def test_wget_download_error(self, ):
         with self.assertRaises(RuntimeError):
@@ -131,7 +133,8 @@ class TestDownload(unittest.TestCase):
                 _download(
                     url,
                     path='./test',
-                    method=method, )
+                    method=method,
+                )
 
 
 if __name__ == '__main__':
