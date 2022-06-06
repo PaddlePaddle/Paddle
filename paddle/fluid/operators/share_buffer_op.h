@@ -27,8 +27,9 @@ class ShareBufferOpKernel : public framework::OpKernel<T> {
     const auto inputs = ctx.MultiInput<framework::Tensor>("X");
     auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
     size_t n = inputs.size();
-    PADDLE_ENFORCE_EQ(n, outputs.size(), platform::errors::PermissionDenied(
-                                             "Variable number not match."));
+    PADDLE_ENFORCE_EQ(
+        n, outputs.size(),
+        platform::errors::PermissionDenied("Variable number not match."));
     const auto &share_dims_and_dtype =
         ctx.Attr<std::vector<bool>>("share_dims_and_dtype");
     if (!share_dims_and_dtype.empty()) {

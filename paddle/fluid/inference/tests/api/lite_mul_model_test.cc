@@ -14,11 +14,12 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <cmath>
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {

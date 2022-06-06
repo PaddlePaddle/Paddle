@@ -15,7 +15,9 @@ limitations under the License. */
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include <vector>
+
 #include "paddle/fluid/operators/ctc_align_op.h"
 
 namespace paddle {
@@ -92,10 +94,10 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto* output_length = ctx.Output<LoDTensor>("OutputLength");
       T* output_length_data =
           output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
-      PaddingMergeAndDelCudaKernel<
-          T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
-          input_dims[1], tokens, input_length_data, blank, merge_repeated,
-          padding_value, input_dims[0], output_data, output_length_data);
+      PaddingMergeAndDelCudaKernel<T>
+          <<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
+              input_dims[1], tokens, input_length_data, blank, merge_repeated,
+              padding_value, input_dims[0], output_data, output_length_data);
     } else {
       const size_t level = 0;
       auto input_lod = framework::ToAbsOffset(input->lod());

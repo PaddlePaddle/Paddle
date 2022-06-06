@@ -16,6 +16,7 @@
 
 #include <Eigen/Dense>
 #include <cstdarg>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/svd_helper.h"
@@ -89,11 +90,11 @@ class QrGradKernel : public framework::OpKernel<T> {
     }
 
     // m >= n case
-    auto m_gt_n_case = [](
-        const framework::ExecutionContext& ctx,
-        math::DeviceIndependenceTensorOperations<DeviceContext, T>& dito,
-        const Tensor& dQ, const Tensor& dR, const Tensor& A, const Tensor& Q,
-        const Tensor& R) -> framework::Tensor {
+    auto m_gt_n_case =
+        [](const framework::ExecutionContext& ctx,
+           math::DeviceIndependenceTensorOperations<DeviceContext, T>& dito,
+           const Tensor& dQ, const Tensor& dR, const Tensor& A, const Tensor& Q,
+           const Tensor& R) -> framework::Tensor {
       // Hai-Jun Liao, Jin-Guo Liu, Lei Wang, Tao Xiang (2019). Differentiable
       // Programming Tensor Networks.
       // https://arxiv.org/abs/1903.09650 Section 3. QR factorization

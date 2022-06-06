@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32

@@ -374,9 +374,9 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
         v_transpose_out, qkv_transpose_out, softmax_out, fmha_out, &config);
 
     // 3. Gating Linear
-    Tensor *fmha_or_gate_out =
-        !has_gating ? fmha_out : ComputeGatingLinearForward<T>(ctx, config,
-                                                               query, fmha_out);
+    Tensor *fmha_or_gate_out = !has_gating ? fmha_out
+                                           : ComputeGatingLinearForward<T>(
+                                                 ctx, config, query, fmha_out);
 
     // 4. Output Linear
     ComputeOutputLinearForward<T>(ctx, config, fmha_or_gate_out);

@@ -11,19 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <algorithm>
-#include <map>
-#include <set>
+#include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/dlnne_reg_py.h"
-#include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -52,18 +52,39 @@ using framework::ir::Node;
 
 void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
   static std::unordered_set<std::string> teller_set{
-      "mul", "matmul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-      "hard_swish", "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
-      "elementwise_add", "elementwise_mul", "dropout", "prelu",
-      "conv2d_transpose", "leaky_relu",
+      "mul",
+      "matmul",
+      "conv2d",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "leaky_relu",
       // "fc",
-      "shuffle_channel", "swish", "split",
+      "shuffle_channel",
+      "swish",
+      "split",
       // "instance_norm",
       "gelu",
       // "layer_norm",
       // "scale",
       // "stack",
-      "relu6", "reshape2", "transpose2", "concat", "slice",
+      "relu6",
+      "reshape2",
+      "transpose2",
+      "concat",
+      "slice",
   };
 
   framework::ir::FusePassBase::Init("dlnne_subgraph_pass", graph);

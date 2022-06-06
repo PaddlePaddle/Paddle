@@ -23,6 +23,7 @@ np.random.seed(102)
 
 
 class TestNanmedian(unittest.TestCase):
+
     def setUp(self):
         single_axis_shape = (120)
         multi_axis_shape = (2, 3, 4, 5)
@@ -32,8 +33,10 @@ class TestNanmedian(unittest.TestCase):
             np.random.uniform(-1, 1, single_axis_shape).astype(np.float32),
             "multi_axis_normal":
             np.random.uniform(-1, 1, multi_axis_shape).astype(np.float32),
-            "single_axis_all_nan": np.full(single_axis_shape, np.nan),
-            "multi_axis_all_nan": np.full(multi_axis_shape, np.nan),
+            "single_axis_all_nan":
+            np.full(single_axis_shape, np.nan),
+            "multi_axis_all_nan":
+            np.full(multi_axis_shape, np.nan),
         }
 
         single_partial_nan = self.fake_data["single_axis_normal"].copy()
@@ -108,15 +111,15 @@ class TestNanmedian(unittest.TestCase):
                         continue
 
                 np_res = np.nanmedian(data, keepdims=keep_dim)
-                pd_res = paddle.nanmedian(
-                    paddle.to_tensor(data), keepdim=keep_dim)
+                pd_res = paddle.nanmedian(paddle.to_tensor(data),
+                                          keepdim=keep_dim)
                 self.assertTrue(
-                    np.allclose(
-                        np_res, pd_res.numpy(), equal_nan=True))
+                    np.allclose(np_res, pd_res.numpy(), equal_nan=True))
 
         def test_axis_case(data, axis):
-            pd_res = paddle.nanmedian(
-                paddle.to_tensor(data), axis=axis, keepdim=False)
+            pd_res = paddle.nanmedian(paddle.to_tensor(data),
+                                      axis=axis,
+                                      keepdim=False)
             axis = clean_axis_numpy(axis, len(data.shape))
             np_res = np.nanmedian(data, axis=axis, keepdims=False)
             self.assertTrue(np.allclose(np_res, pd_res.numpy(), equal_nan=True))

@@ -96,6 +96,18 @@ Tensor conv2d_impl(const Tensor& input,
                    int workspace_size_MB,
                    bool exhaustive_search);
 
+Tensor conv3d_impl(const Tensor& input,
+                   const Tensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::string& paddding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search);
+
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
 Tensor embedding_impl(const Tensor& x,
@@ -134,6 +146,21 @@ void add_n_grad_impl(const std::vector<Tensor>& x,
                      std::vector<Tensor*> x_grad);
 
 void conv2d_grad_impl(const Tensor& input,
+                      const Tensor& filter,
+                      const Tensor& out_grad,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& paddding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      bool use_addto,
+                      int workspace_size_MB,
+                      bool exhaustive_search,
+                      Tensor* input_grad,
+                      Tensor* filter_grad);
+
+void conv3d_grad_impl(const Tensor& input,
                       const Tensor& filter,
                       const Tensor& out_grad,
                       const std::vector<int>& strides,

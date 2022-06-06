@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
+
     def run_fleet_executor(self, place, fleet_opt=dict()):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/npu_allocator.h"
+
 #include <string>
+
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 

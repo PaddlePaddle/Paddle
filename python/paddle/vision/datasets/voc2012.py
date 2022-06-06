@@ -99,8 +99,8 @@ class VOC2012(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+                    backend))
         self.backend = backend
 
         self.flag = MODE_FLAG_MAP[mode.lower()]
@@ -108,8 +108,9 @@ class VOC2012(Dataset):
         self.data_file = data_file
         if self.data_file is None:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
-                data_file, VOC_URL, VOC_MD5, CACHE_DIR, download)
+            self.data_file = _check_exists_and_download(data_file, VOC_URL,
+                                                        VOC_MD5, CACHE_DIR,
+                                                        download)
         self.transform = transform
 
         # read dataset into memory
