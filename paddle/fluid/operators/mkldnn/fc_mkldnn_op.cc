@@ -464,7 +464,7 @@ class FCPrimitiveFactory {
     std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
-    
+
     float sum_scale = 1.0f;
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
