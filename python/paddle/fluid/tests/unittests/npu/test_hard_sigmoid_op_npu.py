@@ -32,6 +32,7 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 
 
 class TestNPUHardSigmoid(OpTest):
+
     def setUp(self):
         paddle.enable_static()
 
@@ -74,18 +75,21 @@ class TestNPUHardSigmoid(OpTest):
 
 
 class TestNPUHardSigmoid2(TestNPUHardSigmoid):
+
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.5
 
 
 class TestNPUHardSigmoid3(TestNPUHardSigmoid):
+
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.4
 
 
 class TestNPUHardSigmoidFp16(TestNPUHardSigmoid):
+
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 
@@ -142,12 +146,14 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[12, 10],
+                                        dtype='int32')
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
-                name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[12, 10],
+                                       dtype='float16')
             F.hardsigmoid(x_fp16)
 
 

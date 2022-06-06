@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"

@@ -315,14 +315,15 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
       MatMul(context, a, trans_a, b, trans_b, out);
     } else {
       auto &dev_ctx = context.template device_context<DeviceContext>();
-      MatMul(
-          context, is_fold_init_dims_a
-                       ? FoldInitDims(a)
-                       : XPUFoldHeadAndLastDims<DeviceContext, T>(dev_ctx, a),
-          trans_a, is_fold_init_dims_b
-                       ? FoldInitDims(b)
-                       : XPUFoldHeadAndLastDims<DeviceContext, T>(dev_ctx, b),
-          trans_b, out);
+      MatMul(context,
+             is_fold_init_dims_a
+                 ? FoldInitDims(a)
+                 : XPUFoldHeadAndLastDims<DeviceContext, T>(dev_ctx, a),
+             trans_a,
+             is_fold_init_dims_b
+                 ? FoldInitDims(b)
+                 : XPUFoldHeadAndLastDims<DeviceContext, T>(dev_ctx, b),
+             trans_b, out);
     }
   }
 

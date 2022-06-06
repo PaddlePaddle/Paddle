@@ -17,12 +17,14 @@
 #include <ThreadPool.h>
 #include <assert.h>
 #include <pthread.h>
+
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"

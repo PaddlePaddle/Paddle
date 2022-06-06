@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ import time
 
 
 class CollectiveController(Controller):
+
     @classmethod
     def enable(cls, ctx):
         # collective is the default mode
@@ -54,9 +55,10 @@ class CollectiveController(Controller):
             'endpoints': ",".join(endpoints),
         })
 
-        peer_list, rank = self.master.sync_peers(
-            '/{}/info'.format(self.job.id), self.pod.name, data,
-            self.job.replicas, self.pod.rank)
+        peer_list, rank = self.master.sync_peers('/{}/info'.format(self.job.id),
+                                                 self.pod.name, data,
+                                                 self.job.replicas,
+                                                 self.pod.rank)
         self.pod.rank = rank
 
         if len(peer_list) < 1:
@@ -79,8 +81,7 @@ class CollectiveController(Controller):
         self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
-            self.ctx.args.devices, self.ctx.args.device_num)
-
+            self.ctx.args.devices)
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -96,8 +97,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-
-            if self.pod.replicas == 1 or self.ctx.node.device.dtype == "ipu":
+            if self.pod.replicas == 1:
                 e.update({selected_dev_key: ",".join(selected_dev_list)})
             else:
                 e.update({selected_dev_key: selected_dev_list[i]})
@@ -107,6 +107,7 @@ class CollectiveController(Controller):
 
 
 class CollectiveElasticController(CollectiveController):
+
     @classmethod
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
@@ -135,8 +136,9 @@ class CollectiveElasticController(CollectiveController):
 
             self.ctx.logger.info("Waiting peer ready...")
 
-            ok, replicas = self.master.wait_peer_ready(
-                self.job.replicas_min, self.job.replicas_max, timeout)
+            ok, replicas = self.master.wait_peer_ready(self.job.replicas_min,
+                                                       self.job.replicas_max,
+                                                       timeout)
             if ok:
                 self.job.replicas = replicas
             else:

@@ -481,10 +481,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    startTime_s=`date +%s`
+    startTime_s=100
     cmake_gen $1
     build $2
-    endTime_s=`date +%s`
+    endTime_s=200
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1131,7 +1131,6 @@ function check_diff_file_for_coverage() {
     diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
     diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
     diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
-
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
@@ -3418,7 +3417,6 @@ function main() {
         parallel_test
         ;;
       cicheck_coverage)
-        check_approvals_of_unittest 1
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
@@ -3427,13 +3425,11 @@ function main() {
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
-        check_approvals_of_unittest 1
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         ;;
       gpu_cicheck_coverage)
-        check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}

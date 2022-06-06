@@ -34,6 +34,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
+#endif
 
 DECLARE_bool(use_mkldnn);
 
@@ -96,11 +99,12 @@ static void CheckOutputVarStatus(const Variable &src_var,
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().IsInitialized(),
-                      true, platform::errors::InvalidArgument(
-                                "The tensor in output variable %s get from "
-                                "RunProgram(Grad)Op's "
-                                "internal scope is not initialized.",
-                                var_name));
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The tensor in output variable %s get from "
+                          "RunProgram(Grad)Op's "
+                          "internal scope is not initialized.",
+                          var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -167,13 +171,84 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
+static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
+    const std::string &mode) {
+  if (mode == "global") {
+    return cudaStreamCaptureModeGlobal;
+  } else if (mode == "thread_local") {
+    return cudaStreamCaptureModeThreadLocal;
+  } else if (mode == "relaxed") {
+    return cudaStreamCaptureModeRelaxed;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupported CUDA Graph capture mode %s", mode));
+  }
+}
+#endif
+
 }  // namespace details
 
 template <typename DeviceContext, typename T>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
+    auto is_test = ctx.Attr<bool>("is_test");
+    if (capture_mode.empty()) {
+      ComputeImpl(ctx, is_test, false);
+      return;
+    }
+
+#ifdef PADDLE_WITH_CUDA
+    auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+    auto *graph_var = ctx.OutputVar("CUDAGraph");
+    PADDLE_ENFORCE_NOT_NULL(
+        graph_var,
+        phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+                                     "cuda_graph_capture_mode is valid."));
+    using GraphVecType = std::vector<std::unique_ptr<CUDAGraphWithInOuts>>;
+    auto &inner_graphs = *(graph_var->GetMutable<GraphVecType>());
+    inner_graphs.resize(std::max<size_t>(3, inner_graphs.size()));
+    size_t graph_idx = is_test ? 0 : 1;
+    if (inner_graphs[graph_idx].get() == nullptr) {
+      int64_t pool_id;
+      if (inner_graphs[1 - graph_idx].get() != nullptr) {
+        pool_id = inner_graphs[1 - graph_idx]->PoolID();
+      } else {
+        pool_id = ctx.Attr<int64_t>("cuda_graph_pool_id");
+      }
+
+      framework::PEAndGraphPair pe_and_graph;
+      auto callable = [this, is_test, &pe_and_graph](
+                          const framework::ExecutionContext &exe_ctx) {
+        pe_and_graph = ComputeImpl(exe_ctx, is_test, true);
+      };
+      inner_graphs[graph_idx] = CaptureCUDAGraph(
+          callable, ctx, {"X"}, {"Out", "DOut"}, mode, pool_id);
+      VLOG(10) << "Capture Forward CUDA Graph";
+    } else {
+      VLOG(10) << "Run Forward CUDA Graph directly";
+      ExecuteCUDAGraph(ctx, {"X"}, {"Out", "DOut"},
+                       inner_graphs[graph_idx].get());
+    }
+#else
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+#endif
+  }
+
+ private:
+  framework::PEAndGraphPair ComputeImpl(const framework::ExecutionContext &ctx,
+                                        bool is_test,
+                                        bool use_cuda_graph) const {
     VLOG(2) << "RunProgramOpKernel Compute";
+    framework::PEAndGraphPair pe_and_graph;
     // Step 1. prepare inputs, outputs, attrs
     auto &input_vars = ctx.MultiInputVar("X");
     auto &param_vars = ctx.MultiInputVar("Params");
@@ -192,7 +267,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
-    auto is_test = ctx.Attr<bool>("is_test");
     auto program_id = ctx.Attr<int64_t>("program_id");
 
     // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -223,15 +297,29 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     if (end_op_index > start_op_index) {
       auto *program = global_block->Program();
-      auto cache_info = framework::GetExecutorInfoFromCache(
-          *program, ctx.GetPlace(), start_op_index, end_op_index,
-          /*is_grad=*/false, program_id, &scope);
-      auto &parallel_executor = cache_info.first;
+      bool is_new_created;
+      if (use_cuda_graph) {
+        pe_and_graph = framework::CreateFixOrderExecutorInfo(
+            *program, ctx.GetPlace(), start_op_index, end_op_index, &scope);
+        is_new_created = true;
+      } else {
+        auto cache_info = framework::GetExecutorInfoFromCache(
+            *program, ctx.GetPlace(), start_op_index, end_op_index,
+            /*is_grad=*/false, program_id, &scope);
+        pe_and_graph.first = cache_info.first;
+        is_new_created = cache_info.second;
+      }
+
+      auto &parallel_executor = pe_and_graph.first;
+
       // all out_vars are skip_eager_var
+      std::vector<std::string> tmp_vars;
       auto &skip_eager_delete_vars =
-          framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
-              program_id, false);
-      if (cache_info.second /*is_new_created*/) {
+          use_cuda_graph
+              ? tmp_vars
+              : framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+                    program_id, false);
+      if (is_new_created) {
         parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, input_var_names);
         skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
                                       output_var_names.begin(),
@@ -263,6 +351,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
+    return pe_and_graph;
   }
 };
 
@@ -270,14 +359,68 @@ template <typename DeviceContext, typename T>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
+    if (capture_mode.empty()) {
+      ComputeImpl(ctx, false);
+      return;
+    }
+
+#ifdef PADDLE_WITH_CUDA
+    auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+    auto *graph_var =
+        const_cast<framework::Variable *>(ctx.InputVar("CUDAGraph"));
+    PADDLE_ENFORCE_NOT_NULL(
+        graph_var,
+        phi::errors::InvalidArgument("Output(CUDAGraph) must exist when "
+                                     "cuda_graph_capture_mode is valid."));
+    auto &inner_graphs = *(
+        graph_var
+            ->GetMutable<std::vector<std::unique_ptr<CUDAGraphWithInOuts>>>());
+    const size_t graph_idx = 2;
+    if (inner_graphs[graph_idx].get() == nullptr) {
+      framework::PEAndGraphPair pe_and_graph;
+      auto callable =
+          [this, &pe_and_graph](const framework::ExecutionContext &exe_ctx) {
+            pe_and_graph = ComputeImpl(exe_ctx, true);
+          };
+      int64_t pool_id = inner_graphs[0].get() != nullptr
+                            ? inner_graphs[0]->PoolID()
+                            : inner_graphs[1]->PoolID();
+      inner_graphs[graph_idx] =
+          CaptureCUDAGraph(callable, ctx, {framework::GradVarName("Out")},
+                           {framework::GradVarName("X")}, mode, pool_id);
+      VLOG(10) << "Capture Backward CUDA Graph";
+    } else {
+      ExecuteCUDAGraph(ctx, {framework::GradVarName("Out")},
+                       {framework::GradVarName("X")},
+                       inner_graphs[graph_idx].get());
+      VLOG(10) << "Run Backward CUDA Graph directly";
+    }
+#else
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
+                                     "valid when using NVIDIA GPU."));
+#endif
+  }
+
+ private:
+  framework::PEAndGraphPair ComputeImpl(const framework::ExecutionContext &ctx,
+                                        bool use_cuda_graph) const {
     VLOG(2) << "RunProgramGradOpKernel Compute";
+    framework::PEAndGraphPair pe_and_graph;
     // Step 1. prepare inputs and outputs
     auto &output_grad_vars = ctx.MultiInputVar(framework::GradVarName("Out"));
     auto input_grad_vars = ctx.MultiOutputVar(framework::GradVarName("X"));
     auto param_grad_vars = ctx.MultiOutputVar(framework::GradVarName("Params"));
 
     // if all output vars are set to stop_gradient, grad op no need to executed
-    if (input_grad_vars.empty() && param_grad_vars.empty()) return;
+    if (input_grad_vars.empty() && param_grad_vars.empty()) {
+      return pe_and_graph;
+    }
 
     auto output_grad_var_names = ctx.InputNames(framework::GradVarName("Out"));
     // NOTE: after PR22939 [Add double grad] merged, the grad op maker's
@@ -321,15 +464,27 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     if (end_op_index > start_op_index) {
       // Step 2. prepare executor and scope
       auto *program = global_block->Program();
-      auto cache_info = framework::GetExecutorInfoFromCache(
-          *program, ctx.GetPlace(), start_op_index, end_op_index,
-          /*is_grad*/ true, program_id, &scope);
-      auto &parallel_executor = cache_info.first;
+      bool is_new_created;
+      if (use_cuda_graph) {
+        pe_and_graph = framework::CreateFixOrderExecutorInfo(
+            *program, ctx.GetPlace(), start_op_index, end_op_index, &scope);
+        is_new_created = true;
+      } else {
+        auto cache_info = framework::GetExecutorInfoFromCache(
+            *program, ctx.GetPlace(), start_op_index, end_op_index,
+            /*is_grad*/ true, program_id, &scope);
+        pe_and_graph.first = cache_info.first;
+        is_new_created = cache_info.second;
+      }
 
+      auto &parallel_executor = pe_and_graph.first;
+      std::vector<std::string> tmp_vars;
       auto &skip_eager_delete_vars =
-          framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
-              program_id, true);
-      if (cache_info.second /*is_new_created*/) {
+          use_cuda_graph
+              ? tmp_vars
+              : framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+                    program_id, true);
+      if (is_new_created) {
         parallel_executor->SkipMemoryReuse(/*scope_idx=*/0,
                                            output_grad_var_names);
 
@@ -360,6 +515,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     global_inner_scope->DeleteScope(&scope);
     VLOG(2) << "The number of sub scopes after backward: "
             << global_inner_scope->kids().size();
+    return pe_and_graph;
   }
 };
 

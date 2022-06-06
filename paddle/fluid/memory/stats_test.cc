@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/stats.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
 #include "gtest/gtest.h"
 
 namespace paddle {

@@ -204,7 +204,8 @@ class RandomSampler(Sampler):
 
         if self._num_samples is not None and not replacement:
             raise ValueError(
-                "num_samples should not be specified while replacement is False")
+                "num_samples should not be specified while replacement is False"
+            )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError("num_samples should be a positive integer, "
@@ -227,12 +228,13 @@ class RandomSampler(Sampler):
                 yield index
         else:
             if self.replacement:
-                for index in np.random.choice(
-                        np.arange(n), self.num_samples, replace=True).tolist():
+                for index in np.random.choice(np.arange(n),
+                                              self.num_samples,
+                                              replace=True).tolist():
                     yield index
             else:
-                for index in np.random.choice(
-                        np.arange(n), n, replace=False).tolist():
+                for index in np.random.choice(np.arange(n), n,
+                                              replace=False).tolist():
                     yield index
 
     def __len__(self):

@@ -13,8 +13,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/expand_v2_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/expand_v2_op.h"
 
 namespace paddle {
 namespace operators {
@@ -110,10 +110,11 @@ class ExpandV2XPUKernel : public framework::OpKernel<T> {
       r = xpu::broadcast<XPUType>(dev_ctx.x_context(), x_data, out_data,
                                   x_shape, out_shape);
     }
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                          "XPU API(broadcast) return wrong "
-                                          "value[%d %s] in ExpandV2XPUKernel.",
-                                          r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU API(broadcast) return wrong "
+                                   "value[%d %s] in ExpandV2XPUKernel.",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 

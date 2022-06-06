@@ -63,19 +63,22 @@ TEST(ENFORCE, FAILED) {
 TEST(ENFORCE, NO_ARG_OK) {
   int a = 2;
   int b = 2;
-  PADDLE_ENFORCE_EQ(a, b, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_EQ tests failed."));
+  PADDLE_ENFORCE_EQ(
+      a, b,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
   // test enforce with extra message.
-  PADDLE_ENFORCE_EQ(a, b, paddle::platform::errors::Unavailable(
-                              "Some %s wrong in PADDLE_ENFORCE_EQ.", "info"));
+  PADDLE_ENFORCE_EQ(a, b,
+                    paddle::platform::errors::Unavailable(
+                        "Some %s wrong in PADDLE_ENFORCE_EQ.", "info"));
 }
 
 TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
-                                    "The result is not equal correct result."));
+    PADDLE_ENFORCE_EQ(a, 1 + 3,
+                      paddle::platform::errors::InvalidArgument(
+                          "The result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -89,8 +92,9 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
-                                    "The result is not equal correct result."));
+    PADDLE_ENFORCE_EQ(a, 1 + 3,
+                      paddle::platform::errors::InvalidArgument(
+                          "The result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -102,10 +106,12 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
 }
 
 TEST(ENFORCE_NE, OK) {
-  PADDLE_ENFORCE_NE(1, 2, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_NE tests failed."));
-  PADDLE_ENFORCE_NE(1.0, 2UL, paddle::platform::errors::Unavailable(
-                                  "PADDLE_ENFORCE_NE tests failed."));
+  PADDLE_ENFORCE_NE(
+      1, 2,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
+  PADDLE_ENFORCE_NE(
+      1.0, 2UL,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_NE tests failed."));
 }
 TEST(ENFORCE_NE, FAIL) {
   bool caught_exception = false;
@@ -125,14 +131,16 @@ TEST(ENFORCE_NE, FAIL) {
 }
 
 TEST(ENFORCE_GT, OK) {
-  PADDLE_ENFORCE_GT(2, 1, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_GT tests failed."));
+  PADDLE_ENFORCE_GT(
+      2, 1,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_GT tests failed."));
 }
 TEST(ENFORCE_GT, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GT(1, 2, paddle::platform::errors::InvalidArgument(
-                                "Expected 1 > 2, but received 1:1 <= 2:2."));
+    PADDLE_ENFORCE_GT(1, 2,
+                      paddle::platform::errors::InvalidArgument(
+                          "Expected 1 > 2, but received 1:1 <= 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -143,18 +151,22 @@ TEST(ENFORCE_GT, FAIL) {
 }
 
 TEST(ENFORCE_GE, OK) {
-  PADDLE_ENFORCE_GE(2, 2, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_GE tests failed."));
-  PADDLE_ENFORCE_GE(3, 2, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_GE tests failed."));
-  PADDLE_ENFORCE_GE(3.21, 2.0, paddle::platform::errors::Unavailable(
-                                   "PADDLE_ENFORCE_GE tests failed."));
+  PADDLE_ENFORCE_GE(
+      2, 2,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
+  PADDLE_ENFORCE_GE(
+      3, 2,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
+  PADDLE_ENFORCE_GE(
+      3.21, 2.0,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_GE tests failed."));
 }
 TEST(ENFORCE_GE, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GE(1, 2, paddle::platform::errors::InvalidArgument(
-                                "Expected 1 >= 2, but received 1:1 < 2:2."));
+    PADDLE_ENFORCE_GE(1, 2,
+                      paddle::platform::errors::InvalidArgument(
+                          "Expected 1 >= 2, but received 1:1 < 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -165,22 +177,28 @@ TEST(ENFORCE_GE, FAIL) {
 }
 
 TEST(ENFORCE_LE, OK) {
-  PADDLE_ENFORCE_LE(1, 1, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_LE tests failed."));
-  PADDLE_ENFORCE_LE(1UL, 1UL, paddle::platform::errors::Unavailable(
-                                  "PADDLE_ENFORCE_LE tests failed."));
-  PADDLE_ENFORCE_LE(2, 3, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_LE tests failed."));
-  PADDLE_ENFORCE_LE(2UL, 3UL, paddle::platform::errors::Unavailable(
-                                  "PADDLE_ENFORCE_LE tests failed."));
-  PADDLE_ENFORCE_LE(2.0, 3.2, paddle::platform::errors::Unavailable(
-                                  "PADDLE_ENFORCE_LE tests failed."));
+  PADDLE_ENFORCE_LE(
+      1, 1,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+  PADDLE_ENFORCE_LE(
+      1UL, 1UL,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+  PADDLE_ENFORCE_LE(
+      2, 3,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+  PADDLE_ENFORCE_LE(
+      2UL, 3UL,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
+  PADDLE_ENFORCE_LE(
+      2.0, 3.2,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LE tests failed."));
 }
 TEST(ENFORCE_LE, FAIL) {
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_GT(1, 2, paddle::platform::errors::InvalidArgument(
-                                "Expected 1 > 2, but received 1:1 <= 2:2."));
+    PADDLE_ENFORCE_GT(1, 2,
+                      paddle::platform::errors::InvalidArgument(
+                          "Expected 1 > 2, but received 1:1 <= 2:2."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -191,12 +209,15 @@ TEST(ENFORCE_LE, FAIL) {
 }
 
 TEST(ENFORCE_LT, OK) {
-  PADDLE_ENFORCE_LT(3, 10, paddle::platform::errors::Unavailable(
-                               "PADDLE_ENFORCE_LT tests failed."));
-  PADDLE_ENFORCE_LT(2UL, 3UL, paddle::platform::errors::Unavailable(
-                                  "PADDLE_ENFORCE_LT tests failed."));
-  PADDLE_ENFORCE_LT(2, 3, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_LT tests failed."));
+  PADDLE_ENFORCE_LT(
+      3, 10,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
+  PADDLE_ENFORCE_LT(
+      2UL, 3UL,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
+  PADDLE_ENFORCE_LT(
+      2, 3,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_LT tests failed."));
 }
 TEST(ENFORCE_LT, FAIL) {
   bool caught_exception = false;
@@ -263,16 +284,18 @@ std::ostream& operator<<(std::ostream& os, const Dims& d) {
 
 TEST(ENFORCE_USER_DEFINED_CLASS, EQ) {
   Dims a{{1, 2, 3, 4}}, b{{1, 2, 3, 4}};
-  PADDLE_ENFORCE_EQ(a, b, paddle::platform::errors::Unavailable(
-                              "PADDLE_ENFORCE_EQ tests failed."));
+  PADDLE_ENFORCE_EQ(
+      a, b,
+      paddle::platform::errors::Unavailable("PADDLE_ENFORCE_EQ tests failed."));
 }
 
 TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
   Dims a{{1, 2, 3, 4}}, b{{5, 6, 7, 8}};
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, b, paddle::platform::errors::Unavailable(
-                                "PADDLE_ENFORCE_EQ tests failed."));
+    PADDLE_ENFORCE_EQ(a, b,
+                      paddle::platform::errors::Unavailable(
+                          "PADDLE_ENFORCE_EQ tests failed."));
   } catch (paddle::platform::EnforceNotMet&) {
     caught_exception = true;
   }
@@ -481,10 +504,12 @@ TEST(enforce, cannot_to_string_type) {
                 "int can be converted to string");
   CannotToStringType obj1(3), obj2(4), obj3(3);
 
-  PADDLE_ENFORCE_NE(obj1, obj2, paddle::platform::errors::InvalidArgument(
-                                    "Object 1 is not equal to Object 2"));
-  PADDLE_ENFORCE_EQ(obj1, obj3, paddle::platform::errors::InvalidArgument(
-                                    "Object 1 is equal to Object 3"));
+  PADDLE_ENFORCE_NE(obj1, obj2,
+                    paddle::platform::errors::InvalidArgument(
+                        "Object 1 is not equal to Object 2"));
+  PADDLE_ENFORCE_EQ(obj1, obj3,
+                    paddle::platform::errors::InvalidArgument(
+                        "Object 1 is equal to Object 3"));
 
   std::string msg = "Compare obj1 with obj2";
   try {

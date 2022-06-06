@@ -14,11 +14,12 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/uniform_random_op.h"
 
 namespace paddle {
 namespace operators {

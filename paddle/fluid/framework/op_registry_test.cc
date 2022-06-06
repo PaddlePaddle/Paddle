@@ -12,10 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace pd = paddle::framework;
 
@@ -58,8 +58,9 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddInput("input", "input of cosine op").AsDuplicable();
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
-      PADDLE_ENFORCE_EQ(i % 2, 0, platform::errors::InvalidArgument(
-                                      "'test_attr' must be even!"));
+      PADDLE_ENFORCE_EQ(
+          i % 2, 0,
+          platform::errors::InvalidArgument("'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);

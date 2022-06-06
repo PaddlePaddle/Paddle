@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -21,8 +22,8 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using framework::DDim;
+using framework::Tensor;
 const int kDefaultDim = framework::DDim::kMaxRank;
 
 class CrossOp : public framework::OperatorWithKernel {
