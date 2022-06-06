@@ -43,6 +43,8 @@ class SimpleModel(nn.Layer):
 class TestCudaGraphAttr(unittest.TestCase):
 
     def test_layer(self):
+        if not is_cuda_graph_supported():
+            return
         model = SimpleModel(10, 20)
         cuda_graph_model = wrap_cuda_graph(model)
         x = paddle.static.data(shape=[3, 10], dtype='float32')
