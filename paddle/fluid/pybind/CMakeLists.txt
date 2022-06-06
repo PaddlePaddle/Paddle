@@ -335,7 +335,7 @@ if(WITH_PYTHON)
     if(WITH_ONNXRUNTIME)
       add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB}
                 ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS paddle2onnx)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
