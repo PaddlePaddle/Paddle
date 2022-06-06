@@ -54,9 +54,14 @@ TEST(NodeTreesTest, LogMe_case0) {
                                      "GPU:0", 50, 50));
   mem_events.push_back(MemTraceEvent(11900, 0x1000, TracerMemEventType::Free,
                                      10, 10, -50, "GPU:0", 0, 50));
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{1, 2, 3});
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
+  dtypes[std::string("X")].push_back(std::string("int8"));
+  dtypes[std::string("X")].push_back(std::string("float32"));
   op_supplement_events.push_back(OperatorSupplementEvent(
-      11600, "op1", std::map<std::string, std::vector<std::vector<int64_t>>>(),
-      std::map<std::string, std::vector<std::string>>(), "op1()", 10, 10));
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
@@ -109,6 +114,7 @@ TEST(NodeTreesTest, LogMe_case0) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(NodeTreesTest, LogMe_case1) {
@@ -163,6 +169,7 @@ TEST(NodeTreesTest, LogMe_case1) {
     }
   }
   tree.LogMe(&logger);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
 
 TEST(NodeTreesTest, HandleTrees_case0) {
@@ -237,4 +244,5 @@ TEST(NodeTreesTest, HandleTrees_case0) {
   tree.HandleTrees(host_event_node_handle, runtime_event_node_handle,
                    device_event_node_handle, mem_event_node_handle,
                    op_supplement_event_node_handle);
+  logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
 }
