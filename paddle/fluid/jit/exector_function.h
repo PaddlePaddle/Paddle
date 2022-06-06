@@ -30,19 +30,25 @@ class ExectorFunction : public BaseFunction {
   ~ExectorFunction() {}
 
   std::vector<IValue> operator()(const std::vector<IValue> &inputs) {
-    // TODO(dev): support other devices
-    framework::Executor inner_exe_{phi::CPUPlace()};
+    if (inner_exe_ == nullptr) {
+      // TODO(dev): support other devices
+      inner_exe_ = new framework::Executor(phi::CPUPlace());
+    }
+
     // share input into scope
     ShareIntoScope(inputs);
     // run program
-    inner_exe_.Run(program_desc_, &scope_, /*blockID=*/0, false, true,
-                   schema_.GetOutputArgNames());
+    inner_exe_->Run(program_desc_, &scope_, /*blockID=*/0, false, true,
+                    schema_.GetOutputArgNames());
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
     // fetch outputs
     std::vector<IValue> res;
     FetchOutput(&res);
     return res;
   }
+
+ private:
+  framework::Executor *inner_exe_ = nullptr;
 };
 
 }  // namespace jit
