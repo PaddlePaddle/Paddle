@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -41,8 +42,8 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed = {
-            "x": np.random.uniform(
-                low=-2, high=2, size=[3, 5]).astype('float32'),
+            "x": np.random.uniform(low=-2, high=2, size=[3,
+                                                         5]).astype('float32'),
         }
 
     def set_feed_attr(self):
@@ -62,10 +63,9 @@ class TestBase(IPUOpTest):
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
+                x = paddle.static.data(name=self.feed_list[0],
+                                       shape=self.feed_shape[0],
+                                       dtype=self.feed_dtype[0])
 
                 out = self.op(x, reduction)
                 fetch_list = [out.name]

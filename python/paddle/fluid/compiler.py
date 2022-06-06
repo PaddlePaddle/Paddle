@@ -545,8 +545,8 @@ class IpuDynamicPatcher(object):
 
         # copy the bias and filters
         for param_or_buffer in concrete_program.parameters:
-            param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor(
-            )
+            param_or_buffer_tensor = scope.var(
+                param_or_buffer.name).get_tensor()
             src_tensor = param_or_buffer.value().get_tensor()
             param_or_buffer_tensor._share_data_with(src_tensor)
 
@@ -594,10 +594,10 @@ class IpuDynamicPatcher(object):
                     concrete_program.main_program,
                     to_fp16_var_names=to_fp16_var_names)
 
-            program = IpuCompiledProgram(
-                concrete_program.main_program,
-                ipu_strategy=ipu_strategy,
-                scope=scope).compile(feed_list, fetch_list)
+            program = IpuCompiledProgram(concrete_program.main_program,
+                                         ipu_strategy=ipu_strategy,
+                                         scope=scope).compile(
+                                             feed_list, fetch_list)
             return program
 
         main_program = func_compile()
@@ -646,8 +646,9 @@ class IpuDynamicPatcher(object):
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
                         "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
-                        format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
+                        .format(current_tracing_count,
+                                MAX_TRACED_PROGRAM_COUNT))
 
             return self._caches[item_id]
 
@@ -723,6 +724,7 @@ class IpuStrategy(object):
             raise RuntimeError("Only needs to set optimizer in dynamic mode.")
 
     def parse_optimizer(self, optimizer):
+
         def get_lr():
             from paddle.optimizer.lr import LRScheduler
             if isinstance(optimizer._learning_rate, float):

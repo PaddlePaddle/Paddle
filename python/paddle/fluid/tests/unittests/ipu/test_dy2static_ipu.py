@@ -27,11 +27,14 @@ SEED = 2022
 
 
 class SimpleLayer(paddle.nn.Layer):
+
     def __init__(self, use_ipu=False):
         super(SimpleLayer, self).__init__()
         self.use_ipu = use_ipu
-        self.conv = paddle.nn.Conv2D(
-            in_channels=3, out_channels=1, kernel_size=2, stride=1)
+        self.conv = paddle.nn.Conv2D(in_channels=3,
+                                     out_channels=1,
+                                     kernel_size=2,
+                                     stride=1)
 
     @to_static()
     def forward(self, x, target=None):
@@ -49,6 +52,7 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestBase(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         paddle.disable_static()
@@ -57,19 +61,18 @@ class TestBase(unittest.TestCase):
         paddle.seed(SEED)
         np.random.seed(SEED)
         model = SimpleLayer(use_ipu)
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=model.parameters())
+        optim = paddle.optimizer.Adam(learning_rate=0.01,
+                                      parameters=model.parameters())
         data = paddle.uniform((32, 3, 10, 10), dtype='float32')
         label = paddle.randint(0, 10, shape=[32], dtype='int64')
 
         if use_ipu:
             device = paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(
-                num_ipus=1,
-                is_training=True,
-                micro_batch_size=1,
-                enable_manual_shard=False)
+            ipu_strategy.set_graph_config(num_ipus=1,
+                                          is_training=True,
+                                          micro_batch_size=1,
+                                          enable_manual_shard=False)
             ipu_strategy.set_optimizer(optim)
 
         result = []

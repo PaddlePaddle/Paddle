@@ -1272,11 +1272,10 @@ def identity_loss(x, reduction="none"):
     helper = LayerHelper('identity_loss', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="identity_loss",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs=attrs)
+    helper.append_op(type="identity_loss",
+                     inputs={"X": x},
+                     outputs={"Out": out},
+                     attrs=attrs)
     return out
 
 
