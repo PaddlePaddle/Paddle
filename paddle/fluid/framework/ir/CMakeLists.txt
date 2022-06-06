@@ -311,6 +311,10 @@ cc_test(
   SRCS fc_fuse_pass_tester.cc
   DEPS fc_fuse_pass framework_proto)
 cc_test(
+  test_dense_fc_to_sparse_pass_cc
+  SRCS dense_fc_to_sparse_pass_tester.cc
+  DEPS fc_fuse_pass dense_fc_to_sparse_pass framework_proto)
+cc_test(
   test_fc_lstm_fuse_pass_cc
   SRCS fc_lstm_fuse_pass_tester.cc
   DEPS fc_lstm_fuse_pass framework_proto)
@@ -350,6 +354,10 @@ cc_test(
   test_multihead_matmul_fuse_pass
   SRCS multihead_matmul_fuse_pass_tester.cc
   DEPS multihead_matmul_fuse_pass)
+cc_test(
+  test_dense_multihead_matmul_to_sparse_pass
+  SRCS dense_multihead_matmul_to_sparse_pass_tester.cc
+  DEPS multihead_matmul_fuse_pass dense_multihead_matmul_to_sparse_pass)
 cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
