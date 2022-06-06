@@ -133,11 +133,12 @@ void ChromeTracingLogger::LogMemTraceEventNode(
       "addr": "%llu",
       "current_allocated": %llu,
       "current_reserved": %llu,
-      "increase_bytes": %lld:
+      "increase_bytes": %lld
     }
   },
   )JSON"),
-      mem_node.ProcessId(), mem_node.ThreadId(), mem_node.Place(),
+      mem_node.ProcessId(), mem_node.ThreadId(), mem_node.TimeStampNs(),
+      StringTracerMemEventType(mem_node.Type()), mem_node.Place().c_str(),
       mem_node.Addr(), mem_node.CurrentAllocated(), mem_node.CurrentReserved(),
       mem_node.IncreaseBytes());
 }

@@ -10,12 +10,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_node.h"
-
 #include <limits.h>
 #include <algorithm>
 #include <deque>
 #include <set>
 #include <stack>
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -344,14 +344,16 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
                           platform::errors::PreconditionNotMet(
                               "Operator supplement events should be embraced "
                               "by event of type TracerEventType::Operator, "
-                              "but got type "));
+                              "but got type TracerEventType::%s",
+                              StringTracerEventType((*it)->Type())));
         op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
           PADDLE_ENFORCE_EQ(op_supplement_count, 1,
-                            platform::errors::Fatal(
+                            platform::errors::PreconditionNotMet(
                                 "One event of TracerEventType::Operator has no "
-                                "more than 1 op supplement event, but got."));
+                                "more than 1 op supplement event, but got %d.",
+                                op_supplement_count));
           break;
         }
       }

@@ -22,41 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <typename basic_type>
-std::string json_vector(const std::vector<basic_type> type_vector) {
-  std::ostringstream res_stream;
-  auto count = type_vector.size();
-  res_stream << "[";
-  for (auto it = type_vector.begin(); it != type_vector.end(); it++) {
-    if (count > 1) {
-      res_stream << (*it) << ",";
-    } else {
-      res_stream << (*it);
-    }
-    count--;
-  }
-  res_stream << "]";
-  return res_stream.str();
-}
-
-template <typename basic_type>
-std::string json_vector(
-    const std::vector<std::vector<basic_type>> shape_vector) {
-  std::ostringstream res_stream;
-  auto count = shape_vector.size();
-  res_stream << "[";
-  for (auto it = shape_vector.begin(); it != shape_vector.end(); it++) {
-    if (count > 1) {
-      res_stream << json_vector(*it) << ",";
-    } else {
-      res_stream << json_vector(*it);
-    }
-    count--;
-  }
-  res_stream << "]";
-  return res_stream.str();
-}
-
 template <>
 std::string json_vector<std::string>(
     const std::vector<std::string> type_vector) {
@@ -73,25 +38,6 @@ std::string json_vector<std::string>(
     count--;
   }
   res_stream << "]";
-  return res_stream.str();
-}
-
-template <typename type>
-std::string json_dict(const std::map<std::string, std::vector<type>> data_map) {
-  std::ostringstream res_stream;
-  auto count = data_map.size();
-  res_stream << "{";
-  for (auto it = data_map.begin(); it != data_map.end(); it++) {
-    if (count > 1) {
-      res_stream << "\"" << it->first << "\""
-                 << ":" << json_vector(it->second) << ",";
-    } else {
-      res_stream << "\"" << it->first << "\""
-                 << ":" << json_vector(it->second);
-    }
-    count--;
-  }
-  res_stream << "}";
   return res_stream.str();
 }
 

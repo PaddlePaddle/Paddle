@@ -210,7 +210,8 @@ MemTraceEventNode* DeserializationReader::RestoreMemTraceEventNode(
   return new MemTraceEventNode(mem_event);
 }
 
-OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
+OperatorSupplementEventNode*
+DeserializationReader::RestoreOperatorSupplementEventNode(
     const OperatorSupplementEventNodeProto& op_supplement_node_proto) {
   const OperatorSupplementEventProto& op_supplement_event_proto =
       op_supplement_node_proto.op_supplement_event();
