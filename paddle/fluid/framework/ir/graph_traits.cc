@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/graph_traits.h"
+
 #include <list>
 #include <map>
-
-#include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {
 namespace framework {
@@ -76,21 +76,22 @@ NodesDFSIterator::NodesDFSIterator(const std::vector<Node *> &source) {
 }
 
 NodesDFSIterator::NodesDFSIterator(NodesDFSIterator &&other) noexcept
-    : stack_(std::move(other.stack_)),
-      visited_(std::move(other.visited_)) {}
+    : stack_(std::move(other.stack_)), visited_(std::move(other.visited_)) {}
 
 NodesDFSIterator::NodesDFSIterator(const NodesDFSIterator &other)
     : stack_(other.stack_), visited_(other.visited_) {}
 
 Node &NodesDFSIterator::operator*() {
-  PADDLE_ENFORCE_EQ(stack_.empty(), false, platform::errors::OutOfRange(
-                                               "The iterator exceeds range."));
+  PADDLE_ENFORCE_EQ(
+      stack_.empty(), false,
+      platform::errors::OutOfRange("The iterator exceeds range."));
   return *stack_.top();
 }
 
 NodesDFSIterator &NodesDFSIterator::operator++() {
-  PADDLE_ENFORCE_EQ(stack_.empty(), false, platform::errors::OutOfRange(
-                                               "The iterator exceeds range."));
+  PADDLE_ENFORCE_EQ(
+      stack_.empty(), false,
+      platform::errors::OutOfRange("The iterator exceeds range."));
   visited_.insert(stack_.top());
   auto *cur = stack_.top();
   stack_.pop();

@@ -16,9 +16,9 @@
 
 #include <glog/logging.h>
 #include <mlir/IR/BuiltinOps.h>
-#include <string>
 
 #include <memory>
+#include <string>
 
 namespace infrt {
 namespace dialect {

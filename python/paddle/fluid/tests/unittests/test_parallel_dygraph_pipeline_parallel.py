@@ -22,6 +22,7 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridPipeParallel(TestMultipleGpus):
+
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py', eager_mode=False)
@@ -32,8 +33,8 @@ class TestHybridPipeParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_shared_weight(self):
         self.run_mnist_2gpu('hybrid_parallel_shared_weight.py')
-        self.run_mnist_2gpu(
-            'hybrid_parallel_shared_weight.py', eager_mode=False)
+        self.run_mnist_2gpu('hybrid_parallel_shared_weight.py',
+                            eager_mode=False)
 
     def test_pipeline_parallel_amp(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_amp.py')
@@ -45,8 +46,8 @@ class TestHybridPipeParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_transformer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer.py')
-        self.run_mnist_2gpu(
-            'hybrid_parallel_pp_transformer.py', eager_mode=False)
+        self.run_mnist_2gpu('hybrid_parallel_pp_transformer.py',
+                            eager_mode=False)
 
     def test_hybrid_parallel_save_load(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_save_load.py')

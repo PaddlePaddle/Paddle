@@ -19,11 +19,13 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
 
 #else
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"

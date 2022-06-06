@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_feed.h"
+
 #include <fcntl.h>
+
 #include <chrono>  // NOLINT
 #include <fstream>
 #include <iostream>
@@ -23,6 +25,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"

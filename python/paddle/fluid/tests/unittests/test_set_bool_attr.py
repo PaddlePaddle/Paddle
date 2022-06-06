@@ -17,6 +17,7 @@ import unittest
 
 
 class TestAttrSet(unittest.TestCase):
+
     def test_set_bool_attr(self):
         x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
         param_attr = fluid.ParamAttr(
@@ -25,8 +26,9 @@ class TestAttrSet(unittest.TestCase):
         bias_attr = fluid.ParamAttr(
             name='batch_norm_b',
             initializer=fluid.initializer.Constant(value=0.0))
-        bn = fluid.layers.batch_norm(
-            input=x, param_attr=param_attr, bias_attr=bias_attr)
+        bn = fluid.layers.batch_norm(input=x,
+                                     param_attr=param_attr,
+                                     bias_attr=bias_attr)
         block = fluid.default_main_program().desc.block(0)
         op = block.op(0)
         before_type = op.attr_type('is_test')
