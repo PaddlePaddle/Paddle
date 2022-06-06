@@ -18,28 +18,32 @@ import unittest
 
 
 def call_MultiLabelSoftMarginLoss_layer(
-        input,
-        label,
-        weight=None,
-        reduction='mean', ):
+    input,
+    label,
+    weight=None,
+    reduction='mean',
+):
     multilabel_margin_loss = paddle.nn.MultiLabelSoftMarginLoss(
         weight=weight, reduction=reduction)
     res = multilabel_margin_loss(
         input=input,
-        label=label, )
+        label=label,
+    )
     return res
 
 
 def call_MultiLabelSoftMarginLoss_functional(
-        input,
-        label,
-        weight=None,
-        reduction='mean', ):
+    input,
+    label,
+    weight=None,
+    reduction='mean',
+):
     res = paddle.nn.functional.multi_label_soft_margin_loss(
         input,
         label,
         reduction=reduction,
-        weight=weight, )
+        weight=weight,
+    )
     return res
 
 
@@ -53,26 +57,33 @@ def test_static(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.static.data(
-            name='input', shape=input_np.shape, dtype='float64')
-        label = paddle.static.data(
-            name='label', shape=label_np.shape, dtype='float64')
+        input = paddle.static.data(name='input',
+                                   shape=input_np.shape,
+                                   dtype='float64')
+        label = paddle.static.data(name='label',
+                                   shape=label_np.shape,
+                                   dtype='float64')
         feed_dict = {
             "input": input_np,
             "label": label_np,
         }
         weight = None
         if weight_np is not None:
-            weight = paddle.static.data(
-                name='weight', shape=weight_np.shape, dtype='float64')
+            weight = paddle.static.data(name='weight',
+                                        shape=weight_np.shape,
+                                        dtype='float64')
             feed_dict['weight'] = weight_np
 
         if functional:
-            res = call_MultiLabelSoftMarginLoss_functional(
-                input=input, label=label, weight=weight, reduction=reduction)
+            res = call_MultiLabelSoftMarginLoss_functional(input=input,
+                                                           label=label,
+                                                           weight=weight,
+                                                           reduction=reduction)
         else:
-            res = call_MultiLabelSoftMarginLoss_layer(
-                input=input, label=label, weight=weight, reduction=reduction)
+            res = call_MultiLabelSoftMarginLoss_layer(input=input,
+                                                      label=label,
+                                                      weight=weight,
+                                                      reduction=reduction)
 
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
@@ -95,17 +106,21 @@ def test_dygraph(place,
             dy_res = call_MultiLabelSoftMarginLoss_functional(
                 input=input, label=label, weight=weight, reduction=reduction)
         else:
-            dy_res = call_MultiLabelSoftMarginLoss_layer(
-                input=input, label=label, weight=weight, reduction=reduction)
+            dy_res = call_MultiLabelSoftMarginLoss_layer(input=input,
+                                                         label=label,
+                                                         weight=weight,
+                                                         reduction=reduction)
         dy_result = dy_res.numpy()
         return dy_result
 
 
 def calc_multilabel_margin_loss(
-        input,
-        label,
-        weight=None,
-        reduction="mean", ):
+    input,
+    label,
+    weight=None,
+    reduction="mean",
+):
+
     def LogSigmoid(x):
         return np.log(1 / (1 + np.exp(-x)))
 
@@ -125,6 +140,7 @@ def calc_multilabel_margin_loss(
 
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
+
     def test_MultiLabelSoftMarginLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
@@ -135,53 +151,48 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                expected = calc_multilabel_margin_loss(
-                    input=input, label=label, reduction=reduction)
+                expected = calc_multilabel_margin_loss(input=input,
+                                                       label=label,
+                                                       reduction=reduction)
 
-                dy_result = test_dygraph(
-                    place=place,
-                    input_np=input,
-                    label_np=label,
-                    reduction=reduction)
+                dy_result = test_dygraph(place=place,
+                                         input_np=input,
+                                         label_np=label,
+                                         reduction=reduction)
 
-                static_result = test_static(
-                    place=place,
-                    input_np=input,
-                    label_np=label,
-                    reduction=reduction)
+                static_result = test_static(place=place,
+                                            input_np=input,
+                                            label_np=label,
+                                            reduction=reduction)
                 self.assertTrue(np.allclose(static_result, expected))
                 self.assertTrue(np.allclose(static_result, dy_result))
                 self.assertTrue(np.allclose(dy_result, expected))
-                static_functional = test_static(
-                    place=place,
-                    input_np=input,
-                    label_np=label,
-                    reduction=reduction,
-                    functional=True)
-                dy_functional = test_dygraph(
-                    place=place,
-                    input_np=input,
-                    label_np=label,
-                    reduction=reduction,
-                    functional=True)
+                static_functional = test_static(place=place,
+                                                input_np=input,
+                                                label_np=label,
+                                                reduction=reduction,
+                                                functional=True)
+                dy_functional = test_dygraph(place=place,
+                                             input_np=input,
+                                             label_np=label,
+                                             reduction=reduction,
+                                             functional=True)
                 self.assertTrue(np.allclose(static_functional, expected))
                 self.assertTrue(np.allclose(static_functional, dy_functional))
                 self.assertTrue(np.allclose(dy_functional, expected))
 
     def test_MultiLabelSoftMarginLoss_error(self):
         paddle.disable_static()
-        self.assertRaises(
-            ValueError,
-            paddle.nn.MultiLabelSoftMarginLoss,
-            reduction="unsupport reduction")
+        self.assertRaises(ValueError,
+                          paddle.nn.MultiLabelSoftMarginLoss,
+                          reduction="unsupport reduction")
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         label = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
-        self.assertRaises(
-            ValueError,
-            paddle.nn.functional.multi_label_soft_margin_loss,
-            input=input,
-            label=label,
-            reduction="unsupport reduction")
+        self.assertRaises(ValueError,
+                          paddle.nn.functional.multi_label_soft_margin_loss,
+                          input=input,
+                          label=label,
+                          reduction="unsupport reduction")
         paddle.enable_static()
 
     def test_MultiLabelSoftMarginLoss_weights(self):
@@ -190,39 +201,37 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         weight = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
         place = 'cpu'
         reduction = 'mean'
-        expected = calc_multilabel_margin_loss(
-            input=input, label=label, weight=weight, reduction=reduction)
+        expected = calc_multilabel_margin_loss(input=input,
+                                               label=label,
+                                               weight=weight,
+                                               reduction=reduction)
 
-        dy_result = test_dygraph(
-            place=place,
-            input_np=input,
-            label_np=label,
-            weight=weight,
-            reduction=reduction)
+        dy_result = test_dygraph(place=place,
+                                 input_np=input,
+                                 label_np=label,
+                                 weight=weight,
+                                 reduction=reduction)
 
-        static_result = test_static(
-            place=place,
-            input_np=input,
-            label_np=label,
-            weight_np=weight,
-            reduction=reduction)
+        static_result = test_static(place=place,
+                                    input_np=input,
+                                    label_np=label,
+                                    weight_np=weight,
+                                    reduction=reduction)
         self.assertTrue(np.allclose(static_result, expected))
         self.assertTrue(np.allclose(static_result, dy_result))
         self.assertTrue(np.allclose(dy_result, expected))
-        static_functional = test_static(
-            place=place,
-            input_np=input,
-            label_np=label,
-            weight_np=weight,
-            reduction=reduction,
-            functional=True)
-        dy_functional = test_dygraph(
-            place=place,
-            input_np=input,
-            label_np=label,
-            weight=weight,
-            reduction=reduction,
-            functional=True)
+        static_functional = test_static(place=place,
+                                        input_np=input,
+                                        label_np=label,
+                                        weight_np=weight,
+                                        reduction=reduction,
+                                        functional=True)
+        dy_functional = test_dygraph(place=place,
+                                     input_np=input,
+                                     label_np=label,
+                                     weight=weight,
+                                     reduction=reduction,
+                                     functional=True)
         self.assertTrue(np.allclose(static_functional, expected))
         self.assertTrue(np.allclose(static_functional, dy_functional))
         self.assertTrue(np.allclose(dy_functional, expected))
@@ -232,11 +241,10 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
 
         input = paddle.to_tensor([[0.1, 0.3], [1, 2]], dtype='float32')
         label = paddle.to_tensor([[0.2, 0.1]], dtype='float32')
-        self.assertRaises(
-            ValueError,
-            paddle.nn.functional.multi_label_soft_margin_loss,
-            input=input,
-            label=label)
+        self.assertRaises(ValueError,
+                          paddle.nn.functional.multi_label_soft_margin_loss,
+                          input=input,
+                          label=label)
         paddle.enable_static()
 
 
