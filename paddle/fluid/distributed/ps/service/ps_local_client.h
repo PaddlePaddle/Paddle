@@ -223,5 +223,5 @@ class PsLocalClient : public PSClient {
   float _mse = 0;
   uint16_t _push_times = 0;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

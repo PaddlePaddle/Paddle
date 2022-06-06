@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ from paddle.distributed.passes import new_pass, PassContext
 
 
 class PsProgramBuilder(object):
+
     def __init__(self, pass_ctx):
         self.pass_ctx = pass_ctx
         self.attrs = self.pass_ctx._attrs
@@ -88,11 +89,12 @@ class PsProgramBuilder(object):
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            fluid.framework.switch_startup_program(self.attrs[
-                '_startup_server'])
+            fluid.framework.switch_startup_program(
+                self.attrs['_startup_server'])
 
 
 class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
+
     def __init__(self, pass_ctx):
         super(GeoPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
@@ -117,6 +119,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode != DistributedMode.SYNC and self.ps_mode != DistributedMode.ASYNC:
@@ -159,6 +162,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
 
 class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
+
     def __init__(self, pass_ctx):
         super(CpuAsyncPsProgramBuilder, self).__init__(pass_ctx)
 
@@ -195,6 +199,7 @@ class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
 
 
 class GpuPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
         super(GpuPsProgramBuilder, self).__init__(pass_ctx)
 
@@ -227,6 +232,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):
 
 
 class HeterAsyncPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
         super(HeterAsyncPsProgramBuilder, self).__init__(pass_ctx)
 
@@ -278,17 +284,19 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
             self._build_trainer_programs()
             ps_set_heter_pipeline_opt_pass = new_pass(
                 "set_heter_pipeline_opt_pass", self.attrs)
-            ps_set_heter_pipeline_opt_pass.apply(
-                [self.cloned_main], [self.cloned_startup], self.pass_ctx)
+            ps_set_heter_pipeline_opt_pass.apply([self.cloned_main],
+                                                 [self.cloned_startup],
+                                                 self.pass_ctx)
 
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            fluid.framework.switch_startup_program(self.attrs[
-                '_startup_server'])
+            fluid.framework.switch_startup_program(
+                self.attrs['_startup_server'])
 
 
 class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
+
     def __init__(self, pass_ctx):
         super(FlPsProgramBuilder, self).__init__(pass_ctx)
 
@@ -352,12 +360,14 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
 
         if not self.is_heter_worker:
             _main_file = ps_log_root_dir + 'final_fl_A_main_program.prototxt'
-            debug_program(_main_file, self.attrs['origin_main_program']
-                          ._heter_pipeline_opt['section_program'])
+            debug_program(
+                _main_file, self.attrs['origin_main_program'].
+                _heter_pipeline_opt['section_program'])
         else:
             _main_file = ps_log_root_dir + 'final_fl_B_main_program.prototxt'
-            debug_program(_main_file, self.attrs['origin_main_program']
-                          ._heter_pipeline_opt['section_program'])
+            debug_program(
+                _main_file, self.attrs['origin_main_program'].
+                _heter_pipeline_opt['section_program'])
 
         return
 
@@ -373,6 +383,6 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
                 fluid.default_startup_program()._heter_pipeline_opt))
         else:
             self._build_pserver_programs()
-            fluid.framework.switch_startup_program(self.attrs[
-                '_startup_server'])
+            fluid.framework.switch_startup_program(
+                self.attrs['_startup_server'])
             fluid.framework.switch_main_program(self.attrs['_main_server'])

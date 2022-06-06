@@ -20,6 +20,7 @@ import paddle.distributed.fleet as fleet
 
 
 class DNNLayer(nn.Layer):
+
     def __init__(self,
                  sparse_feature_number,
                  sparse_feature_dim,
@@ -90,6 +91,7 @@ class DNNLayer(nn.Layer):
 
 
 class FlDNNLayer(nn.Layer):
+
     def __init__(self,
                  sparse_feature_number,
                  sparse_feature_dim,
@@ -202,8 +204,8 @@ class FlDNNLayer(nn.Layer):
     def interactive_layer(self, bottom_a, bottom_b):
         with paddle.fluid.device_guard(
                 self.PART_B_JOINT_OP_DEVICE_FlAG):  # joint point
-            interactive = paddle.fluid.layers.elementwise_add(bottom_a,
-                                                              bottom_b)
+            interactive = paddle.fluid.layers.elementwise_add(
+                bottom_a, bottom_b)
         return interactive
 
     def top_layer(self, interactive, label_input):
@@ -219,8 +221,8 @@ class FlDNNLayer(nn.Layer):
                                   num_thresholds=2**12,
                                   slide_steps=20)
 
-            cost = paddle.nn.functional.cross_entropy(
-                input=y_top, label=label_input)
+            cost = paddle.nn.functional.cross_entropy(input=y_top,
+                                                      label=label_input)
             avg_cost = paddle.mean(x=cost)
 
         return auc, avg_cost
@@ -238,6 +240,7 @@ class FlDNNLayer(nn.Layer):
 
 
 class StaticModel():
+
     def __init__(self, config):
         self.cost = None
         self.infer_target_var = None
@@ -265,14 +268,14 @@ class StaticModel():
         self.fc_sizes = self.config.get("hyper_parameters.fc_sizes")
 
     def create_feeds(self, is_infer=False):
-        dense_input = paddle.static.data(
-            name="dense_input",
-            shape=[None, self.dense_input_dim],
-            dtype="float32")
+        dense_input = paddle.static.data(name="dense_input",
+                                         shape=[None, self.dense_input_dim],
+                                         dtype="float32")
 
         sparse_input_ids = [
-            paddle.static.data(
-                name="C" + str(i), shape=[None, 1], dtype="int64")
+            paddle.static.data(name="C" + str(i),
+                               shape=[None, 1],
+                               dtype="int64")
             for i in range(1, self.sparse_inputs_slots)
         ]
 
@@ -287,13 +290,12 @@ class StaticModel():
         self.dense_input = input[-1]
         sparse_number = self.sparse_inputs_slots - 1
 
-        dnn_model = DNNLayer(
-            self.sparse_feature_number,
-            self.sparse_feature_dim,
-            self.dense_input_dim,
-            sparse_number,
-            self.fc_sizes,
-            sync_mode=self.sync_mode)
+        dnn_model = DNNLayer(self.sparse_feature_number,
+                             self.sparse_feature_dim,
+                             self.dense_input_dim,
+                             sparse_number,
+                             self.fc_sizes,
+                             sync_mode=self.sync_mode)
         raw_predict_2d = dnn_model.forward(self.sparse_inputs, self.dense_input)
         predict_2d = paddle.nn.functional.softmax(raw_predict_2d)
         self.predict = predict_2d
@@ -309,8 +311,8 @@ class StaticModel():
             fetch_dict = {'auc': auc}
             return fetch_dict
 
-        cost = paddle.nn.functional.cross_entropy(
-            input=raw_predict_2d, label=self.label_input)
+        cost = paddle.nn.functional.cross_entropy(input=raw_predict_2d,
+                                                  label=self.label_input)
         avg_cost = paddle.mean(x=cost)
         self._cost = avg_cost
 
@@ -323,12 +325,11 @@ class StaticModel():
         self.dense_input = input[-1]
         self.sparse_number = self.sparse_inputs_slots - 1
 
-        fl_dnn_model = FlDNNLayer(
-            self.sparse_feature_number,
-            self.sparse_feature_dim,
-            self.dense_input_dim,
-            self.sparse_number,
-            sync_mode=self.sync_mode)
+        fl_dnn_model = FlDNNLayer(self.sparse_feature_number,
+                                  self.sparse_feature_dim,
+                                  self.dense_input_dim,
+                                  self.sparse_number,
+                                  sync_mode=self.sync_mode)
 
         auc, avg_cost = fl_dnn_model.forward(self.sparse_inputs,
                                              self.dense_input, self.label_input)

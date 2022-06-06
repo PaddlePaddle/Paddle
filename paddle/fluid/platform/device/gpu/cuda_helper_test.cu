@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <iostream>
 #ifdef _WIN32
@@ -22,13 +23,12 @@
 
 #define PADDLE_CUDA_FP16
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {

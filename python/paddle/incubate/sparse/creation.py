@@ -48,8 +48,9 @@ def _get_place(place):
     place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace)):
+    elif not isinstance(
+            place,
+        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
@@ -122,8 +123,10 @@ def sparse_coo_tensor(indices,
     place = _get_place(place)
 
     if not isinstance(indices, core.eager.Tensor):
-        indices = to_tensor(
-            indices, dtype=None, place=place, stop_gradient=True)
+        indices = to_tensor(indices,
+                            dtype=None,
+                            place=place,
+                            stop_gradient=True)
     if not isinstance(values, core.eager.Tensor):
         values = to_tensor(values, dtype, place, stop_gradient)
     if len(indices.shape) != 2:
@@ -136,8 +139,8 @@ def sparse_coo_tensor(indices,
 
     if nnz != values.shape[0]:
         raise ValueError(
-            "the indices and values must have same number of non-zero, but get {} and {}".
-            format(nnz, values.shape[0]))
+            "the indices and values must have same number of non-zero, but get {} and {}"
+            .format(nnz, values.shape[0]))
 
     dense_dim = len(values.shape) - 1
 
@@ -155,15 +158,16 @@ def sparse_coo_tensor(indices,
         shape = min_shape
     else:
         if shape < min_shape:
-            raise ValueError("the minimun shape required is {}, but get {}".
-                             format(min_shape, shape))
+            raise ValueError(
+                "the minimun shape required is {}, but get {}".format(
+                    min_shape, shape))
         if len(shape) != sparse_dim + dense_dim:
             raise ValueError(
-                "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}".
-                format(sparse_dim, dense_dim, len(shape)))
+                "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}"
+                .format(sparse_dim, dense_dim, len(shape)))
 
-    return _C_ops.final_state_sparse_create_sparse_coo_tensor(values, indices,
-                                                              shape)
+    return _C_ops.final_state_sparse_create_sparse_coo_tensor(
+        values, indices, shape)
 
 
 #TODO: need to support shape is None
@@ -266,8 +270,8 @@ def sparse_csr_tensor(crows,
     if len(shape) == 2:
         if crows.shape[0] != shape[0] + 1:
             raise ValueError(
-                "The length({}) of crows must be equal to the rows({})+1 of matrix.".
-                format(crows.shape[0], shape[0]))
+                "The length({}) of crows must be equal to the rows({})+1 of matrix."
+                .format(crows.shape[0], shape[0]))
         if crows[0] != 0:
             raise ValueError("the 0th value of crows must be 0")
 
@@ -277,9 +281,9 @@ def sparse_csr_tensor(crows,
     else:
         if crows.shape[0] % (shape[0] + 1) != 0:
             raise ValueError(
-                "The length({}) of crows must be divisible the rows({})+1 of matrix.".
-                format(crows.shape[0], shape[0]))
-    # TODO(zkh2016): check whether the value in crows and cols is legal 
+                "The length({}) of crows must be divisible the rows({})+1 of matrix."
+                .format(crows.shape[0], shape[0]))
+    # TODO(zkh2016): check whether the value in crows and cols is legal
 
     return core.eager.sparse_csr_tensor(crows, cols, values, shape,
                                         stop_gradient)

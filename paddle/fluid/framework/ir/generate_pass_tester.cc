@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/generate_pass.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 REGISTER_GENERATE_PASS(generate_fc_fuse) {
   paddle::framework::ir::PassPairs pass_pairs;
   for (bool with_relu : {true, false}) {
     // pattern
-    SUBGRAPH_(pattern) =
-        [ subgraph = &pattern, with_relu ](VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(pattern) = [subgraph = &pattern, with_relu](VAR_(x), VAR_(y),
+                                                          VAR_(z)) {
       VLOG(3) << "exec lambda func.";
       auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
       auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
@@ -32,8 +32,8 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       }
     };
     // replace
-    SUBGRAPH_(replace) =
-        [ subgraph = &replace, with_relu ](VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](VAR_(x), VAR_(y),
+                                                          VAR_(z)) {
       auto& fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       return fc.Out("Out");
     };

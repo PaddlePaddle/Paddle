@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestGraphReindex(unittest.TestCase):
+
     def setUp(self):
         self.x = np.arange(5).astype("int64")
         self.neighbors = np.random.randint(100, size=20).astype("int64")
@@ -73,17 +74,17 @@ class TestGraphReindex(unittest.TestCase):
         reindex_src, reindex_dst, out_nodes = \
             paddle.incubate.graph_reindex(x, neighbors, count)
         self.assertTrue(
-            np.allclose(self.reindex_src, reindex_src[:self.neighbors.shape[
-                0]]))
+            np.allclose(self.reindex_src,
+                        reindex_src[:self.neighbors.shape[0]]))
         self.assertTrue(
-            np.allclose(self.reindex_src, reindex_src[self.neighbors.shape[
-                0]:]))
+            np.allclose(self.reindex_src,
+                        reindex_src[self.neighbors.shape[0]:]))
         self.assertTrue(
-            np.allclose(self.reindex_dst, reindex_dst[:self.neighbors.shape[
-                0]]))
+            np.allclose(self.reindex_dst,
+                        reindex_dst[:self.neighbors.shape[0]]))
         self.assertTrue(
-            np.allclose(self.reindex_dst, reindex_dst[self.neighbors.shape[
-                0]:]))
+            np.allclose(self.reindex_dst,
+                        reindex_dst[self.neighbors.shape[0]:]))
         self.assertTrue(np.allclose(self.out_nodes, out_nodes))
 
     def test_heter_reindex_result_v2(self):
@@ -122,18 +123,21 @@ class TestGraphReindex(unittest.TestCase):
     def test_reindex_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(
-                name="x", shape=self.x.shape, dtype=self.x.dtype)
-            neighbors = paddle.static.data(
-                name="neighbors",
-                shape=self.neighbors.shape,
-                dtype=self.neighbors.dtype)
-            count = paddle.static.data(
-                name="count", shape=self.count.shape, dtype=self.count.dtype)
-            value_buffer = paddle.static.data(
-                name="value_buffer", shape=[self.num_nodes], dtype="int32")
-            index_buffer = paddle.static.data(
-                name="index_buffer", shape=[self.num_nodes], dtype="int32")
+            x = paddle.static.data(name="x",
+                                   shape=self.x.shape,
+                                   dtype=self.x.dtype)
+            neighbors = paddle.static.data(name="neighbors",
+                                           shape=self.neighbors.shape,
+                                           dtype=self.neighbors.dtype)
+            count = paddle.static.data(name="count",
+                                       shape=self.count.shape,
+                                       dtype=self.count.dtype)
+            value_buffer = paddle.static.data(name="value_buffer",
+                                              shape=[self.num_nodes],
+                                              dtype="int32")
+            index_buffer = paddle.static.data(name="index_buffer",
+                                              shape=[self.num_nodes],
+                                              dtype="int32")
 
             reindex_src_1, reindex_dst_1, out_nodes_1 = \
                 paddle.incubate.graph_reindex(x, neighbors, count)
@@ -144,13 +148,16 @@ class TestGraphReindex(unittest.TestCase):
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={
-                'x': self.x,
-                'neighbors': self.neighbors,
-                'count': self.count,
-                'value_buffer': np.full(
-                    [self.num_nodes], -1, dtype="int32"),
-                'index_buffer': np.full(
-                    [self.num_nodes], -1, dtype="int32")
+                'x':
+                self.x,
+                'neighbors':
+                self.neighbors,
+                'count':
+                self.count,
+                'value_buffer':
+                np.full([self.num_nodes], -1, dtype="int32"),
+                'index_buffer':
+                np.full([self.num_nodes], -1, dtype="int32")
             },
                           fetch_list=[
                               reindex_src_1, reindex_dst_1, out_nodes_1,

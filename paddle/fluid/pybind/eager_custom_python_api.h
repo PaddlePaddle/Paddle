@@ -14,6 +14,7 @@
 #pragma once
 
 #include <iostream>
+
 #include "paddle/phi/core/enforce.h"
 
 static PyObject *eager_api_run_program(PyObject *self, PyObject *args,

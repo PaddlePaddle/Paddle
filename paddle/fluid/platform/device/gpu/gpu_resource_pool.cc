@@ -14,6 +14,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {

@@ -19,6 +19,7 @@ from paddle.text.datasets import Imikolov
 
 
 class TestImikolovTrain(unittest.TestCase):
+
     def test_main(self):
         imikolov = Imikolov(mode='train', data_type='NGRAM', window_size=2)
         self.assertTrue(len(imikolov) == 929589)
@@ -31,6 +32,7 @@ class TestImikolovTrain(unittest.TestCase):
 
 
 class TestImikolovTest(unittest.TestCase):
+
     def test_main(self):
         imikolov = Imikolov(mode='test', data_type='NGRAM', window_size=2)
         self.assertTrue(len(imikolov) == 82430)

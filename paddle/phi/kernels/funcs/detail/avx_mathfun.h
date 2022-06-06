@@ -356,11 +356,11 @@ v8sf sin256_ps(v8sf x) {  // any x
   /* scale by 4/Pi */
   y = _mm256_mul_ps(x, *(v8sf *)_ps256_cephes_FOPI);
 
-/*
-  Here we start a series of integer operations, which are in the
-  realm of AVX2.
-  If we don't have AVX, let's perform them using SSE2 directives
-*/
+  /*
+    Here we start a series of integer operations, which are in the
+    realm of AVX2.
+    If we don't have AVX, let's perform them using SSE2 directives
+  */
 
 #ifdef __AVX2__
   /* store the integer part of y in mm0 */

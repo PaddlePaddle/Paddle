@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"

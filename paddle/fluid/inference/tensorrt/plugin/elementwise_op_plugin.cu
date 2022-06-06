@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
 namespace paddle {
@@ -67,14 +68,16 @@ __global__ void elementwise_kernel(const size_t total, const T *x_data,
 
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *input_dims, int num_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "There is only one output in TRT elementwise "
-                                  "op plugin, but got output index: %d.",
-                                  index));
-  PADDLE_ENFORCE_EQ(num_inputs, 2, platform::errors::InvalidArgument(
-                                       "There are 2 inputs in TRT elementwise "
-                                       "op plugin, but got input number: %d.",
-                                       num_inputs));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "There is only one output in TRT elementwise "
+                        "op plugin, but got output index: %d.",
+                        index));
+  PADDLE_ENFORCE_EQ(
+      num_inputs, 2,
+      platform::errors::InvalidArgument("There are 2 inputs in TRT elementwise "
+                                        "op plugin, but got input number: %d.",
+                                        num_inputs));
   PADDLE_ENFORCE_NOT_NULL(
       input_dims,
       platform::errors::InvalidArgument(

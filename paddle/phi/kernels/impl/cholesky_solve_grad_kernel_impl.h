@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/kernels/cholesky_solve_grad_kernel.h"
-
 #include "paddle/phi/kernels/cholesky_solve_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/copy_kernel.h"

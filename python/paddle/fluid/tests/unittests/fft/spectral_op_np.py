@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,8 +52,8 @@ def _fftc2r(a, n=None, axis=-1, norm=None, forward=None):
         inv_norm = _get_forward_norm(n, norm)
     else:
         inv_norm = _get_backward_norm(n, norm)
-    output = _raw_fft(a.conj()
-                      if forward else a, n, axis, True, False, inv_norm)
+    output = _raw_fft(a.conj() if forward else a, n, axis, True, False,
+                      inv_norm)
     return output
 
 

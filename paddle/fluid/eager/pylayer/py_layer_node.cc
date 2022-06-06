@@ -13,18 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
 
@@ -34,8 +32,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 GradNodePyLayer::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph,
-    bool is_new_grad) {
+    bool create_graph, bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: " << name();
 
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 

@@ -99,11 +99,12 @@ static void CheckOutputVarStatus(const Variable &src_var,
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().IsInitialized(),
-                      true, platform::errors::InvalidArgument(
-                                "The tensor in output variable %s get from "
-                                "RunProgram(Grad)Op's "
-                                "internal scope is not initialized.",
-                                var_name));
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The tensor in output variable %s get from "
+                          "RunProgram(Grad)Op's "
+                          "internal scope is not initialized.",
+                          var_name));
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -224,7 +225,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
       framework::PEAndGraphPair pe_and_graph;
       auto callable = [this, is_test, &pe_and_graph](
-          const framework::ExecutionContext &exe_ctx) {
+                          const framework::ExecutionContext &exe_ctx) {
         pe_and_graph = ComputeImpl(exe_ctx, is_test, true);
       };
       inner_graphs[graph_idx] = CaptureCUDAGraph(

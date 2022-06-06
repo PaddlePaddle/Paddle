@@ -21,19 +21,22 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
-                name="data1", shape=[8, 32, 128], dtype="float32")
-            data2 = fluid.data(
-                name="data2", shape=[8, 32, 128], dtype="float32")
+            data1 = fluid.data(name="data1",
+                               shape=[8, 32, 128],
+                               dtype="float32")
+            data2 = fluid.data(name="data2",
+                               shape=[8, 32, 128],
+                               dtype="float32")
             trans1 = fluid.layers.transpose(data1, perm=[0, 2, 1])
             trans2 = fluid.layers.transpose(data2, perm=[0, 2, 1])
             flatt1 = fluid.layers.flatten(trans1)
             flatt2 = fluid.layers.flatten(trans2)
             concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
-            # There is no parameters for above structure. 
-            # Hence, append a batch_norm to avoid failure caused by load_combined. 
+            # There is no parameters for above structure.
+            # Hence, append a batch_norm to avoid failure caused by load_combined.
             reshape_out = fluid.layers.reshape(concat_out, [-1, 0, 1, 1])
             out = fluid.layers.batch_norm(reshape_out, is_test=True)
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <thrust/random.h>
 #include <thrust/sort.h>
+
 #include <iostream>
 #include <vector>
 

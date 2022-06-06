@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/lite/tensor_utils.h"
+
 #include <functional>
 #include <map>
 #include <memory>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/lite/engine.h"
@@ -26,9 +28,9 @@ namespace inference {
 namespace lite {
 namespace utils {
 
-using paddle::lite_api::TargetType;
-using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
+using paddle::lite_api::PrecisionType;
+using paddle::lite_api::TargetType;
 
 template <typename DstLoD, typename SrcLoD>
 void SetLoD(DstLoD* dst, const SrcLoD& src) {
