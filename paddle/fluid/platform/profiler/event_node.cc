@@ -335,10 +335,18 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   // build relationship between host event node and op supplement node
   for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
     int op_supplement_count = 0;
+    bool hasenter = false;
+    std::vector<OperatorSupplementEventNode*>::iterator firstposition;
+    std::vector<OperatorSupplementEventNode*>::iterator lastposition =
+        op_supplement_events.end();
     for (auto op_supplement_it = op_supplement_events.begin();
          op_supplement_it < op_supplement_events.end(); ++op_supplement_it) {
       if ((*op_supplement_it)->TimeStampNs() >= (*it)->StartNs() &&
           (*op_supplement_it)->TimeStampNs() <= (*it)->EndNs()) {
+        if (!hasenter) {
+          firstposition = op_supplement_it;
+          hasenter = true;
+        }
         (*it)->SetOperatorSupplementNode(*op_supplement_it);
         PADDLE_ENFORCE_EQ((*it)->Type(), TracerEventType::Operator,
                           platform::errors::PreconditionNotMet(
@@ -349,14 +357,18 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
         op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
-          PADDLE_ENFORCE_EQ(op_supplement_count, 1,
+          PADDLE_ENFORCE_LE(op_supplement_count, 1,
                             platform::errors::PreconditionNotMet(
                                 "One event of TracerEventType::Operator has no "
                                 "more than 1 op supplement event, but got %d.",
                                 op_supplement_count));
+          lastposition = op_supplement_it;
           break;
         }
       }
+    }
+    if (hasenter) {
+      op_supplement_events.erase(firstposition, lastposition);
     }
   }
 
