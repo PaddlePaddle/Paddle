@@ -342,6 +342,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
     """
 
     def decorate(func):
+
         def wrapper(*args, **kwargs):
             with ipu_shard_guard(index=index, stage=stage):
                 return func(*args, **kwargs)
@@ -358,6 +359,7 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
     # patch paddle.nn.Layer
     class BlockFn(type(call_func)):
+
         def __call__(self, *args, **kwargs):
             with ipu_shard_guard(index=index, stage=stage):
                 return super().__call__(*args, **kwargs)
