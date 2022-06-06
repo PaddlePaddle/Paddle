@@ -23,10 +23,10 @@
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/compat/type_defs.h"
 
 namespace paddle {
 namespace imperative {
@@ -88,8 +88,9 @@ TEST(test_var_helper, eager_var_helper) {
       egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
                                           platform::CPUPlace()));
   SetCachedValue<egr::EagerVariable>(
-      egr_tensor, framework::OpKernelType(framework::proto::VarType::FP32,
-                                          platform::CPUPlace()),
+      egr_tensor,
+      framework::OpKernelType(framework::proto::VarType::FP32,
+                              platform::CPUPlace()),
       egr_tensor2);
   ASSERT_ANY_THROW(GetPlace<egr::EagerVariable>(egr_tensor2));
   ASSERT_ANY_THROW(SetType<egr::EagerVariable>(
@@ -98,4 +99,4 @@ TEST(test_var_helper, eager_var_helper) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);

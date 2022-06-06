@@ -426,9 +426,9 @@ class CompiledProgram(object):
 
         return core.ParallelExecutor(
             places, self._persistable_vars,
-            cpt.to_text(self._loss_name)
-            if self._loss_name else six.u(''), self._scope, self._local_scopes,
-            self._exec_strategy, self._build_strategy, self._graph)
+            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
+            self._scope, self._local_scopes, self._exec_strategy,
+            self._build_strategy, self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -477,8 +477,9 @@ class CompiledProgram(object):
                 use_device = DeviceType.XPU
             else:
                 use_device = DeviceType.CPU
-            self._executor = self._compile_data_parallel(
-                use_device=use_device, scope=self._scope, places=self._places)
+            self._executor = self._compile_data_parallel(use_device=use_device,
+                                                         scope=self._scope,
+                                                         places=self._places)
         return self
 
     def _get_places(self, place, place_list):
@@ -542,7 +543,7 @@ class IpuStrategy(object):
     def set_graph_config(self,
                          num_ipus=1,
                          is_training=True,
-                         batch_size=1,
+                         micro_batch_size=1,
                          enable_manual_shard=False):
         """
         Set graph configuration to the IpuStrategy instance.
@@ -571,7 +572,7 @@ class IpuStrategy(object):
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_graph_config(num_ipus=1,
                                             is_training=True,
-                                            batch_size=1,
+                                            micro_batch_size=1,
                                             enable_manual_shard=False)
         """
         if num_ipus == 1 and enable_manual_shard:
@@ -581,7 +582,7 @@ class IpuStrategy(object):
         options = {
             'num_ipus': num_ipus,
             'is_training': is_training,
-            'micro_batch_size': batch_size,
+            'micro_batch_size': micro_batch_size,
             'enable_manual_shard': enable_manual_shard,
         }
         self.set_options(options)
@@ -589,6 +590,7 @@ class IpuStrategy(object):
     def set_pipelining_config(self,
                               enable_pipelining=False,
                               batches_per_step=1,
+                              enable_gradient_accumulation=False,
                               accumulation_factor=1):
         """
         Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
@@ -598,6 +600,8 @@ class IpuStrategy(object):
                 Default False, which means disabled.
             batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
                 Default 1, which means no data pipelining.
+            enable_gradient_accumulation (bool, optional): Enable to accumulate gradients before updating the weights in training mode. Only if enable_pipelining=True,
+                enable_gradient_accumulation is able to be set True. Default False, which means no gradient accumulation. 
             accumulation_factor (int, optional): Specify the number of micro-batches to accumulate 
                 before applying the varUpdate. Default 1, which means disable the accumulation.
         
@@ -617,6 +621,7 @@ class IpuStrategy(object):
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_pipelining_config(enable_pipelining=False,
                                                     batches_per_step=1,
+                                                    enable_gradient_accumulation=False,
                                                     accumulation_factor=1)
         """
         enable_manual_shard = self.get_option('enable_manual_shard')
@@ -627,6 +632,7 @@ class IpuStrategy(object):
         options = {
             'enable_pipelining': enable_pipelining,
             'batches_per_step': batches_per_step,
+            'enable_gradient_accumulation': enable_gradient_accumulation,
             'accumulation_factor': accumulation_factor,
         }
         self.set_options(options)
@@ -654,7 +660,9 @@ class IpuStrategy(object):
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_precision_config(enable_fp16=False)
         """
-        options = {'enable_fp16': enable_fp16, }
+        options = {
+            'enable_fp16': enable_fp16,
+        }
         self.set_options(options)
 
     def add_custom_op(self,
@@ -754,6 +762,56 @@ class IpuStrategy(object):
         """
         return self._ipu_strategy.get_option(option)['value']
 
+    def enable_pattern(self, pattern):
+        """
+        Enable PopART pattern to optimize the graph.
+
+        Args:
+            pattern(string): the name of the pattern.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.enable_pattern("ViewSimplifyPattern")
+        """
+        self._ipu_strategy.enable_pattern(pattern)
+
+    def disable_pattern(self, pattern):
+        """
+        Disable PopART pattern.
+
+        Args:
+            pattern(string): the name of the pattern.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.disable_pattern("ViewSimplifyPattern")
+        """
+        self._ipu_strategy.disable_pattern(pattern)
+
     @property
     def num_ipus(self):
         """
@@ -817,8 +875,8 @@ class IpuCompiledProgram(object):
             main_prog = static.default_main_program()
             
             ipu_strategy = static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
-            ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulation_factor=1)
+            ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
+            ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
             ipu_strategy.set_precision_config(enable_fp16=False)
             
             ipu_compiled_program = static.IpuCompiledProgram(
@@ -891,8 +949,8 @@ class IpuCompiledProgram(object):
                 main_prog = static.default_main_program()
 
                 ipu_strategy = static.IpuStrategy()
-                ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
-                ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulation_factor=1)
+                ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
+                ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
                 ipu_strategy.set_precision_config(enable_fp16=False)
                 
                 program = static.IpuCompiledProgram(
@@ -944,9 +1002,6 @@ class IpuCompiledProgram(object):
         a_pass = core.get_pass('popart_canonicalization_pass')
         if self._custom_op_names:
             a_pass.set('custom_ops', self._custom_op_names)
-        a_pass.apply(self._graph)
-
-        a_pass = core.get_pass("transfer_cast_op_pass")
         a_pass.apply(self._graph)
 
         passes = [

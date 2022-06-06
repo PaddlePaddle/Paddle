@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <ThreadPool.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <map>
@@ -30,6 +31,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -41,8 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/distributed/ps/service/ps_client.h"
 
 namespace paddle {
 namespace distributed {
@@ -157,8 +157,9 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
-                                            "vector vars are empty."));
+  PADDLE_ENFORCE_NE(
+      vars.empty(), true,
+      platform::errors::InvalidArgument("vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -299,7 +300,7 @@ class Communicator {
   virtual void Barrier() {}
 
   virtual void BarrierWithTable(uint32_t barrier_type) {
-    auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
+    auto rets = _worker_ptr->Barrier(barrier_table_id_, barrier_type);
     rets.wait();
     int status = rets.get();
     PADDLE_ENFORCE_EQ(status, 0,
@@ -310,7 +311,7 @@ class Communicator {
   virtual void CreateC2CConnection(int pserver_timeout_ms,
                                    int pserver_connect_timeout_ms,
                                    int max_retry) {
-    _worker_ptr->create_client2client_connection(
+    _worker_ptr->CreateClient2ClientConnection(
         pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
@@ -360,13 +361,13 @@ class Communicator {
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
 
-  std::unique_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
+  std::shared_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
     return std::move(_worker_ptr);
   }
 
   RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
 
-  std::unique_ptr<PSClient> _worker_ptr;  // pointer to worker
+  std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:
   bool running_ = false;
@@ -379,12 +380,12 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 
   // 计算每个shard 对 dense的存储量
-  inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
-                                      uint32_t shard_num) {
+  inline uint32_t DenseDimPerShard(uint32_t dense_dim_total,
+                                   uint32_t shard_num) {
     return dense_dim_total / shard_num + 1;
   }
 
-  void init_gflag(const std::string &gflags);
+  void InitGFlag(const std::string &gflags);
   paddle::distributed::PSParameter _ps_param;
   paddle::distributed::PaddlePSEnvironment _ps_env;
   int servers_ = 0;

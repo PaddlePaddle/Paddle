@@ -29,6 +29,9 @@ namespace ir {
 class Graph;
 class Node;
 
+bool IsReachable(ir::Graph *graph, Node *from, Node *to);
+Node *FindNode(ir::Graph *graph, const Node *node);
+
 template <typename IteratorT>
 class iterator_range {
   IteratorT begin_, end_;

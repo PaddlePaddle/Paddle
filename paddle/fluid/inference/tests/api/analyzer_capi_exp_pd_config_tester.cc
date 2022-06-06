@@ -15,8 +15,10 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -80,6 +82,18 @@ TEST(PD_Config, interface) {
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
 #endif
+
+  PD_ConfigEnableONNXRuntime(config);
+  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled(config);
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  EXPECT_TRUE(onnxruntime_enabled);
+#else
+  EXPECT_FALSE(onnxruntime_enabled);
+#endif
+  PD_ConfigDisableONNXRuntime(config);
+  bool onnxruntime_disabled = PD_ConfigONNXRuntimeEnabled(config);
+  EXPECT_FALSE(onnxruntime_disabled);
+  PD_ConfigEnableORTOptimization(config);
 
   PD_ConfigEnableMemoryOptim(config, true);
   bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);

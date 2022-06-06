@@ -17,6 +17,7 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
@@ -50,6 +51,13 @@ class TraceEventCollector {
 
   const std::unordered_map<uint64_t, std::string>& ThreadNames() const {
     return thread_names_;
+  }
+
+  void ClearAll() {
+    thread_names_.clear();
+    host_events_.clear();
+    runtime_events_.clear();
+    device_events_.clear();
   }
 
  private:

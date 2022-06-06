@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "gflags/gflags.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/optimizers/adam_op_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -306,8 +306,9 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       }
       xpu_wait(dev_ctx.x_context()->xpu_stream);
     } else {
-      PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adam_op"));
+      PADDLE_ENFORCE_EQ(1, 2,
+                        platform::errors::InvalidArgument(
+                            "Variable type not supported by adam_op"));
     }
   }
 };

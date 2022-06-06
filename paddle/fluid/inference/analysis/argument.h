@@ -182,12 +182,17 @@ struct Argument {
   // A set of op types to enable their bfloat16 kernels
   DECL_ARGUMENT_FIELD(bfloat16_enabled_op_types, Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
+
+  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMkldnnInt8, bool);
 #endif
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_gpu_fp16, UseGPUFp16, bool);
+  DECL_ARGUMENT_FIELD(gpu_fp16_disabled_op_types, GpuFp16DisabledOpTypes,
+                      std::unordered_set<std::string>);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -211,8 +216,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_transformer_posid, TensorRtTransformerPosid,
+                      std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_transformer_maskid, TensorRtTransformerMaskid,
+                      std::string);
   DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
                       TensorRtShapeRangeInfoPath, std::string);
   DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
+
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace phi {
@@ -61,7 +62,13 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     last_versions_[tid] = 0;
     current_version_[tid] = 0;
   }
+
+#if defined(PADDLE_WITH_PSCORE)
+  fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#else
   fleet_ptr_ = FleetWrapper::GetInstance();
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   copy_streams_.clear();
 #endif
@@ -170,6 +177,9 @@ void PullDenseWorker::PullDense(bool force_update) {
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
+#elif defined(PADDLE_WITH_PSCORE)
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
+                                     &pull_dense_status_, true);
 #else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, true);

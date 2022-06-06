@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_prod_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
@@ -21,12 +22,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceProdKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const std::vector<int64_t>& dims,
-                      bool keep_dim,
-                      bool reduce_all,
-                      DenseTensor* out) {
+void ProdRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::ProdFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
@@ -34,10 +35,10 @@ void ReduceProdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(reduce_prod,
+PD_REGISTER_KERNEL(prod_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ReduceProdKernel,
+                   phi::ProdRawKernel,
                    float,
                    double,
                    int,

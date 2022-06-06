@@ -26,11 +26,12 @@ import paddle
 from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
 from ps_dnn_trainer import DnnTrainer
-from paddle.distributed.fleet.proto import ps_pb2
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 from google.protobuf import text_format
 
 
 class TestTheOnePs(PsPassTestBase):
+
     def setUp(self):
         pass
 

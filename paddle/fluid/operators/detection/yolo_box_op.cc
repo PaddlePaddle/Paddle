@@ -9,8 +9,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -34,10 +36,11 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     auto iou_aware = ctx->Attrs().Get<bool>("iou_aware");
     auto iou_aware_factor = ctx->Attrs().Get<float>("iou_aware_factor");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, platform::errors::InvalidArgument(
-                                           "Input(X) should be a 4-D tensor."
-                                           "But received X dimension(%s)",
-                                           dim_x.size()));
+    PADDLE_ENFORCE_EQ(
+        dim_x.size(), 4,
+        platform::errors::InvalidArgument("Input(X) should be a 4-D tensor."
+                                          "But received X dimension(%s)",
+                                          dim_x.size()));
     if (iou_aware) {
       PADDLE_ENFORCE_EQ(
           dim_x[1], anchor_num * (6 + class_num),
@@ -235,16 +238,18 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(yolo_box, YoloBoxInferShapeFunctor,
+                            PD_INFER_META(phi::YoloBoxInferMeta));
 REGISTER_OPERATOR(
     yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    YoloBoxInferShapeFunctor);
 
-REGISTER_OP_VERSION(yolo_box)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(yolo_box).AddCheckpoint(
+    R"ROC(
       Upgrade yolo box to add new attribute [iou_aware, iou_aware_factor].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("iou_aware", "Whether use iou aware", false)
-            .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("iou_aware", "Whether use iou aware", false)
+        .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));

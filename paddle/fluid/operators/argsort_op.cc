@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/argsort_op.h"
 #include <memory>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,31 +25,6 @@ namespace operators {
 class ArgsortOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "argsort");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "argsort");
-    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "argsort");
-
-    auto in_dims = ctx->GetInputDim("X");
-    int axis = ctx->Attrs().Get<int>("axis");
-
-    auto num_dims = in_dims.size();
-    PADDLE_ENFORCE_GE(axis, -num_dims,
-                      platform::errors::InvalidArgument(
-                          "'axis'(%d) must be greater than or equal to"
-                          " -num_dims(%d).",
-                          axis, -num_dims));
-    PADDLE_ENFORCE_LT(
-        axis, num_dims,
-        platform::errors::InvalidArgument(
-            "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
-
-    ctx->ShareDim("X", "Out");
-    ctx->ShareDim("X", "Indices");
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
-  }
 };
 
 class ArgsortGradOp : public framework::OperatorWithKernel {
@@ -122,18 +101,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(argsort, ArgsortInferShapeFunctor,
+                            PD_INFER_META(phi::ArgsortInferMeta));
 REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ArgsortGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ArgsortGradOpMaker<paddle::imperative::OpBase>,
+                  ArgsortInferShapeFunctor);
 REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
                   ops::ArgsortGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(argsort,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    argsort_grad, ops::ArgsortGradientKernel<paddle::platform::CPUPlace, float>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, double>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int64_t>);

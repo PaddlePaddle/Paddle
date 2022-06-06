@@ -16,20 +16,19 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-
-#include "paddle/fluid/eager/api/all.h"
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
-
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_meta.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -42,9 +41,7 @@ paddle::experimental::Tensor hook_function(
   auto place = t_dense->place();
   size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size)),
-      std::move(ret_meta));
+      paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
@@ -106,21 +103,20 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
+    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
 
-    auto auto_grad_meta = std::make_shared<AutogradMeta>();
-
-    auto acc_node_ptr =
-        std::make_shared<GradNodeAccumulation>(auto_grad_meta.get());
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
 
     auto_grad_meta->SetStopGradient(false);
     auto_grad_meta->SetGradNode(acc_node_ptr);
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    std::vector<egr::AutogradMeta*> res = {auto_grad_meta.get()};
-    scale_node_ptr->AddEdges(&res, 0);
+    std::vector<egr::AutogradMeta*> res = {auto_grad_meta};
+    scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-            auto_grad_meta));
+            tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
@@ -128,7 +124,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 4.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
@@ -177,25 +173,23 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
   {
     // AccumulationNode Hook: +3
-
-    auto auto_grad_meta = std::make_shared<AutogradMeta>();
-    auto acc_node_ptr =
-        std::make_shared<GradNodeAccumulation>(auto_grad_meta.get());
+    auto tmp_tensor0 = paddle::experimental::Tensor();
+    auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
     auto_grad_meta->SetGradNode(acc_node_ptr);
     auto_grad_meta->SetStopGradient(false);
-    std::vector<egr::AutogradMeta*> res = {auto_grad_meta.get()};
-    scale_node_ptr->AddEdges(&res, 0);
+    scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);
 
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
     leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-            auto_grad_meta));
+            tmp_tensor0.mutable_autograd_meta()));
 
     egr_utils_api::RegisterGradientHookForTensor(
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }

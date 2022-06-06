@@ -20,8 +20,15 @@ KernelSignature DiagOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("diag", {"X"}, {"offset", "padding_value"}, {"Out"});
 }
 
+KernelSignature DiagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "diag_grad", {"X", "Out@GRAD"}, {"offset"}, {"X@GRAD"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(diag_v2, diag);
+PD_REGISTER_BASE_KERNEL_NAME(diag_v2_grad, diag_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(diag_v2, phi::DiagOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(diag_v2_grad, phi::DiagGradOpArgumentMapping);

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -48,7 +49,7 @@ class GroupNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);
+      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
       return temp_data;
     };
 

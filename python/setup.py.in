@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
+from setuptools.command.egg_info import egg_info
 
 
 class BinaryDistribution(Distribution):
@@ -273,14 +274,24 @@ packages=['paddle',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
           'paddle.incubate',
+          'paddle.incubate.autograd',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
           'paddle.incubate.tensor',
+          'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
+          'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.sharding',
           'paddle.distributed.fleet',
+          'paddle.distributed.launch',
+          'paddle.distributed.launch.context',
+          'paddle.distributed.launch.controllers',
+          'paddle.distributed.launch.job',
+          'paddle.distributed.launch.plugins',
+          'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
@@ -299,7 +310,11 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.auto_parallel.tuner',
+          'paddle.distributed.auto_parallel.cost',
           'paddle.distributed.passes',
+          'paddle.distributed.models',
+          'paddle.distributed.models.moe',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -353,6 +368,16 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.nn.functional',
           'paddle.incubate.nn.layer',
+          'paddle.incubate.optimizer.functional',
+          'paddle.incubate.autograd',
+          'paddle.incubate.distributed',
+          'paddle.incubate.distributed.models',
+          'paddle.incubate.distributed.models.moe',
+          'paddle.incubate.distributed.models.moe.gate',
+          'paddle.incubate.sparse',
+          'paddle.incubate.sparse.nn',
+          'paddle.incubate.sparse.nn.layer',
+          'paddle.incubate.sparse.nn.functional',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -372,7 +397,7 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
-          'paddle.profiler'
+          'paddle.profiler',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -504,6 +529,18 @@ if '${WITH_MKLDNN}' == 'ON':
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
 
+if '${WITH_ONNXRUNTIME}' == 'ON':
+    shutil.copy('${ONNXRUNTIME_SHARED_LIB}', libs_path)
+    if os.name == 'nt':
+        shutil.copy('${PADDLE2ONNX_SHARED_LIB}', libs_path)
+        package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
+    else:
+        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
+        if sys.platform == 'darwin':
+            package_data['paddle.libs']+=['libpaddle2onnx.dylib', 'libonnxruntime.1.10.0.dylib']
+        else:
+            package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
+
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,
     if '${CMAKE_BUILD_TYPE}' == 'Release':
@@ -522,10 +559,6 @@ if '${WITH_XPU}' == 'ON':
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
-
-if '${WITH_IPU}' == 'ON':
-    shutil.copy('${PADDLE_IPU_LIB}', libs_path)
-    package_data['paddle.libs'] += ['libpaddle_ipu' + ext_name]
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -655,6 +688,17 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+class EggInfo(egg_info):
+    """Copy license file into `.dist-info` folder."""
+
+    def run(self):
+        # don't duplicate license into `.dist-info` when building a distribution
+        if not self.distribution.have_run.get('install', True):
+            self.mkpath(self.egg_info)
+            self.copy_file("@PADDLE_SOURCE_DIR@/LICENSE", self.egg_info)
+
+        egg_info.run(self)
+
 # we redirect setuptools log for non-windows
 if sys.platform != 'win32':
     @contextmanager
@@ -710,10 +754,11 @@ with redirect_stdout():
         cmdclass={
             'install_headers': InstallHeaders,
             'install': InstallCommand,
+            'egg_info': EggInfo,
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.fleet.launch:launch'
+                'fleetrun = paddle.distributed.launch.main:launch'
             ]
         },
         classifiers=[

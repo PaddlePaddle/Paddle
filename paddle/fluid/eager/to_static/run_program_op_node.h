@@ -17,7 +17,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
-
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -51,13 +50,12 @@ static std::vector<std::string> GetTensorsName(
 }
 
 static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(
-      tensor.defined() && phi::DenseTensor::classof(tensor.impl().get()), true,
-      paddle::platform::errors::InvalidArgument(
-          "The input tensor %s of "
-          "RunProgram(Grad)Op holds "
-          "wrong type. Expect type is DenseTensor.",
-          tensor.name()));
+  PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(), true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The input tensor %s of "
+                        "RunProgram(Grad)Op holds "
+                        "wrong type. Expect type is DenseTensor.",
+                        tensor.name()));
 
   PADDLE_ENFORCE_EQ(tensor.initialized(), true,
                     paddle::platform::errors::InvalidArgument(
@@ -74,7 +72,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                     paddle::platform::errors::InvalidArgument(
                         "dst_tensor shall be defined."));
 
-  if (phi::DenseTensor::classof(dst_tensor.impl().get())) {
+  if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor), true,
                       paddle::platform::errors::InvalidArgument(
@@ -88,7 +86,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           name));
-  } else if (phi::SelectedRows::classof(dst_tensor.impl().get())) {
+  } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor), true,
                       paddle::platform::errors::InvalidArgument(
@@ -115,7 +113,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var" || !tensors[i].is_initialized()) {
+    if (name == "Fake_var" || !tensors[i].initialized()) {
       continue;
     }
     auto *var = scope->Var(name);
@@ -159,9 +157,6 @@ static void ShareTensorsFromScope(
                                      name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
-    // TODO(dev): Determine Tensor type by scope.var
-    // auto tensor_base = tensors[i]->impl();
-    // if (phi::DenseTensor::classof(tensor_base.get())) {
     if (var->IsType<phi::DenseTensor>()) {
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
@@ -169,7 +164,6 @@ static void ShareTensorsFromScope(
       VLOG(2) << "share " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
-      // } else if (phi::SelectedRows::classof(tensor_base.get())) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
           dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
@@ -190,7 +184,13 @@ inline void RunProgramAPI(
   VLOG(2) << "RunProgramOpKernel Compute";
   auto start_op_index = BOOST_GET_CONST(int64_t, attrs.at("start_op_index"));
   auto end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
-  auto is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  // In the original run_program OP, the default value of the is_test
+  // attribute is false, we should check if there is is_test parameter
+  // in attrs
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = BOOST_GET_CONST(bool, attrs.at("is_test"));
+  }
   auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -202,7 +202,6 @@ inline void RunProgramAPI(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
   // Step 2. prepare executor and init persistable variables
-
   // NOTE(Aurelius84): While training some models, forward can be called many
   // times and then apply backpropagation all at once, such as Reinforcement
   // Learning. Tensor data in multi-step training should be saved into single
@@ -260,9 +259,9 @@ inline void RunProgramAPI(
   }
   VLOG(2) << "The number of sub scopes after forward: "
           << out_scope_vec->front()->kids().size();
-  // #ifdef PADDLE_WITH_MKLDNN
-  //     if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
-  // #endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
+#endif
 }
 
 inline void RunProgramGradAPI(
@@ -273,14 +272,9 @@ inline void RunProgramGradAPI(
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
-    ) {
+) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
-
-  // TODO(dev): Remove this line hard code. And need to deal with the out_grad
-  // name problem.
-  // const_cast<paddle::experimental::Tensor &>(out_grad[0])
-  //     .set_name("matmul_v2_0.tmp_0@GRAD");
 
   auto *global_block =
       BOOST_GET_CONST(paddle::framework::BlockDesc *, attrs.at("global_block"));
@@ -357,7 +351,7 @@ inline void RunProgramGradAPI(
   details::ShareTensorsFromScope(params_grad, *global_block, &scope);
 
   // Step5. drop current scope
-  // global_inner_scope->DeleteScope(&scope);
+  global_inner_scope->DeleteScope(&scope);
   VLOG(2) << "The number of sub scopes after backward: "
           << global_inner_scope->kids().size();
 }
@@ -369,47 +363,52 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
-  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>> &grads)
-      override {
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize> &grads,  // NOLINT
+             bool create_graph, bool is_new_grad) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
-    PADDLE_ENFORCE_EQ(
-        grads.size(), 1,
-        paddle::platform::errors::InvalidArgument(
-            "The out_grads.size() of RunProgramGradOp should be equal to 1."));
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
+    PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
+                      paddle::platform::errors::InvalidArgument(
+                          "The hooked_grads.size() of RunProgramGradOp should "
+                          "be equal to 1."));
 
-    VLOG(3) << "out_grads[0].size() : " << grads[0].size();
+    egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
+                                                       this->InputMeta()[0]);
+    VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
-    ConstructGradTensors(x_, &x_grad);
-    ConstructGradTensors(params_, &params_grad);
+    ConstructXGradTensors(x_, &x_grad);
+    ConstructParamGradTensors(params_, &params_grad);
     std::vector<paddle::experimental::Tensor *> x_grad_ptr;
     std::vector<paddle::experimental::Tensor *> params_grad_ptr;
     for (auto &i : x_grad) {
       x_grad_ptr.emplace_back(&i);
     }
     for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
+      if (i.defined()) {
+        params_grad_ptr.emplace_back(&i);
+      }
     }
 
-    // auto x_grad_ptr = ConstructGradTensors(x_);
-    // auto params_grad_ptr = ConstructGradTensors(params_);
-
-    PADDLE_ENFORCE_EQ(
-        grads[0].size(), fwd_out_names_.size(),
-        paddle::platform::errors::InvalidArgument(
-            "The grads[0].size() and fwd_out_names_.size() should be equal."));
+    PADDLE_ENFORCE_EQ(hooked_grads[0].size(), fwd_out_names_.size(),
+                      paddle::platform::errors::InvalidArgument(
+                          "The hooked_grads[0].size() and "
+                          "fwd_out_names_.size() should be equal."));
     for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
-      const_cast<paddle::experimental::Tensor &>(grads[0][i])
-          .set_name(fwd_out_names_[i] + "@GRAD");
+      hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
     }
-
-    RunProgramGradAPI(x_, params_, grads[0], step_scope_, attrs_, x_grad_ptr,
-                      params_grad_ptr);
+    RunProgramGradAPI(x_, params_, hooked_grads[0], step_scope_, attrs_,
+                      x_grad_ptr, params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
-    // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
   }
+
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
@@ -433,26 +432,44 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
  protected:
-  void ConstructGradTensors(
-      const std::vector<paddle::experimental::Tensor> &fwd_tensors,
-      std::vector<paddle::experimental::Tensor> *grad_tensors) {
+  void ConstructXGradTensors(
+      const std::vector<paddle::experimental::Tensor> &x,
+      std::vector<paddle::experimental::Tensor> *x_grad) {
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
-    VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
-    for (auto &fwd_t : fwd_tensors) {
-      grad_tensors->emplace_back(fwd_t.impl());
-      auto &grad_t = grad_tensors->back();
-      grad_t.set_name(fwd_t.name() + "@GRAD");
+    for (auto &t : x) {
+      if (t.is_dense_tensor()) {
+        x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (t.is_selected_rows()) {
+        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      }
+      x_grad->back().set_name(t.name() + "@GRAD");
     }
   }
 
-  void ConstructGradTensors(
-      const std::vector<paddle::experimental::Tensor> &fwd_tensors) {
-    VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
-    for (auto &fwd_t : fwd_tensors) {
-      auto grad_tesnor = egr::EagerUtils::unsafe_autograd_meta(fwd_t)->Grad();
-      grad_tesnor.set_name(fwd_t.name() + "@GRAD");
+  void ConstructParamGradTensors(
+      const std::vector<paddle::experimental::Tensor> &param,
+      std::vector<paddle::experimental::Tensor> *param_grad) {
+    for (auto &t : param) {
+      auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
+      // In eager mode, the number of param_grad should be the same as
+      // param, so here an empty Tensor is added for the param with
+      // stop_gradient=True
+      if (!t_grad.defined()) {
+        param_grad->emplace_back();
+      } else if (t_grad.is_dense_tensor()) {
+        param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (t_grad.is_selected_rows()) {
+        param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      }
+      param_grad->back().set_name(t.name() + "@GRAD");
     }
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<GradNodeRunProgram>(new GradNodeRunProgram(*this));
+    return copied_node;
   }
 
  private:

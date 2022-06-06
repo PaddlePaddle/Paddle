@@ -28,8 +28,9 @@ class InplaceABNKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Output<Tensor>("Y");
     auto* x = ctx.Input<Tensor>("X");
-    PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
-                                "X and Y not inplaced in inplace mode"));
+    PADDLE_ENFORCE_EQ(x, y,
+                      platform::errors::InvalidArgument(
+                          "X and Y not inplaced in inplace mode"));
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -120,9 +121,9 @@ class InplaceABNGradKernel
       auto* mean = ctx.Input<Tensor>("ReserveSpace");
       auto* variance = ctx.Input<Tensor>("ReserveSpace");
 
-      paddle::optional<const Tensor&> space_opt = paddle::none;
-      paddle::optional<const Tensor&> mean_opt = paddle::none;
-      paddle::optional<const Tensor&> variance_opt = paddle::none;
+      paddle::optional<Tensor> space_opt;
+      paddle::optional<Tensor> mean_opt;
+      paddle::optional<Tensor> variance_opt;
 
       if (reserve_space != nullptr) {
         space_opt = *reserve_space;
@@ -140,10 +141,10 @@ class InplaceABNGradKernel
       phi::BatchNormGradRawKernel<T>(
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
-          mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,
-          use_global_stats, trainable_statistics, fuse_with_relu, true, d_x,
-          scale_grad, bias_grad);
+          *y, *scale, *bias, mean_opt, variance_opt, *saved_mean,
+          *saved_variance, space_opt, *d_y, momentum, epsilon, data_layout,
+          is_test, use_global_stats, trainable_statistics, fuse_with_relu, true,
+          d_x, scale_grad, bias_grad);
     }
   }
 };

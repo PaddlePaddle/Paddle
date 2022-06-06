@@ -8,15 +8,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/dropout_op.h"
+
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_XPU
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class DropoutXPUKernel : public framework::OpKernel<T> {
   using XPUTyp = typename XPUTypeTrait<T>::Type;
@@ -40,7 +43,13 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       int seed_data = 0;
       if (seed) {
-        seed_data = *(seed->data<int>());
+        if (platform::is_xpu_place(seed->place())) {
+          memory::Copy(platform::CPUPlace(), &seed_data, seed->place(),
+                       seed->data<int>(), sizeof(int));
+        } else {
+          seed_data = *(seed->data<int>());
+        }
+
       } else {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;

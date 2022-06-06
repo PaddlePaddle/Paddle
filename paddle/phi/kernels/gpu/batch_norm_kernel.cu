@@ -20,20 +20,17 @@
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/operators/norm_utils.h"
-
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
@@ -179,7 +176,7 @@ void BatchNormKernel(const Context &ctx,
 
   ctx.template Alloc<T>(y);
   int N, C, H, W, D;
-  paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
@@ -353,33 +350,31 @@ void BatchNormKernel(const Context &ctx,
     const int block_size = 256;
     const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
     if (compute_format == DataLayout::kNCHW) {
-      BNForwardInference<
-          T,
-          DataLayout::kNCHW><<<grid_size, block_size, 0, ctx.stream()>>>(
-          transformed_x.template data<T>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(),
-          scale.template data<BatchNormParamType<T>>(),
-          bias.template data<BatchNormParamType<T>>(),
-          C,
-          N,
-          H * W * D,
-          epsilon,
-          transformed_y.template data<T>());
+      BNForwardInference<T, DataLayout::kNCHW>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              transformed_y.template data<T>());
     } else {
-      BNForwardInference<
-          T,
-          DataLayout::kNHWC><<<grid_size, block_size, 0, ctx.stream()>>>(
-          transformed_x.template data<T>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(),
-          scale.template data<BatchNormParamType<T>>(),
-          bias.template data<BatchNormParamType<T>>(),
-          C,
-          N,
-          H * W * D,
-          epsilon,
-          transformed_y.template data<T>());
+      BNForwardInference<T, DataLayout::kNHWC>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              transformed_x.template data<T>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              C,
+              N,
+              H * W * D,
+              epsilon,
+              transformed_y.template data<T>());
     }
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -439,11 +434,11 @@ void BatchNormKernel(const Context &ctx,
     // Run training mode.
     // obtain running mean and running inv var, and there is no need
     // to initialize them.
-    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    ctx.template Alloc<BatchNormParamType<T>>(mean_out);
+    ctx.template Alloc<BatchNormParamType<T>>(variance_out);
 
-    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+    ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
@@ -497,10 +492,12 @@ void BatchNormKernel(const Context &ctx,
                   /*xDesc=*/data_desc_,
                   /*sizeInBytes=*/&reserve_space_size));
 
-      reserve_space_ptr = reserve_space->mutable_data(
-          ctx.GetPlace(), transformed_x.type(), reserve_space_size);
-      workspace_ptr = workspace_tensor.mutable_data(
-          ctx.GetPlace(), transformed_x.type(), workspace_size);
+      reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
+      reserve_space_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
+      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+      workspace_ptr =
+          static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
               handle,
@@ -518,15 +515,11 @@ void BatchNormKernel(const Context &ctx,
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
               this_factor,
-              mean_out->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              variance_out->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
+              ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+              ctx.template Alloc<BatchNormParamType<T>>(variance_out),
               epsilon,
-              saved_mean->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              saved_variance->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
+              ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+              ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
               nullptr,
               workspace_ptr,
               workspace_size,
@@ -541,41 +534,37 @@ void BatchNormKernel(const Context &ctx,
         const int max_blocks = std::max(max_threads / block, 1);
         const int grid = std::min(C, max_blocks);
         if (compute_format == DataLayout::kNCHW) {
-          BNForwardTraining<
-              T,
-              block,
-              DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              epsilon,
-              this_factor,
-              transformed_y.template data<T>(),
-              mean_out->template data<BatchNormParamType<T>>(),
-              variance_out->template data<BatchNormParamType<T>>(),
-              saved_mean->template data<BatchNormParamType<T>>(),
-              saved_variance->template data<BatchNormParamType<T>>());
+          BNForwardTraining<T, block, DataLayout::kNCHW>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>());
         } else {
-          BNForwardTraining<
-              T,
-              block,
-              DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
-              transformed_x.template data<T>(),
-              scale.template data<BatchNormParamType<T>>(),
-              bias.template data<BatchNormParamType<T>>(),
-              C,
-              N,
-              H * W * D,
-              epsilon,
-              this_factor,
-              transformed_y.template data<T>(),
-              mean_out->template data<BatchNormParamType<T>>(),
-              variance_out->template data<BatchNormParamType<T>>(),
-              saved_mean->template data<BatchNormParamType<T>>(),
-              saved_variance->template data<BatchNormParamType<T>>());
+          BNForwardTraining<T, block, DataLayout::kNHWC>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>());
         }
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(
@@ -621,15 +610,11 @@ void BatchNormKernel(const Context &ctx,
                 scale.template data<BatchNormParamType<T>>(),
                 bias.template data<BatchNormParamType<T>>(),
                 this_factor,
-                mean_out->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
-                variance_out->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
                 epsilon,
-                saved_mean->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
-                saved_variance->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace())));
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
 #endif
       }
     }

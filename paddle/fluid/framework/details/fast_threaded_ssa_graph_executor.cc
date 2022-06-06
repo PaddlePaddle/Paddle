@@ -46,6 +46,12 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     VLOG(10)
         << "Change thread number to 1 because the toposort order is unique";
     strategy_.num_threads_ = 1;
+    traced_ops_.clear();
+    for (auto *op_node : TopologySortOperations(*graph_)) {
+      if (op_node->IsWrappedBy<OpHandleBase>()) {
+        traced_ops_.emplace_back(&(op_node->Wrapper<OpHandleBase>()));
+      }
+    }
   }
   pool_.reset(new ::ThreadPool(strategy.num_threads_));
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
@@ -132,6 +138,9 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   if (!fetch_ops.empty()) {
+    platform::RecordEvent record_wait(
+        "FastThreadedSSAGraphExecutor::WaitFetchOps",
+        platform::TracerEventType::Operator, 1);
     ClearFetchOp(graph_, &fetch_ops);
 
     for (auto &place : places_) {
@@ -231,8 +240,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  platform::RecordEvent("WorkQueue::AddTask",
-                        platform::TracerEventType::UserDefined, 10 /*level*/);
+  platform::RecordEvent record("WorkQueue::AddTask",
+                               platform::TracerEventType::UserDefined,
+                               10 /*level*/);
   this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);

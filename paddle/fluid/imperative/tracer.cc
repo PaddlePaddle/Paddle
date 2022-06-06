@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/imperative/tracer.h"
+
 #include <map>
 #include <set>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -176,6 +179,20 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
+  TraceOpImpl<VarType>(type, ins, outs, attrs, place, trace_backward,
+                       inplace_map, passed_default_attrs_,
+                       use_default_attr_map);
+}
+
+template <typename VarType>
+void Tracer::TraceOpImpl(const std::string& type,
+                         const NameVarMap<VarType>& ins,
+                         const NameVarMap<VarType>& outs,
+                         framework::AttributeMap& attrs,
+                         const platform::Place& place, bool trace_backward,
+                         const std::map<std::string, std::string>& inplace_map,
+                         paddle::framework::AttributeMap* passed_default_attrs_,
+                         bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
       type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
@@ -205,24 +222,34 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
-  NameVarMap<VarType> new_ins = ins;
+  std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
-      new_ins = AutoCastInputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          AutoCastInputs<VarType>(type, imperative::AutoTuneLayout<VarType>(
+                                            type, ins, outs, &attrs, tracer)));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
-      new_ins = AutoCastBF16Inputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          AutoCastBF16Inputs<VarType>(type, ins));
     }
   } else if (amp_level_ == AmpLevel::O2) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      const auto& tracer = imperative::GetCurrentTracer();
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
-      new_ins = CastPureFp16Inputs<VarType>(type, ins);
+      ins_amp =
+          std::make_unique<NameVarMap<VarType>>(CastPureFp16Inputs<VarType>(
+              type, imperative::AutoTuneLayout<VarType>(type, ins, outs, &attrs,
+                                                        tracer)));
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
-      new_ins = CastPureBf16Inputs<VarType>(type, ins);
+      ins_amp = std::make_unique<NameVarMap<VarType>>(
+          CastPureBf16Inputs<VarType>(type, ins));
     }
   }
+  const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {
     if (platform::is_gpu_place(place)) {
@@ -297,19 +324,24 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
     program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   }
 
-  if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    PADDLE_ENFORCE_EQ(
-        passed_default_attrs_, nullptr,
-        paddle::platform::errors::PermissionDenied(
-            "We expect passed_default_attrs_ is nullptr while "
-            "use_default_attr_map is true, however we got not null "
-            "passed_default_attrs_. Please check your usage of trace_op. "));
-    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                     inplace_map);
-  } else {
-    VLOG(3) << "No Grad to track for Op: " << type;
+  {
+    platform::RecordEvent node_creation_record_event(
+        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
+
+    if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+      PADDLE_ENFORCE_EQ(
+          passed_default_attrs_, nullptr,
+          paddle::platform::errors::PermissionDenied(
+              "We expect passed_default_attrs_ is nullptr while "
+              "use_default_attr_map is true, however we got not null "
+              "passed_default_attrs_. Please check your usage of trace_op. "));
+      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                       inplace_map);
+    } else {
+      VLOG(3) << "No Grad to track for Op: " << type;
+    }
+    VLOG(6) << "Finish Trace Op: " << type;
   }
-  VLOG(6) << "Finish Trace Op: " << type;
 }
 
 template void Tracer::TraceOp<VarBase>(
@@ -335,25 +367,33 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 
 void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
                      const NameTensorMap& outs,
-                     paddle::framework::AttributeMap attrs,
+                     paddle::framework::AttributeMap& attrs,
                      const paddle::platform::Place& place,
                      paddle::framework::AttributeMap* default_attrs,
                      bool use_default_attr_map,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  TraceOp<egr::EagerVariable>(type, ins, outs, std::move(attrs), place, false,
-                              inplace_map, default_attrs, use_default_attr_map);
+  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, place, false,
+                                  inplace_map, default_attrs,
+                                  use_default_attr_map);
 }
 
 void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
                      const NameTensorMap& outs,
-                     paddle::framework::AttributeMap attrs,
+                     paddle::framework::AttributeMap attrs) {
+  VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
+  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, expected_place_,
+                                  false, {}, nullptr, true);
+}
+
+void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+                     const NameTensorMap& outs,
+                     paddle::framework::AttributeMap& attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
-  TraceOp<egr::EagerVariable>(type, ins, outs, std::move(attrs),
-                              expected_place_, false, inplace_map, nullptr,
-                              true);
+  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, expected_place_,
+                                  false, inplace_map, nullptr, true);
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {
@@ -385,8 +425,8 @@ bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
 }
 
 phi::KernelSignature Tracer::GetExpectedKernelSignature(
-    const std::string& type, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, framework::AttributeMap attrs) const {
+    const std::string& type, const NameTensorMap& ins,
+    const NameTensorMap& outs, framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -401,7 +441,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
   auto dygraph_exe_ctx =
-      imperative::DygraphExecutionContext<imperative::VarBase>(
+      imperative::DygraphExecutionContext<egr::EagerVariable>(
           *op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
           default_attrs);
   auto* opbase_with_kernel =

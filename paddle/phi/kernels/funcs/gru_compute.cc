@@ -46,7 +46,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_reset_output(
+    detail::forward_reset_output<paddle::platform::CPUDeviceContext>(
         phi::funcs::detail::forward::gru_resetOutput<T>(),
         value,
         frame_size,
@@ -71,7 +71,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_final_output(
+    detail::forward_final_output<paddle::platform::CPUDeviceContext>(
         phi::funcs::detail::forward::gru_finalOutput<T>(),
         value,
         frame_size,
@@ -190,6 +190,59 @@ struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, T> {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
     auto blas =
         phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+    if (value.prev_out_value) {
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                batch_size,
+                frame_size,
+                frame_size,
+                1,
+                value.prev_out_value,
+                value.state_weight,
+                0,
+                value.reset_output_value);
+    }
+    detail::forward_reset_output(
+        phi::funcs::detail::forward::gru_resetOutput<T>(),
+        value,
+        frame_size,
+        batch_size,
+        active_gate,
+        false,
+        &context);
+
+    T *cell_state_value = value.gate_value + 2 * frame_size;
+    T *reset_output_value = value.reset_output_value;
+    for (int b = 0; b < batch_size; ++b) {
+      blas.VADD(
+          frame_size, cell_state_value, reset_output_value, cell_state_value);
+      cell_state_value += frame_size * 3;
+      reset_output_value += frame_size;
+    }
+
+    detail::forward_final_output(
+        phi::funcs::detail::forward::gru_finalOutput<T>(),
+        value,
+        frame_size,
+        batch_size,
+        active_node,
+        true,
+        false,
+        &context);
+#endif
+  }
+};
+
+template <typename T>
+struct GRUUnitFunctorV2<CPUContext, T> {
+  static void compute(const CPUContext &context,
+                      GRUMetaValue<T> value,
+                      int frame_size,
+                      int batch_size,
+                      const phi::funcs::detail::ActivationType active_node,
+                      const phi::funcs::detail::ActivationType active_gate) {
+#if !defined(__NVCC__) && !defined(__HIPCC___)
+    auto blas = phi::funcs::GetBlas<CPUContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(CblasNoTrans,
                 CblasTrans,
@@ -358,6 +411,130 @@ struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
+template <typename T>
+struct GRUUnitGradFunctorV2<CPUContext, T> {
+  static void compute(const CPUContext &context,
+                      GRUMetaValue<T> value,
+                      GRUMetaGrad<T> grad,
+                      int frame_size,
+                      int batch_size,
+                      const phi::funcs::detail::ActivationType active_node,
+                      const phi::funcs::detail::ActivationType active_gate) {
+#if !defined(__NVCC__) && !defined(__HIPCC___)
+    // calculate grad_update_gate, grad_frame_state,
+    // grad_reset_output, grad_reset_gate
+    detail::cpu_gru_backward(context,
+                             phi::funcs::detail::backward::gru<T>(),
+                             value,
+                             grad,
+                             frame_size,
+                             batch_size,
+                             active_node,
+                             active_gate);
+    auto blas = phi::funcs::GetBlas<CPUContext, T>(context);
+    if (grad.prev_out_grad && value.prev_out_value) {
+      // update prev_out_grad
+      blas.GEMM(false,
+                false,
+                batch_size,
+                frame_size,
+                frame_size,
+                1,
+                grad.gate_grad,
+                frame_size * 3,
+                value.gate_weight,
+                frame_size,
+                1,
+                grad.prev_out_grad,
+                frame_size);
+      blas.GEMM(false,
+                false,
+                batch_size,
+                frame_size,
+                frame_size,
+                1,
+                grad.gate_grad + frame_size,
+                frame_size * 3,
+                value.gate_weight + frame_size * frame_size,
+                frame_size,
+                1,
+                grad.prev_out_grad,
+                frame_size);
+      blas.GEMM(false,
+                false,
+                batch_size,
+                frame_size,
+                frame_size,
+                1,
+                grad.reset_output_grad,
+                frame_size,
+                value.state_weight,
+                frame_size,
+                1,
+                grad.prev_out_grad,
+                frame_size);
+      // update weight_hh_grad
+      if (grad.gate_weight_grad) {
+        // reset gate
+        blas.GEMM(true,
+                  false,
+                  frame_size,
+                  frame_size,
+                  batch_size,
+                  1,
+                  grad.gate_grad,
+                  frame_size * 3,
+                  value.prev_out_value,
+                  frame_size,
+                  1,
+                  grad.gate_weight_grad,
+                  frame_size);
+        // update gate
+        blas.GEMM(true,
+                  false,
+                  frame_size,
+                  frame_size,
+                  batch_size,
+                  1,
+                  grad.gate_grad + frame_size,
+                  frame_size * 3,
+                  value.prev_out_value,
+                  frame_size,
+                  1,
+                  grad.gate_weight_grad + frame_size * frame_size,
+                  frame_size);
+        // cell state
+        blas.GEMM(true,
+                  false,
+                  frame_size,
+                  frame_size,
+                  batch_size,
+                  1,
+                  grad.reset_output_grad,
+                  frame_size,
+                  value.prev_out_value,
+                  frame_size,
+                  1,
+                  grad.state_weight_grad,
+                  frame_size);
+      }
+    }
+    // update bias_hh_grad
+    T *gate_grad = grad.gate_grad;
+    T *bias_hh_grad = grad.bias_hh_grad;
+    T *state_bias_grad = grad.bias_hh_grad + 2 * frame_size;
+    T *reset_output_grad = grad.reset_output_grad;
+    for (int b = 0; b < batch_size; ++b) {
+      blas.VADD(2 * frame_size, bias_hh_grad, gate_grad, bias_hh_grad);
+      blas.VADD(
+          frame_size, state_bias_grad, reset_output_grad, state_bias_grad);
+      gate_grad += 3 * frame_size;
+      reset_output_grad += frame_size;
+    }
+#endif
+  }
+};
+
 template struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, float>;
 template struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, double>;
 template struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, float>;
@@ -368,6 +545,11 @@ template struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, double>;
 template struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, float>;
 template struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext,
                                      double>;
+
+template struct GRUUnitFunctorV2<CPUContext, float>;
+template struct GRUUnitFunctorV2<CPUContext, double>;
+template struct GRUUnitGradFunctorV2<CPUContext, float>;
+template struct GRUUnitGradFunctorV2<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

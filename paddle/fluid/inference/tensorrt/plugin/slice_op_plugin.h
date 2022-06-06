@@ -64,8 +64,7 @@ class SlicePlugin : public PluginTensorRT {
   std::vector<int> ends_;
   std::vector<int> axes_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginCreator : public TensorRTPluginCreator {
@@ -88,10 +87,12 @@ REGISTER_TRT_PLUGIN_V2(SlicePluginCreator);
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, bool with_fp16);
+                              std::vector<int> axes, int decrease_axis,
+                              bool with_fp16);
 
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new SlicePluginDynamic(starts_, ends_, axes_, with_fp16_);
+    return new SlicePluginDynamic(starts_, ends_, axes_, decrease_axis_,
+                                  with_fp16_);
   }
 
   SlicePluginDynamic(void const* serialData, size_t serialLength);
@@ -140,9 +141,9 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> starts_;
   std::vector<int> ends_;
   std::vector<int> axes_;
+  int decrease_axis_;
   int* offset_temp_data_{nullptr};
-  cudaEvent_t copy_event_;
-  cudaStream_t copy_stream_;
+  std::vector<int> offset_info_;
 };
 
 class SlicePluginDynamicCreator : public TensorRTPluginCreator {

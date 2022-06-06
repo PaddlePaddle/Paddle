@@ -139,7 +139,9 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
+
     class Foo(object):
+
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -183,10 +185,11 @@ def test_optim_break_in_while(x):
 
 
 class TestContinueInFor(unittest.TestCase):
+
     def setUp(self):
         self.input = np.zeros((1)).astype('int64')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
@@ -205,61 +208,71 @@ class TestContinueInFor(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
-                                                             static_res))
+        self.assertTrue(np.allclose(dygraph_res, static_res),
+                        msg='dygraph res is {}\nstatic_res is {}'.format(
+                            dygraph_res, static_res))
 
 
 class TestContinueInForAtEnd(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_for_at_end
 
 
 class TestBreakInFor(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for
 
 
 class TestBreakInForAtEnd(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for_at_end
 
 
 class TestBreakContinueInFor(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_continue_in_for
 
 
 class TestForInElse(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_for_in_else
 
 
 class TestContinueInWhile(TestContinueInFor):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_while
 
 
 class TestBreakInWhile(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_while
 
 
 class TestWhileLoopClassVar(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
 
 
 class TestOptimBreakInFor(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_for
 
 
 class TestOptimBreakInWhile(TestContinueInWhile):
+
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with fluid.framework._test_eager_guard():
+        unittest.main()

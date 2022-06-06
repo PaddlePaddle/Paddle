@@ -17,27 +17,34 @@ import unittest
 import numpy as np
 import six
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorToListTest(unittest.TestCase):
+
     def setUp(self):
         self.shape = [11, 25, 32, 43]
 
-    def test_tensor_tolist(self):
+    def func_tensor_tolist(self):
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
             places.append(fluid.CUDAPinnedPlace())
 
         for p in places:
-            np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+                                self.shape)
             expectlist = np_arr.tolist()
 
             t = paddle.to_tensor(np_arr, place=p)
             tensorlist = t.tolist()
 
             self.assertEqual(tensorlist, expectlist)
+
+    def test_tensor_tolist(self):
+        with _test_eager_guard():
+            self.func_tensor_tolist()
+        self.func_tensor_tolist()
 
 
 if __name__ == '__main__':

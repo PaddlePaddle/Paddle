@@ -16,6 +16,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT
@@ -31,6 +32,8 @@
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -50,6 +53,12 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclInt64;
   } else if (type == framework::proto::VarType::FP16) {
     return ncclFloat16;
+  } else if (type == framework::proto::VarType::INT8) {
+    return ncclInt8;
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+  } else if (type == framework::proto::VarType::BF16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
@@ -67,6 +76,10 @@ inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
     return ncclInt64;
   } else if (type == experimental::DataType::FLOAT16) {
     return ncclFloat16;
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+  } else if (type == experimental::DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
@@ -112,6 +125,10 @@ struct NCCLContext {
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx_->PartialInitWithAllocator();
   }
@@ -248,7 +265,7 @@ class NCCLCommunicator {
    *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
    *create a new nccl comm for sync_batch_norm_op. And these codes should be
    *polished with a unified nccl management.
-  */
+   */
   NCCLContextMap *GetSyncBatchNormCtx(
       framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);

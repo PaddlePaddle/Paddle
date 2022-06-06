@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestEngineAPI(unittest.TestCase):
+
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "engine_api.py")
@@ -42,6 +43,12 @@ class TestEngineAPI(unittest.TestCase):
         log_path = os.path.join(file_dir, "log")
         if os.path.exists(log_path):
             shutil.rmtree(log_path)
+        files_path = [path for path in os.listdir('.') if '.pd' in path]
+        for path in files_path:
+            if os.path.exists(path):
+                os.remove(path)
+        if os.path.exists('rank_mapping.csv'):
+            os.remove('rank_mapping.csv')
 
 
 if __name__ == "__main__":

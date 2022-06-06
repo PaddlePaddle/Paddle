@@ -16,9 +16,11 @@
 
 #include <cuda_runtime.h>
 #include <error.h>
+
 #include <string>
 
 #include "boost/variant.hpp"
+#include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -193,6 +195,9 @@ class NCCLCommManager {
   int rank_;
   mutable std::mutex mutex_;
 };
+
+ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
 }  // namespace distributed
 }  // namespace paddle

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
-
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +28,10 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
     std::string regularization_method =
         ctx.Attr<std::string>("regularization_method");
     auto regularization_coeff = ctx.Attr<float>("regularization_coeff");
-    RegularizationType regularization_flag{
-        RegularizationType::kNONE};  // disable regularization
+    phi::RegularizationType regularization_flag{
+        phi::RegularizationType::kNONE};  // disable regularization
     if (regularization_method == "l2_decay") {
-      regularization_flag = RegularizationType::kL2DECAY;
+      regularization_flag = phi::RegularizationType::kL2DECAY;
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
@@ -55,7 +55,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       FillNpuTensorWithConstant<T>(&mu_tensor, mu);
 
       Tensor regularized_grad;
-      if (regularization_flag == RegularizationType::kL2DECAY) {
+      if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad.mutable_data<T>(grad->dims(), ctx.GetPlace());
         const auto& runner1 = NpuOpRunner("Muls", {*param}, {regularized_grad},
                                           {{"value", regularization_coeff}});
@@ -69,14 +69,16 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
       // NOTE: ApplyMomentum will change the input
-      const auto& runner = NpuOpRunner(
-          "ApplyMomentum", {*param_out, *velocity_out, *learning_rate,
-                            regularized_grad, mu_tensor},
-          {*param_out}, {{"use_nesterov", use_nesterov}});
+      const auto& runner =
+          NpuOpRunner("ApplyMomentum",
+                      {*param_out, *velocity_out, *learning_rate,
+                       regularized_grad, mu_tensor},
+                      {*param_out}, {{"use_nesterov", use_nesterov}});
       runner.Run(dev_ctx.stream());
     } else if (grad_var->IsType<phi::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
-                                         "Unsupport SparseMomentum"));
+      PADDLE_ENFORCE_EQ(
+          false, true,
+          platform::errors::PermissionDenied("Unsupport SparseMomentum"));
     } else {
       PADDLE_ENFORCE_EQ(false, true,
                         platform::errors::PermissionDenied(

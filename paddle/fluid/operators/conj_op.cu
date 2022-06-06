@@ -17,8 +17,9 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    conj, ops::ConjKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::complex<float>>,
+    conj,
+    ops::ConjKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::complex<float>>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::complex<double>>,
     ops::ConjKernel<paddle::platform::CUDADeviceContext, float>,

@@ -18,8 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
 #include "paddle/fluid/framework/naive_executor.h"
@@ -39,7 +38,10 @@
 
 namespace paddle_infer {
 using float16 = paddle::platform::float16;
-}
+namespace experimental {
+class InternalUtils;
+};
+}  // namespace paddle_infer
 ///
 /// \file analysis_predictor.h
 ///
@@ -53,10 +55,10 @@ using float16 = paddle::platform::float16;
 
 namespace paddle {
 
-using inference::analysis::Argument;
-using inference::analysis::Analyzer;
-using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
+using framework::proto::ProgramDesc;
+using inference::analysis::Analyzer;
+using inference::analysis::Argument;
 
 ///
 /// \class AnalysisPredictor
@@ -395,8 +397,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
 
   ///
@@ -488,13 +489,13 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   static int clone_num_;
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet executor related
   distributed::FleetExecutorDesc executor_desc_;
   std::shared_ptr<distributed::FleetExecutor> fleet_exe_;
   std::shared_ptr<distributed::TaskNode> task_node_;
 #endif
+  friend class paddle_infer::experimental::InternalUtils;
 };
 
 }  // namespace paddle

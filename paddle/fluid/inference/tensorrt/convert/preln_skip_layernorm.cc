@@ -24,7 +24,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
-    if (!(engine_->use_oss() && engine_->with_interleaved())) {
+    if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
       PADDLE_THROW(platform::errors::Fatal(
           "PrelnErnie: If you want to use oss, must be with interleaved"));
     }
@@ -48,7 +48,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);
+      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
       return temp_data;
     };
 
@@ -60,7 +60,8 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
 
-    VLOG(4) << "fused preln_skip_layernorm op: use_oss and with_interleaved";
+    VLOG(4)
+        << "fused preln_skip_layernorm op: use_varseqlen and with_interleaved";
 
     auto creator = GetPluginRegistry()->getPluginCreator(
         "CustomSkipLayerNormPluginDynamic", "4");

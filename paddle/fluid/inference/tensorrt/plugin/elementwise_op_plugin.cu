@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
 namespace paddle {
@@ -30,6 +31,24 @@ template <typename T>
 struct Mul {
   __device__ T operator()(const T &a, const T &b) const { return a * b; }
 };
+
+template <typename T>
+struct Div {
+  __device__ T operator()(const T &a, const T &b) const { return a / b; }
+};
+
+template <typename T>
+struct Sub {
+  __device__ T operator()(const T &a, const T &b) const { return a - b; }
+};
+
+template <typename T>
+struct Pow {
+  __device__ T operator()(const T &a, const T &b) const {
+    return static_cast<T>(::powf(static_cast<float>(a), static_cast<float>(b)));
+  }
+};
+
 }  // namespace details
 
 template <typename T, typename Operator>
@@ -49,14 +68,16 @@ __global__ void elementwise_kernel(const size_t total, const T *x_data,
 
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *input_dims, int num_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "There is only one output in TRT elementwise "
-                                  "op plugin, but got output index: %d.",
-                                  index));
-  PADDLE_ENFORCE_EQ(num_inputs, 2, platform::errors::InvalidArgument(
-                                       "There are 2 inputs in TRT elementwise "
-                                       "op plugin, but got input number: %d.",
-                                       num_inputs));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "There is only one output in TRT elementwise "
+                        "op plugin, but got output index: %d.",
+                        index));
+  PADDLE_ENFORCE_EQ(
+      num_inputs, 2,
+      platform::errors::InvalidArgument("There are 2 inputs in TRT elementwise "
+                                        "op plugin, but got input number: %d.",
+                                        num_inputs));
   PADDLE_ENFORCE_NOT_NULL(
       input_dims,
       platform::errors::InvalidArgument(
@@ -130,6 +151,18 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
         details::Mul<float>());
+  } else if (type_ == "div") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Pow<float>());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The %s type elementwise is not implemented in trt plugin.", type_));
@@ -242,9 +275,19 @@ int ElementwisePluginDynamic::enqueue(
   } else if (type_ == "mul") {
     elementwise_kernel<<<block, thread, 0, stream>>>(
         num, x, y, out, prev_size, midd_size, post_size, details::Mul<float>());
+  } else if (type_ == "div") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Div<float>());
+  } else if (type_ == "sub") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Sub<float>());
+  } else if (type_ == "pow") {
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Pow<float>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Paddle-TRT only support elementwise operation: {add, mul} currently, "
+        "Paddle-TRT only support elementwise "
+        "operation: {add, mul, div, sub, pow} currently, "
         "but got %s.",
         type_));
   }

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <boost/logic/tribool.hpp>
 #include <unordered_set>
+
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -24,12 +25,13 @@ USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(leaky_relu);
+USE_OP_ITSELF(leaky_relu);
 USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
-USE_OP(gelu);
+USE_OP_ITSELF(gelu);
 USE_OP_ITSELF(relu);
-USE_OP(tanh);
+USE_OP_ITSELF(tanh);
 USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
+PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
 namespace framework {

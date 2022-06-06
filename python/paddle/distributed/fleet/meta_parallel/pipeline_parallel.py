@@ -23,11 +23,13 @@ from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 from .pp_utils import p2p_communication as p2p
+import paddle.fluid.core as core
 
 __all__ = []
 
 
 class PipelineParallel(MetaParallelBase):
+
     def __init__(self, layers, hcg, strategy):
         if not isinstance(layers, PipelineLayer):
             raise TypeError(
@@ -239,8 +241,9 @@ class PipelineParallel(MetaParallelBase):
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
-                    output_tensor, paddle.Tensor
-                ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                    output_tensor,
+                    (paddle.Tensor, core.eager.Tensor
+                     )), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):
                     if self.accumulate_steps > 1:
@@ -254,31 +257,32 @@ class PipelineParallel(MetaParallelBase):
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
-        if self.is_last_stage:
-            assert output_tensor_grad is None
-            if self.scaler:
-                paddle.autograd.backward(self.scaler.scale(output_tensor))
+        with paddle.amp.auto_cast(enable=False):
+            if self.is_last_stage:
+                assert output_tensor_grad is None
+                if self.scaler:
+                    paddle.autograd.backward(self.scaler.scale(output_tensor))
+                else:
+                    paddle.autograd.backward(output_tensor)
             else:
-                paddle.autograd.backward(output_tensor)
-        else:
-            if isinstance(output_tensor, tuple):
-                outputs = [t for t in output_tensor if not t.stop_gradient]
-                assert len(outputs) == len(output_tensor_grad)
-                paddle.autograd.backward(
-                    tensors=outputs,
-                    grad_tensors=[t for t in output_tensor_grad])
-            else:
-                paddle.autograd.backward(
-                    tensors=[output_tensor], grad_tensors=[output_tensor_grad])
+                if isinstance(output_tensor, tuple):
+                    outputs = [t for t in output_tensor if not t.stop_gradient]
+                    assert len(outputs) == len(output_tensor_grad)
+                    paddle.autograd.backward(
+                        tensors=outputs,
+                        grad_tensors=[t for t in output_tensor_grad])
+                else:
+                    paddle.autograd.backward(tensors=[output_tensor],
+                                             grad_tensors=[output_tensor_grad])
 
-        input_tensor_grad = None
-        if input_tensor is not None:
-            if isinstance(input_tensor, tuple):
-                input_tensor_grad = tuple(
-                    [t.grad for t in input_tensor if not t.stop_gradient])
-            else:
-                input_tensor_grad = input_tensor.grad
-        return input_tensor_grad
+            input_tensor_grad = None
+            if input_tensor is not None:
+                if isinstance(input_tensor, tuple):
+                    input_tensor_grad = tuple(
+                        [t.grad for t in input_tensor if not t.stop_gradient])
+                else:
+                    input_tensor_grad = input_tensor.grad
+            return input_tensor_grad
 
     def _load_micro_batch(self, cache_id):
         inputs = self.data
@@ -324,16 +328,14 @@ class PipelineParallel(MetaParallelBase):
             loss = self.total_loss.detach()
             is_fp32 = paddle.to_tensor(
                 1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
-            paddle.distributed.broadcast(
-                is_fp32,
-                src=self.global_rank,
-                use_calc_stream=True,
-                group=self.pp_group)
-            paddle.distributed.broadcast(
-                loss,
-                src=self.global_rank,
-                use_calc_stream=True,
-                group=self.pp_group)
+            paddle.distributed.broadcast(is_fp32,
+                                         src=self.global_rank,
+                                         use_calc_stream=True,
+                                         group=self.pp_group)
+            paddle.distributed.broadcast(loss,
+                                         src=self.global_rank,
+                                         use_calc_stream=True,
+                                         group=self.pp_group)
         else:
             is_fp32 = paddle.to_tensor(1)
             paddle.distributed.broadcast(
@@ -341,10 +343,10 @@ class PipelineParallel(MetaParallelBase):
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
                 use_calc_stream=True,
                 group=self.pp_group)
-            loss = paddle.zeros(
-                shape=[1],
-                dtype="float32") if is_fp32.numpy()[0] else paddle.zeros(
-                    shape=[1], dtype="float16")
+            loss = paddle.zeros(shape=[
+                1
+            ], dtype="float32") if is_fp32.numpy()[0] else paddle.zeros(
+                shape=[1], dtype="float16")
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),

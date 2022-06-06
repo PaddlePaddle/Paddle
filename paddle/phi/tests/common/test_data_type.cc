@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <iostream>
 #include <sstream>
 
@@ -63,6 +64,9 @@ TEST(DataType, OStream) {
   oss.str("");
   oss << phi::DataType::COMPLEX128;
   EXPECT_EQ(oss.str(), "complex128");
+  oss.str("");
+  oss << phi::DataType::PSTRING;
+  EXPECT_EQ(oss.str(), "pstring");
   oss.str("");
   try {
     oss << phi::DataType::NUM_DATA_TYPES;

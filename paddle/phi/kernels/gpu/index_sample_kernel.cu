@@ -12,30 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/index_sample_kernel.h"
-
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/index_sample_kernel.h"
 
 namespace phi {
 
 namespace {
-template <typename Context>
-void LimitGridDim(const Context& ctx, dim3* grid_dim) {
-  auto max_grid_dim =
-      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
-  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
-  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
-}
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-}
+}  // namespace
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index,
@@ -95,7 +88,7 @@ void IndexSampleKernel(const Context& ctx,
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  LimitGridDim(ctx, &grid_dim);
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

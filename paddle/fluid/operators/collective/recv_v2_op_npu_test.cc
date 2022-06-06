@@ -17,21 +17,19 @@ limitations under the License. */
 #endif
 
 #include <stdio.h>
+
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"

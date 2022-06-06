@@ -25,6 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
@@ -32,13 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/api_declare.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -62,19 +63,33 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
-inline static bool IsGradVar(const std::string& var_name) {
-  std::string suffix = kGradVarSuffix;
-  return var_name.rfind(suffix) != std::string::npos;
-}
-
 inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
-inline static std::string NoGrad(const std::string& var_name) {
+inline static std::string NoGrad(const std::string& var_name,
+                                 bool is_double_grad = false) {
   std::string suffix = kGradVarSuffix;
-  return var_name.substr(0, var_name.size() - kGradVarSuffixSize);
+  std::string new_out_suffix = kDoubleGradNewOutSuffix;
+  std::string tmp_var_name(var_name);
+  if (is_double_grad &&
+      (tmp_var_name.rfind(new_out_suffix) != std::string::npos)) {
+    tmp_var_name = tmp_var_name.substr(
+        0, tmp_var_name.size() - /*kDoubleGradNewOutSuffix length*/ 4);
+  }
+  return tmp_var_name.substr(0, tmp_var_name.size() - kGradVarSuffixSize);
+}
+
+inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
+  std::string suffix = kGradVarSuffix;
+  if (!is_double_grad) {
+    return var_name.rfind(suffix) != std::string::npos;
+  } else {
+    // for double grad cases, the X@GRAD is not a grad var, X@GRAD@GRAD is a
+    // grad var, here we remove a @GRAD suffix
+    return NoGrad(var_name).rfind(suffix) != std::string::npos;
+  }
 }
 
 inline static bool IsMemberOf(const std::vector<std::string>& vec,
@@ -147,7 +162,18 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (custom_in.is_gpu_pinned()) {
+        VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
+        auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+        auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
+        kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
+      } else {
+        kernel_ctx.EmplaceBackInput(std::move(custom_in));
+      }
+#else
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
+#endif
     }
   }
 
@@ -493,11 +519,12 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
       std::unordered_map<std::string, std::string>* grad_to_var,
       const std::vector<BlockDesc*>& grad_block, const std::string& name,
       const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs)
+      const std::vector<std::string>& outputs, bool is_double_grad)
       : SingleGradOpMaker<OpDesc>(fwd_op, no_grad_set, grad_to_var, grad_block),
         name_(name),
         inputs_(inputs),
-        outputs_(outputs) {}
+        outputs_(outputs),
+        is_double_grad_(is_double_grad) {}
 
  protected:
   void Apply(GradOpPtr<OpDesc> grad_op) const override {
@@ -508,7 +535,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
 
     for (auto& in_name : inputs_) {
       VLOG(3) << "Custom Operator: GradOpDescMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name)) {
+      if (!detail::IsGradVar(in_name, is_double_grad_)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
@@ -526,11 +553,12 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
     for (auto& out_name : outputs_) {
       VLOG(3) << "Custom Operator: GradOpDescMaker - output: " << out_name;
       if (detail::IsDuplicableVar(out_name)) {
-        grad_op->SetOutput(out_name,
-                           this->InputGrad(detail::NoGrad(out_name),
-                                           /*drop_empty_grad=*/false));
+        grad_op->SetOutput(
+            out_name, this->InputGrad(detail::NoGrad(out_name, is_double_grad_),
+                                      /*drop_empty_grad=*/false));
       } else {
-        grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
+        grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(
+                                         out_name, is_double_grad_)));
       }
     }
     grad_op->SetAttrMap(this->Attrs());
@@ -540,6 +568,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
   std::string name_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+  bool is_double_grad_{false};
 };
 
 template <>
@@ -553,12 +582,13 @@ class CustomGradOpMaker<imperative::OpBase>
       const AttributeMap& attrs,
       const std::map<std::string, std::string>& inplace_map,
       const std::string& name, const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs)
+      const std::vector<std::string>& outputs, bool is_double_grad)
       : SingleGradOpMaker<imperative::OpBase>(
             type, var_base_map_in, var_base_map_out, attrs, inplace_map),
         name_(name),
         inputs_(inputs),
-        outputs_(outputs) {}
+        outputs_(outputs),
+        is_double_grad_(is_double_grad) {}
 
  protected:
   // TODO(chenweihang): The code is duplicated with the previous one, because
@@ -574,7 +604,7 @@ class CustomGradOpMaker<imperative::OpBase>
 
     for (auto& in_name : inputs_) {
       VLOG(3) << "Custom Operator: GradOpBaseMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name)) {
+      if (!detail::IsGradVar(in_name, is_double_grad_)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
@@ -591,7 +621,8 @@ class CustomGradOpMaker<imperative::OpBase>
     }
     for (auto& out_name : outputs_) {
       VLOG(3) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
-      grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
+      grad_op->SetOutput(
+          out_name, this->InputGrad(detail::NoGrad(out_name, is_double_grad_)));
     }
     grad_op->SetAttrMap(this->Attrs());
   }
@@ -600,6 +631,7 @@ class CustomGradOpMaker<imperative::OpBase>
   std::string name_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+  bool is_double_grad_{false};
 };
 
 //////////// Operator and Kernel Register //////////////
@@ -607,8 +639,8 @@ class CustomGradOpMaker<imperative::OpBase>
 static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
-    const proto::VarType::Type type, const PlaceType& place) {
-  OpKernelType key(type, experimental::ConvertExtPlaceToInnerPlace(place));
+    const proto::VarType::Type type, const platform::Place& place) {
+  OpKernelType key(type, place);
   VLOG(3) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
@@ -646,10 +678,10 @@ static void RegisterOperatorKernel(const std::string& name,
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU);
+                                  platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(name, op_kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU);
+                                  platform::CUDAPlace());
 #endif
 }
 
@@ -832,48 +864,51 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     VLOG(3) << "Custom Operator: backward, op outputs: "
             << string::join_strings(grad_op_outputs, ',');
 
+    bool is_double_grad = (i == 2);
+
     // GradOpDescMaker
-    info.grad_op_maker_ = [grad_op_name, grad_op_inputs, grad_op_outputs](
-        const OpDesc& fwd_op,
-        const std::unordered_set<std::string>& no_grad_set,
-        std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block) {
-      CustomGradOpMaker<paddle::framework::OpDesc> maker(
-          fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
-          grad_op_inputs, grad_op_outputs);
-      return maker();
-    };
+    info.grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const OpDesc& fwd_op,
+            const std::unordered_set<std::string>& no_grad_set,
+            std::unordered_map<std::string, std::string>* grad_to_var,
+            const std::vector<BlockDesc*>& grad_block) {
+          CustomGradOpMaker<paddle::framework::OpDesc> maker(
+              fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
+              grad_op_inputs, grad_op_outputs, is_double_grad);
+          return maker();
+        };
 
     // GradOpBaseMaker
-    info.dygraph_grad_op_maker_ = [grad_op_name, grad_op_inputs,
-                                   grad_op_outputs](
-        const std::string& type,
-        const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out,
-        const framework::AttributeMap& attrs,
-        const framework::AttributeMap& default_attrs,
-        const std::map<std::string, std::string>& inplace_map) {
-      CustomGradOpMaker<paddle::imperative::OpBase> maker(
-          type, var_base_map_in, var_base_map_out, attrs, inplace_map,
-          grad_op_name, grad_op_inputs, grad_op_outputs);
-      maker.SetDygraphDefaultAttrsMap(default_attrs);
-      return maker();
-    };
+    info.dygraph_grad_op_maker_ =
+        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+            const std::string& type,
+            const imperative::NameVarBaseMap& var_base_map_in,
+            const imperative::NameVarBaseMap& var_base_map_out,
+            const framework::AttributeMap& attrs,
+            const framework::AttributeMap& default_attrs,
+            const std::map<std::string, std::string>& inplace_map) {
+          CustomGradOpMaker<paddle::imperative::OpBase> maker(
+              type, var_base_map_in, var_base_map_out, attrs, inplace_map,
+              grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
+          maker.SetDygraphDefaultAttrsMap(default_attrs);
+          return maker();
+        };
 
     /* Grad op register */
     OpInfo grad_info;
 
     // Grad Op
-    grad_info.creator_ = [](
-        const std::string& type, const VariableNameMap& inputs,
-        const VariableNameMap& outputs, const AttributeMap& attrs) {
-      return new CustomOperator(type, inputs, outputs, attrs);
-    };
+    grad_info.creator_ =
+        [](const std::string& type, const VariableNameMap& inputs,
+           const VariableNameMap& outputs, const AttributeMap& attrs) {
+          return new CustomOperator(type, inputs, outputs, attrs);
+        };
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
-      grad_info.infer_shape_ = [grad_op_inputs,
-                                grad_op_outputs](InferShapeContext* ctx) {
+      grad_info.infer_shape_ = [grad_op_inputs, grad_op_outputs,
+                                is_double_grad](InferShapeContext* ctx) {
         // 1. if forward input exists, gradient's shape is same with forward
         // input
         // default
@@ -884,7 +919,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         //    [Suitable for the situation that forward input is not used as
         //    backward input]
         for (auto& out_name : grad_op_outputs) {
-          auto fwd_name = detail::NoGrad(out_name);
+          auto fwd_name = detail::NoGrad(out_name, is_double_grad);
           if (detail::IsDuplicableVar(fwd_name)) {
             // Duplicable forward var must as backward input
             ctx->ShareDim(fwd_name, out_name);
@@ -946,15 +981,16 @@ void RegisterOperatorWithMetaInfoMap(
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-
   RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
+  return op_meta_info_map.GetMap();
 }
 
 }  // namespace framework

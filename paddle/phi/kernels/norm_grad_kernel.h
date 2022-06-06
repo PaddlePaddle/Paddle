@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
                     const DenseTensor& x,
-                    const DenseTensor& out,
+                    const DenseTensor& norm,
                     const DenseTensor& out_grad,
                     int axis,
                     float epsilon,

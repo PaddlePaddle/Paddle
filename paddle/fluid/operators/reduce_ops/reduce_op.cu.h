@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 namespace paddle {
@@ -33,12 +32,12 @@ void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
                       const framework::Tensor& x, framework::Tensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
-                      gpuStream_t stream) {
+                      gpuStream_t stream, bool is_mean = false) {
   y->mutable_data<Ty>(x.place());
 
   phi::funcs::ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx), x, y, transform,
-      origin_reduce_dims);
+      origin_reduce_dims, is_mean);
 }
 
 }  // namespace operators

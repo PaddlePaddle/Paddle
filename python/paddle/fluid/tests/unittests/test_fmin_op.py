@@ -54,8 +54,10 @@ class ApiFMinTest(unittest.TestCase):
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_fmin = paddle.fmin(data_x, data_y)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "y": self.input_y},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "y": self.input_y
+            },
                            fetch_list=[result_fmin])
         self.assertTrue(np.allclose(res, self.np_expected1))
 
@@ -65,8 +67,10 @@ class ApiFMinTest(unittest.TestCase):
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_fmin = paddle.fmin(data_x, data_z)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "z": self.input_z},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "z": self.input_z
+            },
                            fetch_list=[result_fmin])
         self.assertTrue(np.allclose(res, self.np_expected2))
 
@@ -76,8 +80,10 @@ class ApiFMinTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmin = paddle.fmin(data_a, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"a": self.input_a,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "a": self.input_a,
+                "c": self.input_c
+            },
                            fetch_list=[result_fmin])
         self.assertTrue(np.allclose(res, self.np_expected3))
 
@@ -87,8 +93,10 @@ class ApiFMinTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmin = paddle.fmin(data_b, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"b": self.input_b,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "b": self.input_b,
+                "c": self.input_c
+            },
                            fetch_list=[result_fmin])
         self.assertTrue(np.allclose(res, self.np_expected4))
 
@@ -127,6 +135,7 @@ class TestElementwiseFminOp(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmin"
+        self.python_api = paddle.fmin
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -138,21 +147,27 @@ class TestElementwiseFminOp(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"),
+                        check_eager=True)
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'),
+                        check_eager=True)
 
 
 class TestElementwiseFmin2Op(OpTest):
@@ -161,6 +176,7 @@ class TestElementwiseFmin2Op(OpTest):
     def setUp(self):
         """setUp"""
         self.op_type = "elementwise_fmin"
+        self.python_api = paddle.fmin
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -174,18 +190,29 @@ class TestElementwiseFmin2Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set("X"),
+                        check_eager=True)
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        no_grad_set=set('Y'),
+                        check_eager=True)
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

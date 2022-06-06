@@ -16,6 +16,7 @@
 #include <map>
 #include <random>
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -27,7 +28,7 @@
 
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
@@ -121,8 +122,9 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
   auto op =
       num_inputs[op_type] > 1
           ? framework::OpRegistry::CreateOp(
-                op_type, {{first_input_var_name, {first_input}},
-                          {second_input_var_name, {"x1"}}},
+                op_type,
+                {{first_input_var_name, {first_input}},
+                 {second_input_var_name, {"x1"}}},
                 {{output_var_name, {output_name}}}, {{"use_mkldnn", {true}}})
           : framework::OpRegistry::CreateOp(
                 op_type, {{first_input_var_name, {first_input}}},

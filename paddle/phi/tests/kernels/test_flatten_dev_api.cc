@@ -13,15 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/kernels/flatten_kernel.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/flatten_kernel.h"
 
 PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 
@@ -58,6 +58,10 @@ TEST(DEV_API, flatten) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
+  dev_ctx.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx.Init();
 
   // 2. test API

@@ -14,8 +14,11 @@
 
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -71,50 +74,12 @@ Please refer to Paper:
 class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "maxout");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "maxout");
-
-    auto in_x_dims = ctx->GetInputDim("X");
-    int groups = ctx->Attrs().Get<int>("groups");
-    int axis = ctx->Attrs().Get<int>("axis");
-    // check groups > 1
-    PADDLE_ENFORCE_GT(groups, 1, platform::errors::InvalidArgument(
-                                     "Attr(groups) of Op(maxout) should be "
-                                     "larger than 1. But received %d.",
-                                     groups));
-    PADDLE_ENFORCE_EQ(
-        axis == 1 || axis == -1 || axis == 3, true,
-        platform::errors::InvalidArgument(
-            "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
-    PADDLE_ENFORCE_EQ(in_x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "x's dims should be 4, but received x's dims is: %d",
-                          in_x_dims.size()));
-
-    if (axis < 0) {
-      axis += in_x_dims.size();
-    }
-    PADDLE_ENFORCE_EQ(
-        in_x_dims[axis] % groups, 0,
-        platform::errors::InvalidArgument(
-            "The number of input channels for Op(maxout) "
-            "should be divisible by Attr(groups). But received: the "
-            "input's channels is [%d], the shape of input is [%s], "
-            "the Attr(groups) is [%d], the Attr(axis) is [%d]. The "
-            "error may come from wrong Attr(groups) or Attr(axis) setting.",
-            in_x_dims[axis], in_x_dims, groups, axis));
-    std::vector<int64_t> output_shape(
-        {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
-    output_shape[axis] = in_x_dims[axis] / groups;
-    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
-  }
 };
 
 class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "maxout_grad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                    "X@Grad", "maxout_grad");
@@ -125,8 +90,11 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(maxout, MaxOutInferShapeFunctor,
+                            PD_INFER_META(phi::MaxOutInferMeta));
 REGISTER_OPERATOR(
     maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    MaxOutInferShapeFunctor);
 REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);

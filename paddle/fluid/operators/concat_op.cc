@@ -15,11 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/concat_op.h"
 
 #include <paddle/fluid/platform/complex.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/infershape_utils.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -216,18 +217,3 @@ REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::float16>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<double>>);

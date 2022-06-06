@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
 
@@ -47,8 +48,7 @@ class DeformableConvOpConverter : public OpConverter {
     auto* filter_var = scope.FindVar(filter_name);
     auto* filter_tensor = filter_var->GetMutable<framework::LoDTensor>();
 
-    float* filter_data =
-        engine_->GetWeightCPUData(filter_name, filter_tensor, false);
+    float* filter_data = engine_->GetWeightCPUData(filter_name, filter_tensor);
 
     const int c_o = filter_tensor->dims()[0];
     const int c_i = filter_tensor->dims()[1];

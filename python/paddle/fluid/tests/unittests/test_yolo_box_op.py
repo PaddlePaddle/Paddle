@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +31,7 @@ def YoloBox(x, img_size, attrs):
     an_num = int((len(anchors) // 2))
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
-    downsample = attrs['downsample']
+    downsample = attrs['downsample_ratio']
     clip_bbox = attrs['clip_bbox']
     scale_x_y = attrs['scale_x_y']
     iou_aware = attrs['iou_aware']
@@ -55,8 +55,8 @@ def YoloBox(x, img_size, attrs):
                                h)
     anchors = [(anchors[i], anchors[(i + 1)])
                for i in range(0, len(anchors), 2)]
-    anchors_s = np.array(
-        [((an_w / input_w), (an_h / input_h)) for (an_w, an_h) in anchors])
+    anchors_s = np.array([((an_w / input_w), (an_h / input_h))
+                          for (an_w, an_h) in anchors])
     anchor_w = anchors_s[:, 0:1].reshape((1, an_num, 1, 1))
     anchor_h = anchors_s[:, 1:2].reshape((1, an_num, 1, 1))
     pred_box[:, :, :, :, 2] = (np.exp(pred_box[:, :, :, :, 2]) * anchor_w)
@@ -70,9 +70,9 @@ def YoloBox(x, img_size, attrs):
     pred_score = (sigmoid(x[:, :, :, :, 5:]) * pred_conf)
     pred_box = (pred_box * (pred_conf > 0.0).astype('float32'))
     pred_box = pred_box.reshape((n, (-1), 4))
-    (pred_box[:, :, :2], pred_box[:, :, 2:4]) = (
-        (pred_box[:, :, :2] - (pred_box[:, :, 2:4] / 2.0)),
-        (pred_box[:, :, :2] + (pred_box[:, :, 2:4] / 2.0)))
+    (pred_box[:, :, :2],
+     pred_box[:, :, 2:4]) = ((pred_box[:, :, :2] - (pred_box[:, :, 2:4] / 2.0)),
+                             (pred_box[:, :, :2] + (pred_box[:, :, 2:4] / 2.0)))
     pred_box[:, :, 0] = (pred_box[:, :, 0] * img_size[:, 1][:, np.newaxis])
     pred_box[:, :, 1] = (pred_box[:, :, 1] * img_size[:, 0][:, np.newaxis])
     pred_box[:, :, 2] = (pred_box[:, :, 2] * img_size[:, 1][:, np.newaxis])
@@ -89,16 +89,18 @@ def YoloBox(x, img_size, attrs):
 
 
 class TestYoloBoxOp(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolo_box'
+        self.python_api = paddle.vision.ops.yolo_box
         x = np.random.random(self.x_shape).astype('float32')
         img_size = np.random.randint(10, 20, self.imgsize_shape).astype('int32')
         self.attrs = {
             'anchors': self.anchors,
             'class_num': self.class_num,
             'conf_thresh': self.conf_thresh,
-            'downsample': self.downsample,
+            'downsample_ratio': self.downsample,
             'clip_bbox': self.clip_bbox,
             'scale_x_y': self.scale_x_y,
             'iou_aware': self.iou_aware,
@@ -109,7 +111,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
@@ -128,6 +130,7 @@ class TestYoloBoxOp(OpTest):
 
 
 class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
+
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int((len(self.anchors) // 2))
@@ -145,6 +148,7 @@ class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
 
 
 class TestYoloBoxOpScaleXY(TestYoloBoxOp):
+
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int((len(self.anchors) // 2))
@@ -162,6 +166,7 @@ class TestYoloBoxOpScaleXY(TestYoloBoxOp):
 
 
 class TestYoloBoxOpIoUAware(TestYoloBoxOp):
+
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int((len(self.anchors) // 2))
@@ -179,35 +184,34 @@ class TestYoloBoxOpIoUAware(TestYoloBoxOp):
 
 
 class TestYoloBoxDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
         img_size = np.ones((2, 2)).astype('int32')
         img_size = paddle.to_tensor(img_size)
         x1 = np.random.random([2, 14, 8, 8]).astype('float32')
         x1 = paddle.to_tensor(x1)
-        (boxes, scores) = paddle.vision.ops.yolo_box(
-            x1,
-            img_size=img_size,
-            anchors=[10, 13, 16, 30],
-            class_num=2,
-            conf_thresh=0.01,
-            downsample_ratio=8,
-            clip_bbox=True,
-            scale_x_y=1.0)
+        (boxes, scores) = paddle.vision.ops.yolo_box(x1,
+                                                     img_size=img_size,
+                                                     anchors=[10, 13, 16, 30],
+                                                     class_num=2,
+                                                     conf_thresh=0.01,
+                                                     downsample_ratio=8,
+                                                     clip_bbox=True,
+                                                     scale_x_y=1.0)
         assert ((boxes is not None) and (scores is not None))
         x2 = np.random.random([2, 16, 8, 8]).astype('float32')
         x2 = paddle.to_tensor(x2)
-        (boxes, scores) = paddle.vision.ops.yolo_box(
-            x2,
-            img_size=img_size,
-            anchors=[10, 13, 16, 30],
-            class_num=2,
-            conf_thresh=0.01,
-            downsample_ratio=8,
-            clip_bbox=True,
-            scale_x_y=1.0,
-            iou_aware=True,
-            iou_aware_factor=0.5)
+        (boxes, scores) = paddle.vision.ops.yolo_box(x2,
+                                                     img_size=img_size,
+                                                     anchors=[10, 13, 16, 30],
+                                                     class_num=2,
+                                                     conf_thresh=0.01,
+                                                     downsample_ratio=8,
+                                                     clip_bbox=True,
+                                                     scale_x_y=1.0,
+                                                     iou_aware=True,
+                                                     iou_aware_factor=0.5)
         paddle.enable_static()
 
     def test_eager(self):
@@ -216,35 +220,35 @@ class TestYoloBoxDygraph(unittest.TestCase):
 
 
 class TestYoloBoxStatic(unittest.TestCase):
+
     def test_static(self):
         x1 = paddle.static.data('x1', [2, 14, 8, 8], 'float32')
         img_size = paddle.static.data('img_size', [2, 2], 'int32')
-        (boxes, scores) = paddle.vision.ops.yolo_box(
-            x1,
-            img_size=img_size,
-            anchors=[10, 13, 16, 30],
-            class_num=2,
-            conf_thresh=0.01,
-            downsample_ratio=8,
-            clip_bbox=True,
-            scale_x_y=1.0)
+        (boxes, scores) = paddle.vision.ops.yolo_box(x1,
+                                                     img_size=img_size,
+                                                     anchors=[10, 13, 16, 30],
+                                                     class_num=2,
+                                                     conf_thresh=0.01,
+                                                     downsample_ratio=8,
+                                                     clip_bbox=True,
+                                                     scale_x_y=1.0)
         assert ((boxes is not None) and (scores is not None))
         x2 = paddle.static.data('x2', [2, 16, 8, 8], 'float32')
-        (boxes, scores) = paddle.vision.ops.yolo_box(
-            x2,
-            img_size=img_size,
-            anchors=[10, 13, 16, 30],
-            class_num=2,
-            conf_thresh=0.01,
-            downsample_ratio=8,
-            clip_bbox=True,
-            scale_x_y=1.0,
-            iou_aware=True,
-            iou_aware_factor=0.5)
+        (boxes, scores) = paddle.vision.ops.yolo_box(x2,
+                                                     img_size=img_size,
+                                                     anchors=[10, 13, 16, 30],
+                                                     class_num=2,
+                                                     conf_thresh=0.01,
+                                                     downsample_ratio=8,
+                                                     clip_bbox=True,
+                                                     scale_x_y=1.0,
+                                                     iou_aware=True,
+                                                     iou_aware_factor=0.5)
         assert ((boxes is not None) and (scores is not None))
 
 
 class TestYoloBoxOpHW(TestYoloBoxOp):
+
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
         an_num = int((len(self.anchors) // 2))

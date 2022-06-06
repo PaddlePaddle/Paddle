@@ -15,8 +15,9 @@
 from typing import Sequence
 import numpy as np
 import paddle
-from .tensor.attribute import is_complex, is_floating_point, is_integer, _real_to_complex_dtype, _complex_to_real_dtype
-from .fluid.framework import in_dygraph_mode
+from .tensor.attribute import is_complex, is_floating_point, is_integer
+from .tensor.creation import _real_to_complex_dtype, _complex_to_real_dtype
+from .fluid.framework import _non_static_mode
 from . import _C_ops
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.layer_helper import LayerHelper
@@ -103,8 +104,8 @@ def _check_fft_axes(x, axes):
     for axis in axes:
         if not isinstance(axis, int) or axis < -ndim or axis >= ndim:
             raise ValueError(
-                "FFT axes {} contains invalid value ({}), it should be in range [-{}, {})".
-                format(axes, axis, ndim, ndim))
+                "FFT axes {} contains invalid value ({}), it should be in range [-{}, {})"
+                .format(axes, axis, ndim, ndim))
 
 
 def _resize_fft_input(x, s, axes):
@@ -126,11 +127,10 @@ def _resize_fft_input(x, s, axes):
             slices.append((0, s[i]))
 
     if axes_to_slice:
-        x = paddle.slice(
-            x,
-            axes_to_slice,
-            starts=[item[0] for item in slices],
-            ends=[item[1] for item in slices])
+        x = paddle.slice(x,
+                         axes_to_slice,
+                         starts=[item[0] for item in slices],
+                         ends=[item[1] for item in slices])
     if axes_to_pad:
         padding_widths = [0] * (2 * ndim)
         for axis, pad in zip(axes_to_pad, paddings):
@@ -197,8 +197,13 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
 
     """
     if is_integer(x) or is_floating_point(x):
-        return fft_r2c(
-            x, n, axis, norm, forward=True, onesided=False, name=name)
+        return fft_r2c(x,
+                       n,
+                       axis,
+                       norm,
+                       forward=True,
+                       onesided=False,
+                       name=name)
     else:
         return fft_c2c(x, n, axis, norm, forward=True, name=name)
 
@@ -261,8 +266,13 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
 
     """
     if is_integer(x) or is_floating_point(x):
-        return fft_r2c(
-            x, n, axis, norm, forward=False, onesided=False, name=name)
+        return fft_r2c(x,
+                       n,
+                       axis,
+                       norm,
+                       forward=False,
+                       onesided=False,
+                       name=name)
     else:
         return fft_c2c(x, n, axis, norm, forward=False, name=name)
 
@@ -522,8 +532,13 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
     """
     if is_integer(x) or is_floating_point(x):
-        return fftn_r2c(
-            x, s, axes, norm, forward=True, onesided=False, name=name)
+        return fftn_r2c(x,
+                        s,
+                        axes,
+                        norm,
+                        forward=True,
+                        onesided=False,
+                        name=name)
     else:
         return fftn_c2c(x, s, axes, norm, forward=True, name=name)
 
@@ -586,8 +601,13 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
 
     """
     if is_integer(x) or is_floating_point(x):
-        return fftn_r2c(
-            x, s, axes, norm, forward=False, onesided=False, name=name)
+        return fftn_r2c(x,
+                        s,
+                        axes,
+                        norm,
+                        forward=False,
+                        onesided=False,
+                        name=name)
     else:
         return fftn_c2c(x, s, axes, norm, forward=False, name=name)
 
@@ -877,13 +897,13 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return fftn(x, s, axes, norm, name)
 
 
@@ -947,13 +967,13 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return ifftn(x, s, axes, norm, name)
 
 
@@ -1001,13 +1021,13 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return rfftn(x, s, axes, norm, name)
 
 
@@ -1053,13 +1073,13 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return irfftn(x, s, axes, norm, name)
 
 
@@ -1106,13 +1126,13 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return hfftn(x, s, axes, norm, name)
 
 
@@ -1158,13 +1178,13 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     if s is not None:
         if not isinstance(s, Sequence) or len(s) != 2:
             raise ValueError(
-                "Invalid FFT argument s ({}), it should be a sequence of 2 integers.".
-                format(s))
+                "Invalid FFT argument s ({}), it should be a sequence of 2 integers."
+                .format(s))
     if axes is not None:
         if not isinstance(axes, Sequence) or len(axes) != 2:
             raise ValueError(
-                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers.".
-                format(axes))
+                "Invalid FFT argument axes ({}), it should be a sequence of 2 integers."
+                .format(axes))
     return ihfftn(x, s, axes, norm, name)
 
 
@@ -1372,18 +1392,22 @@ def fft_c2c(x, n, axis, norm, forward, name):
     op_type = 'fft_c2c'
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
     return out
 
 
@@ -1402,12 +1426,14 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
     op_type = 'fft_r2c'
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                  'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {
             'axes': axes,
             'normalization': norm,
@@ -1419,8 +1445,10 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         out = helper.create_variable_for_type_inference(
             _real_to_complex_dtype(dtype))
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
     return out
 
 
@@ -1441,7 +1469,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
     op_type = 'fft_c2r'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if n is not None:
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                      'last_dim_size', n)
@@ -1449,7 +1477,9 @@ def fft_c2r(x, n, axis, norm, forward, name):
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         if n is not None:
             attrs['last_dim_size'] = n
@@ -1458,8 +1488,10 @@ def fft_c2r(x, n, axis, norm, forward, name):
         out = helper.create_variable_for_type_inference(
             _complex_to_real_dtype(dtype))
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
     return out
 
 
@@ -1496,18 +1528,22 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     op_type = 'fft_c2c'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
     return out
 
 
@@ -1543,12 +1579,14 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     op_type = 'fft_r2c'
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                  'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {
             'axes': axes,
             'normalization': norm,
@@ -1560,8 +1598,10 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         out = helper.create_variable_for_type_inference(
             _real_to_complex_dtype(dtype))
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
 
     return out
 
@@ -1602,7 +1642,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
     op_type = 'fft_c2r'
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if s:
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
                      'last_dim_size', s[-1])
@@ -1610,7 +1650,9 @@ def fftn_c2r(x, s, axes, norm, forward, name):
             attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        inputs = {'X': [x], }
+        inputs = {
+            'X': [x],
+        }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         if s:
             attrs["last_dim_size"] = s[-1]
@@ -1619,6 +1661,8 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         out = helper.create_variable_for_type_inference(
             _complex_to_real_dtype(dtype))
         outputs = {"Out": [out]}
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
     return out

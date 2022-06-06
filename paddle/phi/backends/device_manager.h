@@ -15,13 +15,14 @@
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 
+#include <unordered_map>
+
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
-
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {
@@ -157,6 +158,8 @@ class DeviceManager {
   static size_t GetDeviceCount(const std::string& device_type);
 
   static std::vector<size_t> GetDeviceList(const std::string& device_type);
+
+  static void Clear();
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

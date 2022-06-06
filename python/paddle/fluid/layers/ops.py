@@ -16,9 +16,10 @@ from __future__ import print_function
 import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_, Variable
+from ..framework import convert_np_dtype_to_dtype_, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
+from paddle import _C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -91,8 +92,8 @@ for _OP in set(__activations_noattr__):
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
     _func = generate_activation_fn(_OP)
-    _func = deprecated(
-        since="2.0.0", update_to="paddle.nn.functional.%s" % (_new_OP))(_func)
+    _func = deprecated(since="2.0.0",
+                       update_to="paddle.nn.functional.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
 
 for _OP in set(__unary_func__):
@@ -111,7 +112,8 @@ for _OP in set(__inplace_unary_func__):
     _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
 
-add_sample_code(globals()["sigmoid"], r"""
+add_sample_code(
+    globals()["sigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -125,7 +127,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["silu"], r"""
+add_sample_code(
+    globals()["silu"], r"""
 Examples:
     .. code-block:: python
 
@@ -139,7 +142,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["logsigmoid"], r"""
+add_sample_code(
+    globals()["logsigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -153,7 +157,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["exp"], r"""
+add_sample_code(
+    globals()["exp"], r"""
 Examples:
     .. code-block:: python
 
@@ -166,7 +171,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["expm1"], r"""
+add_sample_code(
+    globals()["expm1"], r"""
 Examples:
     .. code-block:: python
 
@@ -179,7 +185,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh"], r"""
+add_sample_code(
+    globals()["tanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -192,7 +199,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atan"], r"""
+add_sample_code(
+    globals()["atan"], r"""
 Examples:
     .. code-block:: python
 
@@ -205,7 +213,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh_shrink"], r"""
+add_sample_code(
+    globals()["tanh_shrink"], r"""
 Examples:
     .. code-block:: python
 
@@ -219,7 +228,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sqrt"], r"""
+add_sample_code(
+    globals()["sqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -232,7 +242,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["rsqrt"], r"""
+add_sample_code(
+    globals()["rsqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -245,7 +256,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["abs"], r"""
+add_sample_code(
+    globals()["abs"], r"""
 Examples:
     .. code-block:: python
 
@@ -258,7 +270,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["ceil"], r"""
+add_sample_code(
+    globals()["ceil"], r"""
 Examples:
     .. code-block:: python
 
@@ -271,7 +284,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["floor"], r"""
+add_sample_code(
+    globals()["floor"], r"""
 Examples:
     .. code-block:: python
 
@@ -284,7 +298,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cos"], r"""
+add_sample_code(
+    globals()["cos"], r"""
 Examples:
     .. code-block:: python
 
@@ -297,7 +312,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tan"], r"""
+add_sample_code(
+    globals()["tan"], r"""
 Examples:
     .. code-block:: python
 
@@ -310,7 +326,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acos"], r"""
+add_sample_code(
+    globals()["acos"], r"""
 Examples:
     .. code-block:: python
 
@@ -323,7 +340,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sin"], r"""
+add_sample_code(
+    globals()["sin"], r"""
 Examples:
     .. code-block:: python
 
@@ -336,7 +354,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asin"], r"""
+add_sample_code(
+    globals()["asin"], r"""
 Examples:
     .. code-block:: python
 
@@ -349,7 +368,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cosh"], r"""
+add_sample_code(
+    globals()["cosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -362,7 +382,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sinh"], r"""
+add_sample_code(
+    globals()["sinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -375,7 +396,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asinh"], r"""
+add_sample_code(
+    globals()["asinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -388,7 +410,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acosh"], r"""
+add_sample_code(
+    globals()["acosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -401,7 +424,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atanh"], r"""
+add_sample_code(
+    globals()["atanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -414,7 +438,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["round"], r"""
+add_sample_code(
+    globals()["round"], r"""
 Examples:
     .. code-block:: python
 
@@ -427,7 +452,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["reciprocal"], r"""
+add_sample_code(
+    globals()["reciprocal"], r"""
 Examples:
     .. code-block:: python
 
@@ -440,7 +466,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["square"], r"""
+add_sample_code(
+    globals()["square"], r"""
 Examples:
     .. code-block:: python
 
@@ -453,7 +480,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["lgamma"], r"""
+add_sample_code(
+    globals()["lgamma"], r"""
 Examples:
     .. code-block:: python
 
@@ -466,7 +494,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["softplus"], r"""
+add_sample_code(
+    globals()["softplus"], r"""
 Examples:
     .. code-block:: python
 
@@ -480,7 +509,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["softsign"], r"""
+add_sample_code(
+    globals()["softsign"], r"""
 Examples:
     .. code-block:: python
 
@@ -575,10 +605,9 @@ __all__ += ['cumsum']
 _cum_sum_ = generate_layer_fn('cumsum')
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.cumsum",
-    reason="New APIs for Paddle 2.0 are coming.")
+@deprecated(since="2.0.0",
+            update_to="paddle.cumsum",
+            reason="New APIs for Paddle 2.0 are coming.")
 def cumsum(x, axis=None, exclusive=None, reverse=None):
     check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
@@ -794,6 +823,9 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
+    if in_dygraph_mode():
+        return _C_ops.final_state_erf(x)
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():

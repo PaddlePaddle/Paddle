@@ -15,15 +15,16 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -245,6 +246,23 @@ TEST(EagerUtils, GetGradAccumulationNode) {
   autograd_ptr0->SetGradNode(
       std::make_shared<eager_test::GradTestNode>(1, 2.0, 3));
   ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
+}
+
+TEST(EagerUtils, FillZeroForEmptyOptionalGradInput) {
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      grads = {std::vector<paddle::experimental::Tensor>(1)};
+  paddle::small_vector<std::vector<GradSlotMeta>, egr::kSlotSmallVectorSize>
+      slot_metas = {std::vector<GradSlotMeta>(1)};
+
+  phi::DenseTensorMeta tensor_meta;
+  tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;
+  tensor_meta.dims = {2, 4};
+  slot_metas[0][0].SetTensorMeta(tensor_meta);
+  slot_metas[0][0].SetPlace(phi::CPUPlace());
+
+  EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0], slot_metas[0]);
+  eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 
 }  // namespace egr

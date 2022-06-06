@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+
 #include <algorithm>
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -19,18 +20,28 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
+constexpr size_t kPrepareWorkQueueIdx = 2;
+
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
+  VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_sequential_run) {
     VLOG(4) << "FLAGS_new_executor_sequential_run:"
@@ -44,32 +55,34 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
+void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  if (atomic_deps_.size() != dependecy_count.size()) {
-    atomic_deps_.clear();
-    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    atomic_deps_[i]->store(dependecy_count[i]);
-  }
-  return atomic_deps_;
+  VLOG(4) << "PrepareAtomicDeps";
+  atomic_deps_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&dependecy_count] {
+        auto op_deps = std::make_unique<std::vector<std::atomic<size_t>>>(
+            dependecy_count.size());
+        for (size_t i = 0; i < dependecy_count.size(); ++i) {
+          (*op_deps)[i] = dependecy_count[i];
+        }
+        VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
+        return op_deps;
+      });
 }
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
+void AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  if (atomic_var_ref_.size() != vec_meta_info.size()) {
-    atomic_var_ref_.clear();
-    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
-  }
-  return atomic_var_ref_;
+  VLOG(4) << "PrepareAtomicVarRef";
+  atomic_var_ref_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&vec_meta_info] {
+        auto var_ref = std::make_unique<std::vector<std::atomic<size_t>>>(
+            vec_meta_info.size());
+        for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+          (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+        }
+        VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
+        return var_ref;
+      });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -133,7 +146,9 @@ get_unused_vars(const BlockDesc& block,
     size_t op_idx = name_op_idx_pair.second;
 
     result[ops[op_idx].get()].emplace_back(name);
+    VLOG(4) << ops[op_idx].get()->Type() << " " << name;
   }
+  VLOG(4) << "gc map size:" << result.size();
   return result;
 }
 
@@ -159,6 +174,8 @@ void build_variable_scope(const framework::BlockDesc& block,
       auto* ptr = inner_scope->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
+      // NOTE(zhiqiu): if var exists in scope and the type is right,
+      // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
       VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
@@ -182,6 +199,7 @@ void create_all_ops(const framework::BlockDesc& block,
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
+
     AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
@@ -189,6 +207,16 @@ void create_all_ops(const framework::BlockDesc& block,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) {
+      if (op->HasAttr("use_mkldnn")) {
+        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
+        op_base->SetAttr("use_mkldnn", true);
+      }
+    }
+#endif
+
     ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
 }
@@ -306,8 +334,12 @@ void build_op_func_list(const platform::Place& place,
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       main_program, block.ID(), ops_unique);
 
-  std::vector<std::shared_ptr<OperatorBase>>
-      ops;  // its elements will be moved to vec_func_list
+#ifdef PADDLE_WITH_MKLDNN
+  platform::RegisterModelLayout(ops_unique, place);
+#endif
+
+  // its elements will be moved to vec_func_list
+  std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
@@ -343,34 +375,40 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+    VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-    if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
+    if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "End run " << place << " "
+              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
-      auto op_with_kernel =
-          static_cast<const framework::OperatorWithKernel*>(op);
+      auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(op));
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
 
-      // see OperatorWithKernel::RunImpl in operator.cc for why
-      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-        // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
-        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
-      }
-
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
       Scope scope;
+      Scope* runtime_scope = &scope;
+      // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
+      // But some OPs do have such behavior (e.g., cinn_launch OP). Here special
+      // treatment for them.
+      if (op_with_kernel->Type() == "cinn_launch") {
+        VLOG(6) << "OP(" << op_with_kernel->Type()
+                << ") use scope in kernel, "
+                   "so pass a real scope to "
+                   "ExecutionContext";
+        runtime_scope = local_scope;
+      }
+
       auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
-          ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+          ExecutionContext(*op, *runtime_scope, *dev_ctx, runtime_context));
+      op_with_kernel->ResetKernelType(new OpKernelType(expected_kernel_key));
 
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
@@ -378,13 +416,16 @@ void build_op_func_list(const platform::Place& place,
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
+      VariableValueMap& outs_map_temp = runtime_context.outputs;
 
       // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
       // ApplyDataTransform
-      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, vec_func_list, use_local_scope);
-      op_with_kernel = static_cast<const framework::OperatorWithKernel*>(
-          op_func_node.operator_base_.get());
+      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp,
+                         &outs_map_temp, var_scope, &op_func_node,
+                         vec_func_list, use_local_scope);
+      op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(
+              op_func_node.operator_base_.get()));
 
       // step 4. Run op kernel
       VLOG(3) << op_with_kernel->Type()
@@ -404,8 +445,18 @@ void build_op_func_list(const platform::Place& place,
       op_func_node.dev_ctx_ = dev_ctx;
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      auto exec_ctx =
-          ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted from OperatorWithKernel.
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+      }
+
+      auto exec_ctx = ExecutionContext(*op_with_kernel, *runtime_scope,
+                                       *dev_ctx, runtime_context);
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -442,7 +493,6 @@ void build_op_func_list(const platform::Place& place,
         op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
                                               &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
-
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
         auto kernels_iter = all_op_kernels.find(op->Type());
@@ -471,9 +521,28 @@ void build_op_func_list(const platform::Place& place,
             op_func_node, place, outputs_names, &runtime_context.outputs,
             var_scope, vec_func_list, local_scope);
       }
+      if (!op_func_node.inplace_back_map.empty()) {
+        auto& m = op_func_node.inplace_back_map;
+        // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+        for (auto& p : m) {
+          auto* transformed_tensor =
+              GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                  var_scope->Var(p.first));
+          auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+              var_scope->Var(p.second));
+          original_tensor->ShareDataWith(*transformed_tensor);
+          VLOG(4) << "Transfer inplace variable back form "
+                  << var_scope->GetNameById(p.first) << " to "
+                  << var_scope->GetNameById(p.second);
+        }
+      }
     }
 
+    VLOG(4) << "End run " << place << " "
+            << op_func_node.operator_base_->DebugStringEx(local_scope);
+
     vec_func_list->emplace_back(op_func_node);
+
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
@@ -509,10 +578,7 @@ void build_op_func_list(const platform::Place& place,
             framework::ToTypeName(var->Type()), var_name));
       }
     }
-
     delete garbages;  // free mem
-
-    VLOG(3) << "run " << op->Type() << " done.";
   }
 }
 
@@ -564,25 +630,128 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
 }
 
 std::map<int, std::list<int>> get_downstream_map(
-    const std::map<int, std::set<int>>& op2dependences) {
-  // op2dependences is op -> it's dependences. we want to get op -> [ops] map,
+    const std::map<int, std::set<int>>& op2dependences,
+    std::vector<std::vector<bool>>* op_happens_before) {
+  // step1: convert op2dependences to downstream_map directly
+  // op2dependences is op -> it's dependences.
+  // we want to get op -> [next ops] map,
   // where ops is the next instruction of op.
-  std::map<int, std::list<int>> result;
+  std::map<int, std::list<int>> downstream;
   for (auto& item : op2dependences) {
     int op = item.first;
     for (auto dep_op : item.second) {
-      if (result.find(dep_op) == result.end())
-        result[dep_op] = std::list<int>();
-      result[dep_op].push_back(op);
+      if (downstream.find(dep_op) == downstream.end())
+        downstream[dep_op] = std::list<int>();
+      downstream[dep_op].push_back(op);
     }
   }
-  return std::move(result);
+
+  auto downstream_map_to_str = [&]() -> std::string {
+    std::ostringstream oss;
+    for (auto pair : downstream) {
+      oss << pair.first << " -> ";
+      std::copy(pair.second.begin(), pair.second.end(),
+                std::ostream_iterator<int>(oss, " "));
+      oss << std::endl;
+    }
+    return oss.str();
+  };
+
+  auto downstream_map_count = [&]() -> size_t {
+    size_t count = 0;
+    for (auto pair : downstream) {
+      count += pair.second.size();
+    }
+    return count;
+  };
+
+  VLOG(6) << "downstream count: " << downstream_map_count();
+  VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
+
+  // step2: remove unnecessary downstream ops
+  // for example, a->b->c
+  // a: b, c
+  // b: c
+  // =>
+  // a: b
+  // b: c
+
+  // NOTE(zhiqiu): the size of downstream != size of op2dependences
+  // since there are some ops that have no downstream-op.
+  auto op_num = op2dependences.size();
+  // happens_before[i][j] means i should be executed before j
+  op_happens_before->resize(op_num);
+  for (size_t i = 0; i < op_num; ++i) {
+    (*op_happens_before)[i].resize(op_num);
+    std::fill((*op_happens_before)[i].begin(), (*op_happens_before)[i].end(),
+              false);
+  }
+
+  // bfs to get all next ops
+  auto bfs = [&](size_t op_idx) {
+    std::queue<size_t> q;
+    std::vector<bool> visited(op_num, false);
+    q.push(op_idx);
+    while (!q.empty()) {
+      size_t op = q.front();
+      q.pop();
+      visited[op] = true;
+      if (!downstream.count(op)) {
+        continue;
+      }
+      for (auto next : downstream[op]) {
+        if (!visited[next]) {
+          PADDLE_ENFORCE_EQ((*op_happens_before)[next][op_idx], false,
+                            paddle::platform::errors::AlreadyExists(
+                                "There exists circle in graph, expected "
+                                "%d->%d, but already got %d->%d",
+                                op_idx, next, next, op_idx));
+          (*op_happens_before)[op_idx][next] = true;
+          VLOG(8) << "happens before: " << op_idx << " " << next;
+          q.push(next);
+        }
+      }
+    }
+  };
+
+  for (size_t i = 0; i < op_num; ++i) {
+    bfs(i);
+  }
+
+  // shrink, find the downstream op that has no other op in the
+  // downstream list happens before it
+  for (size_t i = 0; i < op_num; ++i) {
+    std::list<int> minumum_nexts;
+    for (size_t item : downstream[i]) {
+      bool not_after_any = true;
+      // find the op that is not executed after any
+      for (size_t other_item : downstream[i]) {
+        if ((*op_happens_before)[other_item][item]) {
+          VLOG(8) << "happens_before: " << other_item << "->" << item
+                  << ", so skip " << item;
+          not_after_any = false;
+          break;
+        }
+      }
+      if (not_after_any) {
+        VLOG(8) << "downstream op of " << i << ": " << item;
+        minumum_nexts.push_back(item);
+      }
+    }
+    downstream[i] = minumum_nexts;
+  }
+  VLOG(6) << "downstream count: " << downstream_map_count();
+  VLOG(6) << "downstream_map: " << std::endl << downstream_map_to_str();
+
+  return downstream;
 }
 
 std::map<int, std::list<int>> build_op_downstream_map(
-    const std::vector<Instruction>& vec_instruction) {
-  auto var2min_rw_op = std::map<
-      int, std::list<int>>();  // # map from variable id to read / write op id.
+    const std::vector<Instruction>& vec_instruction,
+    std::vector<std::vector<bool>>* op_happens_before) {
+  auto var2min_rw_op =
+      std::map<int, std::list<int>>();  // # map from variable id to read /
+                                        // write op id.
   auto var2recent_write_op =
       std::map<int, int>();  // # map from variable to recent write op.
   auto op2dependences =
@@ -637,8 +806,208 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+
+    // NOTE(zhiqiu): The inplace op with `transfer` also changes
+    // original output after that so add original output as well
+    // original: a->op->a
+    // after: a->data_transfer->a'->op->a'->transfer_back->a
+    // which means op writes a and a'
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto var = p.second;
+        var2recent_write_op[var] = op_idx;
+        // var in input list and in output list, so remove it.
+        if (remove_duplicate.count(var) == 0) {
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+        }
+      }
+    }
   }
-  return std::move(get_downstream_map(op2dependences));
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli",
+      "poisson",
+      "multinomial",
+      "gaussian_random",
+      "truncated_gaussian_random",
+      "uniform_random",
+      "randint",
+      "randperm",
+      "exponential",
+      "sampling_id"
+      "dropout",
+      "class_center_sample",
+  };
+
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // add dependency for communication op
+  auto is_comm_op = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send",
+        "recv",
+        "send_v2",
+        "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // TODO(zhiqiu): there still some cases not handled
+  // add dependency for c_sync_comm_stream
+
+  // in program, we can add only one c_sync_comm_stream to sync all
+  // communication ops.
+  // c_allreduce_sum(a)
+  // c_allreduce_sum(b)
+  // c_allreduce_sum(c)
+  // c_sync_comm_stream(a)
+  const std::string kSyncComm = "c_sync_comm_stream";
+  dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kSyncComm) {
+      dependence_op_idx = op_idx;
+    } else {
+      if (dependence_op_idx != -1) {
+        VLOG(4) << "Add depend from "
+                << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
+                << vec_instruction[op_idx].OpBase()->Type();
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+    }
+  }
+
+  // add dependency for coalesce_tensor
+  const std::string kCoalesceTensor = "coalesce_tensor";
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (vec_instruction[op_idx].OpBase()->Type() == kCoalesceTensor) {
+      VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
+      auto fused_out = vec_instruction[op_idx].Outputs().at("FusedOutput")[0];
+      auto outputs = vec_instruction[op_idx].Outputs().at("Output");
+
+      auto is_read = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Inputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      auto is_write = [](const Instruction& inst, int var_id) -> bool {
+        for (auto pair : inst.Outputs()) {
+          for (auto item : pair.second) {
+            if (item == var_id) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      // find first op that reads fused_out
+      auto first_read_fused_out_op = -1;
+      for (auto j = op_idx + 1; j < vec_instruction.size(); ++j) {
+        if (is_read(vec_instruction[j], fused_out)) {
+          first_read_fused_out_op = j;
+          break;
+        }
+      }
+
+      if (UNLIKELY(first_read_fused_out_op == -1)) {
+        VLOG(4) << "No op read FusedOutput";
+        continue;
+      }
+
+      // find ops that write 'outputs' between (op_index,
+      // first_read_fused_out_op)
+      // add depend: them->first_read_fused_out_op
+      for (auto j = op_idx + 1;
+           j < static_cast<size_t>(first_read_fused_out_op); ++j) {
+        for (auto var_id : outputs) {
+          if (is_write(vec_instruction[j], var_id)) {
+            op2dependences[first_read_fused_out_op].insert(j);
+            VLOG(4) << j << " -> " << first_read_fused_out_op;
+            VLOG(4)
+                << "Add depend from " << vec_instruction[j].OpBase()->Type()
+                << " to "
+                << vec_instruction[first_read_fused_out_op].OpBase()->Type();
+          }
+        }
+      }
+
+      // find first op read 'outputs' between (first_read_fused_out_op, end)
+      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+
+      // special case for consecutive communication ops, for example,
+      // FusedOutput = c_sync_calc_stream(FusedOutput)
+      // FusedOutput= c_allreduce_sum(FusedOutput)
+      // FusedOutput = c_sync_comm_stream(FusedOutput)
+      // we should take the last one to add depned instead of
+      // 'first_read_fused_out_op'
+      size_t target = first_read_fused_out_op;
+      for (size_t j = first_read_fused_out_op + 1; j < vec_instruction.size();
+           ++j) {
+        if (j == target + 1 &&
+            is_comm_op(vec_instruction[target].OpBase()->Type()) &&
+            is_comm_op(vec_instruction[j].OpBase()->Type())) {
+          VLOG(4) << "Found consecutive communication ops, "
+                  << vec_instruction[target].OpBase()->Type() << " -> "
+                  << vec_instruction[j].OpBase()->Type();
+          target = j;
+          continue;
+        }
+
+        for (auto var_id : outputs) {
+          if (is_read(vec_instruction[j], var_id)) {
+            op2dependences[j].insert(target);
+            VLOG(4) << target << " -> " << j;
+            VLOG(4) << "Add depend from "
+                    << vec_instruction[target].OpBase()->Type() << " to "
+                    << vec_instruction[j].OpBase()->Type();
+          }
+        }
+      }
+    }
+  }
+  for (auto pair : op2dependences) {
+    std::ostringstream oss;
+    oss << pair.first << " Depends on " << pair.second.size() << " ops: ";
+    std::copy(pair.second.begin(), pair.second.end(),
+              std::ostream_iterator<int>(oss, " "));
+    VLOG(10) << oss.str();
+  }
+  return get_downstream_map(op2dependences, op_happens_before);
 }
 
 }  // namespace interpreter

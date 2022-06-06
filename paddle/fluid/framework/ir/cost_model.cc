@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/cost_model.h"
 
 #include <memory>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/errors.h"
@@ -43,6 +44,19 @@ double CostData::GetWholeMemoryBytes() const { return whole_memory_bytes_; }
 
 const Graph* CostData::GetGraph() const { return graph_; }
 const ProgramDesc* CostData::GetProgram() const { return program_; }
+
+static bool StringHasEnding(const std::string& full,
+                            const std::string& ending) {
+  if (full.length() < ending.length()) {
+    return false;
+  }
+  if (full.length() == ending.length()) {
+    return full == ending;
+  }
+  size_t prefix_len = full.length() - ending.length();
+  return 0 == full.compare(prefix_len, ending.length(), ending) &&
+         full[prefix_len - 1] == '/';
+}
 
 bool CostData::SetCostData(const ProgramDesc& program,
                            const std::vector<std::vector<Event>>& time_events) {
@@ -77,7 +91,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
     std::string op_type = op_desc->Type();
 
     while (event_index < main_thread_events.size()) {
-      if (main_thread_events[event_index].name() == op_type &&
+      if (StringHasEnding(main_thread_events[event_index].name(), op_type) &&
           main_thread_events[event_index].type() ==
               platform::EventType::kPushRange) {
         break;
@@ -97,7 +111,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
       // ControlFlow Op can be like that, but this version only support global
       // block
       // TODO(zhhsplendid): make a more strict mapping between push and pop
-      if (main_thread_events[event_index].name() == op_type &&
+      if (StringHasEnding(main_thread_events[event_index].name(), op_type) &&
           main_thread_events[event_index].type() ==
               platform::EventType::kPopRange) {
         break;

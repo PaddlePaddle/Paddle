@@ -33,10 +33,11 @@ class FrameOp : public framework::OperatorWithKernel {
     const int x_rank = x_dims.size();
 
     PADDLE_ENFORCE_GE(
-        x_rank, 1, platform::errors::InvalidArgument(
-                       "Input(X) of FrameOp should be a tensor which contains "
-                       "at least 1 dimension, but got rank %s.",
-                       x_rank));
+        x_rank, 1,
+        platform::errors::InvalidArgument(
+            "Input(X) of FrameOp should be a tensor which contains "
+            "at least 1 dimension, but got rank %s.",
+            x_rank));
     PADDLE_ENFORCE_GT(hop_length, 0,
                       platform::errors::InvalidArgument(
                           "Attribute(hop_length) of FrameOp should be greater "
@@ -64,18 +65,26 @@ class FrameOp : public framework::OperatorWithKernel {
       end_axis = x_rank - 2;
     }
 
-    PADDLE_ENFORCE_LE(frame_length, seq_length,
-                      platform::errors::InvalidArgument(
-                          "Attribute(frame_length) of FrameOp should be less "
-                          "equal than sequence length, but got (%s) > (%s).",
-                          frame_length, seq_length));
+    bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+    bool check = ctx->IsRuntime() || !contain_unknown_dim;
+    if (check) {
+      PADDLE_ENFORCE_LE(frame_length, seq_length,
+                        platform::errors::InvalidArgument(
+                            "Attribute(frame_length) of FrameOp should be less "
+                            "equal than sequence length, but got (%s) > (%s).",
+                            frame_length, seq_length));
+    }
 
     // It won't go into for loop when x_rank == 1U.
     for (int i = start_axis; i <= end_axis; i++) {
       output_shape.push_back(x_dims[i]);
     }
 
-    n_frames = 1 + (seq_length - frame_length) / hop_length;
+    if (seq_length == -1) {
+      n_frames = -1;
+    } else {
+      n_frames = 1 + (seq_length - frame_length) / hop_length;
+    }
 
     if (axis == 0) {
       // (n_frames, frame_length, ...)

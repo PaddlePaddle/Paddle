@@ -16,9 +16,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -26,18 +29,6 @@ namespace operators {
 class PutAlongAxisOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasInput("Index"), "Input", "Index", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasInput("Value"), "Input", "Value", "PutAlongAxis");
-    OP_INOUT_CHECK(ctx->HasOutput("Result"), "Output", "Result",
-                   "PutAlongAxis");
-
-    auto index_dim = ctx->GetInputDim("Index");
-
-    ctx->SetOutputDim("Result", index_dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -118,9 +109,12 @@ DECLARE_INPLACE_OP_INFERER(PutAlongAxisInplaceInferer, {"Input", "Result"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(put_along_axis, PutAlongAxisInferShapeFunctor,
+                            PD_INFER_META(phi::PutAlongAxisInferMeta));
 REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
                   ops::PutAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::PutAlongAxisGradOpMaker<paddle::imperative::OpBase>,
-                  paddle::operators::PutAlongAxisInplaceInferer);
+                  paddle::operators::PutAlongAxisInplaceInferer,
+                  PutAlongAxisInferShapeFunctor);
 
 REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp);

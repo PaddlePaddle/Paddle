@@ -65,7 +65,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
       tensor_value.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_value, value);
       NpuOpRunner runner;
-#if (CANN_VERSION_CODE >= 503003)
+#if (CANN_VERSION_CODE >= 503003 && CANN_VERSION_CODE < 504000)
       runner.SetType("FillD")
           .AddInput(tensor_value)
           .AddOutput(*out_var)
@@ -84,9 +84,10 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
       const auto &dev_ctx =
           ctx.template device_context<paddle::platform::NPUDeviceContext>();
       auto op_func = [&shape, &value](
-          const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
-          const NPUAttributeMap &attrs,
-          const platform::NPUDeviceContext &dev_ctx) {
+                         const std::vector<Tensor> &inputs,
+                         const std::vector<Tensor> &outputs,
+                         const NPUAttributeMap &attrs,
+                         const platform::NPUDeviceContext &dev_ctx) {
         Tensor tensor_value;
         tensor_value.mutable_data<uint8_t>({1}, dev_ctx.GetPlace());
         FillNpuTensorWithConstant<uint8_t>(&tensor_value,

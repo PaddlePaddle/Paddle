@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 #include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/Matchers.h>
@@ -19,10 +20,24 @@
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
-#include "paddle/infrt/dialect/tensorrt/trt_dilaect_types.h"
+#include "paddle/infrt/common/global.h"
+#include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
+
+#include "paddle/infrt/dialect/dense_tensor.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
+// clang-format on
 
 namespace infrt {
 namespace trt {
+
+EngineType EngineType::get() {
+  return Base::get(::infrt::Global::getMLIRContext());
+}
+
+EngineType EngineType::get(mlir::MLIRContext *context) {
+  return Base::get(context);
+}
 
 TensorRTDialect::TensorRTDialect(mlir::MLIRContext *context)
     : mlir::Dialect("trt", context, mlir::TypeID::get<TensorRTDialect>()) {

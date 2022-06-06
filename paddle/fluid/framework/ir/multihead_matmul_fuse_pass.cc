@@ -51,11 +51,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* eltadd0_b, Node* eltadd1_b,
-      Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
-      Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* scale,
+                          Node* scale_out) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
     // auto scale_bias = BOOST_GET_CONST(float, scale->Op()->GetAttr("bias"));
     // bool after_scale =
@@ -756,13 +757,14 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
-      Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out,
-      Node* softmax_qk, Node* eltadd0, Node* eltadd1, Node* eltadd2,
-      Node* matmul_qk, Node* reshape2_qkv) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* scale, Node* scale_out,
+                          Node* softmax_qk, Node* eltadd0, Node* eltadd1,
+                          Node* eltadd2, Node* matmul_qk, Node* reshape2_qkv) {
     auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -862,43 +864,30 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     multihead_op_desc.SetAttr("head_number", head_number);
 
     auto* mul0_op_desc = mul0->Op();
-    auto* mul1_op_desc = mul1->Op();
-    auto* mul2_op_desc = mul2->Op();
-    if (mul0_op_desc->HasAttr("enable_int8")) {
-      multihead_op_desc.SetAttr("enable_int8",
-                                mul0_op_desc->GetAttr("enable_int8"));
-      // all mul op has same input.
-      multihead_op_desc.SetAttr("Input_scale",
-                                mul0_op_desc->GetAttr("X_scale"));
-      auto weight_scale0 = BOOST_GET_CONST(
-          std::vector<float>, mul0_op_desc->GetAttr("weight_scale"));
-      auto weight_scale1 = BOOST_GET_CONST(
-          std::vector<float>, mul1_op_desc->GetAttr("weight_scale"));
-      auto weight_scale2 = BOOST_GET_CONST(
-          std::vector<float>, mul2_op_desc->GetAttr("weight_scale"));
-      auto weight_max = std::max(weight_scale0, weight_scale1);
-      weight_max = std::max(weight_max, weight_scale2);
-      multihead_op_desc.SetAttr("weight_scale", weight_max);
 
-      auto* add0_op_desc = eltadd0->Op();
-      auto* add1_op_desc = eltadd1->Op();
-      auto* add2_op_desc = eltadd2->Op();
-      if (add0_op_desc->HasAttr("out_threshold")) {
-        auto out_scale0 =
-            BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
-        auto out_scale1 =
-            BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
-        auto out_scale2 =
-            BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
-        auto out_scale_max = std::max(out_scale0, out_scale1);
-        out_scale_max = std::max(out_scale_max, out_scale2);
-        multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
-      }
+    // all mul op has same input.
+    if (mul0_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+    }
+    auto* add0_op_desc = eltadd0->Op();
+    auto* add1_op_desc = eltadd1->Op();
+    auto* add2_op_desc = eltadd2->Op();
+    if (add0_op_desc->HasAttr("out_threshold")) {
+      auto out_scale0 =
+          BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+      auto out_scale1 =
+          BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+      auto out_scale2 =
+          BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+      auto out_scale_max = std::max(out_scale0, out_scale1);
+      out_scale_max = std::max(out_scale_max, out_scale2);
+      multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
     }
 
     auto* softmax_qk_op_desc = softmax_qk->Op();
     auto* matmul_qk_op_desc = matmul_qk->Op();
-    if (matmul_qk_op_desc->HasAttr("X_scale")) {
+    if (matmul_qk_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
       if (softmax_qk_op_desc->HasAttr("out_threshold")) {
         auto qkv_plugin_scale = BOOST_GET_CONST(
@@ -1220,11 +1209,12 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
-      Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* matmul_qk) {
+  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
+                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
+                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
+                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
+                          Node* eltadd_qk_b, Node* reshape2,
+                          Node* reshape2_qkv_out, Node* matmul_qk) {
     auto scale_attr = BOOST_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)

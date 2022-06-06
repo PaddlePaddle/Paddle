@@ -89,5 +89,5 @@ class DropoutOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);
 REGISTER_TRT_OP_CONVERTER(dropout, DropoutOpConverter);

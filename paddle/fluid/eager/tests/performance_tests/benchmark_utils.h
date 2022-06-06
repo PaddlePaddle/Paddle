@@ -15,6 +15,7 @@
 #pragma once
 
 #include <math.h>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/phi/api/all.h"
@@ -51,15 +52,10 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
                            bool accuracy_check = false);
 
 /* ---- Eager MatMul ---- */
-/*
-void benchmark_eager_matmul(const paddle::experimental::Tensor& X, const
-paddle::experimental::Tensor& Y,
+void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
+                            const paddle::experimental::Tensor& Y,
                             bool accuracy_check = false);
-void benchmark_eager_mlp(const paddle::experimental::Tensor& X,
-                         const std::vector<paddle::experimental::Tensor>& Ws,
-                         const std::vector<paddle::experimental::Tensor>& Bs,
-                         bool accuracy_check = false);
-*/
+
 void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
                                          const paddle::experimental::Tensor& Y,
                                          bool accuracy_check = false);

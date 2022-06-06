@@ -15,6 +15,8 @@ limitations under the License. */
 
 #include <ctime>
 #include <string>
+
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
@@ -25,8 +27,9 @@ template <typename... Args>
 std::string string_format(const std::string& format, Args... args) {
   int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) +
                1;  // Extra space for '\0'
-  PADDLE_ENFORCE_GE(size_s, 0, platform::errors::Fatal(
-                                   "Error during profiler data formatting."));
+  PADDLE_ENFORCE_GE(
+      size_s, 0,
+      platform::errors::Fatal("Error during profiler data formatting."));
   auto size = static_cast<size_t>(size_s);
   auto buf = std::make_unique<char[]>(size);
   std::snprintf(buf.get(), size, format.c_str(), args...);
@@ -43,7 +46,16 @@ static std::string GetStringFormatLocalTime() {
   return std::string(buf);
 }
 
-static int64_t nsToUs(int64_t ns) { return ns / 1000; }
+static int64_t nsToUs(uint64_t end_ns, uint64_t start_ns = 0) {
+  return (end_ns - start_ns) / 1000;
+}
+
+static float nsToUsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
+  return static_cast<float>(end_ns - start_ns) / 1000;
+}
+static float nsToMsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
+  return static_cast<float>(end_ns - start_ns) / 1000 / 1000;
+}
 
 #ifdef PADDLE_WITH_CUPTI
 float CalculateEstOccupancy(uint32_t deviceId, uint16_t registersPerThread,

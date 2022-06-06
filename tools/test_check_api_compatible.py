@@ -1,13 +1,13 @@
 #! /usr/bin/env python
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,7 @@ from check_api_compatible import check_compatible_str
 
 
 class Test_check_compatible(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
@@ -70,6 +71,7 @@ class Test_check_compatible(unittest.TestCase):
 
 
 class Test_check_compatible_str(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
@@ -105,8 +107,14 @@ class Test_check_compatible_str(unittest.TestCase):
         argspec_o = self.argspec_str_o
         self.assertFalse(check_compatible_str(argspec_o, argspec_n))
 
+    def test_args_defaults_None(self):
+        argspec_o = """inspect.FullArgSpec(args=['filename'], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={'filename': <class 'str'>})"""
+        argspec_n = """inspect.FullArgSpec(args=['filename'], varargs=None, varkw=None, defaults=None, kwonlyargs=[], kwonlydefaults=None, annotations={'filename': <class 'str'>})"""
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
 
 class Test_read_argspec_from_file(unittest.TestCase):
+
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''

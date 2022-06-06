@@ -76,10 +76,10 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-      mean_out->mutable_data<T>(ctx.GetPlace());
-      variance_out->mutable_data<T>(ctx.GetPlace());
-      saved_mean->mutable_data<T>(ctx.GetPlace());
-      saved_variance->mutable_data<T>(ctx.GetPlace());
+      mean_out->mutable_data<float>(ctx.GetPlace());
+      variance_out->mutable_data<float>(ctx.GetPlace());
+      saved_mean->mutable_data<float>(ctx.GetPlace());
+      saved_variance->mutable_data<float>(ctx.GetPlace());
 
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
@@ -113,8 +113,9 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       runner_reduce.Run(stream);
 
       const auto &runner_update = NpuOpRunner(
-          "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
-                               *running_mean, *running_var},
+          "BNTrainingUpdate",
+          {x_tensor, sum, square_sum, *scale, *bias, *running_mean,
+           *running_var},
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
@@ -170,8 +171,8 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
+      d_scale->mutable_data<float>(ctx.GetPlace());
+      d_bias->mutable_data<float>(ctx.GetPlace());
       if (use_global_stats) {
         const auto *running_mean = ctx.Input<Tensor>("Mean");
         const auto *running_variance = ctx.Input<Tensor>("Variance");
@@ -216,10 +217,11 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
                         {dx_tensor}, {{"epsilon", epsilon}});
         runner_infer.Run(stream);
       } else {
-        const auto &runner_reduce = NpuOpRunner(
-            "BNTrainingReduceGrad", {dy_tensor, x_tensor, *d_scale, *d_bias,
-                                     *scale, *saved_mean, *saved_inv_variance},
-            {dx_tensor}, {{"epsilon", epsilon}});
+        const auto &runner_reduce =
+            NpuOpRunner("BNTrainingReduceGrad",
+                        {dy_tensor, x_tensor, *d_scale, *d_bias, *scale,
+                         *saved_mean, *saved_inv_variance},
+                        {dx_tensor}, {{"epsilon", epsilon}});
         runner_reduce.Run(stream);
       }
     }

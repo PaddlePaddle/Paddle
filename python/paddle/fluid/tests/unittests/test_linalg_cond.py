@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static as static
+from paddle.fluid.framework import _test_eager_guard
 
 p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
 p_list_m_n = (None, 2, -2)
@@ -32,8 +33,9 @@ def test_static_assert_true(self, x_list, p_list):
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                np.testing.assert_allclose(
-                    result[0], expected_output, rtol=5e-5)
+                np.testing.assert_allclose(result[0],
+                                           expected_output,
+                                           rtol=5e-5)
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
@@ -42,8 +44,9 @@ def test_dygraph_assert_true(self, x_list, p_list):
             input_tensor = paddle.to_tensor(x)
             output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
-            np.testing.assert_allclose(
-                output.numpy(), expected_output, rtol=5e-5)
+            np.testing.assert_allclose(output.numpy(),
+                                       expected_output,
+                                       rtol=5e-5)
 
 
 def gen_input():
@@ -80,6 +83,7 @@ def gen_empty_input():
 
 
 class API_TestStaticCond(unittest.TestCase):
+
     def test_out(self):
         paddle.enable_static()
         # test calling results of 'cond' in static mode
@@ -89,16 +93,23 @@ class API_TestStaticCond(unittest.TestCase):
 
 
 class API_TestDygraphCond(unittest.TestCase):
-    def test_out(self):
+
+    def func_out(self):
         paddle.disable_static()
         # test calling results of 'cond' in dynamic mode
         x_list_n_n, x_list_m_n = gen_input()
         test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
+    def test_out(self):
+        with _test_eager_guard():
+            self.func_out()
+        self.func_out()
+
 
 class TestCondAPIError(unittest.TestCase):
-    def test_dygraph_api_error(self):
+
+    def func_dygraph_api_error(self):
         paddle.disable_static()
         # test raising errors when 'cond' is called in dygraph mode
         p_list_error = ('fro_', '_nuc', -0.7, 0, 1.5, 3)
@@ -112,6 +123,11 @@ class TestCondAPIError(unittest.TestCase):
             for x in x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
                 self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
+
+    def test_dygraph_api_error(self):
+        with _test_eager_guard():
+            self.func_dygraph_api_error()
+        self.func_dygraph_api_error()
 
     def test_static_api_error(self):
         paddle.enable_static()
@@ -149,12 +165,18 @@ class TestCondAPIError(unittest.TestCase):
 
 
 class TestCondEmptyTensorInput(unittest.TestCase):
-    def test_dygraph_empty_tensor_input(self):
+
+    def func_dygraph_empty_tensor_input(self):
         paddle.disable_static()
         # test calling results of 'cond' when input is an empty tensor in dynamic mode
         x_list_n_n, x_list_m_n = gen_empty_input()
         test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
+
+    def test_dygraph_empty_tensor_input(self):
+        with _test_eager_guard():
+            self.func_dygraph_empty_tensor_input()
+        self.func_dygraph_empty_tensor_input()
 
 
 if __name__ == "__main__":

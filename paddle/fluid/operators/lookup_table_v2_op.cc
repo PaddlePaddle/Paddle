@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
 
 #include <memory>
+
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
@@ -202,14 +203,6 @@ REGISTER_OPERATOR(lookup_table_v2, ops::LookupTableV2Op,
 REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
                   ops::LookupTableV2GradOpNoBufferVarsInferer,
                   ops::LookupTableV2OpGradVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(lookup_table_v2, ops::LookupTableV2Kernel<float>,
-                       ops::LookupTableV2Kernel<double>,
-                       ops::LookupTableV2Kernel<paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    lookup_table_v2_grad, ops::LookupTableV2GradKernel<float>,
-    ops::LookupTableV2GradKernel<double>,
-    ops::LookupTableV2GradKernel<paddle::platform::bfloat16>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lookup_table_v2)

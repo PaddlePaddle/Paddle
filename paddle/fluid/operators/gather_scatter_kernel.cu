@@ -119,7 +119,7 @@ struct gpu_gather_scatter_functor {
         is_scatter_like ? self_dims[dim] : src_dims[dim];
     int64_t inner_dim_size = 1;
     int64_t outer_dim_size = 1;
-    for (int64_t i = 0; i < index_dims.size(); ++i) {
+    for (int64_t i = 0; i < dim; ++i) {
       inner_dim_size *= index_dims[i];
     }
 
@@ -127,18 +127,16 @@ struct gpu_gather_scatter_functor {
       outer_dim_size *= index_dims[i];
     }
 
-    int64_t slice_size = 1;
-    for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-
     int block = 512;
-    int64_t n = slice_size * index_size;
+    int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
     int64_t grid = (n + block - 1) / block;
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    GatherScatterGPUKernel<tensor_t, index_t, func_t,
-                           is_scatter_like><<<grid, block, 0, stream>>>(
-        self_data, dim, index_data, src_data, inner_dim_size, select_dim_size,
-        replaced_select_dim_size, outer_dim_size, index_size, reduce_op);
+    GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+        <<<grid, block, 0, stream>>>(self_data, dim, index_data, src_data,
+                                     inner_dim_size, select_dim_size,
+                                     replaced_select_dim_size, outer_dim_size,
+                                     index_size, reduce_op);
   }
 };  // struct gpu_gather_scatter_functor
 
@@ -215,11 +213,8 @@ void gpu_scatter_input_grad_kernel(Tensor self, int dim, const Tensor& index,
     outer_dim_size *= index_dims[i];
   }
 
-  int64_t slice_size = 1;
-  for (int i = 1; i < grad_dims.size(); ++i) slice_size *= grad_dims[i];
-
   int block = 512;
-  int64_t n = slice_size * index_size;
+  int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();

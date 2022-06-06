@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
+
 #include <memory>
 #include <string>
 
@@ -35,9 +36,17 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -53,9 +62,14 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group, 1, platform::errors::InvalidArgument(
-                                          "group should be larger than 0."));
+          PADDLE_ENFORCE_GE(group, 1,
+                            platform::errors::InvalidArgument(
+                                "group should be larger than 0."));
         });
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
 
     AddComment(R"DOC(
 		Shuffle Channel operator

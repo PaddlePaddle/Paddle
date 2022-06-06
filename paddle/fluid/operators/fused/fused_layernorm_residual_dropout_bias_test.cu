@@ -19,6 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_dropout_test.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(dropout, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dropout_grad, GPU, ALL_LAYOUT);
+#endif
 
 /**
  * @brief The unit test of fused_layernorm_residual_dropout_bias
@@ -192,7 +198,6 @@ struct TestFusedLayernormResidualDropoutBias {
             residual_vec[i * cols + j] + out2[i * cols + j];
       }
     }
-
     LayerNorm<T>(scale_vec, layernorm_bias_vec, correct_out, &correct_means,
                  &correct_vars, &correct_layernorm_out, epsilon, rows, cols,
                  *ctx);

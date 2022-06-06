@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -35,10 +36,11 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-#if defined(PADDLE_WITH_PSLIB)
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
 namespace paddle {
 
 namespace framework {

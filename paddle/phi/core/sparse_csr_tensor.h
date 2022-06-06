@@ -33,6 +33,7 @@ class CompatibleDenseTensorUtils;
 class SparseCsrTensor : public TensorBase,
                         public TypeInfoTraits<TensorBase, SparseCsrTensor> {
  public:
+  SparseCsrTensor();
   /// \brief Because sparse csr tensor is a resource handle, we provide a
   /// default
   /// move constructor to support move semantics.
@@ -142,6 +143,9 @@ class SparseCsrTensor : public TensorBase,
   /// \brief Get a mutable pointer of non_zero_elements.
   /// return a mutable pointer of non_zero_elements.
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
+
+  /// \brief set the dims of original dense tensor
+  void set_dims(const DDim& dims) { this->dims_ = dims; }
 
  private:
   // save the compressed rows information of non zero elements

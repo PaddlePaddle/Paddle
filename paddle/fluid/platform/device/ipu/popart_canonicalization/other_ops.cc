@@ -54,12 +54,45 @@ Node *checkpointoutput_handler(Graph *graph, Node *node) {
                       node->outputs);
 }
 
-REGISTER_HANDLER(custom_op, custom_op_handler);
-REGISTER_HANDLER(print, print_handler);
-REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
-REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
+Node *custom_nll_loss_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
+  auto ignoreIndex = BOOST_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
+  auto inputIsLogProbability =
+      BOOST_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
+  if (ignoreIndex == "None") {
+    return CreateBaseOp(graph, node, "popart_nllloss_v2", node->inputs,
+                        node->outputs,
+                        {{"reduction", reduction},
+                         {"inputIsLogProbability", inputIsLogProbability}});
+  } else {
+    return CreateBaseOp(graph, node, "popart_nllloss_v2", node->inputs,
+                        node->outputs,
+                        {{"reduction", reduction},
+                         {"ignoreIndex", std::atoi(ignoreIndex.c_str())},
+                         {"inputIsLogProbability", inputIsLogProbability}});
+  }
+}
+
+Node *identity_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_identity", node->inputs,
+                      node->outputs);
+}
+
+Node *detach_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_detach_v2", node->inputs,
+                      node->outputs);
+}
 
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle
+
+REGISTER_HANDLER(custom_op, custom_op_handler);
+REGISTER_HANDLER(print, print_handler);
+REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
+REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
+REGISTER_HANDLER(custom_nll_loss, custom_nll_loss_handler);
+REGISTER_HANDLER(identity, identity_handler);
+REGISTER_HANDLER(detach, detach_handler);

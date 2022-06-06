@@ -1,12 +1,15 @@
 core_gather_headers()
 
-gather_srcs(infrt_src SRCS
+add_subdirectory(phi)
+
+gather_srcs(
+  infrt_src
+  SRCS
   tensor_map.cc
   tensor_metadata.cc
   dense_tensor_view.cc
   dense_host_tensor.cc
-  tensor_shape.cc
-  )
+  tensor_shape.cc)
 
 # set(tensor_map_mlir "${CMAKE_SOURCE_DIR}/infrt/dialect/mlir_tests/tensor_map.mlir")
 # set(external_kernels_lib "${CMAKE_BINARY_DIR}/paddle/libexternal_kernels.so")

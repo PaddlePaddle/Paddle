@@ -45,6 +45,22 @@ enum MLULogicMethod {
   CNNL_LOGIC_OP_OR = 7,
 };
 
+const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
+    {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
+    {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
+    {"reduce_min", CNNL_REDUCE_MIN},  {"reduce_sum", CNNL_REDUCE_ADD},
+    {"reduce_prod", CNNL_REDUCE_MUL},
+};
+
+inline cnnlReduceOp_t GetMLUCnnlReduceOp(const std::string reduce_name) {
+  auto iter = MLUReduceOpMap.find(reduce_name);
+  if (iter != MLUReduceOpMap.end()) {
+    return iter->second;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not support reduce op type of MLU Device: %s", reduce_name));
+}
+
 inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
 
 inline void* GetBasePtr(Tensor* t) { return t->data(); }
@@ -130,10 +146,8 @@ const std::map<std::pair<VT::Type, VT::Type>, cnnlCastDataType_t>
         {{VT::FP16, /*cast to*/ VT::BOOL}, CNNL_CAST_HALF_TO_BOOL},
         {{VT::INT32, /*cast to*/ VT::FP32}, CNNL_CAST_INT32_TO_FLOAT},
         {{VT::INT32, /*cast to*/ VT::FP16}, CNNL_CAST_INT32_TO_HALF},
-        {{VT::INT32, /*cast to*/ VT::INT64}, CNNL_CAST_INT32_TO_INT64},
-        {{VT::INT32, /*cast to*/ VT::INT16}, CNNL_CAST_INT32_TO_INT16},
         {{VT::INT32, /*cast to*/ VT::INT8}, CNNL_CAST_INT32_TO_INT8},
-        {{VT::INT32, /*cast to*/ VT::BOOL}, CNNL_CAST_INT32_TO_BOOL},
+        {{VT::INT32, /*cast to*/ VT::INT16}, CNNL_CAST_INT32_TO_INT16},
         {{VT::INT16, /*cast to*/ VT::FP32}, CNNL_CAST_INT16_TO_FLOAT},
         {{VT::INT16, /*cast to*/ VT::FP16}, CNNL_CAST_INT16_TO_HALF},
         {{VT::INT16, /*cast to*/ VT::INT32}, CNNL_CAST_INT16_TO_INT32},
@@ -142,16 +156,29 @@ const std::map<std::pair<VT::Type, VT::Type>, cnnlCastDataType_t>
         {{VT::INT8, /*cast to*/ VT::INT32}, CNNL_CAST_INT8_TO_INT32},
         {{VT::UINT8, /*cast to*/ VT::FP32}, CNNL_CAST_UINT8_TO_FLOAT},
         {{VT::UINT8, /*cast to*/ VT::FP16}, CNNL_CAST_UINT8_TO_HALF},
-        {{VT::UINT8, /*cast to*/ VT::INT64}, CNNL_CAST_UINT8_TO_INT64},
-        {{VT::UINT8, /*cast to*/ VT::INT32}, CNNL_CAST_UINT8_TO_INT32},
         {{VT::BOOL, /*cast to*/ VT::FP32}, CNNL_CAST_BOOL_TO_FLOAT},
         {{VT::BOOL, /*cast to*/ VT::FP16}, CNNL_CAST_BOOL_TO_HALF},
         {{VT::BOOL, /*cast to*/ VT::INT32}, CNNL_CAST_BOOL_TO_INT32},
+        {{VT::UINT8, /*cast to*/ VT::INT32}, CNNL_CAST_UINT8_TO_INT32},
+        {{VT::INT32, /*cast to*/ VT::INT64}, CNNL_CAST_INT32_TO_INT64},
         {{VT::INT64, /*cast to*/ VT::INT32}, CNNL_CAST_INT64_TO_INT32},
+        {{VT::INT32, /*cast to*/ VT::BOOL}, CNNL_CAST_INT32_TO_BOOL},
+        {{VT::UINT8, /*cast to*/ VT::INT64}, CNNL_CAST_UINT8_TO_INT64},
+        {{VT::INT8, /*cast to*/ VT::INT16}, CNNL_CAST_INT8_TO_INT16},
+        {{VT::FP32, /*cast to*/ VT::FP64}, CNNL_CAST_FLOAT_TO_DOUBLE},
+        {{VT::FP64, /*cast to*/ VT::FP32}, CNNL_CAST_DOUBLE_TO_FLOAT},
+        {{VT::INT64, /*cast to*/ VT::FP32}, CNNL_CAST_INT64_TO_FLOAT},
+        {{VT::INT64, /*cast to*/ VT::FP16}, CNNL_CAST_INT64_TO_HALF},
+        {{VT::FP32, /*cast to*/ VT::INT64}, CNNL_CAST_FLOAT_TO_INT64},
+        {{VT::FP16, /*cast to*/ VT::INT64}, CNNL_CAST_HALF_TO_INT64},
 };
 
 cnnlCastDataType_t GetCastDataType(const VT::Type& src_type,
                                    const VT::Type& dst_type);
+
+cnnlCastDataType_t GetCastDataType(const DataType& src_type,
+                                   const DataType& dst_type);
+
 bool MLUSupportsCast(const VT::Type& src_type, const VT::Type& dst_type);
 
 cnnlDeviceType_t GetCnnlDev(int dev_ordinal);
@@ -218,6 +245,9 @@ class MLUCnnlActivationDesc {
   MLUCnnlActivationDesc(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc& operator=(const MLUCnnlActivationDesc& desc) = delete;
   MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof);
+  MLUCnnlActivationDesc(const cnnlActivationMode_t act_mode, const float ceof,
+                        const float sliced_dim, const float selu_alpha,
+                        const float selu_lambda);
 
   const cnnlActivationDescriptor_t get() const;
   ~MLUCnnlActivationDesc();
@@ -254,13 +284,18 @@ class MLUCnnlPoolingDesc {
 
 class MLUCnnlRandomGeneratorDesc {
  public:
-  MLUCnnlRandomGeneratorDesc(const bool is_mlu200, const int seed);
+  MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
+  Tensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
+  Tensor mlu_state;
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
+
+const std::shared_ptr<MLUCnnlRandomGeneratorDesc>& GetMLURandomGenerator(
+    const ExecutionContext& ctx, const int64_t device_id, const int seed);
 
 class MLUCnnlReduceDesc {
  public:
@@ -418,7 +453,8 @@ class MLUCnnl {
                   const cnnlTensorDescriptor_t in1_desc, const void* in1,
                   const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void Fill(const ExecutionContext& ctx, float value,
+  static void Fill(const ExecutionContext& ctx,
+                   const cnnlPointerMode_t pointer_mode, const void* value_ptr,
                    const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void LRN(const ExecutionContext& ctx, const int local_size,
@@ -471,14 +507,14 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t mom_desc, void* mom);
 
   static void ApplyAdam(const ExecutionContext& ctx,
+                        const cnnlTensorDescriptor_t var_desc, void* var,
+                        const cnnlTensorDescriptor_t m_desc, void* m,
+                        const cnnlTensorDescriptor_t v_desc, void* v,
                         const cnnlTensorDescriptor_t grad_desc,
                         const void* grad, const void* lr, const void* beta1,
                         const void* beta2, const void* beta1_power,
                         const void* beta2_power, const void* epsilon,
-                        const bool use_nesterov,
-                        const cnnlTensorDescriptor_t var_desc, void* var,
-                        const cnnlTensorDescriptor_t m_desc, void* m,
-                        const cnnlTensorDescriptor_t v_desc, void* v);
+                        const bool use_nesterov);
 
   static void ApplyAdaMax(const ExecutionContext& ctx,
                           const cnnlTensorDescriptor_t grad_desc,
@@ -517,7 +553,13 @@ class MLUCnnl {
   static void RandomUniform(const ExecutionContext& ctx, const int num,
                             const cnnlDataType_t data_type,
                             const cnnlRandGenerator_t mlu_generator,
-                            const float min, const float max, void* output);
+                            void* mlu_state, void* output);
+
+  static void FusedDropout(
+      const ExecutionContext& ctx, const cnnlRandGenerator_t generator,
+      const cnnlTensorDescriptor_t input_desc, const void* input, const float p,
+      void* state, const cnnlTensorDescriptor_t mask_desc, const void* mask,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void Cumsum(const ExecutionContext& ctx, const int axis,
                      const bool exclusive, const bool reverse,
@@ -689,6 +731,10 @@ class MLUCnnl {
       const void* in0, const cnnlTensorDescriptor_t in1_desc, const void* in1,
       const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void MulAx(const ExecutionContext& ctx,
+                    const cnnlTensorDescriptor_t alpha_desc, const void* alpha,
+                    const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void OpTensor(const ExecutionContext& ctx,
                        const cnnlOpTensorDescriptor_t op_tensor_desc,
                        const cnnlTensorDescriptor_t a_desc, const void* a,
@@ -735,6 +781,13 @@ class MLUCnnl {
                              const void* input, const void* beta,
                              const cnnlTensorDescriptor_t output_desc,
                              void* output);
+
+  static void SoftmaxBackward(
+      const ExecutionContext& ctx, cnnlSoftmaxAlgorithm_t algorithm,
+      cnnlSoftmaxMode_t mode, const cnnlTensorDescriptor_t y_desc,
+      const void* y, const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y, const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
 
   static void Softplus(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t features_desc,
@@ -1061,6 +1114,24 @@ class MLUCnnl {
       const cnnlTensorDescriptor_t x_backprop_desc, void* x_backprop,
       void* scale_backprop, void* offset_backprop);
 
+  static void LayerNormForward(const ExecutionContext& ctx, int axis,
+                               const cnnlTensorDescriptor_t x_desc,
+                               const void* x,
+                               const cnnlTensorDescriptor_t weight_bias_desc,
+                               const void* weight, const void* bias, float eps,
+                               const cnnlTensorDescriptor_t y_desc, void* y,
+                               const cnnlTensorDescriptor_t mean_rstd_desc,
+                               void* saved_mean, void* saved_rstd);
+
+  static void LayerNormBackward(
+      const ExecutionContext& ctx, int axis,
+      const cnnlTensorDescriptor_t x_desc, const void* x,
+      const cnnlTensorDescriptor_t diff_z_desc, const void* diff_z,
+      const cnnlTensorDescriptor_t weight_bias_desc, const void* weight,
+      const cnnlTensorDescriptor_t mean_rstd_desc, const void* saved_mean,
+      const void* saved_rstd, const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x, void* diff_weight, void* diff_bias);
+
   static void Transpose(const ExecutionContext& ctx,
                         const std::vector<int> perm, const int input_dim,
                         const cnnlTensorDescriptor_t input_desc,
@@ -1135,11 +1206,13 @@ class MLUCnnl {
                      const void* k, const int k_int,
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
-  static void ScatterNd(const ExecutionContext& ctx,
+  static void ScatterNd(const ExecutionContext& ctx, cnnlScatterNdMode_t mode,
                         const cnnlTensorDescriptor_t indices_desc,
                         const void* indices,
                         const cnnlTensorDescriptor_t updates_desc,
                         const void* updates,
+                        const cnnlTensorDescriptor_t input_desc,
+                        const void* input,
                         const cnnlTensorDescriptor_t output_desc, void* output);
 
   static void BitWise(const ExecutionContext& ctx,
@@ -1160,6 +1233,12 @@ class MLUCnnl {
                          const void* input,
                          const cnnlTensorDescriptor_t output_desc,
                          void* output);
+
+  static void EmbeddingBackward(
+      const ExecutionContext& ctx, int padding_idx, bool scale_grad_by_freq,
+      const cnnlTensorDescriptor_t indices_desc, const void* indices,
+      const cnnlTensorDescriptor_t diff_desc, const void* diff,
+      const cnnlTensorDescriptor_t output_desc, void* output);
 };
 
 template <typename T>
@@ -1186,6 +1265,14 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
   MLUCnnl::Transpose(ctx, perm, dim_size, trans_in_desc.get(),
                      GetBasePtr(transformed_input), trans_out_desc.get(),
                      GetBasePtr(transformed_output));
+}
+
+template <typename T>
+inline void FillMLUTensorWithHostValue(const ExecutionContext& ctx, T value,
+                                       Tensor* out) {
+  MLUCnnlTensorDesc out_desc(*out);
+  MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value, out_desc.get(),
+                GetBasePtr(out));
 }
 
 }  // namespace operators

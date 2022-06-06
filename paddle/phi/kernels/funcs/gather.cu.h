@@ -15,13 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/memory/memcpy.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/dim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -44,7 +45,7 @@ __global__ void GatherCUDAKernel(const T* params,
 
 template <typename T, typename IndexT = int>
 __global__ void GatherNdCUDAKernel(const T* input,
-                                   const int64_t* input_dims,
+                                   const Dim<DDim::kMaxRank> input_dims,
                                    const IndexT* indices,
                                    T* output,
                                    size_t remain_size,
@@ -111,7 +112,8 @@ void GPUGather(const phi::GPUContext& ctx,
 
   int block = 512;
   int64_t n = slice_size * index_size;
-  int64_t grid = (n + block - 1) / block;
+  dim3 grid = dim3((n + block - 1) / block);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);
@@ -145,22 +147,15 @@ void GPUGatherNd(const phi::GPUContext& ctx,
     slice_size *= input_dims[i];
   }
   // source dim
-  std::vector<int64_t> v_input_dims(input_dims_size);
+  Dim<DDim::kMaxRank> g_input_dims;
   for (int i = 0; i < input_dims_size; ++i) {
-    v_input_dims[i] = input_dims[i];
+    g_input_dims[i] = input_dims[i];
   }
-
-  phi::DenseTensor input_dims_tensor;
-  input_dims_tensor.Resize({input_dims_size});
-  auto* g_input_dims = ctx.Alloc<int64_t>(&input_dims_tensor);
-  int64_t bytes = input_dims_size * sizeof(int64_t);
-
-  paddle::memory::Copy(
-      gplace, g_input_dims, cplace, v_input_dims.data(), bytes, ctx.stream());
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
-  int64_t grid = (n + block - 1) / block;
+  dim3 grid = dim3((n + block - 1) / block);
+  paddle::platform::LimitGridDim(ctx, &grid);
 
   GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
                                                                   g_input_dims,
@@ -266,17 +261,16 @@ void GatherV2CUDAFunction(const DenseTensor* input,
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
   auto stream = ctx.stream();
-  GatherGPUKernel<
-      T,
-      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data,
-      index_data,
-      out_data,
-      outer_dim_size,
-      inner_dim_size,
-      index_size,
-      index_dim_size,
-      out_size);
+  GatherGPUKernel<T, U>
+      <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+          input_data,
+          index_data,
+          out_data,
+          outer_dim_size,
+          inner_dim_size,
+          index_size,
+          index_dim_size,
+          out_size);
 }
 
 template <typename T, typename U>
@@ -312,17 +306,16 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_size);
   auto stream = ctx.stream();
-  GatherGradGPUKernel<
-      T,
-      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data,
-      index_data,
-      out_data,
-      outer_dim_size,
-      inner_dim_size,
-      input_index_dim_size,
-      out_index_dim_size,
-      input_size);
+  GatherGradGPUKernel<T, U>
+      <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+          input_data,
+          index_data,
+          out_data,
+          outer_dim_size,
+          inner_dim_size,
+          input_index_dim_size,
+          out_index_dim_size,
+          input_size);
 }
 
 }  // namespace funcs

@@ -13,23 +13,29 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+
 #include <algorithm>
 #include <functional>
 #include <utility>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "cinn/hlir/framework/scope.h"
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/runtime/cinn_runtime.h"
+#include "cinn/runtime/intrinsic.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -39,13 +45,13 @@
 namespace paddle {
 namespace operators::details {
 
-using framework::Scope;
 using framework::LoDTensor;
 using framework::ParallelExecutor;
+using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
-using framework::paddle2cinn::Name2VarInfoMap;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
+using framework::paddle2cinn::Name2VarInfoMap;
 
 CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
                                      const CinnCompiledObject& compiled_obj)
@@ -66,13 +72,6 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kOutputVars);
   internal_var_names_ =
       ExtractInternalVarNames(input_var_names, output_var_names);
-  // check completeness of output variables in compiled result
-  for (auto&& var_name : output_var_names) {
-    PADDLE_ENFORCE_EQ(IsVariableUsed(var_name), true,
-                      platform::errors::PreconditionNotMet(
-                          "Variable(%s) not applied in CINN", var_name));
-  }
-
   // initialize all execution arguments
   InitializeArguments();
   // DEPRECATED(CtfGo): following callback assignment will be deprecated soon
@@ -211,10 +210,16 @@ void CinnLaunchContext::CheckTensorEquivalent(
   PADDLE_ENFORCE_EQ(paddle_tensor.dims(), cinn_dims,
                     platform::errors::PreconditionNotMet(
                         "Tensors' shape in variable(%s) are not equivalent, "
-                        "paddle's shape = [%s], but cinn's shape = [%s].",
+                        "paddle is = [%s], but cinn is = [%s].",
                         var_name, paddle_tensor.dims(), cinn_dims));
 
-  // TODO(CtfGo): check the underlying data type after CINN ready
+  auto cinn_dtype =
+      framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type());
+  PADDLE_ENFORCE_EQ(paddle_tensor.dtype(), cinn_dtype,
+                    platform::errors::PreconditionNotMet(
+                        "Tensors' dtype in variable(%s) are not equivalent, "
+                        "paddle is = [%s], but cinn is = [%s].",
+                        var_name, paddle_tensor.dtype(), cinn_dtype));
 }
 
 void CinnLaunchContext::InitializeArguments() {
@@ -224,13 +229,15 @@ void CinnLaunchContext::InitializeArguments() {
     // assign dimensions with corresponding compiled tensor
     cinn_buffer->resize(cinn_tensor->shape().data().data(),
                         cinn_tensor->shape().data().size());
+    cinn_buffer->type = cinn::runtime::ToRuntimeType(cinn_tensor->type());
     VLOG(4) << string::Sprintf(
-        "Append an argument:name(%s),dims(%s),argument size:(%lu)", arg,
+        "Append an argument:name(%s),dims(%s),type(%s)", arg,
         framework::DDim(cinn_buffer->dims, cinn_buffer->dimensions).to_str(),
-        name2argument_.size());
+        cinn_tensor->type());
     name2argument_.emplace(arg, cinn_buffer.get());
     hold_buffers_.emplace_back(std::move(cinn_buffer));
   }
+  VLOG(4) << "Total argument size:" << name2argument_.size();
 }
 
 void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
@@ -325,9 +332,8 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
     }
 
     auto cinn_tensor = GetCinnTensorOfVar(var_name);
-    // TODO(CtfGo): set the corresponding data type after CINN ready,
-    //              currently set as FP32 in default
-    var_desc->SetDataType(framework::proto::VarType::FP32);
+    var_desc->SetDataType(framework::TransToProtoVarType(
+        framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type())));
     var_desc->SetShape(std::vector<int64_t>(cinn_tensor->shape().data().begin(),
                                             cinn_tensor->shape().data().end()));
   }
@@ -390,7 +396,20 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
-  parallel_executor_->PrepareVariables(scope);
+  // instead of using the PrepareVariables function of ParallelExecutor to
+  // initialize all variables, here we only initialize internal variables
+  // because external variables are already included in parent scope.
+  for (auto&& var_name : internal_var_names_) {
+    auto* var = scope->FindVar(var_name);
+    if (var != nullptr) {
+      VLOG(5) << "internal variable:" << var_name
+              << " has been initialized beforehand in global scope, skipped.";
+      continue;
+    }
+    framework::InitializeVariable(scope->Var(var_name),
+                                  framework::proto::VarType::LOD_TENSOR);
+  }
+
   for (auto&& var_name : initialized_beforehand_vars_) {
     auto* var = scope->GetVar(var_name);
     auto* buffer = GetCinnBufferOfVar(var_name);

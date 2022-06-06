@@ -15,35 +15,33 @@ limitations under the License. */
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 
 #include <memory>
+
 #include "glog/logging.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace experimental {
 namespace sparse {
 
-Tensor to_sparse_coo_impl(const Tensor& x,
-                          Backend backend,
-                          const int64_t sparse_dim) {
+Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim) {
   if (x.layout() == phi::DataLayout::SPARSE_COO) {
     return x;
   }
+
   // 1. Get kernel signature and kernel
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "dense_to_sparse_coo";
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     kernel_name = "sparse_csr_to_coo";
   }
 
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
 
-  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;
 
   // 2. Get Device Context
@@ -62,19 +60,15 @@ Tensor to_sparse_coo_impl(const Tensor& x,
 
   // 4. InferMeta
   auto indices_meta =
-      phi::DenseTensorMeta(phi::DataType::INT64, {-1}, phi::DataLayout::NCHW);
-  auto elements_meta = phi::DenseTensorMeta(x.dtype(), {-1}, x.layout());
+      phi::DenseTensorMeta(phi::DataType::INT64, {1}, phi::DataLayout::NCHW);
+  auto elements_meta = phi::DenseTensorMeta(x.dtype(), {1}, x.layout());
 
   // 5. Prepare outputs
   // create empty SparseCooTensor
-  phi::DenseTensor non_zero_indices(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(indices_meta));
-  phi::DenseTensor non_zero_elements(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(elements_meta));
+  phi::DenseTensor non_zero_indices(std::make_shared<phi::Allocation>(),
+                                    std::move(indices_meta));
+  phi::DenseTensor non_zero_elements(std::make_shared<phi::Allocation>(),
+                                     std::move(elements_meta));
   auto coo = std::make_shared<phi::SparseCooTensor>(
       non_zero_indices, non_zero_elements, x.dims());
 
@@ -88,23 +82,23 @@ Tensor to_sparse_coo_impl(const Tensor& x,
   return out;
 }
 
-Tensor to_sparse_csr_impl(const Tensor& x, Backend backend) {
+Tensor to_sparse_csr_impl(const Tensor& x) {
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     return x;
   }
   // 1. Get kernel signature and kernel
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "dense_to_sparse_csr";
   if (x.layout() == phi::DataLayout::SPARSE_COO) {
     kernel_name = "sparse_coo_to_csr";
   }
 
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
 
-  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;
 
   // 2. Get Device Context
@@ -122,25 +116,19 @@ Tensor to_sparse_csr_impl(const Tensor& x, Backend backend) {
 
   // 4. InferMeta
   auto crows_meta =
-      phi::DenseTensorMeta(phi::DataType::INT64, {-1}, phi::DataLayout::NCHW);
+      phi::DenseTensorMeta(phi::DataType::INT64, {1}, phi::DataLayout::NCHW);
   auto cols_meta =
-      phi::DenseTensorMeta(phi::DataType::INT64, {-1}, phi::DataLayout::NCHW);
-  auto elements_meta = phi::DenseTensorMeta(x.dtype(), {-1}, x.layout());
+      phi::DenseTensorMeta(phi::DataType::INT64, {1}, phi::DataLayout::NCHW);
+  auto elements_meta = phi::DenseTensorMeta(x.dtype(), {1}, x.layout());
 
   // 5. Prepare outputs
   // create empty SparseCooTensor
-  phi::DenseTensor non_zero_crows(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(crows_meta));
-  phi::DenseTensor non_zero_cols(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(cols_meta));
-  phi::DenseTensor non_zero_elements(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(elements_meta));
+  phi::DenseTensor non_zero_crows(std::make_shared<phi::Allocation>(),
+                                  std::move(crows_meta));
+  phi::DenseTensor non_zero_cols(std::make_shared<phi::Allocation>(),
+                                 std::move(cols_meta));
+  phi::DenseTensor non_zero_elements(std::make_shared<phi::Allocation>(),
+                                     std::move(elements_meta));
   auto csr = std::make_shared<phi::SparseCsrTensor>(
       non_zero_crows, non_zero_cols, non_zero_elements, x.dims());
 
@@ -154,24 +142,25 @@ Tensor to_sparse_csr_impl(const Tensor& x, Backend backend) {
   return out;
 }
 
-Tensor to_dense_impl(const Tensor& x, Backend backend) {
+Tensor to_dense_impl(const Tensor& x) {
   if (x.layout() != phi::DataLayout::SPARSE_CSR &&
       x.layout() != phi::DataLayout::SPARSE_COO) {
     return x;
   }
+
   // 1. Get kernel signature and kernel
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "sparse_coo_to_dense";
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     kernel_name = "sparse_csr_to_dense";
   }
 
+  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_name, kernel_key);
 
-  VLOG(6) << "to API kernel key: " << kernel_key;
+  VLOG(6) << "add API kernel key: " << kernel_key;
   VLOG(6) << "to API kernel: " << kernel;
 
   // 2. Get Device Context
@@ -193,9 +182,7 @@ Tensor to_dense_impl(const Tensor& x, Backend backend) {
   // 5. Prepare outputs
   // create empty SparseCooTensor
   auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPhiPlace(backend)),
-      std::move(dense_meta));
+      std::make_shared<phi::Allocation>(), std::move(dense_meta));
 
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
@@ -210,5 +197,3 @@ Tensor to_dense_impl(const Tensor& x, Backend backend) {
 }  // namespace sparse
 }  // namespace experimental
 }  // namespace paddle
-
-PD_REGISTER_API(SparseApi);

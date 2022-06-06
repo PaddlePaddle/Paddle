@@ -666,8 +666,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
   PADDLE_ENFORCE_EQ(places.size() > 0 && !platform::is_npu_place(places[0]),
-                    true, platform::errors::Unavailable(
-                              "NPU is not supported in ParallelExecutor."));
+                    true,
+                    platform::errors::Unavailable(
+                        "NPU is not supported in ParallelExecutor."));
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
@@ -916,6 +917,8 @@ void ParallelExecutor::BCastParamsToDevices(
 
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  platform::RecordEvent record_run("ParallelExecutor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef PADDLE_WITH_CUDA
   if (platform::IsCUDAGraphCapturing()) {

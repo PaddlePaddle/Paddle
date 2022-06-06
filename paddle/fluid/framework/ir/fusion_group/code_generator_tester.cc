@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <cmath>
 #include <string>
 
@@ -420,11 +421,7 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(bool backward,
       n->Var()->SetDataType(proto_dtype);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unordered_set<paddle::framework::ir::Node*> DistilGradNodes(

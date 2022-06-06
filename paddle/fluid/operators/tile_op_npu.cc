@@ -11,7 +11,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/tile_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/tile_op_functor.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -26,10 +27,11 @@ class TileNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1, platform::errors::InvalidArgument(
-                     "The rank of the input 'x' for tile op must be a positive "
-                     "integer, but the value received is %d.",
-                     rank));
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The rank of the input 'x' for tile op must be a positive "
+            "integer, but the value received is %d.",
+            rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(

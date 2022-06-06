@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -68,9 +69,9 @@ void IndexSampleGradInner(const Context& context,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& out_grad,
                            const DenseTensor& x,
                            const DenseTensor& index,
+                           const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   auto index_type = index.dtype();
   bool index_type_match =

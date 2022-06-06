@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/exception.h"
 
+#include "paddle/phi/api/ext/exception.h"
 namespace paddle {
 namespace pybind {
 
@@ -122,6 +123,8 @@ void ThrowExceptionToPython(std::exception_ptr p) {
         PyErr_SetString(EnforceNotMetException, e.what());
         break;
     }
+  } catch (const paddle::PD_Exception& e) {
+    PyErr_SetString(PyExc_OSError, e.what());
   }
 }
 }  // namespace pybind

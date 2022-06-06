@@ -15,8 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -54,7 +54,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    // only achive the default `upscale_in_train` method
+    // only achieve the default `upscale_in_train` method
     if (!is_test) {
       Tensor tmp_x(x->dtype());
       Tensor tmp_out(out->dtype());

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/device_context.h"
-
-#include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -188,6 +187,7 @@ class XPUDeviceContext : public phi::XPUContext {
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
 };
 
 template <>
@@ -849,7 +849,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // to erase
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
-  bool block_next_cache_clearing_ = false;
+  // 0 - clearing is allowed. x > 0 do not clear.
+  unsigned int block_next_cache_clearing_ = 0;
 };
 #endif
 
@@ -915,6 +916,11 @@ class DeviceContextPool {
   }
 
   size_t size() const { return device_contexts_.size(); }
+
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+  device_contexts() const {
+    return device_contexts_;
+  }
 
  private:
   static DeviceContextPool* pool;

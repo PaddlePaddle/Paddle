@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
+
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -76,6 +77,7 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
           VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
           // Simply Copy impl() to grad_tensor
           grad_tensor->set_impl(t.impl());
+          grad_tensor->set_autograd_meta(t.mutable_autograd_meta());
           return *grad_tensor.get();
         } else {
           VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";

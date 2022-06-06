@@ -24,7 +24,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/common/place.h"
@@ -150,7 +149,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   platform::XPUDeviceGuard gurad(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
-    std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
+    VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
     xpu_wait();
     ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   }

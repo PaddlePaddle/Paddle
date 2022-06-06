@@ -25,9 +25,11 @@
 #endif
 
 #include <stddef.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/device_context.h"
 
 #ifdef __HIPCC__
@@ -93,16 +95,17 @@ struct GpuLaunchConfig {
 };
 
 /* According to NVIDIA, if number of threads per block is 64/128/256/512,
-  * cuda performs better. And number of blocks should be greater (at least
-  * 2x~4x) than number of SMs. Hence, SM count is took into account within
-  * this function to determine the right number of threads per block. */
+ * cuda performs better. And number of blocks should be greater (at least
+ * 2x~4x) than number of SMs. Hence, SM count is took into account within
+ * this function to determine the right number of threads per block. */
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int64_t numel,
     int vec_size = 1) {
-  PADDLE_ENFORCE_GT(numel, 0, platform::errors::InvalidArgument(
-                                  "element quantity should be greater than 0,"
-                                  " but received value is: %d.",
-                                  numel));
+  PADDLE_ENFORCE_GE(numel, 0,
+                    platform::errors::InvalidArgument(
+                        "element quantity should be greater than or equal 0,"
+                        " but received value is: %d.",
+                        numel));
   // Get compute_capability
   const int capability = context.GetComputeCapability();
   /* If thread number per block is 64/128/256/512, cuda performs better.*/
@@ -128,6 +131,10 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
   int blocks = DivUp(DivUp(numel, vec_size), threads);
+  int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
+  if (blocks > limit_blocks) {
+    blocks = limit_blocks;
+  }
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
@@ -138,14 +145,16 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
 inline GpuLaunchConfig GetGpuLaunchConfig2D(
     const platform::CUDADeviceContext& context, int x_dim, int y_dim) {
-  PADDLE_ENFORCE_GT(x_dim, 0, platform::errors::InvalidArgument(
-                                  "x dim number should greater than 0,"
-                                  " but received value is: %d",
-                                  x_dim));
-  PADDLE_ENFORCE_GT(y_dim, 0, platform::errors::InvalidArgument(
-                                  "y dim number should greater than 0,"
-                                  " but received value is: %d",
-                                  y_dim));
+  PADDLE_ENFORCE_GT(
+      x_dim, 0,
+      platform::errors::InvalidArgument("x dim number should greater than 0,"
+                                        " but received value is: %d",
+                                        x_dim));
+  PADDLE_ENFORCE_GT(
+      y_dim, 0,
+      platform::errors::InvalidArgument("y dim number should greater than 0,"
+                                        " but received value is: %d",
+                                        y_dim));
 
   const int kThreadsPerBlock = 256;
   int block_cols = (std::min)(x_dim, kThreadsPerBlock);
@@ -166,6 +175,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
   return config;
 }
 
+template <typename Context>
+void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+  auto max_grid_dim = reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                          .GetCUDAMaxGridDimSize();
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
+  grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
+}
 }  // namespace platform
 }  // namespace paddle
 

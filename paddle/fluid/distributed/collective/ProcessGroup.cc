@@ -17,7 +17,8 @@
 namespace paddle {
 namespace distributed {
 
-ProcessGroup::Task::Task(int rank, const std::vector<Tensor>& inputTensors,
+ProcessGroup::Task::Task(int rank,
+                         const std::vector<phi::DenseTensor>& inputTensors,
                          CommType comm_type)
     : rank_(rank), comm_type_(comm_type) {}
 
@@ -34,7 +35,14 @@ bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
 
 void ProcessGroup::Task::Synchronize() {}
 
-ProcessGroup::ProcessGroup(int rank, int size) : rank_(rank), size_(size) {}
+ProcessGroup::ProcessGroup(int rank, int size, const platform::Place& place,
+                           int gid)
+    : rank_(rank), size_(size), place_(place), gid_(gid) {
+  if (gid != IGNORE_ID) {
+    auto map = ProcessGroupMapFromGid::getInstance();
+    map->insert(gid_, this);
+  }
+}
 
 }  //  namespace distributed
 }  //  namespace paddle

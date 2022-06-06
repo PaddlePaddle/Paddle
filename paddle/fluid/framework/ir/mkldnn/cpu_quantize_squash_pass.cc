@@ -434,9 +434,17 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
             platform::errors::NotFound("Operator after quantize operator(%s) "
                                        "should has quantize output as input.",
                                        quant_out->Name()));
-        last_op->Op()->SetInput(
-            last_op_input_name,
-            std::vector<std::string>({first_quant_out->Name()}));
+
+        // update the next operator input,
+        // by replacing quant_out with first_quant_out
+        auto last_op_names = last_op->Op()->Input(last_op_input_name);
+        last_op_names.erase(std::remove(last_op_names.begin(),
+                                        last_op_names.end(), quant_out->Name()),
+                            last_op_names.end());
+        last_op_names.push_back(first_quant_out->Name());
+        last_op->Op()->SetInput(last_op_input_name,
+                                std::vector<std::string>(last_op_names));
+
         IR_NODE_LINK_TO(first_quant_out, last_op);
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});
         removed_quantize++;

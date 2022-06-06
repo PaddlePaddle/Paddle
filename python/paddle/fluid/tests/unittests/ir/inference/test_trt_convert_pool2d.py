@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
+
     def is_paddings_valid(self, program_config: ProgramConfig) -> bool:
         exclusive = program_config.ops[0].attrs['exclusive']
         paddings = program_config.ops[0].attrs['paddings']
@@ -80,14 +81,16 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                                                 }]
 
                                                 ops_config = [{
-                                                    "op_type": "pool2d",
+                                                    "op_type":
+                                                    "pool2d",
                                                     "op_inputs": {
                                                         "X": ["input_data"],
                                                     },
                                                     "op_outputs": {
                                                         "Out": ["output_data"]
                                                     },
-                                                    "op_attrs": dics[0]
+                                                    "op_attrs":
+                                                    dics[0]
                                                 }]
                                                 ops = self.generate_op_config(
                                                     ops_config)
@@ -108,6 +111,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -122,8 +126,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -138,13 +141,14 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
+
         def teller(program_config, predictor_config):
             if program_config.ops[0].attrs['pooling_type'] == 'avg' and \
                program_config.ops[0].attrs['global_pooling'] == False and \

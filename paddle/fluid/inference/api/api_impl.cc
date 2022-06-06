@@ -12,13 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/api/api_impl.h"
+
 #include <glog/logging.h>
+
 #include <memory>
 #include <sstream>
 #include <string>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -92,6 +94,7 @@ bool NativePaddlePredictor::Init(
                                 "The sub_scope should not be nullptr."));
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitDefaultKernelSignatureMap();
     scope_.reset(new paddle::framework::Scope());
   }
 
@@ -347,8 +350,9 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   VLOG(3) << "create NativePaddlePredictor";

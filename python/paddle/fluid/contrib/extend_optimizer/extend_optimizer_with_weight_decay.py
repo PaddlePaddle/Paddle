@@ -18,6 +18,7 @@ __all__ = ["extend_with_decoupled_weight_decay"]
 
 
 class DecoupledWeightDecay(object):
+
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and \
                 not isinstance(coeff, framework.Variable):
@@ -75,11 +76,10 @@ class DecoupledWeightDecay(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        params_grads = self.backward(
-            loss=loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        params_grads = self.backward(loss=loss,
+                                     startup_program=startup_program,
+                                     parameter_list=parameter_list,
+                                     no_grad_set=no_grad_set)
         scaled_params = self._scale_parameters(params_grads)
         for p_grad_sgrad in scaled_params:
             param, grad, scaled_param = p_grad_sgrad
@@ -89,10 +89,9 @@ class DecoupledWeightDecay(object):
                     x=param, y=scaled_param)
                 paddle.fluid.layers.assign(input=updated_param, output=param)
 
-        optimize_ops = self.apply_optimize(
-            loss=loss,
-            params_grads=params_grads,
-            startup_program=startup_program)
+        optimize_ops = self.apply_optimize(loss=loss,
+                                           params_grads=params_grads,
+                                           startup_program=startup_program)
         return optimize_ops, params_grads
 
     def __str__(self):
@@ -146,7 +145,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
         """
 
         def __init__(self, weight_decay, apply_decay_param_fun=None, **kwargs):
-            super(OptimizerWithDecoupledWeightDecay, self).__init__(
-                weight_decay, apply_decay_param_fun, **kwargs)
+            super(OptimizerWithDecoupledWeightDecay,
+                  self).__init__(weight_decay, apply_decay_param_fun, **kwargs)
 
     return OptimizerWithDecoupledWeightDecay

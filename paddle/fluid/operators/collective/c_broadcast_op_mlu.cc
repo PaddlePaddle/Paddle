@@ -31,7 +31,7 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
     cnclDataType_t dtype =
-        platform::ToCNCLDataType(framework::TransToProtoVarType(x->type()));
+        platform::ToCNCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -62,7 +62,7 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place), numel,
                                            dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
 

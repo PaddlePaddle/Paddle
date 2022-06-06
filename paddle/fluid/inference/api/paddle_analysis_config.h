@@ -253,6 +253,19 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+  ///
+  /// \brief Enable GPU fp16 precision computation, in experimental state.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void Exp_EnableUseGpuFp16(std::unordered_set<std::string> op_list = {});
+  ///
+  /// \brief A boolean state telling whether the GPU fp16 precision is turned
+  /// on.
+  ///
+  /// \return bool Whether the GPU fp16 precision is turned on.
+  ///
+  bool gpu_fp16_enabled() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.
@@ -319,6 +332,26 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on CustomDevice.
+  ///
+  /// \param device_type device_type the custom device to use.
+  ///
+  /// \param device_id device_id the custom device to use (default is 0).
+  ///
+  void EnableCustomDevice(const std::string& device_type, int device_id);
+  ///
+  /// \brief Turn on ONNXRuntime.
+  ///
+  void EnableONNXRuntime();
+  ///
+  /// \brief Turn off ONNXRuntime.
+  ///
+  void DisableONNXRuntime();
+  ///
+  /// \brief Turn on ONNXRuntime Optimization.
+  ///
+  void EnableORTOptimization();
+  ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
   /// \return bool Whether the GPU is turned on.
@@ -341,6 +374,24 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
+  /// \brief A boolean state telling whether the CustomDevice is turned on.
+  ///
+  /// \return bool Whether the CustomDevice is turned on.
+  ///
+  bool use_custom_device() const { return use_custom_device_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime is turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime is turned on.
+  ///
+  bool use_onnxruntime() const { return use_onnxruntime_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime Optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime Optimization is turned on.
+  ///
+  bool ort_optimization_enabled() const { return enable_ort_optimization_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -359,11 +410,22 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
-  /// \brief Get the the number of IPU device .
+  /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
   ///
   int ipu_device_num() const { return ipu_device_num_; }
+  ///
+  /// \brief Get the custom device id.
+  ///
+  /// \return int The custom device id.
+  ///
+  int custom_device_id() const { return custom_device_id_; }
+  /// \brief Get the custom device type.
+  ///
+  /// \return string The custom device type.
+  ///
+  std::string custom_device_type() const { return custom_device_type_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -556,14 +618,14 @@ struct PD_INFER_DECL AnalysisConfig {
   /// may be more high-performance. Libnvinfer_plugin.so greater than
   /// V7.2.1 is needed.
   ///
-  void EnableTensorRtOSS();
+  void EnableVarseqlen();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
-  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_varseqlen_enabled() { return trt_use_varseqlen_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -673,6 +735,20 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief Turn on MKLDNN int8.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Int8.
+  ///
+  /// \return bool Whether to use the MKLDNN Int8.
+  ///
+  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
 
   ///
   /// \brief Turn on MKLDNN bfloat16.
@@ -834,12 +910,35 @@ struct PD_INFER_DECL AnalysisConfig {
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};
+  bool use_gpu_fp16_{false};
+  std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
+      "conv2d_fusion",
+      "conv2d",
+      "roll",
+      "strided_slice",
+      "depthwise_conv2d",
+      "unfold",
+      "generate_proposals_v2",
+      "nearest_interp_v2",
+      "bilinear_interp_v2"
+      "yolo_box",
+      "multiclass_nms3",
+      "matrix_nms"};
 
   bool use_cudnn_{false};
 
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // CustomDevice related
+  bool use_custom_device_{false};
+  int custom_device_id_{0};
+  std::string custom_device_type_;
+
+  // ONNXRuntime related
+  bool use_onnxruntime_{false};
+  bool enable_ort_optimization_{false};
 
   // Padding related
   bool use_fc_padding_{true};
@@ -862,8 +961,10 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
-  bool trt_use_oss_{false};
+  bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  std::string tensorrt_transformer_posid_{""};
+  std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
@@ -936,6 +1037,26 @@ struct PD_INFER_DECL AnalysisConfig {
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
+  bool use_mkldnn_int8_{false};
+  std::unordered_set<int> quantize_excluded_op_ids_{};
+  std::unordered_set<std::string> quantize_enabled_op_types_{
+      "concat",
+      "conv2d",
+      "depthwise_conv2d",
+      "elementwise_add",
+      "elementwise_mul",
+      "fc",
+      "matmul",
+      "nearest_interp",
+      "nearest_interp_v2",
+      "pool2d",
+      "prior_box",
+      "reshape2",
+      "transpose2",
+      "fusion_gru",
+      "fusion_lstm",
+      "multi_gru",
+      "slice"};
 
   // ipu related.
   bool use_ipu_{false};

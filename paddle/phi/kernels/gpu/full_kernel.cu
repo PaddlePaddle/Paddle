@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/full_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 namespace phi {
 
@@ -35,7 +34,7 @@ struct FullFuctor {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
@@ -132,6 +131,7 @@ PD_REGISTER_KERNEL(full_like,
                    phi::FullLikeKernel,
                    float,
                    double,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

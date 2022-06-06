@@ -16,7 +16,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MLU
 #include <cn_api.h>
+#include <cndrv_id.h>
 #include <cnnl.h>
+#include <cnpapi.h>
 #include <cnrt.h>
 #ifdef PADDLE_WITH_CNCL
 #include <cncl.h>
@@ -33,7 +35,7 @@ using cnclStatus = cnclResult_t;
 #endif
 using mluStream = cnrtQueue_t;
 using mluCnnlHandle = cnnlHandle_t;
-using mluEventHandle = CNnotifier;
+using mluEventHandle = cnrtNotifier_t;
 using mluDeviceHandle = CNdev;
 
 namespace platform {

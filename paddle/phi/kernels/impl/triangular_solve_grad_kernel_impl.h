@@ -14,18 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
-
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/tril_triu_op.h"
 
 namespace phi {
 
@@ -45,7 +43,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
 
-  ScalarArray y_bst_dims_array(y_bst_dims_vec);
+  IntArray y_bst_dims_array(y_bst_dims_vec);
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims_array);
   if (dy) {
     // calculate x's conjugate for complex
@@ -72,7 +70,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     }
   }
 
-  ScalarArray x_bst_dims_array(x_bst_dims_vec);
+  IntArray x_bst_dims_array(x_bst_dims_vec);
   DenseTensor dx_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
   if (dx) {
     // calculate x's conjugate for complex
@@ -119,7 +117,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     const auto H = dims[dims.size() - 2];
     const auto W = dims[dims.size() - 1];
     phi::funcs::ForRange<Context> x_for_range(dev_ctx, dx_bst.numel());
-    paddle::operators::TrilTriuCompute<T> tril_triu_functor(
+    phi::funcs::TrilTriuCompute<T> tril_triu_functor(
         dx_bst.data<T>(), unitriangular, !upper, H, W, dx_bst_upper.data<T>());
     x_for_range(tril_triu_functor);
 

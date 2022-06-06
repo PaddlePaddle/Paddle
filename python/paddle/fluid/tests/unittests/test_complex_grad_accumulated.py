@@ -20,27 +20,31 @@ import numpy as np
 import paddle
 
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class Optimization_ex1(paddle.nn.Layer):
+
     def __init__(self,
                  shape,
                  dtype,
-                 param_attr=paddle.nn.initializer.Uniform(
-                     low=-5., high=5.)):
+                 param_attr=paddle.nn.initializer.Uniform(low=-5., high=5.)):
         super(Optimization_ex1, self).__init__()
 
-        self.theta0 = self.create_parameter(
-            shape=shape, attr=param_attr, dtype=dtype, is_bias=False)
-        self.theta1 = self.create_parameter(
-            shape=shape, attr=param_attr, dtype=dtype, is_bias=False)
+        self.theta0 = self.create_parameter(shape=shape,
+                                            attr=param_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
+        self.theta1 = self.create_parameter(shape=shape,
+                                            attr=param_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
         self.A = paddle.to_tensor(
-            np.random.random((4, 4)).astype(dtype) + np.random.random((4, 4))
-            .astype(dtype) * 1j)
-        self.B = paddle.to_tensor(
-            np.random.random((4, 4)).astype(dtype) + np.random.random(
-                (4, 4)).astype(dtype) * 1j,
-            stop_gradient=False)
+            np.random.random((4, 4)).astype(dtype) +
+            np.random.random((4, 4)).astype(dtype) * 1j)
+        self.B = paddle.to_tensor(np.random.random(
+            (4, 4)).astype(dtype) + np.random.random((4, 4)).astype(dtype) * 1j,
+                                  stop_gradient=False)
 
     def forward(self, mode=1):
         jj = paddle.to_tensor(np.array([1j]).astype(np.complex64))
@@ -57,14 +61,15 @@ class Optimization_ex1(paddle.nn.Layer):
             return loss.real()
         elif mode == 3:
             # run without param
-            loss = paddle.sum(self.A + self.B) * (
-                paddle.sum(self.A + self.B).conj())
+            loss = paddle.sum(self.A + self.B) * (paddle.sum(self.A +
+                                                             self.B).conj())
             return loss.real()
         else:
             raise NotImplementedError
 
 
 class TestComplexGradAccumulated(unittest.TestCase):
+
     def setUp(self):
         self.devices = ['cpu']
         if core.is_compiled_with_cuda():
@@ -118,6 +123,12 @@ class TestComplexGradAccumulated(unittest.TestCase):
             for dtype in self.dtypes:
                 self.train(dev, dtype, 3)
                 self.train_no_clear_grad(dev, dtype, 3)
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_case_one_step()
+            self.test_case_two_step()
+            self.test_case_non_param()
 
 
 if __name__ == '__main__':

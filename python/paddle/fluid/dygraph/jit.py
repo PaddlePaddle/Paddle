@@ -37,9 +37,9 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter
+from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter, EagerParamBase
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
-from paddle.fluid.framework import dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
@@ -64,8 +64,8 @@ def _extract_vars(inputs, result_list, err_tag='inputs'):
             _extract_vars(var, result_list, err_tag)
     else:
         raise TypeError(
-            "The type of 'each element of {}' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".
-            format(err_tag, type(inputs)))
+            "The type of 'each element of {}' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}."
+            .format(err_tag, type(inputs)))
 
 
 def extract_vars(inputs, err_tag='inputs'):
@@ -125,7 +125,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_to_static:
+        if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
@@ -211,20 +211,19 @@ def declarative(function=None, input_spec=None, build_strategy=None):
         _, python_func = unwrap_decorators(python_func)
 
         # Step 2. copy some attributes from original python function.
-        static_layer = copy_decorator_attrs(
-            original_func=python_func,
-            decorated_obj=StaticFunction(
-                function=python_func,
-                input_spec=input_spec,
-                build_strategy=build_strategy))
+        static_layer = copy_decorator_attrs(original_func=python_func,
+                                            decorated_obj=StaticFunction(
+                                                function=python_func,
+                                                input_spec=input_spec,
+                                                build_strategy=build_strategy))
 
         return static_layer
 
     build_strategy = build_strategy or BuildStrategy()
     if not isinstance(build_strategy, BuildStrategy):
         raise TypeError(
-            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".
-            format(type(build_strategy).__name__))
+            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}"
+            .format(type(build_strategy).__name__))
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
@@ -232,8 +231,8 @@ def declarative(function=None, input_spec=None, build_strategy=None):
             if isinstance(function.forward, StaticFunction):
                 class_name = function.__class__.__name__
                 logging_utils.warn(
-                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
-                    format(class_name))
+                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
+                    .format(class_name))
             function.forward = decorated(function.forward)
             return function
         else:
@@ -284,6 +283,7 @@ def not_to_static(func=None):
 
 
 class _SaveLoadConfig(object):
+
     def __init__(self):
         self._output_spec = None
         self._model_filename = None
@@ -302,6 +302,7 @@ class _SaveLoadConfig(object):
 
         # If True, It will save inference program only, and do not save params of Program
         self._program_only = False
+        self.with_hook = False
 
     @property
     def output_spec(self):
@@ -370,7 +371,7 @@ class _SaveLoadConfig(object):
 
 
 def _parse_save_configs(configs):
-    supported_configs = ['output_spec']
+    supported_configs = ['output_spec', "with_hook"]
 
     # input check
     for key in configs:
@@ -382,6 +383,7 @@ def _parse_save_configs(configs):
     # construct inner config
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
+    inner_config.with_hook = configs.get('with_hook', False)
 
     return inner_config
 
@@ -454,11 +456,15 @@ def _get_input_var_names(inputs, input_spec):
     return result_list
 
 
-def _get_output_vars(outputs, output_spec):
+def _get_output_vars(outputs, output_spec, with_hook=False):
     name_no_exists_error = "The tensor `%s` does not exists. " \
         "Please make sure the name of example Tensor " \
         "in configs.output_spec is the output tensor of " \
         "Layer.forward method."
+    if output_spec and with_hook:
+        raise RuntimeError(
+            "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
+        )
     result_list = []
     output_vars_dict = OrderedDict()
     for var in flatten(outputs):
@@ -616,6 +622,7 @@ def _remove_save_pre_hook(hook):
 
 
 def _run_save_pre_hooks(func):
+
     def wrapper(layer, path, input_spec=None, **configs):
         global _save_pre_hooks
         for hook in _save_pre_hooks:
@@ -769,8 +776,8 @@ def save(layer, path, input_spec=None, **configs):
             "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
 
-    if not (isinstance(layer, Layer) or inspect.isfunction(layer) or isinstance(
-            layer, StaticFunction)):
+    if not (isinstance(layer, Layer) or inspect.isfunction(layer)
+            or isinstance(layer, StaticFunction)):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
             % type(layer))
@@ -821,7 +828,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, Variable)):
+            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var))
             else:
@@ -830,19 +837,27 @@ def save(layer, path, input_spec=None, **configs):
 
     # parse configs
     configs = _parse_save_configs(configs)
+    # whether outermost layer has pre/post hook, if does, we need also save
+    # these operators in program.
+    with_hook = configs.with_hook
+
     scope = core.Scope()
     extra_var_info = dict()
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
+        if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
+            with_hook = True
     else:
         # layer is function
-        functions = [layer, ]
+        functions = [
+            layer,
+        ]
     for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
                 concrete_program = static_func.concrete_program_specify_input_spec(
-                    inner_input_spec)
+                    inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
                 # transform in jit.save, if input_spec is incomplete, declarative will throw error
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
@@ -850,9 +865,10 @@ def save(layer, path, input_spec=None, **configs):
                 if inner_input_spec:
                     inner_input_spec = pack_sequence_as(input_spec,
                                                         inner_input_spec)
-                static_forward = declarative(
-                    inner_layer.forward, input_spec=inner_input_spec)
-                concrete_program = static_forward.concrete_program
+                static_forward = declarative(inner_layer.forward,
+                                             input_spec=inner_input_spec)
+                concrete_program = static_forward.concrete_program_specify_input_spec(
+                    with_hook=with_hook)
                 # the input_spec has been used in declarative, which is equal to
                 # @declarative with input_spec and jit.save without input_spec,
                 # avoid needless warning
@@ -869,14 +885,14 @@ def save(layer, path, input_spec=None, **configs):
                 if inner_input_spec:
                     inner_input_spec = pack_sequence_as(input_spec,
                                                         inner_input_spec)
-                static_function = declarative(
-                    attr_func, input_spec=inner_input_spec)
+                static_function = declarative(attr_func,
+                                              input_spec=inner_input_spec)
                 concrete_program = static_function.concrete_program
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.
-                        format(layer))
+                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
+                        .format(layer))
 
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
@@ -909,8 +925,8 @@ def save(layer, path, input_spec=None, **configs):
                         param_or_buffer_tensor = scope.var(
                             param_or_buffer.name).get_tensor()
                         #src_tensor = param_or_buffer.value().get_tensor()
-                        src_tensor = state_var_dict[param_or_buffer.name].value(
-                        ).get_tensor()
+                        src_tensor = state_var_dict[
+                            param_or_buffer.name].value().get_tensor()
                         param_or_buffer_tensor._share_data_with(src_tensor)
                     # record var info
                     if param_or_buffer.name not in extra_var_info:
@@ -921,7 +937,8 @@ def save(layer, path, input_spec=None, **configs):
                                     param_or_buffer.name]
                         extra_info_dict[
                             'stop_gradient'] = param_or_buffer.stop_gradient
-                        if isinstance(param_or_buffer, ParamBase):
+                        if isinstance(param_or_buffer,
+                                      (ParamBase, EagerParamBase)):
                             extra_info_dict[
                                 'trainable'] = param_or_buffer.trainable
                         extra_var_info[param_or_buffer.name] = extra_info_dict
@@ -942,8 +959,10 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support VarBase spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
+        # print(concrete_program.main_program)
+        # print(concrete_program.outputs, configs.output_spec)
         output_vars = _get_output_vars(concrete_program.outputs,
-                                       configs.output_spec)
+                                       configs.output_spec, with_hook)
 
         # 5. save inference model
         from paddle.fluid.io import save_inference_model
@@ -1435,7 +1454,7 @@ class TracedLayer(object):
             "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if in_dygraph_mode():
+        if _non_static_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:
@@ -1518,14 +1537,16 @@ class TracedLayer(object):
                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
         if isinstance(feed, list):
             for f in feed:
-                check_type(f, "each element of feed", int,
-                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+                check_type(
+                    f, "each element of feed", int,
+                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
         check_type(fetch, "fetch", (type(None), list),
                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
         if isinstance(fetch, list):
             for f in fetch:
-                check_type(f, "each element of fetch", int,
-                           "fluid.dygraph.jit.TracedLayer.save_inference_model")
+                check_type(
+                    f, "each element of fetch", int,
+                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
         clip_extra = kwargs.get('clip_extra', False)
         # path check
         file_prefix = os.path.basename(path)
@@ -1559,12 +1580,11 @@ class TracedLayer(object):
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
-            save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feeded_var_names,
-                target_vars=target_vars,
-                executor=self._exe,
-                main_program=self._program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
-                clip_extra=clip_extra)
+            save_inference_model(dirname=dirname,
+                                 feeded_var_names=feeded_var_names,
+                                 target_vars=target_vars,
+                                 executor=self._exe,
+                                 main_program=self._program.clone(),
+                                 model_filename=model_filename,
+                                 params_filename=params_filename,
+                                 clip_extra=clip_extra)

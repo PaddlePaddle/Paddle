@@ -16,10 +16,11 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import warnings
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
+
     def func_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -40,7 +41,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             self.assertTrue(np.array_equal(var2.numpy(), data_np))
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
-            if _in_eager_mode():
+            if not _in_legacy_dygraph():
                 # eager_mode, var2 is Tensor, is not subscriptable
                 # TODO(wuweilong): to support slice in eager mode later
                 self.assertNotEqual(var2.numpy()[0][0], -1)

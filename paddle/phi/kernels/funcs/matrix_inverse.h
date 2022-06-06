@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "Eigen/Core"
 #include "Eigen/LU"
-
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -39,7 +39,7 @@ void ComputeInverseEigen(const Context& dev_ctx,
   int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
 
   const T* a_ptr = a.data<T>();
-  T* a_inv_ptr = a_inv->mutable_data<T>(dev_ctx.GetPlace());
+  T* a_inv_ptr = dev_ctx.template Alloc<T>(a_inv);
 
   for (int i = 0; i < batch_size; ++i) {
     ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);

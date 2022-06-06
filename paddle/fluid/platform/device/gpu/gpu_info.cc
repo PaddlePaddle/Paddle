@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+
 #include <array>
 #include <cstdlib>
 #include <mutex>
@@ -20,33 +21,42 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
+#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/monitor.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
-#include "paddle/fluid/memory/malloc.h"
+
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #endif
 #endif
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/lock_guard_ptr.h"
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-
-#include "paddle/phi/backends/gpu/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
 DECLARE_uint64(gpu_memory_limit_mb);
+
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log, false,
+                            "Whether to print the message of gpu memory usage "
+                            "at exit, mainly used for UT and CI.");
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb, true,
+                            "Whether to print the message of gpu memory usage "
+                            "MB as a unit of measurement.");
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -91,8 +101,9 @@ static size_t GpuAllocSize(bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
       available_to_alloc, alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));
@@ -136,12 +147,41 @@ class RecordedGpuMallocHelper {
     if (NeedRecord()) {
       mtx_.reset(new std::mutex());
     }
+
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      // A fake UPDATE to trigger the construction of memory stat instances,
+      // make sure that they are destructed after RecordedGpuMallocHelper.
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Allocated, dev_id, 0);
+    }
   }
 
   DISABLE_COPY_AND_ASSIGN(RecordedGpuMallocHelper);
 
  public:
+  ~RecordedGpuMallocHelper() {
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      if (FLAGS_enable_gpu_memory_usage_log_mb) {
+        std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) /
+                         1048576.0
+                  << ", Allocated = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) /
+                         1048576.0
+                  << std::endl;
+      } else {
+        std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : Reserved = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
+                  << ", Allocated = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_)
+                  << std::endl;
+      }
+    }
+  }
+
   static RecordedGpuMallocHelper *Instance(int dev_id) {
+    static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
+
     std::call_once(once_flag_, [] {
       int dev_cnt = GetGPUDeviceCount();
       instances_.reserve(dev_cnt);
@@ -188,11 +228,14 @@ class RecordedGpuMallocHelper {
       result = cudaMallocManaged(ptr, size);
     } else {
       result = cudaMalloc(ptr, size);
+      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
+               << " MB, result=" << result;
     }
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
 
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
@@ -224,11 +267,14 @@ class RecordedGpuMallocHelper {
     if (err != hipErrorDeinitialized) {
 #else
     auto err = cudaFree(ptr);
+    VLOG(10) << "[cudaFree] size=" << static_cast<double>(size) / (1 << 20)
+             << " MB";
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
@@ -319,14 +365,11 @@ class RecordedGpuMallocHelper {
   mutable std::unique_ptr<std::mutex> mtx_;
 
   static std::once_flag once_flag_;
-  static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
 
   std::set<void *> gpu_ptrs;  // just for testing
 };                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
-std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
-    RecordedGpuMallocHelper::instances_;
 
 gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
                              bool malloc_managed_memory) {

@@ -12,12 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/grid_sampler_op.h"
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -27,43 +31,6 @@ using Tensor = framework::Tensor;
 class GridSampleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GridSampler");
-    OP_INOUT_CHECK(ctx->HasInput("Grid"), "Input", "Grid", "GridSampler");
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "GridSampler");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto grid_dims = ctx->GetInputDim("Grid");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of GridSampleOp should be 4-D Tensor, but "
-                          "received X dimension size(%d)",
-                          x_dims.size()));
-    PADDLE_ENFORCE_EQ(grid_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input(Grid) of GridSampleOp should be 4-D Tensor, "
-                          "but received X dimension size(%d)",
-                          grid_dims.size()));
-    if (ctx->IsRuntime() || grid_dims[3] > 0) {
-      PADDLE_ENFORCE_EQ(
-          grid_dims[3], 2,
-          platform::errors::InvalidArgument(
-              "Input(Grid) dimension[3] should be 2, but received %d",
-              grid_dims[3]));
-    }
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(
-          grid_dims[0], x_dims[0],
-          platform::errors::InvalidArgument(
-              "Input(X) and Input(Grid) dimension[0] should be equal, but "
-              "received X dimension[0](%d) != Grid dimension[0](%d)",
-              x_dims[0], grid_dims[0]));
-    }
-
-    ctx->SetOutputDim("Output",
-                      {x_dims[0], x_dims[1], grid_dims[1], grid_dims[2]});
-    ctx->ShareLoD("X", "Output");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -173,18 +140,6 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
 class GridSampleOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "grid_sampler");
-    auto input_dims = ctx->GetInputDim("X");
-    auto grid_dims = ctx->GetInputDim("Grid");
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
-    }
-    if (ctx->HasOutput(framework::GradVarName("Grid"))) {
-      ctx->SetOutputDim(framework::GradVarName("Grid"), grid_dims);
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -224,19 +179,16 @@ class GridSampleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler, GridSamplerInferShapeFunctor,
+                            PD_INFER_META(phi::GridSampleBaseInferMeta));
 REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
                   ops::GridSampleGradMaker<paddle::framework::OpDesc>,
-                  ops::GridSampleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    grid_sampler,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    grid_sampler_grad,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+                  ops::GridSampleGradMaker<paddle::imperative::OpBase>,
+                  GridSamplerInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler_grad, GridSamplerGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad,
+                  GridSamplerGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(grid_sampler)
     .AddCheckpoint(

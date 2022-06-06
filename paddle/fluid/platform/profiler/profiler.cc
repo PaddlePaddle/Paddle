@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/profiler.h"
+
 #include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -27,6 +28,7 @@
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
@@ -44,6 +46,22 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
   return std::unique_ptr<Profiler>(new Profiler(options));
 }
 
+bool Profiler::IsCuptiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_CUPTI
+  supported = true;
+#endif
+  return supported;
+}
+
+bool Profiler::IsCnpapiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_MLU
+  supported = true;
+#endif
+  return supported;
+}
+
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   std::bitset<32> trace_switch(options_.trace_switch);
@@ -54,6 +72,9 @@ Profiler::Profiler(const ProfilerOptions& options) {
   }
   if (trace_switch.test(kProfileGPUOptionBit)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  }
+  if (trace_switch.test(kProfileMLUOptionBit)) {
+    tracers_.emplace_back(&MluTracer::GetInstance(), false);
   }
 }
 

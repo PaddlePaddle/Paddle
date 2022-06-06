@@ -35,20 +35,20 @@ Node *conv2d_handler(Graph *graph, Node *node) {
   auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   if (!op->Input("Bias").empty()) {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-            GetInputVarNode("Bias", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph, node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                          GetInputVarNode("Bias", node),
+                      },
+                      node->outputs, dilations, group_, {}, pads, stride);
   } else {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph, node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                      },
+                      node->outputs, dilations, group_, {}, pads, stride);
   }
 }
 
@@ -95,6 +95,21 @@ Node *pool2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto pooling_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
   auto global_pooling = BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
+  if (op->HasAttr("adaptive")) {
+    auto adaptive = BOOST_GET_CONST(bool, op->GetAttr("adaptive"));
+    if (adaptive) {
+      auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+      if (ksize[0] != 1 || ksize[1] != 1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support pool_size=1 with adaptive mode."));
+      }
+      // adaptive maxpool op is max_pool2d_with_index. Only process avgpool
+      // here.
+      return CreateBaseOp(graph, node, "popart_globalaveragepool", node->inputs,
+                          node->outputs);
+    }
+  }
+
   if (global_pooling) {
     if (pooling_type == "max") {
       return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
@@ -133,15 +148,16 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     auto dilations = std::vector<int64_t>{};
     int64_t storage_order = 0;
     return CreateBaseOp(graph, node, "popart_maxpool", node->inputs,
-                        node->outputs, {
-                                           {"num_outputs", num_outputs},
-                                           {"kernel_shape", kernel_shape},
-                                           {"ceil_mode", ceil_mode},
-                                           {"dilations", dilations},
-                                           {"pads", pads},
-                                           {"storage_order", storage_order},
-                                           {"strides", strides},
-                                       });
+                        node->outputs,
+                        {
+                            {"num_outputs", num_outputs},
+                            {"kernel_shape", kernel_shape},
+                            {"ceil_mode", ceil_mode},
+                            {"dilations", dilations},
+                            {"pads", pads},
+                            {"storage_order", storage_order},
+                            {"strides", strides},
+                        });
   } else if (pooling_type == "avg") {
     int64_t count_include_pad = 0;
     return CreateBaseOp(graph, node, "popart_averagepool", node->inputs,
@@ -157,6 +173,17 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "op pool2d with unkonwn pooling_type: %s", pooling_type));
   }
+}
+
+Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+  if (ksize[0] != 1 || ksize[1] != 1) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Only support pool_size=1 with adaptive mode."));
+  }
+  return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
+                      {GetOutputVarNode("Out", node)});
 }
 
 Node *group_norm_handler(Graph *graph, Node *node) {
@@ -273,7 +300,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
           CreateConst(graph, node, {}, {},
                       {{"value", std::vector<float>{1 - dropout_prob_}},
                        {"dims", std::vector<int64_t>{1}},
-                       {"dtype", GetOutputVarDtype(node)}});
+                       {"dtype", GetOutputVarDType(node)}});
       return CreateBaseOp(graph, node, "popart_mul",
                           {GetInputVarNode("X", node), scale->outputs[0]},
                           {GetOutputVarNode("Out", node)}, {});
@@ -298,15 +325,16 @@ Node *dropout_handler(Graph *graph, Node *node) {
   }
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(pool2d, pool2d_handler);
+REGISTER_HANDLER(max_pool2d_with_index, max_pool2d_with_index_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
 REGISTER_HANDLER(group_norm, group_norm_handler);
 REGISTER_HANDLER(instance_norm, instance_norm_handler);
 REGISTER_HANDLER(layer_norm, layer_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
 REGISTER_HANDLER(dropout, dropout_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

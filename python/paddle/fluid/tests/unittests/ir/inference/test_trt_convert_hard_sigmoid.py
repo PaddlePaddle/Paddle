@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,15 +22,17 @@ import unittest
 
 
 class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for shape in [[batch, 64], [batch, 32, 64], [batch, 64, 32, 128]]:
+        for batch in [1, 4]:
+            for shape in [[batch, 32], [batch, 16, 32], [batch, 32, 16, 128]]:
                 self.input_dim = len(shape)
                 for slope in [0.1, 0.5]:
                     for offset in [0.2, 0.7]:
@@ -51,7 +53,8 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_data": TensorConfig(
+                                "input_data":
+                                TensorConfig(
                                     data_gen=partial(generate_input, shape))
                             },
                             outputs=["output_data"])
@@ -60,26 +63,25 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.input_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
-                self.dynamic_shape.max_input_shape = {"input_data": [64, 128]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
             elif self.input_dim == 3:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [64, 128, 256]
-                }
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 64]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 32]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [4, 16, 32]}
             elif self.input_dim == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [1, 8, 8, 4]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [64, 128, 256, 512]
+                    "input_data": [4, 32, 16, 128]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 16, 64, 128]
+                    "input_data": [4, 32, 16, 128]
                 }
 
         def clear_dynamic_shape():
@@ -88,8 +90,7 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape

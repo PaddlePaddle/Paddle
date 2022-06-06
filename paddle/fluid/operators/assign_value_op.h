@@ -27,7 +27,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const char* value_name, framework::Tensor* out,
     const framework::ExecutionContext& ctx) {
   // If attribute value dtype is vector<bool>, it will be converted to
@@ -48,9 +48,9 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
 }
 
 template <typename T>
-typename std::enable_if<!std::is_same<T, bool>::value>::type
-CopyVecotorToTensor(const char* value_name, framework::Tensor* out,
-                    const framework::ExecutionContext& ctx) {
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const char* value_name, framework::Tensor* out,
+    const framework::ExecutionContext& ctx) {
   auto values = ctx.Attr<std::vector<T>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
 }
@@ -83,7 +83,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
             dtype));
         break;
     }
-    CopyVecotorToTensor<T>(value_name, out, ctx);
+    CopyVectorToTensor<T>(value_name, out, ctx);
     out->Resize(phi::make_ddim(shape));
   }
 };

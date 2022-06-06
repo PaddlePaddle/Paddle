@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gru_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
@@ -396,7 +398,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
               frame_size * 2, T(1), gru_value.gate_value, frame_size * 3);
         }
 
-        phi::funcs::detail::forward_reset_output(
+        phi::funcs::detail::forward_reset_output<DeviceContext>(
             phi::funcs::detail::forward::gru_resetOutput<T>(), gru_value,
             frame_size, cur_batch_size, active_gate);
 
@@ -408,7 +410,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
               frame_size * 3);
         }
 
-        phi::funcs::detail::forward_final_output(
+        phi::funcs::detail::forward_final_output<DeviceContext>(
             phi::funcs::detail::forward::gru_finalOutput<T>(), gru_value,
             frame_size, cur_batch_size, active_node, origin_mode);
 

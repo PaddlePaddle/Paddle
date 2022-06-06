@@ -17,6 +17,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -42,7 +45,7 @@ static std::string GetSkipEagerDeletionVarsDebugString(
   }
   return str;
 }
-}  // NOLINT
+}  // namespace
 
 class WhileOp : public framework::OperatorBase {
  public:
@@ -66,6 +69,12 @@ class WhileOp : public framework::OperatorBase {
             "the Condition's shape is ",
             cond.dims().to_str(), ".\n"));
 
+#ifdef PADDLE_WITH_MKLDNN
+    // (jczaja) Executor on being destroyed clears oneDNN cache and
+    // resets registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    platform::DontClearMKLDNNCache(dev_place);
+#endif
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
@@ -366,10 +375,11 @@ class WhileGradOp : public framework::OperatorBase {
           PADDLE_ENFORCE_EQ(
               var->IsType<framework::LoDTensorArray>() ||
                   var->IsType<LoDTensor>(),
-              true, platform::errors::InvalidArgument(
-                        "Currently the type of var only can be LoDTensorArray, "
-                        "or LoDTensor, but the received var[%s] is %s.",
-                        inside_grad_name, framework::ToTypeName(var->Type())));
+              true,
+              platform::errors::InvalidArgument(
+                  "Currently the type of var only can be LoDTensorArray, "
+                  "or LoDTensor, but the received var[%s] is %s.",
+                  inside_grad_name, framework::ToTypeName(var->Type())));
 
           if ((var_iter == outside_og_names.end()) &&
               var->IsType<LoDTensor>()) {
@@ -517,10 +527,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(kOutputs);
     ctx->HasInputs(framework::GradVarName(kOutputs));
     auto pg_ig_names = ctx->Outputs(kXGRAD);
-    std::vector<framework::InferShapeVarPtr> in_var_ptrs =
-        ctx->GetInputVarPtrs(kX);
-    std::vector<framework::InferShapeVarPtr> out_var_ptrs =
-        ctx->GetOutputVarPtrs(kXGRAD);
+    auto in_var_ptrs = ctx->GetInputVarPtrs(kX);
+    auto out_var_ptrs = ctx->GetOutputVarPtrs(kXGRAD);
     PADDLE_ENFORCE_EQ(in_var_ptrs.size(), out_var_ptrs.size(),
                       platform::errors::InvalidArgument(
                           "The size of Inputs(X) must be the same as "

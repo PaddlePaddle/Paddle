@@ -17,13 +17,16 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
 class TestShapeOp(OpTest):
+
     def setUp(self):
         self.op_type = "shape"
+        self.python_api = paddle.shape
         self.config()
         self.shape = [2, 3]
         input = np.zeros(self.shape)
@@ -34,20 +37,23 @@ class TestShapeOp(OpTest):
         self.shape = [2, 3]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class case1(TestShapeOp):
+
     def config(self):
         self.shape = [2]
 
 
 class case2(TestShapeOp):
+
     def config(self):
         self.shape = [1, 2, 3]
 
 
 class TestShapeWithSelectedRows(unittest.TestCase):
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

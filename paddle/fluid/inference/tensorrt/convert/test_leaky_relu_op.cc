@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -45,4 +46,4 @@ TEST(leaky_relu_op, test_leaky_relu) {
 }  // namespace paddle
 
 // USE_OP(leaky_relu);
-USE_OP(leaky_relu);
+USE_OP_ITSELF(leaky_relu);

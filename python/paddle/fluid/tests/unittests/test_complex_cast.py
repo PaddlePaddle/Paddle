@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,9 +18,11 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexCastOp(unittest.TestCase):
+
     def test_complex_to_real(self):
         r = np.random.random(size=[10, 10]) * 10
         i = np.random.random(size=[10, 10])
@@ -67,6 +69,12 @@ class TestComplexCastOp(unittest.TestCase):
             np.allclose(c_64.cast('complex128').numpy(), c_128.numpy()))
         self.assertTrue(
             np.allclose(c_128.cast('complex128').numpy(), c_64.numpy()))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_complex64_complex128()
+            self.test_real_to_complex()
+            self.test_complex_to_real()
 
 
 if __name__ == '__main__':

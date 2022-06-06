@@ -15,17 +15,23 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
-#include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -38,9 +44,7 @@ paddle::experimental::Tensor hook_function(
   auto place = t_dense->place();
   size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size)),
-      std::move(ret_meta));
+      paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
@@ -102,7 +106,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   }
 
   VLOG(6) << "Runing Backward";
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
   VLOG(6) << "Finish Backward";
 
   eager_test::CompareGradTensorWithValue<float>(
@@ -160,7 +164,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(
@@ -218,7 +222,7 @@ void test_matmul(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(
@@ -249,6 +253,6 @@ TEST(Hook_intermidiate, Matmul_v2) {
 }
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);

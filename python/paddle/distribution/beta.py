@@ -14,12 +14,10 @@
 import numbers
 
 import paddle
-
-from .dirichlet import Dirichlet
-from .exponential_family import ExponentialFamily
+from paddle.distribution import dirichlet, exponential_family
 
 
-class Beta(ExponentialFamily):
+class Beta(exponential_family.ExponentialFamily):
     r"""
     Beta distribution parameterized by alpha and beta.
 
@@ -93,7 +91,8 @@ class Beta(ExponentialFamily):
 
         self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 
-        self._dirichlet = Dirichlet(paddle.stack([self.alpha, self.beta], -1))
+        self._dirichlet = dirichlet.Dirichlet(
+            paddle.stack([self.alpha, self.beta], -1))
 
         super(Beta, self).__init__(self._dirichlet._batch_shape)
 

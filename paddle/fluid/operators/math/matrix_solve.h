@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/fluid/framework/tensor.h"
@@ -115,14 +116,6 @@ class MatrixSolveFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& a,
                   const framework::Tensor& b, framework::Tensor* out);
-};
-
-template <typename DeviceContext, typename T>
-class TriangularSolveFunctor {
- public:
-  void operator()(const DeviceContext& context, const framework::Tensor* a,
-                  framework::Tensor* b, bool left, bool upper, bool transpose,
-                  bool unitriangular);
 };
 
 }  // namespace math

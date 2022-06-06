@@ -17,18 +17,23 @@
 #include <chrono>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
-#include "paddle/fluid/eager/utils.h"
-
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
-
-#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -51,7 +56,7 @@ TEST(Generated, Sigmoid) {
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
   VLOG(6) << "Runing Backward";
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";
   eager_test::CompareGradTensorWithValue<float>(tensor, 0.25);
@@ -83,7 +88,7 @@ TEST(Generated, Matmul_v2) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 96);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(Y, 3.0 * 4);
@@ -114,7 +119,7 @@ TEST(Generated, ElementwiseAdd) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 5);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(Y, 1.0);
@@ -122,6 +127,6 @@ TEST(Generated, ElementwiseAdd) {
 
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);

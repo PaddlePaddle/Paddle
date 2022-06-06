@@ -2,9 +2,9 @@
 # Update CNTOOLKIT_VERSION, CNNL_VERSION and CNCL_VERSION if using other versions
 #
 # Build:
-# - CNTOOLKIT_VERSION 2.6.5-1
-# - CNNL_VERSION 1.8.3-1
-# - CNCL_VERSION 1.0.2-1
+# - CNTOOLKIT_VERSION 2.8.1-1
+# - CNNL_VERSION 1.9.3-1
+# - CNCL_VERSION 1.0.4-1
 #
 # Download three packages from FTP (need to connect cambricon AE to get FTP url)
 # - cntoolkit_2.6.5-1.ubuntu18.04_amd64.deb
@@ -21,9 +21,9 @@
 # (get cncl pkg)
 #
 # docker build -f Dockerfile.mlu  \
-# --build-arg CNTOOLKIT_VERSION=2.6.5-1 \
-# --build-arg CNNL_VERSION=1.8.3-1 \
-# --build-arg CNCL_VERSION=1.0.2-1 \
+# --build-arg CNTOOLKIT_VERSION=2.8.1-1 \
+# --build-arg CNNL_VERSION=1.9.3-1 \
+# --build-arg CNCL_VERSION=1.0.4-1 \
 # -t paddlepaddle/paddle:latest-dev-mlu .
 #
 # without mlu device:
@@ -40,9 +40,9 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ENV WITH_GPU=OFF
 
-ARG CNTOOLKIT_VERSION=2.6.5-1
-ARG CNNL_VERSION=1.8.3-1
-ARG CNCL_VERSION=1.0.2-1
+ARG CNTOOLKIT_VERSION=2.8.1-1
+ARG CNNL_VERSION=1.9.3-1
+ARG CNCL_VERSION=1.0.4-1
 ARG CNTOOLKIT_PKG=cntoolkit_$CNTOOLKIT_VERSION.ubuntu18.04_amd64.deb
 ARG CNNL_PKG=cnnl_$CNNL_VERSION.ubuntu18.04_amd64.deb
 ARG CNCL_PKG=cncl_$CNCL_VERSION.ubuntu18.04_amd64.deb

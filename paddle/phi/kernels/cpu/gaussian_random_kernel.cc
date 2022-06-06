@@ -14,16 +14,15 @@
 
 #include "paddle/phi/kernels/gaussian_random_kernel.h"
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/generator.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void GaussianRandomKernel(const Context& dev_ctx,
-                          const ScalarArray& shape,
+                          const IntArray& shape,
                           float mean,
                           float std,
                           int seed,

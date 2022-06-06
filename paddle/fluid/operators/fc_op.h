@@ -16,8 +16,9 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/fc.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +37,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
       in_mat_dims[1], w_dims0,
       platform::errors::InvalidArgument(
           "The input's second dimension and weight's first dimension is "
-          "expected to be the same. But recieved input's second dimension is "
+          "expected to be the same. But received input's second dimension is "
           "%d, input's shape is %s; weight's first dimension is %d, weight's "
           "shape is %s.",
           in_mat_dims[1], in_mat_dims, w_dims0,
@@ -80,7 +81,7 @@ class FCOpKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, M, w_dims1, w_dims0, input_data, w_data, output_data,
        bias ? bias->data<T>() : NULL, with_relu, padding_weights);
   }

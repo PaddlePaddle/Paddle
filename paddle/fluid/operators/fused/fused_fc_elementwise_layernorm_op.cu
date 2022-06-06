@@ -179,22 +179,20 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     if (with_relu) {
       switch (platform::RoundToPowerOfTwo(N)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            InplaceAddReluAddLayerNormKernel<
-                T, true,
-                kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
-                                  kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data,
-                mean_data, variance_data, M, N, epsilon));
+            InplaceAddReluAddLayerNormKernel<T, true, kPowerOfTwoDim>
+            <<<std::max(max_threads / kPowerOfTwoDim, 1), kPowerOfTwoDim, 0,
+               dev_ctx.stream()>>>(y_data, bias_0_data, bias_1_data, scale_data,
+                                   out_data, mean_data, variance_data, M, N,
+                                   epsilon));
       }
     } else {
       switch (platform::RoundToPowerOfTwo(N)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            InplaceAddReluAddLayerNormKernel<
-                T, false,
-                kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
-                                  kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data,
-                mean_data, variance_data, M, N, epsilon));
+            InplaceAddReluAddLayerNormKernel<T, false, kPowerOfTwoDim>
+            <<<std::max(max_threads / kPowerOfTwoDim, 1), kPowerOfTwoDim, 0,
+               dev_ctx.stream()>>>(y_data, bias_0_data, bias_1_data, scale_data,
+                                   out_data, mean_data, variance_data, M, N,
+                                   epsilon));
       }
     }
   }

@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/split_kernel.h"
-
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/split_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& num_or_sections,
+                 const IntArray& num_or_sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   // need to infershape output
@@ -37,7 +35,7 @@ void SplitKernel(const Context& dev_ctx,
       out_metas_ptr.push_back(&out_metas.back());
     }
 
-    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr, true);
+    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr);
 
     for (size_t i = 0; i < out_metas.size(); ++i) {
       outs[i]->Resize(out_metas[i].dims());

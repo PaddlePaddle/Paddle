@@ -13,18 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
-
-#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -116,6 +115,10 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
+          .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
@@ -328,6 +331,10 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
   const auto cuda_alloc =
@@ -511,6 +518,10 @@ void TestCooToCsr(const DDim& dense_dims,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx_gpu.PartialInitWithAllocator();
   phi::DenseTensor d_indices(cuda_alloc.get(), indices_meta);
   phi::DenseTensor d_values(cuda_alloc.get(), values_meta);
@@ -610,6 +621,10 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
+          .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
   phi::Copy(dev_ctx_gpu, dense_x, phi::GPUPlace(), true, &d_dense_x);
@@ -740,6 +755,10 @@ void TestSparseCooToDense(const DDim& dense_dims,
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
+          .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
   DenseTensor d_dense_indices(cuda_alloc.get(), dense_indices.meta());
@@ -885,6 +904,10 @@ void TestSparseCsrToDense(const DDim& dense_dims,
   dev_ctx_gpu.SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
+          .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
   phi::DenseTensor d_crows(cuda_alloc.get(), crows_meta);

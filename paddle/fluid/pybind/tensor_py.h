@@ -15,12 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -36,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/string_tensor.h"
+#include "paddle/phi/kernels/strings/unicode.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -51,6 +55,46 @@ constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
+
+// cast numpy type form S to T, this may allocate new memory
+template <class T, class S>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  if (std::is_same<T, S>::value) {
+    return array;
+  }
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <class T>
+static py::array_t<T> CastNumpyArray(const py::object &array) {
+  if (py::isinstance<py::array_t<float>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<float>>());
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<double>>());
+  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Value type error. The assign numpy value allows integer, float, "
+        "double and bool, "
+        "but received %s.",
+        Py_TYPE(array.ptr())->tp_name));
+  }
+  // can't reach here
+  return py::array_t<T>();
+}
 
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
@@ -488,12 +532,65 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   }
 }
 
+template <typename P>
+void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
+                                const P &place) {
+  bool is_string_pyarray =
+      array.dtype().kind() == 'S' || array.dtype().kind() == 'U';
+  PADDLE_ENFORCE_EQ(is_string_pyarray, true,
+                    platform::errors::InvalidArgument(
+                        "Expect the dtype of numpy array is string or "
+                        "unicode, but recevie dtype %s",
+                        array.dtype()));
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  dims.reserve(array.ndim());
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+  self->Resize(phi::make_ddim(dims));
+  auto itemsize = array.itemsize();
+  if (paddle::platform::is_cpu_place(place)) {
+    auto dst = self->mutable_data(place);
+    if (array.dtype().kind() == 'S') {
+      for (int i = 0; i < self->numel(); ++i) {
+        dst[i] =
+            pstring(reinterpret_cast<const char *>(array.data()) + itemsize * i,
+                    itemsize);
+      }
+    } else {
+      // array.dtype().kind() == 'U'
+      VLOG(6) << "numpy array itemsize: " << itemsize;
+      for (int i = 0; i < self->numel(); ++i) {
+        // Note(zhoushunjie): The itemsize of unicode numpy array is the
+        // the size of each unicode string. Each unicode string is aligned
+        // to max length of the array of unicode strings, so the size of
+        // each unicode string is same. The size of each unicode character is
+        // 4, so the size of unicode string is 4 times of the length of
+        // unicode string.
+        auto unicode_len = itemsize / 4;
+        auto utf8_len = phi::strings::GetUTF8StrLen(
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
+            unicode_len);
+        pstring pstr(utf8_len - 1, 0);
+        phi::strings::GetUTF8Str(
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
+            pstr.mdata(), unicode_len);
+        dst[i] = pstr;
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "StringTensor only support CPUPlace now, but receive %s",
+        place.DebugString()));
+  }
+}
+
 template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array, int device_id) {
+void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
+                                 const py::array_t<T> &array, int device_id) {
 #if defined(PADDLE_WITH_CUDA)
-  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   int64_t numel = 1;
@@ -519,6 +616,38 @@ void SetUVATensorFromPyArray(
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
                                    framework::TransToPhiDataType(data_type));
+#endif
+}
+
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::imperative::VarBase> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
+  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
+#endif
+}
+
+template <typename T>
+void SetUVATensorFromPyArray(
+    const std::shared_ptr<paddle::experimental::Tensor> &self,
+    const py::array_t<T> &array, int device_id) {
+#if defined(PADDLE_WITH_CUDA)
+  VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      meta);
+  self.get()->set_impl(tmp_t);
+  auto *self_tensor =
+      static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
+
+  SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
 
@@ -585,14 +714,20 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
   const framework::DDim &srcDDim = self.dims();
-  if (dim < 0 || dim >= srcDDim.size()) {
-    throw py::index_error();
-  }
+  PADDLE_ENFORCE(
+      0 <= dim && dim < srcDDim.size(),
+      platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
+                                   "shound be in the range of [0, %d).",
+                                   dim, srcDDim.size()));
+
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
-      throw py::index_error();
+      PADDLE_THROW(platform::errors::OutOfRange(
+          "Slice on dim: %d is error, please check the validity of tensor "
+          "dims or slice item.",
+          dim));
     }
     start = static_cast<int64_t>(lstart);
     stop = static_cast<int64_t>(lstop);
@@ -600,15 +735,19 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
     slicelength = static_cast<int64_t>(lslicelength);
   } else if (py::isinstance<py::int_>(obj)) {
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if (std::abs(start) >= srcDDim[dim]) {
-      throw py::index_error();
-    }
+    PADDLE_ENFORCE(
+        std::abs(start) < srcDDim[dim],
+        platform::errors::OutOfRange("The start %d of slice is out of bounds, "
+                                     "it shound be in the range of (%d, %d).",
+                                     start, -srcDDim[dim], srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;
   } else {
-    throw py::index_error();
+    PADDLE_THROW(
+        platform::errors::OutOfRange("Index object error, the index object for "
+                                     "slice only supports slice(::) and int."));
   }
 }
 

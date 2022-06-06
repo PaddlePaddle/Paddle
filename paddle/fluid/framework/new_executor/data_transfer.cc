@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
@@ -24,7 +25,7 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
                               const std::string& var_name,
                               std::string* new_var_name,
                               std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope) {
+                              bool use_local_scope, bool is_fetch_v2) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -35,8 +36,11 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferLayout(
         *src_var_name, new_var_name, kernel_type_for_var.data_layout_,
-        expected_kernel_key.data_layout_, var_scope_, local_scope);
-    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
+        expected_kernel_key.data_layout_, var_scope_, local_scope, is_fetch_v2);
+    if (op) {
+      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
+                                op_func_nodes);
+    }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
@@ -46,7 +50,10 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
     auto op = TransferDtype(
         *src_var_name, new_var_name, kernel_type_for_var.data_type_,
         expected_kernel_key.data_type_, var_scope_, local_scope);
-    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
+    if (op) {
+      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
+                                op_func_nodes);
+    }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
@@ -55,9 +62,13 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
   if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
     auto src_place = kernel_type_for_var.place_;
     auto dst_place = expected_kernel_key.place_;
+
     auto op = TransferDevice(*src_var_name, new_var_name, src_place, dst_place,
                              var_scope_, local_scope);
-    RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name, op_func_nodes);
+    if (op) {
+      RunAndConstructOpFuncNode(op, *src_var_name, *new_var_name,
+                                op_func_nodes);
+    }
     is_transferred = true;
   }
   return is_transferred;
@@ -128,17 +139,44 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_nodes->emplace_back(std::move(new_op_func_node));
 }
 
-std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
-                                             std::string* new_var_name,
-                                             DataLayout in_layout,
-                                             DataLayout out_layout,
-                                             VariableScope* var_scope,
-                                             framework::Scope* local_scope) {
-  // 1. Generate new_var_name and Initialize it
-  *new_var_name =
-      var_name + "_layout_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(*new_var_name);
+// Var is initialized && var contains tensor && tensor is initialized
+bool IsTensorOfVarInitialized(Variable* var) {
+  if (var->IsInitialized()) {
+    if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
+      return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
+    } else if (var->IsType<LoDTensorArray>()) {
+      return static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]))
+          ->IsInitialized();
+    }
+  }
+  return false;
+}
 
+std::shared_ptr<OperatorBase> TransferLayout(
+    const std::string& var_name, std::string* new_var_name,
+    DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope,
+    framework::Scope* local_scope, bool is_fetch_v2) {
+#ifdef PADDLE_WITH_MKLDNN
+  // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
+  if (in_layout == framework::DataLayout::kMKLDNN &&
+      var_name == framework::GradVarName("Filter") && is_fetch_v2) {
+    out_layout = framework::DataLayout::kNCHW;
+  }
+#endif
+
+  // 1. Generate new_var_name and Initialize it
+  *new_var_name = var_name + "_layout_" +
+                  std::to_string(static_cast<int>(in_layout)) + "_" +
+                  std::to_string(static_cast<int>(out_layout));
+
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+    // already has same var
+    VLOG(4) << "Use cached variable: " << *new_var_name;
+    return nullptr;
+  }
+
+  auto* ptr = local_scope->Var(*new_var_name);
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << *new_var_name
@@ -149,7 +187,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  AttributeMap attr_map = {{"dst_layout", static_cast<int>(out_layout)}};
+  AttributeMap attr_map = {{"src_layout", static_cast<int>(in_layout)},
+                           {"dst_layout", static_cast<int>(out_layout)}};
 
   // 3. Create transfer_layout_op
   std::string op_type("transfer_layout");
@@ -157,8 +196,9 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s(%s) with %s -> %s(%s).", op_type,
-                             var_name, in_layout, *new_var_name, out_layout);
+  VLOG(3) << string::Sprintf("Insert %s for variable %s(%s) -> %s(%s).",
+                             op_type, var_name, in_layout, *new_var_name,
+                             out_layout);
   return op;
 }
 
@@ -169,10 +209,17 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
                                             VariableScope* var_scope,
                                             framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
-  *new_var_name =
-      var_name + "_dtype_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(*new_var_name);
+  *new_var_name = var_name + "_dtype_" +
+                  std::to_string(static_cast<int>(in_dtype)) + "_" +
+                  std::to_string(static_cast<int>(out_dtype));
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+    // already has same var
+    VLOG(4) << "Use cached variable: " << *new_var_name;
+    return nullptr;
+  }
 
+  auto* ptr = local_scope->Var(*new_var_name);
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
 
@@ -209,10 +256,17 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
-  *new_var_name =
-      var_name + "_device_" + std::to_string(var_scope->VarSize() + 1);
-  auto* ptr = local_scope->Var(*new_var_name);
+  *new_var_name = var_name + "_device_" + src_place.DebugString() + "_" +
+                  dst_place.DebugString();
 
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
+    // already has same var
+    VLOG(4) << "Use cached variable: " << *new_var_name;
+    return nullptr;
+  }
+
+  auto* ptr = local_scope->Var(*new_var_name);
   auto var_type = var_scope->Var(var_name)->Type();
   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
   VLOG(3) << "Create Variable " << *new_var_name
@@ -223,9 +277,9 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  int dst_place_type = platform::is_cpu_place(dst_place)
-                           ? 0
-                           : platform::is_gpu_place(dst_place) ? 1 : -1;
+  int dst_place_type = platform::is_cpu_place(dst_place)   ? 0
+                       : platform::is_gpu_place(dst_place) ? 1
+                                                           : -1;
   AttributeMap attr_map = {{"dst_place_type", dst_place_type}};
 
   // 3. Create memcpy_d2h_op or memcpy_h2d_op
@@ -242,6 +296,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
+                        VariableValueMap* outs_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
                         bool use_local_scope) {
@@ -251,42 +306,117 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                        "op_base in apply_data_transform."));
 
   VariableNameMap new_ins(op_base->Inputs());
+  VariableNameMap new_outs(op_base->Outputs());
   // record the no need transform variable index.
   std::unordered_set<int> no_data_transform_index;
 
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
+  auto& no_buffer_inferer = op_base->Info().NoNeedBufferVarsInferer();
+  if (no_buffer_inferer) {
+    no_buffer_ins = &(no_buffer_inferer(op_base->Inputs(), op_base->Outputs(),
+                                        op_base->Attrs()));
+    if (no_buffer_ins->empty()) {
+      no_buffer_ins = nullptr;
+    }
+  }
+
+  bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope);
   for (auto& var_name_item : *ins_map_temp) {
+    bool should_skip_input =
+        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
+
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
-      auto& var_name = new_ins[var_name_item.first].at(i);
+      auto var_name = new_ins[var_name_item.first].at(i);
       const Tensor* tensor_in;
+      std::string new_var_name;
+      bool is_transferred = false;
+
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
+        if (var->Get<LoDTensorArray>().size() == 0) {
+          continue;
+        }
         tensor_in =
             static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
       } else {
         continue;
       }
+      // special case
       if (!tensor_in->IsInitialized()) {
-        continue;
+        if (should_skip_input == true) {
+#ifdef PADDLE_WITH_MKLDNN
+          // Var without buffer may be needed
+          // for some situation like InferShape().
+          // In this situation We cannot skip Var analysis, as
+          // MKL-DNN shape of Var may differ from kNHWC Var
+          // In such situation corressponding resized Var
+          // has to be created and registered
+          if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+              (var->IsType<LoDTensor>() == true) &&
+              (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+              (paddle::platform::MKLDNNDeviceContext::tls()
+                   .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+            VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+                       "but kNHWC layout"
+                    << var_name_item.first << " in Operator "
+                    << op_base->Type();
+            Scope* local_scope = use_local_scope
+                                     ? var_scope->GetMutableLocalScope()
+                                     : var_scope->GetMutableScope();
+            auto op = TransferLayout(
+                var_name, &new_var_name, tensor_in->layout(), DataLayout::kNHWC,
+                var_scope, local_scope, op_base->Type() == "fetch_v2");
+            if (op) {
+              data_transfer_helper.RunAndConstructOpFuncNode(
+                  op, var_name, new_var_name, new_op_func_nodes);
+            }
+            is_transferred = true;
+          } else {
+            VLOG(7) << "Skip scanning input " << var_name_item.first
+                    << " in Operator " << op_base->Type();
+          }
+#endif
+        } else {
+          continue;
+        }
+      } else {
+        auto kernel_type_for_var =
+            static_cast<const framework::OperatorWithKernel*>(op_base)
+                ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
+                                      expected_kernel_key);
+        // apply data transform
+        is_transferred = data_transfer_helper.apply(
+            kernel_type_for_var, expected_kernel_key, var_name, &new_var_name,
+            new_op_func_nodes, use_local_scope, op_base->Type() == "fetch_v2");
       }
-      auto kernel_type_for_var =
-          static_cast<const framework::OperatorWithKernel*>(op_base)
-              ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
-                                    expected_kernel_key);
-      // apply data transform
-      std::string new_var_name;
-      bool is_transferred = data_transfer_helper.apply(
-          kernel_type_for_var, expected_kernel_key, var_name, &new_var_name,
-          new_op_func_nodes, use_local_scope);
 
       if (is_transferred) {
+        transfered = true;
         // update RuntimeContext.inputs and original op_func_node inputs
         op_func_node->input_index[var_name_item.first][i] =
             var_scope->VarId(new_var_name);
         var_name_item.second[i] = var_scope->Var(new_var_name);
         new_ins[var_name_item.first][i] = new_var_name;
+        for (auto& pair : new_outs) {
+          for (size_t j = 0; j < pair.second.size(); ++j) {
+            VLOG(4) << pair.second[j] << " " << var_name;
+            if (pair.second[j] == var_name) {
+              VLOG(4) << "Found inplace between input(" << var_name_item.first
+                      << ") and output(" << pair.first
+                      << "), the variable name is " << var_name;
+              (*outs_map_temp)[pair.first][j] = var_scope->Var(new_var_name);
+              new_outs[pair.first][j] = new_var_name;
+              op_func_node
+                  ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
+                  var_scope->GetIdByName(var_name);
+              op_func_node->output_index[pair.first][j] =
+                  var_scope->VarId(new_var_name);
+            }
+          }
+        }
         // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
         // transfer op.
         if (op_base->Type() == "fetch_v2") {
@@ -302,11 +432,13 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     }
   }
 
-  // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
-  // with instruction. (hot fix, it is not good design here)
-  op_func_node->operator_base_ =
-      std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
-          op_base->Type(), new_ins, op_base->Outputs(), op_base->Attrs()));
+  if (transfered) {
+    // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+    // with instruction. (hot fix, it is not good design here)
+    op_func_node->operator_base_ =
+        std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
+            op_base->Type(), new_ins, new_outs, op_base->Attrs()));
+  }
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 

@@ -18,18 +18,17 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 SelectedRows* out) {

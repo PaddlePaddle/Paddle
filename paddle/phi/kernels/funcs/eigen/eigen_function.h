@@ -163,11 +163,11 @@ struct EigenPad {
                    const InType& in,
                    const Array& padding,
                    const T value);
-  static void Eval(const EigenDevice& dev,
-                   OutType32BitIndex out,
-                   const InType32BitIndex& in,
-                   const Array32Bit& padding,
-                   const T value);
+  static void Eval32(const EigenDevice& dev,
+                     OutType32BitIndex out,
+                     const InType32BitIndex& in,
+                     const Array32Bit& padding,
+                     const T value);
 };
 
 template <typename EigenDevice, typename T>

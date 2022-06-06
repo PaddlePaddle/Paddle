@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/slice_op.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -84,8 +87,9 @@ class SliceOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInputs("EndsTensorList")) {
       ends_size = ctx->Inputs("EndsTensorList").size();
-      PADDLE_ENFORCE_GT(ends_size, 0, platform::errors::InvalidArgument(
-                                          "EndsTensorList size can't be zero"));
+      PADDLE_ENFORCE_GT(ends_size, 0,
+                        platform::errors::InvalidArgument(
+                            "EndsTensorList size can't be zero"));
     }
 
     if (!ctx->HasInput("StartsTensor")) {
@@ -101,15 +105,17 @@ class SliceOp : public framework::OperatorWithKernel {
               "The size of ends must be equal to the size of axes."));
     }
 
-    CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends, nullptr,
-                                  &infer_flags);
+    phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
+                                              nullptr, &infer_flags);
 
-    auto slice_dims =
-        GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, &infer_flags);
+    auto slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
+                                                    nullptr, &infer_flags);
     if (ctx->IsRuntime()) {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, &infer_flags);
+      out_dims = phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis,
+                                                   &infer_flags);
     } else {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
+      out_dims =
+          phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
     }
 
     ctx->SetOutputDim("Out", out_dims);

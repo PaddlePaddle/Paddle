@@ -14,11 +14,10 @@
 
 #include "paddle/fluid/framework/ir/ipu/inference_process_pass.h"
 
-#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -121,9 +120,9 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // Run passes
-  std::vector<std::string> graph_pass = {
-      "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
-      "popart_canonicalization_pass", "transfer_cast_op_pass"};
+  std::vector<std::string> graph_pass = {"forward_graph_extract_pass",
+                                         "infer_shape_pass", "avg_shard_pass",
+                                         "popart_canonicalization_pass"};
   std::vector<std::string> compile_pass = {
       "ipu_inplace_pass", "ipu_graph_builder_pass", "ipu_runtime_replacer_pass",
       "inference_postprocess_pass"};

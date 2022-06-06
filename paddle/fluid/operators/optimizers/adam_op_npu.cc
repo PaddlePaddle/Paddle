@@ -15,8 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -183,16 +183,25 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner =
-        NpuOpRunner("ApplyAdamD",
-                    {
-                        *param, *mom1, *mom2, *beta1_pow, *beta2_pow, *lr,
-                        *beta1_tensor, *beta2_tensor, *epsilon_tensor, *grad,
-                    },
-                    {
-                        *param_out, *mom1_out, *mom2_out,
-                    },
-                    {});
+    const auto& runner = NpuOpRunner("ApplyAdamD",
+                                     {
+                                         *param,
+                                         *mom1,
+                                         *mom2,
+                                         *beta1_pow,
+                                         *beta2_pow,
+                                         *lr,
+                                         *beta1_tensor,
+                                         *beta2_tensor,
+                                         *epsilon_tensor,
+                                         *grad,
+                                     },
+                                     {
+                                         *param_out,
+                                         *mom1_out,
+                                         *mom2_out,
+                                     },
+                                     {});
     runner.Run(stream);
 
     // NOTE(zhiqiu): ApplyAdamD updates params inplace, so

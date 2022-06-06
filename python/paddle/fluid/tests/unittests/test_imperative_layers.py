@@ -15,10 +15,11 @@
 import unittest
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard, _non_static_mode
 
 
 class TestLayerPrint(unittest.TestCase):
+
     def func_test_layer_str(self):
         module = nn.ELU(0.2)
         self.assertEqual(str(module), 'ELU(alpha=0.2)')
@@ -39,8 +40,8 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Tanh(name=Tanh)')
 
         module = nn.Hardtanh(name="Hardtanh")
-        self.assertEqual(
-            str(module), 'Hardtanh(min=-1.0, max=1.0, name=Hardtanh)')
+        self.assertEqual(str(module),
+                         'Hardtanh(min=-1.0, max=1.0, name=Hardtanh)')
 
         module = nn.PReLU(1, 0.25, name="PReLU", data_format="NCHW")
         self.assertEqual(
@@ -125,8 +126,8 @@ class TestLayerPrint(unittest.TestCase):
         )
 
         module = nn.Dropout(p=0.5)
-        self.assertEqual(
-            str(module), 'Dropout(p=0.5, axis=None, mode=upscale_in_train)')
+        self.assertEqual(str(module),
+                         'Dropout(p=0.5, axis=None, mode=upscale_in_train)')
 
         module = nn.Dropout2D(p=0.5)
         self.assertEqual(str(module), 'Dropout2D(p=0.5, data_format=NCHW)')
@@ -149,8 +150,8 @@ class TestLayerPrint(unittest.TestCase):
         )
 
         module = nn.ZeroPad2D(padding=[1, 0, 1, 2])
-        self.assertEqual(
-            str(module), 'ZeroPad2D(padding=[1, 0, 1, 2], data_format=NCHW)')
+        self.assertEqual(str(module),
+                         'ZeroPad2D(padding=[1, 0, 1, 2], data_format=NCHW)')
 
         module = nn.Pad3D(padding=[1, 0, 1, 2, 0, 0], mode='constant')
         self.assertEqual(
@@ -165,8 +166,8 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Embedding(10, 3, sparse=True)')
 
         module = nn.Conv1D(3, 2, 3)
-        self.assertEqual(
-            str(module), 'Conv1D(3, 2, kernel_size=[3], data_format=NCL)')
+        self.assertEqual(str(module),
+                         'Conv1D(3, 2, kernel_size=[3], data_format=NCL)')
 
         module = nn.Conv1DTranspose(2, 1, 2)
         self.assertEqual(
@@ -174,8 +175,8 @@ class TestLayerPrint(unittest.TestCase):
             'Conv1DTranspose(2, 1, kernel_size=[2], data_format=NCL)')
 
         module = nn.Conv2D(4, 6, (3, 3))
-        self.assertEqual(
-            str(module), 'Conv2D(4, 6, kernel_size=[3, 3], data_format=NCHW)')
+        self.assertEqual(str(module),
+                         'Conv2D(4, 6, kernel_size=[3, 3], data_format=NCHW)')
 
         module = nn.Conv2DTranspose(4, 6, (3, 3))
         self.assertEqual(
@@ -196,16 +197,16 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'PairwiseDistance(p=2.0)')
 
         module = nn.InstanceNorm1D(2)
-        self.assertEqual(
-            str(module), 'InstanceNorm1D(num_features=2, epsilon=1e-05)')
+        self.assertEqual(str(module),
+                         'InstanceNorm1D(num_features=2, epsilon=1e-05)')
 
         module = nn.InstanceNorm2D(2)
-        self.assertEqual(
-            str(module), 'InstanceNorm2D(num_features=2, epsilon=1e-05)')
+        self.assertEqual(str(module),
+                         'InstanceNorm2D(num_features=2, epsilon=1e-05)')
 
         module = nn.InstanceNorm3D(2)
-        self.assertEqual(
-            str(module), 'InstanceNorm3D(num_features=2, epsilon=1e-05)')
+        self.assertEqual(str(module),
+                         'InstanceNorm3D(num_features=2, epsilon=1e-05)')
 
         module = nn.GroupNorm(num_channels=6, num_groups=6)
         self.assertEqual(
@@ -244,28 +245,28 @@ class TestLayerPrint(unittest.TestCase):
             'LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=1.0)')
 
         module = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'AvgPool1D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'AvgPool1D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'AvgPool2D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'AvgPool2D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'AvgPool3D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'AvgPool3D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'MaxPool1D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'MaxPool1D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'MaxPool2D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'MaxPool2D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
-        self.assertEqual(
-            str(module), 'MaxPool3D(kernel_size=2, stride=2, padding=0)')
+        self.assertEqual(str(module),
+                         'MaxPool3D(kernel_size=2, stride=2, padding=0)')
 
         module = nn.AdaptiveAvgPool1D(output_size=16)
         self.assertEqual(str(module), 'AdaptiveAvgPool1D(output_size=16)')
@@ -277,16 +278,16 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'AdaptiveAvgPool3D(output_size=3)')
 
         module = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
-        self.assertEqual(
-            str(module), 'AdaptiveMaxPool1D(output_size=16, return_mask=True)')
+        self.assertEqual(str(module),
+                         'AdaptiveMaxPool1D(output_size=16, return_mask=True)')
 
         module = nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
-        self.assertEqual(
-            str(module), 'AdaptiveMaxPool2D(output_size=3, return_mask=True)')
+        self.assertEqual(str(module),
+                         'AdaptiveMaxPool2D(output_size=3, return_mask=True)')
 
         module = nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
-        self.assertEqual(
-            str(module), 'AdaptiveMaxPool3D(output_size=3, return_mask=True)')
+        self.assertEqual(str(module),
+                         'AdaptiveMaxPool3D(output_size=3, return_mask=True)')
 
         module = nn.SimpleRNNCell(16, 32)
         self.assertEqual(str(module), 'SimpleRNNCell(16, 32)')
@@ -332,14 +333,9 @@ class TestLayerPrint(unittest.TestCase):
 
         module2 = nn.Sequential(
             nn.Conv3DTranspose(4, 6, (3, 3, 3)),
-            nn.AvgPool3D(
-                kernel_size=2, stride=2, padding=0),
-            nn.Tanh(name="Tanh"),
-            module1,
-            nn.Conv3D(4, 6, (3, 3, 3)),
-            nn.MaxPool3D(
-                kernel_size=2, stride=2, padding=0),
-            nn.GELU(True))
+            nn.AvgPool3D(kernel_size=2, stride=2, padding=0),
+            nn.Tanh(name="Tanh"), module1, nn.Conv3D(4, 6, (3, 3, 3)),
+            nn.MaxPool3D(kernel_size=2, stride=2, padding=0), nn.GELU(True))
         self.assertEqual(
             str(module2),
             'Sequential(\n  '\

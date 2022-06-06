@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #ifdef PADDLE_WITH_CUDA
@@ -27,11 +28,11 @@
 #include "paddle/fluid/platform/profiler/profiler.h"
 
 TEST(ProfilerTest, TestHostTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
+  using paddle::platform::ProfilerResult;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::TracerEventType;
-  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 2;
   options.trace_switch = 3;
@@ -46,7 +47,7 @@ TEST(ProfilerTest, TestHostTracer) {
                        3);
   }
   auto profiler_result = profiler->Stop();
-  auto& nodetree = profiler_result->GetNodeTrees();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::set<std::string> host_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto evt : pair.second) {
@@ -58,8 +59,8 @@ TEST(ProfilerTest, TestHostTracer) {
 }
 
 TEST(ProfilerTest, TestCudaTracer) {
-  using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerOptions;
   using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 0;
@@ -79,7 +80,7 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamSynchronize(stream);
 #endif
   auto profiler_result = profiler->Stop();
-  auto& nodetree = profiler_result->GetNodeTrees();
+  auto nodetree = profiler_result->GetNodeTrees();
   std::vector<std::string> runtime_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto host_node : pair.second) {

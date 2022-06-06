@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include <gtest/gtest.h>
+
 #include <unordered_map>
 
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
@@ -90,7 +91,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-  } else if (type == "elementwise_add") {
+  } else if (type == "elementwise_add" || type == "elementwise_mul" ||
+             type == "elementwise_sub") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
@@ -167,7 +169,8 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
               scale);
     scale_names.push_back("Scale_in");
     scale_names.push_back("Scale_out");
-  } else if (type == "matmul" || type == "elementwise_add") {
+  } else if (type == "matmul" || type == "elementwise_add" ||
+             type == "elementwise_mul" || type == "elementwise_sub") {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
@@ -546,47 +549,77 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
            expected_operators, added_nodes, 1.0f);
 }
 
-static const std::initializer_list<std::string> variable_names_elementwise_add =
-    {"a", "b", "c", "d", "e", "f"};
+static const std::initializer_list<std::string> variable_names_elementwise = {
+    "a", "b", "c", "d", "e", "f"};
 
-ProgramDesc BuildProgramDescElementwiseAdd() {
+ProgramDesc BuildProgramDescElementwise(const std::string elementwise_type,
+                                        const std::string elementwise_name) {
   ProgramDesc prog;
-  for (auto& v : variable_names_elementwise_add) {
+  for (auto& v : variable_names_elementwise) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
+  SetOp(&prog, elementwise_type, elementwise_name, {"b", "d"}, {"e"}, true,
         "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
 }
 
-TEST(CpuQuantizePass, elementwise_add) {
+void TestElementwise(std::vector<std::string> elementwise) {
   // 2 Quant + 2 IN + 1 DeQuant + 1 OUT
   int added_nodes = 6;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add", 1}, {"quantize", 2}, {"dequantize", 3}};
-  MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
-           expected_operators, added_nodes, SCALE * S8_MAX);
+      {elementwise[0], 1}, {"quantize", 2}, {"dequantize", 3}};
+  MainTest(BuildProgramDescElementwise(elementwise[0], elementwise[1]),
+           variable_names_elementwise, expected_operators, added_nodes,
+           SCALE * S8_MAX);
 }
 
-TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
+void TestElementwiseOutputScaleMissing(std::vector<std::string> elementwise) {
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add", 1}, {"quantize", 0}, {"dequantize", 2}};
-  MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
-           expected_operators, added_nodes, 1.f, 1.f, "e");
+      {elementwise[0], 1}, {"quantize", 0}, {"dequantize", 2}};
+  MainTest(BuildProgramDescElementwise(elementwise[0], elementwise[1]),
+           variable_names_elementwise, expected_operators, added_nodes, 1.f,
+           1.f, "e");
 }
 
-TEST(CpuQuantizePass, elementwise_add_unsigned_and_signed_input) {
+void TestElementwiseUnsignedAndSignedInput(
+    std::vector<std::string> elementwise) {
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add", 1}, {"quantize", 0}, {"dequantize", 2}};
-  MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
-           expected_operators, added_nodes, 1.f, 1.f, "", "b");
+      {elementwise[0], 1}, {"quantize", 0}, {"dequantize", 2}};
+  MainTest(BuildProgramDescElementwise(elementwise[0], elementwise[1]),
+           variable_names_elementwise, expected_operators, added_nodes, 1.f,
+           1.f, "", "b");
 }
+
+const std::vector<std::vector<std::string>> elementwises = {
+    {"elementwise_add", "ElementwiseAdd"},
+    {"elementwise_mul", "ElementwiseMul"},
+    {"elementwise_sub", "ElementwiseSub"}};
+
+class TestElementwises
+    : public testing::TestWithParam<std::vector<std::string>> {};
+
+TEST_P(TestElementwises, elementwise_basic) { TestElementwise(GetParam()); }
+
+TEST_P(TestElementwises, elementwise_output_scale_missing) {
+  TestElementwiseOutputScaleMissing(GetParam());
+}
+
+TEST_P(TestElementwises, elementwise_unsigned_and_signed_input) {
+  TestElementwiseUnsignedAndSignedInput(GetParam());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    Elementwises, TestElementwises, testing::ValuesIn(elementwises),
+    [](const ::testing::TestParamInfo<TestElementwises::ParamType>& info) {
+      std::string name = info.param[0];
+      return name;
+    });
 
 const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
                                               const std::string& prefix,

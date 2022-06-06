@@ -17,13 +17,11 @@
 namespace phi {
 
 KernelSignature RealGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "real_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("real_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ImagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "imag_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+  return KernelSignature("imag_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi

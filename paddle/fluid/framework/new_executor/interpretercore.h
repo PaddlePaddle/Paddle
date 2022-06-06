@@ -76,11 +76,16 @@ class InterpreterCore {
   void RecordStreamForGC(const Instruction& instr);
 #endif
 
-  void CheckGC(const Instruction& instr);
+  void CheckGC(const Instruction& instr,
+               std::vector<std::atomic<size_t>>* atomic_var_ref);
 
-  void RunInstructionAsync(size_t instr_id);
+  void RunInstructionAsync(size_t instr_id,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+                           std::queue<size_t>* reserved_next_ops,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void BuildSkipShareLoDInfo();
 
@@ -103,6 +108,11 @@ class InterpreterCore {
   VariableScope* global_scope_;  // not owned
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
+
+  // op_happens_before_[i][j] == true means op[i] happens before op[j]
+  std::vector<std::vector<bool>> op_happens_before_;
+  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  std::map<size_t, std::set<size_t>> last_live_ops_;
 
   std::vector<size_t> dependecy_count_;
   std::atomic<size_t> unfinished_op_numer_{0};

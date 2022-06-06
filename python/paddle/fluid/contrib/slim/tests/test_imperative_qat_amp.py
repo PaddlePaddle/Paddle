@@ -34,8 +34,9 @@ os.environ["CPU_NUM"] = "1"
 if paddle.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class TestImperativeQatAmp(unittest.TestCase):
@@ -71,8 +72,8 @@ class TestImperativeQatAmp(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(target_folder,
-                                                          zip_path)
+            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+                target_folder, zip_path)
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -97,17 +98,17 @@ class TestImperativeQatAmp(unittest.TestCase):
     def model_train(self, model, batch_num=-1, batch_size=32, use_amp=False):
         model.train()
 
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=model.parameters())
+        train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                    batch_size=batch_size)
+        adam = paddle.optimizer.Adam(learning_rate=0.001,
+                                     parameters=model.parameters())
         scaler = paddle.amp.GradScaler(init_loss_scaling=500)
 
         for batch_id, data in enumerate(train_reader()):
             x_data = np.array([x[0].reshape(1, 28, 28)
                                for x in data]).astype('float32')
-            y_data = np.array(
-                [x[1] for x in data]).astype('int64').reshape(-1, 1)
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -143,15 +144,15 @@ class TestImperativeQatAmp(unittest.TestCase):
     def model_test(self, model, batch_num=-1, batch_size=32, use_amp=False):
         model.eval()
 
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
 
         acc_top1_list = []
         for batch_id, data in enumerate(test_reader()):
             x_data = np.array([x[0].reshape(1, 28, 28)
                                for x in data]).astype('float32')
-            y_data = np.array(
-                [x[1] for x in data]).astype('int64').reshape(-1, 1)
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -172,7 +173,7 @@ class TestImperativeQatAmp(unittest.TestCase):
         acc_top1 = sum(acc_top1_list) / len(acc_top1_list)
         return acc_top1
 
-    def test_ptq(self):
+    def ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -202,20 +203,23 @@ class TestImperativeQatAmp(unittest.TestCase):
 
             _logger.info('fp32_acc_top1: %f, int8_acc_top1: %f' %
                          (fp32_acc_top1, int8_acc_top1))
-            self.assertTrue(
-                int8_acc_top1 > fp32_acc_top1 - 0.01,
-                msg='fp32_acc_top1: %f, int8_acc_top1: %f' %
-                (fp32_acc_top1, int8_acc_top1))
+            self.assertTrue(int8_acc_top1 > fp32_acc_top1 - 0.01,
+                            msg='fp32_acc_top1: %f, int8_acc_top1: %f' %
+                            (fp32_acc_top1, int8_acc_top1))
 
         input_spec = [
-            paddle.static.InputSpec(
-                shape=[None, 1, 28, 28], dtype='float32')
+            paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
         paddle.jit.save(layer=model, path=self.save_path, input_spec=input_spec)
         print('Quantized model saved in {%s}' % self.save_path)
 
         end_time = time.time()
         print("total time: %ss" % (end_time - start_time))
+
+    def test_ptq(self):
+        self.ptq()
+        with _test_eager_guard():
+            self.ptq()
 
 
 if __name__ == '__main__':

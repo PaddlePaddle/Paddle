@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <glog/logging.h>
+
 #include <string>
 
 #include "cuda_runtime_api.h"  // NOLINT
@@ -90,7 +91,9 @@ void TensorRTEngine::FreezeNetwork() {
 
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
   if (enable_int8) {
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    if (!use_dla_) {
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
 
     if (calibrator_) {
@@ -356,9 +359,7 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
 }
 
 float *TensorRTEngine::GetWeightCPUData(const std::string &name,
-                                        framework::Tensor *weight_tensor,
-                                        bool enable_int8,
-                                        const std::vector<float> &scale) {
+                                        framework::Tensor *weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+
 #include <chrono>
 #include <memory>
 #include <set>
@@ -19,7 +21,6 @@
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
@@ -28,8 +29,9 @@ namespace distributed {
 void MessageBus::Init(
     int64_t rank, const std::unordered_map<int64_t, std::string>& rank_to_addr,
     const std::string& addr) {
-  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
-                                         "MessageBus is already init."));
+  PADDLE_ENFORCE_EQ(
+      is_init_, false,
+      platform::errors::AlreadyExists("MessageBus is already init."));
   rank_ = rank;
   is_init_ = true;
   rank_to_addr_ = rank_to_addr;
@@ -67,8 +69,7 @@ bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   server_.Stop(1000);
   server_.Join();
 #endif
@@ -87,8 +88,7 @@ bool MessageBus::Send(int64_t dst_rank,
       IsInit(), true,
       platform::errors::PreconditionNotMet(
           "Using message bus since it has not been initialized."));
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   int retry_time = 0;  // message bus will retry sending for 10 times
   while (retry_time < 10) {
     ++retry_time;
@@ -173,8 +173,7 @@ void MessageBus::ListenPort() {
     LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // function keep listen the port and handle the message
   PADDLE_ENFORCE_EQ(
       server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE), 0,
@@ -203,8 +202,7 @@ void MessageBus::ListenPort() {
 #endif
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 bool MessageBus::SendInterRank(int64_t dst_rank,
                                const InterceptorMessage& interceptor_message) {
   const auto& dst_addr = GetAddr(dst_rank);

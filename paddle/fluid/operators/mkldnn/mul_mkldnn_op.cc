@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace phi {
@@ -45,6 +45,9 @@ using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
 using dnnl::stream;
+
+constexpr int kMULMKLDNNINT8 = 1;
+constexpr int kMULMKLDNNFP32 = 2;
 
 template <typename XT, typename YT, typename OT>
 class MulPrimitiveFactory {

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flatten_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -27,6 +28,7 @@ void FlattenKernel(const Context& dev_ctx,
                    int start_axis,
                    int stop_axis,
                    DenseTensor* out) {
+  dev_ctx.Alloc(out, x.dtype());
   auto out_dims = out->dims();
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);
@@ -43,7 +45,6 @@ void FlattenWithXShape(const Context& dev_ctx,
                        DenseTensor* out,
                        DenseTensor* xshape) {
   FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
-  funcs::SetXShape(x, xshape);
 }
 
 }  // namespace phi

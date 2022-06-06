@@ -25,8 +25,13 @@ paddle.enable_static()
 
 # Correct: General.
 class TestSqueezeOp(OpTest):
+
     def setUp(self):
         self.op_type = "squeeze2"
+        self.python_api = paddle.squeeze
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
@@ -36,10 +41,10 @@ class TestSqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
@@ -52,6 +57,7 @@ class TestSqueezeOp(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -60,14 +66,16 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
         self.new_shape = (20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 class TestSqueezeOp3(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)

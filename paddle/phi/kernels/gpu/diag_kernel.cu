@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/diag_kernel.h"
-
 #include <algorithm>
 #include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/diag_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -130,5 +129,12 @@ void DiagKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    diag, GPU, ALL_LAYOUT, phi::DiagKernel, int, int64_t, float, double) {}
+PD_REGISTER_KERNEL(diag,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DiagKernel,
+                   phi::dtype::float16,
+                   int,
+                   int64_t,
+                   float,
+                   double) {}

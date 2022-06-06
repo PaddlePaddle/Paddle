@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -63,11 +63,7 @@ std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
@@ -125,11 +121,7 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {

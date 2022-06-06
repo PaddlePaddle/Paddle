@@ -38,23 +38,6 @@ void DTDialect::initialize() {
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"
       >();
 }
-
-TensorMapType TensorMapType::get() {
-  return Base::get(::infrt::Global::getMLIRContext());
-}
-
-TensorMapType TensorMapType::get(mlir::MLIRContext *context) {
-  return Base::get(context);
-}
-
-StringType StringType::get() {
-  return Base::get(::infrt::Global::getMLIRContext());
-}
-
-StringType StringType::get(mlir::MLIRContext *context) {
-  return Base::get(context);
-}
-
 static mlir::Type getTensorType(mlir::MLIRContext *context) {
   auto t_dialect = mlir::Identifier::get("t", context);
   return mlir::OpaqueType::get(t_dialect, "tensor");

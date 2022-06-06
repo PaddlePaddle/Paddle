@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -107,12 +108,3 @@ REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);
-
-template <typename T>
-using CPUReduceMeanGradKernel =
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
-                          ops::MeanGradFunctor, true>;
-
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<bool>,
-                       CPUReduceMeanGradKernel<float>,
-                       CPUReduceMeanGradKernel<double>);

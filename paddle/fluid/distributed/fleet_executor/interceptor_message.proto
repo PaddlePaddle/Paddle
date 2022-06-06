@@ -20,16 +20,18 @@ option cc_enable_arenas = true;
 enum MessageType {
   STOP = 1;            // STOP an Interceptor
   DATA_IS_READY = 2;   // upstream data is ready
-  DATE_IS_USELESS = 3; // downstream has used the data
+  DATA_IS_USELESS = 3; // downstream has used the data
   ERR = 4;             // current Interceptor encounters error
   RESET = 5;           // reset the status
+  START = 6;
 }
 
 message InterceptorMessage {
-  optional int64 src_id = 1 [ default = 0 ];
-  optional int64 dst_id = 2 [ default = 0 ];
+  optional sint64 src_id = 1 [ default = 0 ];
+  optional sint64 dst_id = 2 [ default = 0 ];
   optional MessageType message_type = 3 [ default = RESET ];
   optional bool ctrl_message = 4 [ default = false ];
+  optional int64 scope_idx = 5 [ default = 0 ];
 }
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }

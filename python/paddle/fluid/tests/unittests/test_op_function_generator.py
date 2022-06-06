@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -25,6 +25,7 @@ from paddle import _C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
+
     def __init__(self, name_scope):
         super(TestTracedLayer, self).__init__(name_scope)
 
@@ -33,6 +34,7 @@ class TestTracedLayer(fluid.dygraph.Layer):
 
 
 class TestVariable(unittest.TestCase):
+
     def setUp(self):
         self.shape = [512, 768]
         self.dtype = np.float32
@@ -74,6 +76,7 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
     def test_trace_backward(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
             b = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -90,8 +93,11 @@ class TestVariable(unittest.TestCase):
 
             self.assertTrue(np.array_equal(x_grad, loss.gradient() * b))
             self.assertTrue(np.array_equal(y_grad, loss.gradient() * a))
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_traced_layer(self):
+        if in_dygraph_mode():
+            return
         with fluid.dygraph.guard():
             layer = TestTracedLayer("test_traced_layer")
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)

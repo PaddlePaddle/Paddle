@@ -38,6 +38,10 @@ class TensorRTEngineTest : public ::testing::Test {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(platform::CUDAPlace(0))
             .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     engine_ = new TensorRTEngine(10, 1 << 10);

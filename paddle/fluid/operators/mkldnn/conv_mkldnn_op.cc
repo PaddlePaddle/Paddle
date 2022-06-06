@@ -203,8 +203,9 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(
-                        framework::TransToProtoVarType(input->dtype())),
+            src_tz,
+            framework::ToMKLDNNDataType(
+                framework::TransToProtoVarType(input->dtype())),
             chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
@@ -223,9 +224,17 @@ class ConvMKLDNNHandlerT
       float sum_scale = 1.0f;
       float activation_scale = 1.0f;
       std::vector<float> output_shift_scale;
-      if (platform::is_int8<T>())
-        std::tie(sum_scale, output_shift_scale, activation_scale) =
-            get_int8_scales(ctx);
+      if (platform::is_int8<T>()) {
+        if (ctx.HasAttr("Sum_scale")) {
+          sum_scale = ctx.Attr<float>("Sum_scale");
+          activation_scale = ctx.Attr<float>("Activation_scale");
+          output_shift_scale =
+              ctx.Attr<std::vector<float>>("Output_shift_scale");
+        } else {
+          std::tie(sum_scale, output_shift_scale, activation_scale) =
+              get_int8_scales(ctx);
+        }
+      }
 
       const dnnl::primitive_attr conv_attr = CreatePostOps(
           fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
@@ -451,13 +460,12 @@ class ConvMKLDNNHandlerT
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
     bool is_multi_channel = scale_weights_data.size() > 1;
     bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
-    float activation_scale =
-        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
-                                                  : 1.0f;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f : has_activation
-                                       ? 1.0f
-                                       : ctx.Attr<float>("Scale_out");
+    float activation_scale = force_fp32_output ? 1.0f
+                             : has_activation  ? ctx.Attr<float>("Scale_out")
+                                               : 1.0f;
+    auto scale_out_data = force_fp32_output ? 1.0f
+                          : has_activation  ? 1.0f
+                                            : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     int count =
@@ -872,8 +880,18 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto p_scales_tuple = handler.get_int8_bias_scales(ctx);
-
+      std::vector<float> bias_scales;
+      auto p_scales_tuple =
+          std::make_shared<std::tuple<float, std::vector<float>>>(
+              std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      if (ctx.HasAttr("Bias_scales")) {
+        bias_scales = ctx.Attr<std::vector<float>>("Bias_scales");
+        p_scales_tuple =
+            std::make_shared<std::tuple<float, std::vector<float>>>(
+                std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
+      } else {
+        p_scales_tuple = handler.get_int8_bias_scales(ctx);
+      }
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
           bias, true, std::get<1>(*p_scales_tuple),
           std::get<0>(*p_scales_tuple));

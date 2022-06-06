@@ -14,12 +14,13 @@ limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
 #include <stdlib.h>
+
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
-#include <random>
-#include <sstream>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
@@ -35,8 +36,6 @@ using VarMsg = ::paddle::distributed::VariableMessage;
 
 USE_OP_ITSELF(scale);
 USE_OP(send_and_recv);
-
-std::shared_ptr<distributed::HeterServer> b_rpc_service;
 
 std::string get_ip_port() {
   std::mt19937 rng;
@@ -148,23 +147,25 @@ void StartSendAndRecvServer(std::string endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
 
-  std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
-  b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
+  std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+  b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
   b_req_handler->SetScope(&scope);
   LOG(INFO) << "before HeterServer::GetInstance";
-  b_rpc_service = distributed::HeterServer::GetInstance();
+  std::shared_ptr<distributed::HeterServer> b_rpc_service =
+      distributed::HeterServer::GetInstance();
   b_rpc_service->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
   b_rpc_service->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
+      in_var_name,
+      [&](const MultiVarMsg* request, MultiVarMsg* response,
+          brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
 
-  b_rpc_service->SetRequestHandler(b_req_handler);
+  b_rpc_service->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
 
   RunServer(b_rpc_service);
@@ -179,7 +180,8 @@ TEST(SENDANDRECV, CPU) {
   std::string endpoint = get_ip_port();
   std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
-  b_rpc_service = distributed::HeterServer::GetInstance();
+  std::shared_ptr<distributed::HeterServer> b_rpc_service =
+      distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
   b_rpc_service->WaitServerReady();
   using MicroScope =
@@ -292,7 +294,6 @@ TEST(SENDANDRECV, CPU) {
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->FinalizeWorker();
   b_rpc_service->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

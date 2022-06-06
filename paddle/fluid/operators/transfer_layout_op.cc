@@ -16,6 +16,8 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -65,19 +67,25 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     // kernel's device type is decided by input tensor place
     auto *in = ctx.InputVar("X");
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
-    PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
-                      platform::errors::PreconditionNotMet(
-                          "The tensor of Input(X) is not initialized."));
+    // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
+    // op
+    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+      PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The tensor of Input(X) is not initialized."));
+    }
+    auto place =
+        in_tensor->IsInitialized() ? in_tensor->place() : platform::CPUPlace();
+
     // dtype is not important
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   in_tensor->place());
+    return framework::OpKernelType(framework::proto::VarType::FP32, place);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(),
+                                   expected_kernel_type.place_,
                                    expected_kernel_type.data_layout_);
   }
 };
@@ -95,8 +103,11 @@ class TransferLayoutKernel {
     auto *x = ctx.InputVar("X");
     auto *out = ctx.OutputVar("Out");
     auto &dev_ctx = ctx.device_context();
+    auto src_layout = ctx.Attr<int>("src_layout");
     auto dst_layout = ctx.Attr<int>("dst_layout");
-    TransferLayoutFunctor(x, out, dev_ctx, dst_layout)();
+    auto input_name = ctx.InputName("X");
+    TransferLayoutFunctor(x, out, dev_ctx, src_layout, dst_layout,
+                          input_name)();
   }
 };
 
@@ -105,6 +116,14 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(LoDTensor) The input Tensor");
     AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    // NOTE(zhiqiu): in most case, the src_layout is not needed, the op can use
+    // the layout
+    // of input X. However, in some mkldnn kernel, the src layout computed by
+    // GetKernelTypeForVar is different with the layout of tensor X.
+    AddAttr<int>("src_layout",
+                 "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3, default "
+                 "-1 means unspecified and use the tensor's layout.")
+        .SetDefault(-1);
     AddAttr<int>("dst_layout",
                  "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3");
     AddComment(R"DOC(
@@ -126,3 +145,8 @@ REGISTER_OPERATOR(
 // dtype is not important
 REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_layout, float,
                                ops::TransferLayoutKernel);
+REGISTER_OP_VERSION(transfer_layout)
+    .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "src_layout", "(int, the layout of the input tensor",
+                       -1));

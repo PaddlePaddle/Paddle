@@ -26,9 +26,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvGradKernel(const Context& dev_ctx,
-                    const DenseTensor& output_grad,
                     const DenseTensor& input,
                     const DenseTensor& filter_t,
+                    const DenseTensor& output_grad,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings_t,
                     const std::string& padding_algorithm,
@@ -128,7 +128,7 @@ void ConvGradKernel(const Context& dev_ctx,
   DenseTensor col_matrix;
   if (is_expand) {
     col.Resize(col_shape);
-    col.mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(&col);
     col_matrix.ShareDataWith(col);
     col_matrix.Resize(col_matrix_shape);
   }
@@ -137,7 +137,7 @@ void ConvGradKernel(const Context& dev_ctx,
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (input_grad) {
-    input_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(input_grad);
     DenseTensor transformed_input_grad(input_grad->type());
     if (channel_last) {
       ResizeToChannelFirst<Context, T>(
@@ -203,7 +203,7 @@ void ConvGradKernel(const Context& dev_ctx,
   }
 
   if (filter_grad) {
-    filter_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(filter_grad);
     Tensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));

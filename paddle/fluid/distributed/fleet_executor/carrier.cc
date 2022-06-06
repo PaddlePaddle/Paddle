@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/carrier.h"
+
 #include <algorithm>
 
-#include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -28,8 +29,10 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
+USE_INTERCEPTOR(Sink);
 
 void Carrier::Init(
     int64_t rank,
@@ -146,8 +149,9 @@ void Carrier::WakeUp() {
 }
 
 void Carrier::Start() {
-  PADDLE_ENFORCE_EQ(is_init_, true, platform::errors::PreconditionNotMet(
-                                        "Using carrier before initialized."));
+  PADDLE_ENFORCE_EQ(is_init_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Using carrier before initialized."));
   for (int64_t id : source_interceptor_ids_) {
     VLOG(3) << "Carrier Start is sending start to source interceptor " << id
             << ".";
@@ -184,7 +188,13 @@ int64_t Carrier::GetRank(int64_t interceptor_id) const {
 }
 
 bool Carrier::Send(const InterceptorMessage& msg) {
-  int64_t src_id = (msg.src_id() == -1) ? msg.dst_id() : msg.src_id();
+  int64_t src_id = msg.src_id();
+  // TODO(liyurui): compatible solution, will be removed completely in the
+  // future
+  if (interceptor_id_to_rank_.find(src_id) == interceptor_id_to_rank_.end() &&
+      src_id == SOURCE_ID) {
+    src_id = msg.dst_id();
+  }
   int64_t dst_id = msg.dst_id();
   int64_t src_rank = GetRank(src_id);
   int64_t dst_rank = GetRank(dst_id);

@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <vector>
-#include "gflags/gflags.h"
-
 #include <mct/hash-map.hpp>
+#include <vector>
+
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/common/chunk_allocator.h"
 
 namespace paddle {
@@ -56,7 +56,8 @@ struct alignas(64) SparseTableShard {
       return a.it != b.it;
     }
     const KEY& key() const { return it->first; }
-    VALUE& value() const { return *(VALUE*)(void*)it->second; }  // NOLINT
+    VALUE& value() const { return *(VALUE*)(void*)it->second; }     // NOLINT
+    VALUE* value_ptr() const { return (VALUE*)(void*)it->second; }  // NOLINT
     iterator& operator++() {
       ++it;
 

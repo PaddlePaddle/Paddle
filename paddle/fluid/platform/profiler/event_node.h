@@ -103,7 +103,7 @@ class CudaRuntimeTraceEventNode {
     device_node_ptrs_.push_back(node);
   }
   void LogMe(BaseLogger* logger) { logger->LogRuntimeTraceEventNode(*this); }
-  std::vector<DeviceTraceEventNode*>& GetDeviceTraceEventNodes() {
+  const std::vector<DeviceTraceEventNode*>& GetDeviceTraceEventNodes() const {
     return device_node_ptrs_;
   }
 
@@ -139,8 +139,11 @@ class HostTraceEventNode {
   void AddCudaRuntimeNode(CudaRuntimeTraceEventNode* node) {
     runtime_node_ptrs_.push_back(node);
   }
-  std::vector<HostTraceEventNode*>& GetChildren() { return children_; }
-  std::vector<CudaRuntimeTraceEventNode*>& GetRuntimeTraceEventNodes() {
+  const std::vector<HostTraceEventNode*>& GetChildren() const {
+    return children_;
+  }
+  const std::vector<CudaRuntimeTraceEventNode*>& GetRuntimeTraceEventNodes()
+      const {
     return runtime_node_ptrs_;
   }
   void LogMe(BaseLogger* logger) { logger->LogHostTraceEventNode(*this); }
@@ -188,7 +191,7 @@ class NodeTrees {
   void HandleTrees(std::function<void(HostTraceEventNode*)>,
                    std::function<void(CudaRuntimeTraceEventNode*)>,
                    std::function<void(DeviceTraceEventNode*)>);
-  std::map<uint64_t, HostTraceEventNode*> GetNodeTrees() {
+  const std::map<uint64_t, HostTraceEventNode*>& GetNodeTrees() const {
     return thread_event_trees_map_;
   }
   std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(bool bfs) const;

@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/optimizers/adam_op_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -204,8 +205,9 @@ class AdamwOpXPUKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adamw_op"));
+      PADDLE_ENFORCE_EQ(1, 2,
+                        platform::errors::InvalidArgument(
+                            "Variable type not supported by adamw_op"));
     }
   }
 };

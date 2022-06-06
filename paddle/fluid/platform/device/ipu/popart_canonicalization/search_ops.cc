@@ -69,10 +69,10 @@ Node *topk_handler(Graph *graph, Node *node) {
     var_k = GetInputVarNode("K", node);
   } else {
     auto k = BOOST_GET_CONST(int, op->GetAttr("k"));
-    auto *op_k =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{k}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::INT64}});
+    auto *op_k = CreateConst(graph, node, {}, {},
+                             {{"value", std::vector<int64_t>{k}},
+                              {"dims", std::vector<int64_t>{1}},
+                              {"dtype", ONNXDataType::INT64}});
     var_k = op_k->outputs[0];
   }
 
@@ -86,10 +86,10 @@ Node *topk_handler(Graph *graph, Node *node) {
                     static_cast<int>(framework::proto::VarType::INT32));
 }
 
-REGISTER_HANDLER(top_k, topk_handler);
-REGISTER_HANDLER(top_k_v2, topk_handler);
-
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle
+
+REGISTER_HANDLER(top_k, topk_handler);
+REGISTER_HANDLER(top_k_v2, topk_handler);

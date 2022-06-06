@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using dnnl::memory;
 using dnnl::pooling_backward;
 using dnnl::pooling_forward;
 using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>
@@ -39,13 +41,6 @@ class PoolingMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::pooling_forward,
                                           dnnl::pooling_backward>(
             mkldnn_engine, ctx.GetPlace()) {
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      platform::errors::InvalidArgument(
-                          "Wrong layout set for Input tensor."));
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Input tensor."));
-
     const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
     std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
@@ -83,34 +78,23 @@ class PoolingMKLDNNHandler
         phi::slice_ddim(input_dims, 2, input_dims.size());
 
     if (global_pooling) {
-      operators::UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
-    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                             data_dims, strides, ksize);
-
-    const auto src_tz = phi::vectorize(input->dims());
-    const auto dst_tz = phi::vectorize(output->dims());
+    phi::funcs::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                              data_dims, strides, ksize);
 
     const auto is_test = ctx.Attr<bool>("is_test");
+    const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
+    const auto exclude_padding = ctx.Attr<bool>("exclusive");
+    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
 
     const auto dt = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(input->dtype()));
-
-    const auto exclude_padding = ctx.Attr<bool>("exclusive");
-
-    const auto src_md = dnnl::memory::desc(src_tz, dt, input->format());
-    /* create memory descriptor for pooling without specified format
-     * ('any') which lets a primitive (pooling in this case) choose
-     * the memory format preferred for best performance
-     */
-
+    const auto src_tz = phi::vectorize(input->dims());
+    const auto dst_tz = phi::vectorize(output->dims());
     const auto dst_md =
         platform::MKLDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
-
-    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-
-    const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
 
     if (ceil_mode) {
       CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
@@ -126,7 +110,8 @@ class PoolingMKLDNNHandler
             ? dnnl::algorithm::pooling_max
             : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
                                : dnnl::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
+        input->mem_desc(), dst_md, strides, ksize, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
   }
 
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
@@ -136,20 +121,6 @@ class PoolingMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::pooling_forward,
                                           dnnl::pooling_backward>(
             mkldnn_engine, ctx.GetPlace()) {
-    PADDLE_ENFORCE_EQ(
-        in_x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
-    PADDLE_ENFORCE_NE(
-        in_x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
-
-    PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
-                      platform::errors::InvalidArgument(
-                          "Wrong layout set for Input output_grad tensor"));
-    PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Input output_grad tensor"));
-
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
         platform::errors::InvalidArgument(
@@ -173,11 +144,11 @@ class PoolingMKLDNNHandler
     framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (global_pooling) {
-      operators::UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
-    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                             data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                              data_dims, strides, ksize);
 
     auto src_tz = phi::vectorize<int64_t>(in_x->dims());
     auto diff_src_tz = phi::vectorize<int64_t>(in_x_grad->dims());
@@ -185,10 +156,7 @@ class PoolingMKLDNNHandler
 
     const auto dt = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(in_x->dtype()));
-    auto src_md = dnnl::memory::desc(src_tz, dt, in_x->format());
     auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
-    auto diff_dst_md = dnnl::memory::desc(
-        diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
     auto diff_src_md = dnnl::memory::desc(
         diff_src_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
@@ -209,14 +177,15 @@ class PoolingMKLDNNHandler
             ? dnnl::algorithm::pooling_max
             : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
                                : dnnl::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
+        in_x->mem_desc(), dst_md, strides, ksize, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"
             ? dnnl::algorithm::pooling_max
             : (exclude_padding ? dnnl::algorithm::pooling_avg_exclude_padding
                                : dnnl::algorithm::pooling_avg_include_padding),
-        diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
+        diff_src_md, out_grad->mem_desc(), strides, ksize, mkldnn_paddings[0],
         mkldnn_paddings[1]);
   }
 
@@ -325,8 +294,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     astream.wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -367,8 +335,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     }
     astream.wait();
 
-    in_x_grad->set_layout(DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    in_x_grad->set_mem_desc(diff_src_memory->get_desc());
   }  // Compute()
 };
 

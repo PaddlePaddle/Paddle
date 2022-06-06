@@ -129,8 +129,9 @@ __device__ inline void VectorizeLarsUpdate(
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
-    MT velocity_tmp = Fma(velocity[i], mu, local_lr * Fma(lars_weight_decay,
-                                                          param_val, grad_val));
+    MT velocity_tmp =
+        Fma(velocity[i], mu,
+            local_lr * Fma(lars_weight_decay, param_val, grad_val));
     MT param_tmp = param_val - velocity_tmp;
     param_out[i] = static_cast<T>(param_tmp);
     velocity_out[i] = velocity_tmp;
@@ -204,7 +205,7 @@ __forceinline__ __device__ void MomentumUpdate(
     const bool is_amp) {
   const MT lr = learning_rate[0];
   MT local_lr = lr;
-  if (lars_weight_decay > static_cast<MT>(0)) {
+  if (param_norm > static_cast<MT>(0) && grad_norm > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * param_norm /
                (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
   }
@@ -314,10 +315,10 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
     const MT rescale_grad, const int64_t numel, const MT* master_param_data,
     MT* master_out_data, const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
-  L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
-                        cuda_ctx.stream()>>>(
-      param_data, grad_data, p_buffer, g_buffer, numel,
-      lars_thread_config.repeat_times, rescale_grad);
+  L2NormKernel<T, MT>
+      <<<lars_thread_config.grid_for_norm, LARS_BLOCK_SIZE, 0,
+         cuda_ctx.stream()>>>(param_data, grad_data, p_buffer, g_buffer, numel,
+                              lars_thread_config.repeat_times, rescale_grad);
 
   MomentumLarsKernel<T, MT><<<lars_thread_config.grid_for_lars, LARS_BLOCK_SIZE,
                               0, cuda_ctx.stream()>>>(

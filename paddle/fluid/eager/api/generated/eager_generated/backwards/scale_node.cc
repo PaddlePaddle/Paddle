@@ -13,16 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-
-#include "paddle/phi/kernels/scale_kernel.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace egr {
 
@@ -90,9 +88,7 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
   size_t bytes_size =
       phi::product(dense_tensor->dims()) * SizeOf(dense_tensor->dtype());
   auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          paddle::memory::Alloc(place, bytes_size)),
-      std::move(tensor_meta));
+      paddle::memory::Alloc(place, bytes_size), std::move(tensor_meta));
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place =
       Controller::Instance().GetExpectedPlace();
@@ -144,10 +140,14 @@ void GradNodeScale::SetTensorWrappers_X(
 
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
-std::vector<std::vector<paddle::experimental::Tensor>> GradNodeScale::
-operator()(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     kSlotSmallVectorSize>
+GradNodeScale::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>& grads,  // NOLINT
+    bool create_graph, bool is_new_grad) {
   // 1. Check Output Size
+  VLOG(6) << "grad size is: " << grads.size();
   PADDLE_ENFORCE(
       ((grads.size() == 1) && (grads[0].size() == 1)),
       paddle::platform::errors::Fatal(
@@ -155,15 +155,18 @@ operator()(
           "However received: %d",
           "This indicates an issue with Eager Dygraph Backward logic",
           grads.size()));
-  std::vector<std::vector<paddle::experimental::Tensor>> outs;
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       kSlotSmallVectorSize>
+      outs;
   // 2. Create needed out parttern
   paddle::experimental::Tensor out;
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {
     // TODO(jiabin): Shall we apply hook slot by slot here or accept
     // vector<vector<phi::tensor>> to apply all hooks?
-    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
-        ApplyGradientHooks(grads);
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         kSlotSmallVectorSize>
+        hooked_grads = ApplyGradientHooks(grads);
     ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,
              true /* bias_after_scale */, &out);
   } else {

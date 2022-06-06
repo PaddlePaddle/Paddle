@@ -52,11 +52,14 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
 namespace pybind {
@@ -117,7 +120,11 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       return var;
     }
 
-    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+    auto res_varbase = PyObjectCast<std::shared_ptr<imperative::VarBase>>(res);
+    // Here the reference count of `res` is 2, so we decreases the reference
+    // count manually to avoid memory leaks
+    Py_DECREF(res);
+    return res_varbase->SharedVar();
   }
 
  private:
@@ -152,10 +159,9 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
 // only initialize varbase, but not its tensor.
 static void InitVarBaseOnly(imperative::VarBase *self, const std::string &name,
                             bool persistable = false, int stop_gradient = -1) {
-  auto name_ = name == ""
-                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                         "generated_tensor")
-                   : name;
+  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                                "generated_tensor")
+                          : name;
 
   VLOG(5) << "Init Tensor as: / name: " << name_
           << " / persistable: " << persistable
@@ -267,10 +273,9 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
                                                 const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
-  auto name_ = name == ""
-                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                         "generated_tensor")
-                   : name;
+  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                                "generated_tensor")
+                          : name;
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -292,10 +297,9 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
                                          const P &place,
                                          const std::string &name) {
   VLOG(4) << "Init VarBase";
-  auto name_ = name == ""
-                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
-                         "generated_tensor")
-                   : name;
+  auto name_ = name == "" ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                                "generated_tensor")
+                          : name;
   new (self) imperative::VarBase(name_);
   self->SetPersistable(false);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -380,46 +384,6 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
   return result;
 }
 
-// cast numpy type form S to T, this may allocate new memory
-template <class T, class S>
-static py::array_t<T> CastNumpyType(py::array_t<S> array) {
-  if (std::is_same<T, S>::value) {
-    return array;
-  }
-  auto dim = array.ndim();
-  std::vector<py::ssize_t> result_shape(dim);
-  for (auto i = 0; i < dim; i++) {
-    result_shape[i] = array.shape(i);
-  }
-
-  py::array_t<T> result(result_shape);
-
-  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
-}
-
-template <class T>
-static py::array_t<T> CastNumpyArray(const py::object &array) {
-  if (py::isinstance<py::array_t<float>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<float>>());
-  } else if (py::isinstance<py::array_t<double>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<double>>());
-  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
-  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
-  } else if (py::isinstance<py::array_t<bool>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Value type error. The assign numpy value allows integer, float, "
-        "double and bool, "
-        "but received %s.",
-        Py_TYPE(array.ptr())->tp_name));
-  }
-  // can't reach here
-  return py::array_t<T>();
-}
-
 static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     const PyNameVarBaseMap &map) {
   imperative::NameVarBaseMap result;
@@ -427,6 +391,28 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     auto var_vec = GetVarBaseListFromPyHandle(pair.second);
     if (!var_vec.empty()) {
       result.emplace(pair.first, std::move(var_vec));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      PyErr_Occurred(), nullptr,
+      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
+  return result;
+}
+
+paddle::imperative::NameTensorMap ConvertToNameTensorMap(
+    const PyNameVarBaseMap &map) {
+  paddle::imperative::NameTensorMap result;
+  for (auto &pair : map) {
+    auto var_vec = CastPyArg2VectorOfTensor(pair.second.ptr(), 0);
+    if (!var_vec.empty()) {
+      // change vector<Tensor> -> vector<shared_ptr<Tensor>>
+      std::vector<std::shared_ptr<egr::EagerVariable>> dst_var_vec;
+      for (auto &v : var_vec) {
+        dst_var_vec.emplace_back(
+            std::make_shared<egr::EagerVariable>(std::move(v)));
+      }
+      result.emplace(pair.first, std::move(dst_var_vec));
     }
   }
 
@@ -567,38 +553,39 @@ void BindImperative(py::module *m_ptr) {
       },
       py::return_value_policy::take_ownership);
 
-  m.def("_array_to_share_memory_tensor",
-        [](py::object &obj) {
-          // 1. cast to python array
-          auto array = obj.cast<py::array>();
-          PADDLE_ENFORCE_NE(
-              string::Sprintf("%s", array.dtype()).compare("object"), 0,
-              platform::errors::InvalidArgument(
-                  "Faild to convert input data to a regular ndarray.\n  * "
-                  "Usually this means the input data contains nested "
-                  "lists with different lengths.\n  * Check the reader "
-                  "function passed to 'set_(sample/sample_list/batch)"
-                  "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
-          framework::LoDTensor t;
-          SetTensorFromPyArray<platform::CPUPlace>(&t, array,
-                                                   platform::CPUPlace(), true);
-          // 3. allocate shared memory
-          void *data_ptr = t.data();
-          size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
-          auto shared_writer_holder =
-              memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
-          // 4. maintain mmap fd set & backup ipc_name
-          const std::string &ipc_name = shared_writer_holder->ipc_name();
-          memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-          // 5. copy data & reset holder
-          memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
-                       platform::CPUPlace(), data_ptr, data_size);
-          t.ResetHolder(shared_writer_holder);
+  m.def(
+      "_array_to_share_memory_tensor",
+      [](py::object &obj) {
+        // 1. cast to python array
+        auto array = obj.cast<py::array>();
+        PADDLE_ENFORCE_NE(
+            string::Sprintf("%s", array.dtype()).compare("object"), 0,
+            platform::errors::InvalidArgument(
+                "Faild to convert input data to a regular ndarray.\n  * "
+                "Usually this means the input data contains nested "
+                "lists with different lengths.\n  * Check the reader "
+                "function passed to 'set_(sample/sample_list/batch)"
+                "_generator' to locate the data causes this issue."));
+        // 2. construcct LoDTensor
+        framework::LoDTensor t;
+        SetTensorFromPyArray<platform::CPUPlace>(&t, array,
+                                                 platform::CPUPlace(), true);
+        // 3. allocate shared memory
+        void *data_ptr = t.data();
+        size_t data_size = t.numel() * framework::DataTypeSize(t.dtype());
+        auto shared_writer_holder =
+            memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+        // 4. maintain mmap fd set & backup ipc_name
+        const std::string &ipc_name = shared_writer_holder->ipc_name();
+        memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+        // 5. copy data & reset holder
+        memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                     platform::CPUPlace(), data_ptr, data_size);
+        t.ResetHolder(shared_writer_holder);
 
-          return t;
-        },
-        py::return_value_policy::take_ownership);
+        return t;
+      },
+      py::return_value_policy::take_ownership);
 
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
     for (size_t i = 0; i < tensor_list.size(); ++i) {
@@ -633,17 +620,9 @@ void BindImperative(py::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
   m.def("_switch_tracer",
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
-          if (egr::Controller::Instance().InEagerMode()) {
-            egr::Controller::Instance().SetCurrentTracer(tracer);
-          }
+          egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
-  m.def("_enable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(true); });
-  m.def("_disable_eager_mode",
-        []() { egr::Controller::Instance().SetInEagerMode(false); });
-  m.def("_in_eager_mode",
-        []() { return egr::Controller::Instance().InEagerMode(); });
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
   g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
@@ -826,27 +805,29 @@ void BindImperative(py::module *m_ptr) {
                 py::object value = value_obj;
                 if (self->DataType() == framework::proto::VarType::FP32) {
                   if (!py::isinstance<py::array_t<float>>(value_obj)) {
-                    value = CastNumpyArray<float>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<float>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::FP64) {
                   if (!py::isinstance<py::array_t<double>>(value_obj)) {
-                    value = CastNumpyArray<double>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<double>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT32) {
                   if (!py::isinstance<py::array_t<int32_t>>(value_obj)) {
-                    value = CastNumpyArray<int32_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int32_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT64) {
                   if (!py::isinstance<py::array_t<int64_t>>(value_obj)) {
-                    value = CastNumpyArray<int64_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int64_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::BOOL) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
-                    value = CastNumpyArray<bool>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<bool>(value_obj);
                   }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1106,31 +1087,32 @@ void BindImperative(py::module *m_ptr) {
                      self.Name()));
              return var->CurrentInplaceVersion();
            })
-      .def("_bump_inplace_version",
-           [](std::shared_ptr<imperative::VarBase> &self) {
-             // NOTE(liym27): _bump_inplace_version is only used for inplace
-             // operation
-             self->BumpInplaceVersion();
-           },
-           R"DOC(
+      .def(
+          "_bump_inplace_version",
+          [](std::shared_ptr<imperative::VarBase> &self) {
+            // NOTE(liym27): _bump_inplace_version is only used for inplace
+            // operation
+            self->BumpInplaceVersion();
+          },
+          R"DOC(
         **Notes**:
             **This API is ONLY available in Dygraph mode.**
             **This is a very low level API. Users should not use it directly. **
          Bump the version whenever the Tensor is modified through an inplace operation.
             )DOC")
-      .def("numpy",
+      .def(
+          "numpy",
 
-           [](imperative::VarBase &self) -> py::array {
-             const auto &tensor =
-                 self.MutableVar()->Get<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 tensor.IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor of %s is Empty, please check if it has no data.",
-                     self.Name()));
-             return TensorToPyArray(tensor, true);
-           },
-           R"DOC(
+          [](imperative::VarBase &self) -> py::array {
+            const auto &tensor = self.MutableVar()->Get<framework::LoDTensor>();
+            PADDLE_ENFORCE_EQ(
+                tensor.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "Tensor of %s is Empty, please check if it has no data.",
+                    self.Name()));
+            return TensorToPyArray(tensor, true);
+          },
+          R"DOC(
         Returns a numpy array shows the value of current Tensor.
         
         Returns:
@@ -1150,68 +1132,69 @@ void BindImperative(py::module *m_ptr) {
                 x = linear(data)
                 print(x.numpy())
        )DOC")
-      .def("detach",
-           [](const imperative::VarBase
-                  &self) -> std::shared_ptr<imperative::VarBase> {
-             PADDLE_ENFORCE_EQ(
-                 self.Var().IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "Tensor %s has not been initialized!", self.Name()));
+      .def(
+          "detach",
+          [](const imperative::VarBase &self)
+              -> std::shared_ptr<imperative::VarBase> {
+            PADDLE_ENFORCE_EQ(
+                self.Var().IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "Tensor %s has not been initialized!", self.Name()));
 
-             PADDLE_ENFORCE_EQ(
-                 self.Var().IsType<framework::LoDTensor>() ||
-                     self.Var().IsType<phi::SelectedRows>(),
-                 true,
-                 platform::errors::InvalidArgument(
-                     "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
-                     self.Name()));
+            PADDLE_ENFORCE_EQ(
+                self.Var().IsType<framework::LoDTensor>() ||
+                    self.Var().IsType<phi::SelectedRows>(),
+                true,
+                platform::errors::InvalidArgument(
+                    "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
+                    self.Name()));
 
-             auto detach_var = std::make_shared<imperative::VarBase>(
-                 true, "detach_" + self.Name());
+            auto detach_var = std::make_shared<imperative::VarBase>(
+                true, "detach_" + self.Name());
 
-             detach_var->SetPersistable(self.Persistable());
-             detach_var->SetType(self.Type());
-             detach_var->SetDataType(self.DataType());
+            detach_var->SetPersistable(self.Persistable());
+            detach_var->SetType(self.Type());
+            detach_var->SetDataType(self.DataType());
 
-             if (self.Var().IsType<framework::LoDTensor>()) {
-               const auto &origin_tensor =
-                   self.Var().Get<framework::LoDTensor>();
-               PADDLE_ENFORCE_EQ(
-                   origin_tensor.IsInitialized(), true,
-                   platform::errors::InvalidArgument(
-                       "Tensor %s has not been initialized!", self.Name()));
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              const auto &origin_tensor =
+                  self.Var().Get<framework::LoDTensor>();
+              PADDLE_ENFORCE_EQ(
+                  origin_tensor.IsInitialized(), true,
+                  platform::errors::InvalidArgument(
+                      "Tensor %s has not been initialized!", self.Name()));
 
-               auto *detach_tensor =
-                   detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
-               detach_tensor->ShareDataWith(origin_tensor);
-               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
-               // same TensorInplaceVersion, which is used to check whether
-               // inplace
-               // operations are correct.
-               detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
-             } else {
-               const auto &origin_selected_rows =
-                   self.Var().Get<phi::SelectedRows>();
-               PADDLE_ENFORCE_EQ(
-                   origin_selected_rows.value().IsInitialized(), true,
-                   platform::errors::InvalidArgument(
-                       "Tensor %s has not been initialized!", self.Name()));
+              auto *detach_tensor =
+                  detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+              detach_tensor->ShareDataWith(origin_tensor);
+              // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
+              // same TensorInplaceVersion, which is used to check whether
+              // inplace
+              // operations are correct.
+              detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
+            } else {
+              const auto &origin_selected_rows =
+                  self.Var().Get<phi::SelectedRows>();
+              PADDLE_ENFORCE_EQ(
+                  origin_selected_rows.value().IsInitialized(), true,
+                  platform::errors::InvalidArgument(
+                      "Tensor %s has not been initialized!", self.Name()));
 
-               auto *detach_selected_rows =
-                   detach_var->MutableVar()->GetMutable<phi::SelectedRows>();
-               detach_selected_rows->set_height(origin_selected_rows.height());
-               detach_selected_rows->set_rows(origin_selected_rows.rows());
-               detach_selected_rows->mutable_value()->ShareDataWith(
-                   origin_selected_rows.value());
-               detach_selected_rows->mutable_value()
-                   ->ShareInplaceVersionCounterWith(
-                       origin_selected_rows.value());
-             }
-             VLOG(3) << "The detached Tensor(" << detach_var->Name()
-                     << ") share data with " << self.Name();
-             return detach_var;
-           },
-           py::return_value_policy::take_ownership, R"DOC(
+              auto *detach_selected_rows =
+                  detach_var->MutableVar()->GetMutable<phi::SelectedRows>();
+              detach_selected_rows->set_height(origin_selected_rows.height());
+              detach_selected_rows->set_rows(origin_selected_rows.rows());
+              detach_selected_rows->mutable_value()->ShareDataWith(
+                  origin_selected_rows.value());
+              detach_selected_rows->mutable_value()
+                  ->ShareInplaceVersionCounterWith(
+                      origin_selected_rows.value());
+            }
+            VLOG(3) << "The detached Tensor(" << detach_var->Name()
+                    << ") share data with " << self.Name();
+            return detach_var;
+          },
+          py::return_value_policy::take_ownership, R"DOC(
 
         Returns a new Tensor, detached from the current graph.
         It will share data with origin Tensor and always doesn't have a Tensor copy.
@@ -1273,23 +1256,23 @@ void BindImperative(py::module *m_ptr) {
       .def("_gradient_set_empty", &imperative::VarBase::_GradientSetEmpty,
            py::arg("set_is_empty") = true)
       .def("_is_gradient_set_empty", &imperative::VarBase::_IsGradientSetEmpty)
-      .def("clone",
-           [](std::shared_ptr<imperative::VarBase> &self) {
-             const auto &tensor = self->Var().Get<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(
-                 tensor.IsInitialized(), true,
-                 platform::errors::InvalidArgument(
-                     "%s has not been initialized", self->Name()));
-             auto tracer = imperative::GetCurrentTracer();
-             auto new_var = std::make_shared<imperative::VarBase>(
-                 true, tracer->GenerateUniqueName(self->Name() + "_clone"));
-             framework::AttributeMap attrs;
-             imperative::NameVarBaseMap ins = {{"X", {self}}};
-             imperative::NameVarBaseMap outs = {{"Out", {new_var}}};
-             tracer->TraceOp("assign", ins, outs, attrs);
-             return new_var;
-           },
-           py::return_value_policy::copy, R"DOC(
+      .def(
+          "clone",
+          [](std::shared_ptr<imperative::VarBase> &self) {
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+            PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                              platform::errors::InvalidArgument(
+                                  "%s has not been initialized", self->Name()));
+            auto tracer = imperative::GetCurrentTracer();
+            auto new_var = std::make_shared<imperative::VarBase>(
+                true, tracer->GenerateUniqueName(self->Name() + "_clone"));
+            framework::AttributeMap attrs;
+            imperative::NameVarBaseMap ins = {{"X", {self}}};
+            imperative::NameVarBaseMap outs = {{"Out", {new_var}}};
+            tracer->TraceOp("assign", ins, outs, attrs);
+            return new_var;
+          },
+          py::return_value_policy::copy, R"DOC(
 
         Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
         It will always have a Tensor copy.
@@ -1322,11 +1305,12 @@ void BindImperative(py::module *m_ptr) {
               print(x.grad)          # None
        )DOC")
       .def("_grad_name", &imperative::VarBase::GradVarName)
-      .def("_grad_value",
-           [](imperative::VarBase &self) {
-             return self.MutableGradVar()->Get<framework::LoDTensor>();
-           },
-           py::return_value_policy::reference)
+      .def(
+          "_grad_value",
+          [](imperative::VarBase &self) {
+            return self.MutableGradVar()->Get<framework::LoDTensor>();
+          },
+          py::return_value_policy::reference)
       .def("_set_grad_type",
            [](imperative::VarBase &self, framework::proto::VarType::Type type) {
              self.MutableGradVarBase()->SetType(type);
@@ -1354,26 +1338,27 @@ void BindImperative(py::module *m_ptr) {
                }
              }
            })
-      .def("_grad_ivar",
-           [](const imperative::VarBase &self) {
-             auto &grad_var = self.GradVarBase();
+      .def(
+          "_grad_ivar",
+          [](const imperative::VarBase &self) {
+            auto &grad_var = self.GradVarBase();
 
-             if (grad_var && grad_var->Var().IsInitialized()) {
-               auto *tensor =
-                   grad_var->MutableVar()->IsType<framework::LoDTensor>()
-                       ? grad_var->MutableVar()
-                             ->GetMutable<framework::LoDTensor>()
-                       : grad_var->MutableVar()
-                             ->GetMutable<phi::SelectedRows>()
-                             ->mutable_value();
+            if (grad_var && grad_var->Var().IsInitialized()) {
+              auto *tensor =
+                  grad_var->MutableVar()->IsType<framework::LoDTensor>()
+                      ? grad_var->MutableVar()
+                            ->GetMutable<framework::LoDTensor>()
+                      : grad_var->MutableVar()
+                            ->GetMutable<phi::SelectedRows>()
+                            ->mutable_value();
 
-               if (tensor->IsInitialized()) {
-                 return grad_var;
-               }
-             }
-             return std::shared_ptr<imperative::VarBase>(nullptr);
-           },
-           py::return_value_policy::copy)
+              if (tensor->IsInitialized()) {
+                return grad_var;
+              }
+            }
+            return std::shared_ptr<imperative::VarBase>(nullptr);
+          },
+          py::return_value_policy::copy)
       .def("_set_grad_ivar",
            [](imperative::VarBase &self, imperative::VarBase &grad) {
              self.SetGradVarBase(grad);
@@ -1382,13 +1367,14 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self) {
              return self.Var().IsType<phi::SelectedRows>();
            })
-      .def("_allreduce",
-           [](imperative::VarBase &self,
-              const imperative::ParallelStrategy &strategy) {
-             if (strategy.nranks_ > 1) {
+      .def(
+          "_allreduce",
+          [](imperative::VarBase &self,
+             const imperative::ParallelStrategy &strategy) {
+            if (strategy.nranks_ > 1) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2212
-               imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
+              imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
                if (!self.Var().IsType<phi::SelectedRows>()) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
@@ -1405,9 +1391,9 @@ void BindImperative(py::module *m_ptr) {
                    "Imperative allreduce is not supported when paddle is "
                    "not compiled with NCCL."));
 #endif  // PADDLE_WITH_NCCL or PADDLE_WITH_RCCL
-             }
-           },
-           py::call_guard<py::gil_scoped_release>())
+            }
+          },
+          py::call_guard<py::gil_scoped_release>())
       .def("_register_grad_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
              PADDLE_ENFORCE_EQ(
@@ -1442,22 +1428,23 @@ void BindImperative(py::module *m_ptr) {
                    std::make_shared<std::function<void()>>(py_func));
              }
            })
-      .def("_register_backward_hook",
-           [](imperative::VarBase &self, const py::handle &hook) {
-             PADDLE_ENFORCE_EQ(
-                 self.IsLeaf(), true,
-                 platform::errors::InvalidArgument(
-                     "Only can register backward hook for leaf Tensor."));
-             PADDLE_ENFORCE_EQ(
-                 !self.OverridedStopGradient() && self.HasGradVar(), true,
-                 platform::errors::InvalidArgument(
-                     "Cannot register backward hook on a Tensor that stop "
-                     "gradient or without gradient."));
-             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
-             self.GradVarBase()->AddVoidHook(
-                 std::make_shared<std::function<void()>>(py_func));
-           },
-           R"DOC(
+      .def(
+          "_register_backward_hook",
+          [](imperative::VarBase &self, const py::handle &hook) {
+            PADDLE_ENFORCE_EQ(
+                self.IsLeaf(), true,
+                platform::errors::InvalidArgument(
+                    "Only can register backward hook for leaf Tensor."));
+            PADDLE_ENFORCE_EQ(
+                !self.OverridedStopGradient() && self.HasGradVar(), true,
+                platform::errors::InvalidArgument(
+                    "Cannot register backward hook on a Tensor that stop "
+                    "gradient or without gradient."));
+            auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+            self.GradVarBase()->AddVoidHook(
+                std::make_shared<std::function<void()>>(py_func));
+          },
+          R"DOC(
              Registers a backward hook for current Tensor.
 
              This hook will be called every time the gradient of current Tensor has been fully calculated.
@@ -1478,17 +1465,18 @@ void BindImperative(py::module *m_ptr) {
              Returns:
                  None
            )DOC")
-      .def("cpu",
-           [](const std::shared_ptr<imperative::VarBase> &self) {
-             if (platform::is_cpu_place(self->Place())) {
-               return self;
-             } else {
-               auto new_var = self->NewVarBase(platform::CPUPlace(), true);
-               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
-               return new_var;
-             }
-           },
-           R"DOC(
+      .def(
+          "cpu",
+          [](const std::shared_ptr<imperative::VarBase> &self) {
+            if (platform::is_cpu_place(self->Place())) {
+              return self;
+            } else {
+              auto new_var = self->NewVarBase(platform::CPUPlace(), true);
+              new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+              return new_var;
+            }
+          },
+          R"DOC(
         Returns a copy of this Tensor in CPU memory.
 
         If this Tensor is already in CPU memory, then no copy is performed and the original Tensor is returned.
@@ -1504,24 +1492,25 @@ void BindImperative(py::module *m_ptr) {
               print(y.place)    # CPUPlace
 
               )DOC")
-      .def("pin_memory",
-           [](const std::shared_ptr<imperative::VarBase> &self) {
+      .def(
+          "pin_memory",
+          [](const std::shared_ptr<imperative::VarBase> &self) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(platform::errors::PermissionDenied(
-                 "Cannot copy this Tensor to pinned memory in CPU version "
-                 "Paddle, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot copy this Tensor to pinned memory in CPU version "
+                "Paddle, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #endif
-             if (platform::is_cuda_pinned_place(self->Place())) {
-               return self;
-             } else {
-               auto new_var =
-                   self->NewVarBase(platform::CUDAPinnedPlace(), true);
-               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
-               return new_var;
-             }
-           },
-           R"DOC(
+            if (platform::is_cuda_pinned_place(self->Place())) {
+              return self;
+            } else {
+              auto new_var =
+                  self->NewVarBase(platform::CUDAPinnedPlace(), true);
+              new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+              return new_var;
+            }
+          },
+          R"DOC(
         Returns a copy of this Tensor in pin memory.
 
         If this Tensor is already in pin memory, then no copy is performed and the original Tensor is returned.
@@ -1537,13 +1526,14 @@ void BindImperative(py::module *m_ptr) {
               print(y.place)      # CUDAPinnedPlace
 
       )DOC")
-      .def("cuda",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              py::handle &handle, bool blocking) {
+      .def(
+          "cuda",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             py::handle &handle, bool blocking) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(platform::errors::PermissionDenied(
-                 "Cannot copy this Tensor to GPU in CPU version Paddle, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+            PADDLE_THROW(platform::errors::PermissionDenied(
+                "Cannot copy this Tensor to GPU in CPU version Paddle, "
+                "Please recompile or reinstall Paddle with CUDA support."));
 #else
              int device_count = platform::GetGPUDeviceCount();
              int device_id = 0;
@@ -1580,8 +1570,8 @@ void BindImperative(py::module *m_ptr) {
                return new_var;
              }
 #endif
-           },
-           py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
+          },
+          py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
         Returns a copy of this Tensor in GPU memory.
 
         If this Tensor is already in GPU memory and device_id is default, 
@@ -1609,79 +1599,51 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
-      .def("_share_memory",
-           [](const std::shared_ptr<imperative::VarBase> &self) {
+      .def(
+          "_share_memory",
+          [](const std::shared_ptr<imperative::VarBase> &self) {
 #ifndef _WIN32
-             PADDLE_ENFORCE_EQ(
-                 platform::is_cpu_place(self->Place()), true,
-                 platform::errors::InvalidArgument(
-                     "Sharing memory only support CPU Tensor currently"));
-             // 1. get LoDTensor
-             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
-             // 2. allocate shared memory
-             void *data_ptr = t->data();
-             size_t data_size =
-                 t->numel() * framework::SizeOfType(
-                                  framework::TransToProtoVarType(t->dtype()));
-             auto shared_writer_holder =
-                 memory::allocation::AllocateMemoryMapWriterAllocation(
-                     data_size);
-             // 3. maintain mmap fd set & backup ipc_name
-             const std::string &ipc_name = shared_writer_holder->ipc_name();
-             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-             // 4. copy data & reset holder
-             memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
-                          platform::CPUPlace(), data_ptr, data_size);
-             t->ResetHolder(shared_writer_holder);
-             return *t;
+            PADDLE_ENFORCE_EQ(
+                platform::is_cpu_place(self->Place()), true,
+                platform::errors::InvalidArgument(
+                    "Sharing memory only support CPU Tensor currently"));
+            // 1. get LoDTensor
+            auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+            // 2. allocate shared memory
+            void *data_ptr = t->data();
+            size_t data_size =
+                t->numel() * framework::SizeOfType(
+                                 framework::TransToProtoVarType(t->dtype()));
+            auto shared_writer_holder =
+                memory::allocation::AllocateMemoryMapWriterAllocation(
+                    data_size);
+            // 3. maintain mmap fd set & backup ipc_name
+            const std::string &ipc_name = shared_writer_holder->ipc_name();
+            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+            // 4. copy data & reset holder
+            memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                         platform::CPUPlace(), data_ptr, data_size);
+            t->ResetHolder(shared_writer_holder);
+            return *t;
 #else
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Sharing memory in Windows OS is not supported currently"));
 #endif
-           },
-           py::return_value_policy::reference)
+          },
+          py::return_value_policy::reference)
 #if defined(PADDLE_WITH_CUDA)
-      .def("_uva",
-           [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
-             PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
-                               platform::errors::InvalidArgument(
-                                   "Unified virtual addressing only support "
-                                   "CPU Tensor currently."));
-             platform::DeviceContextPool &pool =
-                 platform::DeviceContextPool::Instance();
-             auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
-             VLOG(4) << "Init the DeviceContext, and the place is "
-                     << dev_ctx->GetPlace();
-             auto *self_tensor =
-                 self->MutableVar()->GetMutable<framework::LoDTensor>();
-             // Register the cpu memory as the cuda host memory
-             const auto &data_numel = self_tensor->numel();
-             const size_t &need_allocate_size =
-                 data_numel *
-                 framework::SizeOfType(
-                     framework::TransToProtoVarType(self_tensor->dtype()));
-             void *data_ptr = self_tensor->data();
-             auto result = cudaHostRegister(data_ptr, need_allocate_size,
-                                            cudaHostRegisterDefault);
-             if (cudaSuccess != result) {
-               VLOG(4) << "UVA(unified virtual addressing) failed allocate:"
-                       << need_allocate_size << ", the error code:" << result;
-             }
-
-             // Get device pointer from the function of cudaHostGetDevicePointer
-             void *cuda_device_pointer = nullptr;
-             cudaHostGetDevicePointer(
-                 reinterpret_cast<void **>(&cuda_device_pointer),
-                 reinterpret_cast<void *>(data_ptr), 0);
-
-             // Reset the memory with device pointer
-             std::shared_ptr<memory::allocation::Allocation> holder =
-                 std::make_shared<memory::allocation::Allocation>(
-                     cuda_device_pointer, need_allocate_size,
-                     platform::CUDAPlace(device_id));
-             self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
-           },
-           py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
+      .def(
+          "_uva",
+          [](const std::shared_ptr<imperative::VarBase> &self, int device_id) {
+            PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->Place()), true,
+                              platform::errors::InvalidArgument(
+                                  "Unified virtual addressing only support "
+                                  "CPU Tensor currently."));
+            auto *self_tensor =
+                self->MutableVar()->GetMutable<framework::LoDTensor>();
+            tensor_uva(self_tensor, device_id);
+          },
+          py::arg("device_id") = 0, py::return_value_policy::reference, R"DOC(
         Returns self tensor with the UVA(unified virtual addressing).
 
         Args:
@@ -1698,86 +1660,94 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
 #endif
       .def("copy_", &imperative::VarBase::CopyFrom)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::CPUPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
-             // copy data from the tensor of self to the tensor of new varbase,
-             // we need to ensure that the varbase self is not destructed until
-             // the GpuCopyAsync is completed. Otherwise, the memory may be
-             // freed
-             // when varbase self is destructed.
-             // To do that, we increase the reference count of self by 1 and
-             // add a cuda event to wait the GpuCopyAsync's completion.
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::CUDAPinnedPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::XPUPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::CUDAPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::NPUPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::MLUPlace &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("_copy_to",
-           [](const std::shared_ptr<imperative::VarBase> &self,
-              const platform::Place &place, bool blocking) {
-             auto new_var = self->NewVarBase(place, blocking);
-             if (!blocking) {
-               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-             }
-             return new_var;
-           },
-           py::return_value_policy::copy)
-      .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
-           py::return_value_policy::reference)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::CPUPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
+            // copy data from the tensor of self to the tensor of new varbase,
+            // we need to ensure that the varbase self is not destructed until
+            // the GpuCopyAsync is completed. Otherwise, the memory may be
+            // freed
+            // when varbase self is destructed.
+            // To do that, we increase the reference count of self by 1 and
+            // add a cuda event to wait the GpuCopyAsync's completion.
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::CUDAPinnedPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::XPUPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::CUDAPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::NPUPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::MLUPlace &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "_copy_to",
+          [](const std::shared_ptr<imperative::VarBase> &self,
+             const platform::Place &place, bool blocking) {
+            auto new_var = self->NewVarBase(place, blocking);
+            if (!blocking) {
+              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+            }
+            return new_var;
+          },
+          py::return_value_policy::copy)
+      .def(
+          "value", [](imperative::VarBase &self) { return self.MutableVar(); },
+          py::return_value_policy::reference)
       .def("_clear",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -1889,39 +1859,28 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly("shape",
-                             [](imperative::VarBase &self) {
-                               if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return phi::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::LoDTensor>()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<phi::SelectedRows>()) {
-                                 return phi::vectorize<int>(
-                                     self.Var()
-                                         .Get<phi::SelectedRows>()
-                                         .value()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<framework::Strings>()) {
-                                 return std::vector<int>{static_cast<int>(
-                                     self.Var()
-                                         .Get<framework::Strings>()
-                                         .size())};
-                               } else if (self.Var()
-                                              .IsType<framework::Vocab>()) {
-                                 return std::vector<int>{static_cast<int>(
-                                     self.Var()
-                                         .Get<framework::Vocab>()
-                                         .size())};
-                               } else {
-                                 VLOG(2) << "It is meaningless to get shape of "
-                                            "variable type "
-                                         << GetTypeName(self);
-                                 return std::vector<int>();
-                               }
-                             })
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return phi::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<phi::SelectedRows>()) {
+              return phi::vectorize<int>(
+                  self.Var().Get<phi::SelectedRows>().value().dims());
+            } else if (self.Var().IsType<framework::Strings>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::Strings>().size())};
+            } else if (self.Var().IsType<framework::Vocab>()) {
+              return std::vector<int>{
+                  static_cast<int>(self.Var().Get<framework::Vocab>().size())};
+            } else {
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
@@ -2079,17 +2038,26 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs) {
              // TODO(xiongkun): move this function outside of tracer.
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
+             auto ins_map = ConvertToNameTensorMap(ins);
+             auto outs_map = ConvertToNameTensorMap(outs);
              {
-               auto to_vector = [](paddle::SmallVector<std::string> &vec) {
-                 return std::vector<std::string>(vec.begin(), vec.end());
-               };
+               auto input_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto output_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
+               auto attr_to_vector =
+                   [](paddle::small_vector<const char *> &vec) {
+                     return std::vector<std::string>(vec.begin(), vec.end());
+                   };
                auto ret = self.GetExpectedKernelSignature(type, ins_map,
                                                           outs_map, attrs);
-               auto kernelsig_ins = to_vector(std::get<0>(ret.args));
-               auto kernelsig_attrs = to_vector(std::get<1>(ret.args));
-               auto kernelsig_outs = to_vector(std::get<2>(ret.args));
+               auto kernelsig_ins = input_to_vector(ret.input_names);
+               auto kernelsig_attrs = attr_to_vector(ret.attr_names);
+               auto kernelsig_outs = output_to_vector(ret.output_names);
                return std::make_tuple(kernelsig_ins, kernelsig_attrs,
                                       kernelsig_outs);
              }
@@ -2195,13 +2163,14 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::ParallelStrategy &self, int nranks) {
             self.nranks_ = nranks;
           })
-      .def_property("local_rank",
-                    [](const imperative::ParallelStrategy &self) {
-                      return self.local_rank_;
-                    },
-                    [](imperative::ParallelStrategy &self, int local_rank) {
-                      self.local_rank_ = local_rank;
-                    })
+      .def_property(
+          "local_rank",
+          [](const imperative::ParallelStrategy &self) {
+            return self.local_rank_;
+          },
+          [](imperative::ParallelStrategy &self, int local_rank) {
+            self.local_rank_ = local_rank;
+          })
       .def_property(
           "trainer_endpoints",
           [](const imperative::ParallelStrategy &self) {
@@ -2210,12 +2179,14 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::ParallelStrategy &self, std::vector<std::string> eps) {
             self.trainer_endpoints_ = eps;
           })
-      .def_property("current_endpoint",
-                    [](const imperative::ParallelStrategy &self) {
-                      return self.current_endpoint_;
-                    },
-                    [](imperative::ParallelStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; })
+      .def_property(
+          "current_endpoint",
+          [](const imperative::ParallelStrategy &self) {
+            return self.current_endpoint_;
+          },
+          [](imperative::ParallelStrategy &self, const std::string &ep) {
+            self.current_endpoint_ = ep;
+          })
       .def_property(
           "nrings",
           [](const imperative::ParallelStrategy &self) { return self.nrings_; },
@@ -2229,6 +2200,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::MLUPlace>);
 
   m.def(
@@ -2261,8 +2233,9 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL) || \
+    defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_CNCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2388,45 +2361,51 @@ void BindImperative(py::module *m_ptr) {
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });
+  m.def("pylayer_apply",
+        [](const platform::CustomPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
 
 #if defined(PADDLE_WITH_CUDA)
-  m.def("to_uva_tensor",
-        [](const py::object &obj, int device_id) {
-          const auto &tracer = imperative::GetCurrentTracer();
-          auto new_tensor = std::shared_ptr<imperative::VarBase>(
-              new imperative::VarBase(tracer->GenerateUniqueName()));
-          auto array = obj.cast<py::array>();
-          if (py::isinstance<py::array_t<int32_t>>(array)) {
-            SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-            SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<float>>(array)) {
-            SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<double>>(array)) {
-            SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-            SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<int16_t>>(array)) {
-            SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<paddle::platform::float16>>(
-                         array)) {
-            SetUVATensorFromPyArray<paddle::platform::float16>(
-                new_tensor, array, device_id);
-          } else if (py::isinstance<py::array_t<bool>>(array)) {
-            SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
-          } else {
-            // obj may be any type, obj.cast<py::array>() may be failed,
-            // then the array.dtype will be string of unknown meaning.
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "Input object type error or incompatible array data type. "
-                "tensor.set() supports array with bool, float16, float32, "
-                "float64, int8, int16, int32, int64,"
-                "please check your input or input array data type."));
-          }
-          return new_tensor;
-        },
-        py::arg("obj"), py::arg("device_id") = 0,
-        py::return_value_policy::reference, R"DOC(
+  m.def(
+      "to_uva_tensor",
+      [](const py::object &obj, int device_id) {
+        const auto &tracer = imperative::GetCurrentTracer();
+        auto new_tensor = std::shared_ptr<imperative::VarBase>(
+            new imperative::VarBase(tracer->GenerateUniqueName()));
+        auto array = obj.cast<py::array>();
+        if (py::isinstance<py::array_t<int32_t>>(array)) {
+          SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+          SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<float>>(array)) {
+          SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<double>>(array)) {
+          SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<int8_t>>(array)) {
+          SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<int16_t>>(array)) {
+          SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<paddle::platform::float16>>(
+                       array)) {
+          SetUVATensorFromPyArray<paddle::platform::float16>(new_tensor, array,
+                                                             device_id);
+        } else if (py::isinstance<py::array_t<bool>>(array)) {
+          SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
+        } else {
+          // obj may be any type, obj.cast<py::array>() may be failed,
+          // then the array.dtype will be string of unknown meaning.
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Input object type error or incompatible array data type. "
+              "tensor.set() supports array with bool, float16, float32, "
+              "float64, int8, int16, int32, int64,"
+              "please check your input or input array data type."));
+        }
+        return new_tensor;
+      },
+      py::arg("obj"), py::arg("device_id") = 0,
+      py::return_value_policy::reference, R"DOC(
   Returns tensor with the UVA(unified virtual addressing) created from numpy array.
 
   Args:

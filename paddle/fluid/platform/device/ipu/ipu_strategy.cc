@@ -32,6 +32,20 @@ void RegisterGetter(
   options_type[name] = type_str;
 }
 
+struct DefaultCompilationProgressLogger {
+  void operator()(int progress, int total) {
+    if (progress != progress_ && progress % log_interval_ == 0) {
+      progress_ = progress;
+      VLOG(1) << "Graph compile progress: " << progress << "%";
+    }
+  }
+
+  int log_interval_ = 10;
+  int progress_ = 0;
+  // default total progress
+  int total_ = 100;
+};
+
 }  // namespace
 
 namespace paddle {
@@ -62,22 +76,39 @@ IpuStrategy::IpuStrategy() {
                  [&]() { return name; })
 
   ADD_BOOL_OPTION(is_training);
-  ADD_BOOL_OPTION(save_init_onnx);
-  ADD_BOOL_OPTION(save_onnx_checkpoint);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
+  ADD_BOOL_OPTION(use_no_bias_optimizer);
+  ADD_BOOL_OPTION(enable_distribution);
+  ADD_BOOL_OPTION(scaled_optimizer_state);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
-  ADD_UINT64_OPTION(save_per_n_step);
+  ADD_UINT64_OPTION(random_seed);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
+  ADD_STRING_OPTION(accl1_type);
+  ADD_STRING_OPTION(accl2_type);
+  ADD_STRING_OPTION(accl3_type);
+  ADD_STRING_OPTION(onnx_dump_path);
+  ADD_STRING_OPTION(weight_decay_mode);
 
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
 #undef ADD_UINT64_OPTION
 #undef ADD_BOOL_OPTION
+
+#define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                          \
+  RegisterSetter(bool_options, #name,                                        \
+                 [&](bool value) { runtime_options.aliased_name = value; }); \
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {        \
+    return std::to_string(runtime_options.aliased_name);                     \
+  })
+
+  ADD_RUNTIME_BOOL_OPTION(runtime_options.enable_eval, enable_eval);
+
+#undef ADD_RUNTIME_BOOL_OPTION
 
 #define ADD_POPART_ENUM_OPTION_ALIAS(name, aliased_name, EnumType)        \
   RegisterSetter(uint64_options, #name, [&](std::uint64_t value) {        \
@@ -171,6 +202,7 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_UINT64_OPTION_ALIAS(merge_var_update_mem_threshold,
                                  mergeVarUpdateMemThreshold);
   ADD_POPART_UINT64_OPTION_ALIAS(loose_threshold_at_peak, looseThresholdAtPeak);
+  ADD_POPART_UINT64_OPTION_ALIAS(replicated_graph_count, replicatedGraphCount);
   ADD_POPART_UINT64_OPTION_ALIAS(accumulation_factor, accumulationFactor);
   ADD_POPART_UINT64_OPTION_ALIAS(swap_limit_scheduler, swapLimitScheduler);
   ADD_POPART_UINT64_OPTION_ALIAS(global_replication_factor,
@@ -253,6 +285,8 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_BOOL_OPTION_ALIAS(
       schedule_non_weight_update_gradient_consumers_early,
       scheduleNonWeightUpdateGradientConsumersEarly);
+  ADD_POPART_BOOL_OPTION_ALIAS(create_implicit_pipelining_fwd_only_program,
+                               createImplicitPipeliningFwdOnlyProgram);
 
   ADD_POPART_DOUBLE_OPTION_ALIAS(outline_sequence_break_cost,
                                  outlineSequenceBreakCost);
@@ -297,8 +331,10 @@ IpuStrategy::IpuStrategy() {
   RegisterSetter(bool_options, "enable_half_partial", [&](bool value) {
     if (value) {
       popart_options.partialsTypeMatMuls = "half";
+      popart_options.convolutionOptions.insert({{"partialsType", "half"}});
     } else {
       popart_options.partialsTypeMatMuls = "float";
+      popart_options.convolutionOptions.insert({{"partialsType", "float"}});
     }
   });
 
@@ -307,21 +343,26 @@ IpuStrategy::IpuStrategy() {
         return std::to_string(popart_options.partialsTypeMatMuls == "half");
       });
 
-  RegisterSetter(
-      container_options, "dot_checks",
-      [&](const std::pair<std::string, std::string>& p) {
-        std::uint64_t value = std::stoul(p.first);
-        popart_options.dotChecks.insert(static_cast<popart::DotCheck>(value));
-      });
+  RegisterSetter(container_options, "dot_checks",
+                 [&](const std::pair<std::string, std::string>& p) {
+                   std::vector<std::string> valid_dot{"Fwd0", "Fwd1", "Bwd0",
+                                                      "PreAlias", "Final"};
+                   if (std::find(valid_dot.begin(), valid_dot.end(), p.first) ==
+                       valid_dot.end()) {
+                     PADDLE_THROW(platform::errors::InvalidArgument(
+                         "Unknown dot check: %s", p.first));
+                   }
+                   popart_options.dotChecks.insert(p.first);
+                 });
 
-  RegisterGetter(
-      vector_options_getter, options_type, "dot_checks", "vector", [&]() {
-        std::vector<std::string> res;
-        for (auto x : popart_options.dotChecks) {
-          res.push_back(std::to_string(static_cast<std::uint64_t>(x)));
-        }
-        return res;
-      });
+  RegisterGetter(vector_options_getter, options_type, "dot_checks", "vector",
+                 [&]() {
+                   std::vector<std::string> res;
+                   for (auto x : popart_options.dotChecks) {
+                     res.push_back(x);
+                   }
+                   return res;
+                 });
 
   RegisterSetter(container_options, "hardware_instrumentations",
                  [&](const std::pair<std::string, std::string>& p) {
@@ -393,6 +434,11 @@ IpuStrategy::IpuStrategy() {
 
   RegisterGetter(map_options_getter, options_type, "gcl_options", "map",
                  [&]() { return popart_options.gclOptions; });
+
+  // Default options
+
+  // Can also be set as a custom logger in python, like using tqdm
+  popart_options.compilationProgressLogger = DefaultCompilationProgressLogger();
 }
 
 void IpuStrategy::AddBoolOption(const std::string& option, bool value) {
@@ -462,10 +508,43 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
   } else if (opt == "use_io_tiles_to_store") {
     settings->location.storageTileSet =
         value > 0 ? popart::TileSet::IO : popart::TileSet::Compute;
+  } else if (opt == "sharding_domain_with_all") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::All, value);
+  } else if (opt == "sharding_domain_with_consecutive") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::Consecutive, value);
+  } else if (opt == "sharding_domain_with_orthogonal") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::Orthogonal, value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unknown option ' %s' for tensor location: %s", opt, tensor));
   }
+}
+
+void IpuStrategy::SetReplicatedCollectivesSettings(const std::string& opt,
+                                                   bool value) {
+  VLOG(10) << "Set Replica Setting " << opt << " to " << value;
+  if (opt == "prepare_schedule_for_merging_collectives") {
+    popart_options.replicatedCollectivesSettings
+        .prepareScheduleForMergingCollectives = value;
+  } else if (opt == "merge_all_reduce_collectives") {
+    popart_options.replicatedCollectivesSettings.mergeAllReduceCollectives =
+        value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unknown option ' %s' for replicated collectives settings", opt));
+  }
+}
+
+void IpuStrategy::SetAccumulateOuterFragmentSettings(
+    const std::uint64_t& schedule, const std::vector<int>& values) {
+  VLOG(10) << "SetAccumulateOuterFragmentSettings schedule:" << schedule;
+  auto schedule_ =
+      static_cast<popart::AccumulateOuterFragmentSchedule>(schedule);
+  popart_options.accumulateOuterFragmentSettings =
+      popart::AccumulateOuterFragmentSettings(schedule_, values);
 }
 
 void IpuStrategy::AddCustomOp(const std::string& paddle_op,
@@ -474,6 +553,11 @@ void IpuStrategy::AddCustomOp(const std::string& paddle_op,
   LOG(INFO) << "IpuStrategy add custom op: " << paddle_op;
   custom_ops.push_back(
       IpuCustomOpIdentifier(paddle_op, popart_op, domain, version));
+}
+
+void IpuStrategy::SetCompilationProgressLogger(
+    const std::function<void(int, int)>& logger) {
+  popart_options.compilationProgressLogger = logger;
 }
 
 std::string IpuStrategy::GetOption(const std::string& option) {

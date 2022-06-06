@@ -243,8 +243,6 @@ class ConcatFunctor<platform::MLUDeviceContext, T> {
 
     const int axis_t = axis;
     const int ins_size_t = ins_size;
-    auto place = context.GetPlace();
-    output->mutable_data<T>(place);
 
     // mlu should do sth
     // init ins tensors
@@ -295,7 +293,6 @@ class SplitFunctor<platform::MLUDeviceContext, T> {
     std::vector<cnnlTensorDescriptor_t> desc_vector;
     for (size_t i = 0; i < out_size; i++) {
       (*outputs)[i]->Resize(outs_dims[i]);
-      (*outputs)[i]->mutable_data<T>(context.GetPlace());
       output_descs.emplace_back(
           MLUCnnlTensorDesc(*(*outputs)[i], CNNL_LAYOUT_ARRAY,
                             ToCnnlDataType((*outputs)[i]->dtype())));

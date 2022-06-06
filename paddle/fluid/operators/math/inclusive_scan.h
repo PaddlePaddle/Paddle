@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -34,10 +35,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename InputIterator, typename OutputIterator, typename BinaryOp>
+template <typename InputIterator, typename OutputIterator, typename BinaryOp,
+          typename Context>
 static void CubInclusiveScan(InputIterator x_iter, OutputIterator y_iter,
-                             size_t n, BinaryOp op,
-                             const platform::CUDADeviceContext &dev_ctx) {
+                             size_t n, BinaryOp op, const Context &dev_ctx) {
   memory::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
@@ -185,11 +186,10 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
   }
 }
 
-template <typename T, typename BinaryOp>
+template <typename T, typename BinaryOp, typename Context>
 static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
                                   size_t inner_dim, T init, BinaryOp op,
-                                  bool reverse,
-                                  const platform::CUDADeviceContext &dev_ctx) {
+                                  bool reverse, const Context &dev_ctx) {
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
@@ -197,22 +197,22 @@ static void InclusiveScanInnerDim(const T *x, T *y, size_t outer_dim,
   grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
-    InclusiveScanInnerDimCUDAKernel<
-        T, BinaryOp, kThreadNumX, kThreadNumY,
-        /*kReverse=*/true><<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
-        x, y, outer_dim, inner_dim, init, op);
+    InclusiveScanInnerDimCUDAKernel<T, BinaryOp, kThreadNumX, kThreadNumY,
+                                    /*kReverse=*/true>
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(x, y, outer_dim,
+                                                         inner_dim, init, op);
   } else {
-    InclusiveScanInnerDimCUDAKernel<
-        T, BinaryOp, kThreadNumX, kThreadNumY,
-        /*kReverse=*/false><<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
-        x, y, outer_dim, inner_dim, init, op);
+    InclusiveScanInnerDimCUDAKernel<T, BinaryOp, kThreadNumX, kThreadNumY,
+                                    /*kReverse=*/false>
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(x, y, outer_dim,
+                                                         inner_dim, init, op);
   }
 }
 
-template <typename T, typename BinaryOp>
+template <typename T, typename BinaryOp, typename Context>
 void InclusiveScan(const T *x, T *y, size_t outer_dim, size_t mid_dim,
                    size_t inner_dim, T init, BinaryOp op, bool reverse,
-                   const platform::CUDADeviceContext &dev_ctx) {
+                   const Context &dev_ctx) {
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   if (outer_dim == 1 && inner_dim == 1) {
@@ -224,8 +224,7 @@ void InclusiveScan(const T *x, T *y, size_t outer_dim, size_t mid_dim,
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);
     }
   } else if (inner_dim != 1) {
-    platform::ForRange<platform::CUDADeviceContext> for_range(
-        dev_ctx, outer_dim * inner_dim);
+    platform::ForRange<Context> for_range(dev_ctx, outer_dim * inner_dim);
     if (reverse) {
       for_range(
           InclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/true>(

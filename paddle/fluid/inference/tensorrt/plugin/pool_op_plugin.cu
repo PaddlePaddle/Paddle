@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/pool_op_plugin.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace inference {
@@ -84,16 +84,14 @@ int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
   output_shape.insert(output_shape.begin(), batchSize);
 
   if (pool_type_ == PoolType::max) {
-    paddle::operators::math::MaxPool<float> pool_process;
-    paddle::operators::math::Pool2dDirectCUDAFunctor<
-        paddle::operators::math::MaxPool<float>, float>
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool2dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, true, false, odatas[0], stream, pool_process);
   } else if (pool_type_ == PoolType::avg) {
-    paddle::operators::math::AvgPool<float> pool_process;
-    paddle::operators::math::Pool2dDirectCUDAFunctor<
-        paddle::operators::math::AvgPool<float>, float>
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool2dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, exclusive_, adaptive_, odatas[0], stream,
@@ -242,10 +240,11 @@ bool PoolPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Pool Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Pool Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT), true,
                     platform::errors::InvalidArgument(
                         "The input type should be half or float"));
@@ -292,16 +291,14 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   }
 
   if (pool_type_ == "max") {
-    paddle::operators::math::MaxPool<float> pool_process;
-    paddle::operators::math::Pool2dDirectCUDAFunctor<
-        paddle::operators::math::MaxPool<float>, float>
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool2dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    true, false, output, stream, pool_process);
   } else if (pool_type_ == "avg") {
-    paddle::operators::math::AvgPool<float> pool_process;
-    paddle::operators::math::Pool2dDirectCUDAFunctor<
-        paddle::operators::math::AvgPool<float>, float>
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool2dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    exclusive_, adaptive_, output, stream, pool_process);

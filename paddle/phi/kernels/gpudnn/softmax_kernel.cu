@@ -12,19 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/softmax_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            int axis,
-                            DenseTensor* out) {
+void SoftmaxGPUDNNKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         int axis,
+                         DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
@@ -35,7 +34,7 @@ void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
+                   phi::SoftmaxGPUDNNKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
@@ -44,7 +43,7 @@ PD_REGISTER_KERNEL(softmax,
 PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
+                   phi::SoftmaxGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -53,7 +52,7 @@ PD_REGISTER_KERNEL(softmax,
 PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
+                   phi::SoftmaxGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16) {}

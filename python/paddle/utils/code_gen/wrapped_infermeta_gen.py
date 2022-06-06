@@ -43,21 +43,24 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'const paddle::optional<Tensor>&': 'const MetaTensor&'
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
-                    args.append(tensor_type_map[api.inputs['input_info'][
-                        input_name]] + ' ' + input_name)
+                    print("type", api.inputs['input_info'])
+                    args.append(
+                        tensor_type_map[api.inputs['input_info'][input_name]] +
+                        ' ' + input_name)
             for attr_name in api.attrs['names']:
                 if attr_name in kernel_params:
                     args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
                                 attr_name)
             for i, out_type in enumerate(api.outputs['types']):
-                args.append(tensor_type_map[out_type] + ' ' + api.outputs[
-                    'names'][i])
+                args.append(tensor_type_map[out_type] + ' ' +
+                            api.outputs['names'][i])
 
             invoke_param = api.infer_meta['param']
             invoke_param.extend(api.outputs['names'])
@@ -86,7 +89,7 @@ def header_include():
     return """
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 """
 
 
@@ -98,6 +101,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/ternary.h"
 """
 
 
@@ -111,9 +115,13 @@ namespace phi {
 
 def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
                                             source_file_path):
+    apis = []
+    for each_api_yaml in api_yaml_path:
+        with open(each_api_yaml, 'r') as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            if api_list:
+                apis.extend(api_list)
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -135,7 +143,8 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
             api_item)
         header_file.write(declare_code)
         source_file.write(defind_code)
-        infermeta_register_code = infermeta_register_code + register_code
+        if infermeta_register_code.find(register_code) == -1:
+            infermeta_register_code = infermeta_register_code + register_code
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
@@ -149,10 +158,10 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to api yaml file',
-        default='python/paddle/utils/code_gen/api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to api yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/api.yaml')
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',

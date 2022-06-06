@@ -18,10 +18,12 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
-    def test_get_valid_program_error(self):
+
+    def func_test_get_valid_program_error(self):
         # case 1: CompiledProgram no program
         graph = core.Graph(core.ProgramDesc())
         compiled_program = fluid.CompiledProgram(graph)
@@ -32,25 +34,36 @@ class TestSaveLoadAPIError(unittest.TestCase):
         with self.assertRaises(TypeError):
             fluid.io._get_valid_program("program")
 
-    def test_load_vars_error(self):
+    def test_get_valid_program_error(self):
+        with _test_eager_guard():
+            self.func_test_get_valid_program_error()
+        self.func_test_get_valid_program_error()
+
+    def func_test_load_vars_error(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
-                executor=exe, dirname="./fake_dir", main_program="program")
+            fluid.io.load_vars(executor=exe,
+                               dirname="./fake_dir",
+                               main_program="program")
 
         # case 2: main_program type error when vars not None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
-                executor=exe,
-                dirname="./fake_dir",
-                main_program="program",
-                vars="vars")
+            fluid.io.load_vars(executor=exe,
+                               dirname="./fake_dir",
+                               main_program="program",
+                               vars="vars")
+
+    def test_load_vars_error(self):
+        with _test_eager_guard():
+            self.func_test_load_vars_error()
+        self.func_test_load_vars_error()
 
 
 class TestSaveInferenceModelAPIError(unittest.TestCase):
-    def test_useless_feeded_var_names(self):
+
+    def func_test_useless_feeded_var_names(self):
         start_prog = fluid.Program()
         main_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
@@ -62,16 +75,21 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         exe.run(start_prog)
         with self.assertRaisesRegexp(
                 ValueError, "not involved in the target_vars calculation"):
-            fluid.io.save_inference_model(
-                dirname='./model',
-                feeded_var_names=['x', 'y'],
-                target_vars=[z],
-                executor=exe,
-                main_program=main_prog)
+            fluid.io.save_inference_model(dirname='./model',
+                                          feeded_var_names=['x', 'y'],
+                                          target_vars=[z],
+                                          executor=exe,
+                                          main_program=main_prog)
+
+    def test_useless_feeded_var_names(self):
+        with _test_eager_guard():
+            self.func_test_useless_feeded_var_names()
+        self.func_test_useless_feeded_var_names()
 
 
 class TestWhenTrainWithNoGrad(unittest.TestCase):
-    def test_when_train_with_no_grad(self):
+
+    def func_test_when_train_with_no_grad(self):
         paddle.disable_static()
         net = paddle.nn.Linear(1024, 1)
         net = paddle.jit.to_static(net)
@@ -86,6 +104,12 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
             x = paddle.rand([1024], 'float32')
             net(x)
 
+    def test_when_train_with_no_grad(self):
+        with _test_eager_guard():
+            self.func_test_when_train_with_no_grad()
+        self.func_test_when_train_with_no_grad()
+
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

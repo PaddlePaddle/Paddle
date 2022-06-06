@@ -1,5 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -14,9 +13,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/batch_norm_op.h"
 #include <iterator>
 #include <vector>
+
+#include "paddle/fluid/operators/batch_norm_op.h"
 
 namespace paddle {
 namespace operators {
@@ -54,8 +54,12 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -125,8 +129,9 @@ static int calculate_inv_BN_Y(xpu::Context *ctx, T *x, const T *scale,
                               const T *bias, const T *mean, const T *variance,
                               const int N, const int C, const int M,
                               const T *y) {
-  PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
-                              "X and Y should be inplaced in inplace mode"));
+  PADDLE_ENFORCE_EQ(x, y,
+                    platform::errors::InvalidArgument(
+                        "X and Y should be inplaced in inplace mode"));
   std::vector<int> tensor_shape_vec({N, C, M});
   std::vector<int> array_shape_vec({1, C, 1});
   // y - bias
@@ -204,8 +209,9 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
       is_inplace = false;
       if (d_x) {
         PADDLE_ENFORCE_NE(
-            d_x, d_y, platform::errors::InvalidArgument(
-                          "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+            d_x, d_y,
+            platform::errors::InvalidArgument(
+                "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
       }
     }
 
@@ -217,8 +223,12 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
             "But received: the size of input's dimensions is [%d]",
             x_dims.size()));
 
-    int N, C, H, W, D;
+    int N = -1, C = -1, H = -1, W = -1, D = -1;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    N = (N == 0) ? 1 : N;
+    C = (C == 0) ? 1 : C;
+    H = (H == 0) ? 1 : H;
+    W = (W == 0) ? 1 : W;
 
     const auto *x_data = x->data<T>();
     const auto *d_y_data = d_y->data<T>();
@@ -260,7 +270,7 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
 
     // TODO(guozibin): hadle the situation case of N * H * W = 1
     if (is_inplace) {
-      float *global_inv_std_data;
+      float *global_inv_std_data = nullptr;
       if (use_global_stats) {
         global_inv_std_data =
             RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
@@ -268,11 +278,12 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
         int r1 =
             calculate_inv_var(dev_ctx.x_context(), global_var->data<float>(),
                               epsilon, C, epsilon_data, global_inv_std_data);
-        PADDLE_ENFORCE_EQ(r1, XPU_SUCCESS, platform::errors::External(
-                                               "XPU API(batch_norm_grad "
-                                               "calculate_inv_var function) "
-                                               "return wrong value[%d %s]",
-                                               r1, XPUAPIErrorMsg[r1]));
+        PADDLE_ENFORCE_EQ(
+            r1, XPU_SUCCESS,
+            platform::errors::External("XPU API(batch_norm_grad "
+                                       "calculate_inv_var function) "
+                                       "return wrong value[%d %s]",
+                                       r1, XPUAPIErrorMsg[r1]));
       }
       auto px = *x;
       auto *inv_std_data =
@@ -283,11 +294,12 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), px.mutable_data<T>(ctx.GetPlace()),
           scale->data<float>(), bias->data<float>(), mean_data, inv_std_data, N,
           C, H * W, x->data<T>());
-      PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS, platform::errors::External(
-                                             "XPU API(batch_norm_grad "
-                                             "calculate_inv_BN_Y function) "
-                                             "return wrong value[%d %s]",
-                                             r2, XPUAPIErrorMsg[r2]));
+      PADDLE_ENFORCE_EQ(
+          r2, XPU_SUCCESS,
+          platform::errors::External("XPU API(batch_norm_grad "
+                                     "calculate_inv_BN_Y function) "
+                                     "return wrong value[%d %s]",
+                                     r2, XPUAPIErrorMsg[r2]));
     }
 
     int r3;
@@ -312,10 +324,11 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
           scale_data, batch_mean->data<float>(), batch_inv_std->data<float>(),
           d_scale_data, d_bias_data, is_nchw);
     }
-    PADDLE_ENFORCE_EQ(r3, XPU_SUCCESS, platform::errors::External(
-                                           "XPU API(batch_norm_grad) return "
-                                           "wrong value[%d %s]",
-                                           r3, XPUAPIErrorMsg[r3]));
+    PADDLE_ENFORCE_EQ(
+        r3, XPU_SUCCESS,
+        platform::errors::External("XPU API(batch_norm_grad) return "
+                                   "wrong value[%d %s]",
+                                   r3, XPUAPIErrorMsg[r3]));
   }
 };
 

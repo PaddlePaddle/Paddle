@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/collective_helper.h"
+
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -198,6 +199,10 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(CUDAPlace(dev_id))
+          .get());
+  dev_ctx->SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
   dev_ctx->PartialInitWithAllocator();
 

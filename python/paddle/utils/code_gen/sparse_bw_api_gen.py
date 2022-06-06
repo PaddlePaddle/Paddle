@@ -22,20 +22,30 @@ from backward_api_gen import BackwardAPI
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):
+
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
-
-    def get_api_name(self, api_item_yaml):
-        return api_item_yaml['sparse_bw_api']
 
     def get_api_func_name(self):
         return self.api
 
-    def get_return_type(self, out_type_list):
-        return BackwardAPI.get_return_type(self, out_type_list)
+    def gene_kernel_backend_select(self):
+        return BackwardAPI.gene_kernel_backend_select(self)
+
+    def get_return_type(self, inplace_flag=False):
+        return BackwardAPI.get_return_type(self)
+
+    def gene_return_code(self):
+        return "return;"
 
     def gene_api_declaration(self):
         return SparseAPI.gene_api_declaration(self)
+
+    def get_declare_args(self, inplace_flag=False):
+        return BackwardAPI.get_declare_args(self)
+
+    def get_define_args(self, inplace_flag=False):
+        return BackwardAPI.get_define_args(self)
 
     def gene_output(self,
                     output_type_list,
@@ -45,6 +55,11 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         kernel_output = ""
         output_names = []
         output_create = ""
+        output_type_map = {
+            'dense': 'TensorType::DENSE_TENSOR',
+            'sparse_coo': 'TensorType::SPARSE_COO',
+            'sparse_csr': 'TensorType::SPARSE_CSR'
+        }
 
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
@@ -53,36 +68,21 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} out{inplace_assign};
-  auto kernel_out = {set_out_func}(&out, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+    auto kernel_out = {set_out_func}({self.outputs['names'][0]}, {output_type_map[output_type_list[0]]});"""
 
         elif len(output_type_list) > 1:
-            output_create = f"""
-  {self.outputs['return_type']} out({len(output_type_list)});"""
+            output_create = ""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
-                if out_type_item == 'Tensor':
-                    get_out_code = f'&out[{i}][0]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  out[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
-
-                    else:
-                        output_create = output_create + f"""
-  out[{i}].emplace_back();"""
-
-                else:
-                    get_out_code = f'&out[{i}]'
-                    if inplace_flag and self.inplace_map is not None and self.outputs[
-                            'names'][i] in self.inplace_map:
-                        output_create = output_create + f"""
-  out[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+    *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  auto kernel_out_{i} = {set_out_func}({get_out_code}, {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+    auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]}, {output_type_map[output_type_list[i]]});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -97,7 +97,7 @@ def header_include():
     return """
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -109,18 +109,10 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
-"""
-
-
-def api_register():
-    return """
-PD_REGISTER_API(Test);
 """
 
 
@@ -163,8 +155,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(namespace[1])
     source_file.write(namespace[1])
 
-    source_file.write(api_register())
-
     header_file.close()
     source_file.close()
 
@@ -177,15 +167,13 @@ def main():
         help='path to sparse api yaml file',
         default='python/paddle/utils/code_gen/sparse_bw_api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/backward/sparse_bw_api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/backward/sparse_bw_api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_bw_api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/sparse_bw_api.cc')
 
     options = parser.parse_args()
 

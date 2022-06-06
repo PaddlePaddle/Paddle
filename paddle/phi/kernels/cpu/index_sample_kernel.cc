@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
+
 #include <cmath>
 #include <fstream>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -41,7 +43,7 @@ void IndexSampleInner(const Context &context,
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
   paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
+  paddle::framework::TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {

@@ -26,8 +26,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.distributed as dist
 import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
 from test_dist_base import print_to_err, print_to_out, runtime_main, TestParallelDyGraphRunnerBase
 
 seed = 90
@@ -37,6 +39,7 @@ batch_num = 1000
 
 
 class SimpleNet(fluid.Layer):
+
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.net_a = Linear(input_dim=10, output_dim=20)
@@ -51,10 +54,12 @@ class SimpleNet(fluid.Layer):
 
 
 class TestNoSync(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
         model = SimpleNet()
-        train_reader = paddle.batch(
-            fake_sample_reader(), batch_size=batch_size, drop_last=True)
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
         optimizer = paddle.optimizer.SGD(learning_rate=0.001,
                                          parameters=model.parameters())
         return model, train_reader, optimizer
@@ -67,7 +72,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         loss = out.sum() / len(batch)
         return loss
 
-    def run_trainer(self, args):
+    def run_trainer_func(self, args):
         if fluid.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
@@ -86,56 +91,41 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
-                if not args.find_unused_parameters:
-                    model = paddle.DataParallel(
-                        model, find_unused_parameters=False)
-                else:
-                    model = paddle.DataParallel(
-                        model, find_unused_parameters=True)
-                print_to_err(type(self).__name__, "model built in dygraph")
-            out_losses = []
-            print_to_err(type(self).__name__, "begin to run dygraph training")
-            for step_id, data in enumerate(train_reader()):
-                data = self._get_data(data, args)
-                if step_id == RUN_STEP:
-                    break
-                if step_id % 3 != 0:
-                    if args.update_method == "nccl2":
-                        with model.no_sync():
-                            loss = self.run_one_loop(model, opt, data)
-                            loss.backward()
-                    else:
-                        loss = self.run_one_loop(model, opt, data)
-                        loss.backward()
-                else:
-                    loss = self.run_one_loop(model, opt, data)
-                    loss.backward()
-                    opt.minimize(loss)
-                    print_to_err(
-                        type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss.numpy()))
-                    out_losses.append(loss.numpy())
+                model = paddle.DataParallel(
+                    model, find_unused_parameters=args.find_unused_parameters)
+            print_to_err(type(self).__name__, "model built in dygraph")
+            out_losses = self.model_train(args, model, opt, train_reader)
+            print_to_out(out_losses)
+            return out_losses
 
-                    if not args.accumulate_gradient:
-                        model.clear_gradients()
-        print_to_out(out_losses)
+    def run_trainer_with_spawn_func(self, args):
+        # 1. enable dygraph
+        paddle.disable_static()
 
-    def run_trainer_with_spawn(self, args):
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
+        # 2. init seed
+        seed = 90
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
         np.random.seed(seed)
         random.seed(seed)
-        args.trainer_id = dist.get_rank()
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
 
-        if args.update_method == "nccl2":
-            dist.init_parallel_env()
+        # 3. init parallel env
+        if args.update_method in ["nccl2", "gloo"]:
+            paddle.distributed.init_parallel_env()
+
+        # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
-            if args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
+        if args.update_method in ["nccl2", "gloo"]:
+            model = paddle.DataParallel(
+                model, find_unused_parameters=args.find_unused_parameters)
 
+        out_losses = self.model_train(args, model, opt, train_reader)
+        print_to_out(out_losses)
+        return out_losses
+
+    def model_train(self, args, model, opt, train_reader):
         out_losses = []
         for step_id, data in enumerate(train_reader()):
             data = self._get_data(data, args)
@@ -153,16 +143,13 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 loss = self.run_one_loop(model, opt, data)
                 loss.backward()
                 opt.minimize(loss)
-                print_to_err(
-                    type(self).__name__,
-                    "loss at step %d: %f" % (step_id, loss.numpy()))
                 out_losses.append(loss.numpy())
                 model.clear_gradients()
-        print_to_out(out_losses)
         return out_losses
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.random_sample((10, )).astype('float32')

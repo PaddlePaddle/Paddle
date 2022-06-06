@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -17,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {
@@ -108,6 +109,22 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
     return true;
   }
   return false;
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+std::vector<vartype::Type> get_xpu_kp_op_support_type(
+    const std::string& op_name, phi::backends::xpu::XPUVersion version) {
+  std::vector<vartype::Type> res;
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
+                                                              : get_kp_ops();
+  if (ops.find(op_name) != ops.end()) {
+    XPUKernelSet& type_set = ops[op_name];
+    for (auto& item : type_set) {
+      res.push_back(item.data_type_);
+    }
+  }
+  return res;
 }
 #endif
 

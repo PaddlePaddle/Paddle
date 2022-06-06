@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 np.random.seed(1)
@@ -36,8 +37,10 @@ def maxout_forward_naive(x, groups, channel_axis):
 
 
 class TestMaxOutOp(OpTest):
+
     def setUp(self):
         self.op_type = "maxout"
+        self.python_api = paddle.nn.functional.maxout
         self.dtype = 'float64'
         self.shape = [3, 6, 2, 4]
         self.groups = 2
@@ -55,28 +58,32 @@ class TestMaxOutOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
+
     def set_attrs(self):
         self.axis = -1
 
 
 class TestMaxOutOpAxis1(TestMaxOutOp):
+
     def set_attrs(self):
         self.axis = 3
 
 
 class TestMaxOutOpFP32(TestMaxOutOp):
+
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestMaxOutOpGroups(TestMaxOutOp):
+
     def set_attrs(self):
         self.groups = 3
 
@@ -137,12 +144,17 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[2, 4, 6, 8], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[2, 4, 6, 8],
+                                        dtype='int32')
             self.assertRaises(TypeError, F.maxout, x_int32)
 
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
+
+    def test_dygraph_final_state_api(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
 
 
 if __name__ == '__main__':

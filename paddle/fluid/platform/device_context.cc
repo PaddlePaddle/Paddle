@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+
 #include <functional>
 #include <memory>
 #include <set>
+
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -159,14 +161,17 @@ inline void EmplaceDeviceContext(
               cuda_ctx,
               platform::errors::InvalidArgument(
                   "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
-          // Note: A trick method to init context, why GetAllocator interface
-          // needs a stream parameter?
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(p, cuda_ctx->stream())
+                                    .GetAllocator(p)
                                     .get());
+          dev_ctx->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
-              framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
+              framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
         } else {
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
@@ -517,10 +522,10 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
   phi::GPUContext::PartialInitWithoutAllocator();
   cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
+  auto& instance = memory::allocation::AllocatorFacade::Instance();
+  instance.SetDefaultStream(place, phi::GPUContext::stream());
   workspace_.reset(new phi::DnnWorkspaceHandle(
-      memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place, phi::GPUContext::stream())
-          .get()));
+      instance.GetAllocator(place).get(), stream()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -533,6 +538,7 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 void CUDADeviceContext::Wait() const {
+  VLOG(4) << "CUDA context(" << this << ")  Wait";
   if (thread_ctx_.count(this)) {
     context()->Stream()->Wait();
     return;
@@ -618,8 +624,9 @@ phi::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
     // return workspace_.get();
     return phi::DnnWorkspaceHandle(
         memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(GetPlace(), phi::GPUContext::stream())
-            .get());
+            .GetAllocator(GetPlace())
+            .get(),
+        stream());
   }
   return phi::GPUContext::cudnn_workspace_handle();
 }
@@ -743,8 +750,9 @@ dnnl::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
 }
 
 void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
+  VLOG(4) << tls().get_curr_exec() << " " << ptr;
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  if (!block_next_cache_clearing_) {
+  if (block_next_cache_clearing_ == 0) {
     VLOG(3) << "Clearing DNNL cache.";
     // If no specific executor pointer then clear
     // everything. For executor pointer then clear only
@@ -762,9 +770,20 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
         s.second->erase(ptr);
       }
     }
+    // Reset paddle layout to NCHW
+    VLOG(3) << "Resetting Paddle data layout to NCHW.";
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   } else {
-    VLOG(3) << "Prevented Clearing DNNL cache.";
-    block_next_cache_clearing_ = false;
+    --block_next_cache_clearing_;
+    VLOG(3) << "Prevented Clearing DNNL cache. Updated "
+               "block_next_cache_clearing_ : "
+            << block_next_cache_clearing_;
+    PADDLE_ENFORCE_GE(block_next_cache_clearing_, 0,
+                      platform::errors::InvalidArgument(
+                          "Cache clearing mark should be non-negative "
+                          ". But received %d.",
+                          block_next_cache_clearing_));
   }
 }
 
@@ -790,8 +809,10 @@ void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  VLOG(3) << "Next DNNL cache clearing has been blocked.";
-  block_next_cache_clearing_ = true;
+  ++block_next_cache_clearing_;
+  VLOG(3) << "Next DNNL cache clearing has been blocked. Updated "
+             "block_next_cache_clearing_ : "
+          << block_next_cache_clearing_;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {

@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -44,6 +45,18 @@ def run_dygraph(x_np, op_str, use_gpu=True):
     x = paddle.to_tensor(x_np)
     dygraph_result = getattr(paddle.tensor, op_str)(x)
     return dygraph_result
+
+
+def run_eager(x_np, op_str, use_gpu=True):
+    with paddle.fluid.dygraph.guard():
+        with _test_eager_guard():
+            place = paddle.CPUPlace()
+            if use_gpu and fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+
+            x = paddle.to_tensor(x_np)
+            dygraph_result = getattr(paddle.tensor, op_str)(x)
+            return dygraph_result
 
 
 def np_data_generator(low, high, np_shape, type, sv_list, op_str, *args,
@@ -107,11 +120,14 @@ def test(test_case, op_str, use_gpu=False):
         x_np, result_np = np_data_generator(**meta_data)
         static_result = run_static(x_np, meta_data['type'], op_str, use_gpu)
         dygraph_result = run_dygraph(x_np, op_str, use_gpu)
+        eager_result = run_eager(x_np, op_str, use_gpu)
         test_case.assertTrue((static_result == result_np).all())
         test_case.assertTrue((dygraph_result.numpy() == result_np).all())
+        test_case.assertTrue((eager_result.numpy() == result_np).all())
 
 
 class TestCPUNormal(unittest.TestCase):
+
     def test_inf(self):
         test(self, 'isinf')
 
@@ -123,6 +139,7 @@ class TestCPUNormal(unittest.TestCase):
 
 
 class TestCUDANormal(unittest.TestCase):
+
     def test_inf(self):
         test(self, 'isinf', True)
 
@@ -134,6 +151,7 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+
     def test_bad_input(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
@@ -158,4 +176,5 @@ class TestError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

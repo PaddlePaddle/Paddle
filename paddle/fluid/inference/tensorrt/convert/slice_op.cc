@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/special_slice_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -44,6 +43,8 @@ class SliceOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+    std::vector<int> decrease_axises =
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -72,45 +73,12 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss() && engine_->with_ernie() &&
-          input_dims.nbDims == 4) {
-        std::vector<nvinfer1::ITensor*> plugin_inputs;
-        if (engine_->with_interleaved()) {
-          auto* shuffler_slice = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-          nvinfer1::Permutation transpose_embed{2, 1, 0, 3};
-          shuffler_slice->setSecondTranspose(transpose_embed);
-          engine_->SetTensorDynamicRange(shuffler_slice->getOutput(0),
-                                         out_scale);
-          shuffler_slice->setName(
-              ("SpecialSlice_interleaved: transpose: (Output: " + output_name +
-               ")")
-                  .c_str());
-          plugin_inputs.emplace_back(shuffler_slice->getOutput(0));
-        } else {
-          plugin_inputs.emplace_back(input);
-        }
-        std::string pos_name;
-        if (engine_->Has("ernie_pos_name")) {
-          pos_name = engine_->Get<std::string>("ernie_pos_name");
-        } else {
-          // hard code for compatibility
-          pos_name = engine_->network()->getInput(2)->getName();
-        }
-        plugin_inputs.emplace_back(
-            engine_->GetITensor(pos_name));  // cu_seqlens, eval_placeholder_2
-
-        // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-        plugin::SpecialSlicePluginDynamic* plugin =
-            new plugin::SpecialSlicePluginDynamic();
-        layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
-                                          plugin_inputs.size(), plugin);
-      } else {
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::SlicePluginDynamic* plugin =
-            new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
-        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
-      }
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      int decrease_axis = decrease_axises.size() == 0 ? -1 : decrease_axises[0];
+      plugin::SlicePluginDynamic* plugin = new plugin::SlicePluginDynamic(
+          starts, ends, axes, decrease_axis, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, 1, plugin);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

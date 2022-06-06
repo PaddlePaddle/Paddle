@@ -162,6 +162,7 @@ gray_list = {
     'split',
     'fused_feedforward',
     'fused_attention',
+    'fused_multi_transformer',
 }
 
 # The set of ops that don't support fp16 calculation
@@ -173,6 +174,9 @@ if core.is_compiled_with_xpu():
 elif core.is_compiled_with_npu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'NPU', core.VarDesc.VarType.FP16)
+elif core.is_compiled_with_mlu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'MLU', core.VarDesc.VarType.FP16)
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
         'GPU', core.VarDesc.VarType.FP16)

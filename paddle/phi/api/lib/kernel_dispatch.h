@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
@@ -33,15 +35,17 @@ namespace paddle {
 namespace experimental {
 
 namespace detail {
-BackendSet GetTensorBackendSet(const Tensor& t);
+BackendSet GetTensorBackendSet(const phi::TensorBase& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
-  DENSE_TENSOR_KENREL,  // kernel for DenseTensor
-  SELECTED_ROWS_KENREL  // kernel for SelectedRows
+  DENSE_TENSOR_KENREL,   // kernel for DenseTensor
+  SELECTED_ROWS_KENREL,  // kernel for SelectedRows
+  SPARSE_COO_KERNEL,     // kernel for SparseCooTensor
+  SPARSE_CSR_KERNEL      // kernel for SparseCsrTensor
 };
 
 // TODO(chenweihang): support DataLayout and DataType selected
@@ -92,24 +96,40 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
-  void operator()(const Tensor& x) {
-    key_set.backend_set = key_set.backend_set | detail::GetTensorBackendSet(x);
-    // TODO(chenweihang): selecte multi layout and dtype
-    key_set.layout = x.layout();
-    key_set.dtype = x.type();
-    dtype_set = dtype_set | DataTypeSet(x.dtype());
+  inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
+    key_set.backend_set =
+        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    // TODO(chenweihang): select multi layout and dtype
+    key_set.layout = tensor.layout();
+    key_set.dtype = tensor.dtype();
+    dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
     }
   }
 
+  void operator()(const Tensor& x) {
+    const auto* tensor = x.impl().get();
+    if (tensor) {
+      AssignKernelKeySet(*tensor);
+    }
+  }
+
   void operator()(const std::vector<Tensor>& x) {
+    const phi::TensorBase& tensor = *x.at(0).impl();
     key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(x[0]);
-    // TODO(chenweihang): selecte multi layout and dtype
-    key_set.layout = x[0].layout();
-    key_set.dtype = x[0].type();
+        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    // TODO(chenweihang): select multi layout and dtype
+    key_set.layout = tensor.layout();
+    key_set.dtype = tensor.dtype();
+  }
+
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
+      const phi::TensorBase& tensor = *(x.get_ptr()->impl());
+      AssignKernelKeySet(tensor);
+    }
   }
 
   // skip other type args, these args don't used in kernel selection
@@ -127,6 +147,10 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   void operator()(const Tensor& x) {
     if (phi::SelectedRows::classof(x.impl().get())) {
       kernel_type = KernelType::SELECTED_ROWS_KENREL;
+    } else if (phi::SparseCooTensor::classof(x.impl().get())) {
+      kernel_type = KernelType::SPARSE_COO_KERNEL;
+    } else if (phi::SparseCsrTensor::classof(x.impl().get())) {
+      kernel_type = KernelType::SPARSE_CSR_KERNEL;
     }
   }
 
@@ -154,7 +178,7 @@ DataType ParseDataType(const Tensor& tensor);
 DataType ParseDataType(const std::vector<Tensor>& tensors);
 DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
 
-Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Place& place);
 Backend ParseBackend(const Tensor& tensor);
 template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
@@ -163,7 +187,7 @@ Backend ParseBackend(T t, Args... args) {
   return static_cast<Backend>(64 -
                               detail::CountLeadingZeros(backend_set.bitset()));
 }
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
 DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
+
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
@@ -25,7 +26,7 @@ REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 
-int32_t PSClient::configure(
+int32_t PSClient::Configure(
     const PSParameter &config,
     const std::map<uint64_t, std::vector<paddle::distributed::Region>> &regions,
     PSEnvironment &env, size_t client_id) {
@@ -46,15 +47,15 @@ int32_t PSClient::configure(
     auto *accessor = CREATE_PSCORE_CLASS(
         ValueAccessor,
         work_param.downpour_table_param(i).accessor().accessor_class());
-    accessor->configure(work_param.downpour_table_param(i).accessor());
-    accessor->initialize();
+    accessor->Configure(work_param.downpour_table_param(i).accessor());
+    accessor->Initialize();
     _table_accessors[work_param.downpour_table_param(i).table_id()].reset(
         accessor);
   }
-  return initialize();
+  return Initialize();
 }
 
-PSClient *PSClientFactory::create(const PSParameter &ps_config) {
+PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
   if (!config.has_downpour_server_param()) {
     LOG(ERROR) << "miss downpour_server_param in ServerParameter";
@@ -81,7 +82,7 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
     return NULL;
   }
 
-  TableManager::instance().initialize();
+  TableManager::Instance().Initialize();
   VLOG(3) << "Create PSClient[" << service_param.client_class() << "] success";
   return client;
 }

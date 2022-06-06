@@ -34,11 +34,13 @@ paddle_apis = {
 
 
 class TestRealOp(OpTest):
+
     def setUp(self):
         # switch to static
         paddle.enable_static()
         # op test attrs
         self.op_type = "real"
+        self.python_api = paddle.real
         self.dtype = np.float64
         self.init_input_output()
         # backward attrs
@@ -46,7 +48,8 @@ class TestRealOp(OpTest):
 
     def init_input_output(self):
         self.inputs = {
-            'X': np.random.random(
+            'X':
+            np.random.random(
                 (20, 5)).astype(self.dtype) + 1j * np.random.random(
                     (20, 5)).astype(self.dtype)
         }
@@ -54,26 +57,28 @@ class TestRealOp(OpTest):
 
     def init_grad_input_output(self):
         self.grad_out = np.ones((20, 5), self.dtype)
-        self.grad_x = np.real(self.grad_out) + 1j * np.zeros(
-            self.grad_out.shape)
+        self.grad_x = np.real(
+            self.grad_out) + 1j * np.zeros(self.grad_out.shape)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
 
 class TestImagOp(TestRealOp):
+
     def setUp(self):
         # switch to static
         paddle.enable_static()
         # op test attrs
         self.op_type = "imag"
+        self.python_api = paddle.imag
         self.dtype = np.float64
         self.init_input_output()
         # backward attrs
@@ -81,11 +86,12 @@ class TestImagOp(TestRealOp):
 
     def init_grad_input_output(self):
         self.grad_out = np.ones((20, 5), self.dtype)
-        self.grad_x = np.zeros(self.grad_out.shape) + 1j * np.real(
-            self.grad_out)
+        self.grad_x = np.zeros(
+            self.grad_out.shape) + 1j * np.real(self.grad_out)
 
 
 class TestRealAPI(unittest.TestCase):
+
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -98,6 +104,7 @@ class TestRealAPI(unittest.TestCase):
         self._shape = [2, 20, 2, 3]
 
     def test_in_static_mode(self):
+
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(
                 dtype) + 1j * np.random.random(self._shape).astype(dtype)
@@ -151,6 +158,7 @@ class TestRealAPI(unittest.TestCase):
 
 
 class TestImagAPI(TestRealAPI):
+
     def setUp(self):
         # switch to static
         paddle.enable_static()

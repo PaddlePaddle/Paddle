@@ -29,28 +29,32 @@ from paddle.hapi.callbacks import config_callbacks
 from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 # Accelerate unittest
 class CustomMnist(MNIST):
+
     def __len__(self):
         return 8
 
 
 class TestReduceLROnPlateau(unittest.TestCase):
-    def test_reduce_lr_on_plateau(self):
+
+    def func_reduce_lr_on_plateau(self):
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=net.parameters())
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=net.parameters())
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
-        callbacks = paddle.callbacks.ReduceLROnPlateau(
-            patience=1, verbose=1, cooldown=1)
+        callbacks = paddle.callbacks.ReduceLROnPlateau(patience=1,
+                                                       verbose=1,
+                                                       cooldown=1)
         model.fit(train_dataset,
                   val_dataset,
                   batch_size=8,
@@ -59,7 +63,12 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   epochs=10,
                   callbacks=[callbacks])
 
-    def test_warn_or_error(self):
+    def test_reduce_lr_on_plateau(self):
+        with _test_eager_guard():
+            self.func_reduce_lr_on_plateau()
+        self.func_reduce_lr_on_plateau()
+
+    def func_warn_or_error(self):
         with self.assertRaises(ValueError):
             paddle.callbacks.ReduceLROnPlateau(factor=2.0)
         # warning
@@ -69,14 +78,15 @@ class TestReduceLROnPlateau(unittest.TestCase):
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameters=net.parameters())
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=net.parameters())
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
-        callbacks = paddle.callbacks.ReduceLROnPlateau(
-            monitor='miou', patience=3, verbose=1)
+        callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='miou',
+                                                       patience=3,
+                                                       verbose=1)
         model.fit(train_dataset,
                   val_dataset,
                   batch_size=8,
@@ -91,8 +101,11 @@ class TestReduceLROnPlateau(unittest.TestCase):
             parameters=net.parameters())
 
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
-        callbacks = paddle.callbacks.ReduceLROnPlateau(
-            monitor='acc', mode='max', patience=3, verbose=1, cooldown=1)
+        callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='acc',
+                                                       mode='max',
+                                                       patience=3,
+                                                       verbose=1,
+                                                       cooldown=1)
         model.fit(train_dataset,
                   val_dataset,
                   batch_size=8,
@@ -100,6 +113,11 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   save_freq=10,
                   epochs=3,
                   callbacks=[callbacks])
+
+    def test_warn_or_error(self):
+        with _test_eager_guard():
+            self.func_warn_or_error()
+        self.func_warn_or_error()
 
 
 if __name__ == '__main__':

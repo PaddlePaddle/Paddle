@@ -13,12 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class XPUROIAlignOpKernel : public framework::OpKernel<T> {
@@ -34,7 +38,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto aligned = ctx.Attr<bool>("aligned");
 
-    auto in_dims = in->dims();
+    const auto& in_dims = in->dims();
     int batch_size = in_dims[0];
     int channels = in_dims[1];
     int height = in_dims[2];

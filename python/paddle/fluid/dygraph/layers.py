@@ -25,6 +25,8 @@ from copy import deepcopy
 import inspect
 
 import paddle
+import paddle.profiler as profiler
+from paddle.profiler.utils import in_profiler_mode
 
 from . import parallel_helper
 from .. import unique_name
@@ -35,7 +37,7 @@ from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, 
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -106,7 +108,7 @@ class Layer(object):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_in_dynamic_mode = framework.in_dygraph_mode()
+        self._init_in_dynamic_mode = framework._non_static_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -161,7 +163,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -202,7 +204,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -421,10 +423,9 @@ class Layer(object):
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
-    @deprecated(
-        since="2.0.0",
-        update_to="paddle.nn.Layer.create_tensor",
-        reason="New api in create_tensor, easier to use.")
+    @deprecated(since="2.0.0",
+                update_to="paddle.nn.Layer.create_tensor",
+                reason="New api in create_tensor, easier to use.")
     def create_variable(self, name=None, persistable=None, dtype=None):
         """
 
@@ -539,8 +540,7 @@ class Layer(object):
 
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
+            param for _, param in self.named_parameters(
                 include_sublayers=include_sublayers)
         ]
         return ret
@@ -656,8 +656,8 @@ class Layer(object):
         """
         params_set = set()
         named_sublayers = self.named_sublayers(
-            prefix=prefix,
-            include_self=True) if include_sublayers else zip([prefix], [self])
+            prefix=prefix, include_self=True) if include_sublayers else zip(
+                [prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             params = sublayer._parameters.items()
             for key, param in params:
@@ -701,9 +701,9 @@ class Layer(object):
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
-                    prefix=layer_prefix, include_self=True,
-                    layers_set=layers_set):
+            for p, l in layer.named_sublayers(prefix=layer_prefix,
+                                              include_self=True,
+                                              layers_set=layers_set):
                 yield p, l
 
     def register_buffer(self, name, tensor, persistable=True):
@@ -760,10 +760,11 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase
+                                         or type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a core.VarBase, but received {}.".
-                format(type(tensor).__name__))
+                "The registered buffer should be a Paddle.Tensor, but received {}."
+                .format(type(tensor).__name__))
         else:
             self._buffers[name] = tensor
             if persistable:
@@ -796,8 +797,7 @@ class Layer(object):
 
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
+            buffer for _, buffer in self.named_buffers(
                 include_sublayers=include_sublayers)
         ]
         return ret
@@ -840,8 +840,8 @@ class Layer(object):
         """
         buffers_set = set()
         named_sublayers = self.named_sublayers(
-            prefix=prefix,
-            include_self=True) if include_sublayers else zip([prefix], [self])
+            prefix=prefix, include_self=True) if include_sublayers else zip(
+                [prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             buffers = sublayer._buffers.items()
             for key, buffer in buffers:
@@ -904,7 +904,12 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        if in_profiler_mode():
+            with profiler.RecordEvent(self.full_name(),
+                                      profiler.TracerEventType.Forward):
+                outputs = self.forward(*inputs, **kwargs)
+        else:
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -914,7 +919,12 @@ class Layer(object):
         return outputs
 
     def __call__(self, *inputs, **kwargs):
-        return self._dygraph_call_func(*inputs, **kwargs)
+        if (not in_declarative_mode()) and (not self._forward_pre_hooks) \
+            and (not self._forward_post_hooks) and (not self._built) and in_dygraph_mode() and (not in_profiler_mode()):
+            self._build_once(*inputs, **kwargs)
+            return self.forward(*inputs, **kwargs)
+        else:
+            return self._dygraph_call_func(*inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
         """
@@ -1021,8 +1031,8 @@ class Layer(object):
         elif parameter is not None and not isinstance(parameter,
                                                       framework.Parameter):
             raise TypeError(
-                "The parameter to be added should be a Parameter, but received {}.".
-                format(type(parameter).__name__))
+                "The parameter to be added should be a Parameter, but received {}."
+                .format(type(parameter).__name__))
         else:
             if parameter is None:
                 self._parameters[name] = None
@@ -1059,8 +1069,9 @@ class Layer(object):
             return already_registed
 
         if not isinstance(attrs, dict):
-            raise TypeError("attrs should be type(dict), but received {}".
-                            format(type(attrs).__name__))
+            raise TypeError(
+                "attrs should be type(dict), but received {}".format(
+                    type(attrs).__name__))
 
         # NOTE: Overwrite behavior for same key.
         self._customized_attrs.update(attrs)
@@ -1076,8 +1087,8 @@ class Layer(object):
             post_hook_helper = self.register_forward_post_hook(
                 set_op_customized_attrs_post_hook)
             if len(self._forward_post_hooks) > 1:
-                self._forward_post_hooks.move_to_end(
-                    post_hook_helper._hook_id, last=False)
+                self._forward_post_hooks.move_to_end(post_hook_helper._hook_id,
+                                                     last=False)
 
             assert len(self._op_recorder.hooks) == 1
 
@@ -1110,6 +1121,7 @@ class Layer(object):
         return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
+
         def _remove_if_exist(*dicts):
             for d in dicts:
                 if name in d:
@@ -1134,7 +1146,8 @@ class Layer(object):
             if value is not None:
                 raise TypeError(
                     "assignment to parameter '{}' should be of type Parameter or None, but got '{}'"
-                    .format(name, type(value).__name__))
+                    .format(name,
+                            type(value).__name__))
             params[name] = None
         else:
             layers = self.__dict__.get('_sub_layers', None)
@@ -1150,11 +1163,12 @@ class Layer(object):
                 if value is not None:
                     raise TypeError(
                         "assignment to sublayer '{}' should be of type Layer or None, but got '{}'"
-                        .format(name, type(value).__name__))
+                        .format(name,
+                                type(value).__name__))
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase:
+                if isinstance(value, (core.VarBase, core.eager.Tensor)):
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
@@ -1165,6 +1179,8 @@ class Layer(object):
                     # add a persistable buffer.
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
+                    if not value.name:
+                        value.name = unique_name.generate('_buffers_' + name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
@@ -1179,17 +1195,18 @@ class Layer(object):
                         if in_declarative_mode() and _buffers[name] is None:
                             raise RuntimeError(
                                 'In Dy2stat, self.{0} is a buffer and self.{0} is '
-                                'not allowed to be set to Variable when self.{0} is None.'.
-                                format(name))
-                        elif _buffers[name] is None or type(
-                                getattr(self, name)) == core.VarBase:
+                                'not allowed to be set to Variable when self.{0} is None.'
+                                .format(name))
+                        elif _buffers[name] is None or type(getattr(
+                                self, name)) == core.VarBase:
                             _buffers[name] = assign(value)
                         else:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
-                            .format(name, type(value).__name__))
+                            .format(name,
+                                    type(value).__name__))
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
                         # it will be remarked as a buffer with same `persistable` attribute.
@@ -1439,8 +1456,8 @@ class Layer(object):
         def _check_match(key, param):
             state = state_dict.get(key, None)
             if state is None:
-                raise ValueError("{} is not found in the provided dict.".format(
-                    key))
+                raise ValueError(
+                    "{} is not found in the provided dict.".format(key))
             if (isinstance(state, dict) or isinstance(state, list)):
                 if (len(state) != len(param)):
                     raise ValueError("{} receieves the length of {}, "
@@ -1467,7 +1484,7 @@ class Layer(object):
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
         else:
@@ -1492,8 +1509,8 @@ class Layer(object):
             executor = Executor(_get_device())._default_executor
             # restore parameter states
             core._create_loaded_parameter(
-                [param for param, state in matched_param_state],
-                global_scope(), executor)
+                [param for param, state in matched_param_state], global_scope(),
+                executor)
             for param, state in matched_param_state:
                 _set_var(param, state)
 
@@ -1545,11 +1562,10 @@ class Layer(object):
                 #        [ 0.33960250,  0.96878713]])
 
         '''
-        return self._to_impl(
-            device=device,
-            dtype=dtype,
-            blocking=blocking,
-            include_sublayers=True)
+        return self._to_impl(device=device,
+                             dtype=dtype,
+                             blocking=blocking,
+                             include_sublayers=True)
 
     def _apply(self, func, device, dtype, blocking, include_sublayers=True):
         if include_sublayers:

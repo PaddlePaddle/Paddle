@@ -24,11 +24,13 @@ import random
 
 
 class TestElementwiseModOp(OpTest):
+
     def init_kernel_type(self):
         self.use_mkldnn = False
 
     def setUp(self):
         self.op_type = "elementwise_mod"
+        self.python_api = paddle.remainder
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -43,7 +45,10 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        if self.attrs['axis'] == -1:
+            self.check_output(check_eager=True)
+        else:
+            self.check_output(check_eager=False)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -58,6 +63,7 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
+
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -67,6 +73,7 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
+
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -76,15 +83,20 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        self.check_output()
+        if self.attrs['axis'] == -1:
+            self.check_output(check_eager=True)
+        else:
+            self.check_output(check_eager=False)
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")

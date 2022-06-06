@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid.core as core
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
-from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
 
 
@@ -40,7 +40,7 @@ def get_world_process_group():
 
 def new_process_group(ranks):
     global _g_process_group_map
-    # A key constructed from ranks is used for avoiding duplication 
+    # A key constructed from ranks is used for avoiding duplication
     new_key = ''.join(map(str, sorted(ranks)))
     for pg_id, pg in _g_process_group_map.items():
         cur_key = ''.join(map(str, sorted(pg.ranks)))
@@ -57,12 +57,13 @@ def new_process_group(ranks):
 
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
-# Fleet also has a collective helper which uses ops to initialize communication in 
+# Fleet also has a collective helper which uses ops to initialize communication in
 # Paddle/python/paddle/distributed/fleet/meta_optimizers/common.py. We use the first one
-# because it seems simple. This should be enhanced to manage the process membership and 
-# the instantiation process in a more general way. In the future, the process group may 
+# because it seems simple. This should be enhanced to manage the process membership and
+# the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
+
     def __init__(self, group_id, ranks):
         if group_id == 0 and get_process_group(0) is not None:
             assert group_id != 0, "Process group id 0 is reserved for all ranks."
@@ -129,10 +130,10 @@ class ProcessGroup:
             else:
                 assert False, ("No CUDA device found")
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of
         # hang caused by cross-creation of new_group
         tmp = paddle.to_tensor(
-            [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [1], dtype="int32") if _non_static_mode() else fill_constant(
                 [0], dtype="int32", value="1")
         paddle.distributed.all_reduce(tmp, use_calc_stream=True)
         paddle.distributed.wait(tmp)
@@ -156,6 +157,6 @@ class ProcessGroup:
 
 
 # Note that Process group 0 is reserved for representing all ranks.
-# At the begining, group 0 is empty and new ranks will be added automatically. 
+# At the beginning, group 0 is empty and new ranks will be added automatically.
 _g_process_group_map = {}
 _g_process_group_map[0] = ProcessGroup(0, [])

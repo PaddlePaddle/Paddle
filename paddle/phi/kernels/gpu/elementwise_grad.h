@@ -216,13 +216,13 @@ void ElementwiseAddGrad(const GPUContext &ctx,
         dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
                  PREDEFINED_BLOCK_SIZE,
              1);
-    SimpleElemwiseAddGradCUDAKernel<
-        T><<<grid_size, block_size, 0, ctx.stream()>>>(
-        dout.data<T>(),
-        size,
-        vec_size,
-        dx->mutable_data<T>(ctx.GetPlace()),
-        dy->mutable_data<T>(ctx.GetPlace()));
+    SimpleElemwiseAddGradCUDAKernel<T>
+        <<<grid_size, block_size, 0, ctx.stream()>>>(
+            dout.data<T>(),
+            size,
+            vec_size,
+            dx->mutable_data<T>(ctx.GetPlace()),
+            dy->mutable_data<T>(ctx.GetPlace()));
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
@@ -291,9 +291,12 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
         auto size = dy->numel();
         dim3 grid_size =
             dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-        SimpleElemwiseSubGradCUDAKernel<
-            T><<<grid_size, block_size, 0, ctx.stream()>>>(
-            dout.data<T>(), size, nullptr, dy->mutable_data<T>(ctx.GetPlace()));
+        SimpleElemwiseSubGradCUDAKernel<T>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                dout.data<T>(),
+                size,
+                nullptr,
+                dy->mutable_data<T>(ctx.GetPlace()));
       }
     } else {
       std::vector<int> reduce_dims =
@@ -316,12 +319,12 @@ void elementwise_sub_grad(const GPUContext &ctx,
   auto size = x.numel();
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-  SimpleElemwiseSubGradCUDAKernel<
-      T><<<grid_size, block_size, 0, ctx.stream()>>>(
-      dout.data<T>(),
-      size,
-      dx->mutable_data<T>(ctx.GetPlace()),
-      dy->mutable_data<T>(ctx.GetPlace()));
+  SimpleElemwiseSubGradCUDAKernel<T>
+      <<<grid_size, block_size, 0, ctx.stream()>>>(
+          dout.data<T>(),
+          size,
+          dx->mutable_data<T>(ctx.GetPlace()),
+          dy->mutable_data<T>(ctx.GetPlace()));
 }
 /*
 ******************************
@@ -360,4 +363,41 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
   }
 }
 
+/*
+******************************
+    Mul Grad
+******************************
+*/
+
+template <typename T>
+void ElementwiseMulGrad(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        const DenseTensor &dout,
+                        DenseTensor *dx,
+                        DenseTensor *dy,
+                        int axis) {
+  const auto place = dev_ctx.GetPlace();
+
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y, &x};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx,
+        place,
+        axis,
+        ins,
+        dout,
+        dx,
+        dy,
+        funcs::MultiplyGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &x};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
+  }
+}
 }  // namespace phi

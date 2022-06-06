@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
@@ -93,19 +94,24 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (allow_null) {
+    for (auto& output : it->second) {
+      if (output != nullptr) return true;
     }
+    return false;
+  } else {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
+    }
+    return true;
   }
-  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -323,20 +329,21 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
 }
 
 // TODO(paddle-dev): Can this be template?
-std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
+paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+InterpretercoreInferShapeContext::GetInputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
 }
 
-std::vector<InferShapeVarPtr>
+paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
 InterpretercoreInferShapeContext::GetOutputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
@@ -359,6 +366,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
   return GetDims(vars);
 }
 
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
+}
+
 std::vector<proto::VarType::Type>
 InterpretercoreInferShapeContext::GetInputsVarType(
     const std::string& name) const {
@@ -374,10 +386,11 @@ InterpretercoreInferShapeContext::GetOutputsVarType(
 void InterpretercoreInferShapeContext::SetOutputDim(const std::string& name,
                                                     const DDim& dim) {
   auto& vars = OutputVars(name);
-  PADDLE_ENFORCE_EQ(vars.size(), 1UL, platform::errors::InvalidArgument(
-                                          "Output(%s) should hold one element, "
-                                          "but now it holds %zu elements.",
-                                          name, vars.size()));
+  PADDLE_ENFORCE_EQ(
+      vars.size(), 1UL,
+      platform::errors::InvalidArgument("Output(%s) should hold one element, "
+                                        "but now it holds %zu elements.",
+                                        name, vars.size()));
   SetDim(vars[0], dim);
 }
 
@@ -385,6 +398,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
     const std::string& name, const std::vector<DDim>& dims) {
   auto& vars = OutputVars(name);
   SetDims(vars, dims);
+}
+
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
 }
 
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
@@ -632,8 +655,31 @@ void VariableScope::CheckExist(int id) const {
 }
 
 void VariableScope::CheckExist(const std::string& name) const {
-  PADDLE_ENFORCE_EQ(HasVar(name), true, platform::errors::NotFound(
-                                            "%s not in VariableScope.", name));
+  PADDLE_ENFORCE_EQ(
+      HasVar(name), true,
+      platform::errors::NotFound("%s not in VariableScope.", name));
+}
+
+void VariableScope::ClearListener() {
+  if (scope_ && listener_ && scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << scope_;
+    scope_->DelListener(listener_);
+  }
+  if (local_scope_ && listener_ && local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Clear listener " << listener_ << " for " << local_scope_;
+    local_scope_->DelListener(listener_);
+  }
+}
+
+void VariableScope::ResetListener() {
+  if (scope_ && listener_ && !scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << scope_;
+    scope_->AddListener(listener_);
+  }
+  if (local_scope_ && listener_ && !local_scope_->HasListener(listener_)) {
+    VLOG(4) << "Add listener " << listener_ << " for " << local_scope_;
+    local_scope_->AddListener(listener_);
+  }
 }
 
 VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
@@ -666,8 +712,9 @@ void VariableScopeListener::onClear() {}
 Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
     : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
-  PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
-                               "Required id >= 0, but received id = %d", id));
+  PADDLE_ENFORCE_GE(id, 0,
+                    platform::errors::PreconditionNotMet(
+                        "Required id >= 0, but received id = %d", id));
 }
 
 size_t Instruction::Id() const { return id_; }
@@ -691,6 +738,10 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
 phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+const std::map<int, int>& Instruction::InplaceBackMap() const {
+  return op_func_node_.inplace_back_map;
+}
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
@@ -721,6 +772,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {

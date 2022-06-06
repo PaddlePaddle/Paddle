@@ -23,6 +23,7 @@ import re
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
+
     def setUp(self):
         self._python_interp = sys.executable
         self._python_interp += " check_flags_use_mkldnn.py"
@@ -32,7 +33,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self.env[str("DNNL_VERBOSE")] = str("1")
         self.env[str("FLAGS_use_mkldnn")] = str("1")
 
-        self.relu_regex = b"^dnnl_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
+        self.relu_regex = b"^onednn_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
 
     def _print_when_false(self, cond, out, err):
         if not cond:
@@ -47,11 +48,10 @@ class TestFlagsUseMkldnn(unittest.TestCase):
     def test_flags_use_mkl_dnn(self):
         cmd = self._python_interp
 
-        proc = subprocess.Popen(
-            cmd.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=self.env)
+        proc = subprocess.Popen(cmd.split(" "),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                env=self.env)
 
         out, err = proc.communicate()
         returncode = proc.returncode

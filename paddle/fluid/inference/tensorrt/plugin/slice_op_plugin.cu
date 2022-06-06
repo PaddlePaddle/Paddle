@@ -14,9 +14,11 @@
 
 #include <cuda_runtime.h>
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
 
@@ -56,8 +58,6 @@ SlicePlugin::SlicePlugin(std::vector<int> starts, std::vector<int> ends,
                          std::vector<int> axes, bool with_fp16)
     : starts_(starts), ends_(ends), axes_(axes) {
   with_fp16_ = with_fp16;
-  cudaEventCreate(&copy_event_);
-  cudaStreamCreate(&copy_stream_);
 }
 
 SlicePlugin::SlicePlugin(void const *serial_data, size_t serial_length) {
@@ -66,15 +66,10 @@ SlicePlugin::SlicePlugin(void const *serial_data, size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &ends_);
   DeserializeValue(&serial_data, &serial_length, &axes_);
   DeserializeValue(&serial_data, &serial_length, &with_fp16_);
-  cudaEventCreate(&copy_event_);
-  cudaStreamCreate(&copy_stream_);
+  DeserializeValue(&serial_data, &serial_length, &offset_info_);
 }
 
-SlicePlugin::~SlicePlugin() {
-  cudaStreamDestroy(copy_stream_);
-  cudaEventDestroy(copy_event_);
-  cudaFree(offset_temp_data_);
-}
+SlicePlugin::~SlicePlugin() { cudaFree(offset_temp_data_); }
 
 SlicePlugin *SlicePlugin::clone() const TRT_NOEXCEPT {
   return new SlicePlugin(starts_, ends_, axes_, with_fp16_);
@@ -159,11 +154,7 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
   }
 
   cudaMemcpyAsync(offset_temp_data_, offset_info.data(),
-                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice,
-                  copy_stream_);
-
-  cudaEventRecord(copy_event_, copy_stream_);
-  cudaStreamWaitEvent(stream, copy_event_, 0);
+                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice, stream);
 
   int threads = 256;
   int blocks = (out_num + threads - 1) / threads;
@@ -190,7 +181,7 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
 size_t SlicePlugin::getSerializationSize() const TRT_NOEXCEPT {
   return getBaseSerializationSize() + SerializedSize(starts_) +
          SerializedSize(ends_) + SerializedSize(axes_) +
-         SerializedSize(with_fp16_);
+         SerializedSize(with_fp16_) + SerializedSize(offset_info_);
 }
 
 void SlicePlugin::serialize(void *buffer) const TRT_NOEXCEPT {
@@ -199,17 +190,17 @@ void SlicePlugin::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ends_);
   SerializeValue(&buffer, axes_);
   SerializeValue(&buffer, with_fp16_);
+  SerializeValue(&buffer, offset_info_);
 }
 
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 SlicePluginDynamic::SlicePluginDynamic(std::vector<int> starts,
                                        std::vector<int> ends,
-                                       std::vector<int> axes, bool with_fp16)
-    : starts_(starts), ends_(ends), axes_(axes) {
+                                       std::vector<int> axes, int decrease_axis,
+                                       bool with_fp16)
+    : starts_(starts), ends_(ends), axes_(axes), decrease_axis_(decrease_axis) {
   with_fp16_ = with_fp16;
-  cudaEventCreate(&copy_event_);
-  cudaStreamCreate(&copy_stream_);
 }
 
 SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
@@ -217,14 +208,12 @@ SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &starts_);
   DeserializeValue(&serialData, &serialLength, &ends_);
   DeserializeValue(&serialData, &serialLength, &axes_);
+  DeserializeValue(&serialData, &serialLength, &decrease_axis_);
   DeserializeValue(&serialData, &serialLength, &with_fp16_);
-  cudaEventCreate(&copy_event_);
-  cudaStreamCreate(&copy_stream_);
+  DeserializeValue(&serialData, &serialLength, &offset_info_);
 }
 
 void SlicePluginDynamic::destroy() TRT_NOEXCEPT {
-  cudaStreamDestroy(copy_stream_);
-  cudaEventDestroy(copy_event_);
   cudaFree(offset_temp_data_);
   delete this;
 }
@@ -233,7 +222,8 @@ int SlicePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t SlicePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t size = SerializedSize(starts_) + SerializedSize(ends_) +
-                SerializedSize(axes_) + SerializedSize(with_fp16_);
+                SerializedSize(axes_) + SerializedSize(decrease_axis_) +
+                SerializedSize(with_fp16_) + SerializedSize(offset_info_);
 
   return size;
 }
@@ -242,7 +232,9 @@ void SlicePluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, starts_);
   SerializeValue(&buffer, ends_);
   SerializeValue(&buffer, axes_);
+  SerializeValue(&buffer, decrease_axis_);
   SerializeValue(&buffer, with_fp16_);
+  SerializeValue(&buffer, offset_info_);
 }
 
 nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
@@ -264,6 +256,17 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
 #else
     ret.d[axes_[i]] = expr_builder.constant(end - start);
 #endif
+  }
+  if (decrease_axis_ != -1) {
+    nvinfer1::DimsExprs res;
+    res.nbDims = ret.nbDims - 1;
+    int j = 0;
+    for (size_t i = 0; i < in_dims.nbDims; i++) {
+      if (decrease_axis_ == i) continue;
+      res.d[j++] = expr_builder.operation(nvinfer1::DimensionOperation::kMAX,
+                                          *expr_builder.constant(0), *ret.d[i]);
+    }
+    return res;
   }
   return ret;
 }
@@ -300,14 +303,16 @@ bool SlicePluginDynamic::supportsFormatCombination(
 nvinfer1::DataType SlicePluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Slice Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Slice Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
-                    true, platform::errors::InvalidArgument(
-                              "The input type should be half or float"));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input type should be half or float"));
   return input_types[0];
 }
 
@@ -318,6 +323,10 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   auto out_dims = output_desc[0].dims;
+  if (decrease_axis_ != -1) {
+    out_dims = input_dims;
+    out_dims.d[decrease_axis_] = 1;
+  }
   auto num_dims = input_dims.nbDims;
   size_t out_num = ProductDim(out_dims);
 
@@ -342,23 +351,19 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     offsets[axes_[i]] = starts_[i];
   }
 
-  std::vector<int> offset_info;
+  offset_info_.resize(num_dims * 3);
   for (size_t i = 0; i < num_dims; ++i) {
-    offset_info.push_back(offsets[i]);
-    offset_info.push_back(extends[i]);
-    offset_info.push_back(seg_offsets[i]);
+    offset_info_[i * 3 + 0] = offsets[i];
+    offset_info_[i * 3 + 1] = extends[i];
+    offset_info_[i * 3 + 2] = seg_offsets[i];
   }
 
   if (offset_temp_data_ == nullptr) {
     cudaMalloc(&offset_temp_data_, 3 * num_dims * sizeof(int));
   }
 
-  cudaMemcpyAsync(offset_temp_data_, offset_info.data(),
-                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice,
-                  copy_stream_);
-
-  cudaEventRecord(copy_event_, copy_stream_);
-  cudaStreamWaitEvent(stream, copy_event_, 0);
+  cudaMemcpyAsync(offset_temp_data_, offset_info_.data(),
+                  sizeof(int) * 3 * num_dims, cudaMemcpyHostToDevice, stream);
 
   int threads = 256;
   int blocks = (out_num + threads - 1) / threads;

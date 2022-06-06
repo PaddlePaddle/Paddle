@@ -16,12 +16,13 @@ limitations under the License. */
 
 #include <complex>
 #include <mutex>
+
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-// Note(zhouwei): because lapack doesn't provide appropriate header file.
-// should expose API statement yourself.
+// Because lapack doesn't provide appropriate header file,
+// we should expose API statement yourself.
 
 // getrf_(For example)
 extern "C" void dgetrf_(

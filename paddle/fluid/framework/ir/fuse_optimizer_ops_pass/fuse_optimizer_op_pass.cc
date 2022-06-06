@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -172,7 +173,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       VLOG(6) << "The number of new gradients is " << new_grad_idx.size();
       if (new_grad_idx.size() == 1) return;
       // NOTE(zcd): If the gradients of backward stage and optimization stage
-      // have diff, Only take care of the the gradient of optimization stage.
+      // have diff, Only take care of the gradient of optimization stage.
       GradientsFilter(new_grad_idx, &opt_nodes, &aux_var_map);
     }
   }
@@ -622,6 +623,23 @@ void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
   }
 
   outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
+
+  auto nodes_to_string =
+      [](std::unordered_set<ir::Node *> nodes) -> std::string {
+    std::stringstream ss;
+    for (auto n : nodes) {
+      if (n->IsVar()) {
+        ss << n->Name() << " ";
+      }
+    }
+    return ss.str();
+  };
+
+  VLOG(4) << "add inputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(inputs);
+  VLOG(4) << "add outputs to " << fused_opt_node->Op()->Type() << ": "
+          << nodes_to_string(outputs);
+
   fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
                                 inputs.end());
   fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),

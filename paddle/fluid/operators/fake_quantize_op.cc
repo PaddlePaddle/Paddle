@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fake_quantize_op.h"
+
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -91,7 +93,7 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     T inv_s = inverse(s);
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
+          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
   }
@@ -109,7 +111,7 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
 
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
-          out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
+          out->mutable_data<T>(ctx.GetPlace()), phi::ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) =
         (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
@@ -144,7 +146,7 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
         trans(ctx, start, end, out_data + i * channel_size,
-              ClipFunctor<T>(-s, s));
+              phi::ClipFunctor<T>(-s, s));
       }
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_data[i];
@@ -163,7 +165,7 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
+          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
           for (int k = 0; k < step_j; k++) {
             cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]);
           }
@@ -200,7 +202,7 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
         auto* start = in_data + i * channel_size;
         auto* end = in_data + (i + 1) * channel_size;
         trans(ctx, start, end, out_data + i * channel_size,
-              ClipFunctor<T>(-s, s));
+              phi::ClipFunctor<T>(-s, s));
       }
       for (int i = 0; i < channel; i++) {
         T s = scale_data[i];
@@ -220,7 +222,7 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           auto* start = in_data + i * step_i + j * step_j;
           auto* end = in_data + i * step_i + (j + 1) * step_j;
           auto* cur_out_data = out_data + i * step_i + j * step_j;
-          trans(ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
+          trans(ctx, start, end, cur_out_data, phi::ClipFunctor<T>(-s, s));
           for (int k = 0; k < step_j; k++) {
             cur_out_data[k] = std::round(bin_cnt * inv_s * cur_out_data[k]) *
                               s / static_cast<T>(bin_cnt);
@@ -832,7 +834,7 @@ REGISTER_OP_VERSION(moving_average_abs_max_scale)
             "Delete output in order to make the inference model not "
             "save moving_average_abs_max_scale operator. This will "
             "make the quantitative model be correctly applied in inference."))
-    .AddCheckpoint(
-        R"ROC(Incompatible upgrade of output [Out])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "Out", "In order to support dygraph qat, add output again."));
+    .AddCheckpoint(R"ROC(Incompatible upgrade of output [Out])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewOutput(
+                       "Out",
+                       "In order to support dygraph qat, add output again."));

@@ -43,6 +43,7 @@ MlirFunctionExecutable::MlirFunctionExecutable(
                func_op.getNumResults()),
       MlirToRuntimeTranslator(&core_runtime_builder_),
       region_(&func_op.getRegion()),
+      kernel_registry_(kernel_registry),
       core_runtime_builder_(kernel_registry),
       function_table_(function_table) {}
 
@@ -54,6 +55,7 @@ MlirFunctionExecutable::MlirFunctionExecutable(
     : Function("", func_type.getNumInputs(), func_type.getNumResults()),
       MlirToRuntimeTranslator(&core_runtime_builder_),
       region_(region),
+      kernel_registry_(kernel_registry),
       core_runtime_builder_(kernel_registry),
       function_table_(function_table) {}
 
@@ -90,7 +92,7 @@ void MlirFunctionExecutable::BuildExecutables(
 
     if (EmitCallOp(&op, &function_table_)) continue;
 
-    if (EmitGeneralOp(&op)) continue;
+    if (EmitGeneralOp(&op, *kernel_registry_)) continue;
     LOG(FATAL) << "Not supported op: " << DumpToString(op);
   }
 

@@ -18,18 +18,18 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
 #endif
@@ -265,67 +265,6 @@ class ReduceKernel : public framework::OpKernel<T> {
         framework::TransToPhiDataType(cast_out_dtype), output);
   }
 };
-template <typename DeviceContext, typename OutT, typename Functor>
-class BoolReduceKernel : public framework::OpKernel<OutT> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<OutT>(context.GetPlace());
-
-    auto dims = context.Attr<std::vector<int>>("dim");
-    bool keep_dim = context.Attr<bool>("keep_dim");
-
-    // The dims has full dim, set the reduce_all is True
-    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
-    std::set<int> dims_set(dims.begin(), dims.end());
-    bool full_dim = true;
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) == dims_set.end()) {
-        full_dim = false;
-        break;
-      }
-    }
-    reduce_all = (reduce_all || full_dim);
-
-    if (reduce_all) {
-      // Flatten and reduce 1-D tensor
-      auto x = EigenVector<OutT>::Flatten(*input);
-      auto out = EigenScalar<OutT>::From(*output);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      auto reduce_dim = Eigen::array<int, 1>({{0}});
-      Functor functor;
-      functor(place, &x, &out, reduce_dim);
-    } else {
-      int ndim = input->dims().size();
-      int rdim = dims.size();
-      // comments for accelerating compiling temporarily.
-      if (ndim > 6) {
-        HandleLargeDim<DeviceContext, OutT, Functor>(context, input, output,
-                                                     dims, keep_dim);
-      } else {
-        HANDLE_DIM(6, 5);
-        HANDLE_DIM(6, 4);
-        HANDLE_DIM(6, 3);
-        HANDLE_DIM(6, 2);
-        HANDLE_DIM(6, 1);
-        HANDLE_DIM(5, 4);
-        HANDLE_DIM(5, 3);
-        HANDLE_DIM(5, 2);
-        HANDLE_DIM(5, 1);
-        HANDLE_DIM(4, 3);
-        HANDLE_DIM(4, 2);
-        HANDLE_DIM(4, 1);
-        HANDLE_DIM(3, 2);
-        HANDLE_DIM(3, 1);
-        HANDLE_DIM(2, 1);
-        HANDLE_DIM(1, 1);
-      }
-    }
-  }
-};
 
 template <typename DeviceContext, typename T, typename Functor>
 void LaunchReduceGradKernel(const framework::ExecutionContext& context,
@@ -545,8 +484,9 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_mlu_place(ctx.GetPlace()),
-          true, platform::errors::InvalidArgument(
-                    "float16 can only be used on GPU or NPU or MLU place"));
+          true,
+          platform::errors::InvalidArgument(
+              "float16 can only be used on GPU or NPU or MLU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -674,7 +614,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetOpType() const = 0;
 };
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
 template <typename T, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
@@ -687,9 +627,12 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     auto pt_out_dtype = paddle::framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
-
+#ifdef PADDLE_WITH_XPU_KP
+    auto& dev_ctx =
+        context.template device_context<paddle::platform::XPUDeviceContext>();
+#else
     auto& dev_ctx = context.cuda_device_context();
-
+#endif
     if (out_dtype >= 0) {
       output->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
     } else {
@@ -703,6 +646,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
   }
 };
 
+#ifndef PADDLE_WITH_XPU_KP
 template <typename T, template <typename, typename> class TransformOp>
 class ReduceCudaGradKernel : public framework::OpKernel<T> {
  public:
@@ -710,6 +654,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
     auto* in_x = context.Input<Tensor>("X");
+
     auto* d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -740,12 +685,107 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }
+
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
     phi::ReduceGrad<T, TransformOp<T, MPType>>(
         dev_ctx, pt_d_out.get(), pt_d_x.get(), pt_out_dtype,
         TransformOp<T, MPType>(reduce_num));
   }
 };
+
+template <typename T>
+struct EqualFunctor {
+  inline T initial() { return static_cast<T>(0.0f); }
+
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return static_cast<T>(a == b);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct DivideFunctor {
+  inline T initial() { return static_cast<T>(1.0f); }
+
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a / b; }
+};
+
+template <typename T, template <typename, typename> class TransformOp>
+class ReduceCudaAMaxAMinGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* out_y = context.Input<Tensor>("Out");
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto out_dtype = context.Attr<int>("in_dtype");
+    auto pt_out_dtype = framework::TransToPhiDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    // get reduce_dim and reduce_num for reduce_mean_grad
+    int dim_size = in_x->dims().size();
+    std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
+    auto update_dims = vectorize(d_x->dims());
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (in_x->dims())[i];
+      update_dims[i] = 1;
+    }
+    auto& dev_ctx = context.cuda_device_context();
+
+    // make new tensor reduce_out
+    phi::DenseTensor new_y(out_y->type());
+    new_y.ShareDataWith(*out_y);
+    new_y.Resize(phi::make_ddim(update_dims));
+
+    // make new tensor d_out
+    phi::DenseTensor new_dout(d_out->type());
+    new_dout.ShareDataWith(*d_out);
+    new_dout.Resize(phi::make_ddim(update_dims));
+    d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
+
+    auto new_in = paddle::experimental::MakePhiDenseTensor(*in_x);
+    auto new_in_tensor = new_in.get();
+
+    auto new_dx = paddle::experimental::MakePhiDenseTensor(*d_x);
+    auto new_dx_tensor = new_dx.get();
+
+    // make equal_out
+    phi::DenseTensor* equal_out = new phi::DenseTensor();
+    equal_out->Resize(in_x->dims());
+    dev_ctx.template Alloc<T>(equal_out);
+    auto equal_out_tensor = *equal_out;
+
+    // make new tensor equal_count
+    phi::DenseTensor* equal_count = new phi::DenseTensor();
+    equal_count->Resize(phi::make_ddim(update_dims));
+    dev_ctx.template Alloc<T>(equal_count);
+
+    // compute
+    // 1. equal_out = Equal(x, y)
+    std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, new_in_tensor};
+    std::vector<phi::DenseTensor*> equal_outputs = {&equal_out_tensor};
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        dev_ctx, equal_inputs, &equal_outputs, 0, EqualFunctor<T>());
+    // 2. equal_count = reduceSum(equal_out)
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor,
+                             kps::IdentityFunctor<T, MPType>>(
+        dev_ctx, equal_out_tensor, equal_count,
+        kps::IdentityFunctor<T, MPType>(), reduce_dims, false);
+
+    // 3. dx = Div(dout, equal_out)
+    std::vector<const phi::DenseTensor*> grad_inputs = {&equal_out_tensor,
+                                                        equal_count};
+    std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        dev_ctx, grad_inputs, &grad_outputs, 0, DivideFunctor<T>());
+    delete equal_out;
+    delete equal_count;
+  }
+};
+#endif
 #endif
 
 }  // namespace operators

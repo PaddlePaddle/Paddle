@@ -25,43 +25,16 @@ from .... import unique_name
 from ....executor import global_scope, Executor
 from ....framework import IrGraph
 from ....log_helper import get_logger
-from .quantization_pass import QuantizationTransformPass
-from .quantization_pass import QuantizationFreezePass
-from .quantization_pass import AddQuantDequantPass
-from .quantization_pass import _out_scale_op_list
-from .quantization_pass import _get_op_input_var_names
-from .quantization_pass import _get_op_output_var_names
-from .quantization_pass import _get_output_name_index
-from .quantization_pass import _get_input_name_index
-from .quantization_pass import _channelwise_quant_axis1_ops
+from .quantization_pass import QuantizationTransformPass, QuantizationTransformPassV2, QuantizationFreezePass, QuantWeightPass, AddQuantDequantPass, AddQuantDequantPassV2
 from .cal_kl_threshold import cal_kl_threshold
+from .adaround import run_adaround
+from . import utils
 
 __all__ = ['PostTrainingQuantization', 'WeightQuantization']
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
-
-
-def _load_variable_data(scope, var_name):
-    '''
-    Load variable value from scope
-    '''
-    var_node = scope.find_var(var_name)
-    assert var_node is not None, \
-        "Cannot find " + var_name + " in scope."
-    return np.array(var_node.get_tensor())
-
-
-def _set_variable_data(scope, place, var_name, np_value):
-    '''
-    Set the value of var node by name, if the node exits,
-    '''
-    assert isinstance(np_value, np.ndarray), \
-       'The type of value should be numpy array.'
-    var_node = scope.find_var(var_name)
-    if var_node != None:
-        tensor = var_node.get_tensor()
-        tensor.set(np_value, place)
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def _all_persistable_var_names(program):
@@ -112,7 +85,8 @@ def _apply_pass(scope,
         cpp_graph.set_not_owned('__param_scope__', scope)
     if attrs:
         assert attr_values and len(attrs) == len(
-            attr_values), "Different number of pass attributes and their values."
+            attr_values
+        ), "Different number of pass attributes and their values."
         for attr, value in zip(attrs, attr_values):
             ir_pass.set(attr, value)
     ir_pass.apply(cpp_graph)
@@ -143,14 +117,18 @@ class PostTrainingQuantization(object):
                  algo="KL",
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
+                 round_type='round',
+                 learning_rate=0.001,
                  is_full_quantize=False,
                  bias_correction=False,
                  activation_bits=8,
                  weight_bits=8,
                  activation_quantize_type='range_abs_max',
                  weight_quantize_type='channel_wise_abs_max',
+                 onnx_format=False,
                  optimize_model=False,
                  is_use_cache_file=False,
+                 skip_tensor_list=None,
                  cache_dir=None):
         '''
         Constructor.
@@ -198,6 +176,10 @@ class PostTrainingQuantization(object):
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
+            round_type(str, optional): The method of converting the quantized weights
+                value float->int. Currently supports ['round', 'adaround'] methods.
+                Default is `round`, which is rounding nearest to the nearest whole number.
+            learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
@@ -217,6 +199,9 @@ class PostTrainingQuantization(object):
                 the fake ops in saving quantized model, and we save the scale obtained
                 by post training quantization in fake ops. Compared to 'abs_max',
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
+            onnx_format(bool): Whether to export the quantized model with format of ONNX.
+                Default is False.
+            skip_tensor_list(list): List of skip quant tensor name.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
                 `conv2d/depthwise_conv2d + bn` pass so far. Some targets require the
@@ -272,12 +257,15 @@ class PostTrainingQuantization(object):
         ]
         self._support_weight_quantize_type = ['abs_max', 'channel_wise_abs_max']
         self._support_algo_type = [
-            'KL', 'hist', 'avg', 'mse', 'abs_max', 'min_max'
+            'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
         ]
+        assert round_type in ['adaround', 'round']
+        self._round_type = round_type
+        self._learning_rate = learning_rate
         self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
-            list(set(QuantizationTransformPass._supported_quantizable_op_type +
-                AddQuantDequantPass._supported_quantizable_op_type +
+            list(set(utils._weight_supported_quantizable_op_type +
+                utils._act_supported_quantizable_op_type +
                 self._dynamic_quantize_op_type))
 
         # Check inputs
@@ -316,6 +304,8 @@ class PostTrainingQuantization(object):
         self._weight_bits = weight_bits
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
+        self._onnx_format = onnx_format
+        self._skip_tensor_list = skip_tensor_list
         self._is_full_quantize = is_full_quantize
         if is_full_quantize:
             self._quantizable_op_type = self._support_quantize_op_type
@@ -333,7 +323,7 @@ class PostTrainingQuantization(object):
         self._fetch_list = None
         self._data_loader = data_loader
 
-        self._out_scale_op_list = _out_scale_op_list
+        self._out_scale_op_list = utils._out_scale_op_list
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._weight_op_pairs = {}
@@ -349,7 +339,7 @@ class PostTrainingQuantization(object):
         # The vars for algo = avg
         self._quantized_var_avg = {}
         # The best loss of algo = mse
-        self._best_mse_loss = {}
+        self._best_calibration_loss = {}
         # The threshold for algo = abs_max, mse or avg
         self._quantized_threshold = {}
 
@@ -401,19 +391,28 @@ class PostTrainingQuantization(object):
             if self._batch_nums and batch_id >= self._batch_nums:
                 break
         _logger.info("Finish sampling stage, all batch: " + str(batch_id))
-        self._reset_activation_persistable()
+
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
                 self._quantized_threshold[var_name] = \
                 np.array(self._quantized_var_avg[var_name]).mean()
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
-        if self._algo in ["KL", "abs_max", "hist", "avg", "mse"]:
-            self._update_program()
-        else:
-            self._save_input_threhold()
 
-        self._save_output_threshold()
+        if self._round_type == 'adaround':
+            self._adaround_apply()
+
+        self._reset_activation_persistable()
+
+        if self._algo is 'min_max':
+            self._save_input_threhold()
+        else:
+            self._update_program()
+
+        # save out_threshold for quantized ops.
+        if not self._onnx_format:
+            self._save_output_threshold()
+
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
             self._collect_dynamic_quantize_op_threshold(
@@ -437,6 +436,24 @@ class PostTrainingQuantization(object):
 
         return self._program
 
+    def _adaround_apply(self):
+        assert self._algo != "min_max", "The algo should not be min_max."
+        if self._algo in ["KL", "hist"]:
+            scale_dict = self._quantized_var_threshold
+        else:
+            scale_dict = self._quantized_threshold
+        run_adaround(self._data_loader,
+                     self._program,
+                     self._fetch_list,
+                     self._executor,
+                     self._scope,
+                     self._place,
+                     self._quantized_op_pairs,
+                     self._weight_op_pairs,
+                     scale_dict,
+                     num_iterations=self._batch_nums,
+                     lr=self._learning_rate)
+
     def save_quantized_model(self,
                              save_model_path,
                              model_filename=None,
@@ -455,14 +472,15 @@ class PostTrainingQuantization(object):
         Returns:
             None
         '''
-        io.save_inference_model(
-            dirname=save_model_path,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            feeded_var_names=self._feed_list,
-            target_vars=self._fetch_list,
-            executor=self._executor,
-            main_program=self._program)
+        clip_extra = True if self._onnx_format else False
+        io.save_inference_model(dirname=save_model_path,
+                                model_filename=model_filename,
+                                params_filename=params_filename,
+                                feeded_var_names=self._feed_list,
+                                target_vars=self._fetch_list,
+                                executor=self._executor,
+                                main_program=self._program,
+                                clip_extra=clip_extra)
         _logger.info("The quantized model is saved in " + save_model_path)
 
     def _load_model_data(self):
@@ -484,17 +502,18 @@ class PostTrainingQuantization(object):
 
         if self._data_loader is not None:
             return
-        self._data_loader = io.DataLoader.from_generator(
-            feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True)
+        self._data_loader = io.DataLoader.from_generator(feed_list=feed_vars,
+                                                         capacity=3 *
+                                                         self._batch_size,
+                                                         iterable=True)
         if self._sample_generator is not None:
-            self._data_loader.set_sample_generator(
-                self._sample_generator,
-                batch_size=self._batch_size,
-                drop_last=True,
-                places=self._place)
+            self._data_loader.set_sample_generator(self._sample_generator,
+                                                   batch_size=self._batch_size,
+                                                   drop_last=True,
+                                                   places=self._place)
         elif self._batch_generator is not None:
-            self._data_loader.set_batch_generator(
-                self._batch_generator, places=self._place)
+            self._data_loader.set_batch_generator(self._batch_generator,
+                                                  places=self._place)
 
     def _optimize_fp32_model(self):
         '''
@@ -519,6 +538,7 @@ class PostTrainingQuantization(object):
         '''
         # TODO(juncaipeng), consider the name_scope of skip_quant
         _logger.info("Collect quantized variable names ...")
+        self._quantized_op_pairs = {}
 
         def collect_var_name(var_name_list, persistable_var_names, op_type):
             for var_name in var_name_list:
@@ -531,6 +551,12 @@ class PostTrainingQuantization(object):
         persistable_var_names = _all_persistable_var_names(self._program)
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
+                # skip quant form self._skip_tensor_list
+                if self._skip_tensor_list is not None:
+                    for inp_name in utils._get_op_input_var_names(op):
+                        if inp_name in self._skip_tensor_list:
+                            op._set_attr("op_namescope", "skip_quant")
+
                 op_type = op.type
                 if self._is_full_quantize and \
                     op_type not in self._quantizable_op_type:
@@ -538,17 +564,20 @@ class PostTrainingQuantization(object):
                                     " is not supported for quantization.")
                 # For quantized ops, sample inputs and outputs
                 if op_type in self._quantizable_op_type:
-                    collect_var_name(
-                        _get_op_input_var_names(op), persistable_var_names,
-                        op_type)
-                    collect_var_name(
-                        _get_op_output_var_names(op), persistable_var_names,
-                        op_type)
+                    collect_var_name(utils._get_op_input_var_names(op),
+                                     persistable_var_names, op_type)
+                    collect_var_name(utils._get_op_output_var_names(op),
+                                     persistable_var_names, op_type)
+                    # collect quanted op output var name
+                    for out_var_name in utils._get_op_output_var_names(op):
+                        for in_var_name in utils._get_op_input_var_names(op):
+                            if in_var_name in persistable_var_names:
+                                self._quantized_op_pairs[
+                                    in_var_name] = out_var_name
                 # For other op, only sample output scale
                 elif op_type in self._out_scale_op_list:
-                    collect_var_name(
-                        _get_op_output_var_names(op), persistable_var_names,
-                        op_type)
+                    collect_var_name(utils._get_op_output_var_names(op),
+                                     persistable_var_names, op_type)
 
     def _set_activation_persistable(self):
         '''
@@ -582,19 +611,21 @@ class PostTrainingQuantization(object):
             self._sample_min_max()
         elif self._algo == "mse":
             self._sample_mse()
+        elif self._algo == "emd":
+            self._sample_emd()
         elif self._algo in ["KL", "hist"]:
             self._sample_histogram()
 
     def _sample_mse(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = utils.load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
                     abs_max_value = []
                     if self._weight_op_pairs[
-                            var_name] in _channelwise_quant_axis1_ops:
+                            var_name] in utils._channelwise_quant_axis1_ops:
                         for i in range(var_tensor.shape[1]):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[:, i]))))
@@ -605,13 +636,13 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("MSE searching stage ...")
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
             abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
             s = 0.3
-            if var_name not in self._best_mse_loss:
-                self._best_mse_loss[var_name] = float('inf')
+            if var_name not in self._best_calibration_loss:
+                self._best_calibration_loss[var_name] = float('inf')
             while s <= 1.0:
                 scale = s * abs_max_value
                 s += 0.02
@@ -620,20 +651,61 @@ class PostTrainingQuantization(object):
                     np.clip(var_tensor, 0.0, scale) / scale *
                     bins) / bins * scale
                 mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
-                if mse_loss <= self._best_mse_loss[var_name]:
-                    self._best_mse_loss[var_name] = mse_loss
+                if mse_loss <= self._best_calibration_loss[var_name]:
+                    self._best_calibration_loss[var_name] = mse_loss
                     self._quantized_threshold[var_name] = scale
 
-    def _sample_avg(self):
+    def _sample_emd(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = utils.load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
                     abs_max_value = []
                     if self._weight_op_pairs[
-                            var_name] in _channelwise_quant_axis1_ops:
+                            var_name] in utils._channelwise_quant_axis1_ops:
+                        for i in range(var_tensor.shape[1]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[:, i]))))
+                    else:
+                        for i in range(var_tensor.shape[0]):
+                            abs_max_value.append(
+                                float(np.max(np.abs(var_tensor[i]))))
+                self._quantized_threshold[var_name] = abs_max_value
+        _logger.info("EMD searching stage ...")
+        for var_name in self._quantized_act_var_name:
+            var_tensor = utils.load_variable_data(self._scope, var_name)
+            var_tensor = var_tensor.flatten()
+            abs_max_value = float(np.max(np.abs(var_tensor)))
+            abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
+            s = 0.3
+            if var_name not in self._best_calibration_loss:
+                self._best_calibration_loss[var_name] = float('inf')
+            while s <= 1.0:
+                scale = s * abs_max_value
+                s += 0.02
+                bins = 2**(self._activation_bits - 1) - 1
+                quant_dequant_var = np.round(
+                    np.clip(var_tensor, 0.0, scale) / scale *
+                    bins) / bins * scale
+                emd_loss = np.abs(
+                    np.mean(var_tensor) - np.mean(quant_dequant_var)) + np.abs(
+                        np.std(var_tensor) - np.std(quant_dequant_var))
+                if emd_loss <= self._best_calibration_loss[var_name]:
+                    self._best_calibration_loss[var_name] = emd_loss
+                    self._quantized_threshold[var_name] = scale
+
+    def _sample_avg(self):
+        if self._quantized_threshold == {}:
+            for var_name in self._quantized_weight_var_name:
+                var_tensor = utils.load_variable_data(self._scope, var_name)
+                if self._weight_quantize_type == "abs_max":
+                    abs_max_value = float(np.max(np.abs(var_tensor)))
+                elif self._weight_quantize_type == "channel_wise_abs_max":
+                    abs_max_value = []
+                    if self._weight_op_pairs[
+                            var_name] in utils._channelwise_quant_axis1_ops:
                         for i in range(var_tensor.shape[1]):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[:, i]))))
@@ -644,7 +716,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
             if (var_name not in self._quantized_var_avg):
                 self._quantized_var_avg[var_name] = []
@@ -656,13 +728,13 @@ class PostTrainingQuantization(object):
     def _sample_abs_max(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = utils.load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
                     abs_max_value = []
                     if self._weight_op_pairs[
-                            var_name] in _channelwise_quant_axis1_ops:
+                            var_name] in utils._channelwise_quant_axis1_ops:
                         for i in range(var_tensor.shape[1]):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[:, i]))))
@@ -673,7 +745,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
             if (var_name not in self._quantized_threshold) or \
                 (abs_max_value > self._quantized_threshold[var_name]):
@@ -682,7 +754,7 @@ class PostTrainingQuantization(object):
     def _sample_min_max(self):
         if self._quantized_var_min == {} and self._quantized_var_max == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = utils.load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     min_value = float(np.min(var_tensor))
                     max_value = float(np.max(var_tensor))
@@ -690,7 +762,7 @@ class PostTrainingQuantization(object):
                     min_value = []
                     max_value = []
                     if self._weight_op_pairs[
-                            var_name] in _channelwise_quant_axis1_ops:
+                            var_name] in utils._channelwise_quant_axis1_ops:
                         for i in range(var_tensor.shape[1]):
                             min_value.append(float(np.min(var_tensor[:, i])))
                             max_value.append(float(np.max(var_tensor[:, i])))
@@ -702,7 +774,7 @@ class PostTrainingQuantization(object):
                 self._quantized_var_max[var_name] = max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             min_value = float(np.min(var_tensor))
             max_value = float(np.max(var_tensor))
             if (var_name not in self._quantized_var_min) or \
@@ -714,7 +786,7 @@ class PostTrainingQuantization(object):
 
     def _sample_histogram(self):
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor_abs = np.abs(var_tensor)
             bins = self._sampling_act_histogram[var_name][1]
             hist, _ = np.histogram(var_tensor_abs, bins=bins)
@@ -729,7 +801,7 @@ class PostTrainingQuantization(object):
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
                 if op.type in self._quantizable_op_type:
-                    for var_name in _get_op_input_var_names(op):
+                    for var_name in utils._get_op_input_var_names(op):
                         assert var_name in self._quantized_var_min
                         assert var_name in self._quantized_var_max
                         op._set_attr(var_name + ".min",
@@ -744,13 +816,14 @@ class PostTrainingQuantization(object):
         get the min and max value, and then calculate the threshold.
         '''
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = utils.load_variable_data(self._scope, var_name)
             var_tensor = np.abs(var_tensor)
             min_value = float(np.min(var_tensor))
             max_value = float(np.max(var_tensor))
             if var_name not in self._sampling_act_abs_min_max:
-                self._sampling_act_abs_min_max[
-                    var_name] = [min_value, max_value]
+                self._sampling_act_abs_min_max[var_name] = [
+                    min_value, max_value
+                ]
             else:
                 if min_value < self._sampling_act_abs_min_max[var_name][0]:
                     self._sampling_act_abs_min_max[var_name][0] = min_value
@@ -765,8 +838,9 @@ class PostTrainingQuantization(object):
             if var_name not in self._sampling_act_histogram:
                 min_val = self._sampling_act_abs_min_max[var_name][0]
                 max_val = self._sampling_act_abs_min_max[var_name][1]
-                hist, hist_edeges = np.histogram(
-                    [], bins=self._histogram_bins, range=(min_val, max_val))
+                hist, hist_edeges = np.histogram([],
+                                                 bins=self._histogram_bins,
+                                                 range=(min_val, max_val))
                 self._sampling_act_histogram[var_name] = [hist, hist_edeges]
 
     def _calculate_kl_hist_threshold(self):
@@ -778,13 +852,13 @@ class PostTrainingQuantization(object):
 
         # Abs_max threshold for weights
         for var_name in self._quantized_weight_var_name:
-            weight_data = _load_variable_data(self._scope, var_name)
+            weight_data = utils.load_variable_data(self._scope, var_name)
             if self._weight_quantize_type == "abs_max":
                 weight_threshold = float(np.max(np.abs(weight_data)))
             elif self._weight_quantize_type == "channel_wise_abs_max":
                 weight_threshold = []
                 if self._weight_op_pairs[
-                        var_name] in _channelwise_quant_axis1_ops:
+                        var_name] in utils._channelwise_quant_axis1_ops:
                     for i in range(weight_data.shape[1]):
                         weight_threshold.append(
                             float(np.max(np.abs(weight_data[:, i]))))
@@ -815,17 +889,27 @@ class PostTrainingQuantization(object):
 
         # use QuantizationTransformPass to insert fake_quant/fake_dequantize op
         major_quantizable_op_types = []
-        for op_type in QuantizationTransformPass._supported_quantizable_op_type:
+        for op_type in utils._weight_supported_quantizable_op_type:
             if op_type in self._quantizable_op_type:
                 major_quantizable_op_types.append(op_type)
-        transform_pass = QuantizationTransformPass(
-            scope=self._scope,
-            place=self._place,
-            weight_bits=self._weight_bits,
-            activation_bits=self._activation_bits,
-            activation_quantize_type=self._activation_quantize_type,
-            weight_quantize_type=self._weight_quantize_type,
-            quantizable_op_type=major_quantizable_op_types)
+        if not self._onnx_format:
+            transform_pass = QuantizationTransformPass(
+                scope=self._scope,
+                place=self._place,
+                weight_bits=self._weight_bits,
+                activation_bits=self._activation_bits,
+                activation_quantize_type=self._activation_quantize_type,
+                weight_quantize_type=self._weight_quantize_type,
+                quantizable_op_type=major_quantizable_op_types)
+        else:
+            transform_pass = QuantizationTransformPassV2(
+                scope=self._scope,
+                place=self._place,
+                weight_bits=self._weight_bits,
+                activation_bits=self._activation_bits,
+                activation_quantize_type=self._activation_quantize_type,
+                weight_quantize_type=self._weight_quantize_type,
+                quantizable_op_type=major_quantizable_op_types)
 
         for sub_graph in graph.all_sub_graphs():
             # Insert fake_quant/fake_dequantize op must in test graph, so
@@ -835,13 +919,20 @@ class PostTrainingQuantization(object):
 
         # use AddQuantDequantPass to insert fake_quant_dequant op
         minor_quantizable_op_types = []
-        for op_type in AddQuantDequantPass._supported_quantizable_op_type:
+        for op_type in utils._act_supported_quantizable_op_type:
             if op_type in self._quantizable_op_type:
                 minor_quantizable_op_types.append(op_type)
-        add_quant_dequant_pass = AddQuantDequantPass(
-            scope=self._scope,
-            place=self._place,
-            quantizable_op_type=minor_quantizable_op_types)
+        if not self._onnx_format:
+            add_quant_dequant_pass = AddQuantDequantPass(
+                scope=self._scope,
+                place=self._place,
+                quantizable_op_type=minor_quantizable_op_types)
+        else:
+            add_quant_dequant_pass = AddQuantDequantPassV2(
+                scope=self._scope,
+                place=self._place,
+                quantizable_op_type=minor_quantizable_op_types,
+                is_full_quantized=self._is_full_quantize)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
@@ -853,32 +944,32 @@ class PostTrainingQuantization(object):
         else:
             scale_dict = self._quantized_threshold
         for key, val in scale_dict.items():
-            _set_variable_data(
-                self._scope,
-                self._place,
-                key + ".scale",
-                np.array(
-                    [val], dtype=np.float32))
-            _set_variable_data(
-                self._scope,
-                self._place,
-                key + ".quant_dequant.scale",
-                np.array(
-                    [val], dtype=np.float32))
+            utils.set_variable_data(self._scope, self._place, key + ".scale",
+                                    np.array([val], dtype=np.float32))
+            utils.set_variable_data(self._scope, self._place,
+                                    key + ".quant_dequant.scale",
+                                    np.array([val], dtype=np.float32))
 
-        # apply QuantizationFreezePass, and obtain the final quant model
-        freeze_pass = QuantizationFreezePass(
-            scope=self._scope,
-            place=self._place,
-            bias_correction=self._bias_correction,
-            weight_bits=self._weight_bits,
-            activation_bits=self._activation_bits,
-            weight_quantize_type=self._weight_quantize_type,
-            quantizable_op_type=major_quantizable_op_types)
+        if not self._onnx_format:
+            # apply QuantizationFreezePass, and obtain the final quant model
+            freeze_pass = QuantizationFreezePass(
+                scope=self._scope,
+                place=self._place,
+                bias_correction=self._bias_correction,
+                weight_bits=self._weight_bits,
+                round_type=self._round_type,
+                activation_bits=self._activation_bits,
+                weight_quantize_type=self._weight_quantize_type,
+                quantizable_op_type=major_quantizable_op_types)
 
-        for sub_graph in graph.all_sub_graphs():
-            sub_graph._for_test = True
-            freeze_pass.apply(sub_graph)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                freeze_pass.apply(sub_graph)
+        else:
+            quant_weight_pass = QuantWeightPass(self._scope, self._place)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                quant_weight_pass.apply(sub_graph)
 
         self._program = graph.to_program()
 
@@ -898,7 +989,7 @@ class PostTrainingQuantization(object):
                 op._set_attr("quantization_type", quantized_type)
 
         def analysis_and_save_info(op_node, out_var_name):
-            argname_index = _get_output_name_index(op_node, out_var_name)
+            argname_index = utils._get_output_name_index(op_node, out_var_name)
             assert argname_index is not None, \
                 out_var_name + " is not the output of the op"
             if self._algo == "KL":
@@ -918,7 +1009,7 @@ class PostTrainingQuantization(object):
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_hist")
 
-            elif self._algo in ["avg", "abs_max", "mse"]:
+            elif self._algo in ["avg", "abs_max", "mse", "emd"]:
                 save_info(op_node, out_var_name, self._quantized_threshold,
                           "out_threshold", "post_" + str(self._algo))
                 save_info(
@@ -933,11 +1024,9 @@ class PostTrainingQuantization(object):
 
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
-                if op.type in (
-                        self._quantizable_op_type + self._out_scale_op_list):
-                    out_var_names = _get_op_output_var_names(op)
-                    assert len(out_var_names) == 1, "Post training " + \
-                        "quantization only support one output for " + op.type
+                if op.type in (self._quantizable_op_type +
+                               self._out_scale_op_list):
+                    out_var_names = utils._get_op_output_var_names(op)
                     for var_name in out_var_names:
                         analysis_and_save_info(op, var_name)
 
@@ -960,11 +1049,11 @@ class PostTrainingQuantization(object):
         quantization_type = str("post_" + self._algo).lower()
         persistable_var_names = _all_persistable_var_names(self._program)
         for op in target_ops:
-            for var_name in _get_op_input_var_names(op):
+            for var_name in utils._get_op_input_var_names(op):
                 if var_name in persistable_var_names:
-                    var_data = _load_variable_data(self._scope, var_name)
+                    var_data = utils.load_variable_data(self._scope, var_name)
                     threshold = float(np.max(np.abs(var_data)))
-                    argname, index = _get_input_name_index(op, var_name)
+                    argname, index = utils._get_input_name_index(op, var_name)
                     op._set_attr(argname + str(index) + "_threshold", threshold)
                     op._set_attr("quantization_type", quantization_type)
                     op._set_attr("bit_length", self._weight_bits)
@@ -1072,10 +1161,11 @@ class WeightQuantization(object):
 
         if generate_test_model:
             test_model_dir = os.path.join(save_model_dir, "test_model")
-            self._quantize_weight_to_int(
-                test_model_dir, save_model_filename, save_params_filename,
-                quantizable_op_type, weight_bits, weight_quantize_type, True,
-                threshold_rate)
+            self._quantize_weight_to_int(test_model_dir, save_model_filename,
+                                         save_params_filename,
+                                         quantizable_op_type, weight_bits,
+                                         weight_quantize_type, True,
+                                         threshold_rate)
 
     def convert_weight_to_fp16(self, save_model_dir):
         """
@@ -1113,16 +1203,17 @@ class WeightQuantization(object):
             if self._params_filename is not None:
                 save_var_map[new_var.name] = new_var
             else:
-                save_file_path = os.path.join(
-                    os.path.normpath(save_model_dir), new_var.name)
-                save_block.append_op(
-                    type='save',
-                    inputs={'X': [new_var]},
-                    outputs={},
-                    attrs={
-                        'file_path': os.path.normpath(save_file_path),
-                        'save_as_fp16': True
-                    })
+                save_file_path = os.path.join(os.path.normpath(save_model_dir),
+                                              new_var.name)
+                save_block.append_op(type='save',
+                                     inputs={'X': [new_var]},
+                                     outputs={},
+                                     attrs={
+                                         'file_path':
+                                         os.path.normpath(save_file_path),
+                                         'save_as_fp16':
+                                         True
+                                     })
 
         if self._params_filename is not None:
             save_var_list = []
@@ -1134,14 +1225,15 @@ class WeightQuantization(object):
                 name=unique_name.generate("saved_params"))
             saved_params_var.desc.set_persistable(True)
 
-            save_path = os.path.join(
-                os.path.normpath(save_model_dir), self._params_filename)
-            save_block.append_op(
-                type='save_combine',
-                inputs={'X': save_var_list},
-                outputs={'Y': saved_params_var},
-                attrs={'file_path': save_path,
-                       'save_as_fp16': True})
+            save_path = os.path.join(os.path.normpath(save_model_dir),
+                                     self._params_filename)
+            save_block.append_op(type='save_combine',
+                                 inputs={'X': save_var_list},
+                                 outputs={'Y': saved_params_var},
+                                 attrs={
+                                     'file_path': save_path,
+                                     'save_as_fp16': True
+                                 })
 
         save_program._sync_with_cpp()
         exe.run(save_program)
@@ -1190,14 +1282,13 @@ class WeightQuantization(object):
                         self._weight_channel_wise_abs_max_quantization(
                             scope, place, weight_bits, op, var_name, for_test)
 
-        io.save_inference_model(
-            dirname=save_model_dir,
-            feeded_var_names=feed_list,
-            target_vars=fetch_list,
-            executor=exe,
-            main_program=program,
-            model_filename=save_model_filename,
-            params_filename=save_params_filename)
+        io.save_inference_model(dirname=save_model_dir,
+                                feeded_var_names=feed_list,
+                                target_vars=fetch_list,
+                                executor=exe,
+                                main_program=program,
+                                model_filename=save_model_filename,
+                                params_filename=save_params_filename)
 
     def _weight_abs_max_quantization(self, scope, place, weight_bits,
                                      threshold_rate, op, var_name, for_test):
@@ -1208,7 +1299,7 @@ class WeightQuantization(object):
         save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
 
         # Get quantized scale and weight data
-        weight_data = _load_variable_data(scope, var_name)
+        weight_data = utils.load_variable_data(scope, var_name)
         if abs(threshold_rate) < 1e-10:
             threshold_value = np.max(np.abs(weight_data))
         else:
@@ -1222,11 +1313,13 @@ class WeightQuantization(object):
 
         # Set weight data
         if not for_test:
-            _set_variable_data(scope, place, var_name, quantized_weight_data)
+            utils.set_variable_data(scope, place, var_name,
+                                    quantized_weight_data)
         else:
             dequantized_weight_data = \
                 (quantized_weight_data * scale).astype(np.float32)
-            _set_variable_data(scope, place, var_name, dequantized_weight_data)
+            utils.set_variable_data(scope, place, var_name,
+                                    dequantized_weight_data)
 
         # Save info
         op._set_attr('quantization_type', 'post_weight_abs_max')
@@ -1234,8 +1327,9 @@ class WeightQuantization(object):
         op._set_attr(var_name + "_quant_scale", [scale])  # Save as list
         op._set_attr("with_quant_attr", True)
 
-    def _weight_channel_wise_abs_max_quantization(
-            self, scope, place, weight_bits, op, var_name, for_test):
+    def _weight_channel_wise_abs_max_quantization(self, scope, place,
+                                                  weight_bits, op, var_name,
+                                                  for_test):
         ''' 
         Use channel_wise_abs_max method to quantize weight.
         '''
@@ -1243,7 +1337,7 @@ class WeightQuantization(object):
         save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
 
         # Get quantized scale and weight data
-        weight_data = _load_variable_data(scope, var_name)
+        weight_data = utils.load_variable_data(scope, var_name)
         if op.type == "mul":
             scales, quantized_weight_data = \
                 self._mul_channel_wise_quantization(weight_data,
@@ -1257,7 +1351,8 @@ class WeightQuantization(object):
 
         # Set weight data
         if not for_test:
-            _set_variable_data(scope, place, var_name, quantized_weight_data)
+            utils.set_variable_data(scope, place, var_name,
+                                    quantized_weight_data)
         else:
             if op.type == "mul":
                 dequantized_weight_data = \
@@ -1268,7 +1363,8 @@ class WeightQuantization(object):
             else:
                 _logger.error(op.type +
                               " is not supported by weight quantization")
-            _set_variable_data(scope, place, var_name, dequantized_weight_data)
+            utils.set_variable_data(scope, place, var_name,
+                                    dequantized_weight_data)
 
         # Save info
         op._set_attr('quantization_type', 'post_weight_channel_wise_abs_max')
@@ -1283,8 +1379,8 @@ class WeightQuantization(object):
         and quantize the weights.
         '''
         scales = []
-        quantized_weight_data = np.zeros_like(
-            weight_data, dtype=save_weight_dtype)
+        quantized_weight_data = np.zeros_like(weight_data,
+                                              dtype=save_weight_dtype)
         channel_num = weight_data.shape[0]
         for i in range(channel_num):
             scale = np.max(np.abs(weight_data[i])) / quantize_range
@@ -1297,8 +1393,8 @@ class WeightQuantization(object):
         '''
         For conv2d and depthwise_conv2d, dequantize the weights to fp32.
         '''
-        dequantized_weight_data = np.zeros_like(
-            quantized_weight_data, dtype=np.float32)
+        dequantized_weight_data = np.zeros_like(quantized_weight_data,
+                                                dtype=np.float32)
         for i in range(len(scales)):
             dequantized_weight_data[i] = \
                 (quantized_weight_data[i] * scales[i]).astype(np.float32)
@@ -1311,8 +1407,8 @@ class WeightQuantization(object):
         and quantize the weights.
         '''
         scales = []
-        quantized_weight_data = np.zeros_like(
-            weight_data, dtype=save_weight_dtype)
+        quantized_weight_data = np.zeros_like(weight_data,
+                                              dtype=save_weight_dtype)
         channel_num = weight_data.shape[-1]
         for i in range(channel_num):
             scale = np.max(np.abs(weight_data[:, i])) / quantize_range
@@ -1325,8 +1421,8 @@ class WeightQuantization(object):
         '''
         For mul, dequantize the weights to fp32.
         '''
-        dequantized_weight_data = np.zeros_like(
-            quantized_weight_data, dtype=np.float32)
+        dequantized_weight_data = np.zeros_like(quantized_weight_data,
+                                                dtype=np.float32)
         for i in range(len(scales)):
             dequantized_weight_data[:, i] = \
                 (quantized_weight_data[:, i] * scales[i]).astype(np.float32)
@@ -1334,8 +1430,9 @@ class WeightQuantization(object):
 
     def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
         input_abs = np.abs(input)
-        hist, hist_edeges = np.histogram(
-            input_abs, bins=histogram_bins, range=(0, np.max(input_abs)))
+        hist, hist_edeges = np.histogram(input_abs,
+                                         bins=histogram_bins,
+                                         range=(0, np.max(input_abs)))
         hist = hist / float(sum(hist))
         hist_sum = 0
         hist_index = 0

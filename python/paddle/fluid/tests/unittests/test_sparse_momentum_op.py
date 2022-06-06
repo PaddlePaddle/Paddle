@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,6 +63,7 @@ def calculate_sparse_momentum_by_numpy(param,
 
 
 class TestSparseMomentumOp(OpTest):
+
     def setUp(self):
         self.op_type = "sparse_momentum"
         self.dtype = np.float32
@@ -85,18 +86,16 @@ class TestSparseMomentumOp(OpTest):
         grad = np.random.random(
             (self.batch_size, self.num_classes)).astype(self.dtype)
         if self.axis == 0:
-            index = np.random.randint(
-                0,
-                self.batch_size,
-                size=(self.batch_size // 2, ),
-                dtype=self.index_dtype)
+            index = np.random.randint(0,
+                                      self.batch_size,
+                                      size=(self.batch_size // 2, ),
+                                      dtype=self.index_dtype)
             grad = grad[index]
         else:
-            index = np.random.randint(
-                0,
-                self.num_classes,
-                size=(self.num_classes // 2, ),
-                dtype=self.index_dtype)
+            index = np.random.randint(0,
+                                      self.num_classes,
+                                      size=(self.num_classes // 2, ),
+                                      dtype=self.index_dtype)
             grad = grad[:, index]
         velocity = np.random.random(
             (self.batch_size, self.num_classes)).astype(self.dtype)
@@ -128,19 +127,25 @@ class TestSparseMomentumOp(OpTest):
         }
 
         self.inputs = {
-            'Param': param.astype("float16") if self.multi_precision else param,
-            'Velocity': velocity.astype("float32")
-            if self.multi_precision else velocity,
-            'LearningRate': learning_rate.astype("float32")
+            'Param':
+            param.astype("float16") if self.multi_precision else param,
+            'Velocity':
+            velocity.astype("float32") if self.multi_precision else velocity,
+            'LearningRate':
+            learning_rate.astype("float32")
             if self.multi_precision else learning_rate,
-            'Grad': grad.astype("float16") if self.multi_precision else grad,
-            'Index': index,
-            'Axis': np.array(self.axis).astype(np.int32),
+            'Grad':
+            grad.astype("float16") if self.multi_precision else grad,
+            'Index':
+            index,
+            'Axis':
+            np.array(self.axis).astype(np.int32),
         }
         self.outputs = {
-            'ParamOut': param_out.astype("float16")
-            if self.multi_precision else param_out,
-            'VelocityOut': velocity_out.astype("float32")
+            'ParamOut':
+            param_out.astype("float16") if self.multi_precision else param_out,
+            'VelocityOut':
+            velocity_out.astype("float32")
             if self.multi_precision else velocity_out,
         }
 
@@ -163,38 +168,45 @@ class TestSparseMomentumOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(atol=5e-3 if self.multi_precision else 1e-5)
+        self.check_output(atol=5e-3 if self.multi_precision else 1e-5,
+                          check_eager=True)
 
 
 class TestSparseMomentumOpDtype1(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float32
         self.index_dtype = np.int64
 
 
 class TestSparseMomentumOpDtype2(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float64
         self.index_dtype = np.int32
 
 
 class TestSparseMomentumOpDtype3(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float64
         self.index_dtype = np.int64
 
 
 class TestSparseMomentumOpAxis(TestSparseMomentumOp):
+
     def init_axis(self):
         self.axis = 1
 
 
 class TestSparseMomentumOpNesterov(TestSparseMomentumOp):
+
     def init_use_nesterov(self):
         self.use_nesterov = True
 
 
 class TestSparseMomentumOpMultiPrecision(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.index_dtype = np.int32
@@ -207,6 +219,7 @@ class TestSparseMomentumOpMultiPrecision(TestSparseMomentumOp):
 
 
 class TestSparseMomentumOpMultiPrecision1(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.index_dtype = np.int64
@@ -219,6 +232,7 @@ class TestSparseMomentumOpMultiPrecision1(TestSparseMomentumOp):
 
 
 class TestSparseMomentumOpMultiPrecision2(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.index_dtype = np.int32
@@ -231,6 +245,7 @@ class TestSparseMomentumOpMultiPrecision2(TestSparseMomentumOp):
 
 
 class TestSparseMomentumOpMultiPrecision3(TestSparseMomentumOp):
+
     def init_dtype(self):
         self.dtype = np.float16
         self.index_dtype = np.int64
@@ -240,3 +255,7 @@ class TestSparseMomentumOpMultiPrecision3(TestSparseMomentumOp):
 
     def init_use_nesterov(self):
         self.use_nesterov = False
+
+
+if __name__ == "__main__":
+    unittest.main()

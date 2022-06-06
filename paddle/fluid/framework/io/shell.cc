@@ -69,7 +69,7 @@ static int close_open_fds_internal() {
 
   for (;;) {
     int bytes = 0;
-    if ((bytes = syscall(SYS_getdents, dir_fd,
+    if ((bytes = syscall(SYS_getdents64, dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
       PADDLE_THROW(platform::errors::Unavailable(

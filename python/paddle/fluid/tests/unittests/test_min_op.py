@@ -19,9 +19,11 @@ import numpy as np
 from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class ApiMinTest(unittest.TestCase):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -86,15 +88,19 @@ class ApiMinTest(unittest.TestCase):
         z_expected = np.array(np.min(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
 
+    def test_eager_api(self):
+        with _test_eager_guard():
+            self.test_imperative_api()
+
 
 class TestOutDtype(unittest.TestCase):
+
     def test_min(self):
         api_fn = paddle.min
         shape = [10, 16]
-        check_out_dtype(
-            api_fn,
-            in_specs=[(shape, )],
-            expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+        check_out_dtype(api_fn,
+                        in_specs=[(shape, )],
+                        expect_dtypes=['float32', 'float64', 'int32', 'int64'])
 
 
 if __name__ == '__main__':

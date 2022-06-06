@@ -19,7 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/selected_rows/isfinite_kernel_impl.h"
+#include "paddle/phi/kernels/selected_rows/impl/isfinite_kernel_impl.h"
 
 namespace phi {
 

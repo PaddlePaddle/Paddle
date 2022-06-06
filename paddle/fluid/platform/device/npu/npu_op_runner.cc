@@ -23,7 +23,6 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "acl/acl_op_compiler.h"
-
 #include "paddle/fluid/framework/framework.pb.h"
 
 DECLARE_string(npu_precision_mode);
@@ -47,6 +46,8 @@ static std::map<framework::proto::VarType::Type, aclDataType>
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
+    {DataLayout::kNCDHW, ACL_FORMAT_NCDHW},
+    {DataLayout::kNDHWC, ACL_FORMAT_NDHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
 };
 

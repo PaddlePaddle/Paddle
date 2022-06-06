@@ -18,10 +18,12 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorTypeTest(unittest.TestCase):
-    def test_type_totensor(self):
+
+    def func_type_totensor(self):
         paddle.disable_static()
         inx = np.array([1, 2])
         tensorx = paddle.to_tensor(inx)
@@ -29,7 +31,12 @@ class TensorTypeTest(unittest.TestCase):
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
 
-    def test_type_Tensor(self):
+    def test_type_totensor(self):
+        with _test_eager_guard():
+            self.func_type_totensor()
+        self.func_type_totensor()
+
+    def func_type_Tensor(self):
         paddle.disable_static()
         inx = np.array([1, 2])
         tensorx = paddle.Tensor(inx)
@@ -39,10 +46,16 @@ class TensorTypeTest(unittest.TestCase):
 
         tensorx = paddle.tensor.logic.Tensor(inx)
         typex_str = str(type(tensorx))
+
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
 
-    def test_type_core(self):
+    def test_type_Tensor(self):
+        with _test_eager_guard():
+            self.func_type_Tensor()
+        self.func_type_Tensor()
+
+    def func_type_core(self):
         paddle.disable_static()
         inx = np.array([1, 2])
         tensorx = core.VarBase(inx)
@@ -54,6 +67,11 @@ class TensorTypeTest(unittest.TestCase):
         typex_str = str(type(tensorx))
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
+
+    def test_type_core(self):
+        with _test_eager_guard():
+            pass
+        self.func_type_core()
 
 
 if __name__ == '__main__':

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/tensor_util.h"
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -21,10 +23,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -51,7 +51,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data();
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  dst->set_mem_desc(src.mem_desc());
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
@@ -61,6 +61,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
 #else
   auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
 #endif
+  dst->set_layout(src.layout());
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;
@@ -79,18 +80,6 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#ifdef PADDLE_WITH_IPU
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (platform::is_cpu_place(src_place) &&
-             platform::is_ipu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (platform::is_ipu_place(src_place) &&
-             platform::is_ipu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
@@ -390,6 +379,29 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
         "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_IPU
+  else if (platform::is_ipu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_ipu_place(dst_place)) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+  else if (platform::is_ipu_place(src_place) &&  // NOLINT
+           platform::is_ipu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copying from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 }
 
 template <typename TENSOR>
@@ -447,27 +459,15 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#ifdef PADDLE_WITH_IPU
-  else if (platform::is_ipu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
-             platform::is_ipu_place(dst_place)) {
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else {  // NOLINT
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Copy from %s to %s is not supported.", src_place, dst_place));
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {     /* custom_device -> cpu*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
+  }                                                // NOLINT
   else if (platform::is_cpu_place(src_place) &&    // NOLINT
            platform::is_custom_place(dst_place)) { /* cpu -> custom_device*/
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
+  }                                                 // NOLINT
   else if (platform::is_custom_place(src_place) &&  // NOLINT
            platform::is_custom_place(
                dst_place)) { /* custom_device -> custom_device*/
@@ -483,11 +483,11 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
+  }                                              // NOLINT
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  }
+  }                                              // NOLINT
   else if (platform::is_xpu_place(src_place) &&  // NOLINT
            platform::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
@@ -502,7 +502,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
       auto xpu_ctx = platform::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
     }
-  }
+  }       // NOLINT
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
@@ -595,6 +595,29 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
       return;
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
+#ifdef PADDLE_WITH_IPU
+  else if (platform::is_ipu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_ipu_place(dst_place)) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+  else if (platform::is_ipu_place(src_place) &&  // NOLINT
+           platform::is_ipu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -1224,8 +1247,14 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
   proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer
-    int32_t size;
+    int32_t size = -1;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    PADDLE_ENFORCE_EQ(
+        is.good(), true,
+        platform::errors::Unavailable("Cannot read tensor desc size"));
+    PADDLE_ENFORCE_GE(
+        size, 0,
+        platform::errors::InvalidArgument("Tensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(

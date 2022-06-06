@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 #include "paddle/phi/api/include/api.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {

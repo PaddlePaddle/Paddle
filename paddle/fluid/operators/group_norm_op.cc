@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -167,9 +168,11 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
                    "GroupNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "GroupNormGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
                    framework::GradVarName("Y"), "GroupNormGrad");
 
@@ -216,10 +219,12 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
 
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("group_norm_grad");
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Scale", this->Input("Scale"));
     op->SetInput("Bias", this->Input("Bias"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetInput("Y", this->Output("Y"));
+    op->SetInput("Mean", this->Output("Mean"));
     op->SetInput("Variance", this->Output("Variance"));
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -230,7 +235,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInferer, {"X", "Y"});
 DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInferer,
                            {framework::GradVarName("Y"),
                             framework::GradVarName("X")});
@@ -252,8 +256,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
-                  ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInferer);
+                  ops::GroupNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(

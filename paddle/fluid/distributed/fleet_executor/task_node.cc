@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -73,6 +74,9 @@ void TaskNode::Init(bool use_feed_fetch_ops) {
     }
   }
 }
+
+TaskNode::TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times)
+    : rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
 
 TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
@@ -150,15 +154,17 @@ void TaskNode::SetRunAtOffset(int64_t value) {
 
 void TaskNode::SetReplyUpPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "reply_up_per_steps must >= 1, but received %ld", value));
+      value, 1,
+      platform::errors::InvalidArgument(
+          "reply_up_per_steps must >= 1, but received %ld", value));
   reply_up_per_steps_ = value;
 }
 
 void TaskNode::SetSendDownPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "send_down_per_steps must >= 1, but received %ld", value));
+      value, 1,
+      platform::errors::InvalidArgument(
+          "send_down_per_steps must >= 1, but received %ld", value));
   send_down_per_steps_ = value;
 }
 

@@ -21,11 +21,14 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -37,12 +40,14 @@ class TestLinspaceOpCommonCase(OpTest):
         self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpReverseCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -54,12 +59,14 @@ class TestLinspaceOpReverseCase(OpTest):
         self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceOpNumOneCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
+        self.python_api = paddle.linspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -71,10 +78,11 @@ class TestLinspaceOpNumOneCase(OpTest):
         self.outputs = {'Out': np.array(10, dtype=dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestLinspaceAPI(unittest.TestCase):
+
     def test_variable_input1(self):
         start = paddle.full(shape=[1], fill_value=0, dtype='float32')
         stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
@@ -106,8 +114,11 @@ class TestLinspaceAPI(unittest.TestCase):
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            out = paddle.linspace(
-                0, 10, 5, dtype='float32', name='linspace_res')
+            out = paddle.linspace(0,
+                                  10,
+                                  5,
+                                  dtype='float32',
+                                  name='linspace_res')
             assert 'linspace_res' in out.name
 
     def test_imperative(self):
@@ -123,8 +134,14 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_variable_input2()
+            self.test_imperative()
+
 
 class TestLinspaceOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 

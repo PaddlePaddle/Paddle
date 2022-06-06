@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
 

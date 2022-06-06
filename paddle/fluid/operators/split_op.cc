@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -84,10 +85,8 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          phi::vectorize(ctx.Input<Tensor>("X")->dims()),
-          dnnl::memory::data_type::f32, ctx.Input<Tensor>("X")->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+      const auto x_md = ctx.Input<Tensor>("X")->mem_desc();
+      if (x_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);

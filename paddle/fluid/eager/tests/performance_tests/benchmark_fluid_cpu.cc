@@ -23,7 +23,6 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/tests/performance_tests/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -33,6 +32,16 @@
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
+
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace imperative {

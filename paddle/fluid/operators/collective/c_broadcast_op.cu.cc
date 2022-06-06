@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -35,8 +37,20 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      // Use ProcessGroup
+      distributed::ProcessGroup* pg = map->get(rid);
+      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<phi::DenseTensor> out_tensor;
+      in_tensor.push_back(*x);
+      out_tensor.push_back(*out);
+      auto task = pg->Broadcast(in_tensor, out_tensor);
+      task->Wait();
+      return;
+    }
 
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -63,7 +77,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
 
@@ -84,6 +98,9 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(c_broadcast, ops::CBroadcastOpCUDAKernel<float>,
                         ops::CBroadcastOpCUDAKernel<double>,
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+                        ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
+#endif
                         ops::CBroadcastOpCUDAKernel<int>,
                         ops::CBroadcastOpCUDAKernel<int64_t>,
                         ops::CBroadcastOpCUDAKernel<plat::float16>);

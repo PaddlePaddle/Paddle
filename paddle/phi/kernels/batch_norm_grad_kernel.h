@@ -15,21 +15,22 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& dev_ctx,
-                            const DenseTensor& y_grad,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
+                            const paddle::optional<DenseTensor>& mean,
+                            const paddle::optional<DenseTensor>& variance,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
-                            paddle::optional<const DenseTensor&> reserve_space,
-                            paddle::optional<const DenseTensor&> mean,
-                            paddle::optional<const DenseTensor&> variance,
+                            const paddle::optional<DenseTensor>& reserve_space,
+                            const DenseTensor& y_grad,
                             float momentum,
                             float epsilon,
                             const std::string& data_layout,
@@ -44,15 +45,15 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
-                         const DenseTensor& y_grad,
                          const DenseTensor& x,
                          const DenseTensor& scale,
                          const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& mean,
+                         const paddle::optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,
                          const DenseTensor& saved_variance,
-                         paddle::optional<const DenseTensor&> reserve_space,
-                         paddle::optional<const DenseTensor&> mean,
-                         paddle::optional<const DenseTensor&> variance,
+                         const paddle::optional<DenseTensor>& reserve_space,
+                         const DenseTensor& y_grad,
                          float momentum,
                          float epsilon,
                          const std::string& data_layout,
@@ -66,16 +67,16 @@ void BatchNormGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void BatchNormDoubleGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& scale,
+                               const paddle::optional<DenseTensor>& mean,
+                               const paddle::optional<DenseTensor>& variance,
+                               const DenseTensor& saved_mean,
+                               const DenseTensor& saved_variance,
+                               const DenseTensor& y_grad,
                                const DenseTensor& x_grad_grad,
                                const DenseTensor& scale_grad_grad,
                                const DenseTensor& bias_grad_grad,
-                               const DenseTensor& y_grad,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const DenseTensor& saved_mean,
-                               const DenseTensor& saved_variance,
-                               paddle::optional<const DenseTensor&> mean,
-                               paddle::optional<const DenseTensor&> variance,
                                float momentum,
                                float epsilon,
                                const std::string& data_layout,

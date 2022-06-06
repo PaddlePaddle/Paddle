@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -124,7 +126,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/NPU/XPU is compiled seperatly.
+// NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
 #elif defined(PADDLE_WITH_ASCEND_CL)
   auto unsupported_ops_npu_fp16 = std::get<2>(
       OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
@@ -143,6 +145,15 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
                                 unsupported_ops_xpu_bf16.end());
+#elif defined(PADDLE_WITH_MLU)
+  auto unsupported_ops_mlu_fp16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
+  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
+                                unsupported_ops_mlu_fp16.end());
+  auto unsupported_ops_mlu_bf16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
+                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
           << unsupported_fp16_ops_->size() << " "
@@ -209,7 +220,11 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto data_type = GetDataType<VarType>(var);
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place)) {
+      paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_mlu_place(place) ||
+      paddle::platform::is_custom_place(place) ||
+      paddle::platform::is_npu_place(place) ||
+      paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
@@ -289,9 +304,8 @@ static inline framework::proto::VarType::Type GetPromoteType(
   // dtype of input(X)
   if (op_type == "moving_average_abs_max_scale") {
     for (const auto& pair : ins) {
-      if (pair.first == "X" &&
-          GetDataType<VarType>(pair.second.front()) ==
-              framework::proto::VarType::FP16) {
+      if (pair.first == "X" && GetDataType<VarType>(pair.second.front()) ==
+                                   framework::proto::VarType::FP16) {
         dst_type = framework::proto::VarType::FP16;
       }
     }

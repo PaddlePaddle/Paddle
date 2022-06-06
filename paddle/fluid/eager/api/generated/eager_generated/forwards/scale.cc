@@ -23,11 +23,11 @@
  * **/
 
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/scale.h"
+
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/all.h"
 
 namespace egr {
@@ -79,16 +79,13 @@ paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
     // Pass Attributes to GradNode
     scale_node->SetAttributes_scale(scale);
 
-    // Set Next Edges
-    scale_node->AddEdges(p_autograd_in, /*slot id*/ 0);
-
     // Set TensorWrappers
     scale_node->SetTensorWrappers_X({x});
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    scale_node->SetGradOutMeta(p_autograd_in, /*slot id*/ 0);
+    scale_node->SetGradOutMeta(x, /*slot id*/ 0);
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    scale_node->SetGradInMeta(p_autograd_out, /*slot id*/ 0);
+    scale_node->SetGradInMeta(out, /*slot id*/ 0);
 
     // Set History for output set current Grad Node for
     EagerUtils::SetHistory(p_autograd_out, scale_node);

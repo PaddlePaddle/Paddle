@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/bce_loss_kernel.h"
-
 #include <algorithm>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/bce_loss_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -38,7 +37,7 @@ struct BCELossFunctor {
   HOSTDEVICE inline T operator()(const T x, const T label) const {
     PADDLE_ENFORCE(
         (x >= static_cast<T>(0)) && (x <= one),
-        "Input is expected to be within the interval [0, 1], but recieved %f.",
+        "Input is expected to be within the interval [0, 1], but received %f.",
         x);
     T term1 = max(phi::kps::details::Log(x), neg_100);
     T term2 = max(phi::kps::details::Log(one - x), neg_100);

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.*/
 
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -63,10 +64,8 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       context->ShareLoD("MultiLevelRois", "FpnRois");
     }
     if (context->IsRuntime() && !context->HasInputs("MultiLevelRoIsNum")) {
-      std::vector<framework::InferShapeVarPtr> roi_inputs =
-          context->GetInputVarPtrs("MultiLevelRois");
-      std::vector<framework::InferShapeVarPtr> score_inputs =
-          context->GetInputVarPtrs("MultiLevelScores");
+      auto roi_inputs = context->GetInputVarPtrs("MultiLevelRois");
+      auto score_inputs = context->GetInputVarPtrs("MultiLevelScores");
       for (size_t i = 0; i < roi_inputs.size(); ++i) {
         framework::Variable *roi_var =
             BOOST_GET(framework::Variable *, roi_inputs[i]);

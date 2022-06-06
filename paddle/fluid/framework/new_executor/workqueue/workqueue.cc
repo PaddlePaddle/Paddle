@@ -5,6 +5,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -21,6 +22,10 @@ void WorkQueueOptions::Validate() const {
       name.find('_'), std::string::npos,
       platform::errors::InvalidArgument(
           "WorkQueueOptions.name shouldn't contain an underline"));
+  PADDLE_ENFORCE_EQ(
+      allow_spinning == false && always_spinning == true, false,
+      platform::errors::InvalidArgument("WorkQueueOptions.allow_spinning must "
+                                        "be true when always_spinning is set"));
 }
 
 namespace {
@@ -31,11 +36,8 @@ class WorkQueueImpl : public WorkQueue {
  public:
   explicit WorkQueueImpl(const WorkQueueOptions& options) : WorkQueue(options) {
     if (options_.track_task && options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
     if (options_.detached == false && options.events_waiter != nullptr) {
@@ -43,13 +45,11 @@ class WorkQueueImpl : public WorkQueue {
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
-                                       options_.allow_spinning);
+                                       options_.allow_spinning,
+                                       options_.always_spinning);
   }
 
   virtual ~WorkQueueImpl() {
-    if (empty_notifier_) {
-      empty_notifier_->UnregisterEvent();
-    }
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
@@ -57,19 +57,16 @@ class WorkQueueImpl : public WorkQueue {
     }
     if (destruct_notifier_) {
       destruct_notifier_->NotifyEvent();
-      destruct_notifier_->UnregisterEvent();
     }
   }
 
   void AddTask(std::function<void()> fn) override {
-    platform::RecordEvent("WorkQueue::AddTask",
-                          platform::TracerEventType::UserDefined, 10 /*level*/);
+    platform::RecordEvent record("WorkQueue::AddTask",
+                                 platform::TracerEventType::UserDefined,
+                                 10 /*level*/);
     if (tracker_ != nullptr) {
-      fn = [
-        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-      ]() mutable {
-        task();
-      };
+      fn = [task = std::move(fn),
+            raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
     }
     queue_->AddTask(std::move(fn));
   }
@@ -124,26 +121,22 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
     const auto& options = queues_options_[idx];
     if (options.track_task && tracker_ == nullptr &&
         options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
-    if (options.detached == false && options.events_waiter != nullptr) {
+    if (options.detached == false && options.events_waiter != nullptr &&
+        !destruct_notifier_) {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queues_[idx] = new (&queues_storage_[idx]) NonblockingThreadPool(
-        options.name, options.num_threads, options.allow_spinning);
+    queues_[idx] = new (&queues_storage_[idx])
+        NonblockingThreadPool(options.name, options.num_threads,
+                              options.allow_spinning, options.always_spinning);
   }
 }
 
 WorkQueueGroupImpl::~WorkQueueGroupImpl() {
-  if (empty_notifier_) {
-    empty_notifier_->UnregisterEvent();
-  }
   for (auto queue : queues_) {
     queue->~NonblockingThreadPool();
   }
@@ -154,20 +147,17 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   free(queues_storage_);
   if (destruct_notifier_) {
     destruct_notifier_->NotifyEvent();
-    destruct_notifier_->UnregisterEvent();
   }
 }
 
 void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
-  platform::RecordEvent("WorkQueue::AddTask",
-                        platform::TracerEventType::UserDefined, 10 /*level*/);
+  platform::RecordEvent record("WorkQueue::AddTask",
+                               platform::TracerEventType::UserDefined,
+                               10 /*level*/);
   assert(queue_idx < queues_.size());
   if (queues_options_.at(queue_idx).track_task) {
-    fn = [
-      task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-    ]() mutable {
-      task();
-    };
+    fn = [task = std::move(fn),
+          raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
   }
   queues_[queue_idx]->AddTask(std::move(fn));
 }

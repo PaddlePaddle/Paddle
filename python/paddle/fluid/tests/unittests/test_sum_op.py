@@ -22,12 +22,15 @@ from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest, convert_float_to_uint16, convert_uint16_to_float)
+from paddle.fluid.tests.unittests.op_test import (OpTest,
+                                                  convert_float_to_uint16,
+                                                  convert_uint16_to_float)
 from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSumOp(OpTest):
+
     def setUp(self):
         self.op_type = "sum"
         self.init_kernel_type()
@@ -52,6 +55,7 @@ class TestSumOp(OpTest):
 
 
 class TestSelectedRowsSumOp(unittest.TestCase):
+
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -143,6 +147,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
 
 
 class TestSelectedRowsSumOpInt(TestSelectedRowsSumOp):
+
     def init_kernel_type(self):
         self.dtype = np.int32
 
@@ -150,6 +155,7 @@ class TestSelectedRowsSumOpInt(TestSelectedRowsSumOp):
 @unittest.skipIf(not core.supports_bfloat16(),
                  'place does not support BF16 evaluation')
 class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
+
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -157,8 +163,8 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         self.dtype = np.uint16
         self.init_kernel_type()
         np.random.seed(12345)
-        self.data = np.random.random((len(self.rows),
-                                      self.row_numel)).astype(np.float32)
+        self.data = np.random.random(
+            (len(self.rows), self.row_numel)).astype(np.float32)
 
     def _get_array(self, rows, row_numel):
         if len(rows) > 0:
@@ -210,11 +216,13 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
 
 
 class TestSelectedRowsSumBF16OpBigRow(TestSelectedRowsSumBF16Op):
+
     def init_kernel_type(self):
         self.row_numel = 102
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
+
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -245,11 +253,12 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         out_t = np.array(out)
         self.assertEqual(out_t.shape[0], self.height)
         self.assertTrue(
-            np.array_equal(out_t,
-                           self._get_array([i for i in range(
-                               self.height)], self.row_numel) * np.tile(
-                                   np.array(result).reshape(self.height, 1),
-                                   self.row_numel)))
+            np.array_equal(
+                out_t,
+                self._get_array([i
+                                 for i in range(self.height)], self.row_numel) *
+                np.tile(
+                    np.array(result).reshape(self.height, 1), self.row_numel)))
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
@@ -264,6 +273,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16SumOp(TestSumOp):
+
     def init_kernel_type(self):
         self.dtype = np.float16
 
@@ -281,9 +291,11 @@ class TestFP16SumOp(TestSumOp):
 
 
 def create_test_sum_fp16_class(parent):
+
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
     class TestSumFp16Case(parent):
+
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -300,6 +312,7 @@ def create_test_sum_fp16_class(parent):
 
 #----------- test bf16 -----------
 class TestSumBF16Op(OpTest):
+
     def setUp(self):
         self.op_type = "sum"
         self.init_kernel_type()
@@ -325,12 +338,15 @@ class TestSumBF16Op(OpTest):
 
 
 class API_Test_Add_n(unittest.TestCase):
+
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(
-                shape=[2, 3], dtype='int64', value=5)
-            input1 = fluid.layers.fill_constant(
-                shape=[2, 3], dtype='int64', value=3)
+            input0 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3],
+                                                dtype='int64',
+                                                value=3)
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
@@ -347,9 +363,32 @@ class API_Test_Add_n(unittest.TestCase):
 
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
+    def test_dygraph_final_state_api(self):
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                input0 = paddle.ones(shape=[2, 3], dtype='float32')
+                input1 = paddle.ones(shape=[2, 3], dtype='float32')
+                input0.stop_gradient = False
+                input1.stop_gradient = False
+                expected_result = np.empty((2, 3))
+                expected_result.fill(2)
+                sum_value = paddle.add_n([input0, input1])
+                self.assertEqual((sum_value.numpy() == expected_result).all(),
+                                 True)
+
+                expected_grad_result = np.empty((2, 3))
+                expected_grad_result.fill(1)
+                sum_value.backward()
+                self.assertEqual(
+                    (input0.grad.numpy() == expected_grad_result).all(), True)
+                self.assertEqual(
+                    (input1.grad.numpy() == expected_grad_result).all(), True)
+
 
 class TestRaiseSumError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.sum([11, 22])
 
@@ -370,7 +409,9 @@ class TestRaiseSumError(unittest.TestCase):
 
 
 class TestRaiseSumsError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.sums([11, 22])
 
@@ -406,7 +447,9 @@ class TestRaiseSumsError(unittest.TestCase):
 
 
 class TestSumOpError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_empty_list_input():
             with fluid.dygraph.guard():
                 fluid._C_ops.sum([])

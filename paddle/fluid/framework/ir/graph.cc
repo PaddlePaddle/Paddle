@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/ir/graph.h"
+
 #include <memory>
 
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/operator.h"
 
 PADDLE_DEFINE_EXPORTED_bool(convert_all_blocks, true,
@@ -95,6 +96,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   std::unordered_map<std::string, std::pair<VarDesc *, int>>
       name_to_desc_block_id;
 
+  block_id_ = block.ID();
   const BlockDesc *block_var_visible = &block;
   while (block_var_visible != nullptr) {
     for (auto *var : block_var_visible->AllVars()) {

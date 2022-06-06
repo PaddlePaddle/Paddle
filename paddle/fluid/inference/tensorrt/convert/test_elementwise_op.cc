@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -104,4 +105,4 @@ TEST(elementwise_op, plugin) {
 }  // namespace paddle
 
 USE_OP_ITSELF(elementwise_add);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);

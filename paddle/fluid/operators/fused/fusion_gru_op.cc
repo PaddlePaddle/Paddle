@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
+
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -298,7 +300,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
        bias ? bias->data<T>() : nullptr);
 
@@ -370,7 +372,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     if (M > D3) {
       fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
          bias ? bias->data<T>() : nullptr);

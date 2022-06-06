@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,7 +34,9 @@ def remove_file_if_exists(file_name):
         shutil.rmtree(file_name)
 
 
-def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
+def run_test(clip_after_allreduce=True,
+             max_global_norm=-1.0,
+             gradient_merge_steps=1):
     if not paddle.is_compiled_with_cuda():
         return
     if os.name == 'nt':
@@ -55,6 +57,7 @@ def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
 
     os.environ['CLIP_AFTER_ALLREDUCE'] = str(clip_after_allreduce)
     os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
+    os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = 'distributed_fused_lamb_touch_file_{}'.format(os.getpid())
@@ -69,6 +72,7 @@ def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
 
 
 class TestDistributedFusedLambWithClip(unittest.TestCase):
+
     def test_1(self):
         run_test(clip_after_allreduce=True, max_global_norm=0.01)
 

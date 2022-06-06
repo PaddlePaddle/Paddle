@@ -25,6 +25,10 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
+#ifdef INFRT_WITH_PHI
+#include "paddle/phi/core/dense_tensor.h"
+#endif
+
 namespace infrt {
 namespace kernel {
 using namespace host_context;  // NOLINT
@@ -49,8 +53,8 @@ void FillTensorWithConstant(Attribute<T> v, DenseHostTensor *tensor) {
   MutableDTArrayView<T>(tensor).Fill(v.get());
 }
 
-TensorMap LoadParams(const std::string &path) {
-  return *(infrt::tensor::LoadParams(path));
+TensorMap LoadParams(Attribute<std::string> path) {
+  return *(infrt::tensor::LoadParams(path.get()));
 }
 
 DenseHostTensor TensorMapGetTensor(TensorMap map, Attribute<std::string> name) {
@@ -61,6 +65,20 @@ DenseHostTensor TensorMapGetTensor(TensorMap map, Attribute<std::string> name) {
 }
 
 int32_t TensorMapGetSize(TensorMap map) { return map.size(); }
+
+// TODO(wilber): Maybe we should place TensorList type in dt dialect.
+#ifdef INFRT_WITH_PHI
+::phi::DenseTensor TensorListGetTensor(std::vector<::phi::DenseTensor *> list,
+                                       Attribute<int32_t> idx) {
+  CHECK_LT(idx.get(), static_cast<int>(list.size()))
+      << "idx should less than list size";
+  return *list[idx.get()];
+}
+
+int32_t TensorListGetSize(const std::vector<::phi::DenseTensor *> &list) {
+  return list.size();
+}
+#endif
 
 DenseHostTensor ShallowCopyTensor(DenseHostTensor v) { return v; }
 
@@ -101,6 +119,7 @@ void NaiveMatmul(const DenseHostTensor &x,
   const int N = w.shape().GetDim(1);
   for (int i = 0; i < M; i++) {
     for (int j = 0; j < N; j++) {
+      out_data[i * N + j] = 0;
       for (int k = 0; k < K; k++) {
         out_data[i * N + j] += x_data[i * K + k] * w_data[k * N + j];
       }
@@ -112,19 +131,29 @@ void NaiveMatmul(const DenseHostTensor &x,
 
 void RegisterTensorKernels(host_context::KernelRegistry *registry) {
   registry->AddKernel("dt.create_uninit_tensor.f32",
-                      INFRT_KERNEL(CreateUninitTensor<float>));
-  registry->AddKernelAttrNameList("dt.create_uninit_tensor.f32", {"shape"});
+                      INFRT_KERNEL(CreateUninitTensor<float>),
+                      {"shape"});
   registry->AddKernel("dt.print_tensor", INFRT_KERNEL(PrintTensor));
   registry->AddKernel("dt.fill_tensor_with_constant.f32",
-                      INFRT_KERNEL(FillTensorWithConstant<float>));
+                      INFRT_KERNEL(FillTensorWithConstant<float>),
+                      {"value"});
   registry->AddKernel("dt.fill_tensor_with_constant.f64",
-                      INFRT_KERNEL(FillTensorWithConstant<double>));
+                      INFRT_KERNEL(FillTensorWithConstant<double>),
+                      {"value"});
 
   // TensorMap related methods.
   registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParams));
   registry->AddKernel("dt.tensor_map_get_tensor",
                       INFRT_KERNEL(TensorMapGetTensor));
   registry->AddKernel("dt.tensor_map_get_size", INFRT_KERNEL(TensorMapGetSize));
+
+// TensorList related methods.
+#ifdef INFRT_WITH_PHI
+  registry->AddKernel(
+      "dt.tensor_list_get_tensor", INFRT_KERNEL(TensorListGetTensor), {"id"});
+  registry->AddKernel("dt.tensor_list_get_size",
+                      INFRT_KERNEL(TensorListGetSize));
+#endif
 
   registry->AddKernel("dt.shallow_copy_tensor",
                       INFRT_KERNEL(ShallowCopyTensor));

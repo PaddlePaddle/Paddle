@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
@@ -172,12 +174,15 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc, bool keep_kid_scopes) {
+  platform::RecordEvent record_run("Executor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ctx->ops_, place_);
 #endif
-  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
 }
@@ -300,6 +305,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
+  platform::RecordEvent record_run("Executor::Run",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_MKLDNN
@@ -427,6 +434,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          int64_t end_op_index,
                                          bool create_local_scope,
                                          bool create_vars, bool keep_kids) {
+  platform::RecordEvent record_run("Executor::RunPartialPreparedContext",
+                                   platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope shouldn't be null"));
@@ -517,6 +526,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
+      platform::RecordEvent record("CheckGC",
+                                   platform::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }
@@ -576,8 +587,9 @@ void Executor::RunPreparedContext(
           "Program in ExecutorPrepareContext should has feed_ops."));
   PADDLE_ENFORCE_EQ(
       has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
-      true, platform::errors::PreconditionNotMet(
-                "Program in the prepared context should has fetch_ops."));
+      true,
+      platform::errors::PreconditionNotMet(
+          "Program in the prepared context should has fetch_ops."));
 
   // map the data of feed_targets to feed_holder
   for (auto* op : global_block.AllOps()) {

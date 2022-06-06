@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
-#include "paddle/phi/core/device_context.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gather_tree_kernel.h"
 
