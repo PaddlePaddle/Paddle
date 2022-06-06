@@ -38,7 +38,6 @@ std::string string_format(const std::string& format, Args... args) {
   return std::string(buf.get(), size - 1);  // exclude the '\0'
 }
 
-
 template <typename basic_type>
 std::string json_vector(const std::vector<basic_type> type_vector) {
   std::ostringstream res_stream;

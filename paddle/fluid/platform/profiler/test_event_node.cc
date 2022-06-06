@@ -213,8 +213,9 @@ TEST(NodeTreesTest, HandleTrees_case0) {
       [&](DeviceTraceEventNode* a) { logger.LogDeviceTraceEventNode(*a); });
   std::function<void(MemTraceEventNode*)> mem_event_node_handle(
       [&](MemTraceEventNode* a) { logger.LogMemTraceEventNode(*a); });
-  std::function<void(OperatorSupplementEventNode*)> op_supplement_event_node_handle(
-      [&](OperatorSupplementEventNode* a) {});
+  std::function<void(OperatorSupplementEventNode*)>
+  op_supplement_event_node_handle([&](OperatorSupplementEventNode* a) {});
   tree.HandleTrees(host_event_node_handle, runtime_event_node_handle,
-                   device_event_node_handle, mem_event_node_handle, op_supplement_event_node_handle);
+                   device_event_node_handle, mem_event_node_handle,
+                   op_supplement_event_node_handle);
 }

@@ -41,7 +41,6 @@ std::string json_vector<std::string>(
   return res_stream.str();
 }
 
-
 #ifdef PADDLE_WITH_CUPTI
 float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
                             int32_t StaticSharedMemory,
