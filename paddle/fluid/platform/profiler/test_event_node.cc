@@ -28,6 +28,7 @@ using paddle::platform::HostTraceEvent;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::DeviceTraceEvent;
 using paddle::platform::TracerEventType;
+using paddle::platform::TracerMemEventType;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
@@ -48,6 +49,14 @@ TEST(NodeTreesTest, LogMe_case0) {
       std::string("op2"), TracerEventType::Operator, 21000, 30000, 10, 10));
   host_events.push_back(HostTraceEvent(
       std::string("op3"), TracerEventType::Operator, 31000, 40000, 10, 11));
+  mem_events.push_back(MemTraceEvent(11500, 0x1000,
+                                     TracerMemEventType::Allocate, 10, 10, 50,
+                                     "GPU:0", 50, 50));
+  mem_events.push_back(MemTraceEvent(11900, 0x1000, TracerMemEventType::Free,
+                                     10, 10, -50, "GPU:0", 0, 50));
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", std::map<std::string, std::vector<std::vector<int64_t>>>(),
+      std::map<std::string, std::vector<std::string>>(), "op1()", 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
@@ -89,6 +98,8 @@ TEST(NodeTreesTest, LogMe_case0) {
     if ((*it)->Name() == "op1") {
       EXPECT_EQ((*it)->GetChildren().size(), 0u);
       EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
     }
   }
   for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
@@ -166,6 +177,14 @@ TEST(NodeTreesTest, HandleTrees_case0) {
       std::string("op2"), TracerEventType::Operator, 30000, 70000, 10, 10));
   host_events.push_back(HostTraceEvent(
       std::string("op3"), TracerEventType::Operator, 2000, 120000, 10, 11));
+  mem_events.push_back(MemTraceEvent(11500, 0x1000,
+                                     TracerMemEventType::Allocate, 10, 10, 50,
+                                     "GPU:0", 50, 50));
+  mem_events.push_back(MemTraceEvent(11900, 0x1000, TracerMemEventType::Free,
+                                     10, 10, -50, "GPU:0", 0, 50));
+  op_supplement_events.push_back(OperatorSupplementEvent(
+      11600, "op1", std::map<std::string, std::vector<std::vector<int64_t>>>(),
+      std::map<std::string, std::vector<std::string>>(), "op1()", 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              25000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 35000,
