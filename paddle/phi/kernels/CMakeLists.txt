@@ -162,3 +162,47 @@ add_subdirectory(selected_rows)
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 # For strings kernels
 add_subdirectory(strings)
+
+file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
+file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
+file(GLOB kernel_primitive_h "primitive/*.h")
+file(
+  GLOB
+  kernel_cc
+  "cpu/*.cc"
+  "selected_rows/*.cc"
+  "selected_rows/cpu/*.cc"
+  "sparse/*.cc"
+  "sparse/cpu/*.cc"
+  "strings/*.cc"
+  "strings/cpu/*.cc")
+file(
+  GLOB
+  kernel_cu
+  "gpu/*.cu"
+  "gpudnn/*.cu"
+  "kps/*.cu"
+  "selected_rows/gpu/*.cc"
+  "sparse/gpu/*.cu"
+  "strings/*.cu")
+# file(GLOB kernel_cudnn "gpudnn/*.cu")
+# file(GLOB kernel_kps "kps/*.cu")
+file(GLOB kernel_xpu "xpu/*.cc")
+
+add_library(phi_cpu ${kernel_cc})
+kernel_declare(${kernel_cc})
+target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+
+if(WITH_GPU OR WITH_ROCM)
+  add_library(phi_gpu ${kernel_cu})
+  kernel_declare(${kernel_cu})
+  target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
+  set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_gpu)
+endif()
+
+if(WITH_XPU)
+  add_library(phi_xpu ${kernel_xpu})
+  kernel_declare(${kernel_xpu})
+  target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
+  set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
+endif()

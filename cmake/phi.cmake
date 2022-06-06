@@ -111,6 +111,7 @@ function(kernel_declare TARGET_LIST)
 endfunction()
 
 function(kernel_library TARGET)
+  return()
   set(common_srcs)
   set(cpu_srcs)
   set(gpu_srcs)
