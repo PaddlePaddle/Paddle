@@ -53,37 +53,43 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         input1 = paddle.to_tensor(self.input1_np)
         input2 = paddle.to_tensor(self.input2_np)
         label = paddle.to_tensor(self.label_np)
-        dy_result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
-        expected1 = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
+        dy_result = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                               input2,
+                                                               label,
+                                                               margin=0.5,
+                                                               reduction='mean')
+        expected1 = cosine_embedding_loss(self.input1_np,
+                                          self.input2_np,
+                                          self.label_np,
+                                          margin=0.5,
+                                          reduction='mean')
         self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 
-        dy_result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='sum')
-        expected2 = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='sum')
+        dy_result = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                               input2,
+                                                               label,
+                                                               margin=0.5,
+                                                               reduction='sum')
+        expected2 = cosine_embedding_loss(self.input1_np,
+                                          self.input2_np,
+                                          self.label_np,
+                                          margin=0.5,
+                                          reduction='sum')
 
         self.assertTrue(np.allclose(dy_result.numpy(), expected2))
         self.assertTrue(dy_result.shape, [1])
 
-        dy_result = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='none')
-        expected3 = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='none')
+        dy_result = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                               input2,
+                                                               label,
+                                                               margin=0.5,
+                                                               reduction='none')
+        expected3 = cosine_embedding_loss(self.input1_np,
+                                          self.input2_np,
+                                          self.label_np,
+                                          margin=0.5,
+                                          reduction='none')
 
         self.assertTrue(np.allclose(dy_result.numpy(), expected3))
         self.assertTrue(dy_result.shape, [5])
@@ -92,12 +98,21 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         input1 = static.data(name='input1', shape=[5, 3], dtype='float64')
         input2 = static.data(name='input2', shape=[5, 3], dtype='float64')
         label = static.data(name='label', shape=[5], dtype='int32')
-        result0 = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='none')
-        result1 = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='sum')
-        result2 = paddle.nn.functional.cosine_embedding_loss(
-            input1, input2, label, margin=0.5, reduction='mean')
+        result0 = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                             input2,
+                                                             label,
+                                                             margin=0.5,
+                                                             reduction='none')
+        result1 = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                             input2,
+                                                             label,
+                                                             margin=0.5,
+                                                             reduction='sum')
+        result2 = paddle.nn.functional.cosine_embedding_loss(input1,
+                                                             input2,
+                                                             label,
+                                                             margin=0.5,
+                                                             reduction='mean')
 
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
         exe = static.Executor(place)
@@ -108,28 +123,25 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
             "label": self.label_np
         },
                                 fetch_list=[result0, result1, result2])
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='none')
+        expected = cosine_embedding_loss(self.input1_np,
+                                         self.input2_np,
+                                         self.label_np,
+                                         margin=0.5,
+                                         reduction='none')
 
         self.assertTrue(np.allclose(static_result[0], expected))
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='sum')
+        expected = cosine_embedding_loss(self.input1_np,
+                                         self.input2_np,
+                                         self.label_np,
+                                         margin=0.5,
+                                         reduction='sum')
 
         self.assertTrue(np.allclose(static_result[1], expected))
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
+        expected = cosine_embedding_loss(self.input1_np,
+                                         self.input2_np,
+                                         self.label_np,
+                                         margin=0.5,
+                                         reduction='mean')
 
         self.assertTrue(np.allclose(static_result[2], expected))
 
@@ -160,18 +172,23 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
 
         def test_label_shape_error():
             label = paddle.to_tensor(
-                np.random.randint(
-                    low=0, high=2, size=(2, 3)))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+                np.random.randint(low=0, high=2, size=(2, 3)))
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_label_shape_error)
 
         def test_input_different_shape_error():
             input1 = paddle.to_tensor(self.input1_np[0])
             label = paddle.to_tensor(np.ndarray([1]))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_input_different_shape_error)
 
@@ -180,34 +197,47 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
                 np.random.random(size=(2, 3, 4)).astype(np.float64))
             input2 = paddle.to_tensor(
                 np.random.random(size=(2, 3, 4)).astype(np.float64))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_input_shape2D_error)
 
         def test_label_value_error():
             label = paddle.to_tensor(np.ndarray([-1, -2]))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_label_value_error)
 
         def test_input_type_error():
             input1 = paddle.to_tensor(self.input1_np.astype(np.int64))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_input_type_error)
 
         def test_label_type_error():
             label = paddle.to_tensor(self.label_np.astype(np.int16))
-            paddle.nn.functional.cosine_embedding_loss(
-                input1, input2, label, margin=0.5, reduction='mean')
+            paddle.nn.functional.cosine_embedding_loss(input1,
+                                                       input2,
+                                                       label,
+                                                       margin=0.5,
+                                                       reduction='mean')
 
         self.assertRaises(ValueError, test_label_type_error)
 
 
 class TestClassCosineEmbeddingLoss(unittest.TestCase):
+
     def setUp(self):
         self.input1_np = np.random.random(size=(10, 3)).astype(np.float32)
         self.input2_np = np.random.random(size=(10, 3)).astype(np.float32)
@@ -223,15 +253,14 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
         input1 = paddle.to_tensor(self.input1_np)
         input2 = paddle.to_tensor(self.input2_np)
         label = paddle.to_tensor(self.label_np)
-        CosineEmbeddingLoss = paddle.nn.CosineEmbeddingLoss(
-            margin=0.5, reduction='mean')
+        CosineEmbeddingLoss = paddle.nn.CosineEmbeddingLoss(margin=0.5,
+                                                            reduction='mean')
         dy_result = CosineEmbeddingLoss(input1, input2, label)
-        expected1 = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
+        expected1 = cosine_embedding_loss(self.input1_np,
+                                          self.input2_np,
+                                          self.label_np,
+                                          margin=0.5,
+                                          reduction='mean')
         self.assertTrue(np.allclose(dy_result.numpy(), expected1))
         self.assertTrue(dy_result.shape, [1])
 
@@ -239,20 +268,19 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
         input2_1D = paddle.to_tensor(self.input2_np_1D)
         label_1D = paddle.to_tensor(self.label_np_1D)
         dy_result = CosineEmbeddingLoss(input1_1D, input2_1D, label_1D)
-        expected2 = cosine_embedding_loss(
-            self.input1_np_1D,
-            self.input2_np_1D,
-            self.label_np_1D,
-            margin=0.5,
-            reduction='mean')
+        expected2 = cosine_embedding_loss(self.input1_np_1D,
+                                          self.input2_np_1D,
+                                          self.label_np_1D,
+                                          margin=0.5,
+                                          reduction='mean')
         self.assertTrue(np.allclose(dy_result.numpy(), expected2))
 
     def run_static(self):
         input1 = static.data(name='input1', shape=[10, 3], dtype='float32')
         input2 = static.data(name='input2', shape=[10, 3], dtype='float32')
         label = static.data(name='label', shape=[10], dtype='int64')
-        CosineEmbeddingLoss = paddle.nn.CosineEmbeddingLoss(
-            margin=0.5, reduction='mean')
+        CosineEmbeddingLoss = paddle.nn.CosineEmbeddingLoss(margin=0.5,
+                                                            reduction='mean')
         result = CosineEmbeddingLoss(input1, input2, label)
 
         place = paddle.CPUPlace()
@@ -264,12 +292,11 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
             "label": self.label_np
         },
                                 fetch_list=[result])
-        expected = cosine_embedding_loss(
-            self.input1_np,
-            self.input2_np,
-            self.label_np,
-            margin=0.5,
-            reduction='mean')
+        expected = cosine_embedding_loss(self.input1_np,
+                                         self.input2_np,
+                                         self.label_np,
+                                         margin=0.5,
+                                         reduction='mean')
 
         self.assertTrue(np.allclose(static_result[0], expected))
 
@@ -282,6 +309,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
             self.run_static()
 
     def test_errors(self):
+
         def test_margin_error():
             CosineEmbeddingLoss = paddle.nn.CosineEmbeddingLoss(
                 margin=2, reduction='mean')
