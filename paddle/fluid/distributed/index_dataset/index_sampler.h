@@ -14,6 +14,7 @@
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/program_desc.h"

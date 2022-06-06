@@ -25,6 +25,7 @@ from setuptools.command.build_ext import build_ext
 # cc1plus: warning: command line option ‘-Wstrict-prototypes’ is valid
 # for C/ObjC but not for C++
 class BuildExt(build_ext):
+
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
@@ -74,9 +75,8 @@ custom_kernel_dot_module = Extension(
     libraries=libs,
     extra_compile_args=paddle_extra_compile_args)
 
-setup(
-    name='custom_kernel_dot',
-    version='1.0',
-    description='custom kernel fot compiling',
-    cmdclass={'build_ext': BuildExt},
-    ext_modules=[custom_kernel_dot_module])
+setup(name='custom_kernel_dot',
+      version='1.0',
+      description='custom kernel fot compiling',
+      cmdclass={'build_ext': BuildExt},
+      ext_modules=[custom_kernel_dot_module])

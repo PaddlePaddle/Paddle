@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -27,8 +28,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace experimental {

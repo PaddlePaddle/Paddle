@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -261,7 +262,7 @@ void CheckNanInf<paddle::platform::complex<float>>(
 }
 
 template <>
-    void CheckNanInf<paddle::platform::complex<double>>>
+    void CheckNanInf < paddle::platform::complex < double >>>
     (const paddle::platform::complex<double>* value, const size_t numel,
      int print_num, const std::string& op_type, const std::string& var_name) {
   double real_sum = 0.0;
@@ -563,8 +564,9 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
 
-  PADDLE_ENFORCE_LT(sum, 1.0, platform::errors::PreconditionNotMet(
-                                  "Operator %s contains Nan/Inf.", op.Type()));
+  PADDLE_ENFORCE_LT(sum, 1.0,
+                    platform::errors::PreconditionNotMet(
+                        "Operator %s contains Nan/Inf.", op.Type()));
 }
 #endif
 

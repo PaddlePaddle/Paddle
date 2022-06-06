@@ -103,8 +103,7 @@ def dyfunc_with_if_else3(x):
 def dyfunc_with_if_else_with_list_geneator(x):
     if 10 > 5:
         y = paddle.add_n(
-            [paddle.full(
-                shape=[2], fill_value=v) for v in range(5)])
+            [paddle.full(shape=[2], fill_value=v) for v in range(5)])
     else:
         y = x
     return y
@@ -131,8 +130,9 @@ def nested_if_else(x_v):
             if fluid.layers.mean(y).numpy()[0] < batch_size:
                 y = fluid.layers.abs(y)
             else:
-                tmp = fluid.layers.fill_constant(
-                    [feat_size], dtype='float32', value=-1)
+                tmp = fluid.layers.fill_constant([feat_size],
+                                                 dtype='float32',
+                                                 value=-1)
                 y = y - tmp
     else:
         y = x_v - bias
@@ -148,13 +148,15 @@ def nested_if_else_2(x):
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
         if fluid.layers.shape(y).numpy()[0] < 1:
-            res = fluid.layers.fill_constant(
-                value=2, shape=x.shape, dtype="int32")
+            res = fluid.layers.fill_constant(value=2,
+                                             shape=x.shape,
+                                             dtype="int32")
             # `z` is a new var here.
             z = y + 1
         else:
-            res = fluid.layers.fill_constant(
-                value=3, shape=x.shape, dtype="int32")
+            res = fluid.layers.fill_constant(value=3,
+                                             shape=x.shape,
+                                             dtype="int32")
     else:
         res = x
     return res
@@ -179,29 +181,32 @@ def nested_if_else_3(x):
     else:
         y_shape = fluid.layers.shape(y)
         if y_shape.numpy()[0] < 1:
-            res = fluid.layers.fill_constant(
-                value=2, shape=x.shape, dtype="int32")
+            res = fluid.layers.fill_constant(value=2,
+                                             shape=x.shape,
+                                             dtype="int32")
             # `z` is created in above code block.
             z = y + 1
         else:
-            res = fluid.layers.fill_constant(
-                value=3, shape=x.shape, dtype="int32")
+            res = fluid.layers.fill_constant(value=3,
+                                             shape=x.shape,
+                                             dtype="int32")
             # `out` is a new var.
             out = x + 1
     return res
 
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
+
     def __init__(self, hidden_dim=16):
         super(NetWithControlFlowIf, self).__init__()
         self.hidden_dim = hidden_dim
         self.fc = fluid.dygraph.Linear(
             input_dim=hidden_dim,
             output_dim=5,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)))
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.99)),
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.5)))
         self.alpha = 10.
         self.constant_vars = {}
 
@@ -210,11 +215,12 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
             raise ValueError(
-                "hidden_dim {} of input is not equal to FC.weight[0]: {}"
-                .format(hidden_dim, self.hidden_dim))
+                "hidden_dim {} of input is not equal to FC.weight[0]: {}".
+                format(hidden_dim, self.hidden_dim))
 
-        self.constant_vars['bias'] = fluid.layers.fill_constant(
-            [5], dtype='float32', value=1)
+        self.constant_vars['bias'] = fluid.layers.fill_constant([5],
+                                                                dtype='float32',
+                                                                value=1)
         # Control flow `if` statement
         fc_out = self.fc(input)
         if fluid.layers.mean(fc_out).numpy()[0] < 0:
@@ -233,8 +239,9 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                         [hidden_dim], dtype='float32', value=9)
                     y = fluid.layers.abs(y)
                 else:
-                    tmp = fluid.layers.fill_constant(
-                        [5], dtype='float32', value=-1)
+                    tmp = fluid.layers.fill_constant([5],
+                                                     dtype='float32',
+                                                     value=-1)
                     y = y - tmp
         else:
             y = fc_out - self.constant_vars['bias']
@@ -245,8 +252,8 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
-    if x_v is not None and (fluid.layers.mean(x_v).numpy()[0] > 0 or
-                            label is not None) and batch_size[0] > 1 and True:
+    if x_v is not None and (fluid.layers.mean(x_v).numpy()[0] > 0 or label
+                            is not None) and batch_size[0] > 1 and True:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -289,17 +296,19 @@ def if_with_and_or_3(x, y=None):
 def if_with_and_or_4(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
-    if (x is not None and batch_size[0] > 1) or (y is not None and
-                                                 mean_res.numpy()[0] > 0):
+    if (x is not None and batch_size[0] > 1) or (y is not None
+                                                 and mean_res.numpy()[0] > 0):
         x = x + 1
-    if (x is not None or batch_size[0] > 1) and (y is not None or
-                                                 mean_res.numpy()[0] > 0):
+    if (x is not None or batch_size[0] > 1) and (y is not None
+                                                 or mean_res.numpy()[0] > 0):
         x = x - 1
     return x
 
 
 def if_with_class_var(x, y=None):
+
     class Foo(object):
+
         def __init__(self):
             self.a = 1
             self.b = 2

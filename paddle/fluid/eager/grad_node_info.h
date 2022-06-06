@@ -179,14 +179,13 @@ class GradNodeBase {
                                kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false,
-             bool is_new_grad = false) = 0;
+             bool create_graph = false, bool is_new_grad = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
 
   /**
-       * Self-Copy interface designed for use in DoubleGrad
-       * **/
+   * Self-Copy interface designed for use in DoubleGrad
+   * **/
   virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
 
   // adj_edges were moved inside OutputMeta(), so no available direct access
@@ -230,8 +229,8 @@ class GradNodeBase {
                                std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
-  * Remove GradientHook
-  * **/
+   * Remove GradientHook
+   * **/
   bool RemoveGradientHook(const int64_t& hook_id) {
     auto remove_cnt = gradient_hooks_.erase(hook_id);
     if (remove_cnt == 0) {
@@ -252,8 +251,8 @@ class GradNodeBase {
                                  kSlotSmallVectorSize>& tensors);
 
   /**
-    * Handle Complex - Real Type Promotion
-    * **/
+   * Handle Complex - Real Type Promotion
+   * **/
   void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                            kSlotSmallVectorSize>* out_grads);
@@ -262,8 +261,8 @@ class GradNodeBase {
   virtual std::string name() { return "GradNodeBase"; }
 
   /**
-       * The following interfaces are designed for no_need_buffer
-       * **/
+   * The following interfaces are designed for no_need_buffer
+   * **/
   bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
 
   void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {

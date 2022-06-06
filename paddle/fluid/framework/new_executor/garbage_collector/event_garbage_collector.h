@@ -14,6 +14,7 @@
 #pragma once
 
 #include <queue>
+
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 

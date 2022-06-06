@@ -21,9 +21,6 @@ typedef SSIZE_T ssize_t;
 #include <unordered_map>
 #include <vector>
 
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
@@ -47,6 +44,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
+#include "pybind11/numpy.h"
+#include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
@@ -1007,10 +1006,11 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       PADDLE_ENFORCE_EQ(
           egr::egr_utils_api::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
-          false, platform::errors::InvalidArgument(
-                     "Leaf Tensor (%s) that doesn't stop gradient can't use "
-                     "inplace strategy.",
-                     self->tensor.name()));
+          false,
+          platform::errors::InvalidArgument(
+              "Leaf Tensor (%s) that doesn't stop gradient can't use "
+              "inplace strategy.",
+              self->tensor.name()));
     }
 
     paddle::experimental::Tensor value_tensor;
@@ -1232,9 +1232,10 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
                         "Only can register backward hook for leaf Tensor."));
   PADDLE_ENFORCE_EQ(
       !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
-      true, platform::errors::InvalidArgument(
-                "Cannot register backward hook on a Tensor that stop "
-                "gradient."));
+      true,
+      platform::errors::InvalidArgument(
+          "Cannot register backward hook on a Tensor that stop "
+          "gradient."));
   PADDLE_ENFORCE(
       grad_node.get() != nullptr,
       paddle::platform::errors::Fatal("Detected NULL grad_node,"
@@ -1667,8 +1668,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_dense_tensor_hold_allocation",
-     (PyCFunction)(
-         void (*)(void))tensor_method__is_dense_tensor_hold_allocation,
+     (PyCFunction)(void (*)(
+         void))tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_copy_to", (PyCFunction)(void (*)(void))tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1793,8 +1794,8 @@ PyMethodDef string_tensor_variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_string_tensor_hold_allocation",
-     (PyCFunction)(
-         void (*)(void))tensor_method__is_string_tensor_hold_allocation,
+     (PyCFunction)(void (*)(
+         void))tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {NULL, NULL, 0, NULL}};

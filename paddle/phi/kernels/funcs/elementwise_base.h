@@ -494,7 +494,7 @@ template <template <int Index, int VecSize> typename Func,
           int Begin = 0>
 struct Unroller {
   template <typename... Args>
-  static HOSTDEVICE inline void step(Args &&... args) {
+  static HOSTDEVICE inline void step(Args &&...args) {
     Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
     Unroller<Func, VecSize, End, Begin + 1>::step(args...);
   }
@@ -503,7 +503,7 @@ struct Unroller {
 template <template <int Index, int VecSize> typename Func, int VecSize, int End>
 struct Unroller<Func, VecSize, End, End> {
   template <typename... Args>
-  static HOSTDEVICE inline void step(Args &&... args) {}
+  static HOSTDEVICE inline void step(Args &&...args) {}
 };
 
 template <int Index, int VecSize>

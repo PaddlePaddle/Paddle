@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/reverse_kernel.h"
-
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/reverse_kernel.h"
 
 namespace phi {
 

@@ -14,11 +14,13 @@
 
 #pragma once
 #include <math.h>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "paddle/include/paddle_inference_api.h"
 
 namespace paddle {

@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
+
 #include <time.h>
+
 #include <algorithm>
 #include <chrono>
 #include <set>
 #include <sstream>
+
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/generator.h"
@@ -212,7 +215,6 @@ int64_t GraphTable::load_graph_to_memory_from_ssd(int idx,
   for (size_t i = 0; i < bags.size(); i++) {
     if (bags[i].size() > 0) {
       tasks.push_back(_shards_task_pool[i]->enqueue([&, i, idx, this]() -> int {
-
         char ch[sizeof(int) * 2 + sizeof(int64_t)];
         memset(ch, 0, sizeof(int));
         memcpy(ch + sizeof(int), &idx, sizeof(int));
@@ -353,7 +355,6 @@ void GraphTable::export_partition_files(int idx, std::string file_path) {
   for (int i = 0; i < part_len; i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&, i, idx, this]() -> int {
-
           std::string output_path =
               file_path + "partition_" + std::to_string(i);
 

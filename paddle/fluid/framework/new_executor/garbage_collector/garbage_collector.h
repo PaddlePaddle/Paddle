@@ -14,6 +14,7 @@
 #pragma once
 
 #include <queue>
+
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"

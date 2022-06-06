@@ -24,21 +24,26 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTScaleTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 512], dtype="float32")
             scale_out = self.append_scale(data)
             out = fluid.layers.batch_norm(scale_out, is_test=True)
 
-        self.feeds = {"data": np.random.random([1, 512]).astype("float32"), }
+        self.feeds = {
+            "data": np.random.random([1, 512]).astype("float32"),
+        }
         self.enable_trt = True
         self.trt_parameters = TRTScaleTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
-            x=data, scale=2.0, bias=-1.0, bias_after_scale=False)
+        return fluid.layers.scale(x=data,
+                                  scale=2.0,
+                                  bias=-1.0,
+                                  bias_after_scale=False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -49,10 +54,12 @@ class TRTScaleTest(InferencePassTest):
 
 
 class TRTScaleShape2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 512, 512], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 512, 512],
+                              dtype="float32")
             scale_out = self.append_scale(data)
             out = fluid.layers.batch_norm(scale_out, is_test=True)
 
@@ -65,8 +72,10 @@ class TRTScaleShape2Test(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
-            x=data, scale=2.0, bias=-1.0, bias_after_scale=False)
+        return fluid.layers.scale(x=data,
+                                  scale=2.0,
+                                  bias=-1.0,
+                                  bias_after_scale=False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

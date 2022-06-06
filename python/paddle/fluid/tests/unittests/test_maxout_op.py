@@ -37,6 +37,7 @@ def maxout_forward_naive(x, groups, channel_axis):
 
 
 class TestMaxOutOp(OpTest):
+
     def setUp(self):
         self.op_type = "maxout"
         self.python_api = paddle.nn.functional.maxout
@@ -64,21 +65,25 @@ class TestMaxOutOp(OpTest):
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
+
     def set_attrs(self):
         self.axis = -1
 
 
 class TestMaxOutOpAxis1(TestMaxOutOp):
+
     def set_attrs(self):
         self.axis = 3
 
 
 class TestMaxOutOpFP32(TestMaxOutOp):
+
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestMaxOutOpGroups(TestMaxOutOp):
+
     def set_attrs(self):
         self.groups = 3
 
@@ -139,8 +144,9 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[2, 4, 6, 8], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[2, 4, 6, 8],
+                                        dtype='int32')
             self.assertRaises(TypeError, F.maxout, x_int32)
 
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])

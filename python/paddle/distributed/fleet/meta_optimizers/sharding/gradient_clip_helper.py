@@ -18,6 +18,7 @@ __all__ = []
 
 
 class GradientClipHelper(object):
+
     def __init__(self, mp_ring_id):
         self.mp_ring_id = mp_ring_id
 
@@ -95,17 +96,20 @@ class GradientClipHelper(object):
                     namescope = op.attr("op_namescope")
 
                     block._remove_op(idx, sync=False)
-                    op = block._insert_op_without_sync(
-                        idx,
-                        type='fill_constant',
-                        inputs={},
-                        outputs={'Out': sum_res},
-                        attrs={
-                            'shape': sum_var.shape,
-                            'dtype': sum_var.dtype,
-                            'value': 0.0,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                    op = block._insert_op_without_sync(idx,
+                                                       type='fill_constant',
+                                                       inputs={},
+                                                       outputs={'Out': sum_res},
+                                                       attrs={
+                                                           'shape':
+                                                           sum_var.shape,
+                                                           'dtype':
+                                                           sum_var.dtype,
+                                                           'value':
+                                                           0.0,
+                                                           OP_ROLE_KEY:
+                                                           OpRole.Optimize
+                                                       })
                     op._set_attr('op_namescope', namescope)
 
                 # allreduce(mp)->allreduce(sharding)->allreduce(pp)
