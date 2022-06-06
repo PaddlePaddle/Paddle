@@ -9,15 +9,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
+
 #include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/io/fs.h"
 
-#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
+#include "paddle/fluid/framework/io/fs.h"
 
 namespace paddle {
 namespace distributed {

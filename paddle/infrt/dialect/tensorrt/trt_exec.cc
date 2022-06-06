@@ -11,10 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// clang-format off
 #include <llvm/Support/CommandLine.h>
 #include <mlir/Pass/PassManager.h>
+
 #include <iostream>
 #include <string>
+
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/infrt/pass/infrt_weights_unfold_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
@@ -44,6 +48,7 @@
 #endif
 
 #include <mlir/Transforms/Passes.h>
+// clang-format on
 
 int main(int argc, char** argv) {
   static llvm::cl::opt<std::string> input_file(

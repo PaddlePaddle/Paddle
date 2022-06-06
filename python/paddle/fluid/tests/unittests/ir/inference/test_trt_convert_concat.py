@@ -22,14 +22,14 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertConcatTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         #The input dimension should be less than or equal to the set axis.
         if len(inputs['concat_input1'].shape) <= attrs[0]['axis']:
@@ -38,6 +38,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -79,33 +80,36 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         self.dims = dims
                         dics = [{"axis": axis}, {}]
                         dics_intput = [{
-                            "X": [
-                                "concat_input1", "concat_input2",
-                                "concat_input3"
-                            ],
+                            "X":
+                            ["concat_input1", "concat_input2", "concat_input3"],
                             "AxisTensor": ["AxisTensor"],
                         }, {
-                            "X": [
-                                "concat_input1", "concat_input2",
-                                "concat_input3"
-                            ]
+                            "X":
+                            ["concat_input1", "concat_input2", "concat_input3"]
                         }]
                         dics_inputs = [{
-                            "concat_input1": TensorConfig(data_gen=partial(
-                                generate_input1, dics, batch)),
-                            "concat_input2": TensorConfig(data_gen=partial(
-                                generate_input2, dics, batch)),
-                            "concat_input3": TensorConfig(data_gen=partial(
-                                generate_input3, dics, batch)),
-                            "AxisTensor": TensorConfig(data_gen=partial(
-                                generate_weight1, dics))
+                            "concat_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "concat_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "concat_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch)),
+                            "AxisTensor":
+                            TensorConfig(
+                                data_gen=partial(generate_weight1, dics))
                         }, {
-                            "concat_input1": TensorConfig(data_gen=partial(
-                                generate_input1, dics, batch)),
-                            "concat_input2": TensorConfig(data_gen=partial(
-                                generate_input2, dics, batch)),
-                            "concat_input3": TensorConfig(data_gen=partial(
-                                generate_input3, dics, batch))
+                            "concat_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "concat_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "concat_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch))
                         }]
                         ops_config = [{
                             "op_type": "concat",
@@ -126,6 +130,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.num_input == 0:
                 if self.dims == 4:
@@ -285,8 +290,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                     return 0, 5
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # for static_shape
         clear_dynamic_shape()
@@ -300,13 +304,14 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.inputs) == 4:
                 return True

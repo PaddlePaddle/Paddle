@@ -18,6 +18,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/data_feed.h"
+
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
@@ -220,6 +221,7 @@ bool DataFeed::PickOneFile(std::string* filename) {
       file_idx_, platform::errors::PreconditionNotMet(
                      "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
+  VLOG(4) << "filelist_ size: " << filelist_.size();
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
     return false;
@@ -230,8 +232,9 @@ bool DataFeed::PickOneFile(std::string* filename) {
 }
 
 void DataFeed::CheckInit() {
-  PADDLE_ENFORCE_EQ(finish_init_, true, platform::errors::PreconditionNotMet(
-                                            "DataFeed initialization failed."));
+  PADDLE_ENFORCE_EQ(
+      finish_init_, true,
+      platform::errors::PreconditionNotMet("DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
@@ -284,6 +287,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
 
 template <typename T>
 bool PrivateQueueDataFeed<T>::Start() {
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::Start()";
   CheckSetFileList();
   read_thread_ = std::thread(&PrivateQueueDataFeed::ReadThread, this);
   read_thread_.detach();
@@ -295,6 +299,7 @@ bool PrivateQueueDataFeed<T>::Start() {
 template <typename T>
 void PrivateQueueDataFeed<T>::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering PrivateQueueDataFeed<T>::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -356,6 +361,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
 template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
+  VLOG(4) << "entering InMemoryDataFeed<T>::Start()";
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
@@ -664,6 +670,7 @@ void MultiSlotDataFeed::Init(
 
 void MultiSlotDataFeed::ReadThread() {
 #ifdef _LINUX
+  VLOG(4) << "entering MultiSlotDataFeed::ReadThread()";
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
@@ -831,7 +838,6 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
   } else {
     int use_slots_num = use_slots_.size();
     instance->resize(use_slots_num);
-
     const char* str = reader.get();
     std::string line = std::string(str);
 
@@ -971,10 +977,13 @@ void MultiSlotDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
+    VLOG(4) << "MultiSlotDataFeed::PutToFeedVec i: " << i;
     const auto& type = ins_vec[i].GetType();
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
-
+    VLOG(4) << "total_instance: " << total_instance;
+    // platform::CPUPlace()
+    VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
       float* tensor_ptr =
@@ -1612,9 +1621,10 @@ template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
 bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fd_ = open(filename.c_str(), O_RDONLY);
   PADDLE_ENFORCE_NE(
-      fd_, -1, platform::errors::Unavailable(
-                   "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
-                   filename.c_str()));
+      fd_, -1,
+      platform::errors::Unavailable(
+          "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
+          filename.c_str()));
 
   struct stat sb;
   fstat(fd_, &sb);
@@ -2175,7 +2185,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
     SlotRecordPool().get(&record_vec, OBJPOOL_BLOCK_SIZE);
     // get slotrecord object function
     auto record_func = [this, &offset, &record_vec, &old_offset](
-        std::vector<SlotRecord>& vec, int num) {
+                           std::vector<SlotRecord>& vec, int num) {
       vec.resize(num);
       if (offset + num > OBJPOOL_BLOCK_SIZE) {
         input_channel_->WriteMove(offset, &record_vec[0]);
@@ -2573,6 +2583,7 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 }
 
 bool SlotRecordInMemoryDataFeed::Start() {
+  VLOG(4) << "entering SlotRecordInMemoryDataFeed::Start";
 #ifdef _LINUX
   this->CheckSetFileList();
   if (input_channel_->Size() != 0) {
@@ -2667,8 +2678,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
     size_t* off_start_ptr = &offsets[j * offset_cols_size];
 
     int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
-    CHECK(total_instance >= 0) << "slot idx:" << j
-                               << ", total instance:" << total_instance;
+    CHECK(total_instance >= 0)
+        << "slot idx:" << j << ", total instance:" << total_instance;
     auto& info = used_slots_info_[j];
 
     // fill slot value with default value 0

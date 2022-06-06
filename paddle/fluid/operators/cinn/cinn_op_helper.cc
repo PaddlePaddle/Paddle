@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 

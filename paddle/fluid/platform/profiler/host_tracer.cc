@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"

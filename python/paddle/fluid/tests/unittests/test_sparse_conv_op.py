@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,11 +22,13 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSparseConv(unittest.TestCase):
+
     def test_conv3d(self):
         with _test_eager_guard():
             kernel = [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
-            dense_kernel = paddle.to_tensor(
-                kernel, dtype='float32', stop_gradient=False)
+            dense_kernel = paddle.to_tensor(kernel,
+                                            dtype='float32',
+                                            stop_gradient=False)
             dense_kernel = paddle.reshape(dense_kernel, [1, 3, 3, 1, 1])
             paddings = [0, 0, 0]
             strides = [1, 1, 1]
@@ -41,11 +43,10 @@ class TestSparseConv(unittest.TestCase):
             correct_out_values = [[5], [11]]
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
-            out = paddle.sparse.functional.conv3d(
+            out = paddle.incubate.sparse.nn.functional.conv3d(
                 sparse_input,
                 dense_kernel,
-                bias=paddle.to_tensor(
-                    bias, dtype='float32'),
+                bias=paddle.to_tensor(bias, dtype='float32'),
                 stride=strides,
                 padding=paddings,
                 dilation=dilations,
@@ -61,10 +62,11 @@ class TestSparseConv(unittest.TestCase):
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(
+            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                 indices, values, dense_shape, stop_gradient=True)
             weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-            y = paddle.sparse.functional.subm_conv3d(sparse_x, weight)
+            y = paddle.incubate.sparse.nn.functional.subm_conv3d(
+                sparse_x, weight)
             assert np.array_equal(sparse_x.indices().numpy(),
                                   y.indices().numpy())
 
@@ -78,16 +80,16 @@ class TestSparseConv(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
             correct_out_values = [[4], [10]]
-            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
-                                                           dense_shape, False)
+            sparse_input = paddle.incubate.sparse.sparse_coo_tensor(
+                indices, values, dense_shape, False)
 
-            sparse_conv3d = paddle.sparse.Conv3D(
+            sparse_conv3d = paddle.incubate.sparse.nn.Conv3D(
                 1, 1, (1, 3, 3), data_format='NDHWC')
             sparse_out = sparse_conv3d(sparse_input)
             #test errors
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
-                conv3d = paddle.sparse.SubmConv3D(
+                conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                     1, 1, (1, 3, 3), data_format='NCDHW')
 
     def test_SubmConv3D(self):
@@ -98,10 +100,10 @@ class TestSparseConv(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             dense_shape = [1, 1, 3, 4, 1]
             correct_out_values = [[4], [10]]
-            sparse_input = paddle.sparse.sparse_coo_tensor(indices, values,
-                                                           dense_shape, False)
+            sparse_input = paddle.incubate.sparse.sparse_coo_tensor(
+                indices, values, dense_shape, False)
 
-            subm_conv3d = paddle.sparse.SubmConv3D(
+            subm_conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                 1, 1, (1, 3, 3), data_format='NDHWC')
             # test extra_repr
             print(subm_conv3d.extra_repr())
@@ -113,5 +115,5 @@ class TestSparseConv(unittest.TestCase):
             #test errors
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
-                conv3d = paddle.sparse.SubmConv3D(
+                conv3d = paddle.incubate.sparse.nn.SubmConv3D(
                     1, 1, (1, 3, 3), data_format='NCDHW')

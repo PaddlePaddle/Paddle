@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <unistd.h>
+
+#include <chrono>
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -20,9 +22,8 @@
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
-#include <chrono>
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"

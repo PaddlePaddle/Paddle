@@ -26,21 +26,19 @@ from test_imperative_base import new_program_scope
 
 
 def convolutional_neural_network(img):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=img,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  act="relu")
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return prediction
 
@@ -58,6 +56,7 @@ def static_train_net(img, label):
 
 
 class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
+
     def setUp(self):
         self.seed = 90
         self.epoch_num = 1
@@ -71,24 +70,24 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
 
-            img = fluid.data(
-                name='img', shape=[None, 1, 28, 28], dtype='float32')
+            img = fluid.data(name='img',
+                             shape=[None, 1, 28, 28],
+                             dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             prediction, avg_loss = static_train_net(img, label)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = fluid.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
 
             exe = fluid.Executor(place)
 
             feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
             exe.run(startup_program)
 
-            train_reader = paddle.batch(
-                paddle.reader.shuffle(
-                    paddle.dataset.mnist.train(), buf_size=100),
-                batch_size=self.batch_size)
+            train_reader = paddle.batch(paddle.reader.shuffle(
+                paddle.dataset.mnist.train(), buf_size=100),
+                                        batch_size=self.batch_size)
 
             for _ in range(0, self.epoch_num):
                 for batch_id, data in enumerate(train_reader()):
@@ -105,8 +104,9 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                     param.name)
 
             if only_params:
-                fluid.io.save_params(
-                    exe, self.save_dirname, filename=self.params_filename)
+                fluid.io.save_params(exe,
+                                     self.save_dirname,
+                                     filename=self.params_filename)
             else:
                 fluid.io.save_inference_model(
                     self.save_dirname, ["img"], [prediction],
@@ -142,8 +142,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             self.save_dirname, model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname, model_filename=self.model_filename)
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_param_filename(self):
@@ -156,8 +156,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             self.save_dirname, params_filename=self.params_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname, params_filename=self.params_filename)
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          params_filename=self.params_filename)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
@@ -172,10 +172,9 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname,
-            params_filename=self.params_filename,
-            model_filename=self.model_filename)
+        new_load_param_dict = paddle.load(self.save_dirname,
+                                          params_filename=self.params_filename,
+                                          model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_state_dict_from_save_params(self):

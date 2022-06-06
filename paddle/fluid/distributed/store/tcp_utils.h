@@ -29,6 +29,7 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 // Utility functions for TCP socket.
@@ -73,9 +74,10 @@ void send_bytes(SocketType socket, const T* buffer, size_t len) {
 
   while (to_send > 0) {
     auto byte_sent = ::send(socket, ptr, to_send, 0);
-    PADDLE_ENFORCE_GT(byte_sent, 0, platform::errors::InvalidArgument(
-                                        "TCP send error. Details: %s.",
-                                        socket_error().message()));
+    PADDLE_ENFORCE_GT(
+        byte_sent, 0,
+        platform::errors::InvalidArgument("TCP send error. Details: %s.",
+                                          socket_error().message()));
     to_send -= byte_sent;
     ptr += byte_sent;
   }
@@ -91,9 +93,10 @@ void receive_bytes(SocketType socket, T* buffer, size_t len) {
 
   while (to_recv > 0) {
     auto byte_received = ::recv(socket, ptr, to_recv, 0);
-    PADDLE_ENFORCE_GT(byte_received, 0, platform::errors::InvalidArgument(
-                                            "TCP receive error. Details: %s.",
-                                            socket_error().message()));
+    PADDLE_ENFORCE_GT(
+        byte_received, 0,
+        platform::errors::InvalidArgument("TCP receive error. Details: %s.",
+                                          socket_error().message()));
 
     to_recv -= byte_received;
     ptr += byte_received;

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {

@@ -163,10 +163,10 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
-        in1_row_numel);
+    SelectedRowsAddTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
+            in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -223,10 +223,10 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
-        in1_row_numel);
+    SelectedRowsAddTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
+            in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -343,10 +343,10 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddToTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
-        in1_row_numel);
+    SelectedRowsAddToTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
+            in1_row_numel);
   }
 };
 
@@ -380,10 +380,10 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
-    SelectedRowsAddToTensorKernel<
-        T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
-        in1_row_numel);
+    SelectedRowsAddToTensorKernel<T, block_size>
+        <<<grid, threads, 0, context.stream()>>>(
+            in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
+            in1_row_numel);
   }
 };
 
@@ -695,9 +695,9 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
 
     dim3 threads(platform::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(in1_rows.size(), 1);
-    UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS><<<
-        grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
-                                              op, in2_data, in1_row_numel);
+    UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS>
+        <<<grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
+                                                 op, in2_data, in1_row_numel);
   }
 };
 }  // namespace scatter

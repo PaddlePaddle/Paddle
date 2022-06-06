@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include <fstream>
 #include <numeric>
 #include <string>

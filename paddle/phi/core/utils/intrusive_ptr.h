@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <utility>
+
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 

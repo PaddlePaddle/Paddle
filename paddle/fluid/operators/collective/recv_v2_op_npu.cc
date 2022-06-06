@@ -61,8 +61,9 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int peer = ctx.Attr<int>("peer");
 
-    PADDLE_ENFORCE_EQ(nranks, 2, platform::errors::InvalidArgument(
-                                     "The nranks must be 2, but (%d)", nranks));
+    PADDLE_ENFORCE_EQ(nranks, 2,
+                      platform::errors::InvalidArgument(
+                          "The nranks must be 2, but (%d)", nranks));
 
     int root = peer;
 

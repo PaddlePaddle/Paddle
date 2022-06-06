@@ -27,6 +27,7 @@ def _reverse_repeat_list(t, n):
 
 
 class Conv2DTestCase(unittest.TestCase):
+
     def __init__(self,
                  methodName='runTest',
                  batch_size=4,
@@ -51,8 +52,8 @@ class Conv2DTestCase(unittest.TestCase):
 
         self.padding = padding
         if padding_mode in {'reflect', 'replicate', 'circular'}:
-            _paired_padding = fluid.layers.utils.convert_to_list(padding, 2,
-                                                                 'padding')
+            _paired_padding = fluid.layers.utils.convert_to_list(
+                padding, 2, 'padding')
             self._reversed_padding_repeated_twice = _reverse_repeat_list(
                 _paired_padding, 2)
         self.padding_mode = padding_mode
@@ -69,8 +70,8 @@ class Conv2DTestCase(unittest.TestCase):
             input_shape = (self.batch_size, ) + self.spartial_shape + (
                 self.num_channels, )
         else:
-            input_shape = (self.batch_size, self.num_channels
-                           ) + self.spartial_shape
+            input_shape = (self.batch_size,
+                           self.num_channels) + self.spartial_shape
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -79,8 +80,8 @@ class Conv2DTestCase(unittest.TestCase):
             filter_size = self.filter_size
         self.weight_shape = weight_shape = (self.num_filters, self.num_channels
                                             // self.groups) + tuple(filter_size)
-        self.weight = np.random.uniform(
-            -1, 1, size=weight_shape).astype(self.dtype)
+        self.weight = np.random.uniform(-1, 1,
+                                        size=weight_shape).astype(self.dtype)
         if not self.no_bias:
             self.bias = np.random.uniform(
                 -1, 1, size=(self.num_filters, )).astype(self.dtype)
@@ -109,17 +110,16 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     padding = self.padding
 
-                y_var = fluid.layers.conv2d(
-                    x_var,
-                    self.num_filters,
-                    self.filter_size,
-                    padding=padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr,
-                    data_format=self.data_format)
+                y_var = fluid.layers.conv2d(x_var,
+                                            self.num_filters,
+                                            self.filter_size,
+                                            padding=padding,
+                                            stride=self.stride,
+                                            dilation=self.dilation,
+                                            groups=self.groups,
+                                            param_attr=weight_attr,
+                                            bias_attr=bias_attr,
+                                            data_format=self.data_format)
 
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
@@ -135,10 +135,11 @@ class Conv2DTestCase(unittest.TestCase):
                 input_shape = (-1, -1, -1,self.num_channels) \
                     if self.channel_last else (-1, self.num_channels, -1, -1)
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
-                    "weight", self.weight_shape, dtype=self.dtype)
-                b_var = fluid.data(
-                    "bias", (self.num_filters, ), dtype=self.dtype)
+                w_var = fluid.data("weight",
+                                   self.weight_shape,
+                                   dtype=self.dtype)
+                b_var = fluid.data("bias", (self.num_filters, ),
+                                   dtype=self.dtype)
 
                 if self.padding_mode != 'zeros':
                     x_var = F.pad(x_var,
@@ -149,15 +150,14 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     padding = self.padding
 
-                y_var = F.conv2d(
-                    x_var,
-                    w_var,
-                    b_var if not self.no_bias else None,
-                    padding=padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format)
+                y_var = F.conv2d(x_var,
+                                 w_var,
+                                 b_var if not self.no_bias else None,
+                                 padding=padding,
+                                 stride=self.stride,
+                                 dilation=self.dilation,
+                                 groups=self.groups,
+                                 data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -169,16 +169,15 @@ class Conv2DTestCase(unittest.TestCase):
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
         x_var.stop_gradient = False
-        conv = nn.Conv2D(
-            self.num_channels,
-            self.num_filters,
-            self.filter_size,
-            padding=self.padding,
-            padding_mode=self.padding_mode,
-            stride=self.stride,
-            dilation=self.dilation,
-            groups=self.groups,
-            data_format=self.data_format)
+        conv = nn.Conv2D(self.num_channels,
+                         self.num_filters,
+                         self.filter_size,
+                         padding=self.padding,
+                         padding_mode=self.padding_mode,
+                         stride=self.stride,
+                         dilation=self.dilation,
+                         groups=self.groups,
+                         data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -211,6 +210,7 @@ class Conv2DTestCase(unittest.TestCase):
 
 
 class Conv2DErrorTestCase(Conv2DTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -221,68 +221,63 @@ class Conv2DErrorTestCase(Conv2DTestCase):
 def add_cases(suite):
     suite.addTest(Conv2DTestCase(methodName='runTest'))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', stride=[1, 2], dilation=2))
+        Conv2DTestCase(methodName='runTest', stride=[1, 2], dilation=2))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', stride=2, dilation=(2, 1)))
+        Conv2DTestCase(methodName='runTest', stride=2, dilation=(2, 1)))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', padding="same", no_bias=True))
+        Conv2DTestCase(methodName='runTest', padding="same", no_bias=True))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', filter_size=(3, 3), padding='valid'))
+        Conv2DTestCase(methodName='runTest',
+                       filter_size=(3, 3),
+                       padding='valid'))
     suite.addTest(Conv2DTestCase(methodName='runTest', padding=(2, 3)))
     suite.addTest(Conv2DTestCase(methodName='runTest', padding=[1, 2, 2, 1]))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', padding=[[0, 0], [0, 0], [1, 2], [2, 1]]))
+        Conv2DTestCase(methodName='runTest',
+                       padding=[[0, 0], [0, 0], [1, 2], [2, 1]]))
     suite.addTest(Conv2DTestCase(methodName='runTest', data_format="NHWC"))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest',
-            data_format="NHWC",
-            padding=[[0, 0], [1, 1], [2, 2], [0, 0]]))
+        Conv2DTestCase(methodName='runTest',
+                       data_format="NHWC",
+                       padding=[[0, 0], [1, 1], [2, 2], [0, 0]]))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest', groups=2, padding="valid"))
+        Conv2DTestCase(methodName='runTest', groups=2, padding="valid"))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest',
-            num_filters=6,
-            num_channels=3,
-            groups=3,
-            padding="valid"))
+        Conv2DTestCase(methodName='runTest',
+                       num_filters=6,
+                       num_channels=3,
+                       groups=3,
+                       padding="valid"))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest',
-            filter_size=(3, 3),
-            padding=1,
-            padding_mode='reflect'))
+        Conv2DTestCase(methodName='runTest',
+                       filter_size=(3, 3),
+                       padding=1,
+                       padding_mode='reflect'))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest',
-            filter_size=(3, 3),
-            padding=1,
-            padding_mode='replicate'))
+        Conv2DTestCase(methodName='runTest',
+                       filter_size=(3, 3),
+                       padding=1,
+                       padding_mode='replicate'))
     suite.addTest(
-        Conv2DTestCase(
-            methodName='runTest',
-            filter_size=(3, 3),
-            padding=1,
-            padding_mode='circular'))
+        Conv2DTestCase(methodName='runTest',
+                       filter_size=(3, 3),
+                       padding=1,
+                       padding_mode='circular'))
 
 
 def add_error_cases(suite):
     suite.addTest(
-        Conv2DErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2))
+        Conv2DErrorTestCase(methodName='runTest', num_channels=5, groups=2))
     suite.addTest(
-        Conv2DErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2, stride=0))
+        Conv2DErrorTestCase(methodName='runTest',
+                            num_channels=5,
+                            groups=2,
+                            stride=0))
     suite.addTest(
-        Conv2DErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2, padding=[-1, -1]))
+        Conv2DErrorTestCase(methodName='runTest',
+                            num_channels=5,
+                            groups=2,
+                            padding=[-1, -1]))
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/include/paddle_inference_api.h"
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");

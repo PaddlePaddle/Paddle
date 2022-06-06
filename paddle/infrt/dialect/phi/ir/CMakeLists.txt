@@ -6,7 +6,4 @@ add_mlir_dialect(phi_gpu_kernels phi_gpu)
 
 #mlir_tablegen_on(infrt_phi_tensor)
 
-gather_srcs(infrt_src SRCS
-    phi_base.cc 
-    infrt_phi_tensor.cc
-    phi_kernels.cc)
+gather_srcs(infrt_src SRCS phi_base.cc infrt_phi_tensor.cc phi_kernels.cc)

@@ -39,9 +39,8 @@ class TestGetNameIds(unittest.TestCase):
         source = textwrap.dedent(self.source)
         root = gast.parse(source)
         all_name_ids = get_name_ids([root])
-        self.assertDictEqual(
-            self.transfer_dict(self.all_name_ids),
-            self.transfer_dict(all_name_ids))
+        self.assertDictEqual(self.transfer_dict(self.all_name_ids),
+                             self.transfer_dict(all_name_ids))
 
     def transfer_dict(self, name_ids_dict):
         new_dict = {}
@@ -51,6 +50,7 @@ class TestGetNameIds(unittest.TestCase):
 
 
 class TestGetNameIds2(TestGetNameIds):
+
     def setUp(self):
         self.source = """
           def test_fn(x, y):
@@ -64,11 +64,14 @@ class TestGetNameIds2(TestGetNameIds):
             return z
         """
         self.all_name_ids = {
-            'x': [
-                gast.Param(), gast.Store(), gast.Load(), gast.Load(),
-                gast.Load()
-            ],
-            'a': [gast.Store(), gast.Load(), gast.Load()],
+            'x':
+            [gast.Param(),
+             gast.Store(),
+             gast.Load(),
+             gast.Load(),
+             gast.Load()],
+            'a': [gast.Store(), gast.Load(),
+                  gast.Load()],
             'y': [
                 gast.Param(),
                 gast.Load(),
@@ -87,6 +90,7 @@ class TestGetNameIds2(TestGetNameIds):
 
 
 class TestGetNameIds3(TestGetNameIds):
+
     def setUp(self):
         self.source = """
           def test_fn(x, y):
@@ -119,6 +123,7 @@ class TestGetNameIds3(TestGetNameIds):
 
 
 class TestIsControlFlowIf(unittest.TestCase):
+
     def check_false_case(self, code):
         code = textwrap.dedent(code)
         node = gast.parse(code)
@@ -248,14 +253,14 @@ class TestIsControlFlowIf(unittest.TestCase):
         var_name_to_type = {"x": {NodeVarType.TENSOR}}
 
         self.assertTrue(
-            is_control_flow_to_transform(
-                node_test, var_name_to_type=var_name_to_type))
+            is_control_flow_to_transform(node_test,
+                                         var_name_to_type=var_name_to_type))
 
         # if x is not a Tensor
         var_name_to_type = {"x": {NodeVarType.NUMPY_NDARRAY}}
         self.assertFalse(
-            is_control_flow_to_transform(
-                node_test, var_name_to_type=var_name_to_type))
+            is_control_flow_to_transform(node_test,
+                                         var_name_to_type=var_name_to_type))
 
     def test_raise_error(self):
         node = "a + b"
