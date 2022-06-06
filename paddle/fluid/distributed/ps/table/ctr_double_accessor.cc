@@ -139,7 +139,7 @@ bool CtrDoubleAccessor::Save(float* value, int param) {
     }
     default:
       return true;
-  };
+  }
 }
 
 void CtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
@@ -166,7 +166,7 @@ void CtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
       return;
     default:
       return;
-  };
+  }
 }
 
 int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
@@ -175,7 +175,7 @@ int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
     float* value = values[value_item];
     value[CtrDoubleFeatureValue::UnseenDaysIndex()] = 0;
     value[CtrDoubleFeatureValue::DeltaScoreIndex()] = 0;
-    *(double*)(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
+    *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
     *(double*)(value + CtrDoubleFeatureValue::ClickIndex()) = 0;
     value[CtrDoubleFeatureValue::SlotIndex()] = -1;
     _embed_sgd_rule->InitValue(
@@ -233,7 +233,7 @@ int32_t CtrDoubleAccessor::Merge(float** update_values,
     for (auto i = 3u; i < total_dim; ++i) {
         update_value[i] += other_update_value[i];
     }*/
-    for (auto i = 0u; i < total_dim; ++i) {
+    for (int i = 0; i < total_dim; ++i) {
       if (i != CtrDoublePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
