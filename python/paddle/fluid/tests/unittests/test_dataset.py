@@ -169,8 +169,12 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        filename1 = "afs:test_in_memory_dataset_run_a.txt"
-        filename2 = "afs:test_in_memory_dataset_run_b.txt"
+        temp_dir = tempfile.TemporaryDirectory()
+        filename1 = os.path.join(temp_dir.name,
+                                 "afs:test_in_memory_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "afs:test_in_memory_dataset_run_b.txt")
+
         with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
@@ -220,19 +224,24 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove(filename1)
-        os.remove(filename2)
+        temp_dir.cleanup()
 
     def test_in_memory_dataset_run(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_in_memory_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_run_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_run_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -250,10 +259,7 @@ class TestDataset(unittest.TestCase):
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
-        dataset.set_filelist([
-            "test_in_memory_dataset_run_a.txt",
-            "test_in_memory_dataset_run_b.txt"
-        ])
+        dataset.set_filelist([filename_a, filename_b])
         dataset.load_into_memory()
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
@@ -276,14 +282,19 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove("./test_in_memory_dataset_run_a.txt")
-        os.remove("./test_in_memory_dataset_run_b.txt")
+        temp_dir.cleanup()
 
     def test_in_memory_dataset_masterpatch(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_in_memory_dataset_masterpatch_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_masterpatch_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_masterpatch_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 id2 1 1 1 1 1 0 1 0\n"
@@ -294,7 +305,7 @@ class TestDataset(unittest.TestCase):
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             f.write(data)
-        with open("test_in_memory_dataset_masterpatch_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -341,14 +352,19 @@ class TestDataset(unittest.TestCase):
         dataset.update_settings(merge_size=2)
         dataset.dataset.merge_by_lineid()
 
-        os.remove("./test_in_memory_dataset_masterpatch_a.txt")
-        os.remove("./test_in_memory_dataset_masterpatch_b.txt")
+        temp_dir.cleanup()
 
     def test_in_memory_dataset_masterpatch1(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_in_memory_dataset_masterpatch1_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_masterpatch1_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_masterpatch1_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 id2 1 1 1 1 1 0 1 0\n"
@@ -359,7 +375,7 @@ class TestDataset(unittest.TestCase):
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             f.write(data)
-        with open("test_in_memory_dataset_masterpatch1_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -405,8 +421,7 @@ class TestDataset(unittest.TestCase):
         dataset._set_merge_by_lineid(2)
         dataset.dataset.merge_by_lineid()
 
-        os.remove("./test_in_memory_dataset_masterpatch1_a.txt")
-        os.remove("./test_in_memory_dataset_masterpatch1_b.txt")
+        temp_dir.cleanup()
 
     def test_in_memory_dataset_run_2(self):
         """
@@ -414,12 +429,18 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        with open("test_in_memory_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_run_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset_run_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -436,10 +457,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
-        dataset.set_filelist([
-            "test_in_memory_dataset_run_a.txt",
-            "test_in_memory_dataset_run_b.txt"
-        ])
+        dataset.set_filelist([filename_a, filename_b])
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -511,19 +529,22 @@ class TestDataset(unittest.TestCase):
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)
 
-        os.remove("./test_in_memory_dataset_run_a.txt")
-        os.remove("./test_in_memory_dataset_run_b.txt")
+        temp_dir.cleanup()
 
     def test_queue_dataset_run(self):
         """
         Testcase for QueueDataset from create to run.
         """
-        with open("test_queue_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_queue_dataset_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -540,8 +561,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.QueueDataset()
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
-        dataset.set_filelist(
-            ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+        dataset.set_filelist([filename_a, filename_b])
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
@@ -571,10 +591,7 @@ class TestDataset(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
-        if os.path.exists("./test_queue_dataset_run_a.txt"):
-            os.remove("./test_queue_dataset_run_a.txt")
-        if os.path.exists("./test_queue_dataset_run_b.txt"):
-            os.remove("./test_queue_dataset_run_b.txt")
+        temp_dir.cleanup()
 
     def test_queue_dataset_run_2(self):
         """
@@ -582,12 +599,16 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        with open("test_queue_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_queue_dataset_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -604,8 +625,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.QueueDataset()
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
-        dataset.set_filelist(
-            ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+        dataset.set_filelist([filename_a, filename_b])
 
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0))
@@ -625,10 +645,7 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        if os.path.exists("./test_queue_dataset_run_a.txt"):
-            os.remove("./test_queue_dataset_run_a.txt")
-        if os.path.exists("./test_queue_dataset_run_b.txt"):
-            os.remove("./test_queue_dataset_run_b.txt")
+        temp_dir.cleanup()
 
     def test_queue_dataset_run_3(self):
         """
@@ -636,13 +653,17 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        with open("test_queue_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
             f.write(data)
-        with open("test_queue_dataset_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
@@ -663,8 +684,7 @@ class TestDataset(unittest.TestCase):
             input_type=1,
             pipe_command="cat",
             use_var=slots_vars)
-        dataset.set_filelist(
-            ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+        dataset.set_filelist([filename_a, filename_b])
         dataset.load_into_memory()
 
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
@@ -685,10 +705,7 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        if os.path.exists("./test_queue_dataset_run_a.txt"):
-            os.remove("./test_queue_dataset_run_a.txt")
-        if os.path.exists("./test_queue_dataset_run_b.txt"):
-            os.remove("./test_queue_dataset_run_b.txt")
+        temp_dir.cleanup()
 
 
 class TestDatasetWithDataLoader(TestDataset):
@@ -748,12 +765,18 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         """
         Test Dataset With Fetch Handler. TestCases.
         """
-        with open("test_queue_dataset_run_a.txt", "w") as f:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.filename_a = os.path.join(self.temp_dir.name,
+                                       "test_queue_dataset_run_a.txt")
+        self.filename_b = os.path.join(self.temp_dir.name,
+                                       "test_queue_dataset_run_b.txt")
+
+        with open(self.filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_queue_dataset_run_b.txt", "w") as f:
+        with open(self.filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -764,15 +787,14 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         """
         Test Dataset With Fetch Handler. TestCases.
         """
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        self.temp_dir.cleanup()
 
     def test_dataset_none(self):
         """
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
+        files = [filename_a, filename_b]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -794,7 +816,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
+        files = [self.filename_a, self.filename_b]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -812,7 +834,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
+        files = [self.filename_a, self.filename_b]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -848,15 +870,20 @@ class TestDataset2(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run_b.txt")
 
         self.skipTest("parameter server will add pslib UT later")
 
-        with open("test_in_memory_dataset2_run_a.txt", "w") as f:
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset2_run_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -900,27 +927,29 @@ class TestDataset2(unittest.TestCase):
                 thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars)
-            dataset.set_filelist([
-                "test_in_memory_dataset2_run_a.txt",
-                "test_in_memory_dataset2_run_b.txt"
-            ])
+            dataset.set_filelist([filename_a, filename_b])
             dataset.load_into_memory()
             fleet._opt_info = None
             fleet._fleet_ptr = None
 
-        os.remove("./test_in_memory_dataset2_run_a.txt")
-        os.remove("./test_in_memory_dataset2_run_b.txt")
+        temp_dir.cleanup()
 
     def test_dataset_fleet2(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_in_memory_dataset2_run2_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run2_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run2_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset2_run2_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -970,10 +999,7 @@ class TestDataset2(unittest.TestCase):
                 thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars)
-            dataset.set_filelist([
-                "test_in_memory_dataset2_run2_a.txt",
-                "test_in_memory_dataset2_run2_b.txt"
-            ])
+            dataset.set_filelist([filename_a, filename_b])
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)
@@ -1032,19 +1058,24 @@ class TestDataset2(unittest.TestCase):
             except:
                 print("warning: catch expected error")
 
-        os.remove("./test_in_memory_dataset2_run2_a.txt")
-        os.remove("./test_in_memory_dataset2_run2_b.txt")
+        temp_dir.cleanup()
 
     def test_bosps_dataset_fleet2(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        with open("test_in_memory_dataset2_run2_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        filename_a = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run2_a.txt")
+        filename_b = os.path.join(temp_dir.name,
+                                  "test_in_memory_dataset2_run2_b.txt")
+
+        with open(filename_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset2_run2_b.txt", "w") as f:
+        with open(filename_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -1094,10 +1125,7 @@ class TestDataset2(unittest.TestCase):
                 thread_num=3,
                 pipe_command="cat",
                 use_var=slots_vars)
-            dataset.set_filelist([
-                "test_in_memory_dataset2_run2_a.txt",
-                "test_in_memory_dataset2_run2_b.txt"
-            ])
+            dataset.set_filelist([filename_a, filename_b])
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)
@@ -1148,6 +1176,7 @@ class TestDataset2(unittest.TestCase):
             #dataset.get_pv_data_size()
             dataset.get_memory_data_size()
             dataset.get_shuffle_data_size()
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

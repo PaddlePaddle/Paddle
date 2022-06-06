@@ -18,6 +18,7 @@ from paddle.fluid.layers import sequence_mask
 
 import numpy as np
 import unittest
+import tempfile
 
 from convert import convert_params_for_net
 from rnn_numpy import SimpleRNN, LSTM, GRU
@@ -320,7 +321,9 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn = paddle.jit.to_static(
         rnn, [paddle.static.InputSpec(
             shape=[None, None, 16], dtype=x.dtype)])
-    paddle.jit.save(rnn, "./inference/%s_infer" % mode)
+    temp_dir = tempfile.TemporaryDirectory()
+    paddle.jit.save(rnn,
+                    os.path.join(temp_dir.name, "./inference/%s_infer" % mode))
 
     paddle.enable_static()
 
@@ -329,13 +332,15 @@ def predict_test_util(place, mode, stop_gradient=True):
         exe = paddle.static.Executor(place)
         [inference_program, feed_target_names,
          fetch_targets] = paddle.static.load_inference_model(
-             "./inference/%s_infer" % mode, exe)
+             os.path.join(temp_dir.name, "./inference/%s_infer" % mode), exe)
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: x.numpy()},
                           fetch_list=fetch_targets)
         np.testing.assert_equal(
             y.numpy(), results[0])  # eval results equal predict results
     paddle.disable_static()
+
+    temp_dir.cleanup()
 
 
 def load_tests(loader, tests, pattern):
