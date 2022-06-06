@@ -175,9 +175,10 @@ def calc_triplet_margin_loss(
 
 class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss(self):
-        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        shape = (2, 2)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -267,9 +268,10 @@ class TestTripletMarginLoss(unittest.TestCase):
     def test_TripletMarginLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()
-        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        shape = (2, 2)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
         expected = calc_triplet_margin_loss(
             input=input,
             swap=True,
@@ -333,11 +335,12 @@ class TestTripletMarginLoss(unittest.TestCase):
 
     def test_TripletMarginLoss_p(self):
         p = 3
+        shape = (2, 2)
         reduction = 'mean'
         place = paddle.CPUPlace()
-        input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=(5, 5)).astype(np.float64)
+        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
         expected = calc_triplet_margin_loss(
             input=input,
             p=p,
