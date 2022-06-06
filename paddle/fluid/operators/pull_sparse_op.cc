@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/pull_sparse_op.h"
+
 #include <string>
 
 namespace paddle {

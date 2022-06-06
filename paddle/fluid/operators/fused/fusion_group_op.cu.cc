@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_group_op.h"
+
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
+
 #include <fstream>
 #include <functional>
 #include <map>
@@ -21,6 +22,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -520,7 +522,7 @@ void StatisticsEngine::MergeEvents(std::function<size_t(size_t, size_t)> merger,
 
 int StatisticsEngine::MergeInnerthreadEvents(
     std::vector<std::vector<StdEvent>>* all_evts) {
-  auto merger = [& priorities = priorities_](size_t idx1, size_t idx2) {
+  auto merger = [&priorities = priorities_](size_t idx1, size_t idx2) {
     return priorities[idx1].innerthread_priority <=
                    priorities[idx2].innerthread_priority
                ? idx1
@@ -541,7 +543,7 @@ int StatisticsEngine::MergeInnerthreadEvents(
 
 int StatisticsEngine::MergeInterthreadEvents(
     std::vector<std::vector<StdEvent>>* all_evts) {
-  auto merger = [& priorities = priorities_](size_t idx1, size_t idx2) {
+  auto merger = [&priorities = priorities_](size_t idx1, size_t idx2) {
     return priorities[idx1].interthread_priority <=
                    priorities[idx2].interthread_priority
                ? idx1

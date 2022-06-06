@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
+#include "paddle/fluid/pybind/eager.h"
+
 #include <Python.h>
 
 #include <string>
@@ -22,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -488,45 +489,45 @@ void AutoInitStringTensorByStringTensor(
 }
 
 /** We should have init function with signature:
-   * 1.
-   * def __init__ ()
-   * 2.
-   * def __init__ (
-   * ** dtype: paddle::framework::proto::VarType::Type,
-   * ** dims: vector<int>,
-   * ** name: std::string,
-   * ** type: paddle::framework::proto::VarType::LodTensor,
-   * ** persistable: bool)
-   * 3. (multi-place)
-   * (should have at least one parameter, one parameter equals to case 4, zero
-   * parameter equals to case 1)
-   * def __init__ (
-   * ** value: ndarray,
-   * ** place: paddle::platform::Place,
-   * ** persistable: bool,
-   * ** zero_copy: bool,
-   * ** name: std::string,
-   * ** stop_gradient: bool)
-   * 4.
-   * def __init__ (
-   * ** value: ndarray)
-   * 5.
-   * def __init__ (
-   * ** tensor: Tensor)
-   * 6. (multi-place)
-   * (should have at least one parameter, one parameter equals to case 5, zero
-   * parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: Tensor,
-   * ** place: paddle::platform::Place,
-   * ** name: std::string)
-   * 7. (multi-place) (should have at least one parameter, one parameter similar
-   * to case 5, zero parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: FrameworkTensor,
-   * ** place: paddle::platform::Place,
-   * ** name: std::string)
-   *  **/
+ * 1.
+ * def __init__ ()
+ * 2.
+ * def __init__ (
+ * ** dtype: paddle::framework::proto::VarType::Type,
+ * ** dims: vector<int>,
+ * ** name: std::string,
+ * ** type: paddle::framework::proto::VarType::LodTensor,
+ * ** persistable: bool)
+ * 3. (multi-place)
+ * (should have at least one parameter, one parameter equals to case 4, zero
+ * parameter equals to case 1)
+ * def __init__ (
+ * ** value: ndarray,
+ * ** place: paddle::platform::Place,
+ * ** persistable: bool,
+ * ** zero_copy: bool,
+ * ** name: std::string,
+ * ** stop_gradient: bool)
+ * 4.
+ * def __init__ (
+ * ** value: ndarray)
+ * 5.
+ * def __init__ (
+ * ** tensor: Tensor)
+ * 6. (multi-place)
+ * (should have at least one parameter, one parameter equals to case 5, zero
+ * parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: Tensor,
+ * ** place: paddle::platform::Place,
+ * ** name: std::string)
+ * 7. (multi-place) (should have at least one parameter, one parameter similar
+ * to case 5, zero parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: FrameworkTensor,
+ * ** place: paddle::platform::Place,
+ * ** name: std::string)
+ *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
   // set a flag to record use kwargs or not
@@ -828,37 +829,37 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
 }
 
 /** We should have init function with signature:
-   * 1.
-   * def __init__ ()
-   *
-   * 2.
-   * def __init__ (
-   * ** dims: vector<int>,
-   * ** name: std::string)
-   *
-   * 3.
-   * (should have at least one parameter, one parameter equals to case 4, zero
-   * parameter equals to case 1)
-   * def __init__ (
-   * ** value: ndarray,
-   * ** zero_copy: bool,
-   * ** name: std::string)
-   *
-   * 4.
-   * def __init__ (
-   * ** value: ndarray)
-   *
-   * 5.
-   * def __init__ (
-   * ** tensor: Tensor)
-   *
-   * 6.
-   * (should have at least one parameter, one parameter equals to case 5, zero
-   * parameter equals to case 1.)
-   * def __init__ (
-   * ** tensor: Tensor,
-   * ** name: std::string)
-   * **/
+ * 1.
+ * def __init__ ()
+ *
+ * 2.
+ * def __init__ (
+ * ** dims: vector<int>,
+ * ** name: std::string)
+ *
+ * 3.
+ * (should have at least one parameter, one parameter equals to case 4, zero
+ * parameter equals to case 1)
+ * def __init__ (
+ * ** value: ndarray,
+ * ** zero_copy: bool,
+ * ** name: std::string)
+ *
+ * 4.
+ * def __init__ (
+ * ** value: ndarray)
+ *
+ * 5.
+ * def __init__ (
+ * ** tensor: Tensor)
+ *
+ * 6.
+ * (should have at least one parameter, one parameter equals to case 5, zero
+ * parameter equals to case 1.)
+ * def __init__ (
+ * ** tensor: Tensor,
+ * ** name: std::string)
+ * **/
 int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
@@ -916,8 +917,9 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       // case 1
       VLOG(6) << "Calling case1's string initializer.";
       EmptyStringTensorInitializer(
-          py_tensor_ptr, egr::Controller::Instance().GenerateUniqueName(
-                             "generated_string_tensor"),
+          py_tensor_ptr,
+          egr::Controller::Instance().GenerateUniqueName(
+              "generated_string_tensor"),
           egr::Controller::Instance().GetExpectedPlace());
       return 0;
     } else {

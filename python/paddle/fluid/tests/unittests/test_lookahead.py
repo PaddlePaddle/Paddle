@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,6 +30,7 @@ SGD_LR = 1.0
 
 
 class TestLookAhead(unittest.TestCase):
+
     def test_lookahead_static(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
@@ -65,8 +66,9 @@ class TestLookAhead(unittest.TestCase):
             if i == 0:
                 slow_param = latest_b
             if (i + 1) % LOOKAHEAD_K == 0:
-                self.assertAlmostEqual(
-                    slow_param.all(), latest_b.all(), delta=5e-3)
+                self.assertAlmostEqual(slow_param.all(),
+                                       latest_b.all(),
+                                       delta=5e-3)
             fast_param = latest_b - SGD_LR * b_grad
 
     def func_test_look_ahead_dygraph(self):
@@ -79,6 +81,7 @@ class TestLookAhead(unittest.TestCase):
 
         # define a random dataset
         class RandomDataset(paddle.io.Dataset):
+
             def __init__(self, num_samples):
                 self.num_samples = num_samples
 
@@ -92,6 +95,7 @@ class TestLookAhead(unittest.TestCase):
                 return self.num_samples
 
         class LinearNet(nn.Layer):
+
             def __init__(self):
                 super(LinearNet, self).__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
@@ -111,35 +115,34 @@ class TestLookAhead(unittest.TestCase):
                     out = layer(image)
                     loss = loss_fn(out, label)
                     loss.backward()
-                    fast_param = (
-                        layer.bias.numpy() - SGD_LR * layer.bias.grad.numpy())
+                    fast_param = (layer.bias.numpy() -
+                                  SGD_LR * layer.bias.grad.numpy())
                     opt.step()
                     if idx == 1:
                         slow_param = fast_param
                     if idx % LOOKAHEAD_K == 0:
                         slow_param = slow_param + LOOKAHEAD_ALPHA * (
                             fast_param - slow_param)
-                        self.assertAlmostEqual(
-                            np.mean(slow_param),
-                            np.mean(layer.bias.numpy()),
-                            delta=5e-3)
+                        self.assertAlmostEqual(np.mean(slow_param),
+                                               np.mean(layer.bias.numpy()),
+                                               delta=5e-3)
                     opt.clear_grad()
 
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
         optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR,
                                          parameters=layer.parameters())
-        lookahead = paddle.incubate.optimizer.LookAhead(
-            optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K)
+        lookahead = paddle.incubate.optimizer.LookAhead(optimizer,
+                                                        alpha=LOOKAHEAD_ALPHA,
+                                                        k=LOOKAHEAD_K)
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        loader = paddle.io.DataLoader(
-            dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=2)
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=BATCH_SIZE,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      num_workers=2)
 
         train(layer, loader, loss_fn, lookahead)
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/place.h"
 

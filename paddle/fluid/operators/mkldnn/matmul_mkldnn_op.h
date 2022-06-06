@@ -22,8 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
+using platform::MKLDNNDeviceContext;
 using Tensor = framework::Tensor;
 
 template <typename T>

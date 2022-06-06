@@ -70,9 +70,10 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int trainer_id = Attr<int>("trainer_id");
     std::string endpoint = trainers[trainer_id];
 
-    PADDLE_ENFORCE_GE(trainer_id, 0, platform::errors::InvalidArgument(
-                                         "trainer_id %d is less than 0. Its "
-                                         "valid range is [0, trainer_size)"));
+    PADDLE_ENFORCE_GE(
+        trainer_id, 0,
+        platform::errors::InvalidArgument("trainer_id %d is less than 0. Its "
+                                          "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
         trainer_id, static_cast<int>(trainers.size()),
         platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "

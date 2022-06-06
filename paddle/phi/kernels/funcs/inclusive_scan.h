@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
+
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -214,21 +215,21 @@ static void InclusiveScanInnerDim(const T *x,
   grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
-    InclusiveScanInnerDimCUDAKernel<
-        T,
-        BinaryOp,
-        kThreadNumX,
-        kThreadNumY,
-        /*kReverse=*/true><<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
-        x, y, outer_dim, inner_dim, init, op);
+    InclusiveScanInnerDimCUDAKernel<T,
+                                    BinaryOp,
+                                    kThreadNumX,
+                                    kThreadNumY,
+                                    /*kReverse=*/true>
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
+            x, y, outer_dim, inner_dim, init, op);
   } else {
-    InclusiveScanInnerDimCUDAKernel<
-        T,
-        BinaryOp,
-        kThreadNumX,
-        kThreadNumY,
-        /*kReverse=*/false><<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
-        x, y, outer_dim, inner_dim, init, op);
+    InclusiveScanInnerDimCUDAKernel<T,
+                                    BinaryOp,
+                                    kThreadNumX,
+                                    kThreadNumY,
+                                    /*kReverse=*/false>
+        <<<grid_dim, thread_dims, 0, dev_ctx.stream()>>>(
+            x, y, outer_dim, inner_dim, init, op);
   }
 }
 

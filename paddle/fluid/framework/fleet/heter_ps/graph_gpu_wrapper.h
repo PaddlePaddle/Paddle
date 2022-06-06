@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 namespace paddle {
@@ -73,5 +74,5 @@ class GraphGpuWrapper {
   void* graph_table;
 };
 #endif
-}
-};
+}  // namespace framework
+};  // namespace paddle

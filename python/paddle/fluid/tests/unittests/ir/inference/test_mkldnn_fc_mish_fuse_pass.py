@@ -20,16 +20,17 @@ import hypothesis.strategies as st
 
 
 class TestFCMishMkldnnFusePass(PassAutoScanTest):
+
     def sample_program_config(self, draw):
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=128), min_size=2, max_size=3))
+            st.lists(st.integers(min_value=1, max_value=128),
+                     min_size=2,
+                     max_size=3))
         in_num_col_dims = len(x_shape) - 1
         w_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=128), min_size=2, max_size=2))
+            st.lists(st.integers(min_value=1, max_value=128),
+                     min_size=2,
+                     max_size=2))
         w_shape[0] = int(np.prod(x_shape[in_num_col_dims:]))
         fc_bias_shape = [w_shape[1]]
 
@@ -62,14 +63,17 @@ class TestFCMishMkldnnFusePass(PassAutoScanTest):
 
         ops = self.generate_op_config(ops_config)
 
-        program_config = ProgramConfig(
-            ops=ops,
-            weights={
-                "fc_w": TensorConfig(shape=w_shape),
-                "fc_bias": TensorConfig(shape=fc_bias_shape),
-            },
-            inputs={"fc_x": TensorConfig(shape=x_shape), },
-            outputs=["mish_output"])
+        program_config = ProgramConfig(ops=ops,
+                                       weights={
+                                           "fc_w":
+                                           TensorConfig(shape=w_shape),
+                                           "fc_bias":
+                                           TensorConfig(shape=fc_bias_shape),
+                                       },
+                                       inputs={
+                                           "fc_x": TensorConfig(shape=x_shape),
+                                       },
+                                       outputs=["mish_output"])
         return program_config
 
     def sample_predictor_configs(self, program_config):

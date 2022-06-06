@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
@@ -276,9 +277,9 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  int dst_place_type = platform::is_cpu_place(dst_place)
-                           ? 0
-                           : platform::is_gpu_place(dst_place) ? 1 : -1;
+  int dst_place_type = platform::is_cpu_place(dst_place)   ? 0
+                       : platform::is_gpu_place(dst_place) ? 1
+                                                           : -1;
   AttributeMap attr_map = {{"dst_place_type", dst_place_type}};
 
   // 3. Create memcpy_d2h_op or memcpy_h2d_op

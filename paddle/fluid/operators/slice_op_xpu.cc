@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/slice_op.h"
 #include "xpu/refactor/math.h"
 
 namespace paddle {
@@ -53,8 +54,9 @@ class SliceXPUKernel : public framework::OpKernel<T> {
       start = std::max(start, 0);
       end = std::max(end, 0);
       end = std::min(end, dim_value);
-      PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                        "end should greater than start"));
+      PADDLE_ENFORCE_GT(
+          end, start,
+          platform::errors::InvalidArgument("end should greater than start"));
       starts[i] = start;
       ends[i] = end;
     }

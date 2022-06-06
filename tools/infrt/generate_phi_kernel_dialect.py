@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -83,11 +83,15 @@ def generate_kernel_name(op_name, place_str):
     precision_ = precision_type_converter[precision_.strip()]
     class_name_ = "{}{}".format(
         op_name.replace("_", "").title(), "".join([
-            target_.strip().title(), precision_.strip(), layout_.strip().title()
-            .title()
+            target_.strip().title(),
+            precision_.strip(),
+            layout_.strip().title().title()
         ]))
-    alias_ = "{}.{}".format(op_name, ".".join(
-        [target_.strip(), precision_.strip(), layout_.strip()]))
+    alias_ = "{}.{}".format(
+        op_name,
+        ".".join([target_.strip(),
+                  precision_.strip(),
+                  layout_.strip()]))
     return alias_, class_name_
 
 
@@ -101,8 +105,8 @@ def generate_attrs_info(op_name, attrs_info):
         for index in range(len(attrs_info)):
             attr_name = kernel_attrs_names[op_name]["attrs"][index]
             attr_type = attr_type_converter[attrs_info[index]]
-            attrs_args_ += '{type_}:${name_},'.format(
-                type_=attr_type, name_=attr_name)
+            attrs_args_ += '{type_}:${name_},'.format(type_=attr_type,
+                                                      name_=attr_name)
     return attrs_args_[:-1]
 
 
@@ -124,8 +128,8 @@ def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
     context_args = "Context:$dev_ctx"
-    argument_list = [context_args] + input_args.split(",") + attr_args.split(
-        ",")
+    argument_list = [context_args
+                     ] + input_args.split(",") + attr_args.split(",")
     while ("" in argument_list):
         argument_list.remove("")
     argument_ = ",".join(argument_list)
@@ -295,8 +299,8 @@ def main():
                             op_name, kernel_alias_, kernel_info[kernel_alias_])
                         gpu_registry_ += kernel_registry
                     else:
-                        print("Unsupported backend:" + get_kernel_target(
-                            kernel_alias_))
+                        print("Unsupported backend:" +
+                              get_kernel_target(kernel_alias_))
         end = "#endif  // PTEN_KERNELS"
         with open("../../paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td",
                   "w") as dst:

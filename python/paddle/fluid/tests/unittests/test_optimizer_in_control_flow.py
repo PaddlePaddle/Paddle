@@ -78,8 +78,8 @@ def static(train_data,
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.softmax_with_cross_entropy(
-                    logits=pred, label=label)
+                loss = layers.softmax_with_cross_entropy(logits=pred,
+                                                         label=label)
                 avg_loss = layers.mean(loss, name='mean_softmax_loss')
             opt.minimize(avg_loss)
             return avg_loss
@@ -96,14 +96,14 @@ def static(train_data,
         mod_two = layers.elementwise_mod(id, two) == 0
 
         if loss_in_switch:
-            avg_loss = layers.case([(
-                mod_two, lambda: fn_1(adam, None, prediction, label))],
-                                   lambda: fn_2(sgd, None, prediction, label))
+            avg_loss = layers.case(
+                [(mod_two, lambda: fn_1(adam, None, prediction, label))],
+                lambda: fn_2(sgd, None, prediction, label))
         else:
             loss_1 = layers.cross_entropy(input=prediction, label=label)
             avg_loss_1 = layers.mean(loss_1)
-            loss_2 = layers.softmax_with_cross_entropy(
-                logits=prediction, label=label)
+            loss_2 = layers.softmax_with_cross_entropy(logits=prediction,
+                                                       label=label)
             avg_loss_2 = layers.mean(loss_2)
             avg_loss = layers.case([(mod_two, lambda: fn_1(adam, avg_loss_1))],
                                    lambda: fn_2(sgd, avg_loss_2))
@@ -127,6 +127,7 @@ def static(train_data,
 
 
 class DygraphLayer(fluid.dygraph.Layer):
+
     def __init__(self):
         super(DygraphLayer, self).__init__()
         self.fc_1 = fluid.dygraph.nn.Linear(
@@ -136,7 +137,8 @@ class DygraphLayer(fluid.dygraph.Layer):
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.99)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.5)), )
+                value=0.5)),
+        )
 
         self.fc_2 = fluid.dygraph.nn.Linear(
             FC_SIZE,
@@ -159,8 +161,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
         dy_layer = DygraphLayer()
-        adam = fluid.optimizer.Adam(
-            learning_rate=LR, parameter_list=dy_layer.parameters())
+        adam = fluid.optimizer.Adam(learning_rate=LR,
+                                    parameter_list=dy_layer.parameters())
         sgd = fluid.optimizer.SGD(learning_rate=LR,
                                   parameter_list=dy_layer.parameters())
 
@@ -176,8 +178,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
                 loss.backward()
                 adam.minimize(loss)
             else:
-                softmax_loss = layers.softmax_with_cross_entropy(prediction,
-                                                                 var_label)
+                softmax_loss = layers.softmax_with_cross_entropy(
+                    prediction, var_label)
                 loss = layers.mean(softmax_loss)
                 loss.backward()
                 sgd.minimize(loss)
@@ -199,8 +201,9 @@ class TestMultiTask(unittest.TestCase):
         np.random.seed(seed)
         image_np = np.random.random(size=image_shape).astype('float32')
         np.random.seed(seed)
-        label_np = np.random.randint(
-            low=0, high=CLASS_NUM - 1, size=label_shape).astype('int64')
+        label_np = np.random.randint(low=0,
+                                     high=CLASS_NUM - 1,
+                                     size=label_shape).astype('int64')
         return image_np, label_np
 
     def init_train_data(self):
@@ -223,13 +226,13 @@ class TestMultiTask(unittest.TestCase):
                 np.allclose(pre_1, pre_2),
                 msg='static prediction is {}\ndynamic prediction is {}'.format(
                     pre_1, pre_2))
-            self.assertTrue(
-                np.allclose(loss_1, loss_2),
-                msg='static loss is {}\ndynamic loss is {}'.format(loss_1,
-                                                                   loss_2))
+            self.assertTrue(np.allclose(loss_1, loss_2),
+                            msg='static loss is {}\ndynamic loss is {}'.format(
+                                loss_1, loss_2))
 
 
 class TestMultiOptimizersMultiCardsError(unittest.TestCase):
+
     def test_error(self):
         startup_program = Program()
         main_program = Program()
@@ -270,15 +273,15 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             # to use multi cards ** only on CPU ** not GPU to reduce CI time.
             os.environ['CPU_NUM'] = str(2)
 
-            pe_exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=avg_loss.name)
+            pe_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                            main_program=main_program,
+                                            loss_name=avg_loss.name)
             num_devices = pe_exe.device_count
 
             def not_implemented_error():
                 pe_exe.run(feed={
-                    'X': np.random.random(size=[64, 10]).astype('float32'),
+                    'X':
+                    np.random.random(size=[64, 10]).astype('float32'),
                 },
                            fetch_list=[avg_loss.name])
 

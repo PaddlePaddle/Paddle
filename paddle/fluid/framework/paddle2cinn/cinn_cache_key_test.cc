@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include <map>
 #include <unordered_set>
 
@@ -21,6 +22,7 @@
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/ddim.h"
+// clang-format on
 
 namespace paddle {
 namespace framework {

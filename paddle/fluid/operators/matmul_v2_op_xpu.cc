@@ -14,10 +14,10 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 
 namespace paddle {

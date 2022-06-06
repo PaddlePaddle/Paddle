@@ -90,10 +90,9 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const std::vector<platform::Place> &places, ir::Graph *graph)
     // TODO(Yancey1989): Copying graphs is not safely since it deleted the
     // attrs.
-    : ParallelSSAGraphExecutor(strategy, local_scopes, local_exec_scopes,
-                               places,
-                               SeparateMultiDevicesGraph(graph,
-                                                         places.size())) {}
+    : ParallelSSAGraphExecutor(
+          strategy, local_scopes, local_exec_scopes, places,
+          SeparateMultiDevicesGraph(graph, places.size())) {}
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,

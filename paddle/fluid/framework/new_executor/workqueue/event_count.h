@@ -54,6 +54,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <vector>
+
 #include "glog/logging.h"
 
 namespace paddle {

@@ -403,8 +403,9 @@ void EagerReducer::InitializeDenseGroups(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
     PADDLE_ENFORCE_GT(
-        size, 0, platform::errors::PreconditionNotMet(
-                     "The number of tensor %s's elements is 0.", tensor_name));
+        size, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of tensor %s's elements is 0.", tensor_name));
     all_length += size;
 
     p_group->length_.push_back(size);

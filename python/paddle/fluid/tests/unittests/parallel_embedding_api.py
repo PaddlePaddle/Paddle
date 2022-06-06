@@ -41,6 +41,7 @@ paddle.enable_static()
 
 
 class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -54,8 +55,9 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
             paddle.seed(2020)
             data_in = paddle.randint(0, size[0], shape=(10, 4))
 
-            data = paddle.static.data(
-                name='tindata', shape=[10, 1000], dtype="float32")
+            data = paddle.static.data(name='tindata',
+                                      shape=[10, 1000],
+                                      dtype="float32")
             per_part_size = size[0] // 2
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
@@ -66,12 +68,11 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
                     initializer=paddle.fluid.initializer.NumpyArrayInitializer(
                         np_array[per_part_size:size[0], :]), )
 
-            emb_out = paddle.distributed.split(
-                data_in,
-                size,
-                operation="embedding",
-                num_partitions=2,
-                weight_attr=param_attr)
+            emb_out = paddle.distributed.split(data_in,
+                                               size,
+                                               operation="embedding",
+                                               num_partitions=2,
+                                               weight_attr=param_attr)
 
             return [data_in, emb_out]
 

@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_key.h"
+
 #include <xxhash.h>  // XXH64: 13.8 GB/s
 
 namespace paddle {

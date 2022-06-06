@@ -18,8 +18,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    isinf, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
-                               ops::InfinityFunctor>,
+    isinf,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                        ops::InfinityFunctor>,
     ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
                         ops::InfinityFunctor>,
     ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,
@@ -38,8 +39,9 @@ REGISTER_OP_CUDA_KERNEL(isnan,
                                             plat::float16, ops::NANFunctor>);
 
 REGISTER_OP_CUDA_KERNEL(
-    isfinite, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
-                                  ops::IsfiniteFunctor>,
+    isfinite,
+    ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,
+                        ops::IsfiniteFunctor>,
     ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,
                         ops::IsfiniteFunctor>,
     ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,

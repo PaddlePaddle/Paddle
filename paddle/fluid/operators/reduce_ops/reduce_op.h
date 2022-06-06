@@ -18,6 +18,7 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
@@ -484,8 +485,9 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_mlu_place(ctx.GetPlace()),
-          true, platform::errors::InvalidArgument(
-                    "float16 can only be used on GPU or NPU or MLU place"));
+          true,
+          platform::errors::InvalidArgument(
+              "float16 can only be used on GPU or NPU or MLU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
