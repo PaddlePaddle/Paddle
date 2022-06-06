@@ -137,6 +137,7 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
 
 
 class Completer:
+
     def __init__(self, dist_context):
         assert dist_context is not None
         self._dist_context = dist_context
@@ -253,9 +254,8 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping)
                             changed = True
             # Find the most compatible implemenetations from the distributed operator
-            op_dist_impls = find_compatible_distributed_operator_impls(
-                dist_op, fwd=True)
-            # print("op fwd 2", op_desc.type(), op_desc.original_id(), op_dist_attr, changed, op_dist_impls, flush=True)
+            op_dist_impls = find_compatible_distributed_operator_impls(dist_op,
+                                                                       fwd=True)
             if op_dist_impls is not None:
                 not_compatible = True
                 backup_op_dist_attr = copy.deepcopy(op_dist_attr)
@@ -461,6 +461,7 @@ class Completer:
                     tensor_dist_attr.process_mesh = compatible_process_mesh
 
     def _update_process_mesh_for_specials(self):
+
         def _find_nearest_tensor_node_before(nodes, idx, var_name):
             for node in reversed(nodes[:idx]):
                 if node.is_var() and node.var() is not None \
@@ -704,8 +705,8 @@ class Completer:
         # Step 2.2: set the process meshes of ops by the nearest op node after the first op node
         if idx_of_first_op_node_has_process_mesh + 1 > len(ordered_op_nodes):
             return None
-        for idx, op_node in enumerate(ordered_op_nodes[
-                idx_of_first_op_node_has_process_mesh + 1:]):
+        for idx, op_node in enumerate(
+                ordered_op_nodes[idx_of_first_op_node_has_process_mesh + 1:]):
             original_idx = idx_of_first_op_node_has_process_mesh + idx + 1
             nearest_op_node = ordered_op_nodes[original_idx - 1]
             nearest_op_dist_attr = self._dist_context.get_dist_attr_for_graph(
@@ -846,9 +847,9 @@ class Completer:
             if grad_op.desc.original_id(
             ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(ops,
-                                           dist_op_context.grad_op_id_to_op_id[
-                                               grad_op.desc.original_id()])
+                forward_op = _get_op_by_id(
+                    ops, dist_op_context.grad_op_id_to_op_id[
+                        grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 fwd_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
@@ -877,8 +878,8 @@ class Completer:
                                 input_name)
                     assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
                         input_name)
-                    grad_op_dist_attr.set_input_dims_mapping(input_name,
-                                                             ref_dims_mapping)
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        input_name, ref_dims_mapping)
 
                 for output_name in grad_op.output_arg_names:
                     assert output_name in grad_var_to_var[appended_grad_times]
@@ -893,8 +894,8 @@ class Completer:
                     self._dist_context.set_tensor_dist_attr_for_program(
                         output_var, tensor_dist_attr)
                     # op
-                    grad_op_dist_attr.set_output_dims_mapping(output_name,
-                                                              ref_dims_mapping)
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_name, ref_dims_mapping)
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr)
@@ -949,10 +950,10 @@ class Completer:
                     # op
                     grad_op_dist_attr = OperatorDistributedAttribute()
                     grad_op_dist_attr.process_mesh = ref_process_mesh
-                    grad_op_dist_attr.set_input_dims_mapping(ref_var_name,
-                                                             ref_dims_mapping)
-                    grad_op_dist_attr.set_output_dims_mapping(output_var_name,
-                                                              ref_dims_mapping)
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        ref_var_name, ref_dims_mapping)
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_var_name, ref_dims_mapping)
 
                 elif grad_op.type in ['shape', 'fill_constant']:
                     continue
@@ -992,8 +993,8 @@ class Completer:
         first_backward_op_idx = -1
         for idx, op in enumerate(serial_main_program.global_block().ops):
             if int(op.attr('op_role')) == int(
-                    int(core.op_proto_and_checker_maker.OpRole.Backward) | int(
-                        core.op_proto_and_checker_maker.OpRole.Loss)):
+                    int(core.op_proto_and_checker_maker.OpRole.Backward)
+                    | int(core.op_proto_and_checker_maker.OpRole.Loss)):
                 assert op.type == "fill_constant"
                 first_backward_op_idx = idx
                 break
@@ -1040,8 +1041,8 @@ class Completer:
                 op_dist_attr.process_mesh = process_mesh
                 op_dist_attr.set_output_dims_mapping(grad_var.name,
                                                      dims_mapping)
-                self._dist_context.set_op_dist_attr_for_program(ops[idx],
-                                                                op_dist_attr)
+                self._dist_context.set_op_dist_attr_for_program(
+                    ops[idx], op_dist_attr)
                 continue
 
             # complete the annotation of grad op (xxx_grad op or sum op)
@@ -1050,9 +1051,10 @@ class Completer:
             if grad_op.desc.original_id(
             ) in dist_op_context.grad_op_id_to_op_id:
                 # TODO support the case where one forward op corresponding to multiple xxx_grad op
-                forward_op = _get_op_by_id(ops[:first_backward_op_idx],
-                                           dist_op_context.grad_op_id_to_op_id[
-                                               grad_op.desc.original_id()])
+                forward_op = _get_op_by_id(
+                    ops[:first_backward_op_idx],
+                    dist_op_context.grad_op_id_to_op_id[
+                        grad_op.desc.original_id()])
                 assert forward_op is not None
 
                 if grad_op.type == "concat" and forward_op.type == "split":
@@ -1075,8 +1077,8 @@ class Completer:
                     self._dist_context.set_tensor_dist_attr_for_program(
                         output_var, output_var_dist_attr)
 
-                    grad_op_dist_attr.set_output_dims_mapping(output_var.name,
-                                                              ref_dims_mapping)
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_var.name, ref_dims_mapping)
                     grad_op_dist_attr.process_mesh = ref_mesh
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr)
@@ -1110,8 +1112,8 @@ class Completer:
                                 input_name)
                     assert ref_dims_mapping is not None, "[{}] 's dims mapping is NONE".format(
                         input_name)
-                    grad_op_dist_attr.set_input_dims_mapping(input_name,
-                                                             ref_dims_mapping)
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        input_name, ref_dims_mapping)
 
                 for output_name in grad_op.output_arg_names:
                     assert output_name in grad_var_to_var
@@ -1126,8 +1128,8 @@ class Completer:
                     self._dist_context.set_tensor_dist_attr_for_program(
                         output_var, tensor_dist_attr)
                     # op
-                    grad_op_dist_attr.set_output_dims_mapping(output_name,
-                                                              ref_dims_mapping)
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_name, ref_dims_mapping)
 
                 grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
                 grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
@@ -1185,10 +1187,10 @@ class Completer:
                     # op
                     grad_op_dist_attr = OperatorDistributedAttribute()
                     grad_op_dist_attr.process_mesh = ref_process_mesh
-                    grad_op_dist_attr.set_input_dims_mapping(ref_var_name,
-                                                             ref_dims_mapping)
-                    grad_op_dist_attr.set_output_dims_mapping(output_var_name,
-                                                              ref_dims_mapping)
+                    grad_op_dist_attr.set_input_dims_mapping(
+                        ref_var_name, ref_dims_mapping)
+                    grad_op_dist_attr.set_output_dims_mapping(
+                        output_var_name, ref_dims_mapping)
 
                 else:
                     raise ValueError("got unexpect op [{}]".format(
@@ -1201,7 +1203,7 @@ class Completer:
         """Complete the annotation of vars and ops in the update phase for parallel program."""
 
         # Notice: serial_main_program is actually a dist_main_program of current rank,
-        # and must be passed into this function. 
+        # and must be passed into this function.
         # TODO: We should fix this behavior.
 
         ops = list(serial_main_program.global_block().ops)
@@ -1238,10 +1240,10 @@ class Completer:
                         op, op_dist_attr)
 
                 if "Grad" in op.input_names and "Param" in ops[idx].input_names:
-                    assert len(op.input(
-                        "Param")) == 1, "Only support one-to-one now."
-                    assert len(op.input(
-                        "Grad")) == 1, "Only support one-to-one now."
+                    assert len(
+                        op.input("Param")) == 1, "Only support one-to-one now."
+                    assert len(
+                        op.input("Grad")) == 1, "Only support one-to-one now."
                     param = vars[op.input("Param")[0]]
                     grad_var = vars[op.input("Grad")[0]]
 
@@ -1260,12 +1262,12 @@ class Completer:
                                                         ref_dims_mapping)
                     op_dist_attr.set_input_dims_mapping(param.name,
                                                         ref_dims_mapping)
-                    op_dist_attr.set_output_dims_mapping(param.name,
-                                                         ref_dims_mapping)
+                    op_dist_attr.set_output_dims_mapping(
+                        param.name, ref_dims_mapping)
                     learning_var = vars[op.input("LearningRate")[0]]
                     op_dist_attr.set_input_dims_mapping(learning_var.name, [-1])
-                    op_dist_attr.set_output_dims_mapping(learning_var.name,
-                                                         [-1])
+                    op_dist_attr.set_output_dims_mapping(
+                        learning_var.name, [-1])
 
                     if not learning_rate_completed:
                         learning_rate_completed = True
@@ -1290,10 +1292,10 @@ class Completer:
 
                         if "Beta1Pow" in input_name or "Beta2Pow" in input_name:
                             input_var_attr.dims_mapping = [-1]
-                            op_dist_attr.set_input_dims_mapping(input_var.name,
-                                                                [-1])
-                            op_dist_attr.set_output_dims_mapping(input_var.name,
-                                                                 [-1])
+                            op_dist_attr.set_input_dims_mapping(
+                                input_var.name, [-1])
+                            op_dist_attr.set_output_dims_mapping(
+                                input_var.name, [-1])
                         else:
                             assert "Moment" in input_name
                             input_var_attr.dims_mapping = ref_dims_mapping

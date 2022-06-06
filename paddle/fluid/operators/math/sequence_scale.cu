@@ -53,10 +53,10 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
         seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
         seq_width);
 #else
-    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
-        seq_width);
+    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>
+        <<<num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
+            seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
+            seq_width);
 #endif
     mix_vector.CopyToCPU();
   }
@@ -82,10 +82,10 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
         seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
         seq_width);
 #else
-    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
-        seq_width);
+    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>
+        <<<num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
+            seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
+            seq_width);
 #endif
     mix_vector.CopyToCPU();
   }

@@ -31,6 +31,7 @@ from .dist_context import DistributedContext, get_default_distributed_context
 
 
 class Parallelizer:
+
     def __init__(self, mode, completer, dist_context):
         self._mode = mode
         self._completer = completer
@@ -54,8 +55,9 @@ class Parallelizer:
         if self._mode == "train" and serial_optimizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
-            params_grads = self._generate_backward(
-                serial_main_program, serial_startup_program, serial_loss)
+            params_grads = self._generate_backward(serial_main_program,
+                                                   serial_startup_program,
+                                                   serial_loss)
             # Apply pre optimization passes
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
@@ -78,8 +80,9 @@ class Parallelizer:
                                           rank, dist_params_grads)
         else:
             # Apply pre optimization passes
-            self._apply_pre_optimization(
-                serial_main_program, serial_startup_program, None, None, None)
+            self._apply_pre_optimization(serial_main_program,
+                                         serial_startup_program, None, None,
+                                         None)
             # Do logical partition
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
@@ -128,8 +131,8 @@ class Parallelizer:
             if config["use_pure_fp16"]:
                 config["base_opt"] = optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
-                auto_parallel_fp16_pass.apply(
-                    [main_program], [startup_program], self._pass_context)
+                auto_parallel_fp16_pass.apply([main_program], [startup_program],
+                                              self._pass_context)
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
@@ -143,8 +146,9 @@ class Parallelizer:
             config["loss"] = loss
             auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
                                                     config)
-            auto_parallel_recompute_pass.apply(
-                [main_program], [startup_program], self._dist_context)
+            auto_parallel_recompute_pass.apply([main_program],
+                                               [startup_program],
+                                               self._dist_context)
 
     def _apply_post_optimization(self, main_program, startup_program, rank,
                                  params_grads):
@@ -157,8 +161,8 @@ class Parallelizer:
             config["global_rank"] = rank
             auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
                                                    config)
-            auto_parallel_sharding_pass.apply(
-                [main_program], [startup_program], self._dist_context)
+            auto_parallel_sharding_pass.apply([main_program], [startup_program],
+                                              self._dist_context)
 
         if self._strategy.gradient_merge:
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
@@ -166,5 +170,6 @@ class Parallelizer:
             config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config)
-            auto_parallel_gradient_merge_pass.apply(
-                [main_program], [startup_program], self._dist_context)
+            auto_parallel_gradient_merge_pass.apply([main_program],
+                                                    [startup_program],
+                                                    self._dist_context)

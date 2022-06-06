@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
+
     def test_api(self):
         num_voc = 128
         embed_dim = 64
@@ -38,13 +39,16 @@ class TestPyramidHashOpApi(unittest.TestCase):
             lr=0.002,
             param_attr=fluid.ParamAttr(
                 name="PyramidHash_emb_0",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_wl=fluid.ParamAttr(
                 name="Filter",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None, )
+            name=None,
+        )
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(

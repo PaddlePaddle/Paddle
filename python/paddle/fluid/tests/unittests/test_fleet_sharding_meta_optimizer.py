@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
+
     def test_sharding_optimizer(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )
@@ -244,12 +245,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
         regularization = paddle.fluid.regularizer.L2Decay(0.0001)
-        self.optimizer(
-            avg_cost,
-            strategy,
-            train_prog,
-            startup_prog,
-            regularization=regularization)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       regularization=regularization)
         parameters = [
             x.name for x in train_prog.list_vars() if x.persistable == True
         ]
@@ -285,8 +285,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         parameters = [
             x.name for x in train_prog.list_vars() if x.persistable == True
         ]
@@ -340,6 +343,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
 
 class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
@@ -382,8 +386,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of MP group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -391,8 +395,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -429,8 +433,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -438,8 +442,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of dp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -501,8 +505,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -510,8 +514,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of dp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -618,8 +622,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -627,8 +631,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -682,8 +686,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "accumulate_steps": 4,
         }
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
 
@@ -757,8 +764,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 mp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(mp_group_waiting_ports, ['127.0.0.1:36003'])
@@ -766,8 +773,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -791,13 +798,12 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "accumulate_steps": 4,
         }
         clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-        self.optimizer(
-            avg_cost,
-            strategy,
-            train_prog,
-            startup_prog,
-            grad_clip=clip,
-            name="adamw")
+        self.optimizer(avg_cost,
+                       strategy,
+                       train_prog,
+                       startup_prog,
+                       grad_clip=clip,
+                       name="adamw")
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
 
@@ -876,8 +882,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 mp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(mp_group_waiting_ports, ['127.0.0.1:36003'])
@@ -885,8 +891,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         # check correctness of sharding group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -896,7 +902,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -970,16 +978,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -989,7 +997,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "segment_broadcast_MB": 0.1,
@@ -1043,16 +1053,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of sharding group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_1":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_1":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1062,7 +1072,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1139,16 +1151,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1158,7 +1170,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1238,16 +1252,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1258,7 +1272,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1334,16 +1350,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1353,7 +1369,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,
@@ -1425,16 +1443,16 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # check correctness of pp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_0":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_0":
                 pp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
 
         # check correctness of dp group
         for op in startup_prog_ops:
-            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "comm_id_3":
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names(
+            )[0] == "comm_id_3":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -1444,7 +1462,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
-        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.amp_configs = {
+            'custom_black_varnames': ['fc_6.b_0'],
+        }
         strategy.sharding = True
         strategy.sharding_configs = {
             "sharding_degree": 1,

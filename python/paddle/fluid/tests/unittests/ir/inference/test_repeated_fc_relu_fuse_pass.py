@@ -27,6 +27,7 @@ from functools import reduce
 
 
 class TestRepeatedFcReluFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -53,55 +54,61 @@ class TestRepeatedFcReluFusePass(PassAutoScanTest):
             'dim': dim
         }]
 
-        mul_op1 = OpConfig(
-            type="mul",
-            inputs={"X": ["input_data"],
-                    "Y": ["mul1_weight"]},
-            outputs={"Out": ["mul1_output"]},
-            attrs={"x_num_col_dims": x_col,
-                   "y_num_col_dims": y_col})
+        mul_op1 = OpConfig(type="mul",
+                           inputs={
+                               "X": ["input_data"],
+                               "Y": ["mul1_weight"]
+                           },
+                           outputs={"Out": ["mul1_output"]},
+                           attrs={
+                               "x_num_col_dims": x_col,
+                               "y_num_col_dims": y_col
+                           })
 
-        elt_op1 = OpConfig(
-            type="elementwise_add",
-            inputs={"X": ["mul1_output"],
-                    "Y": ["elementwise1_weight"]},
-            outputs={"Out": ["elementwise1_output"]},
-            attrs={"axis": axis})
+        elt_op1 = OpConfig(type="elementwise_add",
+                           inputs={
+                               "X": ["mul1_output"],
+                               "Y": ["elementwise1_weight"]
+                           },
+                           outputs={"Out": ["elementwise1_output"]},
+                           attrs={"axis": axis})
 
-        relu_op1 = OpConfig(
-            type="relu",
-            inputs={"X": ["elementwise1_output"]},
-            outputs={"Out": ["relu1_output"]},
-            attrs={})
+        relu_op1 = OpConfig(type="relu",
+                            inputs={"X": ["elementwise1_output"]},
+                            outputs={"Out": ["relu1_output"]},
+                            attrs={})
 
-        mul_op2 = OpConfig(
-            type="mul",
-            inputs={"X": ["relu1_output"],
-                    "Y": ["mul2_weight"]},
-            outputs={"Out": ["mul2_output"]},
-            attrs={"x_num_col_dims": x_col,
-                   "y_num_col_dims": y_col})
+        mul_op2 = OpConfig(type="mul",
+                           inputs={
+                               "X": ["relu1_output"],
+                               "Y": ["mul2_weight"]
+                           },
+                           outputs={"Out": ["mul2_output"]},
+                           attrs={
+                               "x_num_col_dims": x_col,
+                               "y_num_col_dims": y_col
+                           })
 
-        elt_op2 = OpConfig(
-            type="elementwise_add",
-            inputs={"X": ["mul2_output"],
-                    "Y": ["elementwise2_weight"]},
-            outputs={"Out": ["elementwise2_output"]},
-            attrs={"axis": axis})
+        elt_op2 = OpConfig(type="elementwise_add",
+                           inputs={
+                               "X": ["mul2_output"],
+                               "Y": ["elementwise2_weight"]
+                           },
+                           outputs={"Out": ["elementwise2_output"]},
+                           attrs={"axis": axis})
 
-        relu_op2 = OpConfig(
-            type="relu",
-            inputs={"X": ["elementwise2_output"]},
-            outputs={"Out": ["relu2_output"]},
-            attrs={})
+        relu_op2 = OpConfig(type="relu",
+                            inputs={"X": ["elementwise2_output"]},
+                            outputs={"Out": ["relu2_output"]},
+                            attrs={})
 
         model_net = [mul_op1, elt_op1, relu_op1, mul_op2, elt_op2, relu_op2]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "mul1_weight": TensorConfig(data_gen=partial(generate_weight,
-                                                             [dim, 32])),
+                "mul1_weight":
+                TensorConfig(data_gen=partial(generate_weight, [dim, 32])),
                 "mul2_weight":
                 TensorConfig(data_gen=partial(generate_weight, [32, 128])),
                 "elementwise1_weight":

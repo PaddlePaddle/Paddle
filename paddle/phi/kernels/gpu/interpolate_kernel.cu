@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/interpolate_kernel.h"
-
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
+#include "paddle/phi/kernels/interpolate_kernel.h"
 
 namespace phi {
 using paddle::platform::FastDivMod;
@@ -949,23 +947,23 @@ static void Interpolate2DCUDAFwd(
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
-      KeBilinearInterpFw<
-          T><<<config.block_per_grid, thread_num, 0, dev_ctx.stream()>>>(
-          input_data,
-          in_h,
-          in_w,
-          n,
-          in_chw,
-          output_data,
-          out_h,
-          out_w,
-          n,
-          out_chw,
-          c,
-          ratio_h,
-          ratio_w,
-          align_type_value,
-          interp_divmods);
+      KeBilinearInterpFw<T>
+          <<<config.block_per_grid, thread_num, 0, dev_ctx.stream()>>>(
+              input_data,
+              in_h,
+              in_w,
+              n,
+              in_chw,
+              output_data,
+              out_h,
+              out_w,
+              n,
+              out_chw,
+              c,
+              ratio_h,
+              ratio_w,
+              align_type_value,
+              interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
 #ifdef __HIPCC__
@@ -973,23 +971,23 @@ static void Interpolate2DCUDAFwd(
 #else
     constexpr int thread_per_block = 512;
 #endif
-    KeBicubicInterpFw<
-        T><<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
-        input_data,
-        in_h,
-        in_w,
-        n,
-        in_chw,
-        output_data,
-        out_h,
-        out_w,
-        n,
-        out_chw,
-        c,
-        ratio_h,
-        ratio_w,
-        align_corners,
-        data_layout);
+    KeBicubicInterpFw<T>
+        <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
+            input_data,
+            in_h,
+            in_w,
+            n,
+            in_chw,
+            output_data,
+            out_h,
+            out_w,
+            n,
+            out_chw,
+            c,
+            ratio_h,
+            ratio_w,
+            align_corners,
+            data_layout);
   }
 }
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event_base.h"
+
 #include "paddle/fluid/platform/device_event_cpu.h"
 #include "paddle/fluid/platform/event.h"
 

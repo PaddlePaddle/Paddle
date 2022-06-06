@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include "math.h"  // NOLINT
 
 namespace paddle {
@@ -108,11 +109,11 @@ class MultiTensorLauncher {
         stream_(stream) {}
 
   template <typename Functor, typename... Args>
-  void Launch(Functor &&functor, Args &&... args) const {
-    MultiTensorApplyCUDAKernel<
-        Functor, MaxTensorNumPerLaunch,
-        MaxChunkNumPerLaunch><<<chunk_id_, block_dim_, 0, stream_>>>(
-        functor, meta_, chunk_size_, args...);
+  void Launch(Functor &&functor, Args &&...args) const {
+    MultiTensorApplyCUDAKernel<Functor, MaxTensorNumPerLaunch,
+                               MaxChunkNumPerLaunch>
+        <<<chunk_id_, block_dim_, 0, stream_>>>(functor, meta_, chunk_size_,
+                                                args...);
   }
 
  private:
@@ -189,7 +190,7 @@ template <typename Functor, int MaxTensorNumPerLaunch, int MaxChunkNumPerLaunch,
           typename... Args>
 static void MultiTensorApply(Functor functor, gpuStream_t stream,
                              const int *offsets, int n, int chunk_size,
-                             int block_dim, Args &&... args) {
+                             int block_dim, Args &&...args) {
   auto callback = [&](const MultiTensorLauncher<MaxTensorNumPerLaunch,
                                                 MaxChunkNumPerLaunch> &launcher,
                       int i) { launcher.Launch(functor, args...); };

@@ -99,10 +99,11 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
-    PADDLE_ENFORCE_GE(axis, 0, platform::errors::InvalidArgument(
-                                   "concat_grad: axis should be larger than or "
-                                   "equal to 0, but received axis is %d.",
-                                   axis));
+    PADDLE_ENFORCE_GE(axis, 0,
+                      platform::errors::InvalidArgument(
+                          "concat_grad: axis should be larger than or "
+                          "equal to 0, but received axis is %d.",
+                          axis));
     PADDLE_ENFORCE_LT(
         axis, out_grad->dims().size(),
         platform::errors::InvalidArgument(

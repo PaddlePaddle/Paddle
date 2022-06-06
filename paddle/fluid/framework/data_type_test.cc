@@ -44,8 +44,8 @@ TEST(DataType, float16) {
 
 TEST(DataType, bfloat16) {
   using paddle::framework::Tensor;
-  using paddle::platform::CPUPlace;
   using paddle::platform::bfloat16;
+  using paddle::platform::CPUPlace;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 

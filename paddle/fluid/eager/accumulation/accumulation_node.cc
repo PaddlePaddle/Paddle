@@ -13,17 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
 
@@ -72,8 +70,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 GradNodeAccumulation::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph,
-    bool is_new_grad) {
+    bool create_graph, bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(

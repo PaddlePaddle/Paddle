@@ -190,9 +190,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
-                                            "skipped. Maybe the dimension is "
-                                            "wrong ";
+      VLOG(0) << "Note: field[" << field
+              << "] cannot pass check, so it was "
+                 "skipped. Maybe the dimension is "
+                 "wrong ";
       continue;
     }
     for (size_t i = 0; i < batch_size; ++i) {

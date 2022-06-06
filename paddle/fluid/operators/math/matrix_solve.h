@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/fluid/framework/tensor.h"

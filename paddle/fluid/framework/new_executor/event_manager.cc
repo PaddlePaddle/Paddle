@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/event_manager.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {

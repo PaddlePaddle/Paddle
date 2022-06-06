@@ -102,9 +102,10 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         break;
       }
     }
-    PADDLE_ENFORCE_GT(arg_name.size(), 0, platform::errors::InvalidArgument(
-                                              "can not find the input %s.",
-                                              quant_dequant_op_out_name));
+    PADDLE_ENFORCE_GT(
+        arg_name.size(), 0,
+        platform::errors::InvalidArgument("can not find the input %s.",
+                                          quant_dequant_op_out_name));
     // any_op2_desc->SetAttr("enable_int8", true);
     any_op2_desc->SetAttr("bit_length", bit_length);
 

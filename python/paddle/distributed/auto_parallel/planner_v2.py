@@ -21,6 +21,7 @@ from .tuner.parallel_tuner import ParallelTuner
 
 
 class Planner:
+
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context

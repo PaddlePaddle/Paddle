@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <string>
-#include <thread>  // NOLINT
 
 #include <random>
 #include <sstream>
+#include <string>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"

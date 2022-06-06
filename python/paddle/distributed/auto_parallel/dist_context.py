@@ -203,8 +203,8 @@ class DistributedContext:
             self._serial_main_program.clone())
         self._backup_serial_startup_program_stack.append(
             self._serial_startup_program.clone())
-        self._backup_pass_context_stack.append(
-            copy.deepcopy(self._pass_context))
+        self._backup_pass_context_stack.append(copy.deepcopy(
+            self._pass_context))
         self._backup_block_state_stack.append(copy.deepcopy(self._block_state))
 
     def _backup_dist_info(self, mode):
@@ -399,8 +399,8 @@ class DistributedContext:
             return dist_tensor
         else:
             serial_tensor_id = serial_tensor.desc.original_id()
-            dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id,
-                                                             None)
+            dist_tensor = self._dist_tensors_for_program.get(
+                serial_tensor_id, None)
             if dist_tensor:
                 return dist_tensor
             else:
@@ -439,8 +439,8 @@ class DistributedContext:
             return dist_tensor.dist_attr
         else:
             serial_tensor_id = serial_tensor.desc.original_id()
-            dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id,
-                                                             None)
+            dist_tensor = self._dist_tensors_for_program.get(
+                serial_tensor_id, None)
             if dist_tensor:
                 return dist_tensor.dist_attr
             else:
@@ -549,6 +549,7 @@ class DistributedContext:
             self._dist_ops_for_program)
 
     def _order_nodes_by_program_order(self):
+
         def _contains(nodes, target_node):
             for node in nodes:
                 if _node_id(node) == _node_id(target_node):
@@ -720,8 +721,8 @@ class DistributedContext:
         # here we just set there process_mesh to the first one.
         for orphan_node in self._serial_orphan_tensor_nodes:
             serial_tensor_id = orphan_node.var().id()
-            dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id,
-                                                             None)
+            dist_tensor = self._dist_tensors_for_program.get(
+                serial_tensor_id, None)
             if dist_tensor:
                 dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
             else:
@@ -808,11 +809,10 @@ class DistributedContext:
                 assert dist_tensor is not None, \
                     "Tensor {} does not have a distributed attribute.".format(
                         dist_tensor.serial_tensor.name)
-                if (dist_tensor is not None) and (
-                        not dist_tensor.validate_dist_attr()):
+                if (dist_tensor
+                        is not None) and (not dist_tensor.validate_dist_attr()):
                     assert False, "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                        dist_tensor.serial_tensor.name,
-                        dist_tensor.desc.id(),
+                        dist_tensor.serial_tensor.name, dist_tensor.desc.id(),
                         dist_tensor.desc.original_id(), dist_tensor.dist_attr)
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
@@ -821,8 +821,7 @@ class DistributedContext:
                         dist_op.serial_op.type)
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     assert False, "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
-                        dist_op.serial_op.type,
-                        dist_op.serial_op.desc.id(),
+                        dist_op.serial_op.type, dist_op.serial_op.desc.id(),
                         dist_op.serial_op.desc.original_id(), dist_op.dist_attr)
         return True
 
@@ -948,6 +947,7 @@ class DistributedOperatorContext:
 
 
 class BlockState(object):
+
     def __init__(self):
         self.nblock = 0
         self.forward_indices = []

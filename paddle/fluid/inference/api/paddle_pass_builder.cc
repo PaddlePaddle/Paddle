@@ -20,6 +20,7 @@
 #include <miopen/miopen.h>
 #endif
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <sstream>
 

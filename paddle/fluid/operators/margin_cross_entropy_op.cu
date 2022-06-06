@@ -20,6 +20,7 @@ namespace cub = hipcub;
 #endif
 
 #include <vector>
+
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/margin_cross_entropy_op.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
@@ -298,16 +299,16 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // save match_logits, used for gradient computation.
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
-      AddMarginToPositiveLogitsKernel<
-          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
-          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
-          nranks, N, D, class_interval.data<int>());
+      AddMarginToPositiveLogitsKernel<T>
+          <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+              logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3,
+              rank, nranks, N, D, class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
       typedef int64_t LabelT;
-      AddMarginToPositiveLogitsKernel<
-          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
-          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
-          nranks, N, D, class_interval.data<int>());
+      AddMarginToPositiveLogitsKernel<T>
+          <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+              logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3,
+              rank, nranks, N, D, class_interval.data<int>());
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "margin_cross_entropy label type noly support int32 and int64, "
@@ -386,9 +387,9 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 #endif
 
     // step 5, (logit - logit_max) - log(sum(exp(logit - logit_max)))
-    LogitsMinusLogSumKernel<
-        T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
-        logits_ptr, sum_exp_logits_buff, N, D);
+    LogitsMinusLogSumKernel<T>
+        <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+            logits_ptr, sum_exp_logits_buff, N, D);
 
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
@@ -397,16 +398,16 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
-      HardLabelSoftmaxWithCrossEntropyKernel<
-          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
-          class_interval.data<int>());
+      HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+              class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
       typedef int64_t LabelT;
-      HardLabelSoftmaxWithCrossEntropyKernel<
-          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
-          class_interval.data<int>());
+      HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+              class_interval.data<int>());
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

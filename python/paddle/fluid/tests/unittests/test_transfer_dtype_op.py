@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,7 @@ from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
 
 
 class TestTransferDtypeOpFp32ToFp64(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -39,6 +40,7 @@ class TestTransferDtypeOpFp32ToFp64(OpTest):
 
 
 class TestTransferDtypeOpFp16ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float16')}
@@ -54,6 +56,7 @@ class TestTransferDtypeOpFp16ToFp32(OpTest):
 
 
 class TestTransferDtypeOpFp32ToFp16(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -69,6 +72,7 @@ class TestTransferDtypeOpFp32ToFp16(OpTest):
 
 
 class TestTransferDtypeOpBf16ToFp32(OpTest):
+
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
         self.inputs = {'X': ipt}
@@ -84,6 +88,7 @@ class TestTransferDtypeOpBf16ToFp32(OpTest):
 
 
 class TestTransferDtypeFp32ToBf16(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[10, 10]).astype('float32')
         self.inputs = {'X': ipt}
