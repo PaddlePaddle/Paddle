@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstring>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
 
@@ -38,11 +39,12 @@ bool MishPlugin::supportsFormat(
 nvinfer1::Dims MishPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* in_dims,
                                                int nb_inputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_inputs, 1, platform::errors::InvalidArgument(
-                                      "We expect [number of inputs] == 1"
-                                      "in TRT Mish op plugin, but got "
-                                      "[number of inputs] = %d.",
-                                      nb_inputs));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs, 1,
+      platform::errors::InvalidArgument("We expect [number of inputs] == 1"
+                                        "in TRT Mish op plugin, but got "
+                                        "[number of inputs] = %d.",
+                                        nb_inputs));
   PADDLE_ENFORCE_LT(index, this->getNbOutputs(),
                     platform::errors::InvalidArgument(
                         "We expect [index] < [number of outputs]"
@@ -123,14 +125,14 @@ int MishPlugin::enqueue(int batchSize, const void* const* inputs,
     VLOG(1) << "TRT Plugin DataType selected. Mish-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    mish_kernel<float><<<grid_size, block_size, 0, stream>>>(threshold_, num,
-                                                             input, output);
+    mish_kernel<float>
+        <<<grid_size, block_size, 0, stream>>>(threshold_, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Mish-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    mish_kernel<half><<<grid_size, block_size, 0, stream>>>(threshold_, num,
-                                                            input, output);
+    mish_kernel<half>
+        <<<grid_size, block_size, 0, stream>>>(threshold_, num, input, output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Mish TRT Plugin's input type should be float or half."));
@@ -192,10 +194,11 @@ bool MishPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType MishPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Mish Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Mish Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
@@ -214,14 +217,14 @@ int MishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     VLOG(1) << "TRT Plugin DataType selected. Mish-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    mish_kernel<float><<<grid_size, block_size, 0, stream>>>(threshold_, num,
-                                                             input, output);
+    mish_kernel<float>
+        <<<grid_size, block_size, 0, stream>>>(threshold_, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Mish-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
-    mish_kernel<half><<<grid_size, block_size, 0, stream>>>(threshold_, num,
-                                                            input, output);
+    mish_kernel<half>
+        <<<grid_size, block_size, 0, stream>>>(threshold_, num, input, output);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Mish TRT Plugin's input type should be float or half."));

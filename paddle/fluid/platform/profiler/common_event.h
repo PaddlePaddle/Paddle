@@ -17,6 +17,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
 

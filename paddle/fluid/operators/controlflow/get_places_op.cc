@@ -62,9 +62,10 @@ class GetPlacesOp : public framework::OperatorBase {
       device_count =
           is_gpu ? CUDADevCount() : std::thread::hardware_concurrency();
     }
-    PADDLE_ENFORCE_NE(device_count, 0UL, platform::errors::InvalidArgument(
-                                             "Cannot indicate %s device count",
-                                             is_gpu ? "GPU" : "CPU"));
+    PADDLE_ENFORCE_NE(
+        device_count, 0UL,
+        platform::errors::InvalidArgument("Cannot indicate %s device count",
+                                          is_gpu ? "GPU" : "CPU"));
 
     auto out_var_name = Output("Out");
     auto &places = *(GET_DATA_SAFELY(scope.FindVar(out_var_name), "Output",

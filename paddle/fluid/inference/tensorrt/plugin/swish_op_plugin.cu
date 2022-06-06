@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include <stdio.h>
+
 #include <cassert>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
 
@@ -181,10 +183,11 @@ bool SwishPluginDynamic::supportsFormatCombination(
 nvinfer1::DataType SwishPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Swish Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Swish Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
@@ -203,8 +206,8 @@ int SwishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     VLOG(1) << "TRT Plugin DataType selected. Swish-->fp32";
     const float *input = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    swish_kernel<float><<<blocks, threads, 0, stream>>>(num, input, output,
-                                                        beta_);
+    swish_kernel<float>
+        <<<blocks, threads, 0, stream>>>(num, input, output, beta_);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Swish-->fp16";
     const half *input = static_cast<const half *>(inputs[0]);

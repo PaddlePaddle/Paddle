@@ -34,10 +34,10 @@ from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 __all__ = []
 
 # On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
-# Paddle is currently unable to solve this, so forces the process to start using 
+# Paddle is currently unable to solve this, so forces the process to start using
 # the 'fork' start method.
 #
-# TODO: This solution is not good, because the fork start method could lead to 
+# TODO: This solution is not good, because the fork start method could lead to
 # crashes of the subprocess. Figure out how to make 'spawn' work.
 #
 # For more details, please refer to
@@ -350,10 +350,10 @@ def buffered(reader, size):
     def data_reader():
         r = reader()
         q = Queue(maxsize=size)
-        t = Thread(
-            target=read_worker, args=(
-                r,
-                q, ))
+        t = Thread(target=read_worker, args=(
+            r,
+            q,
+        ))
         t.daemon = True
         t.start()
         e = q.get()
@@ -477,8 +477,8 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         t.start()
         # start several handle_workers
         target = order_handle_worker if order else handle_worker
-        args = (in_queue, out_queue, mapper, out_order) if order else (
-            in_queue, out_queue, mapper)
+        args = (in_queue, out_queue, mapper,
+                out_order) if order else (in_queue, out_queue, mapper)
         workers = []
         for i in range(process_num):
             worker = Thread(target=target, args=args)
@@ -614,8 +614,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     def queue_reader():
         queue = fork_context.Queue(queue_size)
         for reader in readers:
-            p = fork_context.Process(
-                target=_read_into_queue, args=(reader, queue))
+            p = fork_context.Process(target=_read_into_queue,
+                                     args=(reader, queue))
             p.start()
 
         reader_num = len(readers)
@@ -656,8 +656,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         for reader in readers:
             parent_conn, child_conn = fork_context.Pipe()
             conns.append(parent_conn)
-            p = fork_context.Process(
-                target=_read_into_pipe, args=(reader, child_conn))
+            p = fork_context.Process(target=_read_into_pipe,
+                                     args=(reader, child_conn))
             p.start()
 
         reader_num = len(readers)

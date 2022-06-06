@@ -32,14 +32,15 @@ def get_input_descs(args, mode="train"):
     input_descs_train = {
         "src_word": [(batch_size, seq_len), "int64", 2],
         "src_pos": [(batch_size, seq_len), "int64"],
-        "src_slf_attn_bias":
-        [(batch_size, n_head, seq_len, seq_len), "float32"],
+        "src_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
         "trg_word": [(batch_size, seq_len), "int64", 2],
         "trg_pos": [(batch_size, seq_len), "int64"],
-        "trg_slf_attn_bias":
-        [(batch_size, n_head, seq_len, seq_len), "float32"],
-        "trg_src_attn_bias": [(batch_size, n_head, seq_len, seq_len), "float32"
-                              ],  # TODO: 1 for predict, seq_len for train
+        "trg_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
+        "trg_src_attn_bias":
+        [(batch_size, n_head, seq_len, seq_len),
+         "float32"],  # TODO: 1 for predict, seq_len for train
         "enc_output": [(batch_size, seq_len, d_model), "float32"],
         "lbl_word": [(None, 1), "int64"],
         "lbl_weight": [(None, 1), "float32"],
@@ -49,12 +50,12 @@ def get_input_descs(args, mode="train"):
     input_descs_predict = {
         "src_word": [(batch_size, seq_len), "int64", 2],
         "src_pos": [(batch_size, seq_len), "int64"],
-        "src_slf_attn_bias":
-        [(batch_size, n_head, seq_len, seq_len), "float32"],
+        "src_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
         "trg_word": [(batch_size, seq_len), "int64", 2],
         "trg_pos": [(batch_size, seq_len), "int64"],
-        "trg_slf_attn_bias":
-        [(batch_size, n_head, seq_len, seq_len), "float32"],
+        "trg_slf_attn_bias": [(batch_size, n_head, seq_len, seq_len),
+                              "float32"],
         "trg_src_attn_bias": [(batch_size, n_head, 1, seq_len), "float32"],
         "enc_output": [(batch_size, seq_len, d_model), "float32"],
         "lbl_word": [(None, 1), "int64"],
@@ -69,19 +70,23 @@ def get_input_descs(args, mode="train"):
 encoder_data_input_fields = (
     "src_word",
     "src_pos",
-    "src_slf_attn_bias", )
+    "src_slf_attn_bias",
+)
 decoder_data_input_fields = (
     "trg_word",
     "trg_pos",
     "trg_slf_attn_bias",
     "trg_src_attn_bias",
-    "enc_output", )
+    "enc_output",
+)
 label_data_input_fields = (
     "lbl_word",
-    "lbl_weight", )
+    "lbl_weight",
+)
 fast_decoder_data_input_fields = (
     "trg_word",
-    "trg_src_attn_bias", )
+    "trg_src_attn_bias",
+)
 
 
 class ModelHyperParams(object):
@@ -220,19 +225,20 @@ def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head):
 
 
 def get_feed_data_reader(args, mode='train'):
+
     def __for_train__():
-        train_reader = paddle.batch(
-            wmt16.train(args.src_vocab_size, args.trg_vocab_size),
-            batch_size=args.batch_size)
+        train_reader = paddle.batch(wmt16.train(args.src_vocab_size,
+                                                args.trg_vocab_size),
+                                    batch_size=args.batch_size)
         for batch in train_reader():
             tensors = prepare_train_input(batch, args.eos_idx, args.eos_idx,
                                           args.n_head)
             yield tensors
 
     def __for_test__():
-        test_reader = paddle.batch(
-            wmt16.test(args.src_vocab_size, args.trg_vocab_size),
-            batch_size=args.batch_size)
+        test_reader = paddle.batch(wmt16.test(args.src_vocab_size,
+                                              args.trg_vocab_size),
+                                   batch_size=args.batch_size)
         for batch in test_reader():
             tensors = prepare_infer_input(batch, args.eos_idx, args.eos_idx,
                                           args.n_head)
@@ -242,16 +248,16 @@ def get_feed_data_reader(args, mode='train'):
 
 
 class InputField(object):
+
     def __init__(self, input_slots):
         self.feed_list = []
         for slot in input_slots:
             self.feed_list.append(
-                fluid.layers.data(
-                    name=slot['name'],
-                    shape=slot['shape'],
-                    dtype=slot['dtype'],
-                    lod_level=slot.get('lod_level', 0),
-                    append_batch_size=False))
+                fluid.layers.data(name=slot['name'],
+                                  shape=slot['shape'],
+                                  dtype=slot['dtype'],
+                                  lod_level=slot.get('lod_level', 0),
+                                  append_batch_size=False))
 
 
 def load(program, model_path, executor=None, var_list=None):

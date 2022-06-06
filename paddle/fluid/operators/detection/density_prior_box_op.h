@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
 namespace paddle {

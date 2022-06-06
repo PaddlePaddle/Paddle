@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 
 def gelu(x):
@@ -43,10 +43,16 @@ def get_output(X, Y, bias, act):
         return out
 
 
+@skip_check_inplace_ci(reason="no inplace op")
+class TestFuseGemmBase(OpTest):
+    pass
+
+
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -58,8 +64,9 @@ class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['Bias'], 'relu')
+            'Out':
+            get_output(self.inputs['X'], self.inputs['Y'], self.inputs['Bias'],
+                       'relu')
         }
         self.attrs = {"activation": 'relu'}
 
@@ -78,6 +85,7 @@ class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -87,6 +95,7 @@ class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -95,7 +104,8 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -107,8 +117,9 @@ class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'].T, self.inputs['Y'],
-                              self.inputs['Bias'], 'relu')
+            'Out':
+            get_output(self.inputs['X'].T, self.inputs['Y'],
+                       self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_x': True, "activation": 'relu'}
 
@@ -127,6 +138,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -136,6 +148,7 @@ class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -144,7 +157,8 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -156,8 +170,9 @@ class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'], self.inputs['Y'].T,
-                              self.inputs['Bias'], 'relu')
+            'Out':
+            get_output(self.inputs['X'], self.inputs['Y'].T,
+                       self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_y': True, "activation": 'relu'}
 
@@ -176,6 +191,7 @@ class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -185,6 +201,7 @@ class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -193,7 +210,8 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
+class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -205,8 +223,9 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'].T, self.inputs['Y'].T,
-                              self.inputs['Bias'], 'relu')
+            'Out':
+            get_output(self.inputs['X'].T, self.inputs['Y'].T,
+                       self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_x': True, 'trans_y': True, "activation": 'relu'}
 
@@ -225,6 +244,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -234,6 +254,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -242,7 +263,8 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -254,9 +276,9 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'].reshape(
-                (-1, 4)), self.inputs['Y'], self.inputs['Bias'],
-                              'relu').reshape((2, 2, 8, 128))
+            'Out':
+            get_output(self.inputs['X'].reshape((-1, 4)), self.inputs['Y'],
+                       self.inputs['Bias'], 'relu').reshape((2, 2, 8, 128))
         }
         self.attrs = {"activation": 'relu'}
 
@@ -276,6 +298,7 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
         TestFuseGemmEpilogueOpReluMMFP16MultiDimX):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -286,6 +309,7 @@ class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
         TestFuseGemmEpilogueOpReluMMFP16MultiDimX):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -294,7 +318,8 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
+class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -306,9 +331,9 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
             'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'Out': get_output(self.inputs['X'].reshape(
-                (4, -1)).T, self.inputs['Y'], self.inputs['Bias'],
-                              'relu').reshape((2, 2, 8, 128))
+            'Out':
+            get_output(self.inputs['X'].reshape((4, -1)).T, self.inputs['Y'],
+                       self.inputs['Bias'], 'relu').reshape((2, 2, 8, 128))
         }
         self.attrs = {'trans_x': True, "activation": 'relu'}
 
@@ -328,6 +353,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
         TestFuseGemmEpilogueOpReluMTMFP16MultiDimX):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -338,6 +364,7 @@ class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
         TestFuseGemmEpilogueOpReluMTMFP16MultiDimX):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -346,7 +373,8 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
+class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -361,8 +389,9 @@ class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
         self.attrs = {"activation": 'gelu'}
 
         self.outputs = {
-            'Out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['Bias'], 'gelu')
+            'Out':
+            get_output(self.inputs['X'], self.inputs['Y'], self.inputs['Bias'],
+                       'gelu')
         }
 
     def init_dtype_type(self):
@@ -380,6 +409,7 @@ class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -389,6 +419,7 @@ class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
@@ -397,7 +428,8 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):
+class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
+
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
         self.place = core.CUDAPlace(0)
@@ -412,8 +444,9 @@ class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):
         self.attrs = {"activation": 'none'}
 
         self.outputs = {
-            'Out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['Bias'], 'none')
+            'Out':
+            get_output(self.inputs['X'], self.inputs['Y'], self.inputs['Bias'],
+                       'none')
         }
 
     def init_dtype_type(self):
@@ -431,6 +464,7 @@ class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-6
@@ -440,11 +474,13 @@ class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueOpNoneMMFP64(TestFuseGemmEpilogueOpNoneMMFP16):
+
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     np.random.seed(0)
     unittest.main()

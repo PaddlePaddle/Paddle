@@ -20,6 +20,7 @@
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 

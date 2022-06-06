@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/lstsq_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {

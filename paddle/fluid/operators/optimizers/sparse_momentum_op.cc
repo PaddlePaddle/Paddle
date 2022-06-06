@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/optimizers/sparse_momentum_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {

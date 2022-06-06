@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include <memory>
+
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
