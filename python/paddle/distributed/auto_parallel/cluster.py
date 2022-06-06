@@ -50,14 +50,14 @@ class Device:
         self._local_id = local_id
         self._machine = machine
         self._type = None
-        # Different device have different models, such as 
+        # Different device have different models, such as
         # "Tesla V100-SXM2-32GB" and "A100-SXM4-40GB" etc.
         self._model = None
         # Double precision GFLOPS
         self._dp_gflops = None
         # Single precision GFLOPS
         self._sp_gflops = None
-        # Memory is stored by GB 
+        # Memory is stored by GB
         self._memory = None
 
     @property
@@ -144,9 +144,9 @@ class Link:
         self._src = source
         self._tgt = target
         self._type = None
-        # bandwidth is stored by GB/s 
+        # bandwidth is stored by GB/s
         self._bandwidth = None
-        # latency is stored by millisecond 
+        # latency is stored by millisecond
         self._latency = None
         self._hop = None
 
@@ -210,6 +210,7 @@ class Link:
 
 
 class Machine:
+
     def __init__(self, id):
         self._id = id
         self._hostname = None
@@ -290,6 +291,7 @@ class Machine:
 
 
 class AlphaLatency:
+
     def __init__(self, alpha_latency):
         assert isinstance(alpha_latency, dict)
         self._base = alpha_latency.get("base", None)

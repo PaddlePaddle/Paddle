@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_string(infer_shape, "", "data shape file");

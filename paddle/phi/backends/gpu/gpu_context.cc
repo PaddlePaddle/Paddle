@@ -23,7 +23,6 @@ limitations under the License. */
 #include <mutex>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"

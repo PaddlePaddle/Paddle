@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
 #include "paddle_tensor.h"         // NOLINT
@@ -397,12 +398,14 @@ PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
     const ConfigT& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig& config);
 
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor>
@@ -440,6 +443,12 @@ class PD_INFER_DECL InternalUtils {
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
+
+  static void SetTransformerPosid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_posid);
+
+  static void SetTransformerMaskid(
+      paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
 
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);

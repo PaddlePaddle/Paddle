@@ -12,17 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
+
 #include <stdlib.h>
+
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
 
-#include <random>
-#include <sstream>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
-#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace framework = paddle::framework;
@@ -181,13 +182,15 @@ void StartSendAndRecvServer(std::string endpoint) {
   heter_server_ptr_->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
   heter_server_ptr_->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
+      in_var_name,
+      [&](const MultiVarMsg* request, MultiVarMsg* response,
+          brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
   heter_server_ptr_->RegisterServiceHandler(
-      in_var_name2, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                        brpc::Controller* cntl) -> int {
+      in_var_name2,
+      [&](const MultiVarMsg* request, MultiVarMsg* response,
+          brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
 

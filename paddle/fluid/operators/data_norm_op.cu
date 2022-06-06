@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -100,8 +101,9 @@ class DataNormKernel<platform::CUDADeviceContext, T>
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
     // Align with CPU version, but should we add this restriction?
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::PreconditionNotMet(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
     const T *batch_size_in = ctx.Input<Tensor>("BatchSize")->data<T>();
@@ -143,8 +145,9 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto &x_dims = x->dims();
     // Align with CPU version, but should we add this restriction?
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::PreconditionNotMet(
-                                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::PreconditionNotMet("The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 

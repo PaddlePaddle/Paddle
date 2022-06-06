@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <glog/logging.h>
+
 #include <string>
 
 #include "cuda_runtime_api.h"  // NOLINT

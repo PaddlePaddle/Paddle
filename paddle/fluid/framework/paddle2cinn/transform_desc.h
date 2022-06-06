@@ -14,6 +14,8 @@
 
 #pragma once
 
+// The headers cant be sorted by clang-format or compilint error occurs.
+// clang-format off
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -24,6 +26,7 @@
 #include "cinn/frontend/paddle/cpp/op_desc.h"
 #include "cinn/frontend/paddle/cpp/program_desc.h"
 #include "cinn/frontend/paddle/cpp/var_desc.h"
+// clang-format on
 
 namespace paddle {
 namespace framework {

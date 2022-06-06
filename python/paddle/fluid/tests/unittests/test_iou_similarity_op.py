@@ -23,6 +23,7 @@ from op_test import OpTest
 
 
 class TestIOUSimilarityOp(OpTest):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -32,7 +33,7 @@ class TestIOUSimilarityOp(OpTest):
         self.boxes2 = random.rand(3, 4).astype('float32')
         self.output = random.rand(2, 3).astype('float32')
         self.box_normalized = False
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized}
@@ -68,6 +69,7 @@ class TestIOUSimilarityOp(OpTest):
 
 
 class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -76,7 +78,7 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = False
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized}
@@ -84,6 +86,7 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
 
 class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
+
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -92,7 +95,7 @@ class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = True
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized}

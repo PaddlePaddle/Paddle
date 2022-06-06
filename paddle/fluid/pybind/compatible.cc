@@ -13,23 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/compatible.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace py = pybind11;
 
-using paddle::framework::compatible::OpAttrVariantT;
-using paddle::framework::compatible::OpUpdateInfo;
 using paddle::framework::compatible::OpAttrInfo;
-using paddle::framework::compatible::OpInputOutputInfo;
+using paddle::framework::compatible::OpAttrVariantT;
 using paddle::framework::compatible::OpBugfixInfo;
-using paddle::framework::compatible::OpUpdateType;
-using paddle::framework::compatible::OpUpdateBase;
-using paddle::framework::compatible::OpVersionDesc;
 using paddle::framework::compatible::OpCheckpoint;
+using paddle::framework::compatible::OpInputOutputInfo;
+using paddle::framework::compatible::OpUpdateBase;
+using paddle::framework::compatible::OpUpdateInfo;
+using paddle::framework::compatible::OpUpdateType;
 using paddle::framework::compatible::OpVersion;
+using paddle::framework::compatible::OpVersionDesc;
 
 namespace paddle {
 namespace pybind {

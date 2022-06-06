@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"

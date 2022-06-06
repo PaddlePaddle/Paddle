@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+
 #include <unordered_set>
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
@@ -585,10 +587,12 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(), [
-        this, i, atomic_deps = atomic_deps.get(),
-        atomic_var_ref = atomic_var_ref.get()
-      ] { RunInstructionAsync(i, atomic_deps, atomic_var_ref); });
+      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                 [this, i, atomic_deps = atomic_deps.get(),
+                                  atomic_var_ref = atomic_var_ref.get()] {
+                                   RunInstructionAsync(i, atomic_deps,
+                                                       atomic_var_ref);
+                                 });
     }
   }
 
@@ -692,10 +696,10 @@ void InterpreterCore::RunInstructionAsync(
     ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type()
-            << " type:" << (instr_node.KernelType() == OpFuncType::kQueueSync
-                                ? "kQueueSync"
-                                : "kQueueAsync")
+            << " name:" << instr_node.OpBase()->Type() << " type:"
+            << (instr_node.KernelType() == OpFuncType::kQueueSync
+                    ? "kQueueSync"
+                    : "kQueueAsync")
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();

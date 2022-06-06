@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <unistd.h>
+
+#include <chrono>
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -20,31 +22,29 @@
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
-#include <chrono>
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_sampler.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 using namespace paddle::framework;
 namespace platform = paddle::platform;

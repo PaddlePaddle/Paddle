@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
+
 #include <functional>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"

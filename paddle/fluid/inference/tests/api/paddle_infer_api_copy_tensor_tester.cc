@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include <cuda_runtime.h>
 #include <gtest/gtest.h>
+
 #include <cstring>
 #include <numeric>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"

@@ -96,12 +96,15 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
   int x = threadIdx.x;
 
   Dim3 output_dims = {
-      input_dims[0], input_dims[2], input_dims[1],
+      input_dims[0],
+      input_dims[2],
+      input_dims[1],
   };
 
   // Align dim to Tiles
   Dim3 tile_aligned_input_dim = {
-      input_dims[0], (input_dims[1] + TileX - 1) / TileX,
+      input_dims[0],
+      (input_dims[1] + TileX - 1) / TileX,
       (input_dims[2] + TileY - 1) / TileY,
   };
 
@@ -111,7 +114,8 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
 
   // Compute real index align to tile:0, 32, 64...
   Index3 block_tile_index_in_input = {
-      input_block_tile_index[0], input_block_tile_index[1] * TileX,
+      input_block_tile_index[0],
+      input_block_tile_index[1] * TileX,
       input_block_tile_index[2] * TileY,
   };
 
@@ -165,12 +169,14 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
 
   // Store sm value back to out
   Index3 output_block_tile_index = {
-      input_block_tile_index[0], input_block_tile_index[2],
+      input_block_tile_index[0],
+      input_block_tile_index[2],
       input_block_tile_index[1],
   };
 
   Index3 block_tile_index_in_output = {
-      output_block_tile_index[0], output_block_tile_index[1] * TileY,
+      output_block_tile_index[0],
+      output_block_tile_index[1] * TileY,
       output_block_tile_index[2] * TileX,
   };
 
@@ -265,15 +271,13 @@ void LaunchNarrowDims2TransposeKernel(const phi::GPUContext& d, int tile_size_i,
                                       T* output) {
   constexpr int NumThreads = tile_long;
   if (tile_size_i <= tile_long && tile_size_j <= tile_short) {
-    TilingSwapDim1And2<
-        T, NumThreads, tile_long,
-        tile_short><<<total_tiles_count, NumThreads, 0, d.stream()>>>(
-        input, input_dims, output);
+    TilingSwapDim1And2<T, NumThreads, tile_long, tile_short>
+        <<<total_tiles_count, NumThreads, 0, d.stream()>>>(input, input_dims,
+                                                           output);
   } else {
-    TilingSwapDim1And2<
-        T, NumThreads, tile_short,
-        tile_long><<<total_tiles_count, NumThreads, 0, d.stream()>>>(
-        input, input_dims, output);
+    TilingSwapDim1And2<T, NumThreads, tile_short, tile_long>
+        <<<total_tiles_count, NumThreads, 0, d.stream()>>>(input, input_dims,
+                                                           output);
   }
 }
 
@@ -392,10 +396,10 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d, const T* input,
     // data may not aligned to tile, so some threads wasted, we need
     // to find least wasted threads, which means we need to find tile
     // can split input properly, in another words: num_wasted_threads=0.
-    int num_wasted_threads = input_long_edge -
-                             framework::CeilOrFloor<int, false>(
-                                 input_long_edge, proposed_tile_long_edge) *
-                                 proposed_tile_long_edge;
+    int num_wasted_threads =
+        input_long_edge - framework::CeilOrFloor<int, false>(
+                              input_long_edge, proposed_tile_long_edge) *
+                              proposed_tile_long_edge;
 
     int num_full_tiles = framework::CeilOrFloor<int, false>(
         input_long_edge, proposed_tile_long_edge);
@@ -499,10 +503,9 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d, const T* input,
     int total_tiles_count =
         input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
-    TilingSwapDim1And2<
-        T, kNumThreads, kTileSize,
-        kTileSize><<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
-        input, input_dims, output);
+    TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize>
+        <<<total_tiles_count, kNumThreads, 0, d.stream()>>>(input, input_dims,
+                                                            output);
 
   } else if (narrow_tile) {
     // If input shape is like Rect, such as 2X100, use Narrow tile size.
@@ -513,9 +516,9 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d, const T* input,
     // If input shape is small, such as 8X8, just do simple copy
     int total_elements = input_dims[0] * input_dims[1] * input_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
-    TransposeSimpleKernel<T, 0, 2, 1><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
-        total_elements, input, input_dims, output);
+    TransposeSimpleKernel<T, 0, 2, 1>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
+            total_elements, input, input_dims, output);
   }
 }
 
@@ -543,9 +546,9 @@ struct SwapDim0And2InTranspose {
     size_t total_size = combined_dims[0] * combined_dims[1] * combined_dims[2];
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_size);
 
-    TransposeSimpleKernel<T, 2, 1, 0><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
-        total_size, in, input_dims, out);
+    TransposeSimpleKernel<T, 2, 1, 0>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
+            total_size, in, input_dims, out);
   }
 };
 

@@ -96,8 +96,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     switch (GetDesiredBlockDim(input_width)) {
       FIXED_BLOCK_DIM(
-          KeMatrixTopK<T, 5,
-                       kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+          KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               output_data, k, indices_data, input_data, input_width,
               input_width, static_cast<int>(k), gridx, input_height));
       default:
@@ -133,8 +133,8 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
     int gridx = row < kMaxHeight ? row : kMaxHeight;
     switch (GetDesiredBlockDim(col)) {
       FIXED_BLOCK_DIM(
-          AssignGrad<T, 5,
-                     kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+          AssignGrad<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:
         PADDLE_THROW(

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
-
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace paddle {
 namespace operators {
