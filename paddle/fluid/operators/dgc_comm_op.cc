@@ -31,8 +31,7 @@ class DGCCommOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for dgc comm op must be non-negative.",
-            ring_id));
+            "The ring_id (%d) for dgc comm op must be non-negative.", ring_id));
 
     int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE_GT(
@@ -54,10 +53,12 @@ class DGCCommOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) encoded grad with 2 * k value in dgc. ");
-    AddInput("Gather", "(Tensor) gather var with 2 * k * nranks value in dgc. ");
-    AddInput("Grad","(Tensor) the grad of the param in dgc. ");
+    AddInput("Gather",
+             "(Tensor) gather var with 2 * k * nranks value in dgc. ");
+    AddInput("Grad", "(Tensor) the grad of the param in dgc. ");
 
-    AddAttr<int>("nranks", "(int) the number of trainers which must be more than 1.");
+    AddAttr<int>("nranks",
+                 "(int) the number of trainers which must be more than 1.");
     AddAttr<int>("k_var", "(int) the number of values of sparse grad. ");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
@@ -75,7 +76,8 @@ use allgather comm op to compute the grad reduce in dgc.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp,
-                  ops::DGCCommOpMaker)
+REGISTER_OPERATOR(dgc_comm, ops::DGCCommOp, ops::DGCCommOpMaker)
 
-REGISTER_OP_CPU_KERNEL(dgc_comm, ops::DGCCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    dgc_comm,
+    ops::DGCCommOpCPUKernel<paddle::platform::CPUDeviceContext, float>);

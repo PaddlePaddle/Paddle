@@ -54,9 +54,20 @@ __all__ = [     #noqa
            'dgc_comm'
 ]
 
+
 def dgc_comm(x, gather, grad, k_var, group):
     """
-        dgc comm in dgc.
+    dgc comm in dgc.
+
+    Args:
+        x (Tensor): Tensor. the encoded grad in dgc.
+        gather (Tensor): the tensor of result of allgather in dgc. 
+        grad (Tensor): the grad of param.
+        k_var (Tensor): the topk of grad.
+        group (Group): dgc comm group.
+    
+    Returns:
+        out (Tensor): The data received from all experts. 
     """
     assert group is not None, "please input a group for dgc."
     assert x.numel() == 2 * k_var, "k_var does not match the numel of input."
@@ -70,6 +81,7 @@ def dgc_comm(x, gather, grad, k_var, group):
                                 'nranks', nranks, \
                                 'k_var', k_var, \
                                 'ring_id', ring_id)
+
 
 def global_scatter(x,
                    local_count,

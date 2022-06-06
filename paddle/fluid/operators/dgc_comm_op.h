@@ -29,8 +29,8 @@ class DGCCommOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support dgc comm op for cpu kernel now."));
-    }
+        "do not support dgc comm op for cpu kernel now."));
+  }
 };
 
 }  // namespace operators
