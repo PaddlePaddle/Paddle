@@ -137,7 +137,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
                           const float momentum, const bool is_test,
                           const bool use_global_stats
 
-                          ) {
+) {
   const auto &x_dims = x->dims();
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
                     platform::errors::InvalidArgument(
@@ -178,13 +178,11 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads,
-                   framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-          x_d, N, H * W * D, C, stats);
+      KeLocalStats<T, threads, framework::DataLayout::kNCHW>
+          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads,
-                   framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-          x_d, N, H * W * D, C, stats);
+      KeLocalStats<T, threads, framework::DataLayout::kNHWC>
+          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -221,13 +219,13 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
   if (layout == framework::DataLayout::kNCHW) {
-    KeNormAffine<T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-        y_d);
+    KeNormAffine<T, framework::DataLayout::kNCHW>
+        <<<grid2, block, 0, stream>>>(x_d, s_d, b_d, mean_data, var_data,
+                                      epsilon, C, H * W * D, x_numel, y_d);
   } else {
-    KeNormAffine<T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-        y_d);
+    KeNormAffine<T, framework::DataLayout::kNHWC>
+        <<<grid2, block, 0, stream>>>(x_d, s_d, b_d, mean_data, var_data,
+                                      epsilon, C, H * W * D, x_numel, y_d);
   }
 }
 
@@ -436,30 +434,30 @@ void SyncBatchNormGradFunctor(
 
   if (is_inplace) {
     if (layout == framework::DataLayout::kNCHW) {
-      KeBNRestoreData<
-          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          px.mutable_data<T>(ctx.GetPlace()),
-          scale->data<BatchNormParamType<T>>(),
-          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, x->data<T>());
+      KeBNRestoreData<T, framework::DataLayout::kNCHW>
+          <<<grid2, block, 0, stream>>>(px.mutable_data<T>(ctx.GetPlace()),
+                                        scale->data<BatchNormParamType<T>>(),
+                                        bias->data<BatchNormParamType<T>>(),
+                                        saved_mean, saved_inv_var, epsilon, C,
+                                        H * W * D, x_numel, x->data<T>());
     } else {
-      KeBNRestoreData<
-          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          px.mutable_data<T>(ctx.GetPlace()),
-          scale->data<BatchNormParamType<T>>(),
-          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, x->data<T>());
+      KeBNRestoreData<T, framework::DataLayout::kNHWC>
+          <<<grid2, block, 0, stream>>>(px.mutable_data<T>(ctx.GetPlace()),
+                                        scale->data<BatchNormParamType<T>>(),
+                                        bias->data<BatchNormParamType<T>>(),
+                                        saved_mean, saved_inv_var, epsilon, C,
+                                        H * W * D, x_numel, x->data<T>());
     }
   }
 
   if (layout == framework::DataLayout::kNCHW) {
-    KeBackwardLocalStats<
-        T, threads, framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-        dy_d, x_d, saved_mean, N, fsize, C, stats);
+    KeBackwardLocalStats<T, threads, framework::DataLayout::kNCHW>
+        <<<grid, threads, 0, stream>>>(dy_d, x_d, saved_mean, N, fsize, C,
+                                       stats);
   } else {
-    KeBackwardLocalStats<
-        T, threads, framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-        dy_d, x_d, saved_mean, N, fsize, C, stats);
+    KeBackwardLocalStats<T, threads, framework::DataLayout::kNHWC>
+        <<<grid, threads, 0, stream>>>(dy_d, x_d, saved_mean, N, fsize, C,
+                                       stats);
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -476,35 +474,33 @@ void SyncBatchNormGradFunctor(
 
   if (layout == framework::DataLayout::kNCHW) {
     if (d_scale && d_bias) {
-      KeBNBackwardScaleBias<
-          T, threads,
-          framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
-          d_scale->data<BatchNormParamType<T>>(),
-          d_bias->data<BatchNormParamType<T>>());
+      KeBNBackwardScaleBias<T, threads, framework::DataLayout::kNCHW>
+          <<<grid, threads, 0, stream>>>(dy_d, x_d, saved_mean, saved_inv_var,
+                                         epsilon, N, C, fsize,
+                                         d_scale->data<BatchNormParamType<T>>(),
+                                         d_bias->data<BatchNormParamType<T>>());
     }
     if (d_x) {
-      KeBNBackwardData<
-          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
-          x->numel(), d_x->data<T>());
+      KeBNBackwardData<T, framework::DataLayout::kNCHW>
+          <<<grid2, block, 0, stream>>>(
+              dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
+              saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
+              x->numel(), d_x->data<T>());
     }
   } else {
     if (d_scale && d_bias) {
-      KeBNBackwardScaleBias<
-          T, threads,
-          framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
-          d_scale->data<BatchNormParamType<T>>(),
-          d_bias->data<BatchNormParamType<T>>());
+      KeBNBackwardScaleBias<T, threads, framework::DataLayout::kNHWC>
+          <<<grid, threads, 0, stream>>>(dy_d, x_d, saved_mean, saved_inv_var,
+                                         epsilon, N, C, fsize,
+                                         d_scale->data<BatchNormParamType<T>>(),
+                                         d_bias->data<BatchNormParamType<T>>());
     }
     if (d_x) {
-      KeBNBackwardData<
-          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
-          x->numel(), d_x->data<T>());
+      KeBNBackwardData<T, framework::DataLayout::kNHWC>
+          <<<grid2, block, 0, stream>>>(
+              dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
+              saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
+              x->numel(), d_x->data<T>());
     }
   }
 }

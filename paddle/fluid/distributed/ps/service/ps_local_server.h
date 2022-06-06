@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/distributed/ps/service/server.h"
 
 namespace paddle {
@@ -37,5 +38,5 @@ class PsLocalServer : public PSServer {
  private:
   virtual int32_t Initialize() { return 0; }
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

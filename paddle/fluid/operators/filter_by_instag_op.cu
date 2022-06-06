@@ -20,6 +20,7 @@
 
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
+
 #include <cstring>
 #include <random>
 #include <string>
@@ -30,10 +31,9 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/filter_by_instag_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/operators/filter_by_instag_op.h"
 
 #if defined(PADDLE_WITH_CUDA)
 namespace cg = cooperative_groups;
@@ -277,7 +277,7 @@ __global__ void filter_copy_fuse_kernel(
         T* dst = out_data + output_start_idx * x1_embed_size;
         const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
         const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
-        for (const T *j = src_start; j != src_end; dst++, j++) {
+        for (const T* j = src_start; j != src_end; dst++, j++) {
           *dst = *j;
         }
       }
@@ -306,7 +306,7 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
     const T* src_end =
         out_grad_data + (map_data[p * 3] + map_data[p * 3 + 2]) * x1_embed_size;
 
-    for (const T *j = src_start; j != src_end; dst++, j++) {
+    for (const T* j = src_start; j != src_end; dst++, j++) {
       *dst = *j;
     }
   }

@@ -258,7 +258,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
-        ) {
+    ) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << phi_kernel;
@@ -306,7 +306,7 @@ PreparedOp PrepareImpl(
 #if defined(PADDLE_WITH_XPU_KP)
       || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
-          ) {
+  ) {
     if (has_phi_kernel) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);

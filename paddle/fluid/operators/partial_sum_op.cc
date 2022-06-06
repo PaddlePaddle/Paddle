@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/partial_sum_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -96,8 +97,9 @@ class PartialSumOp : public framework::OperatorWithKernel {
       }
     }
 
-    PADDLE_ENFORCE_EQ(flag, 1, platform::errors::InvalidArgument(
-                                   "All Inputs of PartialSum OP are Empty!"));
+    PADDLE_ENFORCE_EQ(flag, 1,
+                      platform::errors::InvalidArgument(
+                          "All Inputs of PartialSum OP are Empty!"));
     return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unordered_map>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -112,11 +113,12 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
     const int* index_data = nullptr;
-    PADDLE_ENFORCE_EQ(ksize.size(), 2, platform::errors::InvalidArgument(
-                                           "The Pool2d XPU OP only support 2 "
-                                           "dimension pooling!, but received "
-                                           "%d-dimension pool kernel size",
-                                           ksize.size()));
+    PADDLE_ENFORCE_EQ(
+        ksize.size(), 2,
+        platform::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
+                                          "dimension pooling!, but received "
+                                          "%d-dimension pool kernel size",
+                                          ksize.size()));
     PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1), true,
                       platform::errors::InvalidArgument(
                           "The Pool2d XPU OP does not support (adaptive == "

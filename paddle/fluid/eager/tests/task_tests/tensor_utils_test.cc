@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
+
 #include <sstream>
 
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);

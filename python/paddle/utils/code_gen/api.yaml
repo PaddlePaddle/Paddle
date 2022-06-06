@@ -407,6 +407,12 @@
     use_gpudnn : true
   backward : conv2d_transpose_grad
 
+- api : conv3d
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor
+  invoke : conv3d_impl(input, filter, strides, paddings, paddding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : conv3d_grad
+
 - api : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -491,6 +497,17 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
+
+- api : depthwise_conv2d
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu)
+  output : Tensor(out)
+  invoke : conv2d_impl(x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search)
+  backward : depthwise_conv2d_grad
+  # infer_meta :
+  #   func : ConvTransposeInferMeta
+  #   prams: [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+  # kernel :
+  #   func : depthwise_conv2d
 
 - api : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -585,7 +602,7 @@
 
 - api : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor
+  output : Tensor, Tensor[]{x.size()}
   infer_meta :
     func : EinsumInferMeta
     param : [x, equation]
@@ -612,6 +629,12 @@
   kernel :
     func : elu
   backward : elu_grad
+
+- api : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor
+  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  backward : embedding_grad
 
 - api : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -1006,6 +1029,17 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- api : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  backward : instance_norm_grad
 
 # is_empty
 - api : is_empty
@@ -1556,7 +1590,7 @@
     func : PadInferMeta
   kernel :
     func : pad
-  # backward : pad_grad
+  backward : pad_grad
 
 - api : pad3d
   args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)

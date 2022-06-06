@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/fluid/operators/slice_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
 namespace operators {
@@ -186,14 +186,16 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     out->mutable_data<T>(place);
 
-    const auto& runner = NpuOpRunner(
-        "StridedSlice", {*in, starts_indices_tensor, ends_indices_tensor,
-                         strides_indices_tensor},
-        {*out}, {{"begin_mask", 0},
-                 {"end_mask", 0},
-                 {"ellipsis_mask", 0},
-                 {"new_axis_mask", 0},
-                 {"shrink_axis_mask", 0}});
+    const auto& runner =
+        NpuOpRunner("StridedSlice",
+                    {*in, starts_indices_tensor, ends_indices_tensor,
+                     strides_indices_tensor},
+                    {*out},
+                    {{"begin_mask", 0},
+                     {"end_mask", 0},
+                     {"ellipsis_mask", 0},
+                     {"new_axis_mask", 0},
+                     {"shrink_axis_mask", 0}});
     runner.Run(stream);
 
     if (need_reverse) {

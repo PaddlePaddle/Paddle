@@ -18,8 +18,6 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
-#include "paddle/fluid/pybind/fleet_py.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -35,17 +33,18 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include "paddle/fluid/pybind/fleet_py.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
-using paddle::distributed::FleetWrapper;
-using paddle::distributed::HeterClient;
-using paddle::distributed::GraphPyService;
-using paddle::distributed::GraphNode;
-using paddle::distributed::GraphPyServer;
-using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
+using paddle::distributed::FleetWrapper;
+using paddle::distributed::GraphNode;
+using paddle::distributed::GraphPyClient;
+using paddle::distributed::GraphPyServer;
+using paddle::distributed::GraphPyService;
+using paddle::distributed::HeterClient;
 
 namespace paddle {
 namespace pybind {
@@ -246,13 +245,13 @@ void BindGraphPyClient(py::module* m) {
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
 
-using paddle::distributed::TreeIndex;
-using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+using paddle::distributed::IndexWrapper;
+using paddle::distributed::TreeIndex;
 #ifdef PADDLE_WITH_HETERPS
 using paddle::framework::GraphGpuWrapper;
-using paddle::framework::NeighborSampleResult;
 using paddle::framework::NeighborSampleQuery;
+using paddle::framework::NeighborSampleResult;
 using paddle::framework::NodeQueryResult;
 #endif
 

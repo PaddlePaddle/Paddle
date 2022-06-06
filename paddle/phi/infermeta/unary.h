@@ -82,7 +82,8 @@ void EighInferMeta(const MetaTensor& x,
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
-                     MetaTensor* out);
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache);
 
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
@@ -177,6 +178,13 @@ void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
                           MetaTensor* out);
+
+void NanmedianInferMeta(const MetaTensor& x,
+                        const IntArray& axes,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaTensor* median_index);
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
@@ -272,6 +280,17 @@ void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
+
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    MetaTensor* out,
+                    MetaTensor* noise);
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 

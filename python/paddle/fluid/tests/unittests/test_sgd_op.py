@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestSGDOp(OpTest):
+
     def setUp(self):
         self.op_type = "sgd"
         self.conf()
@@ -46,16 +47,18 @@ class TestSGDOp(OpTest):
 
 
 class TestSGDOpCase8X(TestSGDOp):
+
     def conf(self):
         self.h = 10
         self.w = 64
 
 
 class TestSparseSGDOp(unittest.TestCase):
+
     def check_with_place(self, place):
         scope = core.Scope()
 
-        # create and initialize Grad Variable   
+        # create and initialize Grad Variable
         height = 10
         rows = [0, 4, 7]
         self.conf()
@@ -81,12 +84,11 @@ class TestSparseSGDOp(unittest.TestCase):
         lr.set(lr_array, place)
 
         # create and run sgd operator
-        sgd_op = Operator(
-            "sgd",
-            Param='Param',
-            Grad='Grad',
-            ParamOut='Param',
-            LearningRate='LearningRate')
+        sgd_op = Operator("sgd",
+                          Param='Param',
+                          Grad='Grad',
+                          ParamOut='Param',
+                          LearningRate='LearningRate')
         sgd_op.run(scope, place)
 
         # get and compare result
@@ -119,11 +121,13 @@ class TestSparseSGDOp(unittest.TestCase):
 
 
 class TestSparseSGDOpCase8X(TestSparseSGDOp):
+
     def conf(self):
         self.row_numel = 16
 
 
 class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
+
     def check_with_place(self, place):
         scope = core.Scope()
 
@@ -168,16 +172,15 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         # optimize with Python
         w_after_optimize = np.copy(w_before_optimize)
         for index, id in enumerate(grad_rows):
-            w_after_optimize[id] = w_before_optimize[
-                id] - lr_value * grad_array[index]
+            w_after_optimize[
+                id] = w_before_optimize[id] - lr_value * grad_array[index]
 
         # create and run sgd operator
-        sgd_op = Operator(
-            "sgd",
-            Param='Param',
-            Grad='Grad',
-            ParamOut='Param',
-            LearningRate='LearningRate')
+        sgd_op = Operator("sgd",
+                          Param='Param',
+                          Grad='Grad',
+                          ParamOut='Param',
+                          LearningRate='LearningRate')
         sgd_op.run(scope, place)
 
         # get and compare result
@@ -192,11 +195,13 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 
 
 class TestSGDOpWithLargeInput(unittest.TestCase):
+
     def runTest(self):
         paddle.enable_static()
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
-        label = fluid.layers.fill_constant(
-            shape=[1, 150], value=0.5, dtype='float32')
+        label = fluid.layers.fill_constant(shape=[1, 150],
+                                           value=0.5,
+                                           dtype='float32')
         emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
@@ -214,6 +219,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
 
 
 class TestSGDV2(unittest.TestCase):
+
     def test_sgd_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -235,26 +241,33 @@ class TestSGDV2(unittest.TestCase):
             init_program = paddle.static.Program()
             program = paddle.static.Program()
             block = program.global_block()
-            mul_x = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="mul.x",
-                optimize_attr=optimizer_attr)
-            mul_y = block.create_var(
-                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-            mul_out = block.create_var(
-                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-            mean_out = block.create_var(
-                dtype="float32", shape=[1], lod_level=0, name="mean.out")
-            block.append_op(
-                type="mul",
-                inputs={"X": mul_x,
-                        "Y": mul_y},
-                outputs={"Out": mul_out},
-                attrs={"x_num_col_dims": 1})
-            block.append_op(
-                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+            mul_x = block.create_parameter(dtype="float32",
+                                           shape=[5, 10],
+                                           lod_level=0,
+                                           name="mul.x",
+                                           optimize_attr=optimizer_attr)
+            mul_y = block.create_var(dtype="float32",
+                                     shape=[10, 8],
+                                     lod_level=0,
+                                     name="mul.y")
+            mul_out = block.create_var(dtype="float32",
+                                       shape=[5, 8],
+                                       lod_level=0,
+                                       name="mul.out")
+            mean_out = block.create_var(dtype="float32",
+                                        shape=[1],
+                                        lod_level=0,
+                                        name="mean.out")
+            block.append_op(type="mul",
+                            inputs={
+                                "X": mul_x,
+                                "Y": mul_y
+                            },
+                            outputs={"Out": mul_out},
+                            attrs={"x_num_col_dims": 1})
+            block.append_op(type="mean",
+                            inputs={"X": mul_out},
+                            outputs={"Out": mean_out})
             sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             opts, _ = sgd_optimizer.minimize(mean_out, init_program)
             return opts
@@ -299,6 +312,7 @@ class TestSGDV2(unittest.TestCase):
 
 
 class TestSGDMultiPrecision2_0(unittest.TestCase):
+
     def dygraph_sgd_mp(self, mp):
         paddle.disable_static()
         paddle.seed(10)
@@ -346,11 +360,13 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
                 use_fp16_guard=False)
         with paddle.static.program_guard(train_program, startup_program):
             if mp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16')
+                data = paddle.static.data(shape=[2, 2],
+                                          name='X',
+                                          dtype='float16')
             else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32')
+                data = paddle.static.data(shape=[2, 2],
+                                          name='X',
+                                          dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.fluid.layers.mean(hidden)
             optimizer.minimize(loss)
@@ -376,31 +392,26 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
         self.assertEqual(
-            np.allclose(
-                output1_dy.astype('float32').numpy(),
-                output2_dy.astype('float32').numpy(),
-                atol=1e-01),
-            True)
+            np.allclose(output1_dy.astype('float32').numpy(),
+                        output2_dy.astype('float32').numpy(),
+                        atol=1e-01), True)
         for idx in range(len(params1_dy)):
             self.assertEqual(
-                np.allclose(
-                    params1_dy[idx].astype('float32').numpy(),
-                    params2_dy[idx].astype('float32').numpy(),
-                    atol=1e-01),
-                True)
+                np.allclose(params1_dy[idx].astype('float32').numpy(),
+                            params2_dy[idx].astype('float32').numpy(),
+                            atol=1e-01), True)
         "Test static mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
             self.assertEqual(
-                np.allclose(
-                    output1_st[idx].astype('float32'),
-                    output2_st[idx].astype('float32'),
-                    atol=1e-01),
-                True)
+                np.allclose(output1_st[idx].astype('float32'),
+                            output2_st[idx].astype('float32'),
+                            atol=1e-01), True)
 
 
 class TestSGDMultiPrecision1_0(unittest.TestCase):
+
     def dygraph_sgd_mp(self, mp):
         paddle.disable_static()
         paddle.seed(10)
@@ -451,11 +462,13 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
                 use_fp16_guard=False)
         with paddle.static.program_guard(train_program, startup_program):
             if mp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16')
+                data = paddle.static.data(shape=[2, 2],
+                                          name='X',
+                                          dtype='float16')
             else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32')
+                data = paddle.static.data(shape=[2, 2],
+                                          name='X',
+                                          dtype='float32')
             hidden = paddle.static.nn.fc(x=data, size=10)
             loss = paddle.fluid.layers.mean(hidden)
             optimizer.minimize(loss)
@@ -481,28 +494,22 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
         self.assertEqual(
-            np.allclose(
-                output1_dy.astype('float32').numpy(),
-                output2_dy.astype('float32').numpy(),
-                atol=1e-01),
-            True)
+            np.allclose(output1_dy.astype('float32').numpy(),
+                        output2_dy.astype('float32').numpy(),
+                        atol=1e-01), True)
         for idx in range(len(params1_dy)):
             self.assertEqual(
-                np.allclose(
-                    params1_dy[idx].astype('float32').numpy(),
-                    params2_dy[idx].astype('float32').numpy(),
-                    atol=1e-01),
-                True)
+                np.allclose(params1_dy[idx].astype('float32').numpy(),
+                            params2_dy[idx].astype('float32').numpy(),
+                            atol=1e-01), True)
         "Test static mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
             self.assertEqual(
-                np.allclose(
-                    output1_st[idx].astype('float32'),
-                    output2_st[idx].astype('float32'),
-                    atol=1e-01),
-                True)
+                np.allclose(output1_st[idx].astype('float32'),
+                            output2_st[idx].astype('float32'),
+                            atol=1e-01), True)
 
 
 if __name__ == "__main__":

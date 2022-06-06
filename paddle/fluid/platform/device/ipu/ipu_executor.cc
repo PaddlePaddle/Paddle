@@ -88,11 +88,7 @@ class PdIArray final : public popart::IArray {
 
 }  // namespace
 
-Executor::~Executor() {
-  Detach();
-  session_.reset();
-  executor_resources_.reset();
-}
+Executor::~Executor() { Reset(); }
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
@@ -252,7 +248,8 @@ void Executor::AcquireDevice() {
     VLOG(10) << "Create IPU model device...";
     std::map<std::string, std::string> deviceOpts{
         {
-            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
         },
         {"ipuVersion", "ipu2"},
     };
@@ -263,7 +260,8 @@ void Executor::AcquireDevice() {
     VLOG(10) << "Create offline device...";
     std::map<std::string, std::string> deviceOpts{
         {
-            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
         },
         {"ipuVersion", "ipu2"},
     };
@@ -302,6 +300,12 @@ void Executor::Detach() {
     device_->detach();
     VLOG(10) << " detached IPU";
   }
+}
+
+void Executor::Reset() {
+  Detach();
+  session_.reset();
+  executor_resources_.reset();
 }
 
 void Executor::SetWeightsIO() {

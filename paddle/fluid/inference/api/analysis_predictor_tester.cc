@@ -18,7 +18,9 @@
 #endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -522,7 +524,7 @@ TEST(Tensor, GpuShareExternalData) {
 
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
   auto out_shape = out->shape();
-  float* out_data;
+  float* out_data = nullptr;
   auto out_size = std::accumulate(out_shape.begin(), out_shape.end(), 1,
                                   std::multiplies<int>()) *
                   sizeof(float);

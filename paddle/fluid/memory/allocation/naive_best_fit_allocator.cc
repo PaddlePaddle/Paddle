@@ -24,7 +24,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/common/place.h"

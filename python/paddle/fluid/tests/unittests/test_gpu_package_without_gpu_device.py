@@ -24,6 +24,7 @@ from paddle.fluid import core
 
 
 class TestGPUPackagePaddle(unittest.TestCase):
+
     def test_import_paddle(self):
         if core.is_compiled_with_cuda():
             if core.is_compiled_with_rocm():
@@ -43,11 +44,10 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             _python = sys.executable
 
             ps_cmd = '{} {}'.format(_python, test_file)
-            ps_proc = subprocess.Popen(
-                ps_cmd.strip().split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=os.environ)
+            ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       env=os.environ)
             stdout, stderr = ps_proc.communicate()
 
             assert 'CPU device will be used by default' in str(

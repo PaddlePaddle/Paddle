@@ -25,6 +25,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -43,6 +44,7 @@ class TestLinspaceOpCommonCase(OpTest):
 
 
 class TestLinspaceOpReverseCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -61,6 +63,7 @@ class TestLinspaceOpReverseCase(OpTest):
 
 
 class TestLinspaceOpNumOneCase(OpTest):
+
     def setUp(self):
         self.op_type = "linspace"
         self.python_api = paddle.linspace
@@ -79,6 +82,7 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 
 class TestLinspaceAPI(unittest.TestCase):
+
     def test_variable_input1(self):
         start = paddle.full(shape=[1], fill_value=0, dtype='float32')
         stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
@@ -110,8 +114,11 @@ class TestLinspaceAPI(unittest.TestCase):
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            out = paddle.linspace(
-                0, 10, 5, dtype='float32', name='linspace_res')
+            out = paddle.linspace(0,
+                                  10,
+                                  5,
+                                  dtype='float32',
+                                  name='linspace_res')
             assert 'linspace_res' in out.name
 
     def test_imperative(self):
@@ -134,6 +141,7 @@ class TestLinspaceAPI(unittest.TestCase):
 
 
 class TestLinspaceOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
