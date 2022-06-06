@@ -56,13 +56,12 @@ TEST(NodeTreesTest, LogMe_case0) {
                                      10, 10, -50, "GPU:0", 0, 50));
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;
-  input_shapes[std::string("X")].push_back(std::vector<int64_t>{1,2,3});
-  input_shapes[std::string("X")].push_back(std::vector<int64_t>{4,5,6,7});
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{1, 2, 3});
+  input_shapes[std::string("X")].push_back(std::vector<int64_t>{4, 5, 6, 7});
   dtypes[std::string("X")].push_back(std::string("int8"));
   dtypes[std::string("X")].push_back(std::string("float32"));
   op_supplement_events.push_back(OperatorSupplementEvent(
-      11600, "op1", input_shapes,
-      dtypes, "op1()", 10, 10));
+      11600, "op1", input_shapes, dtypes, "op1()", 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch1"), 15000,
                                              17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(std::string("cudalaunch2"), 25000,
