@@ -28,6 +28,7 @@ else:
 
 
 ALL_MODES = ["global", "thread_local", "relaxed"]
+cuda_graph_id = 0
 
 
 class CUDAGraph:
@@ -68,6 +69,24 @@ class CUDAGraph:
 
 def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     assert mode in ALL_MODES
+    if not paddle.in_dynamic_mode():
+        # static mode
+        from paddle.fluid.framework import _cuda_graph_guard
+        global cuda_graph_id
+        graph_id = str(cuda_graph_id)
+        cuda_graph_id += 1
+        if memory_pool == 'default':
+            memory_pool_id = 0
+        elif memory_pool == 'new':
+            memory_pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
+        else:
+            raise ValueError(
+                "memory_pool should be one of default or new under static mode, but got",
+                memory_pool)
+        return _cuda_graph_guard(
+            mode + ';' + str(memory_pool_id) + ';' +
+            graph_id)(lambda *args, **kwargs: function(*args, **kwargs))
+
     from paddle.jit import to_static
     from paddle.nn import Layer
     new_function = to_static(function)
