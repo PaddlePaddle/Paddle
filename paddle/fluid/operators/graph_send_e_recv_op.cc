@@ -124,6 +124,7 @@ class GraphSendERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("E"), this->InputGrad("E"));
     op->SetAttrMap(this->Attrs());
   }
 };

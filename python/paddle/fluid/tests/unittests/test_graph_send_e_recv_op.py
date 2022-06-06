@@ -13,92 +13,12 @@
 # limitations under the License.
 
 import unittest
-
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 
 from op_test import OpTest
-
-
-class TestGraphSendERecvSumOp(OpTest):
-    def setUp(self):
-        paddle.enable_static()
-        self.op_type = "graph_send_e_recv"
-        self.set_config()
-        self.inputs = {
-            'X': self.x,
-            'E': self.e,
-            'Src_index': self.src_index,
-            'Dst_index': self.dst_index
-        }
-        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'SUM'}
-
-        out = compute_graph_send_e_recv_for_sum(self.inputs, self.attrs)
-
-        self.outputs = {'Out': out}
-
-    def set_config(self):
-        self.x = np.random.random((10, 20)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
-
-    def test_check_output(self):
-        self.check_output()
-
-
-def TestSumCase1(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((10, 20)).astype("float64")
-        self.e = np.random.random((15, 1)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
-
-
-def TestSumCase2(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((10, 1)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'ADD'
-
-
-def TestSumCase3(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((10, 20)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
-
-
-def TestSumCase4(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((10, 20)).astype("float64")
-        self.e = np.random.random((15, 1)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
-
-
-def TestSumCase5(TestGraphSendERecvSumOp):
-    def set_config(self):
-        self.x = np.random.random((10, 1)).astype("float64")
-        self.e = np.random.random((15, 20)).astype("float64")
-        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
-        self.src_index = index[:, 0]
-        self.dst_index = index[:, 1]
-        self.compute_type = 'MUL'
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -133,3 +53,85 @@ def compute_graph_send_e_recv_for_sum(inputs, attributes):
     for index, s_id in enumerate(dst_index):
         results[s_id, :] += x_compute_e[index, :]
     return results
+
+
+class TestGraphSendERecvSumOp(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "graph_send_e_recv"
+        self.set_config()
+        self.inputs = {
+            'X': self.x,
+            'E': self.e,
+            'Src_index': self.src_index,
+            'Dst_index': self.dst_index
+        }
+        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'SUM'}
+
+        out = compute_graph_send_e_recv_for_sum(self.inputs, self.attrs)
+
+        self.outputs = {'Out': out}
+
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'E'], 'Out')
+
+
+class TestSumCase1(TestGraphSendERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((100, 20)).astype("float64")
+        self.e = np.random.random((150, 1)).astype("float64")
+        index = np.random.randint(0, 100, (150, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestSumCase2(TestGraphSendERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestSumCase3(TestGraphSendERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestSumCase4(TestGraphSendERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.e = np.random.random((150, 1)).astype("float64")
+        index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestSumCase5(TestGraphSendERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'

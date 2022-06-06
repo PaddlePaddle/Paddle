@@ -66,7 +66,7 @@ inline BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims,
           (l_dims.size() - 1 - i < 1) ? 1 : l_dims[l_dims.size() - 1 - i];
       const int dr =
           (r_dims.size() - 1 - i < 1) ? 1 : r_dims[r_dims.size() - 1 - i];
-      for (int j = 0; j < std::max(dl, dr); j++) {
+      for (int j = 1; j < std::max(dl, dr); j++) {
         for (int k = 0; k < out_len; k++) {
           binfo.l_offset.emplace_back(binfo.l_offset[k] +
                                       j * (j < dl) * stride_l);
