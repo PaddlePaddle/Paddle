@@ -69,6 +69,7 @@ void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream) {
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
+
 #endif
 }  // namespace memory
 }  // namespace paddle
