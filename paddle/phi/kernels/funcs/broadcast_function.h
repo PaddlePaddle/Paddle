@@ -515,19 +515,30 @@ void BroadcastKernelForDifferentVecSize(
 
 // get vec_size
 #ifdef PADDLE_WITH_XPU_KP
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_LE(
       ins.size(),
       2,
       phi::errors::InvalidArgument(
-          "XPU only support inputs is 2, but received %d", ins.size()));
-  configs[0] = kps::details::BroadcastConfig(merge_dims.out_dims,
-                                             merge_dims.in_dims[0],
-                                             merge_dims.in_dims[1],
-                                             merge_dims.dim_size);
-  configs[1] = kps::details::BroadcastConfig(merge_dims.out_dims,
-                                             merge_dims.in_dims[1],
-                                             merge_dims.in_dims[0],
-                                             merge_dims.dim_size);
+          "XPU only support max inputs is 2, but received %d", ins.size()));
+  if (ins.size == 2) {
+    configs[0] = kps::details::BroadcastConfig(merge_dims.out_dims,
+                                               merge_dims.in_dims[0],
+                                               merge_dims.in_dims[1],
+                                               merge_dims.dim_size);
+    configs[1] = kps::details::BroadcastConfig(merge_dims.out_dims,
+                                               merge_dims.in_dims[1],
+                                               merge_dims.in_dims[0],
+                                               merge_dims.dim_size);
+  } else if (ins.size == 1) {
+    const int buf_size = VecSizeM;
+    int numel = (*outs)[0]->numel();
+    int block_size = 64;
+    int grid_size = 8;
+    int nthreads = block_size * grid_size;
+    config[0].buf_len =
+        std::min(buf_size, kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
+    int vec_size = buf_size;
+  }
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;

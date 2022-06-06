@@ -21,6 +21,8 @@ namespace phi {
 namespace kps {
 namespace details {
 
+int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
   N_1,                  // just like {1} op {100} or {100} op {1}
