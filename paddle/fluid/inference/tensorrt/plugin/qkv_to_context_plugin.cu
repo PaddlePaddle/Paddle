@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -103,8 +105,8 @@ inline void TransposeQKV(const int batch, const int seq_len,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num, head_size, 1024));
-    TransposeQkvKernel<float><<<grid, block, 0, stream>>>(head_size, input,
-                                                          output);
+    TransposeQkvKernel<float>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
   }
 }
 
@@ -142,8 +144,8 @@ inline void TransposeQKV(const int batch, const int seq_len,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num, head_size, 1024));
-    TransposeQkvKernel<half><<<grid, block, 0, stream>>>(head_size, input,
-                                                         output);
+    TransposeQkvKernel<half>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
   }
 }
 
@@ -218,10 +220,11 @@ nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      index, 0, platform::errors::InvalidArgument(
-                    "The EmbEltwiseLayernorm Plugin only has one input, so the "
-                    "index value should be 0, but get %d.",
-                    index));
+      index, 0,
+      platform::errors::InvalidArgument(
+          "The EmbEltwiseLayernorm Plugin only has one input, so the "
+          "index value should be 0, but get %d.",
+          index));
   return input_types[0];
 }
 

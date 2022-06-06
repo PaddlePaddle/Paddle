@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define all functions about input & output in this directory 
+# TODO: define all functions about input & output in this directory
 
 from ..fluid.io import DataLoader  # noqa: F401
 from ..fluid.dataloader import Dataset  # noqa: F401
@@ -30,20 +30,9 @@ from ..fluid.dataloader import WeightedRandomSampler  # noqa: F401
 from ..fluid.dataloader import Subset  # noqa: F401
 from ..fluid.dataloader import random_split  # noqa: F401
 
-__all__ = [ #noqa
-           'Dataset',
-           'IterableDataset',
-           'TensorDataset',
-           'ComposeDataset',
-           'ChainDataset',
-           'BatchSampler',
-           'DistributedBatchSampler',
-           'DataLoader',
-           'get_worker_info',
-           'Sampler',
-           'SequenceSampler',
-           'RandomSampler',
-           'WeightedRandomSampler',
-           'random_split',
-           'Subset'
+__all__ = [  #noqa
+    'Dataset', 'IterableDataset', 'TensorDataset', 'ComposeDataset',
+    'ChainDataset', 'BatchSampler', 'DistributedBatchSampler', 'DataLoader',
+    'get_worker_info', 'Sampler', 'SequenceSampler', 'RandomSampler',
+    'WeightedRandomSampler', 'random_split', 'Subset'
 ]

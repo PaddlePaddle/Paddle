@@ -164,7 +164,7 @@ class _HPEagerRecomputeFunction(EagerPyLayer):
     def forward(ctx, run_function, all_outputs, *args):
         check_recompute_necessary(args)
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
 
         # store the rng states
@@ -237,8 +237,8 @@ class _HPEagerRecomputeFunction(EagerPyLayer):
             for i, idx in enumerate(tensor_indices):
                 if _recompute_partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i]).detach(
-                    ).reshape_(tensor_shapes[i])
+                    tensors[i] = _merge_activation(
+                        tensors[i]).detach().reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if _recompute_offload else tensors[i]
@@ -249,11 +249,10 @@ class _HPEagerRecomputeFunction(EagerPyLayer):
             # need restore auto_cast state as well as w/b list
             with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
                                          ctx.fwd_cuda_rng_state_tracker):
-                with paddle.amp.auto_cast(
-                        enable=ctx.is_fw_autocast,
-                        custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -276,7 +275,7 @@ class _HPEagerRecomputeFunction(EagerPyLayer):
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            # actually backward            
+            # actually backward
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
             grads = tuple(inp._grad_ivar() for inp in detached_inputs
                           if isinstance(inp, core.eager.Tensor))
@@ -296,7 +295,7 @@ class _HPRecomputeFunction(PyLayer):
     def forward(ctx, run_function, all_outputs, *args):
         check_recompute_necessary(args)
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
 
         # store the rng states
@@ -369,8 +368,8 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if _recompute_partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i]).detach(
-                    ).reshape_(tensor_shapes[i])
+                    tensors[i] = _merge_activation(
+                        tensors[i]).detach().reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if _recompute_offload else tensors[i]
@@ -381,11 +380,10 @@ class _HPRecomputeFunction(PyLayer):
             # need restore auto_cast state as well as w/b list
             with swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
                                          ctx.fwd_cuda_rng_state_tracker):
-                with paddle.amp.auto_cast(
-                        enable=ctx.is_fw_autocast,
-                        custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level):
+                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
+                                          custom_white_list=ctx.amp_white_list,
+                                          custom_black_list=ctx.amp_black_list,
+                                          level=ctx.amp_level):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -407,7 +405,7 @@ class _HPRecomputeFunction(PyLayer):
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            # actually backward            
+            # actually backward
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
             grads = tuple(inp._grad_ivar() for inp in detached_inputs
                           if isinstance(inp, core.VarBase))
@@ -415,7 +413,7 @@ class _HPRecomputeFunction(PyLayer):
 
 
 def _hp_recompute(function, *args):
-    # NODTE(shenliang03)The current hybrid parallel recompute has limitations. 
+    # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().

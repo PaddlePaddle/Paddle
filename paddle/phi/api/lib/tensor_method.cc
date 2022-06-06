@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/phi/common/int_array.h"
@@ -22,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/infermeta/unary.h"
+// clang-format off
 
 namespace paddle {
 namespace experimental {

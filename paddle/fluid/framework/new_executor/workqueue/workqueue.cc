@@ -5,6 +5,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -64,11 +65,8 @@ class WorkQueueImpl : public WorkQueue {
                                  platform::TracerEventType::UserDefined,
                                  10 /*level*/);
     if (tracker_ != nullptr) {
-      fn = [
-        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-      ]() mutable {
-        task();
-      };
+      fn = [task = std::move(fn),
+            raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
     }
     queue_->AddTask(std::move(fn));
   }
@@ -158,11 +156,8 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
                                10 /*level*/);
   assert(queue_idx < queues_.size());
   if (queues_options_.at(queue_idx).track_task) {
-    fn = [
-      task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-    ]() mutable {
-      task();
-    };
+    fn = [task = std::move(fn),
+          raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
   }
   queues_[queue_idx]->AddTask(std::move(fn));
 }

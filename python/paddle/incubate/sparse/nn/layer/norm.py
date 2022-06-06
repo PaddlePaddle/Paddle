@@ -115,15 +115,14 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                  data_format='NDHWC',
                  use_global_stats=None,
                  name=None):
-        super(BatchNorm, self).__init__(
-            num_features,
-            momentum=momentum,
-            epsilon=epsilon,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format,
-            use_global_stats=use_global_stats,
-            name=name)
+        super(BatchNorm, self).__init__(num_features,
+                                        momentum=momentum,
+                                        epsilon=epsilon,
+                                        weight_attr=weight_attr,
+                                        bias_attr=bias_attr,
+                                        data_format=data_format,
+                                        use_global_stats=use_global_stats,
+                                        name=name)
 
     def _check_data_format(self, input):
         if input != "NDHWC":

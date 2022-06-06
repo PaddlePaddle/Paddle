@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_MLU
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 

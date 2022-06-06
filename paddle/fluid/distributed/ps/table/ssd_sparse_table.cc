@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/ssd_sparse_table.h"
+
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
@@ -362,9 +363,8 @@ int32_t SSDSparseTable::Save(const std::string& path,
         if (_value_accesor->Save(it.value().data(), save_param)) {
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          if (0 !=
-              write_channel->write_line(paddle::string::format_string(
-                  "%lu %s", it.key(), format_value.c_str()))) {
+          if (0 != write_channel->write_line(paddle::string::format_string(
+                       "%lu %s", it.key(), format_value.c_str()))) {
             ++retry_num;
             is_write_failed = true;
             LOG(ERROR) << "SSDSparseTable save failed, retry it! path:"
@@ -597,9 +597,8 @@ int32_t SSDSparseTable::SaveCache(
   while (shuffled_channel->Read(data)) {
     for (auto& t : data) {
       ++feasign_size;
-      if (0 !=
-          write_channel->write_line(paddle::string::format_string(
-              "%lu %s", t.first, t.second.c_str()))) {
+      if (0 != write_channel->write_line(paddle::string::format_string(
+                   "%lu %s", t.first, t.second.c_str()))) {
         LOG(ERROR) << "Cache Table save failed, "
                       "path:"
                    << channel_config.path << ", retry it!";

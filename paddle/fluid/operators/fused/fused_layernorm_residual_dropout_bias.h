@@ -441,11 +441,10 @@ void LaunchLayernormResidualDropoutBias(
     // call layernorm forward
     switch (GetDesiredBlockDim(cols)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<
-              T, U, kBlockDim,
-              ScaleBiasWithSameTypeX><<<rows, kBlockDim, 0, ctx.stream()>>>(
-              dst, scale, layernorm_bias, layernorm_dst, mean, var, epsilon,
-              cols));
+          LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
+          <<<rows, kBlockDim, 0, ctx.stream()>>>(dst, scale, layernorm_bias,
+                                                 layernorm_dst, mean, var,
+                                                 epsilon, cols));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Product from begin_norm_axis to end must be larger than 1"));
@@ -468,21 +467,25 @@ void LaunchLayernormResidualDropoutBias(
         static_cast<int>(std::ceil(rows / static_cast<float>(ROWS_PER_CTA))); \
     fused_fast_ln_fwd_kernel<                                                 \
         T, U, LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, uint8_t,     \
-        VecSize, WARPS_M, WARPS_N, BYTES_PER_LDG,                             \
-        cols><<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(                    \
-        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,         \
-        increment, epsilon, src, residual, bias, scale, layernorm_bias,       \
-        mask_data, mean, var, dst, layernorm_dst);                            \
+        VecSize, WARPS_M, WARPS_N, BYTES_PER_LDG, cols>                       \
+        <<<grid, THREADS_PER_CTA, 0, ctx.stream()>>>(                         \
+            rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,     \
+            increment, epsilon, src, residual, bias, scale, layernorm_bias,   \
+            mask_data, mean, var, dst, layernorm_dst);                        \
   } break
 
 #define LAUNCH_FUSED_FAST_LN_KERNEL       \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(768);  \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1024); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1280); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1536); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(1792); \
+  LAUNCH_FUSED_FAST_LN_KERNEL_BASE(2048); \
   LAUNCH_FUSED_FAST_LN_KERNEL_BASE(4096)
 
   bool can_call_fast_ln_kernel = false;
-  if ((cols == 768 || cols == 1024 || cols == 4096) && scale != nullptr &&
-      layernorm_bias != nullptr) {
+  if (((cols >= 768 && cols <= 2048 && cols % 256 == 0) || cols == 4096) &&
+      scale != nullptr && layernorm_bias != nullptr) {
     can_call_fast_ln_kernel = true;
   }
   VLOG(6) << "can_call_fast_ln_kernel = " << can_call_fast_ln_kernel;
@@ -490,12 +493,11 @@ void LaunchLayernormResidualDropoutBias(
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   if (cols % VecSize != 0) {
     int blockDim = GetDesiredBlockDim(cols);
-    FusedLayernormResidualDropoutBias<
-        T, uint8_t, 1, U,
-        ScaleBiasWithSameTypeX><<<rows, blockDim, 0, ctx.stream()>>>(
-        rows, cols, seed, dropout_prob, is_upscale_in_train, is_test, increment,
-        epsilon, src, residual, bias, scale, layernorm_bias, mask_data, dst,
-        layernorm_dst, mean, var);
+    FusedLayernormResidualDropoutBias<T, uint8_t, 1, U, ScaleBiasWithSameTypeX>
+        <<<rows, blockDim, 0, ctx.stream()>>>(
+            rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
+            increment, epsilon, src, residual, bias, scale, layernorm_bias,
+            mask_data, dst, layernorm_dst, mean, var);
   } else {
     if (can_call_fast_ln_kernel) {
       switch (cols) {
@@ -508,12 +510,12 @@ void LaunchLayernormResidualDropoutBias(
       }
     } else {
       int blockDim = GetDesiredBlockDim(cols / VecSize);
-      FusedLayernormResidualDropoutBias<
-          T, uint8_t, VecSize, U,
-          ScaleBiasWithSameTypeX><<<rows, blockDim, 0, ctx.stream()>>>(
-          rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
-          increment, epsilon, src, residual, bias, scale, layernorm_bias,
-          mask_data, dst, layernorm_dst, mean, var);
+      FusedLayernormResidualDropoutBias<T, uint8_t, VecSize, U,
+                                        ScaleBiasWithSameTypeX>
+          <<<rows, blockDim, 0, ctx.stream()>>>(
+              rows, cols, seed, dropout_prob, is_upscale_in_train, is_test,
+              increment, epsilon, src, residual, bias, scale, layernorm_bias,
+              mask_data, dst, layernorm_dst, mean, var);
     }
   }
 }

@@ -27,7 +27,7 @@ namespace sparse {
  * rulebook_len: the length of rulebook
  * channels: the output channel size
  * out: the outputs
-**/
+ **/
 template <typename T>
 __global__ void ScatterKernel(const T* input,
                               const int* unique_value,

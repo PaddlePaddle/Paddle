@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 
 #include <gtest/gtest.h>
+
 #include <string>
 
 #include "paddle/fluid/framework/block_desc.h"

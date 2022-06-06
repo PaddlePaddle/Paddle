@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+
 #include <algorithm>
 #include <functional>
 #include <utility>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "cinn/hlir/framework/scope.h"
@@ -43,13 +45,13 @@
 namespace paddle {
 namespace operators::details {
 
-using framework::Scope;
 using framework::LoDTensor;
 using framework::ParallelExecutor;
+using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
-using framework::paddle2cinn::Name2VarInfoMap;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
+using framework::paddle2cinn::Name2VarInfoMap;
 
 CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
                                      const CinnCompiledObject& compiled_obj)

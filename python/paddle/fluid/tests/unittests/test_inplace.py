@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class TestInplace(unittest.TestCase):
+
     def func_test_forward_version(self):
         with paddle.fluid.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
@@ -117,6 +118,7 @@ class TestInplace(unittest.TestCase):
 
 
 class TestDygraphInplace(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
         self.set_np_compare_func()
@@ -283,6 +285,7 @@ class TestDygraphInplace(unittest.TestCase):
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.unsqueeze(var, -1)
 
@@ -291,6 +294,7 @@ class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
 
 
 class TestDygraphInplaceReshape(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.reshape(var, [-1])
 
@@ -309,6 +313,7 @@ class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
 
 
 class TestDygraphInplaceFlatten(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.flatten()
 
@@ -317,26 +322,28 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
 
 
 class TestDygraphInplaceScatter(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
         self.dtype = "float32"
 
     def non_inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]],
+                                   dtype='float32')
 
         return paddle.scatter(var, index, updates, overwrite=False)
 
     def inplace_api_processing(self, var):
         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]],
+                                   dtype='float32')
 
         return paddle.scatter_(var, index, updates, overwrite=False)
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.elu(var)
 
@@ -345,6 +352,7 @@ class TestDygraphInplaceElu(TestDygraphInplace):
 
 
 class TestDygraphInplaceRelu(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.relu(var)
 
@@ -353,6 +361,7 @@ class TestDygraphInplaceRelu(TestDygraphInplace):
 
 
 class TestDygraphInplaceSoftmax(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.nn.functional.softmax(var)
 
@@ -361,6 +370,7 @@ class TestDygraphInplaceSoftmax(TestDygraphInplace):
 
 
 class TestDygraphInplaceTanh(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return paddle.tanh(var)
 
@@ -369,6 +379,7 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
 
 
 class TestDygraphInplaceCeil(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.ceil()
 
@@ -377,6 +388,7 @@ class TestDygraphInplaceCeil(TestDygraphInplace):
 
 
 class TestDygraphInplaceFloor(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.floor()
 
@@ -385,6 +397,7 @@ class TestDygraphInplaceFloor(TestDygraphInplace):
 
 
 class TestDygraphInplaceExp(TestDygraphInplace):
+
     def set_np_compare_func(self):
         self.np_compare = np.allclose
 
@@ -396,6 +409,7 @@ class TestDygraphInplaceExp(TestDygraphInplace):
 
 
 class TestDygraphInplaceReciprocal(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.reciprocal()
 
@@ -404,6 +418,7 @@ class TestDygraphInplaceReciprocal(TestDygraphInplace):
 
 
 class TestDygraphInplaceRound(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.round()
 
@@ -412,6 +427,7 @@ class TestDygraphInplaceRound(TestDygraphInplace):
 
 
 class TestDygraphInplaceSqrt(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.random.uniform(0, 5, [10, 20, 1])
         self.dtype = "float32"
@@ -424,6 +440,7 @@ class TestDygraphInplaceSqrt(TestDygraphInplace):
 
 
 class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
+
     def non_inplace_api_processing(self, var):
         return var.rsqrt()
 
@@ -432,6 +449,7 @@ class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
 
 
 class TestDygraphInplaceClip(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.clip(0.6, 1.5)
 
@@ -440,6 +458,7 @@ class TestDygraphInplaceClip(TestDygraphInplace):
 
 
 class TestDygraphInplaceScale(TestDygraphInplace):
+
     def non_inplace_api_processing(self, var):
         return var.scale(scale=2.0, bias=3.0)
 
@@ -448,6 +467,7 @@ class TestDygraphInplaceScale(TestDygraphInplace):
 
 
 class TestDygraphInplaceAdd(TestDygraphInplace):
+
     def init_data(self):
         self.input_var_numpy = np.random.rand(2, 3, 4)
         self.dtype = "float32"
@@ -463,6 +483,7 @@ class TestDygraphInplaceAdd(TestDygraphInplace):
 
 
 class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
+
     def non_inplace_api_processing(self, var):
         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
         return var.subtract(input_var_2)
@@ -473,6 +494,7 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
 
 
 class TestLossIsInplaceVar(unittest.TestCase):
+
     def func_test_loss_is_inplace_var(self):
         with paddle.fluid.dygraph.guard():
             var_a = paddle.ones((2, 2))
@@ -503,6 +525,7 @@ class TestLossIsInplaceVar(unittest.TestCase):
 
 
 class TestContinuouslyInplace(unittest.TestCase):
+
     def func_test_continuously_inplace(self):
         a = paddle.rand([2, 3])
         a.stop_gradient = False
@@ -521,6 +544,7 @@ class TestContinuouslyInplace(unittest.TestCase):
 
 
 class TestGetitemBeforeInplace(unittest.TestCase):
+
     def test_getitem_before_inplace(self):
         with _test_eager_guard():
             a = paddle.ones(shape=[4, 2, 3], dtype="float32")

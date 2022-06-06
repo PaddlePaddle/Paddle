@@ -21,6 +21,7 @@ from op_test import OpTest
 
 
 class TestInverseOp(OpTest):
+
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
@@ -44,12 +45,14 @@ class TestInverseOp(OpTest):
 
 
 class TestInverseOpBatched(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
 
 
 class TestInverseOpLarge(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
@@ -59,6 +62,7 @@ class TestInverseOpLarge(TestInverseOp):
 
 
 class TestInverseOpFP32(TestInverseOp):
+
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
@@ -68,18 +72,21 @@ class TestInverseOpFP32(TestInverseOp):
 
 
 class TestInverseOpBatchedFP32(TestInverseOpFP32):
+
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
 
 
 class TestInverseOpLargeFP32(TestInverseOpFP32):
+
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
 
 
 class TestInverseAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -114,6 +121,7 @@ class TestInverseAPI(unittest.TestCase):
 
 
 class TestInverseAPIError(unittest.TestCase):
+
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -136,6 +144,7 @@ class TestInverseAPIError(unittest.TestCase):
 
 
 class TestInverseSingularAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

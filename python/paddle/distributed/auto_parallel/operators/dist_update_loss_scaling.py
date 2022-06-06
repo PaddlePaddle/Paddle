@@ -20,6 +20,7 @@ from ..utils import set_dist_op_desc_original_id
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedUpdateLossScaling, self).__init__(op_type)
 
@@ -29,6 +30,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedUpdateLossScalingImpl, self).__init__(name)
         self._name = name

@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -30,10 +31,12 @@ paddle.enable_static()
 
 
 class XPUTestWhereIndexOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'where_index'
 
     class TestWhereIndexOp(XPUOpTest):
+
         def setUp(self):
             self.init_config()
             self.init_data()
@@ -54,6 +57,7 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = True
 
     class TestAllFalse(TestWhereIndexOp):
+
         def init_data(self):
             self.inputs = {
                 'Condition': np.array([False, False, False]).astype(self.dtype),
@@ -61,6 +65,7 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.array([], dtype='int64')}
 
     class TestRank2(TestWhereIndexOp):
+
         def init_data(self):
             self.inputs = {
                 'Condition':
@@ -69,6 +74,7 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
 
     class TestRank3(TestWhereIndexOp):
+
         def init_data(self):
             self.inputs = {
                 'Condition':
@@ -78,7 +84,8 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             }
 
             self.outputs = {
-                'Out': np.array(
+                'Out':
+                np.array(
                     [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                     dtype='int64')
             }
@@ -90,6 +97,7 @@ for stype in support_types:
 
 
 class TestWhereOpError(unittest.TestCase):
+
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
@@ -102,7 +110,9 @@ class TestWhereOpError(unittest.TestCase):
 
 
 class TestWhereRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.where([10])
 
