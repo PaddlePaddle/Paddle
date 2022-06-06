@@ -344,9 +344,9 @@ class RowConvKernel<platform::CUDADeviceContext, T>
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       int mem_per_block = (future_context * block_dim.x) * sizeof(T);
-      RowConvForwardSharedMemory<
-          T><<<grid_dim, block_dim, mem_per_block, stream>>>(
-          in, weight, num_sequence, input_dim, future_context, idx, out);
+      RowConvForwardSharedMemory<T>
+          <<<grid_dim, block_dim, mem_per_block, stream>>>(
+              in, weight, num_sequence, input_dim, future_context, idx, out);
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -413,10 +413,10 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             (block_y * block_x + block_y * (block_x + future_context - 1) +
              future_context * block_y) *
             sizeof(T);
-        RowConvGradFilterImproved<
-            T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-            in, dout, num_sequence, input_dim, future_context, block_x, block_y,
-            idx, dfilter);
+        RowConvGradFilterImproved<T>
+            <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+                in, dout, num_sequence, input_dim, future_context, block_x,
+                block_y, idx, dfilter);
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -424,10 +424,10 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         int block_y = block_dim.y;
         int mem_per_block =
             (block_x * block_y * 2) * sizeof(T);  // For 2 arrays of size 32x32
-        RowConvGradFilter<
-            T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-            in, dout, num_sequence, input_dim, future_context, block_x, block_y,
-            idx, dfilter);
+        RowConvGradFilter<T>
+            <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+                in, dout, num_sequence, input_dim, future_context, block_x,
+                block_y, idx, dfilter);
       }
     }
 
@@ -437,9 +437,10 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
         int mem_per_block = (future_context * block_dim.x) * sizeof(T);
-        RowConvGradInputSharedMemory<
-            T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-            dout, weights, num_sequence, input_dim, future_context, idx, din);
+        RowConvGradInputSharedMemory<T>
+            <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+                dout, weights, num_sequence, input_dim, future_context, idx,
+                din);
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);

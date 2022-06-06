@@ -29,4 +29,5 @@ _controllers = [
 def init(ctx):
     for c in _controllers:
         if c.enable(ctx):
+            ctx.print()
             return c(ctx)

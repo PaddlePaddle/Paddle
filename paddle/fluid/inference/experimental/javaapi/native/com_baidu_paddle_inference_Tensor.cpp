@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "com_baidu_paddle_inference_Tensor.h"
+
 #include <jni.h>
+
 #include "pd_inference_api.h"  // NOLINT
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Tensor_cppTensorDestroy(

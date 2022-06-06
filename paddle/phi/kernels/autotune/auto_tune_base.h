@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"

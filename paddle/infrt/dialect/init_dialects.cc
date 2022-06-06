@@ -19,12 +19,10 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
-
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
-
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 

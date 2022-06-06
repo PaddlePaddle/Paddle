@@ -34,6 +34,7 @@ IMAGE_SIZE = 784
 
 
 class TestSaveLoadBinaryFormat(unittest.TestCase):
+
     def setUp(self):
         # enable static graph mode
         paddle.enable_static()
@@ -50,17 +51,18 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
     def replace_save_vars(self, program, dirname):
+
         def predicate(var):
             return var.persistable
 
         vars = filter(predicate, program.list_vars())
         for var in vars:
-            paddle.save(
-                var.get_value(),
-                os.path.join(dirname, var.name),
-                use_binary_format=True)
+            paddle.save(var.get_value(),
+                        os.path.join(dirname, var.name),
+                        use_binary_format=True)
 
     def replace_load_vars(self, program, dirname):
+
         def predicate(var):
             return var.persistable
 
@@ -74,8 +76,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         paddle.enable_static()
         with new_program_scope():
             # create network
-            x = paddle.static.data(
-                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            x = paddle.static.data(name="x",
+                                   shape=[None, IMAGE_SIZE],
+                                   dtype='float32')
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = fluid.layers.reduce_mean(z)
@@ -88,8 +91,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             base_map = {}
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
-                    t = np.array(fluid.global_scope().find_var(var.name)
-                                 .get_tensor())
+                    t = np.array(fluid.global_scope().find_var(
+                        var.name).get_tensor())
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
@@ -100,26 +103,30 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             self.set_zero(prog, place)
             var_list = list(
                 filter(lambda var: var.persistable, prog.list_vars()))
-            fluid.io.load_vars(
-                exe, path_vars1, main_program=prog, vars=var_list)
+            fluid.io.load_vars(exe,
+                               path_vars1,
+                               main_program=prog,
+                               vars=var_list)
 
             for var in prog.list_vars():
                 if var.persistable:
-                    new_t = np.array(fluid.global_scope().find_var(var.name)
-                                     .get_tensor())
+                    new_t = np.array(fluid.global_scope().find_var(
+                        var.name).get_tensor())
                     base_t = base_map[var.name]
 
                     self.assertTrue(np.array_equal(new_t, base_t))
             # test for io.save_vars/replace_load_vars
             path_vars2 = 'test_replace_save_load_vars_binary2/model/'
-            fluid.io.save_vars(
-                exe, path_vars2, main_program=prog, vars=var_list)
+            fluid.io.save_vars(exe,
+                               path_vars2,
+                               main_program=prog,
+                               vars=var_list)
             self.set_zero(prog, place)
             self.replace_load_vars(prog, path_vars2)
             for var in prog.list_vars():
                 if var.persistable:
-                    new_t = np.array(fluid.global_scope().find_var(var.name)
-                                     .get_tensor())
+                    new_t = np.array(fluid.global_scope().find_var(
+                        var.name).get_tensor())
                     base_t = base_map[var.name]
 
                     self.assertTrue(np.array_equal(new_t, base_t))
@@ -132,7 +139,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             y = fluid.layers.fc(
                 x,
                 OUTPUT_NUM,
-                name='fc_vars', )
+                name='fc_vars',
+            )
             prog = fluid.default_main_program()
             place = fluid.CPUPlace(
             ) if not paddle.fluid.core.is_compiled_with_cuda(
@@ -146,8 +154,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 if var.persistable and list(
                         var.shape) == [IMAGE_SIZE, OUTPUT_NUM]:
                     tensor = var.get_value()
-                    paddle.save(
-                        tensor, dirname + 'fc_vars.w_0', use_binary_format=True)
+                    paddle.save(tensor,
+                                dirname + 'fc_vars.w_0',
+                                use_binary_format=True)
                     break
 
             origin = np.array(var.get_value())
@@ -221,8 +230,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         self.assertTrue(isinstance(load_sr, fluid.core.SelectedRows))
         self.assertTrue(list(load_sr.rows()) == rows)
         self.assertTrue(load_sr.height() == height)
-        self.assertTrue(
-            np.array_equal(np.array(load_sr.get_tensor()), np_array))
+        self.assertTrue(np.array_equal(np.array(load_sr.get_tensor()),
+                                       np_array))
 
         with self.assertRaises(RuntimeError):
             fluid.core.save_selected_rows(

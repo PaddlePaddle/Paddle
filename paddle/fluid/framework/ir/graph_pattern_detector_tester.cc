@@ -152,12 +152,12 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   x.mutable_pattern()->AddEdge(any_var, any_op1);
 
   int count = 0;
-  GraphPatternDetector::handle_t handle = [&](
-      const GraphPatternDetector::subgraph_t& s, Graph* g) {
-    LOG(INFO) << "Detect " << s.at(any_op)->Name() << " -> "
-              << s.at(any_var)->Name() << " -> " << s.at(any_op1)->Name();
-    count++;
-  };
+  GraphPatternDetector::handle_t handle =
+      [&](const GraphPatternDetector::subgraph_t& s, Graph* g) {
+        LOG(INFO) << "Detect " << s.at(any_op)->Name() << " -> "
+                  << s.at(any_var)->Name() << " -> " << s.at(any_op1)->Name();
+        count++;
+      };
 
   x(&graph, handle);
 

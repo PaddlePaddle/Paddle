@@ -31,6 +31,7 @@ limitations under the License. */
 #endif  // _WIN32
 
 #include <algorithm>
+
 #include "paddle/fluid/platform/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);

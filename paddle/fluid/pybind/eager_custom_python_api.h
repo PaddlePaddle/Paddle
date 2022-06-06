@@ -14,6 +14,7 @@
 #pragma once
 
 #include <iostream>
+
 #include "paddle/phi/core/enforce.h"
 
 static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
@@ -27,7 +28,8 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
     framework::AttributeMap attrs;
-    ConstructAttrMapFromPyArgs("run_program", args, 5, PyTuple_GET_SIZE(args),
+    // TODO(zengjinle): support CUDA Graph on eager mode
+    ConstructAttrMapFromPyArgs("run_program", args, 6, PyTuple_GET_SIZE(args),
                                attrs);
 
     tstate = PyEval_SaveThread();

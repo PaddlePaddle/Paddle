@@ -69,8 +69,8 @@ class GradTransformer(gast.NodeTransformer):
                 warnings.warn("paddle.grad has unsupported parameter in jit: " +
                               kw.arg + ", jit will discard it")
                 continue
-            kw = gast.keyword(
-                arg=to_static_grad_param[arg_name], value=node.args[i])
+            kw = gast.keyword(arg=to_static_grad_param[arg_name],
+                              value=node.args[i])
             static_keywords.append(kw)
 
         node.func = gast.parse('paddle.static.gradients').body[0].value

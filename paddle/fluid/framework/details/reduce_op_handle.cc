@@ -245,14 +245,15 @@ void ReduceOpHandle::RunImpl() {
         int type = platform::ToBKCLDataType(
             framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
-        all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
-                                       &bkcl_ctx] {
-          PADDLE_ENFORCE_EQ(bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer,
-                                        numel, static_cast<BKCLDataType>(type),
-                                        BKCL_ADD, root_id, nullptr),
-                            BKCL_SUCCESS, platform::errors::Unavailable(
-                                              "bkcl_all_reduce failed"));
-        });
+        all_reduce_calls.emplace_back(
+            [buffer, recvbuffer, type, numel, root_id, &bkcl_ctx] {
+              PADDLE_ENFORCE_EQ(
+                  bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer, numel,
+                              static_cast<BKCLDataType>(type), BKCL_ADD,
+                              root_id, nullptr),
+                  BKCL_SUCCESS,
+                  platform::errors::Unavailable("bkcl_all_reduce failed"));
+            });
       }
 
       WaitInputVarGenerated();

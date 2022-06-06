@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+
 #include <queue>
 #include <stack>
+
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -421,8 +423,9 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
            DescOrderComparator>
       adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
   PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
-                    false, platform::errors::InvalidArgument(
-                               "Generated graph shouldn't contain cycle."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
