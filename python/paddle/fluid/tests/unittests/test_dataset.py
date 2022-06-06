@@ -234,17 +234,17 @@ class TestDataset(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_run_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_run_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_run_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -266,7 +266,7 @@ class TestDataset(unittest.TestCase):
                      pipe_command="cat",
                      use_var=slots_vars)
         dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
-        dataset.set_filelist([filename_a, filename_b])
+        dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
@@ -295,12 +295,12 @@ class TestDataset(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_masterpatch_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_masterpatch_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_masterpatch_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_masterpatch_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 id2 1 1 1 1 1 0 1 0\n"
@@ -311,7 +311,7 @@ class TestDataset(unittest.TestCase):
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -371,12 +371,12 @@ class TestDataset(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_masterpatch1_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_masterpatch1_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_masterpatch1_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_masterpatch1_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 id2 1 1 1 1 1 0 1 0\n"
@@ -387,7 +387,7 @@ class TestDataset(unittest.TestCase):
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             data += "1 id5 1 1 1 1 1 0 1 0\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -452,17 +452,17 @@ class TestDataset(unittest.TestCase):
         Use float type id
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_run_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset_run_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset_run_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -483,7 +483,7 @@ class TestDataset(unittest.TestCase):
                      thread_num=3,
                      pipe_command="cat",
                      use_var=slots_vars)
-        dataset.set_filelist([filename_a, filename_b])
+        dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -565,15 +565,15 @@ class TestDataset(unittest.TestCase):
         Testcase for QueueDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -594,7 +594,7 @@ class TestDataset(unittest.TestCase):
                      thread_num=3,
                      pipe_command="cat",
                      use_var=slots_vars)
-        dataset.set_filelist([filename_a, filename_b])
+        dataset.set_filelist([filename1, filename2])
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
@@ -634,15 +634,15 @@ class TestDataset(unittest.TestCase):
         Use float type id
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -663,7 +663,7 @@ class TestDataset(unittest.TestCase):
                      thread_num=3,
                      pipe_command="cat",
                      use_var=slots_vars)
-        dataset.set_filelist([filename_a, filename_b])
+        dataset.set_filelist([filename1, filename2])
 
         exe = fluid.Executor(fluid.CPUPlace(
         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
@@ -691,16 +691,16 @@ class TestDataset(unittest.TestCase):
         Use float type id
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename_b = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
+        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
+        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
@@ -722,7 +722,7 @@ class TestDataset(unittest.TestCase):
                      input_type=1,
                      pipe_command="cat",
                      use_var=slots_vars)
-        dataset.set_filelist([filename_a, filename_b])
+        dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
 
         exe = fluid.Executor(fluid.CPUPlace(
@@ -807,17 +807,17 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.filename_a = os.path.join(self.temp_dir.name,
-                                       "test_queue_dataset_run_a.txt")
-        self.filename_b = os.path.join(self.temp_dir.name,
-                                       "test_queue_dataset_run_b.txt")
+        self.filename1 = os.path.join(self.temp_dir.name,
+                                      "test_queue_dataset_run_a.txt")
+        self.filename2 = os.path.join(self.temp_dir.name,
+                                      "test_queue_dataset_run_b.txt")
 
-        with open(self.filename_a, "w") as f:
+        with open(self.filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(self.filename_b, "w") as f:
+        with open(self.filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -835,7 +835,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = [filename_a, filename_b]
+        files = [filename1, filename2]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -857,7 +857,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = [self.filename_a, self.filename_b]
+        files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -875,7 +875,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
-        files = [self.filename_a, self.filename_b]
+        files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -911,19 +911,19 @@ class TestDataset2(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run_b.txt")
 
         self.skipTest("parameter server will add pslib UT later")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -966,7 +966,7 @@ class TestDataset2(unittest.TestCase):
                          thread_num=3,
                          pipe_command="cat",
                          use_var=slots_vars)
-            dataset.set_filelist([filename_a, filename_b])
+            dataset.set_filelist([filename1, filename2])
             dataset.load_into_memory()
             fleet._opt_info = None
             fleet._fleet_ptr = None
@@ -978,17 +978,17 @@ class TestDataset2(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run2_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run2_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run2_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run2_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -1040,7 +1040,7 @@ class TestDataset2(unittest.TestCase):
                          thread_num=3,
                          pipe_command="cat",
                          use_var=slots_vars)
-            dataset.set_filelist([filename_a, filename_b])
+            dataset.set_filelist([filename1, filename2])
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)
@@ -1106,17 +1106,17 @@ class TestDataset2(unittest.TestCase):
         Testcase for InMemoryDataset from create to run.
         """
         temp_dir = tempfile.TemporaryDirectory()
-        filename_a = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run2_a.txt")
-        filename_b = os.path.join(temp_dir.name,
-                                  "test_in_memory_dataset2_run2_b.txt")
+        filename1 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run2_a.txt")
+        filename2 = os.path.join(temp_dir.name,
+                                 "test_in_memory_dataset2_run2_b.txt")
 
-        with open(filename_a, "w") as f:
+        with open(filename1, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open(filename_b, "w") as f:
+        with open(filename2, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -1168,7 +1168,7 @@ class TestDataset2(unittest.TestCase):
                          thread_num=3,
                          pipe_command="cat",
                          use_var=slots_vars)
-            dataset.set_filelist([filename_a, filename_b])
+            dataset.set_filelist([filename1, filename2])
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)

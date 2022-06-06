@@ -338,8 +338,9 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn = paddle.jit.to_static(
         rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)])
     temp_dir = tempfile.TemporaryDirectory()
-    paddle.jit.save(rnn,
-                    os.path.join(temp_dir.name, "./inference/%s_infer" % mode))
+    save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)
+
+    paddle.jit.save(rnn, save_dirname)
 
     paddle.enable_static()
 
@@ -347,8 +348,7 @@ def predict_test_util(place, mode, stop_gradient=True):
     with paddle.static.scope_guard(new_scope):
         exe = paddle.static.Executor(place)
         [inference_program, feed_target_names,
-         fetch_targets] = paddle.static.load_inference_model(
-             os.path.join(temp_dir.name, "./inference/%s_infer" % mode), exe)
+         fetch_targets] = paddle.static.load_inference_model(save_dirname, exe)
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: x.numpy()},
                           fetch_list=fetch_targets)

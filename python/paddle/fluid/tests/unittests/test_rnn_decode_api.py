@@ -17,7 +17,6 @@ from __future__ import print_function
 import random
 import unittest
 import numpy as np
-import tempfile
 
 import paddle
 import paddle.nn as nn

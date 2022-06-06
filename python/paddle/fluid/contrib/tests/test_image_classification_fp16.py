@@ -293,9 +293,6 @@ class TestImageClassification(unittest.TestCase):
         train(net_type, use_cuda, save_dirname, is_local)
         #infer(use_cuda, save_dirname)
 
-
-class TestImageClassification(unittest.TestCase):
-
     def test_amp_lists(self):
         white_list = copy.copy(
             fluid.contrib.mixed_precision.fp16_lists.white_list)
