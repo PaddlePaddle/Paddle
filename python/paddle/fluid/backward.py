@@ -239,6 +239,7 @@ def _pretty_op_desc_(op_desc, prefix):
 
 
 def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
+    global grad_op_desc_to_op
     if len(descs) == 0:
         return []
     result_descs = []
@@ -258,6 +259,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
                 is_needed = True
         if is_needed:
             new_op_desc = block.desc.append_op()
+            grad_op_desc_to_op[new_op_desc] = grad_op_desc_to_op[desc]
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
             if desc.has_attr('op_device'):
@@ -267,6 +269,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
 
 
 def _add_descs_to_block(descs, block):
+    global grad_op_desc_to_op
     if len(descs) == 0:
         return []
     result_descs = []
@@ -279,6 +282,7 @@ def _add_descs_to_block(descs, block):
         if isinstance(desc, tuple):
             desc = desc[0]
         new_op_desc = block.desc.append_op()
+        grad_op_desc_to_op[new_op_desc] = grad_op_desc_to_op[desc]
         new_op_desc.copy_from(desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
         if desc.has_attr('op_device'):
@@ -1295,6 +1299,7 @@ def _append_backward_ops_(block,
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
+        grad_op_desc_to_op[new_op_desc] = grad_op_desc_to_op[op_desc]
         new_op_desc.copy_from(op_desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
@@ -1671,7 +1676,10 @@ def append_backward(loss,
     grad_to_var = dict()
 
     op_desc = _create_loss_op_desc_(loss)
-    target_grad_block.desc.append_op().copy_from(op_desc)
+    grad_op_desc_to_op[op_desc] = loss.op
+    new_op_desc = target_grad_block.desc.append_op()
+    grad_op_desc_to_op[new_op_desc] = loss.op
+    new_op_desc.copy_from(op_desc)
 
     for block_idx in son_parent_block_idx_dict:
         block = program.block(block_idx)
@@ -1748,6 +1756,7 @@ def append_backward(loss,
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
 
+    # for cuda graph, copy the cuda graph attr from forward op to backward op
     for op in target_grad_block.ops:
         if grad_op_desc_to_op.get(op.desc, None) is not None:
             fwd_op = grad_op_desc_to_op[op.desc]
