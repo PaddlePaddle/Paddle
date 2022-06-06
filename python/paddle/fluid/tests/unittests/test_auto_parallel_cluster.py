@@ -200,6 +200,7 @@ cluster_json = """
 
 
 class TestAutoParallelCluster(unittest.TestCase):
+
     def test_cluster(self):
         cluster_json_file = ""
         cluster_json_object = json.loads(cluster_json)

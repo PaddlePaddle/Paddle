@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/vol2col.h"
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 

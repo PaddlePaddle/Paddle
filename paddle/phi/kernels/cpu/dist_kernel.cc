@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dist_kernel.h"
-#include "paddle/phi/kernels/impl/dist_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dist_kernel_impl.h"
 
 PD_REGISTER_KERNEL(dist, CPU, ALL_LAYOUT, phi::DistKernel, float, double) {}

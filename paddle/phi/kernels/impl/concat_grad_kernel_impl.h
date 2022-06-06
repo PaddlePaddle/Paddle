@@ -13,9 +13,8 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/kernels/concat_grad_kernel.h"
-
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/phi/kernels/concat_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 

@@ -18,6 +18,7 @@ from paddle.fluid.framework import Variable
 
 
 def cyclic_reader(reader):
+
     def __reader__():
         while True:
             for data in reader():
@@ -27,6 +28,7 @@ def cyclic_reader(reader):
 
 
 class FeedDataReader(object):
+
     def __init__(self, feed_list, reader):
         self._feed_list = []
         for var in feed_list:

@@ -42,6 +42,7 @@ def ref_prelu(x, weight, mode):
 
 
 class TestPReluModeChannelOneDNNOp(OpTest):
+
     def init_attrs(self):
         self.mode = "element"
         self.alpha = np.random.random((1, 4, 5, 5)).astype("float32")
@@ -70,6 +71,7 @@ class TestPReluModeChannelOneDNNOp(OpTest):
 
 
 class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
+
     def init_attrs(self):
         self.mode = "all"
         self.alpha = np.random.random((1, 1, 1, 1)).astype("float32")
@@ -81,12 +83,14 @@ class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeElementOneDNNOp(TestPReluModeChannelOneDNNOp):
+
     def init_attrs(self):
         self.mode = "element"
         self.alpha = np.random.random((1, 4, 5, 5)).astype("float32")
 
 
 class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):
+
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 100, 1)).astype("float32")
@@ -94,6 +98,7 @@ class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
+
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 100, 1)).astype("float32")
@@ -101,6 +106,7 @@ class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
 
 
 class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
+
     def init_attrs(self):
         self.mode = "channel"
         self.x = np.random.random((1, 1, 100)).astype("float32")
@@ -109,8 +115,10 @@ class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestPReluBF16OneDNNOp(parent):
+
         def set_inputs(self, ):
             self.inputs = {
                 'X': convert_float_to_uint16(self.x),

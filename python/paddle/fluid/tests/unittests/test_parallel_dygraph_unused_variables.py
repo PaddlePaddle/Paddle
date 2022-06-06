@@ -27,6 +27,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphUnusedVar(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -34,14 +35,14 @@ class TestParallelDygraphUnusedVar(TestDistBase):
 
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_unused_variables.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_unused_variables.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -50,6 +51,7 @@ class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
 
 
 class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
+
     def test_mnist_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(
@@ -57,6 +59,7 @@ class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
 
 
 class TestParallelDygraphNoVar(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -64,14 +67,14 @@ class TestParallelDygraphNoVar(TestDistBase):
 
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_none_var.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_none_var.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 class TestParallelDygraphSharedUnusedVariables(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -79,11 +82,10 @@ class TestParallelDygraphSharedUnusedVariables(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_shared_unused_var.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+            self.check_with_place("parallel_dygraph_shared_unused_var.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
 
 
 if __name__ == "__main__":

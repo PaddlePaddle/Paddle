@@ -47,8 +47,9 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
-      PADDLE_ENFORCE_GT(data.size(), 4, paddle::platform::errors::Fatal(
-                                            "The size of data is invaild."));
+      PADDLE_ENFORCE_GT(
+          data.size(), 4,
+          paddle::platform::errors::Fatal("The size of data is invaild."));
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);

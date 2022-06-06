@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
@@ -70,8 +71,9 @@ void PDPattern::AddEdge(PDNode *a, PDNode *b) {
       a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
   PADDLE_ENFORCE_NOT_NULL(
       b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
-  PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
-                              "Cannot connect the same node in the graph."));
+  PADDLE_ENFORCE_NE(a, b,
+                    platform::errors::PermissionDenied(
+                        "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
 
@@ -3062,11 +3064,10 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
     transpose_out->assert_is_only_output_of_op("transpose2");
 
   auto transpose_xshape =
-      with_transpose_xshape
-          ? pattern->NewNode(transpose_xshape_repr())
-                ->AsIntermediate()
-                ->assert_is_op_output("transpose2", "XShape")
-          : nullptr;
+      with_transpose_xshape ? pattern->NewNode(transpose_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("transpose2", "XShape")
+                            : nullptr;
 
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()

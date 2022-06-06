@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqexpand_concat_fc_op.h"
+
 #include <string>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
@@ -48,8 +50,9 @@ void FusionSeqExpandConcatFCOp::InferShape(
   for (size_t i = 1; i < ins_dims.size(); ++i) {
     sum += ins_dims[i][1];
   }
-  PADDLE_ENFORCE_EQ(sum, w_dims[0], platform::errors::InvalidArgument(
-                                        "FC height should be sum of all inputs "
+  PADDLE_ENFORCE_EQ(
+      sum, w_dims[0],
+      platform::errors::InvalidArgument("FC height should be sum of all inputs "
                                         "width, but received FC height is: %d, "
                                         "sum of all inputs width is: %d.",
                                         w_dims[0], sum));

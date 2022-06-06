@@ -14,12 +14,14 @@
 
 #pragma once
 #include <ThreadPool.h>
+
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"

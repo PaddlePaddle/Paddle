@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/fs.h"
 
 #include <sys/stat.h>
+
 #include <memory>
 
 #include "glog/logging.h"
