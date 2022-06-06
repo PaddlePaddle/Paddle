@@ -511,6 +511,8 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         grad_var_to_var(dict): used to build the mapping between grad var name and forward var name.
         Only for auto parallel.
     """
+    global _grad_op_desc_to_op
+
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
@@ -625,6 +627,9 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         # If not reverse, we first insert 'a' at idx 1, it becomes [0, 1, 'a', 2], and then insert 'b' at idx 2, it becomes [0, 1, 'a', 'b', 2].
         idx = key
         for i, op in enumerate(value):
+            # update the mapping between fwd and bwd
+            if _grad_op_desc_to_op.get(op_descs[idx + i], None) is not None:
+                _grad_op_desc_to_op[op] = _grad_op_desc_to_op[idx + i]
             op_descs.insert(idx + i, op)
 
     return op_descs
@@ -637,6 +642,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
         1. all outputs of the grad op are in 'no_grad_set'
         2. all grad inputs of the grad op are in 'no_grad_set'
     """
+    global _grad_op_desc_to_op
 
     def _op_can_be_removed_(op_desc, no_grad_set):
         out_arg_names = op_desc.output_arg_names()
@@ -664,9 +670,13 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
                 x_in = _strip_grad_suffix_(arg)
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
-                to_insert.append(
-                    (_create_op_desc_("fill_zeros_like", {"X": [x_in]},
-                                      {"Out": [arg]}, {}), idx))
+                new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
+                                               {"Out": [arg]}, {})
+                # update the mapping between fwd and bwd
+                if _grad_op_desc_to_op.get(op_desc, None) is not None:
+                    _grad_op_desc_to_op[new_op_desc] = _grad_op_desc_to_op[
+                        op_desc]
+                to_insert.append((new_op_desc, idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
@@ -1306,7 +1316,6 @@ def _append_backward_ops_(block,
         new_op_desc = target_block.desc.append_op()
         # update the mapping between fwd and bwd
         if _grad_op_desc_to_op.get(op_desc, None) is not None:
-            # some op desc has not been recorded by get_grad_op_desc
             _grad_op_desc_to_op[new_op_desc] = _grad_op_desc_to_op[op_desc]
         new_op_desc.copy_from(op_desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
