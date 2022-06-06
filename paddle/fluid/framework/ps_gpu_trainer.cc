@@ -238,6 +238,10 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
     add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
                          "mf_");
   }
+<<<<<<< HEAD
+=======
+  
+>>>>>>> 1483b4017ed2510656318f2584b7e6c27ce66dd9
   config["sparse_shard_num"] = sparse_table.shard_num();
   auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
