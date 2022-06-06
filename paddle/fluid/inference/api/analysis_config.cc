@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -1105,8 +1106,9 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
                     platform::errors::InvalidArgument(
                         "model_cache_buffer should not be empty."));
   PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false, platform::errors::InvalidArgument(
-                               "model_cache_token has already been set."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token has already been set."));
 
   nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;

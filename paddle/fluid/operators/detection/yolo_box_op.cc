@@ -36,10 +36,11 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     auto iou_aware = ctx->Attrs().Get<bool>("iou_aware");
     auto iou_aware_factor = ctx->Attrs().Get<float>("iou_aware_factor");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, platform::errors::InvalidArgument(
-                                           "Input(X) should be a 4-D tensor."
-                                           "But received X dimension(%s)",
-                                           dim_x.size()));
+    PADDLE_ENFORCE_EQ(
+        dim_x.size(), 4,
+        platform::errors::InvalidArgument("Input(X) should be a 4-D tensor."
+                                          "But received X dimension(%s)",
+                                          dim_x.size()));
     if (iou_aware) {
       PADDLE_ENFORCE_EQ(
           dim_x[1], anchor_num * (6 + class_num),
@@ -245,11 +246,10 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     YoloBoxInferShapeFunctor);
 
-REGISTER_OP_VERSION(yolo_box)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(yolo_box).AddCheckpoint(
+    R"ROC(
       Upgrade yolo box to add new attribute [iou_aware, iou_aware_factor].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("iou_aware", "Whether use iou aware", false)
-            .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("iou_aware", "Whether use iou aware", false)
+        .NewAttr("iou_aware_factor", "iou aware factor", 0.5f));

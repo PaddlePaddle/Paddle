@@ -16,6 +16,9 @@ limitations under the License. */
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
 
+// headers sort by clang-format may cause compiling error or test faiure,
+// see https://github.com/PaddlePaddle/Paddle/pull/42840/
+// clang-format off
 #include <cuda_fp16.h>
 #include <float.h>
 #include <cub/cub.cuh>
@@ -35,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+// clang-format on
 
 namespace paddle {
 namespace operators {
@@ -861,10 +865,9 @@ inline size_t smem_size_in_bytes(
   size_t smem_sz = smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE,           \
                                          THDS_PER_BLOCK, pad_active_groups);   \
   dim3 grid(params.num_head, params.batch_size);                               \
-  masked_multihead_attention_kernel<                                           \
-      T, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE,                             \
-      THDS_PER_BLOCK><<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(              \
-      params, pad_active_groups)
+  masked_multihead_attention_kernel<T, Dh, Dh_MAX, THDS_PER_KEY,               \
+                                    THDS_PER_VALUE, THDS_PER_BLOCK>            \
+      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(params, pad_active_groups)
 
 template <typename T, int Dh, int Dh_MAX>
 void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,

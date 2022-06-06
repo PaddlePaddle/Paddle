@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+
 sys.path.append("..")
 import paddle
 import unittest
@@ -24,11 +25,13 @@ paddle.enable_static()
 
 
 class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'check_finite_and_unscale'
         self.use_dynamic_create_class = False
 
     class TestCheckFiniteAndUnscaleOpNormal(XPUOpTest):
+
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -49,6 +52,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestCheckFiniteAndUnscaleOpWithNan(XPUOpTest):
+
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -69,13 +73,14 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def test_check_output(self):
-            # When input contains nan, do not check the output, 
+            # When input contains nan, do not check the output,
             # since the output may be nondeterministic and will be discarded.
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place, no_check_set=['Out'])
 
     class TestCheckFiniteAndUnscaleOpWithInf(XPUOpTest):
+
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -96,13 +101,14 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def test_check_output(self):
-            # When input contains inf, do not check the output, 
+            # When input contains inf, do not check the output,
             # since the output may be nondeterministic and will be discarded.
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place, no_check_set=['Out'])
 
     class TestCheckFiniteAndUnscaleOpWithInfAndNan(XPUOpTest):
+
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -123,7 +129,7 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
         def test_check_output(self):
-            # When input contains inf, do not check the output, 
+            # When input contains inf, do not check the output,
             # since the output may be nondeterministic and will be discarded.
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)

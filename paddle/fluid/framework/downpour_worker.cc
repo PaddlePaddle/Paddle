@@ -155,8 +155,8 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
       continue;
     }
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
-    CHECK(tensor != nullptr) << "tensor of var "
-                             << sparse_key_names_[table_id][i] << " is null";
+    CHECK(tensor != nullptr)
+        << "tensor of var " << sparse_key_names_[table_id][i] << " is null";
 
     // skip slots which do not have embedding
     Variable* emb_var =
@@ -309,9 +309,9 @@ void DownpourWorker::AdjustInsWeight() {
   float* ins_weights = ins_weight_tensor->data<float>();
   size_t len = ins_weight_tensor->numel();  // len = batch size
   // here we assume nid_show slot only has one feasign in each instance
-  CHECK(len == nid_show_.size()) << "ins_weight size should be equal to "
-                                 << "nid_show size, " << len << " vs "
-                                 << nid_show_.size();
+  CHECK(len == nid_show_.size())
+      << "ins_weight size should be equal to "
+      << "nid_show size, " << len << " vs " << nid_show_.size();
   float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
   float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
   int64_t nid_adjw_num = 0;
@@ -326,9 +326,8 @@ void DownpourWorker::AdjustInsWeight() {
     }
     float ins_weight = 1.0;
     if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
-      ins_weight = log(M_E +
-                       (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
-                           nid_adjw_ratio);
+      ins_weight = log(M_E + (nid_adjw_threshold - nid_show) /
+                                 nid_adjw_threshold * nid_adjw_ratio);
       // count nid adjw insnum and weight
       ++nid_adjw_num;
       nid_adjw_weight += ins_weight;
@@ -423,15 +422,15 @@ void DownpourWorker::CopyDenseVars() {
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
     LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
-    CHECK(src_tensor != nullptr) << src_var_name
-                                 << " tensor is null";  // NOLINT
+    CHECK(src_tensor != nullptr)
+        << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
     LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
-    CHECK(dest_tensor != nullptr) << dest_var_name
-                                  << " tensor is null";  // NOLINT
+    CHECK(dest_tensor != nullptr)
+        << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
 
     CHECK(src_tensor->numel() == dest_tensor->numel())

@@ -97,7 +97,6 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
         r = xpu::cast_v2(dev_ctx.x_context(), float_out.data<MPDType>(),
                          reinterpret_cast<float16*>(out->data<T>()),
                          out->numel());
-
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
       } else {
         int r = xpu::scale(dev_ctx.x_context(),

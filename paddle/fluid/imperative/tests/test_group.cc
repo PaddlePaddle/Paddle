@@ -14,8 +14,8 @@
 
 #include <sstream>
 #include <string>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {

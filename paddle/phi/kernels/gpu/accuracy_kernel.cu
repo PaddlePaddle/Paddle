@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/accuracy_kernel.h"
-
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
+
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/accuracy_kernel.h"
 
 namespace phi {
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -94,15 +94,14 @@ void AccuracyRawKernel(const Context& dev_ctx,
     return;
   }
 
-  AccuracyCudaKernel<
-      PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-      num_samples,
-      infer_width,
-      indices_data,
-      label_data,
-      correct_data,
-      accuracy_data,
-      total_data);
+  AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS>
+      <<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(num_samples,
+                                                  infer_width,
+                                                  indices_data,
+                                                  label_data,
+                                                  correct_data,
+                                                  accuracy_data,
+                                                  total_data);
 }
 }  // namespace phi
 
