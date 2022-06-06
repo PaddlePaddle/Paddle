@@ -17,13 +17,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using framework::Tensor;
-using framework::LoDTensor;
+using dnnl::concat;
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::concat;
 using dnnl::stream;
+using framework::DataLayout;
+using framework::LoDTensor;
+using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>

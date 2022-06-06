@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
@@ -77,8 +77,9 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
                              GetBasePtr(learning_rate), GetBasePtr(&mu_tensor),
                              GetBasePtr(param_out), GetBasePtr(velocity_out));
     } else if (grad_var->IsType<phi::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
-                                         "Unsupport SparseMomentum"));
+      PADDLE_ENFORCE_EQ(
+          false, true,
+          platform::errors::PermissionDenied("Unsupport SparseMomentum"));
     } else {
       PADDLE_ENFORCE_EQ(false, true,
                         platform::errors::PermissionDenied(

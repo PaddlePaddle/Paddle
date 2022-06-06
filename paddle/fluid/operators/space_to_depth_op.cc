@@ -38,8 +38,9 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
                        "Output(Out) of SpaceToDepthOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "input should be a 4D tensor"));
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 4,
+        platform::errors::InvalidArgument("input should be a 4D tensor"));
     auto blocksize = ctx->Attrs().Get<int64_t>("blocksize");
 
     PADDLE_ENFORCE_GT(blocksize, 1,

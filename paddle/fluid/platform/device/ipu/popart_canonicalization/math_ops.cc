@@ -44,9 +44,10 @@ Node *pow_handler(Graph *graph, Node *node) {
         MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDType(node));
 
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
-    return CreateBaseOp(graph, node, "popart_pow", {GetInputVarNode("X", node),
-                                                    new_node_const->outputs[0]},
-                        node->outputs);
+    return CreateBaseOp(
+        graph, node, "popart_pow",
+        {GetInputVarNode("X", node), new_node_const->outputs[0]},
+        node->outputs);
   }
 }
 
@@ -380,10 +381,10 @@ Node *cumsum_handler(Graph *graph, Node *node) {
   auto reverse = BOOST_GET_CONST(bool, op->GetAttr("reverse"));
   int64_t popart_reverse = 1 ? reverse : 0;
   auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto axis_node =
-      CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{axis}},
-                                        {"dims", std::vector<int64_t>{1}},
-                                        {"dtype", ONNXDataType::INT64}});
+  auto axis_node = CreateConst(graph, node, {}, {},
+                               {{"value", std::vector<int64_t>{axis}},
+                                {"dims", std::vector<int64_t>{1}},
+                                {"dtype", ONNXDataType::INT64}});
   return CreateBaseOp(
       graph, node, "popart_cumsum",
       {GetInputVarNode("X", node), axis_node->outputs[0]},

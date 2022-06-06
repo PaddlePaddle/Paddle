@@ -17,6 +17,7 @@
 #include <ctime>
 #include <memory>
 #include <numeric>
+
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -175,13 +176,13 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
 #define EXPAND_EMBED_PULL_CASE(i, ...)                                       \
   case i: {                                                                  \
     constexpr size_t ExpandDim = i;                                          \
-    PullCopy<EmbedxDim,                                                      \
-             ExpandDim><<<(total_length + 512 - 1) / 512, 512, 0, stream>>>( \
-        gpu_values,                                                          \
-        reinterpret_cast<boxps::FeatureValueGpu<EmbedxDim, ExpandDim>*>(     \
-            total_values_gpu),                                               \
-        gpu_len, hidden_size, expand_embed_dim, slot_num, total_length,      \
-        gpu_keys);                                                           \
+    PullCopy<EmbedxDim, ExpandDim>                                           \
+        <<<(total_length + 512 - 1) / 512, 512, 0, stream>>>(                \
+            gpu_values,                                                      \
+            reinterpret_cast<boxps::FeatureValueGpu<EmbedxDim, ExpandDim>*>( \
+                total_values_gpu),                                           \
+            gpu_len, hidden_size, expand_embed_dim, slot_num, total_length,  \
+            gpu_keys);                                                       \
   } break
 #endif
 

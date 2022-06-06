@@ -48,6 +48,7 @@ from .dist_context import DistributedContext, get_default_distributed_context
 
 
 class Engine:
+
     def __init__(self,
                  model=None,
                  inputs_spec=None,
@@ -88,8 +89,9 @@ class Engine:
                 gradient_scale=True,
                 metrics=None,
                 all_ranks=False):
-        if optimizer and not isinstance(optimizer, (
-                paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
+        if optimizer and not isinstance(
+                optimizer,
+            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
             raise TypeError(
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
                         " or `paddle.fluid.optimizer.Optimizer`."
@@ -194,7 +196,7 @@ class Engine:
             parallelizer.parallel_all()
 
     def _init_dist_context(self, mode):
-        # Init dist_context['mode'] with the first planned dist_context 
+        # Init dist_context['mode'] with the first planned dist_context
         # to guarantee that train/eval/predict mode have same parallel strategy
         dist_context = self._dist_contexts[mode]
         origin_main_prog = dist_context._original_serial_main_program
@@ -212,7 +214,7 @@ class Engine:
                 dist_context.set_op_dist_attr_for_program(op, ref_op_dist_attr)
 
     def _initialize(self, mode):
-        # Get the current content from the distributed context 
+        # Get the current content from the distributed context
         self._serial_main_progs[mode] = self._dist_contexts[
             mode].serial_main_program
         self._serial_startup_progs[mode] = self._dist_contexts[
@@ -380,7 +382,7 @@ class Engine:
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # NOTE: Get feed_list from dist_program, then insert dataloader op 
+        # NOTE: Get feed_list from dist_program, then insert dataloader op
         # with sharded var shape. Because predict_program does not contain
         # labels var, so we will filter dataset's value with length of feed_list.
         inputs_var = self._feed_vars[self.mode]["inputs"]
@@ -389,8 +391,8 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
-        dp_world_size, dp_rank = self._get_data_parallel_info(feed_list[0],
-                                                              dist_context)
+        dp_world_size, dp_rank = self._get_data_parallel_info(
+            feed_list[0], dist_context)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -418,8 +420,9 @@ class Engine:
             op = dist_main_block.ops[new_op_size - 1]
             new_op_desc = dist_main_block.desc._prepend_op()
             new_op_desc.copy_from(op.desc)
-            new_op = Operator(
-                dist_main_block, new_op_desc, type=new_op_desc.type())
+            new_op = Operator(dist_main_block,
+                              new_op_desc,
+                              type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
@@ -442,21 +445,21 @@ class Engine:
     def _set_data_parallel(self, var):
         if self._nranks == 1:
             self._default_strategy = 'serial'
-            auto.shard_tensor(
-                var,
-                dist_attr={
-                    "process_mesh": [0],
-                    "dims_mapping": [-1 for _ in range(len(var.shape))]
-                })
+            auto.shard_tensor(var,
+                              dist_attr={
+                                  "process_mesh": [0],
+                                  "dims_mapping":
+                                  [-1 for _ in range(len(var.shape))]
+                              })
         else:
             self._default_strategy = 'dp'
-            auto.shard_tensor(
-                var,
-                dist_attr={
-                    "process_mesh": list(range(self._nranks)),
-                    "dims_mapping":
-                    [0] + [-1 for _ in range(len(var.shape) - 1)]
-                })
+            auto.shard_tensor(var,
+                              dist_attr={
+                                  "process_mesh":
+                                  list(range(self._nranks)),
+                                  "dims_mapping":
+                                  [0] + [-1 for _ in range(len(var.shape) - 1)]
+                              })
 
         return var
 
@@ -492,22 +495,20 @@ class Engine:
             serial_program = self._serial_main_progs["train"]
             dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
             dist_context = self._dist_contexts["train"]
-            self._saver.save(
-                path,
-                serial_program=serial_program,
-                dist_main_program=dist_main_prog,
-                dist_context=dist_context)
+            self._saver.save(path,
+                             serial_program=serial_program,
+                             dist_main_program=dist_main_prog,
+                             dist_context=dist_context)
         else:
             assert mode, "Please set the 'mode' you want to save."
             feed_vars = self._feed_vars[mode]['inputs']
             fetch_vars = self._fetch_vars[mode]['outputs']
             dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
-            self._saver.save_inference_model(
-                path,
-                feed_vars,
-                fetch_vars,
-                self._executor,
-                program=dist_main_prog)
+            self._saver.save_inference_model(path,
+                                             feed_vars,
+                                             fetch_vars,
+                                             self._executor,
+                                             program=dist_main_prog)
 
     def load(self, path, strict=True, load_optimizer=True, mode=None):
         if not mode:

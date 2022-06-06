@@ -17,6 +17,7 @@ import unittest
 
 
 class TestEmptyCache(unittest.TestCase):
+
     def test_empty_cache(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         del x

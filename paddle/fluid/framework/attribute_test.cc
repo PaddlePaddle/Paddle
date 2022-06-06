@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/attribute.h"
+
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/program_desc.h"
-
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/utils/any.h"
 
 TEST(Attribute, GetAttrValueToAny) {

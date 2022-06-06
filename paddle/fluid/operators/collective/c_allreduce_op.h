@@ -41,6 +41,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -335,10 +336,11 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel,
-                                      dtype, bkcl_red_type, stream),
-                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
-                                        "BKCL all reduce failed"));
+    PADDLE_ENFORCE_EQ(
+        bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel, dtype,
+                        bkcl_red_type, stream),
+        BKCL_SUCCESS,
+        platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));

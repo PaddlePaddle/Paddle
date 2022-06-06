@@ -19,11 +19,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <curand_kernel.h>
+
 #include "paddle/fluid/platform/dynload/curand.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+
 #include "paddle/fluid/platform/dynload/hiprand.h"
 #endif
 

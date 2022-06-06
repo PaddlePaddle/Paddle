@@ -22,10 +22,9 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"

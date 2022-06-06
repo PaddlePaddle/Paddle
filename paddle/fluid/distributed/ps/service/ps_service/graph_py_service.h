@@ -14,6 +14,7 @@
 
 #pragma once
 #include <unistd.h>
+
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -23,21 +24,20 @@
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <vector>
+
 #include "google/protobuf/text_format.h"
-
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -198,5 +198,5 @@ class GraphPyClient : public GraphPyService {
   std::thread* client_thread;
   bool stoped_ = false;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

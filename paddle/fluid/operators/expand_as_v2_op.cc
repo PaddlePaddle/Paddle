@@ -10,8 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_as_v2_op.h"
+
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -107,7 +109,6 @@ REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
 
 REGISTER_OP_VERSION(expand_as_v2)
-    .AddCheckpoint(
-        R"ROC(fix expand_as_v2 and add new input [Y])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "Y", "Expand X according to the shape of Y"));
+    .AddCheckpoint(R"ROC(fix expand_as_v2 and add new input [Y])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewInput(
+                       "Y", "Expand X according to the shape of Y"));

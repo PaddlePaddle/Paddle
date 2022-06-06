@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/one_hot_op.h"
+
 #include <string>
 #include <vector>
 

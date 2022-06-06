@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/bernoulli_kernel.h"
+
 #include <random>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 

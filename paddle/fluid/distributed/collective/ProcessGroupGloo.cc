@@ -27,6 +27,7 @@
 #include <gloo/broadcast.h>
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
+
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
@@ -485,8 +486,9 @@ std::shared_ptr<::gloo::transport::Device>
 ProcessGroupGloo::createDefaultDevice() {
   std::array<char, HOST_NAME_MAX> hostname{};
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal(
-                                "Get hostname error for createDefaultDevice."));
+  PADDLE_ENFORCE_EQ(
+      ret, 0,
+      platform::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = tcputils::get_addr_info(hostname.data(), "", 0, AF_UNSPEC);
   ::addrinfo* cur;
