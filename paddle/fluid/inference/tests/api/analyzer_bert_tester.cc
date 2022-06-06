@@ -24,13 +24,18 @@ void profile(bool use_mkldnn = false, bool use_bfloat16 = false);
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData();
 void CompareNativeAndAnalysisWrapper(bool use_mkldnn = false);
 std::vector<paddle::PaddleTensor> ParseInputStreamToVector(const std::string &line);
+
 AnalysisConfig SetConfig(bool use_mkldnn = false, bool use_bfloat16 = false);
+
 template <typename T>
 paddle::PaddleTensor ParseTensor(const std::string& field);
+
 template <typename T>
 std::vector<T> Split(const std::string& line, char separator);
+
 template <typename T>
 T GetValueFromStream(std::stringstream& ss);
+
 template <>
 std::string GetValueFromStream<std::string>(std::stringstream& ss);
 
