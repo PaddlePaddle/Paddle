@@ -103,7 +103,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     set_var_dist_attr(dist_context, cond_var, [-1], world_process_group.ranks)
 
     with device_guard("cpu"):
-        # step_var = (step_var + 1) % k_step
+        # step_var += 1
         increment_op = main_block.append_op(type='increment',
                                             inputs={'X': [step_var]},
                                             outputs={'Out': [step_var]},
@@ -113,6 +113,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                             })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             increment_op, world_process_group.ranks, [-1], dist_context)
+        # step_var %= k_step
         elementwise_mod_op = main_block.append_op(type='elementwise_mod',
                                                   inputs={
                                                       'X': step_var,
