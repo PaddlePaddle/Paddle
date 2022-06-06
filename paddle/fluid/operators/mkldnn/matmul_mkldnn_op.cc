@@ -148,7 +148,7 @@ class MatMulMKLDNNHandler
   MatMulMKLDNNHandler(const dnnl::engine engine, const ExecutionContext& ctx)
       : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(
             engine, ctx.GetPlace()) {
-    const dnnl::primitive_attr matmul_attrs = CreatePostOps(ctx);
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
     auto matmul_dims_ = GetMatmulDims(ctx);
     auto x_md = memory::desc(matmul_dims_.x_dims, MKLDNNGetDataType<XT>(),
@@ -421,7 +421,7 @@ class MatMulMKLDNNHandler
     return std::make_tuple(x_offset_, y_offset_, out_offset_);
   }
 
-  dnnl::primitive_attr CreatePostOps(const ExecutionContext& ctx) {
+  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext& ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
