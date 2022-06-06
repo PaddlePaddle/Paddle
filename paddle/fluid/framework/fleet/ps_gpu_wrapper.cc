@@ -838,14 +838,13 @@ void PSGPUWrapper::EndPass() {
           std::max(keysize_max, current_task_->device_dim_keys_[i][j].size());
     }
   }
-
   int thread_num = 6;
   auto dump_pool_to_cpu_func = [this, thread_num](int i, int j, int z) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
     auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
     size_t len = device_keys.size();
-    // ====== multi-thread process feasign================ 
+    // ====== multi-thread process feasign================
     int len_per_thread = len / thread_num;
     int remain = len % thread_num;
     int left = -1, right = -1;
@@ -865,8 +864,8 @@ void PSGPUWrapper::EndPass() {
         TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
     char* test_build_values = (char*)malloc(feature_value_size * real_len);
     uint64_t offset = left * feature_value_size;
-    cudaMemcpy(test_build_values, hbm_pool->mem() + offset, feature_value_size * real_len,
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(test_build_values, hbm_pool->mem() + offset,
+               feature_value_size * real_len, cudaMemcpyDeviceToHost);
     CHECK(len == hbm_pool->capacity());
     uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
     for (int i = left; i < right; ++i) {
@@ -929,8 +928,9 @@ void PSGPUWrapper::EndPass() {
     std::vector<std::thread> threads(device_num * multi_mf_dim_ * thread_num);
     for (size_t i = 0; i < device_num; i++) {
       for (int j = 0; j < multi_mf_dim_; j++) {
-        for(int k = 0; k < thread_num; k++) {
-          threads[(i + j * device_num) * thread_num + k] = std::thread(dump_pool_to_cpu_func, i, j, k);
+        for (int k = 0; k < thread_num; k++) {
+          threads[(i + j * device_num) * thread_num + k] =
+              std::thread(dump_pool_to_cpu_func, i, j, k);
         }
       }
     }
