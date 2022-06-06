@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/api/resource_manager.h"
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"

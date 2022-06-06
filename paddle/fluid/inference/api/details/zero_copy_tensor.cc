@@ -94,7 +94,17 @@ T *Tensor::mutable_data(PlaceType place) {
       return tensor->mutable_data<T>(paddle::platform::CPUPlace());
     }
     case static_cast<int>(PlaceType::kGPU): {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      paddle::platform::CUDAPlace gpu_place(device_);
+      auto *dev_ctxs = reinterpret_cast<const std::map<
+          phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+                                            *>(device_contexs_);
+      auto *dev_ctx =
+          static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
+      return dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
+#else
       return tensor->mutable_data<T>(paddle::platform::CUDAPlace(device_));
+#endif
     }
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
@@ -188,7 +198,7 @@ void Tensor::CopyFromCpu(const T *data) {
         device_contexs_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
-    auto *t_data = tensor->mutable_data<T>(gpu_place);
+    auto *t_data = dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
 
     paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
                          paddle::platform::CPUPlace(), data, ele_size,
