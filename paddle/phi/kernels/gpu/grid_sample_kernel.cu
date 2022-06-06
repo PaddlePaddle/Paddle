@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/grid_sample_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/grid_sample_utils.h"
+#include "paddle/phi/kernels/grid_sample_kernel.h"
 
 namespace phi {
 
@@ -210,21 +209,21 @@ void GridSampleKernel(const Context& dev_ctx,
   auto cu_stream = dev_ctx.stream();
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-  GridSampleCudaKernel<
-      T><<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-      count,
-      n,
-      c,
-      out_h,
-      out_w,
-      in_h,
-      in_w,
-      x.data<T>(),
-      grid.data<T>(),
-      output_data,
-      enum_mode,
-      enum_padding_mode,
-      align_corners);
+  GridSampleCudaKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
+          count,
+          n,
+          c,
+          out_h,
+          out_w,
+          in_h,
+          in_w,
+          x.data<T>(),
+          grid.data<T>(),
+          output_data,
+          enum_mode,
+          enum_padding_mode,
+          align_corners);
 }
 
 }  // namespace phi

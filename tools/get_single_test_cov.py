@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -75,7 +75,7 @@ def analysisFNDAFile(rootPath, test):
                           (clazz_filename, notrelated_ut_map_file))
         else:
             if clazz_filename != '':
-                if clazz_filename not in related_file_list:  # xx.pb.cc in RELATED xx.pb.h not in RELATED 
+                if clazz_filename not in related_file_list:  # xx.pb.cc in RELATED xx.pb.h not in RELATED
                     os.system('echo %s >> %s' %
                               (clazz_filename, notrelated_ut_map_file))
     f.close()

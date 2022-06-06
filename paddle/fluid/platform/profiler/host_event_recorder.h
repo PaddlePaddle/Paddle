@@ -17,6 +17,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -58,7 +59,7 @@ class EventContainer {
  public:
   // Record an event
   template <typename... Args>
-  void Record(Args &&... args) {
+  void Record(Args &&...args) {
     DoRecord(ContainsStdString<Args...>(), std::forward<Args>(args)...);
   }
 
@@ -112,7 +113,7 @@ class EventContainer {
 
   // Record an event with string arguments
   template <typename... Args>
-  void DoRecord(std::true_type, Args &&... args) {
+  void DoRecord(std::true_type, Args &&...args) {
     auto *storage = GetEventStorage();
     std::function<void *(size_t)> allocator = [this](size_t size) {
       return GetStrBufFromArena(size);
@@ -122,7 +123,7 @@ class EventContainer {
 
   // Record an event without any string argument
   template <typename... Args>
-  void DoRecord(std::false_type, Args &&... args) {
+  void DoRecord(std::false_type, Args &&...args) {
     auto *storage = GetEventStorage();
     new (storage) EventType(std::forward<Args>(args)...);
   }
@@ -199,7 +200,7 @@ class ThreadEventRecorder {
  public:
   // Forward call to EventContainer::Record
   template <typename... Args>
-  void RecordEvent(Args &&... args) {
+  void RecordEvent(Args &&...args) {
     base_evt_cntr_.Record(std::forward<Args>(args)...);
   }
 
@@ -237,7 +238,7 @@ class HostEventRecorder {
   // Do your best to avoid using 'std::string' as the argument type.
   // It will cause deep-copy to harm performance.
   template <typename... Args>
-  void RecordEvent(Args &&... args) {
+  void RecordEvent(Args &&...args) {
     GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
   }
 

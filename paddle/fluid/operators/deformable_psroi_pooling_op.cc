@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
+
 #include <iostream>
 #include <memory>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -165,11 +167,12 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     auto part_width = part_size[1];
     auto sample_per_part = ctx->Attrs().Get<int>("sample_per_part");
     auto trans_std = ctx->Attrs().Get<float>("trans_std");
-    PADDLE_ENFORCE_GE(trans_std, 0., platform::errors::InvalidArgument(
-                                         "Input(trans_std) should not be lower "
-                                         "than 0.0, but received trans_std "
-                                         "is:%f",
-                                         trans_std));
+    PADDLE_ENFORCE_GE(trans_std, 0.,
+                      platform::errors::InvalidArgument(
+                          "Input(trans_std) should not be lower "
+                          "than 0.0, but received trans_std "
+                          "is:%f",
+                          trans_std));
     PADDLE_ENFORCE_GE(
         input_dims[1], output_channels,
         platform::errors::InvalidArgument(

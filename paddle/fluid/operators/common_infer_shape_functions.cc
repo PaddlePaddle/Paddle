@@ -61,12 +61,13 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
             y_dims_array[i] <= 1,
-        true, platform::errors::InvalidArgument(
-                  "Broadcast dimension mismatch. Operands could "
-                  "not be broadcast together with the shape of X = [%s] and "
-                  "the shape of Y = [%s]. Received [%d] in X is not equal to "
-                  "[%d] in Y at i:%d.",
-                  x_dims, y_dims, x_dims_array[i], y_dims_array[i], i));
+        true,
+        platform::errors::InvalidArgument(
+            "Broadcast dimension mismatch. Operands could "
+            "not be broadcast together with the shape of X = [%s] and "
+            "the shape of Y = [%s]. Received [%d] in X is not equal to "
+            "[%d] in Y at i:%d.",
+            x_dims, y_dims, x_dims_array[i], y_dims_array[i], i));
     if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
         (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
       out_dims_array[i] = std::max(x_dims_array[i], y_dims_array[i]);

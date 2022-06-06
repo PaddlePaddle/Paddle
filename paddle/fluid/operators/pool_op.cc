@@ -15,13 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 
 #include <unordered_map>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

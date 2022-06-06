@@ -15,6 +15,7 @@
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
+
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 namespace {

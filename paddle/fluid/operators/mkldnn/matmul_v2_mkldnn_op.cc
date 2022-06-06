@@ -20,8 +20,8 @@ using dnnl::memory;
 using dnnl::primitive;
 using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
-using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::GetMKLDNNFormat;
+using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
@@ -206,11 +206,12 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] == 1 ||
                 y_bd_dims[i] == 1,
-            true, paddle::platform::errors::InvalidArgument(
-                      "Tensor dimensions are incorrect for broadcasting."
-                      "Dimensions in X and Y must be same or equal to 1, but "
-                      "received x_dim[%d]=%d and y_dims[%d]= %d",
-                      i, x_bd_dims[i], i, y_bd_dims[i]));
+            true,
+            paddle::platform::errors::InvalidArgument(
+                "Tensor dimensions are incorrect for broadcasting."
+                "Dimensions in X and Y must be same or equal to 1, but "
+                "received x_dim[%d]=%d and y_dims[%d]= %d",
+                i, x_bd_dims[i], i, y_bd_dims[i]));
         out_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
       }
       out->Resize(phi::make_ddim(out_dims));

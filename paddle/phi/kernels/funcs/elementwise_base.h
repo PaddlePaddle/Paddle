@@ -494,7 +494,7 @@ template <template <int Index, int VecSize> typename Func,
           int Begin = 0>
 struct Unroller {
   template <typename... Args>
-  static HOSTDEVICE inline void step(Args &&... args) {
+  static HOSTDEVICE inline void step(Args &&...args) {
     Func<Begin, VecSize>::Apply(std::forward<Args>(args)...);
     Unroller<Func, VecSize, End, Begin + 1>::step(args...);
   }
@@ -503,7 +503,7 @@ struct Unroller {
 template <template <int Index, int VecSize> typename Func, int VecSize, int End>
 struct Unroller<Func, VecSize, End, End> {
   template <typename... Args>
-  static HOSTDEVICE inline void step(Args &&... args) {}
+  static HOSTDEVICE inline void step(Args &&...args) {}
 };
 
 template <int Index, int VecSize>
@@ -818,23 +818,18 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
   int main_offset = (numel / (VecSize * block_size)) * VecSize * block_size;
-  VectorizedElementwiseKernel<OutT,
-                              Functor,
-                              Arity,
-                              NumOuts,
-                              VecSize><<<grid_size, block_size, 0, stream>>>(
-      ins_data, outs_data, numel, main_offset, func);
+  VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize>
+      <<<grid_size, block_size, 0, stream>>>(
+          ins_data, outs_data, numel, main_offset, func);
 #else
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
   int main_offset = (numel / (VecSize * gpu_config.GetBlockSize())) * VecSize *
                     gpu_config.GetBlockSize();
   auto stream = ctx.stream();
-  VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize><<<
-      gpu_config.block_per_grid,
-      gpu_config.thread_per_block,
-      0,
-      stream>>>(ins_data, outs_data, numel, main_offset, func);
+  VectorizedElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSize>
+      <<<gpu_config.block_per_grid, gpu_config.thread_per_block, 0, stream>>>(
+          ins_data, outs_data, numel, main_offset, func);
 #endif
 }
 

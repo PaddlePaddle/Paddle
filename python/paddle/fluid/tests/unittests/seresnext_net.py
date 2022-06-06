@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle.fluid as fluid
+
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
@@ -22,6 +23,7 @@ from simple_nets import init_data
 from seresnext_test_base import DeviceType
 import math
 import os
+
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
 
@@ -48,8 +50,8 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
+    reshape = fluid.layers.reshape(x=conv,
+                                   shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
     squeeze = fluid.layers.fc(input=pool,
@@ -62,18 +64,21 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     return scale
 
 
-def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
+def conv_bn_layer(input,
+                  num_filters,
+                  filter_size,
+                  stride=1,
+                  groups=1,
                   act=None):
-    conv = fluid.layers.conv2d(
-        input=input,
-        num_filters=num_filters,
-        filter_size=filter_size,
-        stride=stride,
-        padding=(filter_size - 1) // 2,
-        groups=groups,
-        act=None,
-        use_cudnn=(not remove_cudnn_conv),
-        bias_attr=False)
+    conv = fluid.layers.conv2d(input=input,
+                               num_filters=num_filters,
+                               filter_size=filter_size,
+                               stride=stride,
+                               padding=(filter_size - 1) // 2,
+                               groups=groups,
+                               act=None,
+                               use_cudnn=(not remove_cudnn_conv),
+                               bias_attr=False)
     return conv if remove_bn else fluid.layers.batch_norm(
         input=conv, act=act, momentum=0.1)
 
@@ -93,21 +98,23 @@ def shortcut(input, ch_out, stride):
 def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     # The number of first 1x1 convolutional channels for each bottleneck build block
     # was halved to reduce the compution cost.
-    conv0 = conv_bn_layer(
-        input=input, num_filters=num_filters, filter_size=1, act='relu')
-    conv1 = conv_bn_layer(
-        input=conv0,
-        num_filters=num_filters * 2,
-        filter_size=3,
-        stride=stride,
-        groups=cardinality,
-        act='relu')
-    conv2 = conv_bn_layer(
-        input=conv1, num_filters=num_filters * 2, filter_size=1, act=None)
-    scale = squeeze_excitation(
-        input=conv2,
-        num_channels=num_filters * 2,
-        reduction_ratio=reduction_ratio)
+    conv0 = conv_bn_layer(input=input,
+                          num_filters=num_filters,
+                          filter_size=1,
+                          act='relu')
+    conv1 = conv_bn_layer(input=conv0,
+                          num_filters=num_filters * 2,
+                          filter_size=3,
+                          stride=stride,
+                          groups=cardinality,
+                          act='relu')
+    conv2 = conv_bn_layer(input=conv1,
+                          num_filters=num_filters * 2,
+                          filter_size=1,
+                          act=None)
+    scale = squeeze_excitation(input=conv2,
+                               num_channels=num_filters * 2,
+                               reduction_ratio=reduction_ratio)
 
     short = shortcut(input, num_filters * 2, stride)
 
@@ -122,14 +129,26 @@ def SE_ResNeXt50Small(use_feed):
     img = fluid.layers.data(name='image', shape=img_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    conv = conv_bn_layer(
-        input=img, num_filters=16, filter_size=3, stride=2, act='relu')
-    conv = conv_bn_layer(
-        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
-    conv = conv_bn_layer(
-        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
-    conv = fluid.layers.pool2d(
-        input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
+    conv = conv_bn_layer(input=img,
+                         num_filters=16,
+                         filter_size=3,
+                         stride=2,
+                         act='relu')
+    conv = conv_bn_layer(input=conv,
+                         num_filters=16,
+                         filter_size=3,
+                         stride=1,
+                         act='relu')
+    conv = conv_bn_layer(input=conv,
+                         num_filters=16,
+                         filter_size=3,
+                         stride=1,
+                         act='relu')
+    conv = fluid.layers.pool2d(input=conv,
+                               pool_size=3,
+                               pool_stride=2,
+                               pool_padding=1,
+                               pool_type='max')
 
     cardinality = 32
     reduction_ratio = 16
@@ -138,16 +157,15 @@ def SE_ResNeXt50Small(use_feed):
 
     for block in range(len(depth)):
         for i in range(depth[block]):
-            conv = bottleneck_block(
-                input=conv,
-                num_filters=num_filters[block],
-                stride=2 if i == 0 and block != 0 else 1,
-                cardinality=cardinality,
-                reduction_ratio=reduction_ratio)
+            conv = bottleneck_block(input=conv,
+                                    num_filters=num_filters[block],
+                                    stride=2 if i == 0 and block != 0 else 1,
+                                    cardinality=cardinality,
+                                    reduction_ratio=reduction_ratio)
 
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
+    reshape = fluid.layers.reshape(x=conv,
+                                   shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
     dropout = pool if remove_dropout else fluid.layers.dropout(
         x=pool, dropout_prob=0.2, seed=1)
@@ -160,8 +178,9 @@ def SE_ResNeXt50Small(use_feed):
 
 def optimizer(learning_rate=0.01):
     optimizer = fluid.optimizer.Momentum(
-        learning_rate=cosine_decay(
-            learning_rate=learning_rate, step_each_epoch=2, epochs=1),
+        learning_rate=cosine_decay(learning_rate=learning_rate,
+                                   step_each_epoch=2,
+                                   epochs=1),
         momentum=0.9,
         regularization=fluid.regularizer.L2Decay(1e-4))
     return optimizer
@@ -187,10 +206,9 @@ gpu_img, gpu_label = init_data(
     batch_size=batch_size(use_device=DeviceType.CUDA),
     img_shape=img_shape,
     label_range=999)
-cpu_img, cpu_label = init_data(
-    batch_size=batch_size(use_device=DeviceType.CPU),
-    img_shape=img_shape,
-    label_range=999)
+cpu_img, cpu_label = init_data(batch_size=batch_size(use_device=DeviceType.CPU),
+                               img_shape=img_shape,
+                               label_range=999)
 feed_dict_gpu = {"image": gpu_img, "label": gpu_label}
 feed_dict_cpu = {"image": cpu_img, "label": cpu_label}
 

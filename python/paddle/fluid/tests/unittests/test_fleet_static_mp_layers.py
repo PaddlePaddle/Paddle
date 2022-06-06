@@ -30,6 +30,7 @@ paddle.enable_static()
 
 
 class ColumnLinearNet(fluid.dygraph.Layer):
+
     def __init__(self, input_size, output_size):
         super(ColumnLinearNet, self).__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
@@ -46,6 +47,7 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 
 
 class RowLinearNet(fluid.dygraph.Layer):
+
     def __init__(self, input_size, output_size):
         super(RowLinearNet, self).__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
@@ -61,10 +63,11 @@ class RowLinearNet(fluid.dygraph.Layer):
 
 
 class EmbeddingNet(fluid.dygraph.Layer):
+
     def __init__(self, vocab_size, hidden_size):
         super(EmbeddingNet, self).__init__()
-        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size,
-                                                                    hidden_size)
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            vocab_size, hidden_size)
 
     def forward(self, x):
         output = self.embedding(x)
@@ -72,6 +75,7 @@ class EmbeddingNet(fluid.dygraph.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "2"
         os.environ[
@@ -104,13 +108,13 @@ class TestDistTraning(unittest.TestCase):
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
             self.assertEqual(
-                ops,
-                ['c_identity', 'matmul_v2', 'elementwise_add', 'c_concat'])
+                ops, ['c_identity', 'matmul_v2', 'elementwise_add', 'c_concat'])
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias
-            self.assertEqual(weight.shape, (input_size, output_size //
-                                            self.model_parallel_size))
+            self.assertEqual(
+                weight.shape,
+                (input_size, output_size // self.model_parallel_size))
             self.assertEqual(bias.shape,
                              (output_size // self.model_parallel_size, ))
 
@@ -132,8 +136,9 @@ class TestDistTraning(unittest.TestCase):
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias
-            self.assertEqual(weight.shape, (
-                input_size // self.model_parallel_size, output_size))
+            self.assertEqual(
+                weight.shape,
+                (input_size // self.model_parallel_size, output_size))
             self.assertEqual(bias.shape, (output_size, ))
 
     def test_parallel_embedding(self):
@@ -145,8 +150,9 @@ class TestDistTraning(unittest.TestCase):
             # model_a
             model_a = EmbeddingNet(vocab_size, hidden_size)
 
-            x = paddle.static.data(
-                name='x', shape=[None, seq_len], dtype='int64')
+            x = paddle.static.data(name='x',
+                                   shape=[None, seq_len],
+                                   dtype='int64')
             y = model_a(x)
 
             #print(main_program)
@@ -155,8 +161,9 @@ class TestDistTraning(unittest.TestCase):
             self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
 
             weight = model_a.embedding.weight
-            self.assertEqual(weight.shape, (
-                vocab_size // self.model_parallel_size, hidden_size))
+            self.assertEqual(
+                weight.shape,
+                (vocab_size // self.model_parallel_size, hidden_size))
 
     def test_parallel_cross_entropy(self):
         main_program, startup_program = self.get_program()
@@ -171,8 +178,9 @@ class TestDistTraning(unittest.TestCase):
 
             x = paddle.static.data(
                 name='x', shape=[batch_size, seq_length, class_size_per_card])
-            label = paddle.static.data(
-                name='label', shape=[batch_size, seq_length], dtype='int64')
+            label = paddle.static.data(name='label',
+                                       shape=[batch_size, seq_length],
+                                       dtype='int64')
             loss_a = model_a(x, label)
 
             #print(main_program)

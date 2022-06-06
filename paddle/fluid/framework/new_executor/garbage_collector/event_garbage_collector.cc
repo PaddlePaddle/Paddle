@@ -110,7 +110,7 @@ void InterpreterCoreEventGarbageCollector::Free(
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbages, event = event ]() {
+  queue_->AddTask([container = garbages, event = event]() {
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);
@@ -128,7 +128,7 @@ void InterpreterCoreEventGarbageCollector::Free(
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event
-  queue_->AddTask([ container = garbage, event = event ]() {
+  queue_->AddTask([container = garbage, event = event]() {
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);

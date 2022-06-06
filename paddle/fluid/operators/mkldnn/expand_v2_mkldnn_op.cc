@@ -18,11 +18,11 @@ limitations under the License. */
 
 namespace {
 
-using paddle::framework::Tensor;
-using phi::vectorize;
-using paddle::framework::GradVarName;
 using paddle::framework::ExecutionContext;
+using paddle::framework::GradVarName;
+using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
+using phi::vectorize;
 
 template <typename T>
 class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
