@@ -65,8 +65,17 @@ void GradTensorHolder::CopyValueFromTensor(
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0, use full to support complex, one_like don't support it.
-      buffer_[slot_id][rank] =
-          paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      if (t.is_dense_tensor()) {
+        buffer_[slot_id][rank] =
+            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+      } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
+        buffer_[slot_id][rank] =
+            paddle::experimental::sparse::full_like(t, 1, t.dtype());
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
+            "now."));
+      }
     }
   }
 }

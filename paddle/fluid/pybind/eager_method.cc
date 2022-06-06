@@ -1417,6 +1417,16 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_dense(TensorObject* self, PyObject* args,
+                                        PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  return ToPyObject(self->tensor.is_dense_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -1744,6 +1754,8 @@ PyMethodDef variable_methods[] = {
     {"crows", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"cols", (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_dense", (PyCFunction)(void (*)(void))tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_sparse", (PyCFunction)(void (*)(void))tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS, NULL},

@@ -19,6 +19,9 @@ from .unary import sqrt
 from .unary import sin
 from .unary import tanh
 
+from .binary import mm
+from .binary import mm_mask_as
+
 from . import nn
 
 __all__ = [
@@ -27,4 +30,6 @@ __all__ = [
     'sqrt',
     'sin',
     'tanh',
+    'mm',
+    'mm_mask_as',
 ]
