@@ -27,9 +27,18 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+// The difference between "sequential_run" and "serial_run":
+// "sequential_run" dispatches OPs one by one according to the sequence in the
+// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// thread. In standalone executor, "sequential_run" is also "serial_run", while
+// "serial_run" is not necessarily "sequential_run".
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run, false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
+
 PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_sequential_run, false,
-    "Enable sequential execution for standalone executor, used for debug");
+    new_executor_serial_run, false,
+    "Enable serial execution for standalone executor, used for debug.");
 
 DECLARE_bool(use_mkldnn);
 
@@ -43,9 +52,9 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
-  if (FLAGS_new_executor_sequential_run) {
-    VLOG(4) << "FLAGS_new_executor_sequential_run:"
-            << FLAGS_new_executor_sequential_run;
+  if (FLAGS_new_executor_serial_run) {
+    VLOG(4) << "FLAGS_new_executor_serial_run:"
+            << FLAGS_new_executor_serial_run;
     queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
                           std::move(fn));
   } else {
@@ -1000,6 +1009,19 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
+
+  if (FLAGS_new_executor_sequential_run) {
+    dependence_op_idx = -1;
+    for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+      if (!IsCpuOp(vec_instruction[op_idx])) {
+        if (dependence_op_idx != -1) {
+          op2dependences[op_idx].insert(dependence_op_idx);
+        }
+        dependence_op_idx = op_idx;
+      }
+    }
+  }
+
   for (auto pair : op2dependences) {
     std::ostringstream oss;
     oss << pair.first << " Depends on " << pair.second.size() << " ops: ";
