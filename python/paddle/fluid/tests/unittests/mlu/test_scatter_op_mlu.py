@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -26,6 +27,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class TestScatterOp(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -47,6 +49,7 @@ class TestScatterOp(OpTest):
 
 
 class TestScatterOp0(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -69,6 +72,7 @@ class TestScatterOp0(OpTest):
 
 
 class TestScatterOp1(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -94,6 +98,7 @@ class TestScatterOp1(OpTest):
 
 
 class TestScatterOp2(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -115,6 +120,7 @@ class TestScatterOp2(OpTest):
 
 
 class TestScatterAPI(unittest.TestCase):
+
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         self.place = paddle.device.MLUPlace(0)
@@ -133,8 +139,8 @@ class TestScatterAPI(unittest.TestCase):
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
             index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            updates_data = np.array(
-                [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                     [4, 4]]).astype(np.float64)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
@@ -156,8 +162,8 @@ class TestScatterAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
                 index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-                updates_data = np.array(
-                    [[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float64)
+                updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                         [4, 4]]).astype(np.float64)
 
                 x = fluid.dygraph.to_variable(x_data)
                 index = fluid.dygraph.to_variable(index_data)
@@ -177,9 +183,9 @@ class TestScatterAPI(unittest.TestCase):
 
         def test_dygraph():
             with fluid.dygraph.guard():
-                gpu_out = paddle.scatter(
-                    paddle.to_tensor(x),
-                    paddle.to_tensor(index), paddle.to_tensor(updates))
+                gpu_out = paddle.scatter(paddle.to_tensor(x),
+                                         paddle.to_tensor(index),
+                                         paddle.to_tensor(updates))
                 return gpu_out.numpy()
 
         @switch_to_static_graph
@@ -187,10 +193,12 @@ class TestScatterAPI(unittest.TestCase):
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
                 x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape)
-                updates_t = paddle.static.data(
-                    name="updates", dtype=updates.dtype, shape=updates.shape)
+                index_t = paddle.static.data(name="index",
+                                             dtype=index.dtype,
+                                             shape=index.shape)
+                updates_t = paddle.static.data(name="updates",
+                                               dtype=updates.dtype,
+                                               shape=updates.shape)
                 out_t = paddle.scatter(x_t, index_t, updates_t)
                 feed = {
                     x_t.name: x,
@@ -207,6 +215,7 @@ class TestScatterAPI(unittest.TestCase):
 
 
 class TestScatterOpFp16(OpTest):
+
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -229,6 +238,7 @@ class TestScatterOpFp16(OpTest):
 
 
 class TestScatterInplaceAPI(TestScatterAPI):
+
     def executed_api(self):
         self.scatter = paddle.scatter_
 
