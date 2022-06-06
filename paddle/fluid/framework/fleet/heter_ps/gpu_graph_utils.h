@@ -21,7 +21,7 @@ namespace framework {
 #include <device_launch_parameters.h>
 #include "paddle/fluid/platform/enforce.h"
 
-inline void debug_gpu_memory_info() {
+inline void debug_gpu_memory_info(const char* desc) {
   int device_num = 0;
   auto err = cudaGetDeviceCount(&device_num);
   PADDLE_ENFORCE_EQ(err, cudaSuccess,
@@ -34,10 +34,11 @@ inline void debug_gpu_memory_info() {
     auto err = cudaMemGetInfo(&avail, &total);
     PADDLE_ENFORCE_EQ(err, cudaSuccess,
             platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
-    VLOG(0) << "update gpu memory!!! "
-            << "avail=" << avail << ", "
-            << "total=" << total << ", "
-            << "ratio=" << (total-avail)/double(total);
+    VLOG(0) << "update gpu memory on device " << i << ", "
+            << "avail=" << avail/1024.0/1024.0/1024.0 << "g, "
+            << "total=" << total/1024.0/1024.0/1024.0 << "g, "
+            << "use_rate=" << (total-avail)/double(total) << "%, "
+            << "desc=" << desc;
   }
 }
 

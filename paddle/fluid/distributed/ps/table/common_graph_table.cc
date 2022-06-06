@@ -572,6 +572,7 @@ int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
       bucket[i]->build_sampler(sample_type);
     }
   }
+
   return 0;
 }
 #endif
@@ -1140,7 +1141,6 @@ int32_t GraphTable::build_sampler(int idx, std::string sample_type) {
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
                                const std::string &edge_type) {
 #ifdef PADDLE_WITH_HETERPS
-  // if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
   if (search_level == 2) total_memory_cost = 0;
   const uint64_t fixed_load_edges = 1000000;
 #endif
@@ -1161,7 +1161,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
   uint64_t count = 0;
   std::string sample_type = "random";
   bool is_weighted = false;
-  int valid_count = 0;
+  uint64_t valid_count = 0;
   for (auto path : paths) {
     std::ifstream file(path);
     std::string line;
@@ -1199,7 +1199,6 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
       edge_shards[idx][index]->add_neighbor(src_id, dst_id, weight);
       valid_count++;
 #ifdef PADDLE_WITH_HETERPS
-      // if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
       if (count > fixed_load_edges && search_level == 2) {
         dump_edges_to_ssd(idx);
         VLOG(0) << "dumping edges to ssd, edge count is reset to 0";
@@ -1212,9 +1211,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
   VLOG(0) << valid_count << "/" << count << " edges are loaded successfully in "
           << path;
 
-// Build Sampler j
 #ifdef PADDLE_WITH_HETERPS
-  // if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
   if (search_level == 2) {
     if (count > 0) {
       dump_edges_to_ssd(idx);
@@ -1225,12 +1222,21 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
     return 0;
   }
 #endif
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // To reduce memory overhead, CPU samplers won't be created in gpugraph.
+  // In order not to affect the sampler function of other scenario,
+  // this optimization is only performed in load_edges function.
+  VLOG(0) << "run in gpugraph mode!";
+#else
+  VLOG(0) << "build sampler ... ";
   for (auto &shard : edge_shards[idx]) {
     auto bucket = shard->get_bucket();
     for (size_t i = 0; i < bucket.size(); i++) {
       bucket[i]->build_sampler(sample_type);
     }
   }
+#endif
 
   return 0;
 }
