@@ -443,6 +443,10 @@ class MLUCnnl {
                      const void* const inputs[],
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Clip(const ExecutionContext& ctx,
+                   const cnnlTensorDescriptor_t input_desc, const void* input,
+                   const void* min, const void* max, void* y);
+
   static void Cast(const ExecutionContext& ctx, cnnlCastDataType_t cast_type,
                    const cnnlTensorDescriptor_t input_desc, const void* input,
                    const cnnlTensorDescriptor_t output_desc, void* output);

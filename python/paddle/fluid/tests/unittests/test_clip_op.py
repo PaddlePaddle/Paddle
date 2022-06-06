@@ -141,135 +141,136 @@ class TestClipOpError(unittest.TestCase):
         paddle.disable_static()
 
 
-class TestClipAPI(unittest.TestCase):
-    def _executed_api(self, x, min=None, max=None):
-        return paddle.clip(x, min, max)
-
-    def test_clip(self):
-        paddle.enable_static()
-        data_shape = [1, 9, 9, 4]
-        data = np.random.random(data_shape).astype('float32')
-        images = fluid.data(name='image', shape=data_shape, dtype='float32')
-        min = fluid.data(name='min', shape=[1], dtype='float32')
-        max = fluid.data(name='max', shape=[1], dtype='float32')
-
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        out_1 = self._executed_api(images, min=min, max=max)
-        out_2 = self._executed_api(images, min=0.2, max=0.9)
-        out_3 = self._executed_api(images, min=0.3)
-        out_4 = self._executed_api(images, max=0.7)
-        out_5 = self._executed_api(images, min=min)
-        out_6 = self._executed_api(images, max=max)
-        out_7 = self._executed_api(images, max=-1.)
-        out_8 = self._executed_api(images)
-        out_9 = self._executed_api(
-            paddle.cast(images, 'float64'), min=0.2, max=0.9)
-        out_10 = self._executed_api(
-            paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_11 = self._executed_api(
-            paddle.cast(images * 10, 'int64'), min=2, max=8)
-
-        res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11 = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "image": data,
-                "min": np.array([0.2]).astype('float32'),
-                "max": np.array([0.8]).astype('float32')
-            },
-            fetch_list=[
-                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8, out_9,
-                out_10, out_11
-            ])
-
-        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
-        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
-        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
-        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
-        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
-        self.assertTrue(np.allclose(res8, data))
-        self.assertTrue(
-            np.allclose(res9, data.astype(np.float64).clip(0.2, 0.9)))
-        self.assertTrue(
-            np.allclose(res10, (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
-        paddle.disable_static()
-
-    def func_clip_dygraph(self):
-        paddle.disable_static()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        paddle.disable_static(place)
-        data_shape = [1, 9, 9, 4]
-        data = np.random.random(data_shape).astype('float32')
-        images = paddle.to_tensor(data, dtype='float32')
-        v_min = paddle.to_tensor(np.array([0.2], dtype=np.float32))
-        v_max = paddle.to_tensor(np.array([0.8], dtype=np.float32))
-
-        out_1 = self._executed_api(images, min=0.2, max=0.8)
-        images = paddle.to_tensor(data, dtype='float32')
-        out_2 = self._executed_api(images, min=0.2, max=0.9)
-        images = paddle.to_tensor(data, dtype='float32')
-        out_3 = self._executed_api(images, min=v_min, max=v_max)
-
-        out_4 = self._executed_api(
-            paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_5 = self._executed_api(
-            paddle.cast(images * 10, 'int64'), min=2, max=8)
-        # test with numpy.generic
-        out_6 = self._executed_api(images, min=np.abs(0.2), max=np.abs(0.8))
-
-        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(
-            np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
-        self.assertTrue(
-            np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
-        self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
-
-    def test_clip_dygraph(self):
-        with _test_eager_guard():
-            self.func_clip_dygraph()
-        self.func_clip_dygraph()
-
-    def test_clip_dygraph_default_max(self):
-        paddle.disable_static()
-        with _test_eager_guard():
-            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
-            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
-            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
-            egr_out1 = paddle.clip(x_int32, min=1)
-            egr_out2 = paddle.clip(x_int64, min=1)
-            egr_out3 = paddle.clip(x_f32, min=1)
-        x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
-        x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
-        x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
-        out1 = paddle.clip(x_int32, min=1)
-        out2 = paddle.clip(x_int64, min=1)
-        out3 = paddle.clip(x_f32, min=1)
-        self.assertTrue(np.allclose(out1.numpy(), egr_out1.numpy()))
-        self.assertTrue(np.allclose(out2.numpy(), egr_out2.numpy()))
-        self.assertTrue(np.allclose(out3.numpy(), egr_out3.numpy()))
-
-    def test_errors(self):
-        paddle.enable_static()
-        x1 = fluid.data(name='x1', shape=[1], dtype="int16")
-        x2 = fluid.data(name='x2', shape=[1], dtype="int8")
-        self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
-        self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
-        paddle.disable_static()
-
-
-class TestInplaceClipAPI(TestClipAPI):
-    def _executed_api(self, x, min=None, max=None):
-        return x.clip_(min, max)
-
+#
+#class TestClipAPI(unittest.TestCase):
+#    def _executed_api(self, x, min=None, max=None):
+#        return paddle.clip(x, min, max)
+#
+#    def test_clip(self):
+#        paddle.enable_static()
+#        data_shape = [1, 9, 9, 4]
+#        data = np.random.random(data_shape).astype('float32')
+#        images = fluid.data(name='image', shape=data_shape, dtype='float32')
+#        min = fluid.data(name='min', shape=[1], dtype='float32')
+#        max = fluid.data(name='max', shape=[1], dtype='float32')
+#
+#        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+#        ) else fluid.CPUPlace()
+#        exe = fluid.Executor(place)
+#
+#        out_1 = self._executed_api(images, min=min, max=max)
+#        out_2 = self._executed_api(images, min=0.2, max=0.9)
+#        out_3 = self._executed_api(images, min=0.3)
+#        out_4 = self._executed_api(images, max=0.7)
+#        out_5 = self._executed_api(images, min=min)
+#        out_6 = self._executed_api(images, max=max)
+#        out_7 = self._executed_api(images, max=-1.)
+#        out_8 = self._executed_api(images)
+#        out_9 = self._executed_api(
+#            paddle.cast(images, 'float64'), min=0.2, max=0.9)
+#        out_10 = self._executed_api(
+#            paddle.cast(images * 10, 'int32'), min=2, max=8)
+#        out_11 = self._executed_api(
+#            paddle.cast(images * 10, 'int64'), min=2, max=8)
+#
+#        res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11 = exe.run(
+#            fluid.default_main_program(),
+#            feed={
+#                "image": data,
+#                "min": np.array([0.2]).astype('float32'),
+#                "max": np.array([0.8]).astype('float32')
+#            },
+#            fetch_list=[
+#                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8, out_9,
+#                out_10, out_11
+#            ])
+#
+#        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
+#        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
+#        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
+#        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
+#        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
+#        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
+#        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
+#        self.assertTrue(np.allclose(res8, data))
+#        self.assertTrue(
+#            np.allclose(res9, data.astype(np.float64).clip(0.2, 0.9)))
+#        self.assertTrue(
+#            np.allclose(res10, (data * 10).astype(np.int32).clip(2, 8)))
+#        self.assertTrue(
+#            np.allclose(res11, (data * 10).astype(np.int64).clip(2, 8)))
+#        paddle.disable_static()
+#
+#    def func_clip_dygraph(self):
+#        paddle.disable_static()
+#        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+#        ) else fluid.CPUPlace()
+#        paddle.disable_static(place)
+#        data_shape = [1, 9, 9, 4]
+#        data = np.random.random(data_shape).astype('float32')
+#        images = paddle.to_tensor(data, dtype='float32')
+#        v_min = paddle.to_tensor(np.array([0.2], dtype=np.float32))
+#        v_max = paddle.to_tensor(np.array([0.8], dtype=np.float32))
+#
+#        out_1 = self._executed_api(images, min=0.2, max=0.8)
+#        images = paddle.to_tensor(data, dtype='float32')
+#        out_2 = self._executed_api(images, min=0.2, max=0.9)
+#        images = paddle.to_tensor(data, dtype='float32')
+#        out_3 = self._executed_api(images, min=v_min, max=v_max)
+#
+#        out_4 = self._executed_api(
+#            paddle.cast(images * 10, 'int32'), min=2, max=8)
+#        out_5 = self._executed_api(
+#            paddle.cast(images * 10, 'int64'), min=2, max=8)
+#        # test with numpy.generic
+#        out_6 = self._executed_api(images, min=np.abs(0.2), max=np.abs(0.8))
+#
+#        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
+#        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
+#        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
+#        self.assertTrue(
+#            np.allclose(out_4.numpy(), (data * 10).astype(np.int32).clip(2, 8)))
+#        self.assertTrue(
+#            np.allclose(out_5.numpy(), (data * 10).astype(np.int64).clip(2, 8)))
+#        self.assertTrue(np.allclose(out_6.numpy(), data.clip(0.2, 0.8)))
+#
+#    def test_clip_dygraph(self):
+#        with _test_eager_guard():
+#            self.func_clip_dygraph()
+#        self.func_clip_dygraph()
+#
+#    def test_clip_dygraph_default_max(self):
+#        paddle.disable_static()
+#        with _test_eager_guard():
+#            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+#            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+#            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+#            egr_out1 = paddle.clip(x_int32, min=1)
+#            egr_out2 = paddle.clip(x_int64, min=1)
+#            egr_out3 = paddle.clip(x_f32, min=1)
+#        x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+#        x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+#        x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+#        out1 = paddle.clip(x_int32, min=1)
+#        out2 = paddle.clip(x_int64, min=1)
+#        out3 = paddle.clip(x_f32, min=1)
+#        self.assertTrue(np.allclose(out1.numpy(), egr_out1.numpy()))
+#        self.assertTrue(np.allclose(out2.numpy(), egr_out2.numpy()))
+#        self.assertTrue(np.allclose(out3.numpy(), egr_out3.numpy()))
+#
+#    def test_errors(self):
+#        paddle.enable_static()
+#        x1 = fluid.data(name='x1', shape=[1], dtype="int16")
+#        x2 = fluid.data(name='x2', shape=[1], dtype="int8")
+#        self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
+#        self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
+#        paddle.disable_static()
+#
+#
+#class TestInplaceClipAPI(TestClipAPI):
+#    def _executed_api(self, x, min=None, max=None):
+#        return x.clip_(min, max)
+#
 
 if __name__ == '__main__':
     unittest.main()
