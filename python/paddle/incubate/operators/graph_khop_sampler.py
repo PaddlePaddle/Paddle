@@ -125,23 +125,24 @@ def graph_khop_sampler(row,
     sample_index = helper.create_variable_for_type_inference(dtype=row.dtype)
     reindex_nodes = helper.create_variable_for_type_inference(dtype=row.dtype)
     edge_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
-    helper.append_op(
-        type="graph_khop_sampler",
-        inputs={
-            "Row": row,
-            "Eids": sorted_eids,
-            "Col_Ptr": colptr,
-            "X": input_nodes
-        },
-        outputs={
-            "Out_Src": edge_src,
-            "Out_Dst": edge_dst,
-            "Sample_Index": sample_index,
-            "Reindex_X": reindex_nodes,
-            "Out_Eids": edge_eids
-        },
-        attrs={"sample_sizes": sample_sizes,
-               "return_eids": return_eids})
+    helper.append_op(type="graph_khop_sampler",
+                     inputs={
+                         "Row": row,
+                         "Eids": sorted_eids,
+                         "Col_Ptr": colptr,
+                         "X": input_nodes
+                     },
+                     outputs={
+                         "Out_Src": edge_src,
+                         "Out_Dst": edge_dst,
+                         "Sample_Index": sample_index,
+                         "Reindex_X": reindex_nodes,
+                         "Out_Eids": edge_eids
+                     },
+                     attrs={
+                         "sample_sizes": sample_sizes,
+                         "return_eids": return_eids
+                     })
     if return_eids:
         return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
     else:

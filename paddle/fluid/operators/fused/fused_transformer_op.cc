@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_transformer_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -157,5 +158,5 @@ void FusedMHA<T>::ComputeForward(T* output, T* softmax_mask) {}
 template <typename T>
 void FusedMHA<T>::ComputeBackward(const T* grad_output, T* softmax_mask,
                                   T* grad_x) {}
-}
-}
+}  // namespace operators
+}  // namespace paddle

@@ -108,14 +108,13 @@ def fl_ps_train():
             # A 方和 B 方如果要以文件粒度 shuffle 时，则需要固定同一个种子
             dataset.set_filelist(file_list)
             start_time = time.time()
-            exe.train_from_dataset(
-                program=fluid.default_main_program(),
-                dataset=dataset,
-                print_period=2,
-                debug=False)
+            exe.train_from_dataset(program=fluid.default_main_program(),
+                                   dataset=dataset,
+                                   print_period=2,
+                                   debug=False)
             end_time = time.time()
-            print("trainer epoch %d finished, use time=%d\n" % (
-                (epoch), end_time - start_time))
+            print("trainer epoch %d finished, use time=%d\n" %
+                  ((epoch), end_time - start_time))
         exe.close()
         _runtime_handle._stop_worker()
         print("Fl partyA Trainer Success!")
@@ -125,17 +124,17 @@ def fl_ps_train():
         _runtime_handle._init_worker()
         inputs = [feeds_list[0],
                   feeds_list[-1]]  # 顺序务必要和 dataset_generator_B.py 中保持一致
-        dataset, file_list = get_dataset(
-            inputs, config, "python dataset_generator_B.py", "heter_worker")
+        dataset, file_list = get_dataset(inputs, config,
+                                         "python dataset_generator_B.py",
+                                         "heter_worker")
         print("fluid.default_main_program: {}".format(
             fluid.default_main_program()._heter_pipeline_opt))
         for epoch in range(epoch_num):
             dataset.set_filelist(file_list)
-            exe.train_from_dataset(
-                program=fluid.default_main_program(),
-                dataset=dataset,
-                print_period=2,
-                debug=False)
+            exe.train_from_dataset(program=fluid.default_main_program(),
+                                   dataset=dataset,
+                                   print_period=2,
+                                   debug=False)
         exe.close()
         _runtime_handle._stop_worker()
         print("Fl partB Trainer Success!")

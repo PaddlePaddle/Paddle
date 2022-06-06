@@ -68,10 +68,11 @@ class ConditionalOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(ips[0]->dtype()) ==
                               framework::proto::VarType::BOOL &&
                           ips[0]->numel() == 1,
-                      true, platform::errors::InvalidArgument(
-                                "condition input's data type should be bool, "
-                                "numel should be 1, actual numel is %d",
-                                ips[0]->numel()));
+                      true,
+                      platform::errors::InvalidArgument(
+                          "condition input's data type should be bool, "
+                          "numel should be 1, actual numel is %d",
+                          ips[0]->numel()));
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

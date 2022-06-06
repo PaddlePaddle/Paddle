@@ -26,6 +26,7 @@ inplace_out_type_map = {
 
 
 class ForwardAPI(BaseAPI):
+
     def __init__(self, api_item_yaml):
         super(ForwardAPI, self).__init__(api_item_yaml)
         self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
@@ -131,9 +132,9 @@ class ForwardAPI(BaseAPI):
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
-            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
-                0]] if inplace_flag and self.outputs['names'][
-                    0] in self.inplace_map else ""
+            inplace_assign = " = " + self.inplace_map[
+                self.outputs['names'][0]] if inplace_flag and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
 
@@ -287,21 +288,18 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to api yaml file',
-        nargs='+',
-        default='python/paddle/utils/code_gen/api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to api yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/include/api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/include/api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/api.cc')
 
     options = parser.parse_args()
 

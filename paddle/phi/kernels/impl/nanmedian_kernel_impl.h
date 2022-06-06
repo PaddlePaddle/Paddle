@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/nanmedian_kernel.h"
-
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/nanmedian_kernel.h"
 
 namespace phi {
 

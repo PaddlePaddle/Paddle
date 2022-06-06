@@ -14,11 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/pool_grad_kernel.h"
-
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/pool_grad_kernel.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
 namespace phi {

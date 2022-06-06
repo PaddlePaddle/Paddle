@@ -22,6 +22,7 @@ from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
+
     def func_test_get_valid_program_error(self):
         # case 1: CompiledProgram no program
         graph = core.Graph(core.ProgramDesc())
@@ -43,16 +44,16 @@ class TestSaveLoadAPIError(unittest.TestCase):
         exe = fluid.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
-                executor=exe, dirname="./fake_dir", main_program="program")
+            fluid.io.load_vars(executor=exe,
+                               dirname="./fake_dir",
+                               main_program="program")
 
         # case 2: main_program type error when vars not None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
-                executor=exe,
-                dirname="./fake_dir",
-                main_program="program",
-                vars="vars")
+            fluid.io.load_vars(executor=exe,
+                               dirname="./fake_dir",
+                               main_program="program",
+                               vars="vars")
 
     def test_load_vars_error(self):
         with _test_eager_guard():
@@ -61,6 +62,7 @@ class TestSaveLoadAPIError(unittest.TestCase):
 
 
 class TestSaveInferenceModelAPIError(unittest.TestCase):
+
     def func_test_useless_feeded_var_names(self):
         start_prog = fluid.Program()
         main_prog = fluid.Program()
@@ -73,12 +75,11 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         exe.run(start_prog)
         with self.assertRaisesRegexp(
                 ValueError, "not involved in the target_vars calculation"):
-            fluid.io.save_inference_model(
-                dirname='./model',
-                feeded_var_names=['x', 'y'],
-                target_vars=[z],
-                executor=exe,
-                main_program=main_prog)
+            fluid.io.save_inference_model(dirname='./model',
+                                          feeded_var_names=['x', 'y'],
+                                          target_vars=[z],
+                                          executor=exe,
+                                          main_program=main_prog)
 
     def test_useless_feeded_var_names(self):
         with _test_eager_guard():
@@ -87,6 +88,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
 
 
 class TestWhenTrainWithNoGrad(unittest.TestCase):
+
     def func_test_when_train_with_no_grad(self):
         paddle.disable_static()
         net = paddle.nn.Linear(1024, 1)

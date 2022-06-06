@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -32,6 +33,7 @@ def sigmoid_array(x):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestLogLossOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = 'log_loss'
@@ -78,6 +80,7 @@ class TestLogLossOp(OpTest):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestLogLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

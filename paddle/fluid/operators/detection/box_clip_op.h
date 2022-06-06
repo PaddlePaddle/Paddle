@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

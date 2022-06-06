@@ -114,10 +114,9 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst, const T* src, const T* mask,
   }
 }
 
-#define SOFTMAX_MASK_KERNEL(VEC_SIZE, ELEMENTS)                    \
-  FusedSoftmaxMaskVecKernel<T, VEC_SIZE,                           \
-                            ELEMENTS><<<grid, block, 0, stream>>>( \
-      dst, src, mask, seq_len)
+#define SOFTMAX_MASK_KERNEL(VEC_SIZE, ELEMENTS)    \
+  FusedSoftmaxMaskVecKernel<T, VEC_SIZE, ELEMENTS> \
+      <<<grid, block, 0, stream>>>(dst, src, mask, seq_len)
 
 // FIXME(wangxi): It is found that the performance of VEC_SIZE=2 is better
 //  than that of =4 and =8. Further analysis of the kernel is needed later.

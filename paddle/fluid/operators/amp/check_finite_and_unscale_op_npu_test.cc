@@ -20,6 +20,7 @@ limitations under the License. */
 #include <cstdlib>
 #include <memory>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"

@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -71,14 +72,16 @@ static void SpiltBatchSquareMatrix(const Tensor& input,
 }
 
 static void CheckLapackEigResult(const int info, const std::string& name) {
-  PADDLE_ENFORCE_LE(info, 0, platform::errors::PreconditionNotMet(
-                                 "The QR algorithm failed to compute all the "
-                                 "eigenvalues in function %s.",
-                                 name.c_str()));
+  PADDLE_ENFORCE_LE(info, 0,
+                    platform::errors::PreconditionNotMet(
+                        "The QR algorithm failed to compute all the "
+                        "eigenvalues in function %s.",
+                        name.c_str()));
   PADDLE_ENFORCE_GE(
-      info, 0, platform::errors::InvalidArgument(
-                   "The %d-th argument has an illegal value in function %s.",
-                   -info, name.c_str()));
+      info, 0,
+      platform::errors::InvalidArgument(
+          "The %d-th argument has an illegal value in function %s.", -info,
+          name.c_str()));
 }
 
 template <typename DeviceContext, typename T>

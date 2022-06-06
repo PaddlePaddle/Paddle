@@ -88,16 +88,15 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                              reinterpret_cast<const float16*>(x->data<T>()),
                              float_x.data<MPDType>(), x->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
-
+        
         r = xpu::scale(dev_ctx.x_context(), float_x.data<MPDType>(),
                        float_out.data<MPDType>(), x->numel(), false,
                        inverse_scale, 0.0);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
-
+        
         r = xpu::cast_v2(dev_ctx.x_context(), float_out.data<MPDType>(),
                          reinterpret_cast<float16*>(out->data<T>()),
                          out->numel());
-
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
       } else {
         int r = xpu::scale(dev_ctx.x_context(),
@@ -105,6 +104,7 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
                            reinterpret_cast<XPUTyp*>(out->data<T>()),
                            x->numel(), false, inverse_scale, 0.0);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
       }
     }
     memory::Copy(dev_ctx.GetPlace(), found_inf_data, platform::CPUPlace(),

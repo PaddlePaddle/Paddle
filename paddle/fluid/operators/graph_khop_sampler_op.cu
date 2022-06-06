@@ -26,6 +26,7 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/transform.h>
 #include <thrust/unique.h>
+
 #include <ostream>
 
 #ifdef PADDLE_WITH_HIP
@@ -217,15 +218,16 @@ void SampleNeighbors(const framework::ExecutionContext& ctx, const T* src,
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  GraphSampleNeighborsCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream()>>>(
-      0, k, bs, thrust::raw_pointer_cast(inputs->data()), src, dst_count,
-      src_eids, thrust::raw_pointer_cast(outputs->data()),
-      thrust::raw_pointer_cast(outputs_eids->data()),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      thrust::raw_pointer_cast(output_idxs.data()), return_eids);
+  GraphSampleNeighborsCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0,
+         reinterpret_cast<const platform::CUDADeviceContext&>(
+             ctx.device_context())
+             .stream()>>>(
+          0, k, bs, thrust::raw_pointer_cast(inputs->data()), src, dst_count,
+          src_eids, thrust::raw_pointer_cast(outputs->data()),
+          thrust::raw_pointer_cast(outputs_eids->data()),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          thrust::raw_pointer_cast(output_idxs.data()), return_eids);
 
   // 5. Get inputs = outputs - inputs:
   if (!is_last_layer) {
@@ -264,19 +266,19 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   // 1. Insert data into keys and values.
-  BuildHashTable<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
+  BuildHashTable<T><<<grid, block, 0,
+                      reinterpret_cast<const platform::CUDADeviceContext&>(
+                          ctx.device_context())
+                          .stream()>>>(
       input, num_input, len_hashtable, thrust::raw_pointer_cast(keys->data()),
       thrust::raw_pointer_cast(key_index->data()));
 
   // 2. Get item index count.
   thrust::device_vector<int> item_count(num_input + 1, 0);
-  GetItemIndexCount<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
+  GetItemIndexCount<T><<<grid, block, 0,
+                         reinterpret_cast<const platform::CUDADeviceContext&>(
+                             ctx.device_context())
+                             .stream()>>>(
       input, thrust::raw_pointer_cast(item_count.data()), num_input,
       len_hashtable, thrust::raw_pointer_cast(keys->data()),
       thrust::raw_pointer_cast(key_index->data()));
@@ -287,16 +289,16 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   unique_items->resize(total_unique_items);
 
   // 3. Get unique items.
-  FillUniqueItems<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
-      input, num_input, len_hashtable,
-      thrust::raw_pointer_cast(unique_items->data()),
-      thrust::raw_pointer_cast(item_count.data()),
-      thrust::raw_pointer_cast(keys->data()),
-      thrust::raw_pointer_cast(values->data()),
-      thrust::raw_pointer_cast(key_index->data()));
+  FillUniqueItems<T>
+      <<<grid, block, 0,
+         reinterpret_cast<const platform::CUDADeviceContext&>(
+             ctx.device_context())
+             .stream()>>>(input, num_input, len_hashtable,
+                          thrust::raw_pointer_cast(unique_items->data()),
+                          thrust::raw_pointer_cast(item_count.data()),
+                          thrust::raw_pointer_cast(keys->data()),
+                          thrust::raw_pointer_cast(values->data()),
+                          thrust::raw_pointer_cast(key_index->data()));
 }
 
 template <typename T>
@@ -337,23 +339,23 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (outputs->size() + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  ReindexSrcOutput<
-      T><<<grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               ctx.device_context())
-                               .stream()>>>(
+  ReindexSrcOutput<T><<<grid, block, 0,
+                        reinterpret_cast<const platform::CUDADeviceContext&>(
+                            ctx.device_context())
+                            .stream()>>>(
       thrust::raw_pointer_cast(outputs->data()), outputs->size(), size,
       thrust::raw_pointer_cast(keys.data()),
       thrust::raw_pointer_cast(values.data()));
 
   int grid_ = (bs + block - 1) / block;
-  ReindexInputNodes<T><<<grid_, block, 0,
-                         reinterpret_cast<const platform::CUDADeviceContext&>(
-                             ctx.device_context())
-                             .stream()>>>(
-      thrust::raw_pointer_cast(orig_nodes->data()), bs,
-      thrust::raw_pointer_cast(reindex_nodes->data()), size,
-      thrust::raw_pointer_cast(keys.data()),
-      thrust::raw_pointer_cast(values.data()));
+  ReindexInputNodes<T>
+      <<<grid_, block, 0,
+         reinterpret_cast<const platform::CUDADeviceContext&>(
+             ctx.device_context())
+             .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()), bs,
+                          thrust::raw_pointer_cast(reindex_nodes->data()), size,
+                          thrust::raw_pointer_cast(keys.data()),
+                          thrust::raw_pointer_cast(values.data()));
 }
 
 template <typename DeviceContext, typename T>
@@ -532,15 +534,16 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((unique_dst_size + TILE_SIZE - 1) / TILE_SIZE);
 
-    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE><<<
-        grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                            ctx.device_context())
-                            .stream()>>>(
-        unique_dst_size,
-        thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
-        thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
-        thrust::raw_pointer_cast(dst_ptr.data()),
-        thrust::raw_pointer_cast(dst_merge.data()));
+    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+        <<<grid, block, 0,
+           reinterpret_cast<const platform::CUDADeviceContext&>(
+               ctx.device_context())
+               .stream()>>>(
+            unique_dst_size,
+            thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
+            thrust::raw_pointer_cast(dst_sample_counts_merge.data()),
+            thrust::raw_pointer_cast(dst_ptr.data()),
+            thrust::raw_pointer_cast(dst_merge.data()));
 
     // 8. Give operator's outputs.
     auto* out_src = ctx.Output<Tensor>("Out_Src");

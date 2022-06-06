@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <Eigen/Dense>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
@@ -655,10 +657,10 @@ class LambOpKernel : public framework::OpKernel<T> {
     // TODO(zengjinle): remove the following Eigen operations when
     // *skip_update == true.
     memory::Buffer buffer(dev_ctx.GetPlace());
-    math::SquaredL2Norm(
-        dev_ctx, reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
-                                                              : param_ptr),
-        p_norm_ptr, numel, &buffer);
+    math::SquaredL2Norm(dev_ctx,
+                        reinterpret_cast<const MT*>(
+                            IsMultiPrecision ? master_param_ptr : param_ptr),
+                        p_norm_ptr, numel, &buffer);
     math::SquaredL2Norm(dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr,
                         numel, &buffer);
 
@@ -675,12 +677,12 @@ class LambOpKernel : public framework::OpKernel<T> {
 #define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
   do {                                                                       \
     LambParamUpateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
-    param_update_functor(                                                    \
-        lr.template data<MT>(), static_cast<const T*>(param_ptr),            \
-        static_cast<const MT*>(master_param_ptr), p_norm_ptr,                \
-        trust_ratio_div_ptr, trust_ratio_div_norm_ptr,                       \
-        static_cast<T*>(param_out_ptr),                                      \
-        static_cast<MT*>(master_param_out_ptr), skip_update_flag);           \
+        param_update_functor(                                                \
+            lr.template data<MT>(), static_cast<const T*>(param_ptr),        \
+            static_cast<const MT*>(master_param_ptr), p_norm_ptr,            \
+            trust_ratio_div_ptr, trust_ratio_div_norm_ptr,                   \
+            static_cast<T*>(param_out_ptr),                                  \
+            static_cast<MT*>(master_param_out_ptr), skip_update_flag);       \
     if (__should_update_beta_pow) {                                          \
       param_update_functor.SetBetaPows(beta1_pow_ptr, beta2_pow_ptr,         \
                                        beta1_pow_out_ptr, beta2_pow_out_ptr, \

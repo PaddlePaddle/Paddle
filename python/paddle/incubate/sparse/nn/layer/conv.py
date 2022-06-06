@@ -23,6 +23,7 @@ __all__ = []
 
 
 class _Conv3D(Layer):
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -86,16 +87,15 @@ class _Conv3D(Layer):
         self.bias = None
 
     def forward(self, x):
-        out = F.conv._conv3d(
-            x,
-            self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._updated_padding,
-            dilation=self._dilation,
-            groups=self._groups,
-            subm=self._subm,
-            data_format=self._data_format)
+        out = F.conv._conv3d(x,
+                             self.weight,
+                             bias=self.bias,
+                             stride=self._stride,
+                             padding=self._updated_padding,
+                             dilation=self._dilation,
+                             groups=self._groups,
+                             subm=self._subm,
+                             data_format=self._data_format)
         return out
 
     def extra_repr(self):
@@ -232,19 +232,18 @@ class Conv3D(_Conv3D):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NDHWC"):
-        super(Conv3D, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            subm=False,
-            padding_mode=padding_mode,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(Conv3D, self).__init__(in_channels,
+                                     out_channels,
+                                     kernel_size,
+                                     stride=stride,
+                                     padding=padding,
+                                     dilation=dilation,
+                                     groups=groups,
+                                     subm=False,
+                                     padding_mode=padding_mode,
+                                     weight_attr=weight_attr,
+                                     bias_attr=bias_attr,
+                                     data_format=data_format)
 
 
 class SubmConv3D(_Conv3D):
@@ -365,16 +364,15 @@ class SubmConv3D(_Conv3D):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NDHWC"):
-        super(SubmConv3D, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=padding,
-            dilation=dilation,
-            groups=groups,
-            subm=True,
-            padding_mode=padding_mode,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-            data_format=data_format)
+        super(SubmConv3D, self).__init__(in_channels,
+                                         out_channels,
+                                         kernel_size,
+                                         stride=stride,
+                                         padding=padding,
+                                         dilation=dilation,
+                                         groups=groups,
+                                         subm=True,
+                                         padding_mode=padding_mode,
+                                         weight_attr=weight_attr,
+                                         bias_attr=bias_attr,
+                                         data_format=data_format)

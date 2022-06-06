@@ -85,8 +85,8 @@ class MNIST(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+                    backend))
         self.backend = backend
 
         self.mode = mode.lower()
@@ -134,8 +134,8 @@ class MNIST(Dataset):
                 offset_lab = 0
                 # label file : 8B
                 magic_byte_lab = '>II'
-                magic_lab, label_num = struct.unpack_from(magic_byte_lab,
-                                                          lab_buf, offset_lab)
+                magic_lab, label_num = struct.unpack_from(
+                    magic_byte_lab, lab_buf, offset_lab)
                 offset_lab += struct.calcsize(magic_byte_lab)
 
                 while True:
@@ -149,8 +149,9 @@ class MNIST(Dataset):
                     fmt_images = '>' + str(buffer_size * rows * cols) + 'B'
                     images_temp = struct.unpack_from(fmt_images, img_buf,
                                                      offset_img)
-                    images = np.reshape(images_temp, (buffer_size, rows *
-                                                      cols)).astype('float32')
+                    images = np.reshape(
+                        images_temp,
+                        (buffer_size, rows * cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
                     for i in range(buffer_size):

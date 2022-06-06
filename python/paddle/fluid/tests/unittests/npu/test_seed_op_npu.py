@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -27,6 +28,7 @@ paddle.enable_static()
 
 
 class TestSeedOpFixSeed(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"
@@ -42,6 +44,7 @@ class TestSeedOpFixSeed(OpTest):
 
 
 class TestSeedOpDiffSeed(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"
