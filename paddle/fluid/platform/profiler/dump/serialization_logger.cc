@@ -20,7 +20,7 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
-static const char* version = "1.0.0";
+static const char* version = "1.0.1";
 static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
@@ -121,7 +121,8 @@ void SerializationLogger::LogMemTraceEventNode(
     const MemTraceEventNode& mem_node) {
   MemTraceEventProto* mem_trace_event = new MemTraceEventProto();
   mem_trace_event->set_timestamp_ns(mem_node.TimeStampNs());
-  mem_trace_event->set_type(mem_node.Type());
+  mem_trace_event->set_type(
+      static_cast<TracerMemEventTypeProto>(mem_node.Type()));
   mem_trace_event->set_addr(mem_node.Addr());
   mem_trace_event->set_process_id(mem_node.ProcessId());
   mem_trace_event->set_thread_id(mem_node.ThreadId());
@@ -162,7 +163,7 @@ void SerializationLogger::LogHostTraceEventNode(
         op_supplement_event_node->CallStack());
 
     OperatorSupplementEventProto::input_shape_proto* input_shape_proto =
-        op_supplement_event->mutable_input_shapes();
+        op_supplement_event_proto->mutable_input_shapes();
     for (auto it = op_supplement_event_node->InputShapes().begin();
          it != op_supplement_event_node->InputShapes().end(); it++) {
       input_shape_proto->add_key(it->first);
@@ -172,7 +173,7 @@ void SerializationLogger::LogHostTraceEventNode(
       for (auto shape_vecs_it = shape_vectors.begin();
            shape_vecs_it != shape_vectors.end(); shape_vecs_it++) {
         auto shape_vector = *shape_vecs_it;
-        OperatorSupplementEventProto::input_shape_proto::shape_vector::shape
+        OperatorSupplementEventProto::input_shape_proto::shape_vector::shape*
             shape_proto = shape_vectors_proto->add_shapes();
         for (auto shape_it = shape_vector.begin();
              shape_it != shape_vector.end(); shape_it++) {
@@ -182,7 +183,7 @@ void SerializationLogger::LogHostTraceEventNode(
     }
 
     OperatorSupplementEventProto::dtype_proto* dtype_proto =
-        op_supplement_event->mutable_dtypes();
+        op_supplement_event_proto->mutable_dtypes();
     for (auto it = op_supplement_event_node->Dtypes().begin();
          it != op_supplement_event_node->Dtypes().end(); it++) {
       dtype_proto->add_key(it->first);

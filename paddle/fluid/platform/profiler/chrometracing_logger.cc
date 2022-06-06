@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-static const char* kSchemaVersion = "1.0.0";
+static const char* kSchemaVersion = "1.0.1";
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 static uint32_t span_indx = 0;
 

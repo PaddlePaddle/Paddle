@@ -153,10 +153,10 @@ message MemTraceEventProto {
 }
 
 message OperatorSupplementEventProto {
-  // op type name
-  required string op_type = 1;
   // timestamp of the record
-  required uint64 timestamp_ns = 2;
+  required uint64 timestamp_ns = 1;
+  // op type name
+  required string op_type = 2;
   // process id of the record
   required uint64 process_id = 3;
   // thread id of the record
@@ -247,6 +247,7 @@ message HostTraceEventNodeProto {
   required int64 parentid = 2;
   required HostTraceEventProto host_trace_event = 3;
   repeated CudaRuntimeTraceEventNodeProto runtime_nodes = 4;
+  // below is added in version 1.0.1
   repeated MemTraceEventNodeProto mem_nodes = 5;
   repeated OperatorSupplementEventNodeProto op_supplement_nodes = 6;
 }
