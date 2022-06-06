@@ -26,4 +26,4 @@ void ExpandKernel(const Context& ctx,
                   const IntArray& shape,
                   DenseTensor* out);
 
-}  // namepsace phi
+}  // namespace phi

@@ -31,7 +31,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 class BlockDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 

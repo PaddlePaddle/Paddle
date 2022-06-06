@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 
@@ -21,9 +22,9 @@ namespace inference {
 namespace lite {
 namespace utils {
 
-using paddle::lite_api::TargetType;
-using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
+using paddle::lite_api::PrecisionType;
+using paddle::lite_api::TargetType;
 
 TEST(LiteEngineOp, GetNativePlace) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";

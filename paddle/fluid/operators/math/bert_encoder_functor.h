@@ -17,10 +17,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+
 #include <cub/cub.cuh>  // NOLINT
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif

@@ -13,8 +13,10 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_repeated_fc_relu_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
@@ -24,10 +26,11 @@ void FusionRepeatedFCReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusionRepeatedFCRelu");
   auto sz = ctx->Inputs("W").size();
-  PADDLE_ENFORCE_GT(sz, 1UL, platform::errors::InvalidArgument(
-                                 "Inputs(W) of FusionRepeatedFCReluOp should "
-                                 "be greater than 1, but received value is %d.",
-                                 sz));
+  PADDLE_ENFORCE_GT(sz, 1UL,
+                    platform::errors::InvalidArgument(
+                        "Inputs(W) of FusionRepeatedFCReluOp should "
+                        "be greater than 1, but received value is %d.",
+                        sz));
   PADDLE_ENFORCE_EQ(
       ctx->Inputs("Bias").size(), sz,
       platform::errors::InvalidArgument(

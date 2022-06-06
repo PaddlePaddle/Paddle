@@ -14,9 +14,11 @@
 
 #include <cuda_runtime.h>
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/skip_layernorm_op_plugin.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
@@ -105,8 +107,9 @@ nvinfer1::DataType SkipLayerNormPluginDynamic::getOutputDataType(
                         index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
-                    true, platform::errors::InvalidArgument(
-                              "The input type should be half or float"));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input type should be half or float"));
   return input_types[0];
 }
 

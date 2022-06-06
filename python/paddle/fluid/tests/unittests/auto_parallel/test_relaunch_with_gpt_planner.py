@@ -22,6 +22,7 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestPlannerReLaunch(unittest.TestCase):
+
     def test_relaunch_with_planner(self):
         from test_auto_parallel_relaunch import cluster_json
         file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,8 +50,8 @@ class TestPlannerReLaunch(unittest.TestCase):
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):
             os.remove(cluster_json_path)
-        rank_mapping_json_path = os.path.join(file_dir,
-                                              "auto_parallel_rank_mapping.json")
+        rank_mapping_json_path = os.path.join(
+            file_dir, "auto_parallel_rank_mapping.json")
         if os.path.exists(rank_mapping_json_path):
             os.remove(rank_mapping_json_path)
         files_path = [path for path in os.listdir('.') if '.pkl' in path]

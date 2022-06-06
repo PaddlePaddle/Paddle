@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <assert.h>
 #include <cuda.h>          // NOTLINT
 #include <cuda_runtime.h>  // NOTLINT
 #include <dlnne.h>         // NOTLINT
 
-#include <assert.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -128,11 +128,13 @@ class DlnneEngineOp : public framework::OperatorBase {
              << ".onnx";
 
     builder = dl::nne::CreateInferBuilder();
-    PADDLE_ENFORCE_NE(builder, nullptr, platform::errors::Unavailable(
-                                            "nne create builder failed"));
+    PADDLE_ENFORCE_NE(
+        builder, nullptr,
+        platform::errors::Unavailable("nne create builder failed"));
     parser = dl::nne::CreateParser();
-    PADDLE_ENFORCE_NE(parser, nullptr, platform::errors::Unavailable(
-                                           "nne create parser failed"));
+    PADDLE_ENFORCE_NE(
+        parser, nullptr,
+        platform::errors::Unavailable("nne create parser failed"));
 
     network = builder->CreateNetwork();
 

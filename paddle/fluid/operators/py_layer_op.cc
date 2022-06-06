@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <vector>
-
 #include "paddle/fluid/operators/py_layer_op.h"
+
+#include <vector>
 
 namespace paddle {
 namespace operators {

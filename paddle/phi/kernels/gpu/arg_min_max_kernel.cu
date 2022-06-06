@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/arg_min_max_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/arg_min_max_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
@@ -27,6 +26,7 @@
 namespace cub = hipcub;
 #endif
 #include <limits>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -121,33 +121,27 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
 
   if (typeid(Reducer) == typeid(cub::ArgMax)) {
     switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(
-          ArgCUDAKernel<T,
-                        IndType,
-                        Reducer,
-                        kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
-              height,
-              width,
-              post,
-              Reducer(),
-              std::numeric_limits<T>::lowest(),
-              in_data,
-              out_data));
+      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
+                               height,
+                               width,
+                               post,
+                               Reducer(),
+                               std::numeric_limits<T>::lowest(),
+                               in_data,
+                               out_data));
     }
   } else {
     switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(
-          ArgCUDAKernel<T,
-                        IndType,
-                        Reducer,
-                        kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
-              height,
-              width,
-              post,
-              Reducer(),
-              std::numeric_limits<T>::max(),
-              in_data,
-              out_data));
+      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
+                               height,
+                               width,
+                               post,
+                               Reducer(),
+                               std::numeric_limits<T>::max(),
+                               in_data,
+                               out_data));
     }
   }
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+
 #include "paddle/fluid/memory/stats.h"
 namespace paddle {
 namespace memory {

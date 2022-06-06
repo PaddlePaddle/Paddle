@@ -481,10 +481,11 @@ void EmbSeqPool(const T* table, const int64_t* idx, T* out,
             "The idx shoud be lower than the attribute table_height of "
             "EmbSeqPool. But %dth of idx is %d and table_height is %d.",
             i, idx[i], attr->table_height));
-    PADDLE_ENFORCE_GE(idx[i], 0, platform::errors::InvalidArgument(
-                                     "The idx shoud be equal to or larger than "
-                                     "the 0. But %dth of idx is %d.",
-                                     i, idx[i]));
+    PADDLE_ENFORCE_GE(idx[i], 0,
+                      platform::errors::InvalidArgument(
+                          "The idx shoud be equal to or larger than "
+                          "the 0. But %dth of idx is %d.",
+                          i, idx[i]));
   };
 
   for (int64_t w = 0; w != attr->index_width; ++w) {
@@ -539,11 +540,12 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
                           "less than the attribute. But %dth of rows "
                           "is %d and grad_width is %d.",
                           i, h_idx, attr->param_height));
-    PADDLE_ENFORCE_GE(h_idx, 0, platform::errors::InvalidArgument(
-                                    "The rows of Sgd should be "
-                                    "larger than 0. But %dth of rows "
-                                    "is %d.",
-                                    i, h_idx));
+    PADDLE_ENFORCE_GE(
+        h_idx, 0,
+        platform::errors::InvalidArgument("The rows of Sgd should be "
+                                          "larger than 0. But %dth of rows "
+                                          "is %d.",
+                                          i, h_idx));
     for (int64_t j = 0; j < attr->grad_width; ++j) {
       out[h_idx * attr->grad_width + j] =
           param[h_idx * attr->grad_width + j] -

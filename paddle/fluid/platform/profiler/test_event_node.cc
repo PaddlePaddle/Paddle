@@ -13,22 +13,21 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 
 using paddle::platform::ChromeTracingLogger;
-using paddle::platform::NodeTrees;
-using paddle::platform::HostTraceEventNode;
 using paddle::platform::CudaRuntimeTraceEventNode;
+using paddle::platform::DeviceTraceEvent;
 using paddle::platform::DeviceTraceEventNode;
 using paddle::platform::HostTraceEvent;
-using paddle::platform::RuntimeTraceEvent;
-using paddle::platform::DeviceTraceEvent;
-using paddle::platform::TracerEventType;
+using paddle::platform::HostTraceEventNode;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
+using paddle::platform::NodeTrees;
+using paddle::platform::RuntimeTraceEvent;
+using paddle::platform::TracerEventType;
 TEST(NodeTreesTest, LogMe_case0) {
   std::list<HostTraceEvent> host_events;
   std::list<RuntimeTraceEvent> runtime_events;
@@ -194,8 +193,10 @@ TEST(NodeTreesTest, HandleTrees_case0) {
   }
   std::function<void(HostTraceEventNode*)> host_event_node_handle(
       [&](HostTraceEventNode* a) { logger.LogHostTraceEventNode(*a); });
-  std::function<void(CudaRuntimeTraceEventNode*)> runtime_event_node_handle([&](
-      CudaRuntimeTraceEventNode* a) { logger.LogRuntimeTraceEventNode(*a); });
+  std::function<void(CudaRuntimeTraceEventNode*)> runtime_event_node_handle(
+      [&](CudaRuntimeTraceEventNode* a) {
+        logger.LogRuntimeTraceEventNode(*a);
+      });
   std::function<void(DeviceTraceEventNode*)> device_event_node_handle(
       [&](DeviceTraceEventNode* a) { logger.LogDeviceTraceEventNode(*a); });
   tree.HandleTrees(host_event_node_handle, runtime_event_node_handle,

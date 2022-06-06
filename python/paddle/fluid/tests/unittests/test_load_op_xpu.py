@@ -43,8 +43,9 @@ class TestLoadOpXpu(unittest.TestCase):
                         self.ones)))
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
-        fluid.io.save_persistables(
-            exe, dirname="./model", main_program=main_prog)
+        fluid.io.save_persistables(exe,
+                                   dirname="./model",
+                                   main_program=main_prog)
 
     def test_load_xpu(self):
         main_prog = fluid.Program()
