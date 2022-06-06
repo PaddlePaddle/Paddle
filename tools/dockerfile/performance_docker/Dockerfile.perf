@@ -20,7 +20,7 @@ ADD tools/dockerfile/performance_docker/paddle_k8s ${HOME_WORK_DIR}/
 RUN chmod +x ${HOME_WORK_DIR}/paddle_k8s
 
 # install rdma driver, consistent with local real machine rdma driver version.
-RUN apt-get install -y libnuma1 automake pkg-config tcl dpatch autoconf libnl-3-200 graphviz libgfortran3 tk libnl-route-3-200 bison chrpath libltdl-dev swig flex gfortran
+RUN apt-get install -y libnuma1 automake pkg-config tcl dpatch autoconf libnl-3-200 graphviz libgfortran3 tk libnl-route-3-200 bison chrpath libltdl-dev swig flex gfortran libbz2-dev
 RUN apt-get install lsb-core -y
 RUN wget -q https://paddlepaddledeps.bj.bcebos.com/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz  && \
     tar zxf MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz -C ${HOME_WORK_DIR}/ && \
