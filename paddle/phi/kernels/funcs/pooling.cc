@@ -16,18 +16,19 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
 namespace funcs {
 
 /*
-* Tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<CPUContext, PoolProcess, T> {
  public:
@@ -248,12 +249,12 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
 };
 
 /*
-* tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
  public:
@@ -492,12 +493,12 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
 };
 
 /*
-* Tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <class T>
 class MaxPool2dGradFunctor<CPUContext, T> {
  public:
@@ -682,13 +683,13 @@ template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 
 /*
-* Tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dFunctor<CPUContext, PoolProcess, T> {
  public:
@@ -981,13 +982,13 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
 };
 
 /*
-* Tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
  public:
@@ -1298,13 +1299,13 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
 };
 
 /*
-* Tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <class T>
 class MaxPool3dGradFunctor<CPUContext, T> {
  public:

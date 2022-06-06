@@ -2043,6 +2043,32 @@ static std::string GenerateSingleOpBase(
   const std::string& ins_name = "ins" + std::to_string(*outs_size);
   const std::string& outs_name = "outs" + std::to_string(*outs_size);
   const std::string& attrs_name = "attrs_map" + std::to_string(*outs_size);
+  const std::string& hooked_grads = "hooked_grads" + std::to_string(*outs_size);
+
+  // [Generation] Get Full Zero
+  std::string fill_zero_str = "";
+  if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
+    for (auto iter : grad_ins) {
+      const std::string& grad_input_name = iter.first;
+      if (grad_ins_grad_slotname_map.count(grad_input_name)) {
+        size_t fwd_output_position = fwd_outputs_name_pos_map.at(
+            grad_ins_grad_slotname_map.at(grad_input_name));
+        const char* FILL_ZERO_TEMPLATE =
+            "egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[%d], "
+            "this->InputMeta()[%d]);\n";
+        fill_zero_str += paddle::string::Sprintf(
+            FILL_ZERO_TEMPLATE, fwd_output_position, fwd_output_position);
+      }
+    }
+  }
+  generated_grad_function_body += fill_zero_str;
+  generated_grad_function_body +=
+      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+      "egr::kSlotSmallVectorSize> " +
+      hooked_grads +
+      " = "
+      "GradNode" +
+      fwd_op_type + "::ApplyGradientHooks(grads);\n";
 
   // [Generation] Get Ins Map
   std::unordered_set<std::string> dispensable_input_name_set;
@@ -2117,16 +2143,16 @@ static std::string GenerateSingleOpBase(
       size_t fwd_output_position = fwd_outputs_name_pos_map.at(
           grad_ins_grad_slotname_map.at(grad_input_name));
       const char* GRAD_INS_GRAD_CONTENT_TEMPLATE =
-          "{ \"%s\", egr::EagerUtils::TrySyncToVars(hooked_grads[%d]) },";
+          "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s[%d]) },";
       ins_contents_str += paddle::string::Sprintf(
-          GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
+          GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, hooked_grads,
+          fwd_output_position);
       if (!backward_inplace_map.empty() &&
           backward_inplace_map.count(grad_input_name)) {
         process_backward_inplace = true;
-        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE =
-            "auto& %s = hooked_grads[%d][0];";
+        const char* GRAD_INS_HOOKED_GRAD_TEMPLATE = "auto& %s = %s[%d][0];";
         std::string hooked_grads_tensor_str = paddle::string::Sprintf(
-            GRAD_INS_HOOKED_GRAD_TEMPLATE, bwd_inplace_input_name,
+            GRAD_INS_HOOKED_GRAD_TEMPLATE, bwd_inplace_input_name, hooked_grads,
             fwd_output_position);
         const char* GRAD_INS_GRAD_TENSOR_TEMPLATE = "grads[%d][0]";
         std::string grads_tensor_str = paddle::string::Sprintf(
@@ -2239,10 +2265,10 @@ static std::string GenerateSingleOpBase(
         const char* GRAD_OUTS_CONTENT_TEMPLATE =
             " if((!out_metas[%d].empty()) && "
             "(!(out_metas[%d][0].IsStopGradient()))){ \n %s.insert({ \"%s\", "
-            "egr::EagerUtils::TrySyncToVars(hooked_grads[%d])});} \n ";
+            "egr::EagerUtils::TrySyncToVars(%s[%d])});} \n ";
         outs_contents_str += paddle::string::Sprintf(
             GRAD_OUTS_CONTENT_TEMPLATE, grads_position, grads_position,
-            outs_name, grad_output_name, grads_position);
+            outs_name, grad_output_name, hooked_grads, grads_position);
 
       } else {
         if (dispensable_input_name_set.count(fwd_name) &&
@@ -2561,9 +2587,6 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
-      "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
-      "egr::kSlotSmallVectorSize> hooked_grads = "
-      "GradNode%s::ApplyGradientHooks(grads);\n"
       "  const auto& out_metas = OutputMeta();\n"
       "  paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
       "egr::kSlotSmallVectorSize> outputs(%d);\n"
@@ -2571,9 +2594,8 @@ static std::string GenerateGradNodeCCContents(
       "  if(NeedComplexToRealConversion()) "
       "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
-  generated_grad_function_body =
-      paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
-                              generated_grad_function_body);
+  generated_grad_function_body = paddle::string::Sprintf(
+      BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
@@ -2584,17 +2606,9 @@ static std::string GenerateGradNodeCCContents(
       "egr::kSlotSmallVectorSize>& grads, bool "
       "create_graph, bool is_new_grad) {\n"
       "%s"
-      "%s"
       "\n}";
-  std::string fill_zero_str = "";
-  if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
-    fill_zero_str =
-        "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, "
-        "this->InputMeta());\n";
-  }
-  std::string grad_function_str =
-      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type,
-                              fill_zero_str, generated_grad_function_body);
+  std::string grad_function_str = paddle::string::Sprintf(
+      GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 

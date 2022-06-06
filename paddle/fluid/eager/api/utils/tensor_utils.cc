@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
+
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
-
-#include "paddle/phi/api/all.h"
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 namespace egr_utils_api {

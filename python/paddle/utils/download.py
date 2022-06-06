@@ -33,6 +33,7 @@ try:
 except:
 
     class tqdm(object):
+
         def __init__(self, total=None):
             self.total = total
             self.n = 0
@@ -42,8 +43,8 @@ except:
             if self.total is None:
                 sys.stderr.write("\r{0:.1f} bytes".format(self.n))
             else:
-                sys.stderr.write("\r{0:.1f}%".format(100 * self.n / float(
-                    self.total)))
+                sys.stderr.write("\r{0:.1f}%".format(100 * self.n /
+                                                     float(self.total)))
             sys.stderr.flush()
 
         def __enter__(self):
@@ -54,6 +55,7 @@ except:
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 __all__ = ['get_weights_path_from_url']
@@ -160,8 +162,8 @@ def get_path_from_url(url,
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
-        if decompress and (tarfile.is_tarfile(fullpath) or
-                           zipfile.is_zipfile(fullpath)):
+        if decompress and (tarfile.is_tarfile(fullpath)
+                           or zipfile.is_zipfile(fullpath)):
             fullpath = _decompress(fullpath)
 
     return fullpath
@@ -207,8 +209,10 @@ def _wget_download(url, fullname):
     # –user-agent
     command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
                                            url)
-    subprc = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprc = subprocess.Popen(command,
+                              shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
     _ = subprc.communicate()
 
     if subprc.returncode != 0:

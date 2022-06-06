@@ -26,9 +26,12 @@ inplace_out_type_map = {
 
 
 class ForwardAPI(BaseAPI):
+
     def __init__(self, api_item_yaml):
         super(ForwardAPI, self).__init__(api_item_yaml)
         self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
+            api_item_yaml)
+        self.inplace_map, self.view_map = self.parse_inplace_and_view(
             api_item_yaml)
 
     def get_api_func_name(self):
@@ -46,6 +49,31 @@ class ForwardAPI(BaseAPI):
             return True, intermediate_outs
         else:
             return False, []
+
+    def parse_inplace_and_view(self, api_item_yaml):
+        inplace_map, view_map = {}, {}
+        for mode in ['inplace', 'view']:
+            if mode in api_item_yaml:
+                if mode == 'inplace':
+                    inplace_map = {}
+                else:
+                    view_map = {}
+                in_out_mapping_list = api_item_yaml[mode].split(',')
+                for item in in_out_mapping_list:
+                    result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
+                    in_val = result.group('in')
+                    out_val = result.group('out')
+                    assert in_val in self.inputs['names'], \
+                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    assert out_val in self.outputs['names'], \
+                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+
+                    if mode == 'inplace':
+                        inplace_map[out_val] = in_val
+                    else:
+                        view_map[out_val] = in_val
+
+        return inplace_map, view_map
 
     def get_return_type_with_intermediate(self, inplace_flag=False):
         out_type_list = []
@@ -104,9 +132,9 @@ class ForwardAPI(BaseAPI):
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
-            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
-                0]] if inplace_flag and self.outputs['names'][
-                    0] in self.inplace_map else ""
+            inplace_assign = " = " + self.inplace_map[
+                self.outputs['names'][0]] if inplace_flag and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
 
@@ -260,21 +288,18 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ API files')
-    parser.add_argument(
-        '--api_yaml_path',
-        help='path to api yaml file',
-        nargs='+',
-        default='python/paddle/utils/code_gen/api.yaml')
+    parser.add_argument('--api_yaml_path',
+                        help='path to api yaml file',
+                        nargs='+',
+                        default='python/paddle/utils/code_gen/api.yaml')
 
-    parser.add_argument(
-        '--api_header_path',
-        help='output of generated api header code file',
-        default='paddle/phi/api/include/api.h')
+    parser.add_argument('--api_header_path',
+                        help='output of generated api header code file',
+                        default='paddle/phi/api/include/api.h')
 
-    parser.add_argument(
-        '--api_source_path',
-        help='output of generated api source code file',
-        default='paddle/phi/api/lib/api.cc')
+    parser.add_argument('--api_source_path',
+                        help='output of generated api source code file',
+                        default='paddle/phi/api/lib/api.cc')
 
     options = parser.parse_args()
 

@@ -21,6 +21,7 @@ import threading
 import numpy
 
 import paddle
+
 paddle.enable_static()
 
 import paddle.fluid as fluid
@@ -29,6 +30,7 @@ import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
+
     def test_communicator_ps_gpu(self):
         with open("test_communicator_ps_gpu.txt", "w") as f:
             data = "1 0.6 1 0.7\n"
@@ -70,8 +72,10 @@ class TestCommunicator(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset.init(batch_size=32,
+                     thread_num=1,
+                     pipe_command="cat",
+                     use_var=slots_vars)
         dataset.set_filelist(["test_communicator_ps_gpu.txt"])
         dataset.set_date("20211111")
         dataset.load_into_memory(is_shuffle=True)

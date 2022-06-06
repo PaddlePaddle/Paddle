@@ -22,6 +22,7 @@ from op_test import OpTest
 
 
 class TestDensityPriorBoxOp(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -76,8 +77,8 @@ class TestDensityPriorBoxOp(OpTest):
         if len(self.fixed_sizes) > 0 and len(self.densities) > 0:
             for density in self.densities:
                 if len(self.fixed_ratios) > 0:
-                    self.num_priors += len(self.fixed_ratios) * (pow(density,
-                                                                     2))
+                    self.num_priors += len(self.fixed_ratios) * (pow(
+                        density, 2))
         self.offset = 0.5
 
     def init_test_input(self):
@@ -135,6 +136,7 @@ class TestDensityPriorBoxOp(OpTest):
 
 
 class TestDensityPriorBox(TestDensityPriorBoxOp):
+
     def set_density(self):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]

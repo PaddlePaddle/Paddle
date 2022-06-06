@@ -17,6 +17,7 @@ limitations under the License. */
 #endif  // PADDLE_FLUID_OPERATORS_FAKE_QUANTIZE_OP_CU_H_
 
 #include <string>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -80,10 +81,10 @@ struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
 
     framework::Tensor max;
     T* max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
-    FindAbsMaxKernel<T><<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(
-        in, num, max_data);
-    FindAbsMaxKernel<T><<<1, block, 1024 * sizeof(T), ctx.stream()>>>(
-        max_data, grid, out);
+    FindAbsMaxKernel<T>
+        <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
+    FindAbsMaxKernel<T>
+        <<<1, block, 1024 * sizeof(T), ctx.stream()>>>(max_data, grid, out);
   }
 };
 
@@ -176,9 +177,9 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
       int cout = in_dims[0];
       int grid = cout;
       int block = 1024;
-      FindChannelAbsMaxKernelQuantAxis0<
-          T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-          in_data, num, cout, out_abs_max);
+      FindChannelAbsMaxKernelQuantAxis0<T>
+          <<<grid, block, block * sizeof(T), ctx.stream()>>>(in_data, num, cout,
+                                                             out_abs_max);
     } else if (quant_axis == 1) {
       int cin = in_dims[0];
       int cout = in_dims[1];
@@ -193,17 +194,17 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
 
       for (int i = 0; i < cin / max_threads; i++) {
         int block = max_threads;
-        FindChannelAbsMaxKernelQuantAxis1<
-            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-            in_data, num, cin, cout, out_abs_max);
+        FindChannelAbsMaxKernelQuantAxis1<T>
+            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
+                in_data, num, cin, cout, out_abs_max);
         in_data += num / cin;
       }
 
       int block = cin % max_threads;
       if (block > 0) {
-        FindChannelAbsMaxKernelQuantAxis1<
-            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-            in_data, num, in_dims[0], in_dims[1], out_abs_max);
+        FindChannelAbsMaxKernelQuantAxis1<T>
+            <<<grid, block, block * sizeof(T), ctx.stream()>>>(
+                in_data, num, in_dims[0], in_dims[1], out_abs_max);
       }
     }
   }
@@ -549,16 +550,16 @@ struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
     if (quant_axis == 0) {
       int grid = in_dims[0];
       int block = 1024;
-      ChannelClipAndQuantDequantKernelQuantAxis0<
-          T><<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt,
-                                               num, in_dims[0], out_data);
+      ChannelClipAndQuantDequantKernelQuantAxis0<T>
+          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt, num,
+                                             in_dims[0], out_data);
     } else if (quant_axis == 1) {
       int grid = in_dims[0] * in_dims[1];
       int block = 1024;
 
-      ChannelClipAndQuantDequantKernelQuantAxis1<
-          T><<<grid, block, 0, ctx.stream()>>>(
-          in_data, scale_data, bin_cnt, num, in_dims[0], in_dims[1], out_data);
+      ChannelClipAndQuantDequantKernelQuantAxis1<T>
+          <<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt, num,
+                                             in_dims[0], in_dims[1], out_data);
     }
   }
 };

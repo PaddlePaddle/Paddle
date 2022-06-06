@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include <glog/logging.h>
+
 #include <sstream>
 #include <string>
 
@@ -1205,10 +1206,11 @@ bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
   if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-    VLOG(6) << "Warning: " << type_ << " don't find its MKLDNN Kernel in Fluid "
-                                       "Registered Kernels. And We don't "
-                                       "search its kernels in phi lib, "
-                                       "SupportsMKLDNN() return false.";
+    VLOG(6) << "Warning: " << type_
+            << " don't find its MKLDNN Kernel in Fluid "
+               "Registered Kernels. And We don't "
+               "search its kernels in phi lib, "
+               "SupportsMKLDNN() return false.";
     return false;
   }
   auto& op_kernels = op_kernel_iter->second;
@@ -1259,11 +1261,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
-  } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
-             !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
-      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-    (*pt_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -1445,7 +1442,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
         && (!is_xpu_unsupport || use_phi_xpu_kp)
 #endif
-            ) {
+    ) {
       run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1469,7 +1466,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
-              ) {
+      ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
@@ -1528,6 +1525,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
+      phi::KernelContext pt_kernel_context;
+      // Do data transform before building KernelContext
+      // TODO(zhiqiu): support TransferInplaceVarsBack
       PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
@@ -2252,8 +2252,9 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     if (arg_map_fn) {
       arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
     } else {
-      auto func = [this](
-          const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
+      auto func =
+          [this](
+              const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
       arg_map_fn_.reset(new phi::ArgumentMappingFn(func));

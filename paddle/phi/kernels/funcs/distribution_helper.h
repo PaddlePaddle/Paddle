@@ -319,10 +319,9 @@ void distribution_and_transform(const GPUContext &ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
-  DistributionKernel<T,
-                     DistOp,
-                     TransformOp><<<grid_size, block_size, 0, ctx.stream()>>>(
-      size, seed, offset, dist, trans, out_data, total_thread);
+  DistributionKernel<T, DistOp, TransformOp>
+      <<<grid_size, block_size, 0, ctx.stream()>>>(
+          size, seed, offset, dist, trans, out_data, total_thread);
 }
 
 #endif

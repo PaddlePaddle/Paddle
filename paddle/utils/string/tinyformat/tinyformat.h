@@ -846,7 +846,7 @@ template <int N>
 class FormatListN : public FormatList {
  public:
   template <typename... Args>
-  FormatListN(const Args &... args)  // NOLINT
+  FormatListN(const Args &...args)  // NOLINT
       : FormatList(&m_formatterStore[0], N),
         m_formatterStore{FormatArg(args)...} {
     static_assert(sizeof...(args) == N, "Number of args must be N");
@@ -875,7 +875,7 @@ class FormatListN<0> : public FormatList {
 ///
 ///   FormatListRef formatList = makeFormatList( /*...*/ );
 template <typename... Args>
-detail::FormatListN<sizeof...(Args)> makeFormatList(const Args &... args) {
+detail::FormatListN<sizeof...(Args)> makeFormatList(const Args &...args) {
   return detail::FormatListN<sizeof...(args)>(args...);
 }  // NOLINT
 
@@ -889,14 +889,14 @@ inline void vformat(std::ostream &out, const char *fmt, FormatListRef list) {
 
 /// Format list of arguments to the stream according to given format string.
 template <typename... Args>
-void format(std::ostream &out, const char *fmt, const Args &... args) {
+void format(std::ostream &out, const char *fmt, const Args &...args) {
   vformat(out, fmt, makeFormatList(args...));
 }
 
 /// Format list of arguments according to the given format string and return
 /// the result as a string.
 template <typename... Args>
-std::string format(const char *fmt, const Args &... args) {
+std::string format(const char *fmt, const Args &...args) {
   std::ostringstream oss;
   format(oss, fmt, args...);
   return oss.str();
@@ -904,12 +904,12 @@ std::string format(const char *fmt, const Args &... args) {
 
 /// Format list of arguments to std::cout, according to the given format string
 template <typename... Args>
-void printf(const char *fmt, const Args &... args) {
+void printf(const char *fmt, const Args &...args) {
   format(std::cout, fmt, args...);
 }
 
 template <typename... Args>
-void printfln(const char *fmt, const Args &... args) {
+void printfln(const char *fmt, const Args &...args) {
   format(std::cout, fmt, args...);
   std::cout << '\n';
 }

@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/clip_by_norm_op.h"
 #include <vector>
+
+#include "paddle/fluid/operators/clip_by_norm_op.h"
 
 namespace paddle {
 namespace operators {

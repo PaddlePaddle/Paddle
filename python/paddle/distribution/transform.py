@@ -25,19 +25,10 @@ from paddle.distribution import (constraint, distribution,
                                  transformed_distribution, variable)
 
 __all__ = [  # noqa
-    'Transform',
-    'AbsTransform',
-    'AffineTransform',
-    'ChainTransform',
-    'ExpTransform',
-    'IndependentTransform',
-    'PowerTransform',
-    'ReshapeTransform',
-    'SigmoidTransform',
-    'SoftmaxTransform',
-    'StackTransform',
-    'StickBreakingTransform',
-    'TanhTransform'
+    'Transform', 'AbsTransform', 'AffineTransform', 'ChainTransform',
+    'ExpTransform', 'IndependentTransform', 'PowerTransform',
+    'ReshapeTransform', 'SigmoidTransform', 'SoftmaxTransform',
+    'StackTransform', 'StickBreakingTransform', 'TanhTransform'
 ]
 
 
@@ -147,8 +138,8 @@ class Transform(object):
             [Tensor|TransformedDistribution|ChainTransform]: The return value.
         """
         if isinstance(input, distribution.Distribution):
-            return transformed_distribution.TransformedDistribution(input,
-                                                                    [self])
+            return transformed_distribution.TransformedDistribution(
+                input, [self])
         if isinstance(input, Transform):
             return ChainTransform([self, input])
         return self.forward(x)
@@ -207,8 +198,8 @@ class Transform(object):
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
-        if isinstance(x, paddle.fluid.framework.Variable) and x.dim(
-        ) < self._domain.event_rank:
+        if isinstance(x, paddle.fluid.framework.Variable
+                      ) and x.dim() < self._domain.event_rank:
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
                 f'grater than or equal to {self._domain.event_rank}')
@@ -536,9 +527,8 @@ class ChainTransform(Transform):
         value = 0.
         event_rank = self._domain.event_rank
         for t in self.transforms:
-            value += self._sum_rightmost(
-                t.forward_log_det_jacobian(x),
-                event_rank - t._domain.event_rank)
+            value += self._sum_rightmost(t.forward_log_det_jacobian(x),
+                                         event_rank - t._domain.event_rank)
             x = t.forward(x)
             event_rank += t._codomain.event_rank - t._domain.event_rank
         return value

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
+
 #include <limits>
 #include <memory>
 #include <vector>
@@ -36,6 +37,7 @@ limitations under the License. */
 #include "thrust/pair.h"
 #elif defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"

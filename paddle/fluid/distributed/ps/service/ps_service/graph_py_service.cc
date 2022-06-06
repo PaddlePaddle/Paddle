@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/table/table.h"
@@ -501,5 +503,5 @@ void GraphPyClient::StopServer() {
   if (status.get() == 0) stoped_ = true;
 }
 void GraphPyClient::FinalizeWorker() { this->worker_ptr->FinalizeWorker(); }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

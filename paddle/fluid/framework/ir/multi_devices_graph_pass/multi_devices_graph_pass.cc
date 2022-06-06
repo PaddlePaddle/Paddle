@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
+
 #include <algorithm>
 #include <fstream>
 #include <memory>
@@ -20,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
@@ -495,9 +497,9 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
                         "use_dgc=%d, use_grad_merge=%d",
                         is_encoded, is_grad_merge));
 
-  auto append_allreduce_op = [&](
-      const std::vector<Scope *> &scopes,
-      const std::vector<platform::Place> &places) -> details::OpHandleBase * {
+  auto append_allreduce_op = [&](const std::vector<Scope *> &scopes,
+                                 const std::vector<platform::Place> &places)
+      -> details::OpHandleBase * {
     if (is_encoded) {
 #if defined(PADDLE_WITH_DGC) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -758,13 +760,14 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
           "and Parameter@Grad.",
           node->Name(), OpProtoAndCheckerMaker::OpRoleVarAttrName()));
   int dev_id = GetVarDeviceID(param_grad[1]);
-  PADDLE_ENFORCE_NE(dev_id, -1, platform::errors::NotFound(
-                                    "Can not find Device ID, for NodeName:%s, "
-                                    "NodeType:%s, Param:%s, Param@Grad:%s"
-                                    "For this fault, you can consult the "
-                                    "Paddle technical personnel for answer ",
-                                    node->Name(), node->Op()->Type(),
-                                    param_grad[0], param_grad[1]));
+  PADDLE_ENFORCE_NE(
+      dev_id, -1,
+      platform::errors::NotFound("Can not find Device ID, for NodeName:%s, "
+                                 "NodeType:%s, Param:%s, Param@Grad:%s"
+                                 "For this fault, you can consult the "
+                                 "Paddle technical personnel for answer ",
+                                 node->Name(), node->Op()->Type(),
+                                 param_grad[0], param_grad[1]));
   return dev_id;
 }
 
@@ -956,10 +959,11 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
   bool insert_op = false;
   if (OpHaveRole(*node, OpRole::kRPC)) {
     int op_dev_id = CreateRPCOp(result, node);
-    PADDLE_ENFORCE_NE(op_dev_id, -1, platform::errors::InvalidArgument(
-                                         "Can not schedule the RPC operator to "
-                                         "the right place. NodeName:%s.",
-                                         node->Name()));
+    PADDLE_ENFORCE_NE(op_dev_id, -1,
+                      platform::errors::InvalidArgument(
+                          "Can not schedule the RPC operator to "
+                          "the right place. NodeName:%s.",
+                          node->Name()));
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
           BOOST_GET_CONST(std::vector<std::string>,
