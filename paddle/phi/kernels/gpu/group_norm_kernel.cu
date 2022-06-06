@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/group_norm_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
+#include "paddle/phi/kernels/group_norm_kernel.h"
 
 namespace phi {
 
@@ -189,25 +188,23 @@ void GroupNormKernel(const Context& dev_ctx,
       ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
           x_data, mean_data, temp_var_data, size);
     } else {
-      VectorizedGetMeanAndVarNCHW<
-          T,
-          AccT,
-          vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          x_data, mean_data, temp_var_data, size);
+      VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
+          <<<grids, blocks, 0, dev_ctx.stream()>>>(
+              x_data, mean_data, temp_var_data, size);
     }
   } else {
     set_zero(dev_ctx, mean, static_cast<T>(0));
     set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-    GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-        x_data,
-        x_dims[0],
-        C,
-        W,
-        imsize,
-        groups,
-        group_size,
-        mean_data,
-        temp_var_data);
+    GroupNormForwardGetMeanAndVar<T>
+        <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
+                                                 x_dims[0],
+                                                 C,
+                                                 W,
+                                                 imsize,
+                                                 groups,
+                                                 group_size,
+                                                 mean_data,
+                                                 temp_var_data);
   }
   int flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;

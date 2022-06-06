@@ -18,6 +18,7 @@
 #include <array>
 #include <numeric>
 #include <string>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/group_norm_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
+#include "paddle/phi/kernels/group_norm_grad_kernel.h"
 
 namespace phi {
 
@@ -331,18 +330,18 @@ void GroupNormGradKernel(const Context& dev_ctx,
 
     if (d_scale || d_bias) {
       const int block = 256;
-      GetScaleBiasGradientCUDAKernel<
-          T><<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
-          x_dims[0],
-          C,
-          groups,
-          epsilon,
-          mean_data,
-          var_data,
-          ds_data,
-          db_data,
-          d_scale_data,
-          d_bias_data);
+      GetScaleBiasGradientCUDAKernel<T>
+          <<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
+              x_dims[0],
+              C,
+              groups,
+              epsilon,
+              mean_data,
+              var_data,
+              ds_data,
+              db_data,
+              d_scale_data,
+              d_bias_data);
     }
 
     if (d_x_data != nullptr) {
@@ -359,33 +358,31 @@ void GroupNormGradKernel(const Context& dev_ctx,
       p3.Resize({x_dims[0], groups});
       T* p3_data = dev_ctx.template Alloc<T>(&p3);
 
-      GetBackwardParamsCUDAKernel<T, block_dims><<<dim3(x_dims[0], groups),
-                                                   block_dims,
-                                                   0,
-                                                   dev_ctx.stream()>>>(
-          imsize,
-          groups,
-          group_size,
-          epsilon,
-          mean_data,
-          var_data,
-          scale_data,
-          ds_data,
-          db_data,
-          p1_data,
-          p2_data,
-          p3_data);
-      GetXGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-          imsize,
-          C,
-          group_size,
-          groups,
-          p1_data,
-          p2_data,
-          p3_data,
-          x_data,
-          dy_data,
-          d_x_data);
+      GetBackwardParamsCUDAKernel<T, block_dims>
+          <<<dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
+              imsize,
+              groups,
+              group_size,
+              epsilon,
+              mean_data,
+              var_data,
+              scale_data,
+              ds_data,
+              db_data,
+              p1_data,
+              p2_data,
+              p3_data);
+      GetXGradientCUDAKernel<T>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(imsize,
+                                                   C,
+                                                   group_size,
+                                                   groups,
+                                                   p1_data,
+                                                   p2_data,
+                                                   p3_data,
+                                                   x_data,
+                                                   dy_data,
+                                                   d_x_data);
     }
   } else {
     if (d_scale) {
