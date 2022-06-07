@@ -81,6 +81,7 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _already_patch_varbase = False
+_current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
 # Some explanation of our execution system 2022.03
@@ -2621,6 +2622,9 @@ class Operator(object):
             if op_attrs is None:
                 op_attrs = dict()
             del attrs
+
+            # attr for static mode cuda graph
+            self._cuda_graph_attr = _current_cuda_graph_mode
 
             op_maker = core.op_proto_and_checker_maker
 
@@ -7015,6 +7019,37 @@ def device_guard(device=None):
         yield
     finally:
         switch_device(pre_device)
+
+
+def _switch_cuda_graph_mode(cuda_graph_attr):
+    global _current_cuda_graph_mode
+    pre_mode = _current_cuda_graph_mode
+    _current_cuda_graph_mode = cuda_graph_attr
+    return pre_mode
+
+
+@signature_safe_contextmanager
+def _cuda_graph_guard(cuda_graph_attr=None):
+    """
+
+    Note:
+        The API only supports static mode.
+
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+
+    Args:
+        cuda_graph_attr(str|None): The cuda graph attr with the format of:
+                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
+    """
+    assert not _non_static_mode(
+    ), "cuda_graph_guard only works under static mode"
+    assert core.is_compiled_with_cuda(
+    ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
+    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
+    try:
+        yield
+    finally:
+        _switch_cuda_graph_mode(pre_mode)
 
 
 def set_flags(flags):
