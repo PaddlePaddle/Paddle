@@ -124,9 +124,9 @@ void HashTable<unsigned long, FeatureValue>::get(const unsigned long* d_keys, Fe
   int r = xpu::fill_dvals<unsigned long, FeatureValue>(
       ctx_xpu,
       reinterpret_cast<unsigned int*>(d_keys),
-      reinterpret_cast<unsigned FeatureValue*>(d_vals_in),
+      reinterpret_cast<FeatureValue*>(d_vals_in),
       len,
-      reinterpret_cast<unsigned FeatureValue*>(d_vals),
+      reinterpret_cast<FeatureValue*>(d_vals),
       xpu_id, xpu_num
      );
   PADDLE_ENFORCE_EQ(
