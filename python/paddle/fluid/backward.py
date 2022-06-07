@@ -42,9 +42,6 @@ _logger = log_helper.get_logger(__name__,
                                 logging.INFO,
                                 fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-_grad_op_id_to_fwd_op = {
-}  # for cuda graph usage, recording the mapping between grad op original id to fwd op
-
 
 class ProgramStats(object):
 
@@ -239,7 +236,11 @@ def _pretty_op_desc_(op_desc, prefix):
     return out_s
 
 
-def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
+def _add_needed_descs_to_block(descs,
+                               block,
+                               main_block,
+                               in_memory_vars,
+                               grad_op_id_to_fwd_op=None):
     if len(descs) == 0:
         return []
     result_descs = []
@@ -261,9 +262,8 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             if name not in in_memory_vars:
                 is_needed = True
         if is_needed:
-            if origin_is_operator:
-                global _grad_op_id_to_fwd_op
-                _grad_op_id_to_fwd_op[desc.original_id()] = origin_desc
+            if origin_is_operator and grad_op_id_to_fwd_op is not None:
+                grad_op_id_to_fwd_op[desc.original_id()] = origin_desc
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
@@ -273,7 +273,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
     return result_descs
 
 
-def _add_descs_to_block(descs, block):
+def _add_descs_to_block(descs, block, grad_op_id_to_fwd_op=None):
     if len(descs) == 0:
         return []
     result_descs = []
@@ -283,8 +283,8 @@ def _add_descs_to_block(descs, block):
     for desc in descs:
         if isinstance(desc, framework.Operator):
             # for recompute, should record recompute ops
-            global _grad_op_id_to_fwd_op
-            _grad_op_id_to_fwd_op[desc.desc.original_id()] = desc
+            if grad_op_id_to_fwd_op is not None:
+                grad_op_id_to_fwd_op[desc.desc.original_id()] = desc
             desc = desc.desc
         if isinstance(desc, tuple):
             desc = desc[0]
@@ -501,7 +501,10 @@ def _accumulate_gradients_by_add_ops_(var_name,
     renamed_vars[var_name] = [var_name]
 
 
-def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
+def _addup_repetitive_outputs_(op_descs,
+                               block_idx,
+                               grad_var_to_var=None,
+                               grad_op_id_to_fwd_op=None):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -512,7 +515,6 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         grad_var_to_var(dict): used to build the mapping between grad var name and forward var name.
         Only for auto parallel.
     """
-    global _grad_op_id_to_fwd_op
 
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
@@ -631,23 +633,22 @@ def _addup_repetitive_outputs_(op_descs, block_idx, grad_var_to_var=None):
         for i, op in enumerate(value):
             # update the mapping between fwd and bwd
             target_idx = idx - 1 if idx == op_descs_len else idx + i
-            if _grad_op_id_to_fwd_op.get(op_descs[target_idx].original_id(),
-                                         None) is not None:
-                _grad_op_id_to_fwd_op[op.original_id()] = _grad_op_id_to_fwd_op[
+            if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
+                    op_descs[target_idx].original_id(), None) is not None:
+                grad_op_id_to_fwd_op[op.original_id()] = grad_op_id_to_fwd_op[
                     op_descs[target_idx].original_id()]
             op_descs.insert(idx + i, op)
 
     return op_descs
 
 
-def _remove_no_grad_branch_(op_descs, no_grad_set):
+def _remove_no_grad_branch_(op_descs, no_grad_set, grad_op_id_to_fwd_op=None):
     """
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
         1. all outputs of the grad op are in 'no_grad_set'
         2. all grad inputs of the grad op are in 'no_grad_set'
     """
-    global _grad_op_id_to_fwd_op
 
     def _op_can_be_removed_(op_desc, no_grad_set):
         out_arg_names = op_desc.output_arg_names()
@@ -678,10 +679,10 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
                 new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
                                                {"Out": [arg]}, {})
                 # update the mapping between fwd and bwd
-                if _grad_op_id_to_fwd_op.get(op_desc.original_id(),
-                                             None) is not None:
-                    _grad_op_id_to_fwd_op[new_op_desc.original_id(
-                    )] = _grad_op_id_to_fwd_op[op_desc.original_id()]
+                if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
+                        op_desc.original_id(), None) is not None:
+                    grad_op_id_to_fwd_op[new_op_desc.original_id(
+                    )] = grad_op_id_to_fwd_op[op_desc.original_id()]
                 to_insert.append((new_op_desc, idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
@@ -821,9 +822,13 @@ def serialize_op_decs(op_desc):
     return proto.__str__()
 
 
-def _append_backward_ops_with_checkpoints_(block, ops, target_block,
-                                           no_grad_dict, grad_to_var,
-                                           checkpoints):
+def _append_backward_ops_with_checkpoints_(block,
+                                           ops,
+                                           target_block,
+                                           no_grad_dict,
+                                           grad_to_var,
+                                           checkpoints,
+                                           grad_op_id_to_fwd_op=None):
     """
     Create grad ops with forward ops, and insert them into given block
 
@@ -853,8 +858,6 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
         6) Note2: all variables with new name should be returned so that _append_backward_vars_ can be called
         7) Note3: current forward recomputation backpropagation does not handle programs with subblock
     """
-
-    global _grad_op_id_to_fwd_op
 
     checkpoints_name = [x.name for x in checkpoints]
     checkpoints_name = list(set(checkpoints_name))
@@ -957,15 +960,17 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
 
             # record the mapping between fwd and bwd
-            for op_desc in grad_op_desc:
-                _grad_op_id_to_fwd_op[op_desc.original_id()] = op
+            if grad_op_id_to_fwd_op is not None:
+                for op_desc in grad_op_desc:
+                    grad_op_id_to_fwd_op[op_desc.original_id()] = op
 
             # Set device for grad_op according to forward Op
             if op.desc.has_attr(device_attr_name):
                 op_device = op.desc.attr(device_attr_name)
                 for op_desc in grad_op_desc:
                     op_desc._set_attr(device_attr_name, op_device)
-            added_descs = _add_descs_to_block(grad_op_desc, local_block)
+            added_descs = _add_descs_to_block(grad_op_desc, local_block,
+                                              grad_op_id_to_fwd_op)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
@@ -981,15 +986,17 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
 
             # record the mapping between fwd and bwd
-            for op_desc in grad_op_desc:
-                _grad_op_id_to_fwd_op[op_desc.original_id()] = op
+            if grad_op_id_to_fwd_op is not None:
+                for op_desc in grad_op_desc:
+                    grad_op_id_to_fwd_op[op_desc.original_id()] = op
 
             # Set device for grad_op according to forward Op
             if op.desc.has_attr(device_attr_name):
                 op_device = op.desc.attr(device_attr_name)
                 for op_desc in grad_op_desc:
                     op_desc._set_attr(device_attr_name, op_device)
-            added_descs = _add_descs_to_block(grad_op_desc, local_block)
+            added_descs = _add_descs_to_block(grad_op_desc, local_block,
+                                              grad_op_id_to_fwd_op)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
@@ -1023,8 +1030,10 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
 
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
-                                                  vars_in_memory)
-        added_descs = _add_descs_to_block(ff_ops, local_block)
+                                                  vars_in_memory,
+                                                  grad_op_id_to_fwd_op)
+        added_descs = _add_descs_to_block(ff_ops, local_block,
+                                          grad_op_id_to_fwd_op)
 
         # 3.b. rename all non-checkpoint variables in recomputation ops
         for key in var_name_dict:
@@ -1039,9 +1048,10 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
 
             # record the mapping between fwd and bwd
-            for g_op_desc in grad_op_desc:
-                _grad_op_id_to_fwd_op[g_op_desc.original_id(
-                )] = _grad_op_id_to_fwd_op[op_desc.original_id()]
+            if grad_op_id_to_fwd_op is not None:
+                for g_op_desc in grad_op_desc:
+                    grad_op_id_to_fwd_op[g_op_desc.original_id(
+                    )] = grad_op_id_to_fwd_op[op_desc.original_id()]
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
@@ -1055,11 +1065,14 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
             grad_to_var.update(op_grad_to_var)
 
     # 3.d. add sum op for repetitive_outputs
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
+    grad_op_descs = _addup_repetitive_outputs_(
+        grad_op_descs, block.idx, grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
-                                            no_grad_dict[block.idx])
-    added_descs = _add_descs_to_block(grad_op_descs, target_block)
+                                            no_grad_dict[block.idx],
+                                            grad_op_id_to_fwd_op)
+    added_descs = _add_descs_to_block(grad_op_descs, target_block,
+                                      grad_op_id_to_fwd_op)
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
 
 
@@ -1134,7 +1147,8 @@ def _append_backward_ops_(block,
                           input_grad_names_set=None,
                           op_path_dict=None,
                           distop_context=None,
-                          rename_var_map=None):
+                          rename_var_map=None,
+                          grad_op_id_to_fwd_op=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1158,8 +1172,6 @@ def _append_backward_ops_(block,
         rename_var_map(dict): used to associate target_grad var name with first grad_op input name.
             Only used in for high order gradient.
     """
-
-    global _grad_op_id_to_fwd_op
 
     # Build the mapping between the forward op and backward op (Only for auto parallel)
     def update_distop_context(distop_context, op_grad_to_var,
@@ -1200,7 +1212,8 @@ def _append_backward_ops_(block,
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
             _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
                                   no_grad_dict, grad_to_var, callbacks,
-                                  input_grad_names_set, op_path_dict)
+                                  input_grad_names_set, op_path_dict,
+                                  grad_op_id_to_fwd_op)
             input_grad_names_set = pre_input_grad_names_set
 
             program._rollback()
@@ -1211,8 +1224,9 @@ def _append_backward_ops_(block,
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
 
         # record the mapping between fwd and bwd
-        for op_desc in grad_op_desc:
-            _grad_op_id_to_fwd_op[op_desc.original_id()] = op
+        if grad_op_id_to_fwd_op is not None:
+            for op_desc in grad_op_desc:
+                grad_op_id_to_fwd_op[op_desc.original_id()] = op
 
         # Build the mapping between the forward op and backward op (Only for auto parallel)
         if distop_context is not None:
@@ -1301,13 +1315,17 @@ def _append_backward_ops_(block,
         grad_var_to_var = distop_context.grad_var_to_var[
             program._appending_grad_times]
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
-                                               grad_var_to_var)
+    grad_op_descs = _addup_repetitive_outputs_(
+        grad_op_descs,
+        block.idx,
+        grad_var_to_var,
+        grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
-                                            no_grad_dict[block.idx])
+                                            no_grad_dict[block.idx],
+                                            grad_op_id_to_fwd_op)
 
     # remove some backward ops
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
@@ -1635,7 +1653,8 @@ def append_backward(loss,
             p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
-    global _grad_op_id_to_fwd_op
+    grad_op_id_to_fwd_op = {
+    }  # for cuda graph usage, recording the mapping between grad op original id to fwd op
 
     check_type(loss, 'loss', framework.Variable,
                'paddle.static.append_backward')
@@ -1698,7 +1717,7 @@ def append_backward(loss,
 
     # pass the cuda_graph_attr to the fill_constant which generates the loss_grad
     op_desc = _create_loss_op_desc_(loss)
-    _grad_op_id_to_fwd_op[op_desc.original_id()] = loss.op
+    grad_op_id_to_fwd_op[op_desc.original_id()] = loss.op
     target_grad_block.desc.append_op().copy_from(op_desc)
 
     for block_idx in son_parent_block_idx_dict:
@@ -1744,7 +1763,8 @@ def append_backward(loss,
                     root_block,
                     no_grad_dict,
                     grad_to_var,
-                    checkpoints)
+                    checkpoints,
+                    grad_op_id_to_fwd_op)
         else:
             _append_backward_ops_(
                 block,  # the block where forward ops are in
@@ -1756,7 +1776,7 @@ def append_backward(loss,
                 input_grad_names_set=input_grad_names_set,
                 op_path_dict=op_path_dict,
                 distop_context=distop_context,
-            )
+                grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
 
     grad_info_map = dict()
 
@@ -1778,8 +1798,8 @@ def append_backward(loss,
 
     # for cuda graph, copy the cuda graph attr from forward op to backward op
     for op in target_grad_block.ops:
-        if _grad_op_id_to_fwd_op.get(op.desc.original_id(), None) is not None:
-            fwd_op = _grad_op_id_to_fwd_op[op.desc.original_id()]
+        if grad_op_id_to_fwd_op.get(op.desc.original_id(), None) is not None:
+            fwd_op = grad_op_id_to_fwd_op[op.desc.original_id()]
             op._cuda_graph_attr = fwd_op._cuda_graph_attr
 
     if parameter_list is not None:
