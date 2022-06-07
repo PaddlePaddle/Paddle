@@ -51,7 +51,9 @@ def topo_path(xs, ys, block=None):
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
-    reaching = lambda op: any(id(v) in reached_vars for v in flatten_and_remove_none(get_input_var_list(op)))
+    reaching = lambda op: any(
+        id(v) in reached_vars
+        for v in flatten_and_remove_none(get_input_var_list(op)))
 
     # block.ops are supposedly in the order that preserves correct data
     # dependence.
@@ -63,7 +65,9 @@ def topo_path(xs, ys, block=None):
                 reached_vars[id(var)] = var
 
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
-    back_reaching = lambda op: any(id(out) in used_vars for out in flatten_and_remove_none(get_output_var_list(op)))
+    back_reaching = lambda op: any(
+        id(out) in used_vars
+        for out in flatten_and_remove_none(get_output_var_list(op)))
 
     # Backward pass to find all used variables
     for op in reversed(path):
@@ -276,7 +280,7 @@ class Transform(object):
             self.var2dot.delete(x)
 
         for op in path:
-            # An input var may not be on the input-output path, which implies 
+            # An input var may not be on the input-output path, which implies
             # there may be None's in `ins_dot`. In this case we place
             # the original input in the position of the otherwise forward
             # gradient.
@@ -476,13 +480,12 @@ def _lower(block, reverse):
             from paddle.fluid.dygraph.base import param_guard
             new_op_desc = block.desc.append_op()
             with param_guard(inputs), param_guard(outputs):
-                op = Operator(
-                    block=block,
-                    desc=new_op_desc,
-                    type=op.type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs)
+                op = Operator(block=block,
+                              desc=new_op_desc,
+                              type=op.type,
+                              inputs=inputs,
+                              outputs=outputs,
+                              attrs=attrs)
             block.ops.append(op)
 
     # Step3: Do some post-processing work
@@ -594,7 +597,7 @@ def _gradients(ys, xs, ys_bar=None):
         assert el is None or el.block == block, f'variable in xs and ys should be None or in current block of main program'
     # TODO(Tongxin) without any prior knowledge about whether the program
     # is completely lowered to primitive ops, it's mandatory to run the lowering
-    # pass once and again. This is obviously inefficient and needs to be 
+    # pass once and again. This is obviously inefficient and needs to be
     # optimized.
     orig2prim(block)
 

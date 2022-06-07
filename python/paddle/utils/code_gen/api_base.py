@@ -19,6 +19,7 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 class BaseAPI(object):
+
     def __init__(self, api_item_yaml):
         self.api = self.get_api_name(api_item_yaml)
 
@@ -41,12 +42,12 @@ class BaseAPI(object):
             self.invoke = api_item_yaml['invoke']
         else:
             if 'infer_meta' in api_item_yaml:
-                self.infer_meta = self.parse_infer_meta(api_item_yaml[
-                    'infer_meta'])
+                self.infer_meta = self.parse_infer_meta(
+                    api_item_yaml['infer_meta'])
             self.kernel = self.parse_kernel(api_item_yaml['kernel'])
-            self.support_selected_rows_kernel = False if len(self.kernel[
-                'func']) == 1 or not self.kernel['func'][1].endswith(
-                    '_sr') else True
+            self.support_selected_rows_kernel = False if len(
+                self.kernel['func']
+            ) == 1 or not self.kernel['func'][1].endswith('_sr') else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map, self.view_map = {}, {}
 
@@ -65,8 +66,9 @@ class BaseAPI(object):
         for name in self.inputs['names']:
             name = name.split('@')[0]
             if inplace_flag and name in self.inplace_map.values():
-                input_args.append(inplace_type_map[self.inputs['input_info'][
-                    name]] + ' ' + name)
+                input_args.append(
+                    inplace_type_map[self.inputs['input_info'][name]] + ' ' +
+                    name)
             else:
                 input_args.append(self.inputs['input_info'][name] + ' ' + name)
         return input_args
@@ -95,8 +97,9 @@ class BaseAPI(object):
             optional_vars = [
                 item.strip() for item in api_item_yaml['optional'].split(',')
             ]
-        inputs, attrs = self.parse_input_and_attr(
-            api_name, api_item_yaml['args'], optional_vars)
+        inputs, attrs = self.parse_input_and_attr(api_name,
+                                                  api_item_yaml['args'],
+                                                  optional_vars)
         output_type_list, output_names, out_size_expr = self.parse_output(
             api_name, api_item_yaml['output'])
         return inputs, attrs, {
@@ -199,6 +202,7 @@ class BaseAPI(object):
         return inputs, attrs
 
     def parse_output(self, api_name, output_config):
+
         def parse_output_item(output_item):
             output_type_map = {
                 'Tensor': 'Tensor',
@@ -526,7 +530,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     def get_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const phi::DenseTensor&',
+            'const Tensor&':
+            'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::DenseTensor*>&',
             'const paddle::optional<Tensor&>':
@@ -617,8 +622,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
                 else:
-                    kernel_args_type_list.append(self.attrs['attr_info'][param][
-                        0])
+                    kernel_args_type_list.append(
+                        self.attrs['attr_info'][param][0])
                 kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "
@@ -634,7 +639,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     def get_selected_rows_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const phi::SelectedRows&',
+            'const Tensor&':
+            'const phi::SelectedRows&',
             'const paddle::optional<Tensor>&':
             'const paddle::optional<phi::SelectedRows>&'
         }
@@ -682,8 +688,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
                 else:
-                    kernel_args_type_list.append(self.attrs['attr_info'][param][
-                        0])
+                    kernel_args_type_list.append(
+                        self.attrs['attr_info'][param][0])
                 kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "

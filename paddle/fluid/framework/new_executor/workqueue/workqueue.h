@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -118,10 +119,10 @@ class WorkQueue {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask([
-      t = std::move(task),
-      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
-    ]() mutable { p.Get().set_value(t()); });
+    AddTask([t = std::move(task), p = FakeCopyable<std::promise<ReturnType>>(
+                                      std::move(prom))]() mutable {
+      p.Get().set_value(t());
+    });
     return res;
   }
 
@@ -158,10 +159,9 @@ class WorkQueueGroup {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask(queue_idx, [
-      t = std::move(task),
-      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
-    ]() mutable { p.Get().set_value(t()); });
+    AddTask(queue_idx, [t = std::move(task),
+                        p = FakeCopyable<std::promise<ReturnType>>(std::move(
+                            prom))]() mutable { p.Get().set_value(t()); });
     return res;
   }
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/layout_autotune.h"
+
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/layout_transformer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -119,8 +120,9 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
         VLOG(3) << "Tune the layout from "
                 << BOOST_GET_CONST(std::string, (*attrs)["data_format"])
-                << " to " << paddle::framework::DataLayoutToString(
-                                 LayoutAutoTune::Instance().GetDesiredLayout());
+                << " to "
+                << paddle::framework::DataLayoutToString(
+                       LayoutAutoTune::Instance().GetDesiredLayout());
       } else {
         LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return ins;

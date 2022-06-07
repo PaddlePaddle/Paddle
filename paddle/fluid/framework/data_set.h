@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -26,6 +27,7 @@
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 

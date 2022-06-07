@@ -15,6 +15,7 @@
 #include "paddle/phi/core/utils/unroll_array_ops.h"
 
 #include <gtest/gtest.h>
+
 #include <array>
 
 namespace phi {

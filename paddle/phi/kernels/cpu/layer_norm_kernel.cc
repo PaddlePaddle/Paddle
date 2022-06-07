@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \

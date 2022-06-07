@@ -14,6 +14,7 @@
 
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"

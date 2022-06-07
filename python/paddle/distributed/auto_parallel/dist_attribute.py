@@ -51,6 +51,7 @@ def append_op_output_suffix(name):
 
 
 class TensorDistributedAttribute:
+
     def __init__(self):
         # The process mesh of distributed operator attribute must is the same as
         # the process meshes of all input and output distributed attributed
@@ -123,8 +124,8 @@ class TensorDistributedAttribute:
                             key, dist_attr)
         elif isinstance(dist_attr, TensorDistributedAttribute):
             for key in get_tensor_dist_attr_field_keys():
-                field_property = TensorDistributedAttribute.__dict__.get(key,
-                                                                         None)
+                field_property = TensorDistributedAttribute.__dict__.get(
+                    key, None)
                 if field_property:
                     field_property.fset(self, field_property.fget(dist_attr))
                 else:
@@ -192,6 +193,7 @@ class TensorDistributedAttribute:
 
 
 class OperatorDistributedAttribute:
+
     def __init__(self):
         self._process_mesh = None
         self._op_type = None
@@ -356,8 +358,8 @@ class OperatorDistributedAttribute:
                     tensor_name, dist_attr.get_output_dist_attr(tensor_name))
             self._is_annotated = copy.deepcopy(dist_attr._is_annotated)
             for key in get_op_dist_attr_field_keys():
-                field_property = OperatorDistributedAttribute.__dict__.get(key,
-                                                                           None)
+                field_property = OperatorDistributedAttribute.__dict__.get(
+                    key, None)
                 if field_property:
                     field_property.fset(self, field_property.fget(dist_attr))
                 else:

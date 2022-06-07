@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>  // for size_t
+
 #include <string>
 
 namespace paddle {

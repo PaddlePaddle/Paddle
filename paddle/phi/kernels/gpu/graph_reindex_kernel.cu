@@ -18,11 +18,10 @@
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
 
-#include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
-#include "paddle/phi/kernels/graph_reindex_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
+#include "paddle/phi/kernels/graph_reindex_kernel.h"
 
 namespace phi {
 
@@ -92,8 +91,8 @@ void FillBufferHashTable(const Context& dev_ctx,
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   // Insert data.
-  BuildHashTable<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      input, num_input, key_index);
+  BuildHashTable<T>
+      <<<grid, block, 0, dev_ctx.stream()>>>(input, num_input, key_index);
 
   // Get item index count.
   thrust::device_vector<int> item_count(num_input + 1, 0);
@@ -348,14 +347,13 @@ void GraphReindexKernel(const Context& dev_ctx,
     thrust::exclusive_scan(
         count_data + i * bs, count_data + (i + 1) * bs, dst_ptr.begin());
 
-    GetDstEdgeCUDAKernel<T,
-                         BLOCK_WARPS,
-                         TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-        bs,
-        thrust::raw_pointer_cast(unique_dst_reindex.data()),
-        count_data + i * bs,
-        thrust::raw_pointer_cast(dst_ptr.data()),
-        reindex_dst_data + begin);
+    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            bs,
+            thrust::raw_pointer_cast(unique_dst_reindex.data()),
+            count_data + i * bs,
+            thrust::raw_pointer_cast(dst_ptr.data()),
+            reindex_dst_data + begin);
 
     int count_i =
         thrust::reduce(thrust::device_pointer_cast(count_data) + i * bs,

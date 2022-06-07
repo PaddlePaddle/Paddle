@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h"
+
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"

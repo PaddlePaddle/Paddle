@@ -15,6 +15,7 @@
 #pragma once
 #include <cmath>
 #include <random>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 

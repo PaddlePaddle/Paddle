@@ -306,8 +306,9 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       }
       xpu_wait(dev_ctx.x_context()->xpu_stream);
     } else {
-      PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adam_op"));
+      PADDLE_ENFORCE_EQ(1, 2,
+                        platform::errors::InvalidArgument(
+                            "Variable type not supported by adam_op"));
     }
   }
 };

@@ -35,6 +35,7 @@ def stable_softmax(x):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle core is not compiled with CUDA")
 class TestFusedMultiheadMatmulOp(OpTest):
+
     def config(self):
         self.seq_len = 128
         self.size_per_head = 64
@@ -113,6 +114,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
 
 
 class TestFusedMultiHeadMatmulOp2(TestFusedMultiheadMatmulOp):
+
     def config(self):
         self.seq_len = 256
         self.size_per_head = 32

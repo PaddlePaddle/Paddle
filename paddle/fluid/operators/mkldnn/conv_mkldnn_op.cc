@@ -203,8 +203,9 @@ class ConvMKLDNNHandlerT
       dnnl::memory::desc src_md, weights_md;
       if (platform::is_int8<T>()) {
         src_md = platform::MKLDNNMemDesc(
-            src_tz, framework::ToMKLDNNDataType(
-                        framework::TransToProtoVarType(input->dtype())),
+            src_tz,
+            framework::ToMKLDNNDataType(
+                framework::TransToProtoVarType(input->dtype())),
             chosen_memory_format);
         weights_md = platform::MKLDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
@@ -459,13 +460,12 @@ class ConvMKLDNNHandlerT
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
     bool is_multi_channel = scale_weights_data.size() > 1;
     bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
-    float activation_scale =
-        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
-                                                  : 1.0f;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f : has_activation
-                                       ? 1.0f
-                                       : ctx.Attr<float>("Scale_out");
+    float activation_scale = force_fp32_output ? 1.0f
+                             : has_activation  ? ctx.Attr<float>("Scale_out")
+                                               : 1.0f;
+    auto scale_out_data = force_fp32_output ? 1.0f
+                          : has_activation  ? 1.0f
+                                            : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     int count =

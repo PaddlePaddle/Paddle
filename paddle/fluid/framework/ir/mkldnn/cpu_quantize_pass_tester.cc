@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include <gtest/gtest.h>
+
 #include <unordered_map>
 
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
