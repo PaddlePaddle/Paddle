@@ -166,6 +166,7 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
@@ -173,6 +174,7 @@ class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
@@ -180,6 +182,7 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
@@ -188,6 +191,7 @@ class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
@@ -196,6 +200,7 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
@@ -209,6 +214,7 @@ class TestGroupNormOpFP16(TestGroupNormOp):
         self.dtype = np.float16
 
 
+@unittest.skip("CANN5.0.4: NHWC not supported.")
 class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
 
     def init_dtype(self):

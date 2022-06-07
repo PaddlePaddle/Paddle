@@ -239,6 +239,7 @@ class TestStridedSliceOp13(TestStridedSliceOp):
         self.infer_flags = [1, 1, 1, 1, 1]
 
 
+@unittest.skip("CANN5.0.4: StridedSlice does not support bool.")
 class TestStridedSliceOpBool(TestStridedSliceOp):
 
     def test_check_grad(self):

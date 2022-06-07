@@ -85,6 +85,8 @@ def create_test_fp16_class(parent):
     globals()[cls_name] = TestFp16Case
 
 
+# Issue: https://gitee.com/ascend/modelzoo/issues/I4TBLP
+@unittest.skip("CANN5.0.4: CANN not supported.")
 class TestDepthwiseConvNPU(OpTest):
 
     def setUp(self):
@@ -229,6 +231,8 @@ class TestDepthwiseConvNPU4(TestDepthwiseConvNPU):
         self.filter_size = [12, f_c, 3, 3]
 
 
+# Issue: https://gitee.com/ascend/modelzoo/issues/I4TBLP
+@unittest.skip("CANN5.0.4: CANN not supported.")
 class TestDepthwiseConvNPU_Padding(OpTest):
 
     def setUp(self):

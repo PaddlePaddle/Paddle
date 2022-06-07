@@ -370,6 +370,7 @@ class TestCase5(TestCase2):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
+@unittest.skip("CANN5.0.4: exclusive == False not supported.")
 class TestAvgInclude(TestCase2):
 
     def init_exclusive(self):
@@ -473,6 +474,7 @@ class TestCase5_AsyPadding((TestCase5)):
         self.shape = [2, 3, 7, 7]
 
 
+@unittest.skip("CANN5.0.4: exclusive == False not supported.")
 class TestAvgInclude_AsyPadding(TestCase2):
 
     def init_exclusive(self):
@@ -571,6 +573,7 @@ class TestCase5_channel_last_Max(TestCase5_Max):
         self.shape = [2, 7, 7, 3]
 
 
+@unittest.skip("CANN5.0.4: exclusive == False not supported.")
 class TestAvgInclude_channel_last(TestCase2_channel_last):
 
     def init_exclusive(self):

@@ -179,8 +179,13 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
 
   Tensor input_tmp;
   input_tmp.ShareDataWith(input);
+#if (CANN_VERSION_CODE < 504000)
   input_tmp.Resize(
       phi::make_ddim(std::vector<int64_t>{input_height * input_width}));
+#else
+  input_tmp.Resize(
+      phi::make_ddim(std::vector<int64_t>{input_height * input_width, 1}));
+#endif
 
   Tensor indices_tmp;
   indices_tmp.ShareDataWith(indices);
@@ -202,8 +207,13 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
       NpuOpRunner("Add", {indices_tmp, indexs_tmp}, {indices_index}, {});
   runner_add.Run(stream);
 
+#if (CANN_VERSION_CODE < 504000)
   indices_index.Resize(
       phi::make_ddim(std::vector<int64_t>{input_height * input_width}));
+#else
+  indices_index.Resize(
+      phi::make_ddim(std::vector<int64_t>{input_height * input_width, 1}));
+#endif
 
   t_out->mutable_data<T>(ctx.GetPlace());
   Tensor out_tmp(t_out->type());
