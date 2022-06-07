@@ -28,19 +28,19 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 1:
-                return np.ones([32]).astype(np.float32)
+                return np.random.random([32]).astype(np.float32)
             elif dims == 2:
-                return np.ones([3, 32]).astype(np.float32)
+                return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
-                return np.ones([3, 32, 32]).astype(np.float32)
+                return np.random.random([3, 32, 32]).astype(np.float32)
             else:
-                return np.ones([batch, 3, 32, 32]).astype(np.float32)
+                return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
                         "relu", "sigmoid", "tanh", "relu6", "elu", "selu",
-                        "softsign", "stanh", "thresholded_relu"
+                        "softsign", "stanh", "thresholded_relu", "softplus"
                 ]:
                     # few samples to reduce time
                     #for beta in [-0.2, 0.5, 0.67, 3]:
@@ -57,6 +57,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 dics = [{"scale_a": beta, "scale_b": alpha}]
                             if op_type == "thresholded_relu":
                                 dics = [{"threshold": alpha}]
+                            if op_type == "softplus":
+                                dics = [{"beta": beta}]
 
                             ops_config = [{
                                 "op_type": op_type,

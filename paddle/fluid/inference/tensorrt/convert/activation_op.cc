@@ -79,6 +79,13 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
+    if (op_type_ == "softplus") {
+      const float beta = op_desc.HasAttr("beta")
+                             ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
+                             : 1.0f;
+      layer->setAlpha(1.0f / beta);
+      layer->setBeta(beta);
+    }
     if (op_type_ == "stanh") {
       const float scale_a =
           op_desc.HasAttr("scale_a")
@@ -121,6 +128,7 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"elu", nvinfer1::ActivationType::kELU},
         {"selu", nvinfer1::ActivationType::kSELU},
         {"softsign", nvinfer1::ActivationType::kSOFTSIGN},
+        {"softplus", nvinfer1::ActivationType::kSOFTPLUS},
         {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
         {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
 
@@ -159,6 +167,11 @@ class SoftsignOpConverter : public ActivationOpConverter {
   SoftsignOpConverter() { op_type_ = "softsign"; }
 };
 
+class SoftplusOpConverter : public ActivationOpConverter {
+ public:
+  SoftplusOpConverter() { op_type_ = "softplus"; }
+};
+
 class STanhOpConverter : public ActivationOpConverter {
  public:
   STanhOpConverter() { op_type_ = "stanh"; }
@@ -180,5 +193,6 @@ REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
 REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
 REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
+REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
 REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThreasholdedReluOpConverter);
