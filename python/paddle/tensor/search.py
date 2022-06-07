@@ -572,49 +572,46 @@ def mode(x, axis=-1, keepdim=False, name=None):
 
 def where(condition, x=None, y=None, name=None):
     r"""
-    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
-
-    **Note**:
-        ``paddle.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``.
+    Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
 
     .. math::
 
-      out_i =
-      \begin{cases}
-      x_i, \quad  \text{if}  \ condition_i \  is \ True \\
-      y_i, \quad  \text{if}  \ condition_i \  is \ False \\
-      \end{cases}
+        out_i =
+        \begin{cases}
+        x_i, & \text{if}  \ condition_i \  \text{is} \ True \\
+        y_i, & \text{if}  \ condition_i \  \text{is} \ False \\
+        \end{cases}.
 
+    Notes:
+        ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
 
     Args:
-        condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
-        x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-        y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: A Tensor with the same data dype as x. 
+        Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
 
     Examples:
         .. code-block:: python
+            :name:where-example
 
-          import paddle
+            import paddle
 
-          x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
-          y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
-          out = paddle.where(x>1, x, y)
+            x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
+            y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
+            out = paddle.where(x>1, x, y)
 
-          print(out)
-          #out: [1.0, 1.0, 3.2, 1.2]
+            print(out)
+            #out: [1.0, 1.0, 3.2, 1.2]
 
-          out = paddle.where(x>1)
-          print(out)
-          #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
-          #            [[2],
-          #             [3]]),)
+            out = paddle.where(x>1)
+            print(out)
+            #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
+            #            [[2],
+            #             [3]]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
