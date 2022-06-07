@@ -779,7 +779,8 @@ void EagerReducer::ProcessUnusedDenseVars() {
       // gradient accumulation can continue normally after clear_gradients()
       // especiall in cases including complex control flow.
       std::static_pointer_cast<egr::GradNodeAccumulation>(
-        GetGradNodeFromTensor(&tensors_[var_index]))->SetFakeEmpty(false);
+          GetGradNodeFromTensor(&tensors_[var_index]))
+          ->SetFakeEmpty(false);
 
       Tensor grad_value(std::make_shared<phi::DenseTensor>(src_tensor));
 
