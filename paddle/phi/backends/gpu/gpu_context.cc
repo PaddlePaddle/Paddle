@@ -230,7 +230,6 @@ struct GPUContext::Impl {
     phi::InitBlasLtHandle(&blaslt_handle_);
     phi::InitDnnHandle(&dnn_handle_, stream_, place_);
     phi::InitSolverHandle(&solver_handle_, stream_);
-    // phi::InitSparseHandle(&sparse_handle_, stream_);
     InitDnnWorkspace();
   }
 
@@ -262,7 +261,6 @@ struct GPUContext::Impl {
     phi::InitBlasLtHandle(&blaslt_handle_);
     phi::InitDnnHandle(&dnn_handle_, stream_, place_);
     phi::InitSolverHandle(&solver_handle_, stream_);
-    // phi::InitSparseHandle(&sparse_handle_, stream_);
   }
 
   void PartialInitWithAllocator() {
