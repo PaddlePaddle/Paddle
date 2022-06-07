@@ -46,7 +46,8 @@ __global__ void insert_kernel(Table* table,
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
-                              size_t len, char* pool, int start_index) {
+                              size_t len, char* pool, size_t feature_value_size,
+                              int start_index) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
 
@@ -54,7 +55,8 @@ __global__ void insert_kernel(Table* table,
 
   if (i < len) {
     kv.first = keys[i];
-    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
+    uint64_t offset = uint64_t(start_index + i) * feature_value_size;
+    kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
     assert(it != table->end() && "error: insert fails: table is full");
   }
@@ -77,14 +79,43 @@ __global__ void search_kernel(Table* table,
 template <typename Table>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
-                                    char* const vals, size_t len,
+                                    char* vals, size_t len,
                                     size_t pull_feature_value_size) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
-
     if (it != table->end()) {
-      *(FeatureValue*)(vals + i * pull_feature_value_size) = *(it->second);
+      uint64_t offset = i * pull_feature_value_size;
+      FeatureValue* cur = (FeatureValue*)(vals + offset);
+      FeatureValue& input = *(FeatureValue*)(it->second);
+      cur->slot    = input.slot;
+      cur->show    = input.show;
+      cur->clk     = input.clk;
+      cur->mf_dim = input.mf_dim;
+      cur->lr = input.lr;
+      cur->mf_size = input.mf_size;
+      cur->cpu_ptr = input.cpu_ptr;
+      cur->delta_score = input.delta_score;
+      cur->lr_g2sum = input.lr_g2sum;
+      for(int j = 0; j < cur->mf_dim + 1; ++j) {
+         cur->mf[j] = input.mf[j];
+      }
+    } else {
+      if (keys[i] != 0) printf("pull miss key: %d",keys[i]);
+      FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
+      cur->delta_score = 0;
+      cur->show = 0;
+      cur->clk = 0;
+      cur->slot = -1;
+      cur->lr = 0;
+      cur->lr_g2sum = 0;
+      cur->mf_size = 0;
+      cur->mf_dim = 8;
+      cur->cpu_ptr;
+      for (int j = 0; j < cur->mf_dim + 1; j++) {
+        cur->mf[j] = 0;
+      }
+      
     }
   }
 }
@@ -191,7 +222,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       FeaturePushValue* cur = (FeaturePushValue*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value((it.getter())->second, *cur);
     } else {
-      printf("yxf::push miss key: %d", keys[i]);
+      if(keys[i] != 0) printf("push miss key: %d", keys[i]);
     }
   }
 }
@@ -248,7 +279,9 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
-                                         char* pool, size_t start_index,
+                                         char* pool,
+                                         size_t feature_value_size,
+                                         size_t start_index,
                                          gpuStream_t stream) {
   if (len == 0) {
     return;
@@ -258,7 +291,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
     return;
   }
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
-                                                       pool, start_index);
+                                                       pool, feature_value_size, start_index);
 }
 
 template <typename KeyType, typename ValType>

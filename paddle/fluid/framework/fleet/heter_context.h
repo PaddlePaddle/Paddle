@@ -129,11 +129,6 @@ class HeterContext {
     for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
       feature_dim_keys_[i].resize(dim_num);
       value_dim_ptr_[i].resize(dim_num);
-      if (i == 0) {
-        for (int j = 0; j < dim_num; j++) {
-          feature_dim_keys_[i][j].push_back(0);
-        }
-      }
     }
     device_values_.resize(device_num);
     device_dim_values_.resize(device_num);

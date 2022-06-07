@@ -26,6 +26,7 @@ template <typename T>
 static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+  auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // GpuPSPS only supports float now
@@ -39,11 +40,11 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
     slot_lengths[i] = slot->numel();
     auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
     // double type is not fully supported now
-    all_values[i] = reinterpret_cast<float *>(output);
+    all_values[i] = output;
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
+  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths, embedding_size_vec,
                          0);
 #endif
 }

@@ -711,8 +711,16 @@ def _pull_gpups_sparse(input,
         helper.create_variable_for_type_inference(dtype)
         for i in range(len(inputs))
     ]
+    largest_emb_size = 0;
+    if isinstance(size, list):
+        for i in range(len(size)):
+            if size[i] > largest_emb_size:
+                largest_emb_size = size[i]
+    else:
+        assert(isinstance(size, int))
+        largest_emb_size = size
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=[11], dtype=dtype, is_bias=False)
+        attr=helper.param_attr, shape=[largest_emb_size], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_gpups_sparse',
         inputs={'Ids': inputs,

@@ -56,8 +56,8 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
               gpuStream_t stream);
-  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
-              gpuStream_t stream);
+  void insert(const KeyType* d_keys, size_t len, char* pool, size_t feature_value_size,
+              size_t start_index, gpuStream_t stream);
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
            gpuStream_t stream);
   void get(const KeyType* d_keys, char* d_vals, size_t len, gpuStream_t stream);

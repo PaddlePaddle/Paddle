@@ -121,6 +121,22 @@ void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
 }
 
 template <typename T>
+std::vector<std::string> DatasetImpl<T>::GetSlots() {
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  use_slots_.clear();
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    use_slots_.push_back(slot.name());
+  }
+  std::cout << "dataset use slots: ";
+  for (auto s : use_slots_) {
+    std::cout << s << " | ";
+  }
+  std::cout << " end " <<std::endl;
+  return use_slots_;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetChannelNum(int channel_num) {
   channel_num_ = channel_num;
 }
@@ -1771,6 +1787,23 @@ void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
   CreateReaders();
   VLOG(3) << "adjust readers num done";
   PrepareTrain();
+}
+
+std::vector<std::string> SlotRecordDataset::GetSlots() {
+  auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
+  use_slots_.clear();
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    if (slot.type() == "uint64" || slot.type() == "uint32") {
+      use_slots_.push_back(slot.name());
+    }
+  }
+  std::cout << "dataset use slots: ";
+  for (auto s : use_slots_) {
+    std::cout << s << " | ";
+  }
+  std::cout << " end " <<std::endl;
+  return use_slots_;
 }
 
 }  // end namespace framework
