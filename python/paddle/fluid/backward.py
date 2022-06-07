@@ -1210,10 +1210,15 @@ def _append_backward_ops_(block,
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
-            _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
-                                  no_grad_dict, grad_to_var, callbacks,
-                                  input_grad_names_set, op_path_dict,
-                                  grad_op_id_to_fwd_op)
+            _append_backward_ops_(sub_block,
+                                  sub_block_path,
+                                  grad_sub_block,
+                                  no_grad_dict,
+                                  grad_to_var,
+                                  callbacks,
+                                  input_grad_names_set,
+                                  op_path_dict,
+                                  grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
             input_grad_names_set = pre_input_grad_names_set
 
             program._rollback()
