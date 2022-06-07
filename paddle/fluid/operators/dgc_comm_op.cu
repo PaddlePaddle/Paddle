@@ -62,9 +62,9 @@ class DGCCommOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_DGC)
     PADDLE_ENFORCE_EQ(
-        paddle::communication::dgc::sparseReduce(static_cast<void*> gather_buff,
-                                                 k, out_data, out_numel, nranks,
-                                                 stream),
+        paddle::communication::dgc::sparseReduce(
+            static_cast<void*>(gather_buff), k, out_data, out_numel, nranks,
+            stream),
         true, platform::errors::Unavailable("Calling sparseReduce() failed."));
 #endif
   }
