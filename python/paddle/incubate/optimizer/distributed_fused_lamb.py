@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
@@ -22,7 +23,41 @@ from paddle.distributed import get_rank, get_world_size
 from paddle.distributed.collective import new_group
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
+from paddle.fluid import core, unique_name
 import numpy as np
+
+
+def init_communicator(block, rank, ranks, ring_id):
+    eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
+    eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
+    cur_ep = eps[rank]
+    other_eps = [eps[r] for r in ranks if r != rank]
+
+    local_rank = ranks.index(rank)
+    comm_var_name = unique_name.generate(
+        'comm_id') if ring_id != 0 else 'NCCLID'
+    comm_id_var = block.create_var(name=comm_var_name,
+                                   persistable=True,
+                                   type=core.VarDesc.VarType.RAW)
+    block.append_op(type='c_gen_nccl_id',
+                    inputs={},
+                    outputs={'Out': comm_id_var},
+                    attrs={
+                        'rank': rank,
+                        'endpoint': cur_ep,
+                        'other_endpoints': other_eps,
+                        'ring_id': ring_id
+                    })
+    if ring_id != 0:
+        block.append_op(type='c_comm_init',
+                        inputs={'X': comm_id_var},
+                        outputs={},
+                        attrs={
+                            'nranks': len(ranks),
+                            'rank': local_rank,
+                            'ring_id': ring_id
+                        })
+    return ring_id
 
 
 class DistributedFusedLamb(Optimizer):
@@ -67,7 +102,6 @@ class DistributedFusedLamb(Optimizer):
         self._is_grad_scaled_by_nranks = is_grad_scaled_by_nranks
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
         self._scale = None
-        self._ring_id = [0]
         self._use_master_param_norm = use_master_param_norm
         self._gradient_accumulation_steps = gradient_accumulation_steps
         self._use_master_acc_grad = use_master_acc_grad
@@ -242,12 +276,6 @@ class DistributedFusedLamb(Optimizer):
         node_id = int(rank / nproc_per_node)
         node_num = int(nranks / nproc_per_node)
 
-        if node_num > 1 and len(self._ring_id) <= 1 and shard_inside_node:
-            local_group_ranks = list(
-                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
-            group = new_group(ranks=local_group_ranks)
-            self._ring_id.append(group.id)
-
         scale = self._get_or_create_scale()
 
         params = [p for p, _ in params_grads]
@@ -302,6 +330,19 @@ class DistributedFusedLamb(Optimizer):
                 'beta1': self._beta1,
                 'beta2': self._beta2,
             })
+
+        ring_ids = []
+        if nranks > 1:
+            ring_id = init_communicator(startup_block, rank,
+                                        list(range(nranks)), 0)
+            ring_ids.append(ring_id)
+
+        if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
+            local_group_ranks = list(
+                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
+            ring_id = init_communicator(startup_block, rank, local_group_ranks,
+                                        1)
+            ring_ids.append(ring_id)
 
         main_block = self.helper.main_program.global_block()
         self._create_global_learning_rate()
@@ -368,7 +409,7 @@ class DistributedFusedLamb(Optimizer):
                 'clip_after_allreduce': self._clip_after_allreduce,
                 'rank': rank,
                 'nranks': nranks,
-                'ring_id': self._ring_id,
+                'ring_id': ring_ids,
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,
