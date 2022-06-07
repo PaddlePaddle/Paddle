@@ -24,8 +24,10 @@ endif()
 include(ExternalProject)
 
 set(CUSPARSELT_PROJECT "extern_cusparselt")
+set(CUSPARSELT_P "https://developer.download.nvidia.com/compute")
+set(CUSPARSELT_F "libcusparse_lt-linux-x86_64-0.2.0.1.tar.gz")
 set(CUSPARSELT_URL
-    "https://developer.download.nvidia.com/compute/libcusparse-lt/0.2.0/local_installers/libcusparse_lt-linux-x86_64-0.2.0.1.tar.gz"
+    "${CUSPARSELT_P}/libcusparse-lt/0.2.0/local_installers/${CUSPARSELT_F}"
     CACHE STRING "" FORCE)
 set(CUSPARSELT_PREFIX_DIR ${THIRD_PARTY_PATH}/cusparselt)
 set(CUSPARSELT_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cusparselt)

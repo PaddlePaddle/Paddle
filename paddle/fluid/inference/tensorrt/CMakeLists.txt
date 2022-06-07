@@ -1,4 +1,5 @@
-# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows. Temporarily add paddle_inference_api dependency to solve the problem
+# Compiling with WITH_PYTHON=ON and WITH_TENSORRT=ON failed on windows.
+# Temporarily add paddle_inference_api dependency to solve the problem
 if(WIN32)
   nv_library(
     tensorrt_engine
