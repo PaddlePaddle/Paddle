@@ -100,8 +100,8 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
             self.aspect_ratios = np.array(self.aspect_ratios,
                                           dtype=np.float64).flatten()
             self.variances = [0.1, 0.1, 0.2, 0.2]
-            self.variances = np.array(
-                self.variances, dtype=np.float64).flatten()
+            self.variances = np.array(self.variances,
+                                      dtype=np.float64).flatten()
 
             self.clip = True
             self.num_priors = len(self.real_aspect_ratios) * len(self.min_sizes)

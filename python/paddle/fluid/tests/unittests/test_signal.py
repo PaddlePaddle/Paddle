@@ -598,8 +598,8 @@ def rand_x(dims=1,
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
         ]
     if complex:
-        return np.random.randn(*shape).astype(
-            dtype) + 1.j * np.random.randn(*shape).astype(dtype)
+        return np.random.randn(
+            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
     else:
         return np.random.randn(*shape).astype(dtype)
 
