@@ -55,6 +55,31 @@ def compute_graph_send_e_recv_for_sum(inputs, attributes):
     return results
 
 
+def compute_graph_send_e_recv_for_mean(inputs, attributes):
+    x = inputs['X']
+    e = inputs['E']
+    src_index = inputs['Src_index']
+    dst_index = inputs['Dst_index']
+    compute_type = attributes['compute_type']
+
+    gather_x = x[src_index]
+    out_shp = [x.shape[0], ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
+    results = np.zeros(out_shp, dtype=x.dtype)
+
+    # Calculate forward output
+    if compute_type == 'ADD':
+        x_compute_e = gather_x + e
+    elif compute_type == 'MUL':
+        x_compute_e = gather_x * e
+    count = np.zeros(out_shp[0], dtype=np.int32)
+    for index, s_id in enumerate(dst_index):
+        results[s_id, :] += x_compute_e[index, :]
+        count[s_id] += 1
+        results = results / count.reshape([-1, 1])
+        results[np.isnan(results)] = 0
+    return results, count
+
+
 class TestGraphSendERecvSumOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -135,3 +160,36 @@ class TestSumCase5(TestGraphSendERecvSumOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
+
+
+class TestGraphSendERecvMeanOp(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "graph_send_e_recv"
+        self.set_config()
+        self.inputs = {
+            'X': self.x,
+            'E': self.e,
+            'Src_index': self.src_index,
+            'Dst_index': self.dst_index
+        }
+        self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MEAN'}
+
+        out, dst_count = compute_graph_send_e_recv_for_mean(self.inputs,
+                                                            self.attrs)
+
+        self.outputs = {'Out': out, 'Dst_count': dst_count}
+
+    def set_config(self):
+        self.x = np.random.random((10, 20)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'E'], 'Out')

@@ -2386,7 +2386,7 @@ void GraphSendERecvInferMeta(const MetaTensor& x,
   std::vector<int> e_dims2(e_dims1.begin() + 1, e_dims1.end());
 
   int max_dim = std::max(x_dims2.size(), e_dims2.size());
-  int axis = std::abs((int)(x_dims2.size() - e_dims2.size()));
+  int axis = std::abs(static_cast<int>(x_dims2.size() - e_dims2.size()));
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> e_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
