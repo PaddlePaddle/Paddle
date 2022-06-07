@@ -53,7 +53,7 @@ ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 # RUN python3.7 and pip3.7
 # Prepare packages for Python
-RUN apt-get -y install zlib1g-dev libffi-dev libssl-dev
+RUN apt-get -y install zlib1g-dev libffi-dev libssl-dev liblzma-dev
 
 WORKDIR ${HOME_WORK_DIR}
 # Install Python3.7
