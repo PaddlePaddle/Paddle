@@ -200,7 +200,8 @@ class TestMultipleWithGloo(unittest.TestCase):
 class TestDataParallelGradientCheck(TestMultipleGpus):
 
     def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
+        self.run_mnist_2gpu('parallel_dygraph_gradient_check.py',
+                            eager_mode=False)
 
 
 class TestDataParallelWithPyLayer(TestMultipleGpus):
@@ -218,4 +219,5 @@ class TestGradientCheckInEagerMode(TestMultipleGpus):
 
 
 if __name__ == "__main__":
+    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

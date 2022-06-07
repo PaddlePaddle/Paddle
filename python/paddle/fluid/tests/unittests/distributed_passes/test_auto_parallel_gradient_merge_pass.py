@@ -25,20 +25,14 @@ import paddle.nn as nn
 import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
-from paddle.fluid.initializer import NumpyArrayInitializer
-
-from paddle.distributed.passes import new_pass, PassManager, PassContext
 import paddle.distributed.fleet as fleet
-from dist_pass_test_base import DistPassTestBase
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+import paddle.distributed.auto_parallel as auto
+
+from paddle.fluid.initializer import NumpyArrayInitializer
+from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 logging.getLogger().setLevel(logging.INFO)
 paddle.enable_static()
-_global_parallel_strategy = None
-_global_process_mesh = None
-
-#np.set_printoptions(suppress=True)
 
 
 class MLPLayer(nn.Layer):
@@ -103,13 +97,11 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(input, label, hidden_size):
-    if _global_parallel_strategy == "dp":
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh,
-                              "dims_mapping": [0, -1]
-                          })
-
+    auto.shard_tensor(input,
+                      dist_attr={
+                          "process_mesh": [0],
+                          "dims_mapping": [-1, -1]
+                      })
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    initializer_range=0.02)
@@ -119,40 +111,33 @@ def mlp_forward(input, label, hidden_size):
     return loss
 
 
-class TestGradientMergePass(DistPassTestBase):
+class TestGradientMergePass(AutoPallelPassTestBase):
 
     def init(self):
-        self._params_grads = None
-        self._config = {"k_steps": 4, "avg": True}
-        #self._config["dist_context"] = DistributedContext()
+        paddle.seed(2022)
+        random.seed(2022)
+        np.random.seed(2022)
 
-    def apply_passes(self, main_prog, startup_prog):
-        #self._config["params_grads"] = self._params_grads
-        #pass_context = PassContext()
-        #auto_parallel_gradient_merge_pass = new_pass(
-        #    "auto_parallel_gradient_merge_pass", self._config)
-        #auto_parallel_gradient_merge_pass.apply([main_prog], [startup_prog],
-        #                                        pass_context)
+    def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
+        dist_strategy.semi_auto = True
         dist_strategy.gradient_merge = True
         dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
-        dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def test_result(self):
         no_pass_rets = self._distributed_launch(model=None,
                                                 apply_pass=False,
                                                 gpus=[0],
-                                                gradient_merge=False,
                                                 batch_size=32,
+                                                hidden_size=128,
                                                 max_step=2)
         pass_rets = self._distributed_launch(model=None,
                                              apply_pass=True,
                                              gpus=[0],
-                                             gradient_merge=True,
                                              batch_size=8,
+                                             hidden_size=128,
                                              max_step=8)
-        """
         # avg loss for gradient_merge pass
         avg_loss = 0
         pass_avg_ret_list = []
@@ -167,40 +152,16 @@ class TestGradientMergePass(DistPassTestBase):
         for no_pass_ret, pass_ret in zip(no_pass_rets[0], pass_avg_ret_list):
             print(f"no_pass_ret={no_pass_ret}, pass_ret={pass_ret}")
             self.assertTrue(
-                np.isclose(
-                    no_pass_ret,
-                    pass_ret,
-                    rtol=self.rtol,
-                    atol=self.atol,
-                    equal_nan=self.equal_nan))
-        """
+                np.isclose(no_pass_ret,
+                           pass_ret,
+                           rtol=self.rtol,
+                           atol=self.atol,
+                           equal_nan=self.equal_nan))
 
-    def get_model(self, place, gradient_merge, batch_size, max_step):
-        paddle.seed(2021)
-        random.seed(2021)
-        np.random.seed(2021)
-
-        hidden_size = 128
-
-        global _global_parallel_strategy
-        global _global_process_mesh
-        world_size = paddle.distributed.get_world_size()
-        if world_size == 1:
-            _global_parallel_strategy = "dp"
-            _global_process_mesh = auto.ProcessMesh([0])
-        elif world_size == 2:
-            _global_parallel_strategy = "dp"
-            _global_process_mesh = auto.ProcessMesh([0, 1])
+    def get_model(self, place, batch_size, hidden_size, max_step):
 
         train_program = static.Program()
         startup_program = static.Program()
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.semi_auto = True
-        #if gradient_merge:
-        #    dist_strategy.gradient_merge = True
-        #    dist_strategy.gradient_merge_configs = {"k_steps": 4, "avg": True}
-        fleet.init(is_collective=True, strategy=dist_strategy)
-
         with static.program_guard(train_program, startup_program), \
             utils.unique_name.guard():
             input = static.data(name="input",
@@ -212,8 +173,7 @@ class TestGradientMergePass(DistPassTestBase):
             input.stop_gradient = False
             loss = mlp_forward(input, label, hidden_size)
 
-        optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
-        #optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer)
         _, self._params_grads, dist_startup_prog, dist_main_prog = optimizer.minimize(
             loss, startup_program)
