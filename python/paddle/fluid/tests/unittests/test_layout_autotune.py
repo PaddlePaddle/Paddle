@@ -20,6 +20,9 @@ import tempfile
 import warnings
 import json
 import os
+from paddle.fluid.framework import _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 
 class SimpleNet(paddle.nn.Layer):
