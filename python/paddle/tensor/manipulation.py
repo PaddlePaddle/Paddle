@@ -458,6 +458,10 @@ def flip(x, axis, name=None):
     """
     if isinstance(axis, int):
         axis = [axis]
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_flip(x, axis)
+
     if paddle.in_dynamic_mode():
         return _C_ops.flip(x, "axis", axis)
 
@@ -780,6 +784,8 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
+        if isinstance(shifts, paddle.Tensor):
+            shifts = shifts.cpu()
         return _C_ops.final_state_roll(x, shifts, axis)
 
     if _in_legacy_dygraph():
@@ -1211,11 +1217,16 @@ def unique(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
-        out, inverse, indices, counts = _C_ops.unique(
-            x, 'dtype', attr_dtype, 'return_index', return_index,
-            'return_inverse', return_inverse, 'return_counts', return_counts,
-            'axis', axis, "is_sorted", True)
+    if _non_static_mode():
+        if in_dygraph_mode():
+            out, indices, inverse, counts = _C_ops.final_state_unique(
+                x, return_index, return_inverse, return_counts, axis,
+                attr_dtype)
+        if _in_legacy_dygraph():
+            out, inverse, indices, counts = _C_ops.unique(
+                x, 'dtype', attr_dtype, 'return_index', return_index,
+                'return_inverse', return_inverse, 'return_counts',
+                return_counts, 'axis', axis, "is_sorted", True)
         outs = [out]
         if return_index:
             outs.append(indices)
@@ -1464,6 +1475,9 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_unbind(input, axis)
+
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
@@ -1472,7 +1486,7 @@ def unbind(input, axis=0):
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.unbind(input, num, 'axis', axis)
 
     helper = LayerHelper("unbind", **locals())
@@ -1986,6 +2000,9 @@ def expand(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+
     if paddle.in_dynamic_mode():
         return _C_ops.expand_v2(x, 'shape', shape)
 

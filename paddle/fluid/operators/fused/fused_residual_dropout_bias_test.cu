@@ -147,6 +147,7 @@ struct TestFusedResidualDropoutBias {
                  dropout_prob, is_upscale_in_train, is_test);
     }
     ctx->Wait();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
     // add residual
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
@@ -186,6 +187,7 @@ struct TestFusedResidualDropoutBias {
         src.data<T>(), residual.data<T>(), bias_ptr, mask.data<uint8_t>(),
         out.data<T>(), *ctx);
     ctx->Wait();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
   }
 
   void FusedBackward() {
@@ -312,4 +314,21 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShape) {
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-3));
+}
+
+TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShapeFp16) {
+  // Used to test that `cudaErrorLaunchOutOfResources` will not occur
+  int rows = 1;
+  int cols = 12288;
+  if (std::getenv("_rows") != nullptr) {
+    rows = atoi(std::getenv("_rows"));
+  }
+  if (std::getenv("_cols") != nullptr) {
+    cols = atoi(std::getenv("_cols"));
+  }
+  TestFusedResidualDropoutBias<platform::float16> test(rows, cols, 0, 0.0, true,
+                                                       true);
+  test.Run();
+  test.CheckOut(static_cast<platform::float16>(1e-1));
+  test.CheckGrad(static_cast<platform::float16>(1e-1));
 }

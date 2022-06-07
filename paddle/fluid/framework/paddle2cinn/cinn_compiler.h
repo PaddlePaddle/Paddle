@@ -37,6 +37,10 @@ class GraphCompiler;
 class Program;
 class Scope;
 }  // namespace hlir::framework
+
+namespace auto_schedule {
+class AutoTuner;
+}  // namespace auto_schedule
 }  // namespace cinn
 
 namespace paddle {
@@ -49,6 +53,7 @@ namespace paddle2cinn {
 
 struct CinnCompiledObject {
   std::unique_ptr<::cinn::hlir::framework::GraphCompiler> compiler;
+  std::unique_ptr<::cinn::auto_schedule::AutoTuner> auto_tuner;
   std::unique_ptr<::cinn::hlir::framework::Program> runtime_program;
   std::shared_ptr<::cinn::hlir::framework::Scope> scope;
   std::unordered_map<std::string, std::string> paddle2cinn_varmap;
@@ -102,6 +107,13 @@ class CinnCompiler {
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const ::cinn::common::Target& target, std::int64_t compiled_num,
       void* stream = nullptr) const;
+
+  // check whether a compiled result is valid by comparing
+  // the consistency of external variables of the subgraph
+  void CheckCompiledValid(
+      const ir::Graph& graph,
+      const std::map<std::string, const LoDTensor*>& input_tensors,
+      const CinnCompiledObject& compiled_obj) const;
 
   std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKeyByAddress, std::int64_t, CinnCacheKey::Hash>

@@ -46,9 +46,8 @@ class TestSparseConv(unittest.TestCase):
             out.backward(out)
             #At present, only backward can be verified to work normally
             #TODO(zhangkaihuo): compare the result with dense conv
-            print(sparse_input.grad.non_zero_elements())
-            assert np.array_equal(correct_out_values,
-                                  out.non_zero_elements().numpy())
+            print(sparse_input.grad.values())
+            assert np.array_equal(correct_out_values, out.values().numpy())
 
 
 #TODO: Add more test case

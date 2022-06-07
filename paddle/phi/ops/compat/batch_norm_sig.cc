@@ -57,27 +57,26 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature BatchNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "batch_norm_grad",
-      {
-          "X",
-          "Scale",
-          "Bias",
-          "Mean",
-          "Variance",
-          "SavedMean",
-          "SavedVariance",
-          "ReserveSpace",
-          GradVarName("Y"),
-      },
-      {"momentum",
-       "epsilon",
-       "data_layout",
-       "is_test",
-       "use_global_stats",
-       "trainable_statistics",
-       "fuse_with_relu"},
-      {GradVarName("X"), GradVarName("Scale"), GradVarName("Bias")});
+  return KernelSignature("batch_norm_grad",
+                         {
+                             "X",
+                             "Scale",
+                             "Bias",
+                             "Mean",
+                             "Variance",
+                             "SavedMean",
+                             "SavedVariance",
+                             "ReserveSpace",
+                             "Y@GRAD",
+                         },
+                         {"momentum",
+                          "epsilon",
+                          "data_layout",
+                          "is_test",
+                          "use_global_stats",
+                          "trainable_statistics",
+                          "fuse_with_relu"},
+                         {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
 KernelSignature BatchNormGradGradOpArgumentMapping(

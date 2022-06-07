@@ -31,6 +31,7 @@ limitations under the License. */
 #include <algorithm>
 #include <deque>
 
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 
@@ -595,8 +596,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       }
 #endif
       VLOG(3) << "GpuPs build hbmps done";
-
-      device_mutex[dev]->unlock();
     }
   };
 
@@ -653,7 +652,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
+#ifdef PADDLE_WITH_CUDA
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
+#endif
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     VLOG(3) << "building table: " << i;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
@@ -791,18 +792,27 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
-  VLOG(3) << "Begine Gpu Ps PullSparse";
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
+#ifdef PADDLE_WITH_CUDA
+  VLOG(3) << "Begine Gpu Ps PullSparse";
   auto buf = memory::Alloc(place, total_length * sizeof(FeatureValue));
   FeatureValue* total_values_gpu = reinterpret_cast<FeatureValue*>(buf->ptr());
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+  VLOG(3) << "Begine Xpu Ps PullSparse";
+  FeatureValue* total_values_gpu = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&total_values_gpu),
+             total_length * sizeof(FeatureValue));
+#endif
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GpuPs now."));
   } else if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
@@ -842,9 +852,63 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     this->CopyForPull(place, gpu_keys, values, total_values_gpu, gpu_len,
                       static_cast<int>(slot_lengths.size()), hidden_size,
                       total_length);
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU_KP
+    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
+    int device_id = place.GetDeviceId();
+    int devid_2_index = HeterPs_->get_index_by_devid(device_id);
+    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    uint64_t* total_keys = reinterpret_cast<uint64_t*>(
+        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
+
+    // construct slot_level lod info
+    auto slot_lengths_lod = slot_lengths;
+    for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
+      slot_lengths_lod[i] += slot_lengths_lod[i - 1];
+    }
+
+    uint64_t* buf_key = nullptr;
+    int64_t* buf_length = nullptr;
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&buf_key),
+                                 keys.size() * sizeof(uint64_t*)),
+                      XPU_SUCCESS, platform::errors::ResourceExhausted(
+                                       "XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&buf_length),
+                                 slot_lengths.size() * sizeof(int64_t)),
+                      XPU_SUCCESS, platform::errors::ResourceExhausted(
+                                       "XPU has no enough memory"));
+
+    uint64_t** xpu_keys = reinterpret_cast<uint64_t**>(&buf_key);
+    int64_t* xpu_len = reinterpret_cast<int64_t*>(buf_length);
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(xpu_keys, keys.data(),
+                                          keys.size() * sizeof(uint64_t*),
+                                          XPU_HOST_TO_DEVICE));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(xpu_len, slot_lengths_lod.data(),
+                                          slot_lengths.size() * sizeof(int64_t),
+                                          XPU_HOST_TO_DEVICE));
+
+    this->CopyKeys(place, xpu_keys, total_keys, xpu_len,
+                   static_cast<int>(slot_lengths.size()),
+                   static_cast<int>(total_length));
+    VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
+            << " len: " << total_length;
+    pull_gpups_timer.Start();
+    HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
+                          static_cast<int>(total_length));
+    // PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+    //                              "PullSparseGPU failed in GPUPS."));
+    pull_gpups_timer.Pause();
+
+    VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
+            << "]";
+    this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
+                      static_cast<int>(slot_lengths.size()), hidden_size,
+                      total_length);
+#endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "GpuPs: PullSparse Only Support CUDAPlace Now."));
+        "GpuPs/XpuPs: PullSparse Only Support CUDAPlace or XPUPlace Now."));
   }
   all_timer.Pause();
   VLOG(3) << "GpuPs PullSparse total costs: " << all_timer.ElapsedSec()
@@ -859,15 +923,23 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<const float*>& grad_values,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size, const int batch_size) {
-  VLOG(3) << "Begin GPUPS PushSparseGrad";
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
   int64_t total_length =
       std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
+#ifdef PADDLE_WITH_CUDA
+  VLOG(3) << "Begin GPUPS PushSparseGrad";
   auto buf = memory::Alloc(place, total_length * sizeof(FeaturePushValue));
   FeaturePushValue* total_grad_values_gpu =
       reinterpret_cast<FeaturePushValue*>(buf->ptr());
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+  VLOG(3) << "Begine Xpu Ps PushSparseGrad";
+  FeaturePushValue* total_grad_values_gpu = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&total_grad_values_gpu),
+             total_length * sizeof(FeaturePushValue));
+#endif
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
@@ -887,6 +959,22 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
                           static_cast<int>(total_length));
     push_gpups_timer.Pause();
+  } else if (platform::is_xpu_place(place)) {
+    int device_id = place.GetDeviceId();
+    int devid_2_index = HeterPs_->get_index_by_devid(device_id);
+    LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
+    uint64_t* total_keys =
+        reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
+    VLOG(3) << "Begin copy grad tensor to xpups struct";
+    this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
+                      hidden_size, total_length, batch_size);
+
+    VLOG(3) << "Begin call PushSparseXPU in XPUPS, dev: " << devid_2_index
+            << " len: " << total_length;
+    push_gpups_timer.Start();
+    HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
+                          static_cast<int>(total_length));
+    push_gpups_timer.Pause();
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "GPUPS: PushSparseGrad Only Support CUDAPlace Now."));
@@ -897,7 +985,6 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
           << " s";
   VLOG(3) << "End PushSparseGrad";
 }
-
 }  // end namespace framework
 }  // end namespace paddle
 #endif

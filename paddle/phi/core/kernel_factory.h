@@ -122,11 +122,33 @@ struct TensorArgDef {
   }
 };
 
-struct AttributeArgDef {
-  std::type_index type_index;
+// Align the original fluid Attribute type with lower overhead
+enum class AttributeType {
+  UNDEFINED = 0,
+  BOOL,
+  INT32,
+  INT64,
+  FLOAT32,
+  FLOAT64,
+  STRING,
+  BOOLS,
+  INT32S,
+  INT64S,
+  FLOAT32S,
+  FLOAT64S,
+  STRINGS,
+  SCALAR,
+  SCALARS,
+  INT_ARRAY,
+  DATA_TYPE,
+  DATA_LAYOUT,
+  PLACE,
+};
 
-  explicit AttributeArgDef(std::type_index type_index)
-      : type_index(type_index) {}
+struct AttributeArgDef {
+  AttributeType type_index;
+
+  explicit AttributeArgDef(AttributeType type_index) : type_index(type_index) {}
 };
 
 class KernelArgsDef {
@@ -147,34 +169,42 @@ class KernelArgsDef {
     output_defs_.emplace_back(TensorArgDef(backend, layout, dtype, type_index));
   }
 
-  void AppendAttribute(std::type_index type_index) {
+  void AppendAttribute(AttributeType type_index) {
     attribute_defs_.emplace_back(AttributeArgDef(type_index));
   }
 
-  const paddle::SmallVector<TensorArgDef>& input_defs() const {
+  const paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs()
+      const {
     return input_defs_;
   }
 
-  const paddle::SmallVector<TensorArgDef>& output_defs() const {
+  const paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs()
+      const {
     return output_defs_;
   }
 
-  const paddle::SmallVector<AttributeArgDef>& attribute_defs() const {
+  const paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>&
+  attribute_defs() const {
     return attribute_defs_;
   }
 
-  paddle::SmallVector<TensorArgDef>& input_defs() { return input_defs_; }
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize>& input_defs() {
+    return input_defs_;
+  }
 
-  paddle::SmallVector<TensorArgDef>& output_defs() { return output_defs_; }
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize>& output_defs() {
+    return output_defs_;
+  }
 
-  paddle::SmallVector<AttributeArgDef>& attribute_defs() {
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize>& attribute_defs() {
     return attribute_defs_;
   }
 
  private:
-  paddle::SmallVector<TensorArgDef> input_defs_{{}};
-  paddle::SmallVector<TensorArgDef> output_defs_{{}};
-  paddle::SmallVector<AttributeArgDef> attribute_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kInputSmallVectorSize> input_defs_{{}};
+  paddle::SmallVector<TensorArgDef, kOutputSmallVectorSize> output_defs_{{}};
+  paddle::SmallVector<AttributeArgDef, kAttrSmallVectorSize> attribute_defs_{
+      {}};
 };
 
 class Kernel {
@@ -209,7 +239,7 @@ class Kernel {
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
-  bool IsValid() { return fn_ != nullptr; }
+  bool IsValid() const { return fn_ != nullptr; }
 
  private:
   KernelFn fn_{nullptr};
@@ -246,13 +276,16 @@ class KernelFactory {
                                          DataLayout layout,
                                          DataType dtype) const;
 
-  bool IsSelectKernelValid(const std::string& kernel_name,
-                           const KernelKey& kernel_key) const;
+  bool HasKernel(const std::string& kernel_name,
+                 const KernelKey& kernel_key) const;
 
-  Kernel SelectKernel(const std::string& kernel_name,
-                      const KernelKey& kernel_key) const;
+  const Kernel& SelectKernel(const std::string& kernel_name,
+                             const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
+
+  const KernelArgsDef& GetFirstKernelArgsDef(
+      const std::string& kernel_name) const;
 
  private:
   KernelFactory() = default;
@@ -265,6 +298,8 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
      << kernel_key.dtype() << ")";
   return os;
 }
+
+std::ostream& operator<<(std::ostream& os, AttributeType attr_type);
 
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 

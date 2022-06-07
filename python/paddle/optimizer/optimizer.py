@@ -1112,8 +1112,7 @@ class Optimizer(object):
 
         if _in_eager_without_dygraph_check():
             for p in param_list:
-                clear_func = p._zero_grads if set_to_zero else p.clear_gradient
-                clear_func()
+                p.clear_gradient(set_to_zero)
         else:
             core.clear_gradients(param_list, set_to_zero)
 

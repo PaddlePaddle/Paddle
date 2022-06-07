@@ -61,6 +61,10 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
       if (!node || !node.get()) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
+      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
+              << this->name() << " (addr: " << this << ") "
+              << " to " << meta->GetMutableGradNode()->name()
+              << " (addr: " << meta->GetMutableGradNode().get() << ")";
 
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
@@ -84,7 +88,9 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
-            << this->name() << " to " << meta->GetMutableGradNode()->name();
+            << this->name() << " (addr: " << this << ") "
+            << " to " << meta->GetMutableGradNode()->name()
+            << " (addr: " << meta->GetMutableGradNode().get() << ")";
 
     adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                      meta->OutRankInfo());
@@ -119,7 +125,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
   auto& meta = metas[0];
   meta.SetStopGradient(fwd_out_meta->StopGradient());
 
-  if (!fwd_out.is_initialized()) {
+  if (!fwd_out.initialized()) {
     VLOG(6)
         << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
     return;
@@ -145,7 +151,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
           "which is illegal."));
 
   meta.SetTensorMeta(dense_tensor->meta());
-  meta.SetPlace(fwd_out.inner_place());
+  meta.SetPlace(fwd_out.place());
 
   if (paddle::framework::IsComplexType(
           paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
@@ -186,7 +192,7 @@ void GradNodeBase::SetGradInMeta(
       meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
-    if (!fwd_out_tensor.is_initialized()) {
+    if (!fwd_out_tensor.initialized()) {
       VLOG(6)
           << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
       return;
@@ -204,7 +210,7 @@ void GradNodeBase::SetGradInMeta(
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
-      meta.SetPlace(fwd_out_tensor.inner_place());
+      meta.SetPlace(fwd_out_tensor.place());
 
       if (paddle::framework::IsComplexType(
               paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
@@ -250,7 +256,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
-      meta.SetPlace(fwd_in.inner_place());
+      meta.SetPlace(fwd_in.place());
     }
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
@@ -295,7 +301,7 @@ void GradNodeBase::SetGradOutMeta(
                               "phi::DataType::UNDEFINED,"
                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor->meta());
-        meta.SetPlace(fwd_in_tensor.inner_place());
+        meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
       VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "

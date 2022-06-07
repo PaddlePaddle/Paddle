@@ -40,6 +40,45 @@ inline const DDim InferDenseDims(const DDim& x_dims,
   return values_dims;
 }
 
+template <typename IntT>
+inline const IntT HOSTDEVICE IndicesToIndex(const IntT* indices,
+                                            const IntT* sparse_offsets,
+                                            const int64_t non_zero_num,
+                                            const int64_t sparse_dim,
+                                            const int i) {
+  IntT index = 0;
+  for (IntT j = 0; j < sparse_dim; j++) {
+    index += indices[j * non_zero_num + i] * sparse_offsets[j];
+  }
+  return index;
+}
+
+template <typename IntT>
+inline void HOSTDEVICE FlattenIndices(const IntT* indices,
+                                      const IntT* sparse_offsets,
+                                      const int64_t non_zero_num,
+                                      const int64_t sparse_dim,
+                                      const int start,
+                                      const int stride,
+                                      IntT* out) {
+  for (int i = start; i < non_zero_num; i += stride) {
+    out[i] =
+        IndicesToIndex(indices, sparse_offsets, non_zero_num, sparse_dim, i);
+  }
+}
+
+// 1. indices.dims().size() == 2
+template <typename IntT>
+inline void CalcOffsetsPerDim(const DDim& dims,
+                              const int64_t sparse_dim,
+                              std::vector<IntT>* offsets) {
+  IntT offset = 1;
+  for (IntT i = sparse_dim - 1; i >= 0; i--) {
+    (*offsets)[i] = offset;
+    offset *= dims[i];
+  }
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

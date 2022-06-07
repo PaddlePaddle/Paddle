@@ -20,6 +20,40 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
+// Get paddle prefix and popart postfix of weight states
+// Format: {popart_postfix, paddle_prefix}
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string &opt_type) {
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+  // Weight self
+  pre_post_fix.push_back(std::make_pair("", ""));
+
+  // Weight states
+  // TODO(alleng) support pair("Accl1___", "_moment1_{id!=0}")
+  if (opt_type == "adam" || opt_type == "lamb" || opt_type == "adamw") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "momentum") {
+    pre_post_fix.push_back(std::make_pair("Accl___", "_velocity_0"));
+  } else if (opt_type == "adamax") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_inf_norm__0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "adagrad") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment_0"));
+  } else if (opt_type == "adadelta") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "__avg_squared_grad_0"));
+    pre_post_fix.push_back(
+        std::make_pair("Accl2___", "__avg_squared_update_0"));
+  } else if (opt_type == "rmsprop") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_mean_square_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_mean_grad_0"));
+    pre_post_fix.push_back(std::make_pair("Accl3___", "_momentum__0"));
+  }
+  return pre_post_fix;
+}
+
 Executor::~Executor() {
   Detach();
   session_.reset();

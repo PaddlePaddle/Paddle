@@ -400,7 +400,7 @@ class TestNormal(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Normal(2.3, 1.9))
-        num_ops = 1
+        num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')

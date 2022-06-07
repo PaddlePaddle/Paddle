@@ -18,9 +18,9 @@ namespace phi {
 
 KernelSignature WhereGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("where_grad",
-                         {"Condition", "X", "Y", GradVarName("Out")},
+                         {"Condition", "X", "Y", "Out@GRAD"},
                          {},
-                         {GradVarName("X"), GradVarName("Y")});
+                         {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

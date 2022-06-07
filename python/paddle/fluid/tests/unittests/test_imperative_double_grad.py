@@ -385,25 +385,22 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward(retain_graph=True)
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward(retain_graph=True)
 
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 / float(numel) *
+                           (x_np + dx_expected *
+                            (x_np > 0) * 2 / float(numel))).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+        for i in range(5):
+            loss.backward(retain_graph=True)
             x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 / float(numel) * (
+            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
                 x_np + dx_expected *
                 (x_np > 0) * 2 / float(numel))).astype('float32')
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
-
-            for i in range(5):
-                loss.backward(retain_graph=True)
-                x_grad_actual = x.gradient()
-                x_grad_expected = (i + 2) * (2.0 / float(numel) * (
-                    x_np + dx_expected *
-                    (x_np > 0) * 2 / float(numel))).astype('float32')
-                self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_create_graph(self):
         with _test_eager_guard():
@@ -426,7 +423,10 @@ class TestDygraphDoubleGrad(TestCase):
         del y1, z, w
 
         dx_actual, = self.grad(
-            [w_mean], [x], create_graph=True, no_grad_vars=[y2])
+            [w_mean], [x],
+            retain_graph=True,
+            create_graph=True,
+            no_grad_vars=[y2])
 
         self.assertFalse(y2.stop_gradient)
         self.assertFalse(dx_actual.stop_gradient)
@@ -435,17 +435,14 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward()
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward()
 
-            x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 / float(numel) * (
-                x_np + dx_expected *
-                (x_np > 0) * 4 / float(numel))).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 / float(numel) *
+                           (x_np + dx_expected *
+                            (x_np > 0) * 4 / float(numel))).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         with _test_eager_guard():
@@ -476,15 +473,12 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if not _in_legacy_dygraph():
-            pass
-        else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-            loss.backward()
+        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+        loss.backward()
 
-            x_grad_actual = x.gradient()
-            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+        x_grad_actual = x.gradient()
+        x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
+        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
         with _test_eager_guard():

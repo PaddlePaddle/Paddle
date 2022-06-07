@@ -16,7 +16,7 @@ import os
 import random
 import unittest
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 
 import paddle
 import paddle.static
@@ -33,17 +33,24 @@ map_np_dtype_to_fluid_dtype = {
 }
 
 
-class ExecutionMode(Enum):
+class ExecutionModeFull(IntEnum):
+    # Run fp32 model on cpu
     CPU_FP32 = 1
+    # Run fp32 model on ipu
     IPU_FP32 = 2
-    # enable_fp16 through ipu_strategy.enable_fp16
+    # Convert model to fp16 using popart transform
+    # All parameters will be converted to fp16
+    # TODO rename to IPU_FP16
     IPU_POPART_FP16 = 3
+    # Mix-precision mode, using `paddle.static.amp.fp16_guard()` to control the
+    # precision of each operator
+    IPU_MIXED_PRECISION = 4
 
-    def __lt__(self, other):
-        return self.value < other.value
 
-    def __gt__(self, other):
-        return self.value > other.value
+class ExecutionMode(IntEnum):
+    CPU_FP32 = ExecutionModeFull.CPU_FP32
+    IPU_FP32 = ExecutionModeFull.IPU_FP32
+    IPU_POPART_FP16 = ExecutionModeFull.IPU_POPART_FP16
 
 
 def np_dtype_to_fluid_str(dtype: np.dtype) -> str:
@@ -60,6 +67,12 @@ class IPUOpTest(unittest.TestCase):
         cls.SEED = 2021
         np.random.seed(cls.SEED)
         random.seed(cls.SEED)
+
+        # For ipu, most ops support fp16
+        cls.amp_list = paddle.static.amp.CustomOpLists(
+            custom_black_list=[], custom_white_list=[])
+        cls.amp_list.unsupported_list = {}
+        cls.amp_list.black_list = {}
 
         # Enable paddle static graph mode
         paddle.enable_static()
@@ -114,3 +127,30 @@ class IPUOpTest(unittest.TestCase):
 
             if check_shape:
                 self.assertTrue(ipu_popart_fp16.shape == cpu_fp32.shape)
+
+            ipu_mixed_precision = None
+            if ExecutionModeFull.IPU_MIXED_PRECISION in outputs.keys():
+                ipu_mixed_precision = outputs[
+                    ExecutionModeFull.IPU_MIXED_PRECISION]
+                max_diff = np.abs(
+                    ipu_mixed_precision.astype(np.float32) - cpu_fp32).max()
+                fp16_flag = np.allclose(
+                    ipu_mixed_precision.astype(np.float32),
+                    cpu_fp32,
+                    rtol=self.rtol_fp16,
+                    atol=self.atol_fp16)
+                self.assertTrue(fp16_flag, "max diff is %f" % (max_diff))
+
+                if check_shape:
+                    self.assertTrue(ipu_mixed_precision.shape == cpu_fp32.shape)
+
+            if ExecutionMode.IPU_POPART_FP16 in outputs.keys(
+            ) and ExecutionModeFull.IPU_MIXED_PRECISION in outputs.keys():
+                max_diff = np.abs(ipu_popart_fp16 - ipu_mixed_precision).max()
+                self.assertEqual(ipu_popart_fp16.all(),
+                                 ipu_mixed_precision.all(),
+                                 "max diff is %f" % (max_diff))
+
+                if check_shape:
+                    self.assertTrue(
+                        ipu_popart_fp16.shape == ipu_mixed_precision.shape)
