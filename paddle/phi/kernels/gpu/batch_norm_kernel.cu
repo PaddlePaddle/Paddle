@@ -515,7 +515,10 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
-      const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
+      // CUDNN PER_ACTIVATION mode only support small batch size
+      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+      const bool use_native_kernel =
+          (x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD);
       if (use_native_kernel) {
         const int block = 512;
         const int max_threads = ctx.GetMaxPhysicalThreadCount();
