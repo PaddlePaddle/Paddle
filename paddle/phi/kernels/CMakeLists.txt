@@ -41,7 +41,7 @@ set(COMMON_KERNEL_DEPS
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
 
 # # [ 2. Kernels that most kernels depend on ]
@@ -181,6 +181,21 @@ set(COMMON_KERNEL_DEPS
     sequence_padding
     sequence_scale)
 
+set(COMMON_KERNEL_DEPS
+    ${COMMON_KERNEL_DEPS}
+    dense_tensor
+    string_tensor
+    sparse_coo_tensor
+    sparse_csr_tensor
+    kernel_context
+    kernel_factory
+    arg_map_context
+    convert_utils
+    lod_utils
+    custom_kernel
+    string_infermeta
+    utf8proc)
+
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 # For strings kernels
 add_subdirectory(strings)
@@ -204,11 +219,13 @@ file(
   GLOB
   kernel_cu
   "gpu/*.cu"
+  "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
   "selected_rows/gpu/*.cc"
   "sparse/gpu/*.cu"
-  "strings/*.cu")
+  "strings/*.cu"
+  "strings/gpu/*.cu")
 
 # file(GLOB kernel_cudnn "gpudnn/*.cu")
 # file(GLOB kernel_kps "kps/*.cu")

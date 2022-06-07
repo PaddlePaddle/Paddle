@@ -335,7 +335,8 @@ cc_library(
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc
-  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
+  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor
+       infermeta_utils)
 cc_library(
   phi_data_transform
   SRCS data_transform.cc
