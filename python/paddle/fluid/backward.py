@@ -1031,8 +1031,7 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
 
             # record the mapping between fwd and bwd
             for g_op_desc in grad_op_desc:
-                _grad_op_id_to_fwd_op[g_op_desc.original_id(
-                )] = _grad_op_id_to_fwd_op[op_desc.original_id()]
+                _grad_op_id_to_fwd_op[g_op_desc.original_id()] = op_desc
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
