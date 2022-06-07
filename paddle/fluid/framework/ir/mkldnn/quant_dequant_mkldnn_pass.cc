@@ -353,10 +353,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
   auto* op_desc = op_node->Op();
   auto var_name = op_desc->Input(weight_name)[0];
   auto* var = scope->FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound(
-               "The input persistable [%s] var of [%s] op is not found.",
-               var_name, op_desc->Type()));
+  if (var==NULL) return false; // for some matmul that both X and Y are outputs of other ops, we don't dequantize Y
   auto* weight_tensor = var->GetMutable<LoDTensor>();
   auto* weight_data = weight_tensor->data<float>();
   bool is_int8 = true;
