@@ -314,6 +314,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         model = InferModel(paddle.static.io.load_inference_model(
             MODEL_DIR, exe))
+        root_path.cleanup()
 
         outs = exe.run(model.program,
                        feed={
@@ -379,7 +380,6 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertEqual(res, None)
         self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
                           None, None, None)
-        root_path.cleanup()
 
     def test_normalize_program(self):
         init_program = fluid.default_startup_program()
