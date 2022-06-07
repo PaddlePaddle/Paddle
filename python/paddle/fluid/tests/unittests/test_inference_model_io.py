@@ -18,6 +18,7 @@ import unittest
 
 import os
 import six
+import tempfile
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -46,8 +47,9 @@ class InferModel(object):
 class TestBook(unittest.TestCase):
 
     def test_fit_line_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model"
-        UNI_MODEL_DIR = "./tmp/inference_model1"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model")
+        UNI_MODEL_DIR = os.path.join(root_path.name, "inference_model1")
 
         init_program = Program()
         program = Program()
@@ -118,6 +120,8 @@ class TestBook(unittest.TestCase):
             print("fetch %s" % str(model.fetch_vars[0]))
             self.assertEqual(expected, actual)
 
+        root_path.cleanup()
+
         self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
                           model_str, None)
 
@@ -125,7 +129,8 @@ class TestBook(unittest.TestCase):
 class TestSaveInferenceModel(unittest.TestCase):
 
     def test_save_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model2"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model2")
         init_program = Program()
         program = Program()
 
@@ -144,9 +149,11 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        root_path.cleanup()
 
     def test_save_inference_model_with_auc(self):
-        MODEL_DIR = "./tmp/inference_model4"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model4")
         init_program = Program()
         program = Program()
 
@@ -168,6 +175,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             warnings.simplefilter("always")
             save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
                                  program)
+            root_path.cleanup()
             expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[0].message))
@@ -176,7 +184,8 @@ class TestSaveInferenceModel(unittest.TestCase):
 class TestInstance(unittest.TestCase):
 
     def test_save_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model3"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model3")
         init_program = Program()
         program = Program()
 
@@ -202,12 +211,14 @@ class TestInstance(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+        root_path.cleanup()
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
 
     def test_save_and_load_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model5"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model5")
         init_program = fluid.default_startup_program()
         program = fluid.default_main_program()
 
@@ -368,6 +379,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertEqual(res, None)
         self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
                           None, None, None)
+        root_path.cleanup()
 
     def test_normalize_program(self):
         init_program = fluid.default_startup_program()
