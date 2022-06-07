@@ -647,7 +647,7 @@ class TestSliceApiEager(unittest.TestCase):
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def setUp(self):
-        self.shape = (3, 4)
+        self.shape = [3, 4]
         self.data = np.random.random(size=self.shape).astype('float32')
         self.idx = 0
         self.start = 0
@@ -781,10 +781,10 @@ class TestInferShape(unittest.TestCase):
     def test(self):
         x = paddle.ones(shape=[3, 4, 5])
         x.desc.set_shape([3, -1, 5])
-        self.assertEqual(x.shape, (3, -1, 5))
+        self.assertEqual(x.shape, [3, -1, 5])
 
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, 3, 5))
+        self.assertEqual(out0.shape, [3, 3, 5])
 
     def test_axis_less_than_zero(self):
 

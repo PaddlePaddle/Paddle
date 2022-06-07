@@ -207,7 +207,7 @@ def check_allgather(dist_main_program):
     var_result = False
     op_result = False
     vars = dist_main_program.global_block().vars
-    if allgather_out in vars and vars[allgather_out].shape == (4, 4):
+    if allgather_out in vars and vars[allgather_out].shape == [4, 4]:
         var_result = True
     for op in dist_main_program.global_block().ops:
         if op.type == "matmul_v2":

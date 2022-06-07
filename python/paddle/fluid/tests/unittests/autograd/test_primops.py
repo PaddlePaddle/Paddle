@@ -86,25 +86,25 @@ class TestPyPrimOps(unittest.TestCase):
 
         split_1_0, split_1_1 = split(c, num_or_sections=[1, 2], axis=1)
         self.assertEqual(split_1_0.dtype, c.dtype)
-        self.assertEqual(split_1_0.shape, (2, 1))
-        self.assertEqual(split_1_1.shape, (2, 2))
+        self.assertEqual(split_1_0.shape, [2, 1])
+        self.assertEqual(split_1_1.shape, [2, 2])
 
         concat_1 = concat([c, d], axis=0)
         self.assertEqual(concat_1.dtype, c.dtype)
-        self.assertEqual(concat_1.shape, (4, 3))
+        self.assertEqual(concat_1.shape, [4, 3])
 
         reduce_1 = reduce(d, axis=[1])
         self.assertEqual(reduce_1.dtype, d.dtype)
-        self.assertEqual(reduce_1.shape, (2, ))
+        self.assertEqual(reduce_1.shape, [2])
 
         reduce_2 = reduce(c, axis=[0, 1])
         self.assertEqual(reduce_2.dtype, c.dtype)
-        self.assertEqual(reduce_2.shape, (1, ))
+        self.assertEqual(reduce_2.shape, [1])
         # TODO: reduce + keepdim
 
         matmul_1 = matmul(d, e)
         self.assertEqual(matmul_1.dtype, d.dtype)
-        self.assertEqual(matmul_1.shape, (2, 2))
+        self.assertEqual(matmul_1.shape, [2, 2])
 
         slice_select_1 = slice_select(e,
                                       axis=[0],
@@ -112,7 +112,7 @@ class TestPyPrimOps(unittest.TestCase):
                                       ends=[2],
                                       strides=[1])
         self.assertEqual(slice_select_1.dtype, e.dtype)
-        self.assertEqual(slice_select_1.shape, (2, 2))
+        self.assertEqual(slice_select_1.shape, [2, 2])
 
         slice_select_2 = slice_select(d,
                                       axis=[0, 1],
@@ -120,7 +120,7 @@ class TestPyPrimOps(unittest.TestCase):
                                       ends=[2, 3],
                                       strides=[1, 2])
         self.assertEqual(slice_select_2.dtype, d.dtype)
-        self.assertEqual(slice_select_2.shape, (2, 1))
+        self.assertEqual(slice_select_2.shape, [2, 1])
 
         y = broadcast(b, [2, 2])
         slice_assign_1 = slice_assign(d,
@@ -135,7 +135,7 @@ class TestPyPrimOps(unittest.TestCase):
         index = paddle.static.data('index', shape=[5], dtype='int32')
         gather_1 = gather(e, index, axis=0)
         self.assertEqual(gather_1.dtype, e.dtype)
-        self.assertEqual(gather_1.shape, (5, 2))
+        self.assertEqual(gather_1.shape, [5, 2])
 
         y = paddle.rand([5, 2], dtype='float32')
         scatter_add_1 = scatter_add(e, y, index, axis=0)

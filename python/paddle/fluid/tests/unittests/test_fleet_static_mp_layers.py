@@ -114,9 +114,10 @@ class TestDistTraning(unittest.TestCase):
             bias = model_a.parallel_linear.bias
             self.assertEqual(
                 weight.shape,
-                (input_size, output_size // self.model_parallel_size))
-            self.assertEqual(bias.shape,
-                             (output_size // self.model_parallel_size, ))
+                [input_size, output_size // self.model_parallel_size])
+            self.assertEqual(bias.shape, [
+                output_size // self.model_parallel_size,
+            ])
 
     def test_row_parallel_layer(self):
         main_program, startup_program = self.get_program()
@@ -139,7 +140,9 @@ class TestDistTraning(unittest.TestCase):
             self.assertEqual(
                 weight.shape,
                 (input_size // self.model_parallel_size, output_size))
-            self.assertEqual(bias.shape, (output_size, ))
+            self.assertEqual(bias.shape, [
+                output_size,
+            ])
 
     def test_parallel_embedding(self):
         main_program, startup_program = self.get_program()
@@ -163,7 +166,7 @@ class TestDistTraning(unittest.TestCase):
             weight = model_a.embedding.weight
             self.assertEqual(
                 weight.shape,
-                (vocab_size // self.model_parallel_size, hidden_size))
+                [vocab_size // self.model_parallel_size, hidden_size])
 
     def test_parallel_cross_entropy(self):
         main_program, startup_program = self.get_program()

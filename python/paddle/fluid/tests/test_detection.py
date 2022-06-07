@@ -481,7 +481,7 @@ class TestDetectionMAP(unittest.TestCase):
 
             map_out = detection.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
-            self.assertEqual(map_out.shape, (1, ))
+            self.assertEqual(map_out.shape, [1])
         print(str(program))
 
 

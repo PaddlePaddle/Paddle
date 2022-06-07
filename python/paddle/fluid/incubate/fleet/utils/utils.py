@@ -283,9 +283,9 @@ def try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
             var = inference_program.global_block().var(
                 feed_config.feeded_vars_names[i])
             if not isinstance(feed_config.feeded_vars_dims[i], (list, tuple)):
-                tensor_shape = (feed_config.feeded_vars_dims[i], )
+                tensor_shape = [feed_config.feeded_vars_dims[i]]
             else:
-                tensor_shape = tuple(feed_config.feeded_vars_dims[i])
+                tensor_shape = list(feed_config.feeded_vars_dims[i])
             feed_config.feeded_vars_dims[i] = tensor_shape
             var_shape = var.shape[1:]
             if tensor_shape != var_shape:

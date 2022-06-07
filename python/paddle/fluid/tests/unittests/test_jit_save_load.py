@@ -524,7 +524,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         # check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 1)
         input_x = net.forward.inputs[0]
-        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_x.shape == [-1, 8])
         self.assertTrue(input_x.name == 'x')
 
         # 1. prune loss
@@ -545,8 +545,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
         input_y = net.forward.inputs[1]
-        self.assertTrue(input_x.shape == (-1, 8))
-        self.assertTrue(input_y.shape == (-1, 8))
+        self.assertTrue(input_x.shape == [-1, 8])
+        self.assertTrue(input_y.shape == [-1, 8])
 
         # 2. prune loss
         output_spec = net.forward.outputs[:2]
@@ -581,8 +581,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
         input_y = net.forward.inputs[1]
-        self.assertTrue(input_x.shape == (-1, 8))
-        self.assertTrue(input_y.shape == (-1, 8))
+        self.assertTrue(input_x.shape == [-1, 8])
+        self.assertTrue(input_y.shape == [-1, 8])
 
         # 2. prune loss
         output_spec = net.forward.outputs[:2]

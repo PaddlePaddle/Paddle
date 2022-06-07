@@ -393,7 +393,7 @@ class TestDeformConv2DAPI(unittest.TestCase):
                                                  num_filters=4,
                                                  filter_size=1)
 
-            assert (out.shape == (-1, 4, 32, 32))
+            assert (out.shape == [-1, 4, 32, 32])
 
         test_deform_conv2d_v1()
 

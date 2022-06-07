@@ -87,7 +87,7 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
                                    shape=[-1, 3, -1, -1],
                                    dtype='float32')
             out = self.execute_api(x, axis=2)
-        self.assertTrue((-1, -1) == out.shape)
+        self.assertTrue([-1, -1] == out.shape)
 
 
 class TestFlatten2OpError(unittest.TestCase):

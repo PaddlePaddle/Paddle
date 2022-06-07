@@ -1222,7 +1222,7 @@ class TestPool2DAPI(unittest.TestCase):
                                     pool_padding=[0, 0],
                                     use_cudnn=False,
                                     data_format="NHWC")
-        assert out_9.shape == (2, -1, 3, 3)
+        assert out_9.shape == [2, -1, 3, 3]
 
         out_10 = fluid.layers.pool2d(input=input_NCHW_negetive,
                                      pool_size=ksize,
@@ -1230,7 +1230,7 @@ class TestPool2DAPI(unittest.TestCase):
                                      pool_padding=[0, 0],
                                      use_cudnn=False,
                                      data_format="NCHW")
-        assert out_10.shape == (2, 3, -1, -1)
+        assert out_10.shape == [2, 3, -1, -1]
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8] = exe.run(

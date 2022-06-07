@@ -113,16 +113,16 @@ class TestVariable(unittest.TestCase):
 
         for i in range(3):
             nw = w[i]
-            self.assertEqual((100, 100), nw.shape)
+            self.assertEqual([100, 100], nw.shape)
 
         nw = w[:]
-        self.assertEqual((784, 100, 100), nw.shape)
+        self.assertEqual([784, 100, 100], nw.shape)
 
         nw = w[:, :]
-        self.assertEqual((784, 100, 100), nw.shape)
+        self.assertEqual([784, 100, 100], nw.shape)
 
         nw = w[:, :, -1]
-        self.assertEqual((784, 100), nw.shape)
+        self.assertEqual([784, 100], nw.shape)
 
         nw = w[1, 1, 1]
 
@@ -130,7 +130,7 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(nw.shape[0], 1)
 
         nw = w[:, :, :-1]
-        self.assertEqual((784, 100, 99), nw.shape)
+        self.assertEqual([784, 100, 99], nw.shape)
 
         self.assertEqual(0, nw.lod_level)
 
@@ -470,7 +470,7 @@ class TestVariable(unittest.TestCase):
                 self.assertTrue((result[0] == result[1]).all())
 
                 modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                detach_x.set_value(modified_value, scope)
+            detach_x.set_value(modified_value, scope)
                 result = exe.run(main, fetch_list=[x, detach_x])
                 self.assertTrue((result[1] == modified_value).all())
                 self.assertTrue((result[0] == result[1]).all())

@@ -625,7 +625,7 @@ class TestStridedSliceAPI(unittest.TestCase):
                                         starts=starts,
                                         ends=ends,
                                         strides=strides_1)
-        assert sliced_1.shape == (3, 2, 2, 2)
+        assert sliced_1.shape == [3, 2, 2, 2]
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda(),
                      "Cannot use CUDAPinnedPlace in CPU only version")

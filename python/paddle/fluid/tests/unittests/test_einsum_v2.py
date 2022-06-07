@@ -520,7 +520,7 @@ class TestStaticGraphShape(unittest.TestCase):
         A = paddle.static.data(name='x', shape=[-1])
         B = paddle.static.data(name='y', shape=[384])
         C = paddle.einsum('i,d->id', A, B)
-        self.assertEqual(C.shape, (-1, 384))
+        self.assertEqual(C.shape, [-1, 384])
 
 
 class TestBF16(unittest.TestCase):

@@ -34,9 +34,9 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
 
     def init_data(self):
         # { input_index: input_shape }
-        self.xs_shape_map = {0: (20, 40), 1: (20, 40)}
+        self.xs_shape_map = {0: [20, 40], 1: [20, 40]}
         # { output_index: output_shape }
-        self.ys_shape_map = {0: (20, 40)}
+        self.ys_shape_map = {0: [20, 40]}
         X0 = paddle.static.data(name='X0',
                                 shape=self.xs_shape_map[0],
                                 dtype='float32')

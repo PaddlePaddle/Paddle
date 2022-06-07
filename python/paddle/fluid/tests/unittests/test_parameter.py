@@ -41,7 +41,7 @@ class ParameterChecks(unittest.TestCase):
                                    initializer=ConstantInitializer(val))
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
-        self.assertEqual((784, 100), param.shape)
+        self.assertEqual([784, 100], param.shape)
         self.assertEqual(core.VarDesc.VarType.FP32, param.dtype)
         self.assertEqual(0, param.block.idx)
         exe = Executor(paddle.CPUPlace())

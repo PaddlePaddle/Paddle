@@ -87,7 +87,7 @@ class TestDistributedTensor(unittest.TestCase):
         dist_tensor._dist_context = dist_context
         intermediate_var_0 = dist_tensor.new_local_tensor(
             name="intermediate_var_0")
-        self.assertEqual(intermediate_var_0.shape, (2, 1024))
+        self.assertEqual(intermediate_var_0.shape, [2, 1024])
         self.assertEqual(intermediate_var_0.name, "intermediate_var_0")
 
         rank_id = 1
@@ -222,7 +222,7 @@ class TestDistributedTensor(unittest.TestCase):
         self.assertEqual(local_shard, [(2, 4), (3, 6)])
 
         global_sizes = dist_tensor.global_sizes()
-        self.assertEqual(global_sizes, (6, 6))
+        self.assertEqual(global_sizes, [6, 6])
 
 
 if __name__ == "__main__":

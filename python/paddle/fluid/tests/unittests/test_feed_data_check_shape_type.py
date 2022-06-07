@@ -85,7 +85,7 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_lod_tensor(use_cuda, use_parallel_executor)
 
                 # Test exception message when feeding with error
-                in_shape_tuple = (-1, 3, 4, 8)
+                in_shape_list = [-1, 3, 4, 8]
                 error_shape_list = [self.data_batch_size, 3, 4, 5]
 
                 with self.assertRaises(ValueError) as shape_mismatch_err:
@@ -95,7 +95,7 @@ class TestFeedData(unittest.TestCase):
                     str(shape_mismatch_err.exception),
                     "The fed Variable %r should have dimensions = %r, "
                     "shape = %r, but received fed shape %r on each device" %
-                    (u'data', len(in_shape_tuple), in_shape_tuple,
+                    (u'data', len(in_shape_tuple), in_shape_list,
                      error_shape_list))
 
                 with self.assertRaises(ValueError) as dtype_mismatch_err:

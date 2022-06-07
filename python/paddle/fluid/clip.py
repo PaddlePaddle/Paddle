@@ -700,7 +700,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                                      y=layers.elementwise_max(
                                                          x=clip_var,
                                                          y=group_norm_var))
-            assert group_scale_var.shape == (1, )
+            assert group_scale_var.shape == [1]
             self.context[group_scale_name] = group_scale_var
 
         # inplace

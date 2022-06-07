@@ -31,7 +31,7 @@ class TestDataLayerNotCheck(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
             d = data_layer_not_check(name="d", shape=(None, -1, 3))
-            self.assertEqual(d.shape, (-1, -1, 3))
+            self.assertEqual(d.shape, [-1, -1, 3])
             self.assertEqual(d.name, "d")
 
     def test_feed_mismatch_shape(self):

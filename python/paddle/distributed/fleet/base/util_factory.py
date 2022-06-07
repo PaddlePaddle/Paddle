@@ -544,9 +544,9 @@ class UtilBase(object):
                     feed_config.feeded_vars_names[i])
                 if not isinstance(feed_config.feeded_vars_dims[i],
                                   (list, tuple)):
-                    tensor_shape = (feed_config.feeded_vars_dims[i], )
+                    tensor_shape = [feed_config.feeded_vars_dims[i]]
                 else:
-                    tensor_shape = tuple(feed_config.feeded_vars_dims[i])
+                    tensor_shape = list(feed_config.feeded_vars_dims[i])
                 feed_config.feeded_vars_dims[i] = tensor_shape
                 var_shape = var.shape[1:]
                 if tensor_shape != var_shape:

@@ -181,7 +181,7 @@ class TestInputSpec(unittest.TestCase):
                 input_spec=[InputSpec([-1, 10]),
                             InputSpec([-1, 10], name='y')])
             cp1 = net.add_func.concrete_program
-            self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
+            self.assertTrue(cp1.inputs[-1].shape == [-1, 10])
             self.assertTrue(cp1.inputs[-1].name == 'y')
 
             # generate another program
@@ -190,7 +190,7 @@ class TestInputSpec(unittest.TestCase):
                 input_spec=[InputSpec([10]),
                             InputSpec([10], name='label')])
             cp2 = net.add_func.concrete_program
-            self.assertTrue(cp2.inputs[-1].shape == (10, ))
+            self.assertTrue(cp2.inputs[-1].shape == [10])
             self.assertTrue(cp2.inputs[-1].name == 'label')
             # Note(Aurelius84): New instance will be returned if we use `declarative(foo)` every time.
             # So number of cache program is 1.
