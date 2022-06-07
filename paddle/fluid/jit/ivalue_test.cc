@@ -15,8 +15,8 @@
 #include "paddle/fluid/jit/ivalue.h"
 
 #include <cmath>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -35,7 +35,7 @@ using DenseTensor = phi::DenseTensor;
 TEST(IValue, Basic) {
   int int_v = 10;
   IValue iv_i(int_v);
-  EXPECT_EQ(iv_i.AsInt(), int_v);
+  EXPECT_EQ(iv_i.AsInt32(), int_v);
 
   double double_v = 0.1;
   IValue iv_d(double_v);

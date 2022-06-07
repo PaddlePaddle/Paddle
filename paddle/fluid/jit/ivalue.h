@@ -26,16 +26,27 @@ namespace jit {
 
 using Tensor = paddle::experimental::Tensor;
 
-enum class Tag : int8_t { None = -1, Tensor, Bool, Int, Double };
+enum class Tag : int8_t {
+  None = -1,
+  Tensor,
+  Bool,
+  Int32,
+  Int64,
+  Float,
+  Double
+};
 
 // TODO(dev): make it into inner union of IValue or Pimpl
 union Holder {
   union ConstValue {
-    ConstValue() : as_int(0) {}
+    ConstValue() : as_int32(0) {}
 
-    int64_t as_int;
-    double as_double;
     bool as_bool;
+    int32_t as_int32;
+    int64_t as_int64;
+    float as_float;
+    double as_double;
+
     // TODO(dev): Should add a member to log device info.
     // TODO(dev): Add a ptr to represent List<int64_t/double/bool> or tensor*
     // as_intrusive_ptr*
@@ -93,27 +104,30 @@ class IValue {
   explicit IValue(const Tensor& t) : tag_(Tag::Tensor) {
     new (&holder_.as_tensor) Tensor();
     holder_.as_tensor = t;
-    // VLOG(3) << holder_.as_tensor.defined();
-    // VLOG(3) << holder_.as_tensor.is_initialized();
   }
-  explicit IValue(int val) : tag_(Tag::Int) { holder_.cv.as_int = val; }
+  explicit IValue(bool val) : tag_(Tag::Bool) { holder_.cv.as_bool = val; }
+  explicit IValue(int32_t val) : tag_(Tag::Int32) { holder_.cv.as_int32 = val; }
+  explicit IValue(int64_t val) : tag_(Tag::Int64) { holder_.cv.as_int64 = val; }
+  explicit IValue(float val) : tag_(Tag::Float) { holder_.cv.as_float = val; }
   explicit IValue(double val) : tag_(Tag::Double) {
     holder_.cv.as_double = val;
   }
-  explicit IValue(bool val) : tag_(Tag::Bool) { holder_.cv.as_bool = val; }
 
-  bool IsTensor() const { return tag_ == Tag::Tensor; }
   bool IsBool() const { return tag_ == Tag::Bool; }
-  bool IsInt() const { return tag_ == Tag::Int; }
+  bool IsInt32() const { return tag_ == Tag::Int32; }
+  bool IsInt64() const { return tag_ == Tag::Int64; }
+  bool IsFloat() const { return tag_ == Tag::Float; }
   bool IsDouble() const { return tag_ == Tag::Double; }
+  bool IsTensor() const { return tag_ == Tag::Tensor; }
 
+  bool AsBool() const { return holder_.cv.as_bool; }
+  int32_t AsInt32() const { return holder_.cv.as_int32; }
+  int64_t AsInt64() const { return holder_.cv.as_int64; }
+  double AsFloat() const { return holder_.cv.as_float; }
+  double AsDouble() const { return holder_.cv.as_double; }
   // Tensor AsTensor() &&;
   // Tensor& AsTensor() &;
   const Tensor& AsTensor() const { return holder_.as_tensor; }
-
-  int64_t AsInt() const { return holder_.cv.as_int; }
-  double AsDouble() const { return holder_.cv.as_double; }
-  bool AsBool() const { return holder_.cv.as_bool; }
 
   // std::vector<int64_t> AsInts() const;
   // std::vector<double> AsDoubles() const;
