@@ -283,7 +283,6 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   out_linear_bias_grad->mutable_data<T>(ctx.GetPlace());
 
   auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  VLOG(1) << "out_grad: " << CheckTensor<T>(dev_ctx, out_grad);
 
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
@@ -363,21 +362,15 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
                                 k_transpose_out, v_transpose_out,
                                 qkv_transpose_out, softmax_out, fmha_out,
                                 gate_out, &config);
-    VLOG(2) << "[merge_qkv=" << merge_qkv
-            << "], softmax_out: " << CheckTensor<T>(dev_ctx, softmax_out);
 
     // 3. Gating Linear
     if (has_gating) {
       ComputeGatingLinearForward<T>(ctx, config, query, fmha_out, gate_out);
-      VLOG(2) << "[has_gating=" << has_gating
-              << "], gate_out: " << CheckTensor<T>(dev_ctx, gate_out);
     }
 
     // 4. Output Linear
     Tensor *fmha_or_gate_out = has_gating ? gate_out : fmha_out;
     ComputeOutputLinearForward<T>(ctx, config, fmha_or_gate_out, out);
-    VLOG(1) << "[has_gating=" << has_gating
-            << "], out: " << CheckTensor<T>(dev_ctx, out);
   }
 };
 
@@ -423,23 +416,15 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       gate_out_grad.Resize(config.gate_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
       ComputeOutputLinearBackward<T>(ctx, config, gate_out, &gate_out_grad);
-      VLOG(2) << "[has_gating=" << has_gating << "], gate_out_grad: "
-              << CheckTensor<T>(dev_ctx, &gate_out_grad);
 
       // 2. Gradient of Gating Linear
       // Forward: gate_out = Sigmoid(Linear(fmha_out)) * fmha_out
       ComputeGatingLinearBackward<T>(ctx, config, query, fmha_out,
                                      &gate_out_grad, query_grad,
                                      &fmha_out_grad);
-      VLOG(2) << "[has_gating=" << has_gating << "], fmha_out_grad: "
-              << CheckTensor<T>(dev_ctx, &fmha_out_grad);
-      VLOG(2) << "[has_gating=" << has_gating
-              << "], query_grad: " << CheckTensor<T>(dev_ctx, query_grad);
     } else {
       // 1. Gradient of Output Linear: out = Linear(fmha_grad)
       ComputeOutputLinearBackward<T>(ctx, config, fmha_out, &fmha_out_grad);
-      VLOG(2) << "[has_gating=" << has_gating << "], fmha_out_grad: "
-              << CheckTensor<T>(dev_ctx, &fmha_out_grad);
     }
 
     // 3. Gradient of FMHA
@@ -457,12 +442,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     if (merge_qkv) {
       // 4. Gradient of Merged QKV Matmul
       Tensor *qkv_out_grad = config.GetQKVOutGrad();
-      VLOG(2) << "[merge_qkv=" << merge_qkv
-              << "], qkv_out_grad: " << CheckTensor<T>(dev_ctx, qkv_out_grad);
       ComputeMergedQKVMatmulBackward<T>(ctx, config, query, qkv_out_grad,
                                         query_grad, use_addto);
-      VLOG(2) << "[merge_qkv=" << merge_qkv
-              << "], query_grad: " << CheckTensor<T>(dev_ctx, query_grad);
     } else {
       // 4. Gradient of Separated QKV Matmul
       auto *key_grad = ctx.Output<Tensor>(framework::GradVarName("Key"));
@@ -472,19 +453,9 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       Tensor *query_out_grad = config.GetQueryOutGrad();
       Tensor *key_out_grad = config.GetKeyOutGrad();
       Tensor *value_out_grad = config.GetValueOutGrad();
-      VLOG(2) << "[merge_qkv=" << merge_qkv << "], query_out_grad: "
-              << CheckTensor<T>(dev_ctx, query_out_grad);
-      VLOG(2) << "[merge_qkv=" << merge_qkv
-              << "], key_out_grad: " << CheckTensor<T>(dev_ctx, key_out_grad);
-      VLOG(2) << "[merge_qkv=" << merge_qkv << "], value_out_grad: "
-              << CheckTensor<T>(dev_ctx, value_out_grad);
       ComputeSeparatedQKVMatmulBackward<T>(
           ctx, config, query, key, query_out_grad, key_out_grad, value_out_grad,
           query_grad, key_grad, use_addto);
-      VLOG(2) << "[merge_qkv=" << merge_qkv
-              << "], query_grad: " << CheckTensor<T>(dev_ctx, query_grad);
-      VLOG(2) << "[merge_qkv=" << merge_qkv
-              << "], key_grad: " << CheckTensor<T>(dev_ctx, key_grad);
     }
   }
 };

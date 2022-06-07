@@ -51,65 +51,6 @@ void AllocWithDebugInfo(const platform::CUDADeviceContext& dev_ctx,
 }
 
 template <typename T>
-std::string CheckTensor(const platform::CUDADeviceContext& dev_ctx,
-                        const Tensor* gpu_tensor) {
-  if (!gpu_tensor) {
-    return "nullptr";
-  }
-
-  Tensor cpu_tensor;
-  cpu_tensor.Resize(gpu_tensor->dims());
-  cpu_tensor.mutable_data<T>(phi::CPUPlace());
-  framework::TensorCopy(*gpu_tensor, phi::CPUPlace(), dev_ctx, &cpu_tensor);
-  dev_ctx.Wait();
-
-  int64_t first_nan_id = -1;
-  int64_t first_inf_id = -1;
-  bool zero = true;
-  int64_t numel = cpu_tensor.numel();
-  const T* data = cpu_tensor.data<T>();
-  for (int64_t i = 0; i < numel; ++i) {
-    if (std::isnan(data[i])) {
-      first_nan_id = i;
-      break;
-    } else if (std::isinf(data[i])) {
-      first_inf_id = i;
-      break;
-    } else if (data[i] != static_cast<T>(0)) {
-      zero = false;
-    }
-  }
-  std::stringstream ss;
-  ss << "dtype=" << paddle::experimental::CppTypeToDataType<T>::Type()
-     << ", shape={" << cpu_tensor.dims() << "}, data={";
-  if (numel <= 10) {
-    for (int64_t i = 0; i < numel; ++i) {
-      if (i > 0) {
-        ss << ", ";
-      }
-      ss << data[i];
-    }
-  } else {
-    for (int64_t i = 0; i < 5; ++i) {
-      ss << data[i] << ", ";
-    }
-    ss << "...";
-    for (int64_t i = numel - 5; i < numel; ++i) {
-      ss << ", " << data[i];
-    }
-  }
-  ss << "}";
-  if (first_nan_id >= 0) {
-    ss << ", has nan (first nan id is " << first_nan_id << ")!";
-  } else if (first_inf_id >= 0) {
-    ss << ", has inf (first inf id is " << first_inf_id << ")!";
-  } else if (zero) {
-    ss << ", all zeros!";
-  }
-  return ss.str();
-}
-
-template <typename T>
 struct TernaryAddFunctor {
   inline HOSTDEVICE T operator()(T a, T b, T c) const { return a + b + c; }
 };
