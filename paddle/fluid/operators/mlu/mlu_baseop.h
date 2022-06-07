@@ -34,17 +34,6 @@ using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
 using MLUDeviceContext = platform::MLUDeviceContext;
 
-enum MLULogicMethod {
-  CNNL_LOGIC_OP_EQ = 0,
-  CNNL_LOGIC_OP_NE = 1,
-  CNNL_LOGIC_OP_GT = 2,
-  CNNL_LOGIC_OP_GE = 3,
-  CNNL_LOGIC_OP_LT = 4,
-  CNNL_LOGIC_OP_LE = 5,
-  CNNL_LOGIC_OP_AND = 6,
-  CNNL_LOGIC_OP_OR = 7,
-};
-
 const std::map<std::string, cnnlReduceOp_t> MLUReduceOpMap = {
     {"reduce_all", CNNL_REDUCE_AND},  {"reduce_any", CNNL_REDUCE_OR},
     {"reduce_max", CNNL_REDUCE_MAX},  {"reduce_mean", CNNL_REDUCE_AVG},
@@ -642,8 +631,7 @@ class MLUCnnl {
                                const cnnlTensorDescriptor_t output_desc,
                                void* output);
 
-  static void Logic(const ExecutionContext& ctx,
-                    const MLULogicMethod log_method,
+  static void Logic(const ExecutionContext& ctx, const cnnlLogicOp_t log_method,
                     const cnnlTensorDescriptor_t input1_desc,
                     const void* input1,
                     const cnnlTensorDescriptor_t input2_desc,
