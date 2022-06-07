@@ -259,7 +259,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.optional_inputs
         #self.no_need_buffers
         #self.intermediate_outputs   
-        #self.inplace_map
+        #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.is_forward_only = True
@@ -275,7 +275,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
     def GeneratePythonCFunction(self):
         namespace = self.namespace
-        inplace_map = self.inplace_map
+        forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
         orig_forward_attrs_list = self.orig_forward_attrs_list
         forward_inputs_position_map = self.forward_inputs_position_map
@@ -359,7 +359,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_api_name_prefix, forward_api_name, namespace,
             forward_api_name, forward_api_name)
 
-        if inplace_map:
+        if forward_inplace_map:
             inplaced_forward_api_name = GetInplacedFunctionName(
                 self.forward_api_name)
             if is_forward_only:
@@ -372,16 +372,16 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     GetForwardFunctionName(inplaced_forward_api_name))
 
             assert len(
-                inplace_map
-            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
-            for inplace_input, inplace_output in inplace_map.items():
+                forward_inplace_map
+            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(forward_inplace_map)}"
+            for inplace_input, inplace_output in forward_inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
                     inplaced_forward_api_name, inplace_input,
                     inplaced_forward_api_name, inplace_output)
                 break
 
             # Generate Python-C Function Definetion
-            self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
+            python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
                 parse_attributes_str, set_device_str,
@@ -389,10 +389,19 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 return_str)
 
-            # Generate Python-C Function Registration
-            self.python_c_function_reg_str += "\n," + PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+            python_c_inplace_func_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                 forward_api_name_prefix, inplaced_forward_api_name, namespace,
                 inplaced_forward_api_name, inplaced_forward_api_name)
+
+            # self.forward_api_name ending with '_' means it only has inplace api
+            if self.forward_api_name[-1] == '_':
+                self.python_c_function_str = python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str = python_c_inplace_func_reg_str
+            else:
+                self.python_c_function_str += python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str += "\n," + python_c_inplace_func_reg_str
 
     def run(self):
         # Initialized is_forward_only
@@ -401,8 +410,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Initialized optional_inputs
         self.ParseDispensable()
 
-        # Initialized inplace_map
-        self.ParseInplaceInfo()
+        # Initialized forward_inplace_map
+        self.ParseForwardInplaceInfo()
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()

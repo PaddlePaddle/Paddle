@@ -89,7 +89,7 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
         else:
             assign_loop_var_names.append(name)
 
-    while_func_name = "paddle.jit.dy2static.convert_while_loop"
+    while_func_name = "_jst.convert_while_loop"
     while_node_str = "[{}] = {}({}, {}, [{}])".format(
         ",".join(assign_loop_var_names), while_func_name, condition_name,
         body_name, ",".join(loop_var_names))
@@ -240,7 +240,9 @@ class NameVisitor(gast.NodeVisitor):
 
         self.current_seen_vars.add(node)
         write_context = {
-            type(gast.Store()), type(gast.AugStore()), type(gast.Del())
+            type(gast.Store()),
+            type(gast.AugStore()),
+            type(gast.Del())
         }
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].append(node)
@@ -581,20 +583,18 @@ class LoopTransformer(gast.NodeTransformer):
         # 5. create & append condition function node
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=[gast.Return(value=cond_stmt)],
             decorator_list=[],
             returns=None,
@@ -613,20 +613,18 @@ class LoopTransformer(gast.NodeTransformer):
                 loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=body_stmts,
             decorator_list=[],
             returns=None,
@@ -639,8 +637,9 @@ class LoopTransformer(gast.NodeTransformer):
         new_stmts.append(body_func_node)
 
         # 7. create & append while loop node
-        while_loop_nodes = create_while_nodes(
-            condition_func_node.name, body_func_node.name, loop_var_names)
+        while_loop_nodes = create_while_nodes(condition_func_node.name,
+                                              body_func_node.name,
+                                              loop_var_names)
         new_stmts.extend(while_loop_nodes)
 
         return new_stmts
@@ -664,20 +663,18 @@ class LoopTransformer(gast.NodeTransformer):
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=[gast.Return(value=node.test)],
             decorator_list=[],
             returns=None,
@@ -696,20 +693,18 @@ class LoopTransformer(gast.NodeTransformer):
                 loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_BODY_PREFIX),
-            args=gast.arguments(
-                args=[
-                    gast.Name(
-                        id=name,
-                        ctx=gast.Param(),
-                        annotation=None,
-                        type_comment=None) for name in loop_var_names
-                ],
-                posonlyargs=[],
-                vararg=None,
-                kwonlyargs=[],
-                kw_defaults=None,
-                kwarg=None,
-                defaults=[]),
+            args=gast.arguments(args=[
+                gast.Name(id=name,
+                          ctx=gast.Param(),
+                          annotation=None,
+                          type_comment=None) for name in loop_var_names
+            ],
+                                posonlyargs=[],
+                                vararg=None,
+                                kwonlyargs=[],
+                                kw_defaults=None,
+                                kwarg=None,
+                                defaults=[]),
             body=new_body,
             decorator_list=[],
             returns=None,
@@ -721,7 +716,8 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
-        while_loop_nodes = create_while_nodes(
-            condition_func_node.name, body_func_node.name, loop_var_names)
+        while_loop_nodes = create_while_nodes(condition_func_node.name,
+                                              body_func_node.name,
+                                              loop_var_names)
         new_stmts.extend(while_loop_nodes)
         return new_stmts

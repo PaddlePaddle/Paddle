@@ -136,6 +136,7 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        size_t grad_value_size,
                                        DynamicGradMerger& merger_) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
@@ -293,10 +294,10 @@ template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
 template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     int* idx, int* left, int* right, long long len, int total_devs,
     const cudaStream_t& stream);
-template void HeterCommKernel::calc_shard_index<
-    unsigned long, int, cudaStream_t>(unsigned long* d_keys, long long len,
-                                      int* shard_index, int total_devs,
-                                      const cudaStream_t& stream);
+template void
+HeterCommKernel::calc_shard_index<unsigned long, int, cudaStream_t>(
+    unsigned long* d_keys, long long len, int* shard_index, int total_devs,
+    const cudaStream_t& stream);
 
 template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
     long* d_keys, long long len, int* shard_index, int total_devs,

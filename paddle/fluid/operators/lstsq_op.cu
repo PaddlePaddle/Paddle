@@ -17,6 +17,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/lstsq_op.h"
 #include "paddle/fluid/operators/qr_op.h"

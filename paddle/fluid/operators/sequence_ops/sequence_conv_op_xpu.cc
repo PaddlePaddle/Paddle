@@ -54,10 +54,12 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    PADDLE_ENFORCE_EQ(up_pad, 2, platform::errors::InvalidArgument(
-                                     "Only support up_pad equal 2."));
-    PADDLE_ENFORCE_EQ(down_pad, 2, platform::errors::InvalidArgument(
-                                       "Only support down_pad equal 2."));
+    PADDLE_ENFORCE_EQ(
+        up_pad, 2,
+        platform::errors::InvalidArgument("Only support up_pad equal 2."));
+    PADDLE_ENFORCE_EQ(
+        down_pad, 2,
+        platform::errors::InvalidArgument("Only support down_pad equal 2."));
 
     auto xpu_context =
         context.template device_context<DeviceContext>().x_context();
@@ -75,8 +77,9 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     // If batch size set to 256, the lod is {0, batch[0] - 0,
     // batch[1] - batch [0], ..., batch[255] - batch[254]},
     // so the lod_size will be 257.
-    PADDLE_ENFORCE_LE(lod_size, 257, platform::errors::InvalidArgument(
-                                         "Only support batch size <= 256."));
+    PADDLE_ENFORCE_LE(
+        lod_size, 257,
+        platform::errors::InvalidArgument("Only support batch size <= 256."));
 
     std::vector<int> cpu_lodx(lod_size);
     for (int i = 0; i < lod_size; i++) {
@@ -155,15 +158,18 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    PADDLE_ENFORCE_EQ(up_pad, 2, platform::errors::InvalidArgument(
-                                     "Only support up_pad equal 2."));
-    PADDLE_ENFORCE_EQ(down_pad, 2, platform::errors::InvalidArgument(
-                                       "Only support down_pad equal 2."));
+    PADDLE_ENFORCE_EQ(
+        up_pad, 2,
+        platform::errors::InvalidArgument("Only support up_pad equal 2."));
+    PADDLE_ENFORCE_EQ(
+        down_pad, 2,
+        platform::errors::InvalidArgument("Only support down_pad equal 2."));
 
     auto lod_level_0 = in->lod()[0];
     int lod_size = lod_level_0.size();
-    PADDLE_ENFORCE_LE(lod_size, 257, platform::errors::InvalidArgument(
-                                         "Only support batch size <= 256."));
+    PADDLE_ENFORCE_LE(
+        lod_size, 257,
+        platform::errors::InvalidArgument("Only support batch size <= 256."));
 
     std::vector<int> cpu_lodx(lod_size);
     for (int i = 0; i < lod_size; i++) {

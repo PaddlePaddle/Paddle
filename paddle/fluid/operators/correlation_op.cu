@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 #ifdef __HIPCC__
@@ -227,11 +228,11 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
     dim3 threadsPerBlock(THREADS_PER_BLOCK);
     dim3 totalBlocksCorr(N, OH, OW);
 
-    correlation_forward<
-        T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-        output->data<T>(), OC, OH, OW, rinput1.data<T>(), C, H, W,
-        rinput2.data<T>(), pad_size, kernel_size, max_displacement, stride1,
-        stride2);
+    correlation_forward<T>
+        <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+            output->data<T>(), OC, OH, OW, rinput1.data<T>(), C, H, W,
+            rinput2.data<T>(), pad_size, kernel_size, max_displacement, stride1,
+            stride2);
   }
 };
 
@@ -472,19 +473,19 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
     dim3 totalBlocksCorr(H, W, C);
 
     for (int n = 0; n < N; n++) {
-      correlation_backward_input1<
-          T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-          n, grad_input1->data<T>(), C, H, W, grad_output->data<T>(), GOC, GOH,
-          GOW, rinput2.data<T>(), pad_size, kernel_size, max_displacement,
-          stride1, stride2);
+      correlation_backward_input1<T>
+          <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+              n, grad_input1->data<T>(), C, H, W, grad_output->data<T>(), GOC,
+              GOH, GOW, rinput2.data<T>(), pad_size, kernel_size,
+              max_displacement, stride1, stride2);
     }
 
     for (int n = 0; n < N; n++) {
-      correlation_backward_input2<
-          T><<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
-          n, grad_input2->data<T>(), C, H, W, grad_output->data<T>(), GOC, GOH,
-          GOW, rinput1.data<T>(), pad_size, kernel_size, max_displacement,
-          stride1, stride2);
+      correlation_backward_input2<T>
+          <<<totalBlocksCorr, threadsPerBlock, 0, dev_ctx.stream()>>>(
+              n, grad_input2->data<T>(), C, H, W, grad_output->data<T>(), GOC,
+              GOH, GOW, rinput1.data<T>(), pad_size, kernel_size,
+              max_displacement, stride1, stride2);
     }
   }
 };

@@ -16,6 +16,7 @@
 
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -49,7 +50,7 @@ inline framework::LoD ConcatLoD(const Container &xs,
 
 template <typename T, typename... ARGS>
 inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
-    const std::vector<T *> &vec, ARGS &&... args) {
+    const std::vector<T *> &vec, ARGS &&...args) {
   std::vector<std::reference_wrapper<T>> result;
   result.reserve(vec.size());
   for (auto *ptr : vec) {

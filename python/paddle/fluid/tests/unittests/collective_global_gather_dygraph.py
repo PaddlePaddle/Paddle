@@ -25,6 +25,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 
 class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
@@ -41,8 +42,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             local_expert_count = paddle.to_tensor(local_expert_count)
             global_expert_count = []
             paddle.distributed.alltoall(
-                paddle.split(
-                    local_expert_count, 2, axis=0),
+                paddle.split(local_expert_count, 2, axis=0),
                 global_expert_count)
             global_expert_count = paddle.concat(global_expert_count, axis=0)
             fwd_expert_count = sum(global_expert_count)

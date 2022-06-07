@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cross_kernel.h"
-#include "paddle/phi/kernels/impl/cross_kernel_impl.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cross_kernel.h"
+#include "paddle/phi/kernels/impl/cross_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     cross, GPU, ALL_LAYOUT, phi::CrossKernel, float, double, int, int64_t) {}

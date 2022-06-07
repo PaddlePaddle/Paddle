@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -33,6 +34,13 @@ class EinsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Operands", "(TensorList), The input tensor of einsum op.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor), The output tensor of einsum op.");
+    AddOutput(
+        "InnerCache",
+        "(Tensor), The cache of the forward transpose tensors: tA and tB.")
+        .AsDuplicable()
+        .AsExtra()
+        .AsIntermediate();
+
     AddAttr<std::string>("equation",
                          "(string) A einsum equation. such as `ij,jk->ik`"
                          "There must have `->` and the number of operands in "
@@ -72,6 +80,7 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("einsum_grad");
     retv->SetInput("Operands", this->Input("Operands"));
+    retv->SetInput("InnerCache", this->Output("InnerCache"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("Operands"),

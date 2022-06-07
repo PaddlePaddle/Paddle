@@ -43,26 +43,29 @@ hidden_size = 8
 
 
 class SimpleNet(Layer):
+
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
         self.softmax_weight = self.create_parameter(
             shape=[hidden_size, vocab_size])
-        self.softmax_bias = self.create_parameter(
-            shape=[vocab_size], is_bias=False)
+        self.softmax_bias = self.create_parameter(shape=[vocab_size],
+                                                  is_bias=False)
 
     def forward(self, x1, x2, y1):
         x_emb = self.word_embeddings(x1)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
-            logits=projection, label=y1, soft_label=False)
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=y1,
+                                                       soft_label=False)
         return loss.mean()
 
 
 class EmbeddingNet(Layer):
+
     def __init__(self):
         super(EmbeddingNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
@@ -74,6 +77,7 @@ class EmbeddingNet(Layer):
 
 
 class MatmulNet(Layer):
+
     def __init__(self):
         super(MatmulNet, self).__init__()
         self.softmax_weight = self.create_parameter(
@@ -87,6 +91,7 @@ class MatmulNet(Layer):
 
 
 class BiasNet(Layer):
+
     def __init__(self):
         super(BiasNet, self).__init__()
         self.softmax_bias = self.create_parameter(shape=[vocab_size])
@@ -99,17 +104,20 @@ class BiasNet(Layer):
 
 
 class LossNet(Layer):
+
     def __init__(self):
         super(LossNet, self).__init__()
 
     def forward(self, args, y1):
         projection, x2 = args
-        loss = fluid.layers.softmax_with_cross_entropy(
-            logits=projection, label=y1[0], soft_label=False)
+        loss = fluid.layers.softmax_with_cross_entropy(logits=projection,
+                                                       label=y1[0],
+                                                       soft_label=False)
         return loss.mean()
 
 
 class SimpleNetPipe(Layer):
+
     def __init__(self):
         super(SimpleNetPipe, self).__init__()
         self.features = Sequential(EmbeddingNet(), MatmulNet(), BiasNet())
@@ -120,6 +128,7 @@ class SimpleNetPipe(Layer):
 
 
 class TestDistEmbeddingTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -152,10 +161,9 @@ class TestDistEmbeddingTraning(unittest.TestCase):
                                            parameters=model_a.parameters())
 
         init_net = SimpleNetPipe()
-        model_b = PipelineLayer(
-            layers=init_net.to_layers(),
-            num_stages=self.pipeline_parallel_size,
-            loss_fn=LossNet())
+        model_b = PipelineLayer(layers=init_net.to_layers(),
+                                num_stages=self.pipeline_parallel_size,
+                                loss_fn=LossNet())
 
         scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)

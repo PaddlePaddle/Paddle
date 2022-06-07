@@ -14,6 +14,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -124,11 +125,10 @@ REGISTER_OPERATOR(p_norm, ops::PnormOp, ops::PnormOpMaker,
                   PNormInferShapeFunctor);
 REGISTER_OPERATOR(p_norm_grad, ops::PnormOpGrad, PNormGradInferShapeFunctor);
 
-REGISTER_OP_VERSION(p_norm)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(p_norm).AddCheckpoint(
+    R"ROC(
         Upgrade p_norm, add 1 attribute [asvector].
       )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "asvector",
-            "Compute as vector when axis is None and input is matrix", false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "asvector", "Compute as vector when axis is None and input is matrix",
+        false));

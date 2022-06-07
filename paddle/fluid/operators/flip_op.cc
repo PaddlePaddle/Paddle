@@ -93,10 +93,9 @@ REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
                   FlipInferShapeFunctor);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(flip)
-    .AddCheckpoint(
-        R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
-                     paddle::none)
-            .DeleteAttr("dims", "The attr 'dims' is deleted."));
+REGISTER_OP_VERSION(flip).AddCheckpoint(
+    R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
+                 paddle::none)
+        .DeleteAttr("dims", "The attr 'dims' is deleted."));

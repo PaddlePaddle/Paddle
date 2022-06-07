@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "xpu/bkcl.h"
-
-#include "paddle/fluid/platform/enforce.h"
 
 namespace phi {
 namespace backends {
