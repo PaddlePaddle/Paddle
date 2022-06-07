@@ -1332,16 +1332,16 @@ class TripletMarginLoss(Layer):
         d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
 
     Parameters:
-    	margin (float, Optional):Default: :math:`1`.
-	
-    	p (int, Optional):The norm degree for pairwise distance. Default: :math:`2`.
-	
+        margin (float, Optional):Default: :math:`1`.
+
+        p (int, Optional):The norm degree for pairwise distance. Default: :math:`2`.
+
         epsilon (float, Optional):Add small value to avoid division by zero,
             default value is 1e-6.
-	    
+
         swap (bool, Optional):The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
-	    Default: ``False``.
+            Default: ``False``.
 
         reduction (str, Optional):Indicate how to average the loss by batch_size.
                 the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -1349,19 +1349,19 @@ class TripletMarginLoss(Layer):
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
                 Default: ``'mean'``
-		
+
         name (str,Optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
 
     Call Parameters:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+        the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	    The shape of label is the same as the shape of input.
+        The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	    The shape of label is the same as the shape of input.
+        The shape of label is the same as the shape of input.
 
     Returns:
         Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
@@ -1407,13 +1407,12 @@ class TripletMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_loss(
-            input,
-            positive,
-            negative,
-            margin=self.margin,
-            p=self.p,
-            epsilon=self.epsilon,
-            swap=self.swap,
-            reduction=self.reduction,
-            name=self.name)
+        return F.triplet_margin_loss(input,
+                                     positive,
+                                     negative,
+                                     margin=self.margin,
+                                     p=self.p,
+                                     epsilon=self.epsilon,
+                                     swap=self.swap,
+                                     reduction=self.reduction,
+                                     name=self.name)
