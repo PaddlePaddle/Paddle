@@ -78,8 +78,9 @@ void CacheManager::build_batch_fid_seq(const Record * recs, int size) {
     std::vector<std::thread> threads(thread_num_);
     for (int i = 0; i < thread_num_; ++i) {
         threads[i] = std::thread([this, i, recs, size]() {
-            for (int batch_first = i * batch_sz_; batch_first < size; batch_first += thread_num_ * batch_sz_) {
-                int current_batch_sz = std::min(batch_sz_, size - batch_first);
+            int n_batch_sz = batch_sz_ * worker_num_;
+            for (int batch_first = i * n_batch_sz; batch_first < size; batch_first += thread_num_ * n_batch_sz) {
+                int current_batch_sz = std::min(n_batch_sz, size - batch_first);
                 std::shared_ptr<std::vector<uint64_t>> current_bfid_seq = std::make_shared<std::vector<uint64_t>>();
                 std::set<uint64_t> current_bfid_set;
                 for (int j = 0; j < current_batch_sz; ++j) {
