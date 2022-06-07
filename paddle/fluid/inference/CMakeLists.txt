@@ -50,7 +50,7 @@ set(STATIC_INFERENCE_API
     reset_tensor_array
     analysis_config
     paddle_pass_builder
-    activation_functions
+    phi
     ${mkldnn_quantizer_cfg})
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy

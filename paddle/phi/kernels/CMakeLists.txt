@@ -42,122 +42,144 @@ set(COMMON_KERNEL_DEPS
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
 
-# [ 2. Kernels that most kernels depend on ]
-# There are a few kernels that are very basic operations, and most of the
-# kernels depend on these kernels.
-set(COMMON_BAISC_KERNELS empty_kernel full_kernel)
-kernel_library(empty_kernel DEPS ${COMMON_KERNEL_DEPS})
-kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
+# # [ 2. Kernels that most kernels depend on ]
+# # There are a few kernels that are very basic operations, and most of the
+# # kernels depend on these kernels.
+# set(COMMON_BAISC_KERNELS empty_kernel full_kernel)
+# kernel_library(empty_kernel DEPS ${COMMON_KERNEL_DEPS})
+# kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 
-# [ 3. Kernels with special dependencies ]
-# Some kernels depend on some targets that are not commonly used.
-# These targets are not suitable for common dependencies.
-# In this case, you need to manually generate them here.
-set(AUTOTUNE_KERNELS conv_kernel conv_grad_kernel conv_grad_grad_kernel
-                     conv_transpose_kernel conv_transpose_grad_kernel)
-set(MANUAL_BUILD_KERNELS
-    ${AUTOTUNE_KERNELS}
-    cross_entropy_kernel
-    adam_kernel
-    adamw_kernel
-    deformable_conv_kernel
-    deformable_conv_grad_kernel
-    eigh_kernel
-    gumbel_softmax_kernel
-    gumbel_softmax_grad_kernel
-    hierarchical_sigmoid_kernel
-    hierarchical_sigmoid_grad_kernel
-    matrix_power_kernel
-    matrix_power_grad_kernel
-    maxout_kernel
-    maxout_grad_kernel
-    pool_kernel
-    put_along_axis_kernel
-    put_along_axis_grad_kernel
-    segment_pool_kernel
-    segment_pool_grad_kernel
-    softmax_kernel
-    softmax_grad_kernel
-    take_along_axis_kernel
-    take_along_axis_grad_kernel
-    triangular_solve_grad_kernel
-    determinant_grad_kernel
-    reduce_sum_kernel
-    reduce_mean_kernel
-    rnn_kernel
-    rnn_grad_kernel
-    warpctc_kernel
-    warpctc_grad_kernel)
-foreach(src ${AUTOTUNE_KERNELS})
-  kernel_library(${src} DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
-endforeach()
-kernel_library(
-  adam_kernel
-  DEPS
-  gflags
-  glog
-  flags
-  ${COMMON_KERNEL_DEPS}
-  selected_rows_functor
-  threadpool
-  jit_kernel_helper)
-kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
-kernel_library(cross_entropy_kernel DEPS ${COMMON_KERNEL_DEPS} softmax
-               cross_entropy)
-kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS}
-               deformable_conv_functor)
-kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               deformable_conv_functor)
-kernel_library(determinant_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               matrix_inverse)
-kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
-kernel_library(hierarchical_sigmoid_kernel DEPS ${COMMON_KERNEL_DEPS}
-               matrix_bit_code)
-kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               matrix_bit_code)
-kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(reduce_sum_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
-kernel_library(reduce_mean_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
-kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
-kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               matrix_inverse)
-kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
-kernel_library(maxout_grad_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
-kernel_library(pool_kernel DEPS ${COMMON_KERNEL_DEPS} pooling)
-kernel_library(put_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS}
-               gather_scatter_kernel)
-kernel_library(put_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               gather_scatter_kernel)
-kernel_library(segment_pool_kernel DEPS ${COMMON_KERNEL_DEPS} segment_pooling)
-kernel_library(segment_pool_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               segment_pooling)
-kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
-kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS}
-               gather_scatter_kernel)
-kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               gather_scatter_kernel)
-kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               matrix_reduce)
-kernel_library(rnn_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor
-               lstm_compute gru_compute)
-kernel_library(rnn_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               concat_and_split_functor lstm_compute gru_compute)
-kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc
-               sequence_padding sequence_scale)
-kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
-               phi_dynload_warpctc sequence_padding sequence_scale)
+# # [ 3. Kernels with special dependencies ]
+# # Some kernels depend on some targets that are not commonly used.
+# # These targets are not suitable for common dependencies.
+# # In this case, you need to manually generate them here.
+# set(AUTOTUNE_KERNELS conv_kernel conv_grad_kernel conv_grad_grad_kernel
+#                      conv_transpose_kernel conv_transpose_grad_kernel)
+# set(MANUAL_BUILD_KERNELS
+#     ${AUTOTUNE_KERNELS}
+#     cross_entropy_kernel
+#     adam_kernel
+#     adamw_kernel
+#     deformable_conv_kernel
+#     deformable_conv_grad_kernel
+#     eigh_kernel
+#     gumbel_softmax_kernel
+#     gumbel_softmax_grad_kernel
+#     hierarchical_sigmoid_kernel
+#     hierarchical_sigmoid_grad_kernel
+#     matrix_power_kernel
+#     matrix_power_grad_kernel
+#     maxout_kernel
+#     maxout_grad_kernel
+#     pool_kernel
+#     put_along_axis_kernel
+#     put_along_axis_grad_kernel
+#     segment_pool_kernel
+#     segment_pool_grad_kernel
+#     softmax_kernel
+#     softmax_grad_kernel
+#     take_along_axis_kernel
+#     take_along_axis_grad_kernel
+#     triangular_solve_grad_kernel
+#     determinant_grad_kernel
+#     reduce_sum_kernel
+#     reduce_mean_kernel
+#     rnn_kernel
+#     rnn_grad_kernel
+#     warpctc_kernel
+#     warpctc_grad_kernel)
+# foreach(src ${AUTOTUNE_KERNELS})
+#   kernel_library(${src} DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
+# endforeach()
+# kernel_library(
+#   adam_kernel
+#   DEPS
+#   gflags
+#   glog
+#   flags
+#   ${COMMON_KERNEL_DEPS}
+#   selected_rows_functor
+#   threadpool
+#   jit_kernel_helper)
+# kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
+# kernel_library(cross_entropy_kernel DEPS ${COMMON_KERNEL_DEPS} softmax
+#                cross_entropy)
+# kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                deformable_conv_functor)
+# kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                deformable_conv_functor)
+# kernel_library(determinant_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                matrix_inverse)
+# kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
+# kernel_library(hierarchical_sigmoid_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                matrix_bit_code)
+# kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                matrix_bit_code)
+# kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
+# kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
+# kernel_library(reduce_sum_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+# kernel_library(reduce_mean_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel)
+# kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
+# kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                matrix_inverse)
+# kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
+# kernel_library(maxout_grad_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
+# kernel_library(pool_kernel DEPS ${COMMON_KERNEL_DEPS} pooling)
+# kernel_library(put_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                gather_scatter_kernel)
+# kernel_library(put_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                gather_scatter_kernel)
+# kernel_library(segment_pool_kernel DEPS ${COMMON_KERNEL_DEPS} segment_pooling)
+# kernel_library(segment_pool_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                segment_pooling)
+# kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
+# kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
+# kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                gather_scatter_kernel)
+# kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                gather_scatter_kernel)
+# kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                matrix_reduce)
+# kernel_library(rnn_kernel DEPS ${COMMON_KERNEL_DEPS} concat_and_split_functor
+#                lstm_compute gru_compute)
+# kernel_library(rnn_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                concat_and_split_functor lstm_compute gru_compute)
+# kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc
+#                sequence_padding sequence_scale)
+# kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS}
+#                phi_dynload_warpctc sequence_padding sequence_scale)
 
-# 4. auto parse and build kernel targets by cmake
-register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS
-                 ${COMMON_KERNEL_DEPS} ${COMMON_BAISC_KERNELS})
+# # 4. auto parse and build kernel targets by cmake
+# register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS
+#                  ${COMMON_KERNEL_DEPS} ${COMMON_BAISC_KERNELS})
 
-# phi sparse kernels
-add_subdirectory(sparse)
-# phi selected_rows kernels
-add_subdirectory(selected_rows)
+# # phi sparse kernels
+# add_subdirectory(sparse)
+# # phi selected_rows kernels
+# add_subdirectory(selected_rows)
+
+set(COMMON_KERNEL_DEPS
+    ${COMMON_KERNEL_DEPS}
+    threadpool
+    jit_kernel_helper
+    softmax
+    cross_entropy
+    matrix_bit_code
+    lapack_function
+    lstm_compute
+    gru_compute
+    deformable_conv_functor
+    matrix_reduce
+    segment_pooling
+    gather_scatter_kernel
+    pooling
+    maxouting
+    matrix_inverse
+    phi_dynload_warpctc
+    sequence_padding
+    sequence_scale)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 # For strings kernels
@@ -169,6 +191,7 @@ file(GLOB kernel_primitive_h "primitive/*.h")
 file(
   GLOB
   kernel_cc
+  "*.cc"
   "cpu/*.cc"
   "selected_rows/*.cc"
   "selected_rows/cpu/*.cc"
@@ -176,6 +199,7 @@ file(
   "sparse/cpu/*.cc"
   "strings/*.cc"
   "strings/cpu/*.cc")
+
 file(
   GLOB
   kernel_cu
@@ -185,17 +209,18 @@ file(
   "selected_rows/gpu/*.cc"
   "sparse/gpu/*.cu"
   "strings/*.cu")
+
 # file(GLOB kernel_cudnn "gpudnn/*.cu")
 # file(GLOB kernel_kps "kps/*.cu")
 file(GLOB kernel_xpu "xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
-kernel_declare(${kernel_cc})
+kernel_declare("${kernel_cc}")
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
 
 if(WITH_GPU OR WITH_ROCM)
   add_library(phi_gpu ${kernel_cu})
-  kernel_declare(${kernel_cu})
+  kernel_declare("${kernel_cu}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
   set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_gpu)
 endif()

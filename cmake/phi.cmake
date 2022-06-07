@@ -61,7 +61,9 @@ endfunction()
 
 # call kernel_declare need to make sure whether the target of input exists
 function(kernel_declare TARGET_LIST)
+  # message("TARGET LIST ${TARGET_LIST}")
   foreach(kernel_path ${TARGET_LIST})
+    # message("kernel path ${kernel_path}" )
     file(READ ${kernel_path} kernel_impl)
     string(
       REGEX
