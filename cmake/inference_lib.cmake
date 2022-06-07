@@ -156,18 +156,10 @@ function(copy_part_of_thrid_party TARGET DST)
       DSTS ${dst_dir} ${dst_dir})
 
     set(dst_dir "${DST}/third_party/install/paddle2onnx")
-    if(WIN32)
-      copy(
-        ${TARGET}
-        SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_SHARED_LIB}
-             ${PADDLE2ONNX_LIB}
-        DSTS ${dst_dir}/include ${dst_dir}/lib ${dst_dir}/lib)
-    else()
-      copy(
-        ${TARGET}
-        SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
-        DSTS ${dst_dir}/include ${dst_dir}/lib)
-    endif()
+    copy(
+      ${TARGET}
+      SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB_DIR}
+      DSTS ${dst_dir}/include ${dst_dir})
   endif()
 
   set(dst_dir "${DST}/third_party/install/gflags")
