@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
+
 #include <functional>
 #include <memory>
 #include <set>
+
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -52,7 +54,9 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     auto& desired_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(), size,
+                                   phi::Stream(reinterpret_cast<phi::StreamId>(
+                                       desired_dev_ctx.stream())));
     } else {
       return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
           desired_dev_ctx, size);

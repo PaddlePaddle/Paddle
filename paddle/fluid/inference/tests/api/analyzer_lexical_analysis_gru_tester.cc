@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -211,18 +212,15 @@ std::vector<double> Lexical_Test(
       }
     }
     // nums_infer, nums_label, nums_correct
-    auto precision =
-        acc_sum[0]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[0])
-            : 0;
-    auto recall =
-        acc_sum[1]
-            ? static_cast<double>(acc_sum[2]) / static_cast<double>(acc_sum[1])
-            : 0;
-    auto f1_score =
-        acc_sum[2]
-            ? static_cast<float>(2 * precision * recall) / (precision + recall)
-            : 0;
+    auto precision = acc_sum[0] ? static_cast<double>(acc_sum[2]) /
+                                      static_cast<double>(acc_sum[0])
+                                : 0;
+    auto recall = acc_sum[1] ? static_cast<double>(acc_sum[2]) /
+                                   static_cast<double>(acc_sum[1])
+                             : 0;
+    auto f1_score = acc_sum[2] ? static_cast<float>(2 * precision * recall) /
+                                     (precision + recall)
+                               : 0;
 
     LOG(INFO) << "Precision:  " << std::fixed << std::setw(6)
               << std::setprecision(5) << precision;

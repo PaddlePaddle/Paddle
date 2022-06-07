@@ -20,16 +20,19 @@ namespace cub = hipcub;
 #endif
 
 #include <vector>
+
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/margin_cross_entropy_op.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -63,19 +66,34 @@ void GetClassInterval(const gpuStream_t& stream, const platform::Place& place,
   framework::TensorFromVector(shard_dim_vec, ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
 
-  const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
-  // use global calculate stream
-  const auto calcu_stream =
-      static_cast<platform::CUDADeviceContext*>(
-          platform::DeviceContextPool::Instance().Get(place))
-          ->stream();
+  auto map = distributed::ProcessGroupMapFromGid::getInstance();
+  if (map->has(rid)) {
+    // Use ProcessGroup
+    distributed::ProcessGroup* pg = map->get(rid);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(num_classes_per_device);
+    out_tensor.push_back(num_classes_per_device);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      num_classes_per_device_ptr, num_classes_per_device_ptr,
-      num_classes_per_device.numel(),
-      platform::ToNCCLDataType(
-          framework::TransToProtoVarType(num_classes_per_device.dtype())),
-      ncclSum, comm->comm(), calcu_stream));
+    distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    // use global calculate stream
+    const auto calcu_stream =
+        static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place))
+            ->stream();
+
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        num_classes_per_device_ptr, num_classes_per_device_ptr,
+        num_classes_per_device.numel(),
+        platform::ToNCCLDataType(
+            framework::TransToProtoVarType(num_classes_per_device.dtype())),
+        ncclSum, comm->comm(), calcu_stream));
+  }
 
   auto class_interval_ptr =
       class_interval->mutable_data<int>({nranks + 1}, place);
@@ -228,14 +246,21 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     platform::NCCLComm* comm;
+    distributed::ProcessGroup* pg = nullptr;
     gpuStream_t stream;
     if (nranks > 1) {
-      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      auto map = distributed::ProcessGroupMapFromGid::getInstance();
+      if (map->has(rid)) {
+        // Use ProcessGroup
+        pg = map->get(rid);
+      } else {
+        comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-      // use global calculate stream
-      stream = static_cast<platform::CUDADeviceContext*>(
-                   platform::DeviceContextPool::Instance().Get(place))
-                   ->stream();
+        // use global calculate stream
+        stream = static_cast<platform::CUDADeviceContext*>(
+                     platform::DeviceContextPool::Instance().Get(place))
+                     ->stream();
+      }
     }
 #endif
 
@@ -274,16 +299,16 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // save match_logits, used for gradient computation.
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
-      AddMarginToPositiveLogitsKernel<
-          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
-          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
-          nranks, N, D, class_interval.data<int>());
+      AddMarginToPositiveLogitsKernel<T>
+          <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+              logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3,
+              rank, nranks, N, D, class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
       typedef int64_t LabelT;
-      AddMarginToPositiveLogitsKernel<
-          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
-          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
-          nranks, N, D, class_interval.data<int>());
+      AddMarginToPositiveLogitsKernel<T>
+          <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+              logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3,
+              rank, nranks, N, D, class_interval.data<int>());
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "margin_cross_entropy label type noly support int32 and int64, "
@@ -306,11 +331,23 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          logits_max_buff, logits_max_buff, logits_max.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(logits_max.dtype())),
-          ncclMax, comm->comm(), stream));
+      if (pg) {
+        std::vector<phi::DenseTensor> in_tensor;
+        std::vector<phi::DenseTensor> out_tensor;
+        in_tensor.push_back(logits_max);
+        out_tensor.push_back(logits_max);
+
+        distributed::AllreduceOptions opts;
+        opts.reduce_op = distributed::ReduceOp::MAX;
+        auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+        task->Wait();
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            logits_max_buff, logits_max_buff, logits_max.numel(),
+            platform::ToNCCLDataType(
+                framework::TransToProtoVarType(logits_max.dtype())),
+            ncclMax, comm->comm(), stream));
+      }
     }
 #endif
 
@@ -329,18 +366,30 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(sum_exp_logits.dtype())),
-          ncclSum, comm->comm(), stream));
+      if (pg) {
+        std::vector<phi::DenseTensor> in_tensor;
+        std::vector<phi::DenseTensor> out_tensor;
+        in_tensor.push_back(sum_exp_logits);
+        out_tensor.push_back(sum_exp_logits);
+
+        distributed::AllreduceOptions opts;
+        opts.reduce_op = distributed::ReduceOp::SUM;
+        auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+        task->Wait();
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
+            platform::ToNCCLDataType(
+                framework::TransToProtoVarType(sum_exp_logits.dtype())),
+            ncclSum, comm->comm(), stream));
+      }
     }
 #endif
 
     // step 5, (logit - logit_max) - log(sum(exp(logit - logit_max)))
-    LogitsMinusLogSumKernel<
-        T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
-        logits_ptr, sum_exp_logits_buff, N, D);
+    LogitsMinusLogSumKernel<T>
+        <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+            logits_ptr, sum_exp_logits_buff, N, D);
 
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
@@ -349,25 +398,37 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
-      HardLabelSoftmaxWithCrossEntropyKernel<
-          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
-          class_interval.data<int>());
+      HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+              class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
       typedef int64_t LabelT;
-      HardLabelSoftmaxWithCrossEntropyKernel<
-          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
-          class_interval.data<int>());
+      HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+              class_interval.data<int>());
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          loss_ptr, loss_ptr, loss->numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(loss->dtype())),
-          ncclSum, comm->comm(), stream));
+      if (pg) {
+        std::vector<phi::DenseTensor> in_tensor;
+        std::vector<phi::DenseTensor> out_tensor;
+        in_tensor.push_back(*loss);
+        out_tensor.push_back(*loss);
+
+        distributed::AllreduceOptions opts;
+        opts.reduce_op = distributed::ReduceOp::SUM;
+        auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+        task->Wait();
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            loss_ptr, loss_ptr, loss->numel(),
+            platform::ToNCCLDataType(
+                framework::TransToProtoVarType(loss->dtype())),
+            ncclSum, comm->comm(), stream));
+      }
     }
 #endif
   }

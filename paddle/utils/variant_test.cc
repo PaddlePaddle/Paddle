@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/utils/variant.h"
+
 #include "gtest/gtest.h"
 #include "paddle/phi/core/enforce.h"
 

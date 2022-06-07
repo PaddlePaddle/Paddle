@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/instance_norm_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -21,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
+#include "paddle/phi/kernels/instance_norm_grad_kernel.h"
 
 namespace phi {
 template <typename T, int BlockDim>
@@ -274,10 +273,10 @@ __global__ void DoubleGradComputeDScale(const T *x,
   if (ddx != nullptr) {
     T dscale_tmp = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      dscale_tmp +=
-          ddx[i] * var_val * (dy[i] - dy_sum_val / sample_size -
-                              dy_mul_x_sub_mean_sum_val * (x[i] - mean_val) *
-                                  var_val * var_val / sample_size);
+      dscale_tmp += ddx[i] * var_val *
+                    (dy[i] - dy_sum_val / sample_size -
+                     dy_mul_x_sub_mean_sum_val * (x[i] - mean_val) * var_val *
+                         var_val / sample_size);
     }
     dscale_tmp = BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
     if (threadIdx.x == 0) {
@@ -290,10 +289,10 @@ __global__ void DoubleGradComputeDScale(const T *x,
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context &dev_ctx,
                             const DenseTensor &x,
-                            const DenseTensor &d_y,
-                            paddle::optional<const DenseTensor &> scale,
+                            const paddle::optional<DenseTensor> &scale,
                             const DenseTensor &saved_mean,
                             const DenseTensor &saved_variance,
+                            const DenseTensor &d_y,
                             float epsilon_f,
                             DenseTensor *d_x,
                             DenseTensor *d_scale,
@@ -516,13 +515,13 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 template <typename T, typename Context>
 void InstanceNormDoubleGradKernel(const Context &dev_ctx,
                                   const DenseTensor &x,
-                                  paddle::optional<const DenseTensor &> scale,
+                                  const paddle::optional<DenseTensor> &scale,
                                   const DenseTensor &saved_mean,
                                   const DenseTensor &saved_variance,
                                   const DenseTensor &dy,
-                                  paddle::optional<const DenseTensor &> ddx,
-                                  paddle::optional<const DenseTensor &> ddscale,
-                                  paddle::optional<const DenseTensor &> ddbias,
+                                  const paddle::optional<DenseTensor> &ddx,
+                                  const paddle::optional<DenseTensor> &ddscale,
+                                  const paddle::optional<DenseTensor> &ddbias,
                                   float epsilon_f,
                                   DenseTensor *dx,
                                   DenseTensor *dscale,
@@ -563,18 +562,18 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
   if (dx) {
     T *dx_data = dev_ctx.template Alloc<T>(dx);
     set_zero(dev_ctx, dx, static_cast<T>(0));
-    DoubleGradComputeDX<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-        x_data,
-        mean_data,
-        variance_data,
-        ddx_data,
-        dy_data,
-        scale_data,
-        ddscale_data,
-        C,
-        sample_size,
-        epsilon,
-        dx_data);
+    DoubleGradComputeDX<T, block>
+        <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                               mean_data,
+                                               variance_data,
+                                               ddx_data,
+                                               dy_data,
+                                               scale_data,
+                                               ddscale_data,
+                                               C,
+                                               sample_size,
+                                               epsilon,
+                                               dx_data);
   }
   if (dscale) {
     DenseTensor dscale_tmp;
@@ -585,34 +584,34 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
 
     T *dscale_data = dev_ctx.template Alloc<T>(dscale);
     set_zero(dev_ctx, dscale, static_cast<T>(0));
-    DoubleGradComputeDScale<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-        x_data,
-        mean_data,
-        variance_data,
-        ddx_data,
-        dy_data,
-        C,
-        sample_size,
-        epsilon,
-        dscale_tmp_data);
+    DoubleGradComputeDScale<T, block>
+        <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                               mean_data,
+                                               variance_data,
+                                               ddx_data,
+                                               dy_data,
+                                               C,
+                                               sample_size,
+                                               epsilon,
+                                               dscale_tmp_data);
     add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
         dscale_tmp.data<T>(), dscale->data<T>(), N, C);
   }
   if (ddy) {
     T *ddy_data = dev_ctx.template Alloc<T>(ddy);
     set_zero(dev_ctx, ddy, static_cast<T>(0));
-    DoubleGradComputeDDY<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-        x_data,
-        mean_data,
-        variance_data,
-        ddscale_data,
-        ddbias_data,
-        ddx_data,
-        scale_data,
-        C,
-        sample_size,
-        epsilon,
-        ddy_data);
+    DoubleGradComputeDDY<T, block>
+        <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                               mean_data,
+                                               variance_data,
+                                               ddscale_data,
+                                               ddbias_data,
+                                               ddx_data,
+                                               scale_data,
+                                               C,
+                                               sample_size,
+                                               epsilon,
+                                               ddy_data);
   }
 }
 }  // namespace phi

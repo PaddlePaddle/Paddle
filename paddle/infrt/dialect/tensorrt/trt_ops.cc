@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// clang-format off
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 #include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/Matchers.h>
@@ -24,6 +26,7 @@
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
+// clang-format on
 
 namespace infrt {
 namespace trt {

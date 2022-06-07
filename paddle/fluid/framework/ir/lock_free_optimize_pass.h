@@ -29,31 +29,31 @@ class Node;
 class Graph;
 
 /*
-* Remove the sum op of all gradients of the backward op.
-* And remove the dependecies of the optimizer related to the
-* same backward op.
-*
-* Before this pass:
-*
-* forward_op1 forward_op2
-*     |            |
-*  grad_op1    grad_op2
-*        \      /
-*          \  /
-*         sum_op
-*           |
-*         sgd_op
-*
-* After this pass:
-* forward_op1 forward_op2
-*     |            |
-*  grad_op1    grad_op2
-*     |            |
-*  sgd_op1      sgd_op2
-*
-* sgd_op1 and sgd_op2 will update the same weight which holds the same
-* memory, so we could benefits from the acceleration
-*/
+ * Remove the sum op of all gradients of the backward op.
+ * And remove the dependecies of the optimizer related to the
+ * same backward op.
+ *
+ * Before this pass:
+ *
+ * forward_op1 forward_op2
+ *     |            |
+ *  grad_op1    grad_op2
+ *        \      /
+ *          \  /
+ *         sum_op
+ *           |
+ *         sgd_op
+ *
+ * After this pass:
+ * forward_op1 forward_op2
+ *     |            |
+ *  grad_op1    grad_op2
+ *     |            |
+ *  sgd_op1      sgd_op2
+ *
+ * sgd_op1 and sgd_op2 will update the same weight which holds the same
+ * memory, so we could benefits from the acceleration
+ */
 class LockFreeOptimizePass : public Pass {
  public:
   virtual ~LockFreeOptimizePass() {}

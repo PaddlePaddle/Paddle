@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
+
 #include <string>
 
 namespace paddle {

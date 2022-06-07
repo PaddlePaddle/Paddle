@@ -132,10 +132,11 @@ struct gpu_gather_scatter_functor {
     int64_t grid = (n + block - 1) / block;
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    GatherScatterGPUKernel<tensor_t, index_t, func_t,
-                           is_scatter_like><<<grid, block, 0, stream>>>(
-        self_data, dim, index_data, src_data, inner_dim_size, select_dim_size,
-        replaced_select_dim_size, outer_dim_size, index_size, reduce_op);
+    GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+        <<<grid, block, 0, stream>>>(self_data, dim, index_data, src_data,
+                                     inner_dim_size, select_dim_size,
+                                     replaced_select_dim_size, outer_dim_size,
+                                     index_size, reduce_op);
   }
 };  // struct gpu_gather_scatter_functor
 

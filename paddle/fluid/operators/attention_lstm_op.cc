@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/attention_lstm_op.h"
+
 #include <string>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
@@ -62,8 +64,9 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
           "LSTMWeight dims should be (%d + %d) * %d.", D, M, 4 * D));
 
   auto b_dims = ctx->GetInputDim("LSTMBias");
-  PADDLE_ENFORCE_EQ(b_dims.size(), 2, platform::errors::InvalidArgument(
-                                          "Input(LSTMBias)'s rank must be 2."));
+  PADDLE_ENFORCE_EQ(
+      b_dims.size(), 2,
+      platform::errors::InvalidArgument("Input(LSTMBias)'s rank must be 2."));
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     platform::errors::InvalidArgument(
                         "LSTMBias dims should be 1 x %d.", 4 * D));
@@ -72,11 +75,13 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         "LSTMBias dims should be 1 x %d.", 4 * D));
 
   auto c_dims = ctx->GetInputDim("C0");
-  PADDLE_ENFORCE_EQ(c_dims.size(), 2, platform::errors::InvalidArgument(
-                                          "Input(C0)'s rank must be 2."));
+  PADDLE_ENFORCE_EQ(
+      c_dims.size(), 2,
+      platform::errors::InvalidArgument("Input(C0)'s rank must be 2."));
   if (ctx->IsRuntime()) {
-    PADDLE_ENFORCE_EQ(c_dims[1], D, platform::errors::InvalidArgument(
-                                        "C0 dims should be N x %d.", D));
+    PADDLE_ENFORCE_EQ(
+        c_dims[1], D,
+        platform::errors::InvalidArgument("C0 dims should be N x %d.", D));
   }
 
   if (ctx->HasInput("H0")) {
@@ -126,10 +131,12 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(dims.size(), 2,
                       platform::errors::InvalidArgument(
                           "Input(AttentionScalar)'s rank must be 2."));
-    PADDLE_ENFORCE_EQ(dims[0], 1, platform::errors::InvalidArgument(
-                                      "AttentionScalar shapes must be 1 * 1."));
-    PADDLE_ENFORCE_EQ(dims[1], 1, platform::errors::InvalidArgument(
-                                      "AttentionScalar shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(dims[0], 1,
+                      platform::errors::InvalidArgument(
+                          "AttentionScalar shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(dims[1], 1,
+                      platform::errors::InvalidArgument(
+                          "AttentionScalar shapes must be 1 * 1."));
   }
 
   if (ctx->HasInput("AttentionScalarBias")) {
@@ -332,14 +339,15 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
       int len = x_lod[0][i + 1] - x_lod[0][i];
       max_seq_len = max_seq_len < len ? len : max_seq_len;
     }
-    PADDLE_ENFORCE_EQ(x_lod.size(), 1UL, platform::errors::InvalidArgument(
-                                             "Input(X)'s lod size must be 1."));
+    PADDLE_ENFORCE_EQ(
+        x_lod.size(), 1UL,
+        platform::errors::InvalidArgument("Input(X)'s lod size must be 1."));
     PADDLE_ENFORCE_EQ(
         c0->dims()[0], N,
         platform::errors::InvalidArgument("C0 dims should be %d x %d.", N, D));
     fc_out->Resize({max_seq_len, 1});
 
-    std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand;
+    std::function<void(const int, const T*, T*)> act_gate, act_cell, act_cand;
     auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
     auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
     auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");

@@ -12,22 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/instance_norm_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
+#include "paddle/phi/kernels/instance_norm_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void InstanceNormKernel(const Context &dev_ctx,
                         const DenseTensor &x,
-                        paddle::optional<const DenseTensor &> scale,
-                        paddle::optional<const DenseTensor &> bias,
+                        const paddle::optional<DenseTensor> &scale,
+                        const paddle::optional<DenseTensor> &bias,
                         float epsilon_f,
                         DenseTensor *y,
                         DenseTensor *saved_mean,

@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestCollectiveBarrierAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 

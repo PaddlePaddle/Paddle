@@ -62,9 +62,10 @@ class RecordEvent(ContextDecorator):
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
     """
 
-    def __init__(self,
-                 name: str,
-                 event_type: TracerEventType=TracerEventType.PythonUserDefined):
+    def __init__(
+            self,
+            name: str,
+            event_type: TracerEventType = TracerEventType.PythonUserDefined):
         self.name = name
         self.event_type = event_type
         self.event = None
@@ -158,13 +159,14 @@ def in_profiler_mode():
 
 
 def wrap_optimizers():
+
     def optimizer_warpper(func):
+
         @functools.wraps(func)
         def warpper(*args, **kwargs):
             if in_profiler_mode():
-                with RecordEvent(
-                        'Optimization Step',
-                        event_type=TracerEventType.Optimization):
+                with RecordEvent('Optimization Step',
+                                 event_type=TracerEventType.Optimization):
                     return func(*args, **kwargs)
             else:
                 return func(*args, **kwargs)

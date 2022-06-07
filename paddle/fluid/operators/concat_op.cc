@@ -15,11 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/concat_op.h"
 
 #include <paddle/fluid/platform/complex.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/infershape_utils.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/core/infermeta_utils.h"
