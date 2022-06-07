@@ -74,7 +74,7 @@ int32_t MemoryDenseTable::InitializeValue() {
     values_[x].resize(dim);
     names_index_[varname] = x;
 
-    for (int y = 0; y < dim; ++y) {
+    for (size_t y = 0; y < dim; ++y) {
       values_[x][y] = initializers_[varname]->GetValue();
     }
   }
