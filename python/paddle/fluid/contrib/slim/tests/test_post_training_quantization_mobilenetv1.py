@@ -19,6 +19,7 @@ import random
 import math
 import functools
 import contextlib
+import tempfile
 import numpy as np
 from PIL import Image, ImageEnhance
 import paddle
@@ -146,16 +147,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.infer_iterations = 50000 if os.environ.get(
             'DATASET') == 'full' else 2
 
-        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        self.int8_model = os.path.join(os.getcwd(),
-                                       "post_training_" + self.timestamp)
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model = os.path.join(self.root_path.name,
+                                       "post_training_quantization")
 
     def tearDown(self):
-        try:
-            os.system("rm -rf {}".format(self.int8_model))
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(self.int8_model,
-                                                         str(e)))
+        self.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -207,8 +204,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         cnt = 0
         periods = []
         for batch_id, data in enumerate(val_reader()):
-            image = np.array(
-                [x[0].reshape(image_shape) for x in data]).astype("float32")
+            image = np.array([x[0].reshape(image_shape)
+                              for x in data]).astype("float32")
             label = np.array([x[1] for x in data]).astype("int64")
             label = label.reshape([-1, 1])
 
@@ -308,11 +305,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.".
-            format(model, batch_size, fp32_throughput, fp32_latency, fp32_acc1))
+            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}."
+            .format(model, batch_size, fp32_throughput, fp32_latency,
+                    fp32_acc1))
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n".
-            format(model, batch_size, int8_throughput, int8_latency, int8_acc1))
+            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n"
+            .format(model, batch_size, int8_throughput, int8_latency,
+                    int8_acc1))
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
@@ -405,7 +404,7 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = False
-        # The accuracy diff of post-traing quantization (abs_max) maybe bigger
+        # The accuracy diff of post-training quantization (abs_max) maybe bigger
         diff_threshold = 0.05
         self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,

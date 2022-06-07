@@ -18,6 +18,7 @@ import sys
 import random
 import math
 import functools
+import tempfile
 import contextlib
 import numpy as np
 import paddle
@@ -33,12 +34,12 @@ np.random.seed(0)
 
 class TestPostTrainingQuantization(unittest.TestCase):
     def setUp(self):
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model_path = os.path.join(self.root_path.name,
+                                            "post_training_quantization")
         self.download_path = 'int8/download'
         self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
                                                self.download_path)
-        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        self.int8_model_path = os.path.join(os.getcwd(),
-                                            "post_training_" + self.timestamp)
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
@@ -47,11 +48,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             sys.exit(-1)
 
     def tearDown(self):
-        try:
-            os.system("rm -rf {}".format(self.int8_model_path))
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(self.int8_model_path,
-                                                         str(e)))
+        self.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -82,8 +79,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         cnt = 0
         periods = []
         for batch_id, data in enumerate(val_reader()):
-            image = np.array(
-                [x[0].reshape(img_shape) for x in data]).astype("float32")
+            image = np.array([x[0].reshape(img_shape)
+                              for x in data]).astype("float32")
             input_label = np.array([x[1] for x in data]).astype("int64")
 
             t1 = time.time()
@@ -121,7 +118,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        scope = fluid.global_scope()
         val_reader = paddle.dataset.mnist.train()
 
         ptq = PostTrainingQuantization(
@@ -178,13 +174,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.".
-            format(model_name, batch_size, fp32_throughput, fp32_latency,
-                   fp32_acc1))
+            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}."
+            .format(model_name, batch_size, fp32_throughput, fp32_latency,
+                    fp32_acc1))
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n".
-            format(model_name, batch_size, int8_throughput, int8_latency,
-                   int8_acc1))
+            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n"
+            .format(model_name, batch_size, int8_throughput, int8_latency,
+                    int8_acc1))
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1

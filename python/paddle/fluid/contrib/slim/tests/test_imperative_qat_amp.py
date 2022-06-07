@@ -21,6 +21,7 @@ import shutil
 import time
 import unittest
 import logging
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -45,10 +46,9 @@ class TestImperativeQatAmp(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        cls.root_path = os.path.join(os.getcwd(),
-                                     "imperative_qat_amp_" + timestamp)
-        cls.save_path = os.path.join(cls.root_path, "model")
+        cls.root_path = tempfile.TemporaryDirectory(
+            prefix="imperative_qat_amp_")
+        cls.save_path = os.path.join(cls.root_path.name, "model")
 
         cls.download_path = 'dygraph_int8/download'
         cls.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
@@ -64,10 +64,7 @@ class TestImperativeQatAmp(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.root_path)
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
+        cls.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -106,8 +103,8 @@ class TestImperativeQatAmp(unittest.TestCase):
         for batch_id, data in enumerate(train_reader()):
             x_data = np.array([x[0].reshape(1, 28, 28)
                                for x in data]).astype('float32')
-            y_data = np.array(
-                [x[1] for x in data]).astype('int64').reshape(-1, 1)
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -150,8 +147,8 @@ class TestImperativeQatAmp(unittest.TestCase):
         for batch_id, data in enumerate(test_reader()):
             x_data = np.array([x[0].reshape(1, 28, 28)
                                for x in data]).astype('float32')
-            y_data = np.array(
-                [x[1] for x in data]).astype('int64').reshape(-1, 1)
+            y_data = np.array([x[1]
+                               for x in data]).astype('int64').reshape(-1, 1)
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
