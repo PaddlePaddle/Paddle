@@ -41,7 +41,8 @@ class SoftMarginLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SoftMarginLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "SoftMarginLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+                   "SoftMarginLossGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "SoftMarginLossGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
@@ -124,13 +125,11 @@ class SoftMarginLossGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(soft_margin_loss,
-                            SoftMarginLossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(soft_margin_loss, SoftMarginLossInferShapeFunctor,
                             PD_INFER_META(phi::SoftMarginLossInferMeta));
 
 REGISTER_OPERATOR(soft_margin_loss, ops::SoftMarginLossOp,

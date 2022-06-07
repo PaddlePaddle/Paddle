@@ -2807,9 +2807,11 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             output = paddle.nn.functional.soft_margin_loss(input, label)
 
             shape = (5, 5)
-            input = paddle.uniform(shape, 0, 2, dtype='float32')
-            label = paddle.randint(shape, 0, 2, dtype='float32')
+            input_np = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+            label_np = np.random.randint(0, 2, size=shape).astype(int64)
             label[label==0]=-1
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
             output = paddle.nn.functional.soft_margin_loss(input, label,reduction='none')
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -2828,8 +2830,9 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         else:
             return out
 
-    fluid.data_feeder.check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'soft_margin_loss')
+    fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                               ['float32', 'float64'],
+                                               'soft_margin_loss')
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['int32', 'int64', 'float32', 'float64'],
         'soft_margin_loss')
@@ -2839,13 +2842,12 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
     sub_name = name
     helper = LayerHelper("soft_margin_loss", name=sub_name)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='soft_margin_loss',
-        inputs={
-            'X': [input],
-            'Label': [label],
-        },
-        outputs={'Out': [out]})
+    helper.append_op(type='soft_margin_loss',
+                     inputs={
+                         'X': [input],
+                         'Label': [label],
+                     },
+                     outputs={'Out': [out]})
 
     if reduction == 'sum':
         return paddle.sum(out, name=name)

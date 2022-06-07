@@ -1804,6 +1804,7 @@ void SoftMarginLossInferMeta(const MetaTensor& input,
                         label_dims.size()));
 
   bool check = true;
+
   if ((!config.is_runtime) &&
       (phi::product(input_dims) <= 0 || phi::product(label_dims) <= 0)) {
     check = false;

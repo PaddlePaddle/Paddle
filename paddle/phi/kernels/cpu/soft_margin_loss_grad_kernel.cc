@@ -15,18 +15,18 @@
 #include "paddle/phi/kernels/soft_margin_loss_grad_kernel.h"
 
 #include <algorithm>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 
 namespace phi {
 
 template <typename T, typename Context>
 void SoftMarginLossGradKernel(const Context& dev_ctx,
-                       const DenseTensor& input,
-                       const DenseTensor& label,
-                       const DenseTensor& out_grad,
-                       DenseTensor* input_grad) {
+                              const DenseTensor& input,
+                              const DenseTensor& label,
+                              const DenseTensor& out_grad,
+                              DenseTensor* input_grad) {
   auto dx_data = dev_ctx.template Alloc<T>(input_grad);
   auto dout_data = out_grad.data<T>();
   auto x_data = input.data<T>();
@@ -36,12 +36,16 @@ void SoftMarginLossGradKernel(const Context& dev_ctx,
 
   // dx = dout * (-label * exp(-label * x))/(1 + exp(-label * x ))
   for (int i = 0; i < x_numel; ++i) {
-    dx_data[i] =
-        dout_data[i] * ((- label_data[i]* std::exp(-label_data[i]*x_data[i] )) /
-                        (static_cast<T>(1) + std::exp(-label_data[i]*x_data[i])));
+    dx_data[i] = dout_data[i] *
+                 ((-label_data[i] * std::exp(-label_data[i] * x_data[i])) /
+                  (static_cast<T>(1) + std::exp(-label_data[i] * x_data[i])));
   }
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    soft_margin_loss_grad, CPU, ALL_LAYOUT, phi::SoftMarginLossGradKernel, float, double) {}
+PD_REGISTER_KERNEL(soft_margin_loss_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SoftMarginLossGradKernel,
+                   float,
+                   double) {}

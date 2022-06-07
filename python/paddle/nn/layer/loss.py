@@ -1361,8 +1361,8 @@ class SoftMarginLoss(Layer):
             input = paddle.uniform(shape, 0, 2, dtype='float32')
             label = paddle.randint(shape, 0, 2, dtype='float32')
             label[label==0]=-1
-            soft_margin_loss = paddle.nn.SoftMarginLoss()
-            output = soft_margin_loss(input, label,reduction='none')
+            soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
+            output = soft_margin_loss(input, label,)
     """
 
     def __init__(self, reduction='mean', name=None):

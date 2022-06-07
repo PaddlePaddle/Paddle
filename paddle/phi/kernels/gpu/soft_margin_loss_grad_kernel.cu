@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/soft_margin_loss_grad_kernel.h"
-
 #include <algorithm>
 #include <vector>
 
@@ -21,6 +19,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/soft_margin_loss_grad_kernel.h"
 
 namespace phi {
 
@@ -42,10 +41,10 @@ struct SoftMarginLossGradFunctor {
 
 template <typename T, typename Context>
 void SoftMarginLossGradKernel(const Context& dev_ctx,
-                       const DenseTensor& input,
-                       const DenseTensor& label,
-                       const DenseTensor& out_grad,
-                       DenseTensor* input_grad) {
+                              const DenseTensor& input,
+                              const DenseTensor& label,
+                              const DenseTensor& out_grad,
+                              DenseTensor* input_grad) {
   dev_ctx.template Alloc<T>(input_grad);
   std::vector<const DenseTensor*> ins = {&input, &label, &out_grad};
   std::vector<DenseTensor*> outs = {input_grad};
@@ -55,5 +54,9 @@ void SoftMarginLossGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    soft_margin_loss_grad, GPU, ALL_LAYOUT, phi::SoftMarginLossGradKernel, float, double) {}
+PD_REGISTER_KERNEL(soft_margin_loss_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SoftMarginLossGradKernel,
+                   float,
+                   double) {}

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/soft_margin_loss_kernel.h"
-
 #include <algorithm>
 #include <vector>
 
@@ -22,6 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/soft_margin_loss_kernel.h"
 
 namespace phi {
 
@@ -29,9 +28,7 @@ template <typename T>
 struct SoftMarginLossFunctor {
   T one;
 
-  HOSTDEVICE inline SoftMarginLossFunctor() {
-    one = static_cast<T>(1.0f);
-  }
+  HOSTDEVICE inline SoftMarginLossFunctor() { one = static_cast<T>(1.0f); }
 
   HOSTDEVICE inline T operator()(const T x, const T label) const {
     T term1 = std::log(one + std::exp(-label * x));
@@ -41,9 +38,9 @@ struct SoftMarginLossFunctor {
 
 template <typename T, typename Context>
 void SoftMarginLossKernel(const Context& dev_ctx,
-                   const DenseTensor& input,
-                   const DenseTensor& label,
-                   DenseTensor* out) {
+                          const DenseTensor& input,
+                          const DenseTensor& label,
+                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&input, &label};
   std::vector<DenseTensor*> outs = {out};
@@ -53,5 +50,9 @@ void SoftMarginLossKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    soft_margin_loss, GPU, ALL_LAYOUT, phi::SoftMarginLossKernel, float, double) {}
+PD_REGISTER_KERNEL(soft_margin_loss,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SoftMarginLossKernel,
+                   float,
+                   double) {}
