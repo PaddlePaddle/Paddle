@@ -14,14 +14,12 @@
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
 
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
-
-#include "paddle/fluid/operators/utils.h"
 
 namespace phi {
 
@@ -80,7 +78,7 @@ void RnnGradKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    const std::vector<const DenseTensor *> &pre_state,
                    const std::vector<const DenseTensor *> &weight_list,
-                   paddle::optional<const DenseTensor &> sequence_length,
+                   const paddle::optional<DenseTensor> &sequence_length,
                    const DenseTensor &out,
                    const DenseTensor &dropout_state,
                    const DenseTensor &reserve,

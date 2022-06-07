@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -26,6 +27,7 @@
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -152,12 +154,14 @@ class Dataset {
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
-  // separate train thread and dataset thread
+  // seperate train thread and dataset thread
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins = false) = 0;
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
+
+  virtual std::vector<std::string> GetSlots() = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -246,6 +250,7 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
+  virtual std::vector<std::string> GetSlots();
   /* for enable_heterps_
   virtual void EnableHeterps(bool enable_heterps) {
     enable_heterps_ = enable_heterps;
@@ -321,6 +326,7 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
+  std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
 };
 

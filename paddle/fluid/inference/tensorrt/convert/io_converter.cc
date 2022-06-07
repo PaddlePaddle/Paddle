@@ -13,15 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/io_converter.h"
+
 #include <cuda.h>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using platform::is_gpu_place;
 using platform::is_cpu_place;
+using platform::is_gpu_place;
 
 class DefaultIOConverter : public EngineIOConverter {
  public:
@@ -49,8 +51,9 @@ class DefaultIOConverter : public EngineIOConverter {
           out, in.data<float>(), size, cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
-          0, cudaMemcpyAsync(out, in.data<float>(), size,
-                             cudaMemcpyDeviceToDevice, *stream_),
+          0,
+          cudaMemcpyAsync(out, in.data<float>(), size, cudaMemcpyDeviceToDevice,
+                          *stream_),
           platform::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {
@@ -78,14 +81,16 @@ class DefaultIOConverter : public EngineIOConverter {
             "But out's memory_size = %u, max_size = %u.",
             size, max_size));
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,
-                                           cudaMemcpyDeviceToHost, *stream_),
+      PADDLE_ENFORCE_EQ(0,
+                        cudaMemcpyAsync(out->data<float>(), in, size,
+                                        cudaMemcpyDeviceToHost, *stream_),
                         platform::errors::External(
                             "cudaMemcpyAsync(cudaMemcpyDeviceToHost) error."));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
-          0, cudaMemcpyAsync(out->data<float>(), in, size,
-                             cudaMemcpyDeviceToDevice, *stream_),
+          0,
+          cudaMemcpyAsync(out->data<float>(), in, size,
+                          cudaMemcpyDeviceToDevice, *stream_),
           platform::errors::External(
               "cudaMemcpyAsync(cudaMemcpyDeviceToDevice) error."));
     } else {

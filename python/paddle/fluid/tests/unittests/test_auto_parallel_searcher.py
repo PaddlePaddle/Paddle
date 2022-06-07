@@ -40,6 +40,7 @@ paddle.enable_static()
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -47,14 +48,18 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
         bias_attr = None
 
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -73,15 +78,16 @@ def mlp_forward(train_program, start_program):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
-        input = static.data(
-            name="input", shape=[batch_size, hidden_size], dtype='float32')
-        label = static.data(
-            name="label", shape=[batch_size, 1], dtype='float32')
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
         loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            initializer_range=0.02)
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
 
         predict = mlp(input)
         error_cost = loss_func(predict, label)
@@ -100,8 +106,8 @@ def set_default_dist_attr(program, dist_context, process_mesh):
             tensor_dist_attr = TensorDistributedAttribute()
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = [-1 for i in vars[var_name].shape]
-            dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                          tensor_dist_attr)
+            dist_context.set_tensor_dist_attr_for_program(
+                vars[var_name], tensor_dist_attr)
             op_dist_attr.set_input_dims_mapping(var_name,
                                                 tensor_dist_attr.dims_mapping)
 
@@ -109,8 +115,8 @@ def set_default_dist_attr(program, dist_context, process_mesh):
             tensor_dist_attr = TensorDistributedAttribute()
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = [-1 for i in vars[var_name].shape]
-            dist_context.set_tensor_dist_attr_for_program(vars[var_name],
-                                                          tensor_dist_attr)
+            dist_context.set_tensor_dist_attr_for_program(
+                vars[var_name], tensor_dist_attr)
             op_dist_attr.set_output_dims_mapping(var_name,
                                                  tensor_dist_attr.dims_mapping)
         dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
@@ -143,6 +149,7 @@ def check_nonpipeline_enumerater(program, process_mesh_topology):
 
 
 class TestMLPSearcher(unittest.TestCase):
+
     def test_update(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -170,8 +177,7 @@ class TestMLPSearcher(unittest.TestCase):
 
                     dist_op.dist_attr.set_output_dims_mapping(
                         op.output_arg_names[0], [0] + [
-                            -1
-                            for i in range(
+                            -1 for i in range(
                                 1, len(vars[op.output_arg_names[0]].shape))
                         ])
                     try:
@@ -187,8 +193,7 @@ class TestMLPSearcher(unittest.TestCase):
 
                     dist_op.dist_attr.set_output_dims_mapping(
                         op.output_arg_names[0], [0] + [
-                            -1
-                            for i in range(
+                            -1 for i in range(
                                 1, len(vars[op.output_arg_names[0]].shape))
                         ])
                     try:

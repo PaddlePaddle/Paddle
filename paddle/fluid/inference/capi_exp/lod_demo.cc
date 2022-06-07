@@ -27,8 +27,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 
 int main(int argc, char *argv[]) {

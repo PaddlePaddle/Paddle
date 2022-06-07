@@ -70,10 +70,11 @@ nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
                         "The Pool3D Plugin only has one input, so the nbInputs "
                         "value should be 1, but get %d.",
                         nbInputs));
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The Pool3D Plugin only has one input, so "
-                                  "the index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The Pool3D Plugin only has one input, so "
+                        "the index value should be 0, but get %d.",
+                        index));
   PADDLE_ENFORCE_EQ(inputDims[0].nbDims, 4,
                     platform::errors::InvalidArgument(
                         "The Pool3D Plugin only has four Dimensions, so the "

@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/npu/npu_info.h"
+
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
 
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -153,8 +153,9 @@ static size_t NPUAllocSize(bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
       available_to_alloc, alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available NPU memory."));

@@ -271,5 +271,5 @@ void GraphGpuWrapper::export_partition_files(int idx, std::string file_path) {
       ->cpu_graph_table->export_partition_files(idx, file_path);
 }
 #endif
-}
-};
+}  // namespace framework
+};  // namespace paddle

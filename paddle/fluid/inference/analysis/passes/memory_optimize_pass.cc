@@ -61,7 +61,8 @@ void MemoryOptimizePass::CollectLifeCycle(
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
 
-    std::vector<Node*> requires(reads.begin(), reads.end());
+    std::vector<Node*>
+    requires(reads.begin(), reads.end());
     requires.insert(requires.end(), writes.begin(), writes.end());
 
     // Disable reuse of feed variables.
