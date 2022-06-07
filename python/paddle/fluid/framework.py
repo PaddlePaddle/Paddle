@@ -1849,8 +1849,7 @@ class Variable(object):
             print("shape of current Var is: {}".format(new_variable.shape))
 
         """
-        # convert to tuple, make it as same as numpy API.
-        return tuple(self.desc.shape())
+        return self.desc.shape()
 
     @property
     def dtype(self):
