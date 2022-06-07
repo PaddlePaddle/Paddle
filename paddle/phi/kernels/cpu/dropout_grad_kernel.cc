@@ -27,7 +27,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                          float p,
                          bool is_test,
                          const std::string& mode,
-                         const std::vector<int>& axes,
+                         const std::vector<int>& axis,
                          DenseTensor* x_grad) {
   auto* grad_x = x_grad;
   auto* grad_y = &out_grad;
@@ -51,7 +51,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
       if (p == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        if (axes.empty()) {
+        if (axis.empty()) {
           dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - p);
         } else {
           dX.device(place) =
@@ -59,7 +59,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
         }
       }
     } else {
-      if (axes.empty()) {
+      if (axis.empty()) {
         dX.device(place) = dY * M.cast<T>();
       } else {
         dX.device(place) = dY * M.broadcast(out_dims).cast<T>();

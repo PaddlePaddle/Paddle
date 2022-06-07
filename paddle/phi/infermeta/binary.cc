@@ -893,10 +893,32 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         const std::string& mode,
                         int seed,
                         bool fix_seed,
-                        const std::vector<int>& axes,
+                        const std::vector<int>& axis,
                         MetaTensor* out,
                         MetaTensor* mask) {
   auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_LE(
+      axis.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The length of axis is expected to be less than or equal to the "
+          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x is %d, x's shape is {%s}.",
+          axis.size(),
+          x_dims.size(),
+          x_dims));
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_EQ(axis[i] >= 0 && axis[i] <= x_dims.size() - 1,
+                      true,
+                      "The %d-th value of axis is expected to be greater ot "
+                      "equal to 0 and less than the dimensions of x. But "
+                      "recieved axis is {%s}, the dimension size of x is %d.",
+                      i,
+                      phi::make_ddim(axis),
+                      x_dims.size());
+  }
+
   out->set_dims(x_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -905,7 +927,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
     std::vector<int64_t> mask_dims(x.dims().size(), 1);
 
     std::for_each(
-        axes.begin(), axes.end(), [&mask_dims, &x_dims](const int64_t& t) {
+        axis.begin(), axis.end(), [&mask_dims, &x_dims](const int64_t& t) {
           mask_dims[t] = x_dims[t];
         });
 

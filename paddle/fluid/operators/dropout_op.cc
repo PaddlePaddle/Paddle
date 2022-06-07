@@ -165,9 +165,9 @@ class DropoutNdOpMaker : public DropoutOpMaker {
  public:
   void Make() override {
     DropoutOpMaker::Make();
-    AddAttr<std::vector<int>>("axes",
+    AddAttr<std::vector<int>>("axis",
                               "(std::vector<int>). List of integers,"
-                              " indicating the dimensions to be dropout")
+                              " indicating the dimensions to be dropout_nd.")
         .SetDefault({});
   }
 };

@@ -41,7 +41,7 @@ void DropoutNdKernel(const Context& dev_ctx,
                      const std::string& mode,
                      int seed,
                      bool fix_seed,
-                     const std::vector<int>& axes,
+                     const std::vector<int>& axis,
                      DenseTensor* out,
                      DenseTensor* mask);
 

@@ -153,7 +153,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
                         const std::string& mode,
                         int seed,
                         bool fix_seed,
-                        const std::vector<int>& axes,
+                        const std::vector<int>& axis,
                         MetaTensor* out,
                         MetaTensor* mask);
 

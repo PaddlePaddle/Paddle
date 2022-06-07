@@ -31,7 +31,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                       DenseTensor* out,
                       DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
-  std::vector<int> axes = {};
+  std::vector<int> axis = {};
   dev_ctx.template Alloc<T>(out);
   dev_ctx.template Alloc<uint8_t>(mask);
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
@@ -43,7 +43,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                                                  seed,
                                                  x,
                                                  seed_tensor.get_ptr(),
-                                                 axes,
+                                                 axis,
                                                  mask,
                                                  out);
 }
@@ -57,7 +57,7 @@ void DropoutNdKernel(const Context& dev_ctx,
                      const std::string& mode,
                      int seed,
                      bool fix_seed,
-                     const std::vector<int>& axes,
+                     const std::vector<int>& axis,
                      DenseTensor* out,
                      DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
@@ -72,7 +72,7 @@ void DropoutNdKernel(const Context& dev_ctx,
                                                  seed,
                                                  x,
                                                  seed_tensor.get_ptr(),
-                                                 axes,
+                                                 axis,
                                                  mask,
                                                  out);
 }

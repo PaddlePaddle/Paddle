@@ -40,16 +40,17 @@ KernelSignature DropoutNdOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "dropout_implementation",
                           "seed",
                           "fix_seed",
-                          "axes"},
+                          "axis"},
                          {"Out", "Mask"});
 }
 
 KernelSignature DropoutNdGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("dropout_nd_grad",
-                         {"Mask", "Out@GRAD"},
-                         {"dropout_prob", "is_test", "dropout_implementation"},
-                         {"X@GRAD"});
+  return KernelSignature(
+      "dropout_nd_grad",
+      {"Mask", "Out@GRAD"},
+      {"dropout_prob", "is_test", "dropout_implementation", "axis"},
+      {"X@GRAD"});
 }
 
 }  // namespace phi

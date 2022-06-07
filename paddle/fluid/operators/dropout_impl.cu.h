@@ -266,7 +266,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
                               bool is_fix_seed, int seed_val,
                               const framework::Tensor& x,
                               const framework::Tensor* seed,
-                              const std::vector<int> axes,
+                              const std::vector<int> axis,
                               framework::Tensor* mask, framework::Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
   int64_t x_numel = x.numel();
@@ -316,7 +316,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
-    if (!axes.empty()) {
+    if (!axis.empty()) {
       VectorizedGeneratorMask<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, increment,
           main_offset);
@@ -389,7 +389,7 @@ template <typename T>
 void DropoutGradGPUKernelDriver(
     const phi::GPUContext& dev_ctx, const std::string dropout_implementation,
     float dropout_prob, const framework::Tensor& grad_y,
-    const framework::Tensor& mask, const std::vector<int>& axes,
+    const framework::Tensor& mask, const std::vector<int>& axis,
     framework::Tensor* grad_x, bool is_test = false) {
   using MT = typename details::MPTypeTrait<T>::Type;
   auto stream = dev_ctx.stream();
@@ -406,7 +406,7 @@ void DropoutGradGPUKernelDriver(
     phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   } else {
     framework::Tensor broadcast_mask;
-    if (!axes.empty()) {
+    if (!axis.empty()) {
       broadcast_mask.Resize(grad_y.dims());
       broadcast_mask.mutable_data<uint8_t>(dev_ctx.GetPlace());
 
@@ -418,7 +418,7 @@ void DropoutGradGPUKernelDriver(
     }
 
     std::vector<const framework::Tensor*> ins = {
-        &grad_y, axes.empty() ? &mask : &broadcast_mask};
+        &grad_y, axis.empty() ? &mask : &broadcast_mask};
     std::vector<framework::Tensor*> outs = {grad_x};
     if (dropout_implementation == "upscale_in_train") {
       if (dropout_prob == 1.0f) {
