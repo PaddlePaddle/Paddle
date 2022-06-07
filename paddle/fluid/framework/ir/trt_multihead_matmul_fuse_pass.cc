@@ -737,6 +737,23 @@ TrtMultiHeadMatmulV2FusePass::TrtMultiHeadMatmulV2FusePass() {
       .IsType<bool>()
       .End();
 
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")  
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -854,7 +871,10 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     int head_number =
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
+std::cout <<"test111111" << std::endl;
     OpDesc multihead_op_desc(mul0->Op()->Block());
+std::cout <<"test22222" << std::endl;
+
     multihead_op_desc.SetType("multihead_matmul");
 
     multihead_op_desc.SetInput("Input", {input0->Name()});
