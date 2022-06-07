@@ -1314,6 +1314,7 @@ class Variable(object):
                 self.desc.set_shape(shape)
             else:
                 old_shape = self.shape
+                shape = list(shape)
                 if shape != old_shape:
                     raise ValueError(
                         "Variable '{0}' has been created before. The previous "
