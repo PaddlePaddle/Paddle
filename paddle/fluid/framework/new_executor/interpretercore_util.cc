@@ -51,10 +51,8 @@ constexpr size_t kPrepareWorkQueueIdx = 2;
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   VLOG(4) << "Add task: " << static_cast<size_t>(op_func_type) << " ";
-  // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
+  // NOTE(zhiqiu): use the second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_serial_run) {
-    VLOG(4) << "FLAGS_new_executor_serial_run:"
-            << FLAGS_new_executor_serial_run;
     queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
                           std::move(fn));
   } else {
