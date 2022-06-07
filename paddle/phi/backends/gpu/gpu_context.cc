@@ -504,8 +504,7 @@ struct GPUContext::Impl {
 
   void AddStreamCallback(const std::function<void()>& callback) const {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
-    // launch too
-    // many threads and result in thread oversubscription.
+    // launch too many threads and result in thread oversubscription.
     auto* callback_func = new std::function<void()>(std::move(callback));
     auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
