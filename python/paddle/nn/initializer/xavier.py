@@ -22,28 +22,26 @@ class XavierNormal(XavierInitializer):
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
-    by Xavier Glorot and Yoshua Bengio, using a normal distribution.
-
-    The mean is 0 and the standard deviation is
+    by Xavier Glorot and Yoshua Bengio, using a normal distribution whose mean is :math:`0` and standard deviation is
 
     .. math::
 
-        \sqrt{\frac{2.0}{fan\_in + fan\_out}}
+        \sqrt{\frac{2.0}{fan\_in + fan\_out}}.
 
 
     Args:
-        fan_in (float, optional): fan_in for Xavier initialization, It is
-                inferred from the tensor. The default value is None.
-        fan_out (float, optional): fan_out for Xavier initialization, it is
-                 inferred from the tensor. The default value is None.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        fan_in (float, optional): fan_in for Xavier initialization, which is
+                inferred from the Tensor. The default value is None.
+        fan_out (float, optional): fan_out for Xavier initialization, which is
+                 inferred from the Tensor. The default value is None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A parameter initialized by Xavier weight, using a normal distribution.
 
     Examples:
         .. code-block:: python
+            :name: initializer_XavierNormal-example
 
             import paddle
 
@@ -81,25 +79,25 @@ class XavierUniform(XavierInitializer):
 
     This initializer is designed to keep the scale of the gradients
     approximately same in all the layers. In case of Uniform distribution,
-    the range is [-x, x], where
+    the range is :math:`[-x,x]`, where
 
     .. math::
 
-        x = \sqrt{\frac{6.0}{fan\_in + fan\_out}}
+        x = \sqrt{\frac{6.0}{fan\_in + fan\_out}}.
 
     Args:
-        fan_in (float, optional): fan_in for Xavier initialization, it is
-                inferred from the tensor. The default value is None.
-        fan_out (float, optional): fan_out for Xavier initialization, it is
-                 inferred from the tensor. The default value is None.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        fan_in (float, optional): fan_in for Xavier initialization, which is
+                inferred from the Tensor. The default value is None.
+        fan_out (float, optional): fan_out for Xavier initialization, which is
+                 inferred from the Tensor. The default value is None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A parameter initialized by Xavier weight, using a uniform distribution.
 
     Examples:
         .. code-block:: python
+            :name: initializer_XavierUniform-example
 
             import paddle
 
