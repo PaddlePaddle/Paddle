@@ -125,8 +125,7 @@ from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
 
-
-__all__ = [  #noqa
+__all__ = [  # noqa
     'celu',
     'conv1d',
     'conv1d_transpose',
