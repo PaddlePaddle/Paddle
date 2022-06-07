@@ -1394,7 +1394,7 @@ class TripletMarginWithDistanceLoss(Layer):
                  distance_function=None,
                  margin=1.0,
                  swap=False,
-                 reduction: str='mean',
+                 reduction: str = 'mean',
                  name=None):
         super(TripletMarginWithDistanceLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -1409,11 +1409,10 @@ class TripletMarginWithDistanceLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_with_distance_loss(
-            input,
-            positive,
-            negative,
-            margin=self.margin,
-            swap=self.swap,
-            reduction=self.reduction,
-            name=self.name)
+        return F.triplet_margin_with_distance_loss(input,
+                                                   positive,
+                                                   negative,
+                                                   margin=self.margin,
+                                                   swap=self.swap,
+                                                   reduction=self.reduction,
+                                                   name=self.name)
