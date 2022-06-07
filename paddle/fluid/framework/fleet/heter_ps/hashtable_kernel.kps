@@ -126,13 +126,15 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
   if (len == 0) {
     return;
   }
+
   #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   FeatureValue* d_vals_in = container_->get_vals();
   uint32_t xpu_id = container_->get_xpu_id();
   uint32_t xpu_num = container_->get_xpu_num();
   platform::XPUDeviceContext xpu_dev_ctx(place);
   auto ctx_xpu = xpu_dev_ctx.x_context();
-  int r = xpu::fill_dvals<unsigned long, FeatureValue>(
+  /*
+  int r = xpu::fill_dvals<unsigned int, FeatureValue>(
       ctx_xpu,
       reinterpret_cast<unsigned int*>(d_keys),
       reinterpret_cast<FeatureValue*>(d_vals_in),
@@ -144,6 +146,7 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+    */
     #else
       return;
     #endif
@@ -152,7 +155,7 @@ void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, StreamType stream) {
+                                      size_t len, XPUStream stream) {
   if (len == 0) {
     return;
   }
@@ -313,7 +316,7 @@ void HashTable<KeyType, ValType>::update(const paddle::platform::Place& place,
 template class HashTable<unsigned long, paddle::framework::FeatureValue>;
 
 template void HashTable<unsigned long, paddle::framework::FeatureValue>::get<
-    XPUStream>(const unsigned long* d_keys,
+    XPUStream>(const paddle::platform::Place& place, const unsigned long* d_keys,
                paddle::framework::FeatureValue* d_vals, size_t len,
                XPUStream stream);
 

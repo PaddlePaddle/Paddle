@@ -112,13 +112,6 @@ class HashTable {
   void insert(const paddle::platform::Place& place, const KeyType* d_keys, size_t len, char* pool, size_t start_index,
               StreamType stream);
 
-  template <typename StreamType>
-  void get(const paddle::platform::Place& place, const KeyType* d_keys, ValType* d_vals, size_t len,
-           StreamType stream);
-
-  template <typename StreamType>
-  void get(const paddle::platform::Place& place, const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
-
   void show();
 
   void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
@@ -139,6 +132,13 @@ class HashTable {
   void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
               StreamType stream);
 
+  template <typename StreamType>
+  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+           StreamType stream);
+
+  template <typename StreamType>
+  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
   void update(const paddle::platform::Place& place, const KeyType* d_keys, const GradType* d_grads, size_t len,
@@ -147,6 +147,13 @@ class HashTable {
   template <typename StreamType>
   void update(const paddle::platform::Place& place, const KeyType* d_keys, const char* d_grads, size_t len,
               StreamType stream);
+
+  template <typename StreamType>
+  void get(const paddle::platform::Place& place, const KeyType* d_keys, ValType* d_vals, size_t len,
+           StreamType stream);
+
+  template <typename StreamType>
+  void get(const paddle::platform::Place& place, const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
 
 #endif
 

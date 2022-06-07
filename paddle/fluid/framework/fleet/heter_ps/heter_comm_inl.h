@@ -604,7 +604,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
 
   // local search
-  tables_[dev_id]->get(reinterpret_cast<KeyType*>(d_fid_seq_ptr),
+  tables_[dev_id]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
                        len,
                        stream);
@@ -927,7 +927,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   GradType* d_shard_grads_ptr =
       reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
-  int uniq_len = len;
+  int uniq_len = len;x
   merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
 
   // int grid_size = (uniq_len - 1) / block_size_ + 1;
