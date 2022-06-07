@@ -247,8 +247,11 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
+        origin_desc = desc
+        origin_is_operator = False
         if isinstance(desc, framework.Operator):
             desc = desc.desc
+            origin_is_operator = True
         if isinstance(desc, tuple):
             desc = desc[0]
         is_needed = False
@@ -258,6 +261,9 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             if name not in in_memory_vars:
                 is_needed = True
         if is_needed:
+            if origin_is_operator:
+                global _grad_op_id_to_fwd_op
+                _grad_op_id_to_fwd_op[desc.original_id()] = origin_desc
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
@@ -276,6 +282,9 @@ def _add_descs_to_block(descs, block):
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
+            # for recompute, should record recompute ops
+            global _grad_op_id_to_fwd_op
+            _grad_op_id_to_fwd_op[desc.desc.original_id()] = desc
             desc = desc.desc
         if isinstance(desc, tuple):
             desc = desc[0]
@@ -1031,7 +1040,8 @@ def _append_backward_ops_with_checkpoints_(block, ops, target_block,
 
             # record the mapping between fwd and bwd
             for g_op_desc in grad_op_desc:
-                _grad_op_id_to_fwd_op[g_op_desc.original_id()] = op_desc
+                _grad_op_id_to_fwd_op[g_op_desc.original_id(
+                )] = _grad_op_id_to_fwd_op[op_desc.original_id()]
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
