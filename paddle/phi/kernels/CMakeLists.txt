@@ -234,6 +234,7 @@ file(GLOB kernel_xpu "xpu/*.cc")
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu)
 
 if(WITH_GPU OR WITH_ROCM)
   add_library(phi_gpu ${kernel_cu})
