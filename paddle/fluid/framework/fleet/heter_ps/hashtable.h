@@ -113,11 +113,11 @@ class HashTable {
               StreamType stream);
 
   template <typename StreamType>
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+  void get(const paddle::platform::Place& place, const KeyType* d_keys, ValType* d_vals, size_t len,
            StreamType stream);
 
   template <typename StreamType>
-  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+  void get(const paddle::platform::Place& place, const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
 
   void show();
 

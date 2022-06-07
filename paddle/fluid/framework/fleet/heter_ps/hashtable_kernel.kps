@@ -93,14 +93,18 @@ void HashTable<KeyType, ValType>::set_embedx_sgd(
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
-void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
+void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
+                                      const KeyType* d_keys, ValType* d_vals,
                                       size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
+  #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   ValType* d_vals_in = container_->get_vals();
   uint32_t xpu_id = container_->get_xpu_id();
   uint32_t xpu_num = container_->get_xpu_num();
+  platform::XPUDeviceContext xpu_dev_ctx(place);
+  auto ctx_xpu = xpu_dev_ctx.x_context();
   int r = xpu::fill_dvals<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_id, xpu_num
@@ -109,18 +113,25 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+  #else
+    return;
+  #endif
 }
 
 template <>
 template <>
-void HashTable<unsigned long, FeatureValue>::get(const unsigned long* d_keys, FeatureValue* d_vals,
+void HashTable<unsigned long, FeatureValue>::get(const paddle::platform::Place& place,
+                                     const unsigned long* d_keys, FeatureValue* d_vals,
                                       size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
+  #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   FeatureValue* d_vals_in = container_->get_vals();
   uint32_t xpu_id = container_->get_xpu_id();
   uint32_t xpu_num = container_->get_xpu_num();
+  platform::XPUDeviceContext xpu_dev_ctx(place);
+  auto ctx_xpu = xpu_dev_ctx.x_context();
   int r = xpu::fill_dvals<unsigned long, FeatureValue>(
       ctx_xpu,
       reinterpret_cast<unsigned int*>(d_keys),
@@ -133,6 +144,9 @@ void HashTable<unsigned long, FeatureValue>::get(const unsigned long* d_keys, Fe
       r, XPU_SUCCESS,
       platform::errors::External("XPU get kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
+    #else
+      return;
+    #endif
 }
 
 template <typename KeyType, typename ValType>
