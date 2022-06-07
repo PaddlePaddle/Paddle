@@ -909,14 +909,16 @@ void DropoutNdInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims));
   for (size_t i = 0; i < axis.size(); ++i) {
-    PADDLE_ENFORCE_EQ(axis[i] >= 0 && axis[i] <= x_dims.size() - 1,
-                      true,
-                      "The %d-th value of axis is expected to be greater ot "
-                      "equal to 0 and less than the dimensions of x. But "
-                      "recieved axis is {%s}, the dimension size of x is %d.",
-                      i,
-                      phi::make_ddim(axis),
-                      x_dims.size());
+    PADDLE_ENFORCE_EQ(
+        axis[i] >= 0 && axis[i] <= x_dims.size() - 1,
+        true,
+        phi::errors::InvalidArgument(
+            "The %d-th value of axis is expected to be greater ot "
+            "equal to 0 and less than the dimensions of x. But "
+            "recieved axis is {%s}, the dimension size of x is %d.",
+            i,
+            phi::make_ddim(axis),
+            x_dims.size()));
   }
 
   out->set_dims(x_dims);
