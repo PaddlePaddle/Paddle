@@ -230,7 +230,7 @@ struct GPUContext::Impl {
     phi::InitBlasLtHandle(&blaslt_handle_);
     phi::InitDnnHandle(&dnn_handle_, stream_, place_);
     phi::InitSolverHandle(&solver_handle_, stream_);
-    phi::InitSparseHandle(&sparse_handle_, stream_);
+    // phi::InitSparseHandle(&sparse_handle_, stream_);
     InitDnnWorkspace();
   }
 
@@ -262,7 +262,7 @@ struct GPUContext::Impl {
     phi::InitBlasLtHandle(&blaslt_handle_);
     phi::InitDnnHandle(&dnn_handle_, stream_, place_);
     phi::InitSolverHandle(&solver_handle_, stream_);
-    phi::InitSparseHandle(&sparse_handle_, stream_);
+    // phi::InitSparseHandle(&sparse_handle_, stream_);
   }
 
   void PartialInitWithAllocator() {
@@ -407,6 +407,10 @@ struct GPUContext::Impl {
   void SetSolverHandle(solverHandle_t handle) { solver_handle_ = handle; }
 
   sparseHandle_t GetSparseHandle() const {
+    if (sparse_handle_ == nullptr) {
+      phi::InitSparseHandle(const_cast<cusparseContext**>(&sparse_handle_),
+                            stream_);
+    }
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
     return sparse_handle_;
   }
@@ -486,6 +490,10 @@ struct GPUContext::Impl {
   inline void CusparseCall(
       const std::function<void(sparseHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(sparse_mtx_);
+    if (sparse_handle_ == nullptr) {
+      phi::InitSparseHandle(const_cast<cusparseContext**>(&sparse_handle_),
+                            stream_);
+    }
     callback(sparse_handle_);
   }
 
