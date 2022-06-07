@@ -236,8 +236,9 @@ struct IndexCalculator {
 template <bool ReduceLastDim = false>
 struct ReduceIndexMapping {
   const kps::DimConfig dim;
-  HOSTDEVICE explicit ReduceIndexMapping(const kps::DimConfig& dims)
-      : dim(dims) {}
+  int loop_size;
+  HOSTDEVICE ReduceIndexMapping(const kps::DimConfig& dims, int max_loop = 1)
+      : dim(dims), loop_size(max_loop) {}
 
 #ifdef PADDLE_WITH_XPU_KP
   __device__ __forceinline__ int BlockIdX() {
@@ -277,10 +278,10 @@ struct ReduceIndexMapping {
   }
 
   __device__ __forceinline__ int GetLoopSize() {
-    if (ReduceLastDim) {
-      return dim.deal_size_y;
-    } else {
+    if ((!ReduceLastDim) && (loop_size == 1)) {
       return dim.deal_size_x;
+    } else {
+      return loop_size;
     }
   }
 #else
@@ -670,7 +671,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
   int store_offset = 0;
   int stride_left = 0;
   if (reduce_last_dim) {
-    auto block = ReduceIndexMapping<true>(dim);
+    auto block = ReduceIndexMapping<true>(dim, left_num);
     input_idx = block.BlockIdY() * block.BlockDimX();
     left_idx = block.BlockIdX() * block.BlockDimY() + THREAD_ID_Y;
     stride = block.GridDimY() * block.BlockDimX();
@@ -681,7 +682,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     stride_left = 1;
     tid = THREAD_ID_X;
   } else {
-    auto block = ReduceIndexMapping<false>(dim);
+    auto block = ReduceIndexMapping<false>(dim, left_num);
     input_idx = block.BlockIdY() * block.BlockDimY();
     left_idx = block.BlockIdX() * block.BlockDimX() + THREAD_ID_X;
     stride = block.GridDimY() * block.BlockDimY();
