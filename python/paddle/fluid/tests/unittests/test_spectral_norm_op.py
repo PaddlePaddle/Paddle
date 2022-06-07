@@ -16,6 +16,7 @@ from __future__ import division
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
@@ -150,6 +151,18 @@ class TestSpectralNormOpError(unittest.TestCase):
 
             # the data type of type must be float32 or float64
             self.assertRaises(TypeError, test_weight_dtype)
+
+
+class TestDygraphSpectralNorm(unittest.TestCase):
+
+    def test(self):
+        with program_guard(Program(), Program()):
+            x = paddle.rand((2, 8, 32, 32))
+
+            spectral_norm = paddle.nn.SpectralNorm(x.shape,
+                                                   dim=1,
+                                                   power_iters=2)
+            spectral_norm_out = spectral_norm(x)
 
 
 class TestDygraphSpectralNormOpError(unittest.TestCase):

@@ -204,6 +204,32 @@ class TestGRU(unittest.TestCase):
         self.test_predict()
 
 
+class TestGRU_Static(TestGRU):
+
+    def __init__(self, time_major=True, direction="forward", place="cpu"):
+        super(TestGRU_Static, self).__init__("runTest")
+
+    def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.enable_static(place)
+        rnn1 = GRU(16,
+                   32,
+                   2,
+                   time_major=self.time_major,
+                   direction=self.direction)
+        rnn2 = paddle.nn.GRU(16,
+                             32,
+                             2,
+                             time_major=self.time_major,
+                             direction=self.direction)
+        convert_params_for_net(rnn1, rnn2)
+
+        self.rnn1 = rnn1
+        self.rnn2 = rnn2
+
+
 class TestLSTM(unittest.TestCase):
 
     def __init__(self, time_major=True, direction="forward", place="cpu"):

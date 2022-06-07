@@ -15,10 +15,10 @@
 
 # TODO: define loss functions of neural network
 import numpy as np
-import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -595,12 +595,10 @@ class MSELoss(Layer):
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
+            check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                     'MSELoss')
+            check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                                     'MSELoss')
 
         if in_dygraph_mode():
             square_out = paddle._C_ops.final_state_square(
@@ -609,12 +607,10 @@ class MSELoss(Layer):
             square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
-
-        reduce_op = 'reduce_mean'
-        if self.reduction == 'sum':
-            reduce_op = 'reduce_sum'
-
-        return getattr(fluid.layers, reduce_op)(square_out)
+        elif self.reduction == 'sum':
+            return paddle.sum(square_out)
+        else:
+            return paddle.mean(square_out)
 
 
 class L1Loss(Layer):

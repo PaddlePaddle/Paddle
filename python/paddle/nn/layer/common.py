@@ -14,13 +14,51 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
 from paddle import in_dynamic_mode
 
 __all__ = []
+
+
+class Flatten(Layer):
+    """
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          inp_np = paddle.to_tensor(inp_np)
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          flatten_res = flatten(inp_np)
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super(Flatten, self).__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = paddle.tensor.manipulation.flatten(input,
+                                                 start_axis=self.start_axis,
+                                                 stop_axis=self.stop_axis)
+        return out
 
 
 def _npairs(x, n):

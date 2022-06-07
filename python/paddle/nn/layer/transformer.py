@@ -23,7 +23,7 @@ from .common import Linear, Dropout
 from .norm import LayerNorm
 from .. import functional as F
 from ... import tensor
-from ...fluid import layers
+from ...fluid.layers import fill_constant_batch_size_like
 from .. import Layer, LayerList
 from ...framework import ParamAttr
 from paddle.fluid.data_feeder import convert_dtype
@@ -334,12 +334,12 @@ class MultiHeadAttention(Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
+            k = fill_constant_batch_size_like(
                 input=key,
                 shape=[-1, self.num_heads, 0, self.head_dim],
                 dtype=key.dtype,
                 value=0)
-            v = layers.fill_constant_batch_size_like(
+            v = fill_constant_batch_size_like(
                 input=key,
                 shape=[-1, self.num_heads, 0, self.head_dim],
                 dtype=key.dtype,

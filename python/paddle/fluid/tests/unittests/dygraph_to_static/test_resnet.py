@@ -25,7 +25,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Pool2D, Conv2D, Linear
+from paddle.nn import BatchNorm
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
