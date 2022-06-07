@@ -22,6 +22,7 @@ import unittest
 import multiprocessing
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, BatchSampler, DataLoader
 
@@ -181,7 +182,7 @@ class TestStaticDataLoader(unittest.TestCase):
 
 
 class TestStaticDataLoaderReturnList(unittest.TestCase):
-    def test_single_place(self):
+    def run_single_place(self, num_workers):
         scope = fluid.Scope()
         image = fluid.data(
             name='image', shape=[None, IMAGE_SIZE], dtype='float32')
@@ -191,7 +192,7 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
             dataloader = DataLoader(
                 dataset,
                 feed_list=[image, label],
-                num_workers=0,
+                num_workers=num_workers,
                 batch_size=BATCH_SIZE,
                 drop_last=True,
                 return_list=True)
@@ -202,7 +203,7 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
                 assert not isinstance(d[0], list)
                 assert not isinstance(d[1], list)
 
-    def test_multi_place(self):
+    def run_multi_place(self, num_workers):
         scope = fluid.Scope()
         image = fluid.data(
             name='image', shape=[None, IMAGE_SIZE], dtype='float32')
@@ -212,7 +213,7 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
             dataloader = DataLoader(
                 dataset,
                 feed_list=[image, label],
-                num_workers=0,
+                num_workers=num_workers,
                 batch_size=BATCH_SIZE,
                 places=[fluid.CPUPlace()] * 2,
                 drop_last=True,
@@ -223,6 +224,12 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
                 assert len(d) == 2
                 assert isinstance(d[0], list)
                 assert isinstance(d[1], list)
+
+    def test_main(self):
+        paddle.enable_static()
+        for num_workers in [0, 2]:
+            self.run_single_place(num_workers)
+            self.run_multi_place(num_workers)
 
 
 class RandomBatchedDataset(Dataset):

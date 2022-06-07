@@ -274,13 +274,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s)
-                            for d, s in zip(data, self._structure_infos[:len(
-                                self._places)])
-                        ]
-                        self._structure_infos = self._structure_infos[len(
-                            self._places):]
+                        structs = [self._structure_infos.pop(0) for _ in range(len(self._places))]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
@@ -746,13 +742,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         data = self._reader.read_next_list()
                         for i in range(len(data)):
                             data[i] = data[i]._move_to_list()
-                        data = [
-                            _restore_batch(d, s)
-                            for d, s in zip(data, self._structure_infos[:len(
-                                self._places)])
-                        ]
-                        self._structure_infos = self._structure_infos[len(
-                            self._places):]
+                        structs = [self._structure_infos.pop(0) for _ in range(len(self._places))]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
