@@ -373,15 +373,15 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const int end_index = start_index + D;
 
     if (label_type == framework::proto::VarType::INT32) {
-      MaskLabelByIndexGrad<T,
-                           int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(),
-          labels->data<int32_t>(), start_index, end_index, N, D);
+      MaskLabelByIndexGrad<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              logit_grad_2d.data<T>(), loss_grad->data<T>(),
+              labels->data<int32_t>(), start_index, end_index, N, D);
     } else if (label_type == framework::proto::VarType::INT64) {
-      MaskLabelByIndexGrad<T,
-                           int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(),
-          labels->data<int64_t>(), start_index, end_index, N, D);
+      MaskLabelByIndexGrad<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              logit_grad_2d.data<T>(), loss_grad->data<T>(),
+              labels->data<int64_t>(), start_index, end_index, N, D);
     }
   }
 };

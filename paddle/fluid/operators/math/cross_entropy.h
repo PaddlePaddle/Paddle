@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <limits>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/core/hostdevice.h"

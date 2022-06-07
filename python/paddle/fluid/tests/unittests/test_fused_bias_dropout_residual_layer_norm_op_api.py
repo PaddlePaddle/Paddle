@@ -66,6 +66,7 @@ def compute_reference(x, residual, ln_scale, ln_bias, linear_bias):
 
 
 class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
+
     def setUp(self):
         self.setXType()
         self.setBiasAttr()
@@ -99,12 +100,13 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
 
         linear_bias = None
         if self.bias_attr is not False:
-            linear_bias = np.random.random(fused_bias_dropout_residual_ln.
-                                           linear_bias.shape).astype('float32')
+            linear_bias = np.random.random(
+                fused_bias_dropout_residual_ln.linear_bias.shape).astype(
+                    'float32')
             fused_bias_dropout_residual_ln.linear_bias.set_value(
                 paddle.to_tensor(linear_bias))
-        out = fused_bias_dropout_residual_ln(
-            paddle.to_tensor(self.x), paddle.to_tensor(self.residual))
+        out = fused_bias_dropout_residual_ln(paddle.to_tensor(self.x),
+                                             paddle.to_tensor(self.residual))
 
         ln_bias = None
         if self.bias_attr is not False:
@@ -112,12 +114,16 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
         ln_scale = fused_bias_dropout_residual_ln.ln_scale.numpy(),
         ref_out = compute_reference(self.x, self.residual, ln_scale, ln_bias,
                                     linear_bias)
-        np.testing.assert_allclose(
-            ref_out, out.numpy(), rtol=1e-5, atol=self.atol)
+        np.testing.assert_allclose(ref_out,
+                                   out.numpy(),
+                                   rtol=1e-5,
+                                   atol=self.atol)
 
     def run_static(self):
-        fused_op = FusedBiasDropoutResidualLayerNorm(
-            self.embed_dim, self.dropout_prob, self.weight_attr, self.bias_attr)
+        fused_op = FusedBiasDropoutResidualLayerNorm(self.embed_dim,
+                                                     self.dropout_prob,
+                                                     self.weight_attr,
+                                                     self.bias_attr)
 
         x = paddle.static.data(
             name='X',
@@ -136,16 +142,19 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
         linear_bias = None
         ln_bias = None
         if self.bias_attr is False:
-            out, ln_scale = exe.run(
-                paddle.static.default_main_program(),
-                feed={"X": self.x,
-                      "Residual": self.residual},
-                fetch_list=[final_out, fused_op.ln_scale])
+            out, ln_scale = exe.run(paddle.static.default_main_program(),
+                                    feed={
+                                        "X": self.x,
+                                        "Residual": self.residual
+                                    },
+                                    fetch_list=[final_out, fused_op.ln_scale])
         else:
             out, linear_bias, ln_scale, ln_bias = exe.run(
                 paddle.static.default_main_program(),
-                feed={"X": self.x,
-                      "Residual": self.residual},
+                feed={
+                    "X": self.x,
+                    "Residual": self.residual
+                },
                 fetch_list=[
                     final_out, fused_op.linear_bias, fused_op.ln_scale,
                     fused_op.ln_bias
@@ -167,6 +176,7 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
 
 class TestFusedBiasDropoutResidualLayerNormAPIBiasIsNone(
         TestFusedBiasDropoutResidualLayerNormAPI):
+
     def setBiasAttr(self):
         self.bias_attr = False
 

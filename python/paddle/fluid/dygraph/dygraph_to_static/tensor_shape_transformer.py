@@ -47,8 +47,9 @@ def create_convert_shape_node(var_shape_node,
         api_shape_node = gast.parse(convert_var_shape_func).body[0].value
 
         if slice_node is not None and not slice_is_num(slice_node):
-            return gast.Subscript(
-                value=api_shape_node, slice=slice_node.slice, ctx=gast.Load())
+            return gast.Subscript(value=api_shape_node,
+                                  slice=slice_node.slice,
+                                  ctx=gast.Load())
         return api_shape_node
 
     if isinstance(var_shape_node, gast.Subscript):
@@ -65,12 +66,13 @@ def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
 
     if slice_node is not None and slice_is_num(slice_node):
         args.append(ast_to_source_code(slice_node.slice).strip())
-    choose_shape_func = "_jst.choose_shape_attr_or_api({})".format(",".join(
-        args))
+    choose_shape_func = "_jst.choose_shape_attr_or_api({})".format(
+        ",".join(args))
     choose_shape_node = gast.parse(choose_shape_func).body[0].value
     if slice_node is not None and not slice_is_num(slice_node):
-        return gast.Subscript(
-            value=choose_shape_node, slice=slice_node.slice, ctx=gast.Load())
+        return gast.Subscript(value=choose_shape_node,
+                              slice=slice_node.slice,
+                              ctx=gast.Load())
     return choose_shape_node
 
 
@@ -226,9 +228,10 @@ class TensorShapeTransformer(gast.NodeTransformer):
                 for field, value in gast.iter_fields(parent_node):
                     if child_node is value:
                         if var_shape_node is child_node:
-                            setattr(parent_node, field,
-                                    create_convert_shape_node(var_shape_node,
-                                                              None, True))
+                            setattr(
+                                parent_node, field,
+                                create_convert_shape_node(
+                                    var_shape_node, None, True))
                         else:
                             setattr(parent_node, field, var_shape_node)
                         break
@@ -283,8 +286,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
         if isinstance(node, gast.Attribute):
             # If node is `paddle.shape`, return False
-            if (node.attr == 'shape' and isinstance(node.value, gast.Name) and
-                    node.value.id == 'paddle'):
+            if (node.attr == 'shape' and isinstance(node.value, gast.Name)
+                    and node.value.id == 'paddle'):
                 return False
             if node.attr != 'shape':
                 return False
@@ -323,9 +326,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         sub_node = gast.parse(sub_node_str).body[0].value
 
                         update_static_shape_var_node.append(
-                            gast.Assign(
-                                targets=[static_shape_var_node],
-                                value=sub_node))
+                            gast.Assign(targets=[static_shape_var_node],
+                                        value=sub_node))
 
                         self.name_to_var_shape[
                             target_id] = static_shape_var_name
@@ -346,16 +348,15 @@ class TensorShapeTransformer(gast.NodeTransformer):
                             idx)
                         sub_node = gast.parse(sub_node_str).body[0].value
                         # Note(Aurelius84): Becuase static_shape_var_name is used in
-                        # eval_if_exist_else_none() as plain string, so it will not 
+                        # eval_if_exist_else_none() as plain string, so it will not
                         # be pasred as argument in convert_loop/ifelse. We delcare it
                         # as global var because it has unique name.
                         update_static_shape_var_node.append(
                             gast.Global(names=[static_shape_var_name]))
 
                         update_static_shape_var_node.append(
-                            gast.Assign(
-                                targets=[static_shape_var_node],
-                                value=sub_node))
+                            gast.Assign(targets=[static_shape_var_node],
+                                        value=sub_node))
                         self.name_to_var_shape[
                             target_id] = static_shape_var_name
             return update_static_shape_var_node
@@ -373,16 +374,15 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         static_shape_value_name).body[0].value
 
                     update_static_shape_var_node = [
-                        gast.Assign(
-                            targets=[static_shape_var_node],
-                            value=static_shape_value_node)
+                        gast.Assign(targets=[static_shape_var_node],
+                                    value=static_shape_value_node)
                     ]
                     self.name_to_var_shape[target_id] = static_shape_var_name
             elif self._is_var_shape(value_node):  # eg: x.shape or x.shape[0]
                 static_shape_var_name = unique_name.generate(
                     STATIC_CONVERT_VAR_SHAPE_SUFFIX)
-                static_shape_var_node = gast.parse(static_shape_var_name).body[
-                    0].value
+                static_shape_var_node = gast.parse(
+                    static_shape_var_name).body[0].value
                 static_shape_value_node = copy.deepcopy(value_node)
                 # x.shape becomes convert_var_shape_simple(x)
                 static_shape_value_node = ShapeAttributeTransformer().visit(
@@ -392,8 +392,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
                     gast.Global(names=[static_shape_var_name])
                 ]
                 update_static_shape_var_node.append(
-                    gast.Assign(
-                        targets=[static_shape_var_node],
-                        value=static_shape_value_node))
+                    gast.Assign(targets=[static_shape_var_node],
+                                value=static_shape_value_node))
                 self.name_to_var_shape[target_id] = static_shape_var_name
         return update_static_shape_var_node

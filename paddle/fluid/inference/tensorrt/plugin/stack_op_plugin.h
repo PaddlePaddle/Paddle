@@ -14,9 +14,11 @@
 
 #pragma once
 #include <stdio.h>
+
 #include <cassert>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 

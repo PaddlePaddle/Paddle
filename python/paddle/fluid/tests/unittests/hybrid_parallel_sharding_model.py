@@ -57,6 +57,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
 
 
 class SimpleMPNet(fluid.dygraph.Layer):
+
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2, mp_id):
         super(SimpleMPNet, self).__init__()
@@ -107,6 +108,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
 
 
 class SimpleDPNet(fluid.dygraph.Layer):
+
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2):
 
@@ -150,6 +152,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
 
 
 class TestDistMPTraning(unittest.TestCase):
+
     def setUp(self):
         random.seed(2021)
         np.random.seed(2021)
@@ -166,7 +169,8 @@ class TestDistMPTraning(unittest.TestCase):
         self.data = [
             np.random.randint(0, vocab_size, (
                 batch_size,
-                seq_length, )) for _ in range(STEPS)
+                seq_length,
+            )) for _ in range(STEPS)
         ]
 
     def train_batch(self, batch, model, optimizer):
@@ -228,21 +232,19 @@ class TestDistMPTraning(unittest.TestCase):
 
         model_a = SimpleDPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2)
-        optimizer_a = self.build_optimizer(
-            model_a,
-            strategy=self.strategy,
-            is_sharding=True,
-            Optimizer=Optimizer)
+        optimizer_a = self.build_optimizer(model_a,
+                                           strategy=self.strategy,
+                                           is_sharding=True,
+                                           Optimizer=Optimizer)
         model_a = fleet.distributed_model(model_a)
         optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
         model_b = SimpleDPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2)
-        optimizer_b = self.build_optimizer(
-            model_b,
-            strategy=self.strategy,
-            is_sharding=False,
-            Optimizer=Optimizer)
+        optimizer_b = self.build_optimizer(model_b,
+                                           strategy=self.strategy,
+                                           is_sharding=False,
+                                           Optimizer=Optimizer)
 
         return model_a, optimizer_a, model_b, optimizer_b
 
@@ -257,8 +259,8 @@ class TestDistMPTraning(unittest.TestCase):
 
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
-                    set(optimizer_a._inner_opt._inner_optimizer.state_dict()
-                        .keys()) == sharded_accumulators)
+                    set(optimizer_a._inner_opt._inner_optimizer.state_dict().
+                        keys()) == sharded_accumulators)
 
             if paddle.distributed.get_rank() == 0:
                 batch_sharding = paddle.to_tensor(self.data[idx][:2])
@@ -270,10 +272,9 @@ class TestDistMPTraning(unittest.TestCase):
             loss_b = self.train_batch(batch_single, model_b, optimizer_b)
 
             for j in range(len(model_a.parameters())):
-                np.testing.assert_allclose(
-                    model_a.parameters()[j].numpy(),
-                    model_b.parameters()[j].numpy(),
-                    rtol=1e-6)
+                np.testing.assert_allclose(model_a.parameters()[j].numpy(),
+                                           model_b.parameters()[j].numpy(),
+                                           rtol=1e-6)
 
     def test_sharding_adam(self):
         sharded_accumulators = set([
@@ -286,16 +287,16 @@ class TestDistMPTraning(unittest.TestCase):
             'linear_0.w_0_beta2_pow_acc_0', 'linear_1.b_0_beta2_pow_acc_0',
             'linear_2.b_0_beta2_pow_acc_0', 'embedding_0.w_0_beta2_pow_acc_0'
         ])
-        self.sharding_model(
-            Optimizer="adam", sharded_accumulators=sharded_accumulators)
+        self.sharding_model(Optimizer="adam",
+                            sharded_accumulators=sharded_accumulators)
 
     def test_sharding_momentum(self):
         sharded_accumulators = set([
             'linear_6.w_0_velocity_0', 'linear_7.b_0_velocity_0',
             'linear_8.b_0_velocity_0', 'embedding_2.w_0_velocity_0'
         ])
-        self.sharding_model(
-            Optimizer="Momentum", sharded_accumulators=sharded_accumulators)
+        self.sharding_model(Optimizer="Momentum",
+                            sharded_accumulators=sharded_accumulators)
 
 
 if __name__ == "__main__":

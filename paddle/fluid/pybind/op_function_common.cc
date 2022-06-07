@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pybind/op_function_common.h"
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -28,7 +30,6 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/op_function_common.h"
 
 namespace py = pybind11;
 namespace paddle {

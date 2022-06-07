@@ -16,6 +16,7 @@
 
 #ifdef PADDLE_WITH_MLU
 #include <vector>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 

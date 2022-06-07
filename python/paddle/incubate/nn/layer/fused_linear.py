@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -79,10 +79,14 @@ class FusedLinear(Layer):
         else:
             weight_shape = [in_features, out_features]
         dtype = self._helper.get_default_dtype()
-        self.weight = self.create_parameter(
-            shape=weight_shape, attr=weight_attr, dtype=dtype, is_bias=False)
-        self.bias = self.create_parameter(
-            shape=[out_features], attr=bias_attr, dtype=dtype, is_bias=True)
+        self.weight = self.create_parameter(shape=weight_shape,
+                                            attr=weight_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
+        self.bias = self.create_parameter(shape=[out_features],
+                                          attr=bias_attr,
+                                          dtype=dtype,
+                                          is_bias=True)
         self.transpose_weight = transpose_weight
         self.name = name
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// clang-format off
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
 #include <string>
 #include <unordered_set>
@@ -36,6 +37,7 @@
 #include "paddle/infrt/host_context/symbol_table.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+// clang-format on
 
 namespace infrt {
 namespace kernel {

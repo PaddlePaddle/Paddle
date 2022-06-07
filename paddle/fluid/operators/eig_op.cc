@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/eig_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -32,10 +34,11 @@ class EigOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     int rank = x_dims.size();
-    PADDLE_ENFORCE_GE(rank, 2, platform::errors::InvalidArgument(
-                                   "Expects input tensor x to be not less than "
-                                   "2 dimentions, but got dimention %d",
-                                   rank));
+    PADDLE_ENFORCE_GE(rank, 2,
+                      platform::errors::InvalidArgument(
+                          "Expects input tensor x to be not less than "
+                          "2 dimentions, but got dimention %d",
+                          rank));
     PADDLE_ENFORCE_EQ(x_dims[rank - 2], x_dims[rank - 1],
                       platform::errors::InvalidArgument(
                           "The input matrix must be a square matrix, "

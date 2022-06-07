@@ -39,6 +39,7 @@ def output_hist(out, lam, a, b):
 
 
 class TestPoissonOp1(OpTest):
+
     def setUp(self):
         self.op_type = "poisson"
         self.config()
@@ -55,10 +56,8 @@ class TestPoissonOp1(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0.01),
-            "actual: {}, expected: {}".format(hist, prob))
+        self.assertTrue(np.allclose(hist, prob, rtol=0.01),
+                        "actual: {}, expected: {}".format(hist, prob))
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -67,14 +66,14 @@ class TestPoissonOp1(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[np.zeros(
-                [1024, 1024], dtype=self.dtype)],
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)
             ])
 
 
 class TestPoissonOp2(TestPoissonOp1):
+
     def config(self):
         self.lam = 5
         self.a = 1
@@ -83,6 +82,7 @@ class TestPoissonOp2(TestPoissonOp1):
 
 
 class TestPoissonAPI(unittest.TestCase):
+
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):

@@ -83,9 +83,9 @@ namespace paddle {
 
 using inference::Singleton;
 #if PADDLE_WITH_TENSORRT
-using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
+using inference::tensorrt::TRTInt8Calibrator;
 #endif
 
 int AnalysisPredictor::clone_num_ = 1;
@@ -1027,8 +1027,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const AnalysisConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (config.glog_info_disabled()) {
@@ -1087,12 +1088,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = false;
       } else {
         process_level_allocator_enabled = true;
-      }
-
-      // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
-      // auto_growth
-      if (config.tensorrt_engine_enabled()) {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
       }
 
       if (framework::InitGflags(gflags)) {

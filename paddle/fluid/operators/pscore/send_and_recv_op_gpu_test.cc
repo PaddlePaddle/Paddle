@@ -15,12 +15,12 @@ limitations under the License. */
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
 
 #include <stdlib.h>
-#include <memory>
-#include <string>
-#include <thread>  // NOLINT
 
+#include <memory>
 #include <random>
 #include <sstream>
+#include <string>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
@@ -178,8 +178,9 @@ void StartSendAndRecvServer(std::string endpoint) {
   b_rpc_service2->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
   b_rpc_service2->RegisterServiceHandler(
-      in_var_name, [&](const MultiVarMsg* request, MultiVarMsg* response,
-                       brpc::Controller* cntl) -> int {
+      in_var_name,
+      [&](const MultiVarMsg* request, MultiVarMsg* response,
+          brpc::Controller* cntl) -> int {
         return b_req_handler->Handle(request, response, cntl);
       });
 

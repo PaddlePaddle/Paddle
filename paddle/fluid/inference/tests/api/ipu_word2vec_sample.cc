@@ -31,8 +31,8 @@ limitations under the License. */
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 
 using paddle_infer::Config;
-using paddle_infer::Predictor;
 using paddle_infer::CreatePredictor;
+using paddle_infer::Predictor;
 
 void inference(std::string model_path, bool use_ipu,
                std::vector<float> *out_data) {

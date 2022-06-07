@@ -116,8 +116,9 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
     auto in_vars = ctx.MultiInputVar("X");
 
-    PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
-                                                 "Input variable is empty."));
+    PADDLE_ENFORCE_NE(
+        in_vars.empty(), true,
+        platform::errors::InvalidArgument("Input variable is empty."));
     auto& input0 = in_vars[0]->Get<LoDTensor>();
     LoDTensor* output = ctx.Output<LoDTensor>("Out");
 

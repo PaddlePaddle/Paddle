@@ -66,7 +66,7 @@ class TransposeMKLDNNHandler {
  protected:
   dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
                                      std::vector<int>& axis          // NOLINT
-                                     ) {
+  ) {
     size_t ndims = axis.size();
 
     std::vector<int64_t> strides(ndims);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
+
 #include "paddle/fluid/distributed/ps/table/table.h"
 
 //#define pslib_debug_dense_compress
@@ -316,5 +317,5 @@ int32_t PsLocalClient::Initialize() {
   table_ptr->Push(table_context);
   return done();
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle
