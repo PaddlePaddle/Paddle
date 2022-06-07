@@ -61,7 +61,6 @@ class Layer {
 
  private:
   // internal::Object obj_;
-  // TODO(dev): we should class them.
   // std::vector<framework::ProgramDesc> all_program_desc_;
   // std::vector<std::vector<std::string>> param_name_for_each_program_;
   // std::vector<IValue> all_param_;

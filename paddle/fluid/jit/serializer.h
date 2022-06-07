@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <set>
 #include <string>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -51,6 +52,8 @@ class Deserializer {
     std::vector<std::string> func_names;
     std::vector<framework::ProgramDesc> program_descs;
     std::vector<std::vector<std::string>> param_names_for_each_program;
+    // set is ordered
+    std::set<std::string> param_names_set;
     std::map<std::string, IValue> params_dict;
     for (auto& it : file_name_prefixs) {
       func_names.emplace_back(it.first);
@@ -58,23 +61,25 @@ class Deserializer {
       auto program = LoadProgram(dir_path + it.second + PDMODEL_SUFFIX);
       program_descs.emplace_back(program);
 
-      std::vector<std::string> persistable_var_name;
+      // TODO(dev): load int/float params
+      std::vector<std::string> persistable_var_names;
       auto all_var_desc = program.Block(0).AllVars();
       for (auto* desc_ptr : all_var_desc) {
         if (IsPersistable(desc_ptr)) {
-          persistable_var_name.emplace_back(desc_ptr->Name());
+          persistable_var_names.emplace_back(desc_ptr->Name());
         }
       }
-      // Sorting is required to correspond to the order of
-      // parameters in the .pdparam file
-      std::sort(persistable_var_name.begin(), persistable_var_name.end());
-      param_names_for_each_program.emplace_back(persistable_var_name);
 
-      auto param_for_program = ReadTensorData(
-          dir_path + it.second + PDPARAMS_SUFFIX, persistable_var_name);
-      // Now param is saved separately, gather all params
-      params_dict.insert(param_for_program.begin(), param_for_program.end());
+      param_names_for_each_program.emplace_back(persistable_var_names);
+      param_names_set.insert(persistable_var_names.begin(),
+                             persistable_var_names.end());
     }
+
+    // Read from one pdiparams file, refine here
+    auto param_for_program =
+        ReadTensorData(dir_path + "export.forward.pdiparams", param_names_set);
+    params_dict.insert(param_for_program.begin(), param_for_program.end());
+
     return Layer(func_names, program_descs, param_names_for_each_program,
                  params_dict);
   }
@@ -119,17 +124,17 @@ class Deserializer {
 
   std::map<std::string, IValue> ReadTensorData(
       const std::string& file_name,
-      const std::vector<std::string>& var_name) const {
+      const std::set<std::string>& var_name) const {
     VLOG(3) << "ReadTensorData from: " << file_name;
     std::ifstream fin(file_name, std::ios::binary);
     std::map<std::string, IValue> res;
-    for (size_t i = 0; i < var_name.size(); ++i) {
-      VLOG(3) << "load Tensor: " << var_name[i];
+    for (auto it = var_name.begin(); it != var_name.end(); it++) {
+      VLOG(3) << "load Tensor: " << *it;
       // TODO(dev): support other tensor type
       Tensor t(std::make_shared<DenseTensor>());
       LoadTensorFromBuffer(fin, dynamic_cast<DenseTensor*>(t.impl().get()));
-      t.set_name(var_name[i]);
-      res[var_name[i]] = IValue(t);
+      t.set_name(*it);
+      res[*it] = IValue(t);
     }
     return res;
   }
@@ -175,6 +180,7 @@ class Deserializer {
         tensor->Resize(phi::make_ddim(dims));
         void* buf;
         size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
+        // TODO(dev): support other devices
         buf = tensor->mutable_data(phi::CPUPlace());
         buffer.read(static_cast<char*>(buf), size);
       }
