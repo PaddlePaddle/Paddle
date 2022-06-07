@@ -290,8 +290,9 @@ class SparseFcOpConverter : public OpConverter {
         plugin_inputs.emplace_back(X);
         auto fc_layer_int8 = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        RreplenishLayerAndOutput(fc_layer_int8, "ernie_sparse_fc_op_int8: ",
-                                 {output_name}, test_mode);
+        RreplenishLayerAndOutput(fc_layer_int8,
+                                 "ernie_sparse_fc_op_int8: ", {output_name},
+                                 test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
             &weight, &bias, activation_type,

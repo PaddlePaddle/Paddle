@@ -1,4 +1,5 @@
-/* Copyright (c) 2022, PaddlePaddle Authors, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2022, PaddlePaddle Authors, NVIDIA CORPORATION. All rights
+reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,13 +21,12 @@ limitations under the License.
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+
 #include "NvInfer.h"
 #include "NvInferPlugin.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/dynload/cusparseLt.h"
-
-using namespace std;
 
 namespace paddle {
 namespace inference {
@@ -117,15 +117,16 @@ class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
                         // or not
   int optim_alg_;       // the index of optimal algorithm
   float weight_scale_;  // record the weight scale from constructor
-  void* weight_compressed_;                        // host compressed weight
-  void* weight_compressed_dev_;                    //  device compressed weight
-  shared_ptr<void> weight_compressed_dev_global_;  // shared pointer to the
-                                                   // device compressed weight
-  size_t compressed_size_;                         // size of compressed weight
-  bool has_bias_;                                  // there is bias or not
-  void* bias_;                                     // host bias
-  void* bias_dev_;                                 // device bias
-  Activation activation_;                          // record the activation type
+  void* weight_compressed_;      // host compressed weight
+  void* weight_compressed_dev_;  //  device compressed weight
+  std::shared_ptr<void>
+      weight_compressed_dev_global_;  // shared pointer to the
+                                      // device compressed weight
+  size_t compressed_size_;            // size of compressed weight
+  bool has_bias_;                     // there is bias or not
+  void* bias_;                        // host bias
+  void* bias_dev_;                    // device bias
+  Activation activation_;             // record the activation type
   cusparseLtContext spmm_context_;
 };  // class SpmmPluginDynamic
 

@@ -379,10 +379,11 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           fc_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
         } else {
-          plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-              &weight, &bias, with_fp16 ? nvinfer1::DataType::kHALF
+          plugin::SpmmPluginDynamic* plugin =
+              new_spmm_plugin(&weight, &bias,
+                              with_fp16 ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT,
-              n);
+                              n);
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(reshape_before_fc_layer->getOutput(0));
           fc_layer = engine_->network()->addPluginV2(

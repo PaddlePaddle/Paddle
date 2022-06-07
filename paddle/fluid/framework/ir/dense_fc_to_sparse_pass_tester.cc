@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/dense_fc_to_sparse_pass.h"
+#include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -91,10 +91,12 @@ TEST(FCFusePass, basic) {
   PADDLE_ENFORCE_EQ(num_fc_nodes_after, 1,
                     platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
                                                       num_fc_nodes_after));
-  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after+num_sparse_fc_nodes_after,
-                    platform::errors::InvalidArgument(
-                        "num_mul_nodes_before=%d, num_fc_nodes_after=%d + num_sparse_fc_nodes_after=%d.",
-                        num_mul_nodes_before, num_fc_nodes_after, num_sparse_fc_nodes_after));
+  PADDLE_ENFORCE_EQ(
+      num_mul_nodes_before, num_fc_nodes_after + num_sparse_fc_nodes_after,
+      platform::errors::InvalidArgument(
+          "num_mul_nodes_before=%d, num_fc_nodes_after=%d + "
+          "num_sparse_fc_nodes_after=%d.",
+          num_mul_nodes_before, num_fc_nodes_after, num_sparse_fc_nodes_after));
 }
 
 }  // namespace ir

@@ -11,8 +11,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include "paddle/fluid/framework/ir/dense_multihead_matmul_to_sparse_pass.h"  // NOLINT
+#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -113,10 +113,13 @@ TEST(DenseMultiHeadMatmulToSparsePass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
 
-  auto fuse_pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass_v2");
-  auto sparse_pass = PassRegistry::Instance().Get("dense_multihead_matmul_to_sparse_pass");
+  auto fuse_pass =
+      PassRegistry::Instance().Get("multihead_matmul_fuse_pass_v2");
+  auto sparse_pass =
+      PassRegistry::Instance().Get("dense_multihead_matmul_to_sparse_pass");
 
-  if (fuse_pass.get() == nullptr || sparse_pass.get() == nullptr) LOG(INFO) << "asdfasdf";
+  if (fuse_pass.get() == nullptr || sparse_pass.get() == nullptr)
+    LOG(INFO) << "asdfasdf";
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
@@ -126,15 +129,16 @@ TEST(DenseMultiHeadMatmulToSparsePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "sparse_multihead_matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(
-      num_nodes_before, num_nodes_after + 39,
-      platform::errors::InvalidArgument(
-          "After the multihead_matmul pass and sparse pass, The node num in graph "
-          "should be %d, but the result is %d",
-          num_nodes_before - 39, num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 39,
+                    platform::errors::InvalidArgument(
+                        "After the multihead_matmul pass and sparse pass, The "
+                        "node num in graph "
+                        "should be %d, but the result is %d",
+                        num_nodes_before - 39, num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
                     platform::errors::InvalidArgument(
-                        "After the multihead_matmul pass and sparse pass, there should be one "
+                        "After the multihead_matmul pass and sparse pass, "
+                        "there should be one "
                         "sparse_multihead_matmul op, but the result is %d",
                         num_fused_nodes_after));
 }
