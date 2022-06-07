@@ -20,10 +20,22 @@ import paddle.fluid.core as core
 from ..fluid.framework import _in_legacy_dygraph
 
 __all__ = [  # noqa
-    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
-    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
-    'CosineAnnealingDecay', 'MultiplicativeDecay', 'OneCycleLR', 'CyclicLR'
+    'LRScheduler',
+    'NoamDecay',
+    'PiecewiseDecay',
+    'NaturalExpDecay',
+    'InverseTimeDecay',
+    'PolynomialDecay',
+    'LinearWarmup',
+    'ExponentialDecay',
+    'MultiStepDecay',
+    'StepDecay',
+    'LambdaDecay',
+    'ReduceOnPlateau',
+    'CosineAnnealingDecay',
+    'MultiplicativeDecay',
+    'OneCycleLR',
+    'CyclicLR',
 ]
 
 
