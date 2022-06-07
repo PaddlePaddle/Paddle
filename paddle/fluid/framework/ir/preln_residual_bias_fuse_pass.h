@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-//             other_op2           
+//             other_op2
 //     |           |                            |            |
 // other_op1  elementwise_add               other_op1    other_op2
 //     |           |              fuse           \          /
