@@ -516,47 +516,43 @@ void BatchNormKernel(const Context &ctx,
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
       const bool use_native_kernel = (x_dims.size() == 2 && N >= 131070);
-      if(use_native_kernel) {
+      if (use_native_kernel) {
         const int block = 512;
         const int max_threads = ctx.GetMaxPhysicalThreadCount();
         const int max_blocks = std::max(max_threads / block, 1);
         const int grid = std::min(C, max_blocks);
         if (compute_format == DataLayout::kNCHW) {
-          BNForwardTraining<
-            T,
-            block,
-            DataLayout::kNCHW><<<grid, block, 0, ctx.stream()>>>(
-            transformed_x.template data<T>(),
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            C,
-            N,
-            H * W * D,
-            epsilon,
-            this_factor,
-            transformed_y.template data<T>(),
-            mean_out->template data<BatchNormParamType<T>>(),
-            variance_out->template data<BatchNormParamType<T>>(),
-            saved_mean->template data<BatchNormParamType<T>>(),
-            saved_variance->template data<BatchNormParamType<T>>());
+          BNForwardTraining<T, block, DataLayout::kNCHW>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>());
         } else {
-          BNForwardTraining<
-            T,
-            block,
-            DataLayout::kNHWC><<<grid, block, 0, ctx.stream()>>>(
-            transformed_x.template data<T>(),
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            C,
-            N,
-            H * W * D,
-            epsilon,
-            this_factor,
-            transformed_y.template data<T>(),
-            mean_out->template data<BatchNormParamType<T>>(),
-            variance_out->template data<BatchNormParamType<T>>(),
-            saved_mean->template data<BatchNormParamType<T>>(),
-            saved_variance->template data<BatchNormParamType<T>>());
+          BNForwardTraining<T, block, DataLayout::kNHWC>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  this_factor,
+                  transformed_y.template data<T>(),
+                  mean_out->template data<BatchNormParamType<T>>(),
+                  variance_out->template data<BatchNormParamType<T>>(),
+                  saved_mean->template data<BatchNormParamType<T>>(),
+                  saved_variance->template data<BatchNormParamType<T>>());
         }
       } else {
 #if CUDNN_VERSION_MIN(7, 4, 1)
@@ -655,7 +651,7 @@ void BatchNormKernel(const Context &ctx,
                 epsilon,
                 ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
                 ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
-#endif // CUDNN_VERSION_MIN(7, 4, 1)
+#endif  // CUDNN_VERSION_MIN(7, 4, 1)
       }
 #endif
     }
