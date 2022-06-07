@@ -1375,16 +1375,15 @@ class MultiLabelSoftMarginLoss(Layer):
         super(MultiLabelSoftMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
+                "'reduction' in 'MultiLabelSoftMarginLoss' should be 'sum', 'mean' or 'none', "
                 "but received {}.".format(reduction))
         self.weight = weight
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return F.multi_label_soft_margin_loss(
-            input,
-            label,
-            weight=self.weight,
-            reduction=self.reduction,
-            name=self.name)
+        return F.multi_label_soft_margin_loss(input,
+                                              label,
+                                              weight=self.weight,
+                                              reduction=self.reduction,
+                                              name=self.name)

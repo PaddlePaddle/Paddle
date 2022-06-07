@@ -2764,12 +2764,12 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     elif reduction == 'none':
         return loss
 
-def multi_label_soft_margin_loss(
-    input,
-    label,
-    weight = None,
-    reduction = "mean",
-    name = None):
+
+def multi_label_soft_margin_loss(input,
+                                 label,
+                                 weight=None,
+                                 reduction="mean",
+                                 name=None):
     r"""
     
         Parameters:
@@ -2816,24 +2816,23 @@ def multi_label_soft_margin_loss(
             "'reduction' in 'multi_label_soft_margin_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not(input.shape==label.shape):
-        raise ValueError(
-            "The input and label should have same dimension,"
-            "but received {}!={}".format(input.shape,label.shape)
-        )
+    if not (input.shape == label.shape):
+        raise ValueError("The input and label should have same dimension,"
+                         "but received {}!={}".format(input.shape, label.shape))
 
     if not _non_static_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'multilabel_soft_margin_loss')
+                                 'multi_label_soft_margin_loss')
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],
-                                 'multilabel_soft_margin_loss')
+                                 'multi_label_soft_margin_loss')
 
-    loss = -(label * paddle.nn.functional.log_sigmoid(input) + (1 - label) * paddle.nn.functional.log_sigmoid(-input))
+    loss = -(label * paddle.nn.functional.log_sigmoid(input) +
+             (1 - label) * paddle.nn.functional.log_sigmoid(-input))
 
     if weight is not None:
         if not _non_static_mode():
-            check_variable_and_dtype(weight,'weight',['float32','float64'],
-                                     'multilabel_soft_margin_loss')
+            check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                                     'multi_label_soft_margin_loss')
         loss = loss * weight
 
     loss = loss.mean(axis=-1)  # only return N loss values
