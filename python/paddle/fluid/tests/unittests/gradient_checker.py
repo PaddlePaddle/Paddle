@@ -596,7 +596,7 @@ def get_static_double_grad(x,
                              ' as len(x) (= %d)' % (len(x_init), len(x)))
         # init variable in main program
         for var, arr in zip(x, x_init):
-            assert var.shape == arr.shape
+            assert var.shape == list(arr.shape)
         feeds = {k.name: v for k, v in zip(x, x_init)}
         exe.run(program, feed=feeds, scope=scope)
 

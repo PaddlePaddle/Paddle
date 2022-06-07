@@ -51,14 +51,14 @@ class TestVariable(unittest.TestCase):
                          name="fc.w")
         self.assertNotEqual(str(w), "")
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
-        self.assertEqual((784, 100), w.shape)
+        self.assertEqual([784, 100], w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
-        self.assertEqual((784, 100), w.shape)
+        self.assertEqual([784, 100], w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
@@ -409,7 +409,7 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(var.stop_gradient)
 
             self.assertTrue(var.name.startswith('_generated_var_'))
-            self.assertEqual(var.shape, (1, 1))
+            self.assertEqual(var.shape, [1, 1])
             self.assertEqual(var.dtype, fluid.core.VarDesc.VarType.FP64)
             self.assertEqual(var.type, fluid.core.VarDesc.VarType.LOD_TENSOR)
 
@@ -470,7 +470,7 @@ class TestVariable(unittest.TestCase):
                 self.assertTrue((result[0] == result[1]).all())
 
                 modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-            detach_x.set_value(modified_value, scope)
+                detach_x.set_value(modified_value, scope)
                 result = exe.run(main, fetch_list=[x, detach_x])
                 self.assertTrue((result[1] == modified_value).all())
                 self.assertTrue((result[0] == result[1]).all())
@@ -506,7 +506,7 @@ class TestVariableSlice(unittest.TestCase):
             data[..., None, :, None]
         ]
         for i in range(len(outs)):
-            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertEqual(outs[i].shape, list(expected[i].shape))
             self.assertTrue((result[i] == expected[i]).all())
 
     def _test_item_none_and_decrease(self, place):
@@ -530,7 +530,7 @@ class TestVariableSlice(unittest.TestCase):
         ]
 
         for i in range(len(outs)):
-            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertEqual(outs[i].shape, list(expected[i].shape))
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):

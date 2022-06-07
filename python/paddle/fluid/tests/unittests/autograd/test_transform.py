@@ -142,9 +142,9 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
 
     def init_data(self):
         # { input_index: input_shape }
-        self.xs_shape_map = {0: (100, 2), 1: (5, 2)}
+        self.xs_shape_map = {0: [100, 2], 1: [5, 2]}
         # { output_index: output_shape }
-        self.ys_shape_map = {0: (100, 5)}
+        self.ys_shape_map = {0: [100, 5]}
         X0 = paddle.static.data('X0',
                                 shape=self.xs_shape_map[0],
                                 dtype='float32')
@@ -223,9 +223,9 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
 
     def init_data(self):
         # { input_index: input_shape }
-        self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3, )}
+        self.xs_shape_map = {0: [7, 8, 9], 1: [8, 1], 2: [7, 8, 9], 3: [3]}
         # { output_index: output_shape }
-        self.ys_shape_map = {0: (3, 16, 9)}
+        self.ys_shape_map = {0: [3, 16, 9]}
 
         X0 = paddle.static.data('X0',
                                 shape=self.xs_shape_map[0],

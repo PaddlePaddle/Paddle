@@ -95,7 +95,7 @@ class TestFeedData(unittest.TestCase):
                     str(shape_mismatch_err.exception),
                     "The fed Variable %r should have dimensions = %r, "
                     "shape = %r, but received fed shape %r on each device" %
-                    (u'data', len(in_shape_tuple), in_shape_list,
+                    (u'data', len(in_shape_list), in_shape_list,
                      error_shape_list))
 
                 with self.assertRaises(ValueError) as dtype_mismatch_err:

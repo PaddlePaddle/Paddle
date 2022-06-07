@@ -97,7 +97,7 @@ class TestFunctionSpec(unittest.TestCase):
                                                          {})
         self.assertTrue(len(input_with_spec) == 2)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
-        self.assertTupleEqual(input_with_spec[1].shape, [4, 10])  # b.shape
+        self.assertListEqual(input_with_spec[1].shape, [4, 10])  # b.shape
         self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
 
         # case 3

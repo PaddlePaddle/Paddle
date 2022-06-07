@@ -104,7 +104,7 @@ class TestDistributedTensor(unittest.TestCase):
         dist_tensor._dist_context = dist_context
         intermediate_var_1 = dist_tensor.new_local_tensor(
             rank=rank_id, name="intermediate_var_1")
-        self.assertEqual(intermediate_var_0.shape, (2, 1024))
+        self.assertEqual(intermediate_var_0.shape, [2, 1024])
         self.assertEqual(intermediate_var_1.name, "intermediate_var_1")
 
         name = "linear_0.w_0"
@@ -113,7 +113,7 @@ class TestDistributedTensor(unittest.TestCase):
         dist_tensor._dist_context = dist_context
         intermediate_var_1 = dist_tensor.new_local_tensor(
             rank=rank_id, name="linear_0.w_0_intermediate")
-        self.assertEqual(intermediate_var_1.shape, (1024, 4096))
+        self.assertEqual(intermediate_var_1.shape, [1024, 4096])
         self.assertEqual(intermediate_var_1.name, "linear_0.w_0_intermediate")
 
         copied_dist_context = copy.deepcopy(dist_context)

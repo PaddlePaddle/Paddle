@@ -139,7 +139,7 @@ class TestDistTraning(unittest.TestCase):
             bias = model_a.parallel_linear.bias
             self.assertEqual(
                 weight.shape,
-                (input_size // self.model_parallel_size, output_size))
+                [input_size // self.model_parallel_size, output_size])
             self.assertEqual(bias.shape, [
                 output_size,
             ])
