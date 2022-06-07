@@ -201,7 +201,7 @@ class FCPrimitiveFactory {
         CreateMemDescriptor<T_w>(weight_dims, MKLDNNMemoryFormat::any);
     auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
     auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
-    const auto attrs = CreatePostOps(ctx);
+    const auto attrs = CreateFCAttrs(ctx);
     return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
   }
 
@@ -230,7 +230,7 @@ class FCPrimitiveFactory {
     auto dst_dims = {input_dims[0] * input_dims[1], weight_dims[0]};
     auto dst_desc =
         CreateMemDescriptor<T_out>(dst_dims, MKLDNNMemoryFormat::any);
-    const auto attrs = CreatePostOps(ctx);
+    const auto attrs = CreateFCAttrs(ctx);
     return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
   }
 
@@ -255,7 +255,7 @@ class FCPrimitiveFactory {
     auto weights_desc = CreateMemDescriptor<T_w>(dims, MKLDNNMemoryFormat::any);
     auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
     auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
-    const auto attrs = CreatePostOps(ctx);
+    const auto attrs = CreateFCAttrs(ctx);
     return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
   }
 
@@ -455,8 +455,7 @@ class FCPrimitiveFactory {
     bias_ = ReorderWithScale(bias_, fc_prim_desc.bias_desc(), bias_scales);
   }
 
-  // Fuse relu into FC with activation type attribute has been set to 'relu'
-  dnnl::primitive_attr CreatePostOps(const ExecutionContext& ctx) {
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
@@ -465,8 +464,8 @@ class FCPrimitiveFactory {
     std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
-    float sum_scale = 1.0f;
 
+    float sum_scale = 1.0f;
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       post_operations.append_sum(sum_scale);
